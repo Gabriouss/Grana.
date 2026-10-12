@@ -629,7 +629,7 @@ function enriquecer(raiz, pecas) {
       } : null,
       planejamento: plano ? { data: plano.data, hora: plano.hora || null, canal: plano.canal } : null,
       trilha: {
-        eventos: dto.trilhaPublica(p, fila, eventos, aprovacoes, planejados),
+        eventos: dto.trilhaPublica(p, fila, eventos, aprovacoes, planejados, Array.isArray(historico.recusas) ? historico.recusas : []),
         versao: true,
         revisao: !!(p.indice && /parecer|revis|watchtower|beacon|sentinel/i.test(p.indice)),
         aceite: aprovada,

@@ -81,6 +81,20 @@ const estimativa = { ferramenta: 'Ferramenta fictícia', gerado: 'CANARIO_GERADO
     { tipo: 'data-marcada', em: new Date(agora + 2000).toISOString(), data: '2026-10-20', hora: '19:00', canal: 'reels' },
     { acao: 'substituicao-manual', em: new Date(agora + 3000).toISOString(), data: '2026-10-21', hora: '20:00', canal: 'stories' }] }]);
   assert.deepEqual(Array.from(historicoDatas, (v) => v.data), ['2026-10-20', '2026-10-21']);
+  const recusada = { ...promovida, id: 'f'.repeat(16), caminho: promovida.caminho.replace('aprovados', 'historico'), estado: 'historico' };
+  const recusa = { id: recusada.id, caminho: recusada.caminho, versao: recusada.versao,
+    origem: { id: promovida.id, caminho: promovida.caminho }, motivo: 'CANARIO_RECUSA_PRIVADA' };
+  const catalogoHistorico = modulo('catalogo.cjs', { './ajustes-dto.cjs': dto, './ajustes-fila.cjs': { fila, vigiaEstado: () => ({ ativo: false }) },
+    fs: { readFileSync: (f) => JSON.stringify(f.endsWith('aprovacoes.json') ? { aprovacoes: [aceite, promocao] } : f.endsWith('calendario.json') ? { planejados: [plano] } : { recusas: [recusa] }) } });
+  const anteriores = catalogoHistorico.enriquecer('/fixture', [recusada])[0].trilha.eventos;
+  assert.deepEqual(JSON.parse(JSON.stringify(anteriores)), JSON.parse(JSON.stringify(eventos)), 'recusa depois da promoção conserva toda a trilha anterior');
+  assert.equal(anteriores.find((e) => e.tipo === 'custo').custo.valorReais, 3.5);
+  assert(!JSON.stringify(anteriores).includes('CANARIO_'));
+  for (const e of anteriores) {
+    assert(Object.keys(e).every((k) => ['tipo', 'em', 'estado', 'custo', 'data', 'hora', 'canal'].includes(k)));
+    if (e.custo) assert(Object.keys(e.custo).every((k) => ['ferramenta', 'creditos', 'valorReais', 'cotacao'].includes(k)));
+  }
+  console.log('OK recusa após promoção preserva eventos/custo/data pela prova de origem, whitelist fechada');
   console.log('OK catálogo real reúne fila de origem, aceite, promoção e data sem IDs/texto privado');
   console.log('admin-marketing-trilha: módulos reais, zero rede/env/entrega real');
 })().catch((e) => { console.error(e); process.exitCode = 1; });

@@ -39,11 +39,12 @@ function alertasPublicos(p, vigia, agora = Date.now()) {
     proximoPasso: 'Confira o vigia para manter o pedido em andamento.' });
   return alertas;
 }
-function trilhaPublica(p, pedidos, eventos, aprovacoes, planejados) {
+function trilhaPublica(p, pedidos, eventos, aprovacoes, planejados, recusas = []) {
   const origens = new Set([p.id]);
+  const provas = [...aprovacoes, ...recusas];
   for (let mudou = true; mudou;) {
     mudou = false;
-    for (const a of aprovacoes) if (origens.has(a.id) && a.origem?.id && !origens.has(a.origem.id)) { origens.add(a.origem.id); mudou = true; }
+    for (const a of provas) if (origens.has(a.id) && a.origem?.id && !origens.has(a.origem.id)) { origens.add(a.origem.id); mudou = true; }
   }
   const pedidosDaPeca = pedidos.filter((r) => origens.has(r.pecaId));
   const lista = eventosPublicos(eventos, pedidosDaPeca.map((r) => r.id));
