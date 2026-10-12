@@ -100,6 +100,56 @@ async function test(nome, fn, nomes) { await fixture(fn, nomes); grupos++; conso
     finally { c.gravarJsonAtomico = save; }
     assert(fs.existsSync(path.join(h.media, 'E01.jpg'))); assert(!fs.existsSync(h.destino())); assert.equal(h.lerAceites().aprovacoes.length, 1);
   });
+  await test('C6 copia interrompida nao ocupa destino e retry preserva aceite', async (h) => {
+    await h.aprovar(); const logs = [];
+    const fn = promo.criarPromocao({ ...fs, copyFileSync(de, para) { fs.writeFileSync(para, 'parcial'); throw new Error('copia interrompida'); } }, (s) => logs.push(s));
+    await assert.rejects(h.promover(fn), (e) => e.codigo === 'promocao-falhou');
+    assert(fs.existsSync(path.join(h.media, 'E01.jpg'))); assert(!fs.existsSync(h.destino()));
+    assert.equal(h.lerAceites().aprovacoes.length, 1); assert(logs.includes('promocao-falhou'));
+    const r = await h.promover(); assert.equal(r.jaExistia, false); assert.equal(h.lerAceites().aprovacoes.length, 2);
+  });
+  await test('C6 copia divergente propria nao vira orfao do acervo', async (h) => {
+    await h.aprovar();
+    const fn = promo.criarPromocao({ ...fs, copyFileSync(de, para) { fs.writeFileSync(para, 'divergente'); } }, () => {});
+    await assert.rejects(h.promover(fn), (e) => e.codigo === 'promocao-falhou');
+    assert(!fs.existsSync(h.destino())); assert(fs.existsSync(path.join(h.media, 'E01.jpg')));
+    assert.equal(h.lerAceites().aprovacoes.length, 1);
+    await h.promover(); assert.equal(h.lerAceites().aprovacoes.length, 2);
+  });
+  await test('C6 corrida na publicacao preserva destino alheio e toda origem', async (h) => {
+    await h.aprovar();
+    const fn = promo.criarPromocao({ ...fs, linkSync(de, para) { fs.writeFileSync(para, 'TERCEIRO'); return fs.linkSync(de, para); } }, () => {});
+    await assert.rejects(h.promover(fn), (e) => e.codigo === 'promocao-falhou');
+    assert.equal(fs.readFileSync(h.destino(), 'utf8'), 'TERCEIRO');
+    assert(fs.existsSync(path.join(h.media, 'E01.jpg'))); assert.equal(h.lerAceites().aprovacoes.length, 1);
+  });
+  await test('C6 orfao anterior incerto nao e apagado nem adotado mesmo com bytes iguais', async (h) => {
+    await h.aprovar(); fs.mkdirSync(path.dirname(h.destino()), { recursive: true });
+    fs.copyFileSync(path.join(h.media, 'E01.jpg'), h.destino()); const antes = fs.readFileSync(h.destino());
+    await assert.rejects(h.promover(), (e) => e.codigo === 'destino-existente');
+    assert(fs.readFileSync(h.destino()).equals(antes)); assert(fs.existsSync(path.join(h.media, 'E01.jpg')));
+    assert.equal(h.lerAceites().aprovacoes.length, 1);
+  });
+  await test('C6 prova relida incompleta nao permite limpar; retomada valida nao copia de novo', async (h) => {
+    await h.aprovar(); const read = c.lerJson; let leituras = 0;
+    c.lerJson = (...a) => { const r = read(...a); if (a[0] === h.apPath && ++leituras === 2) r.aprovacoes.at(-1).arquivosPromovidos = []; return r; };
+    try { await assert.rejects(h.promover(promo.criarPromocao(fs, () => {})), (e) => e.codigo === 'promocao-falhou'); }
+    finally { c.lerJson = read; }
+    assert(fs.existsSync(path.join(h.media, 'E01.jpg'))); assert.equal(h.lerAceites().aprovacoes.length, 2);
+    const fn = promo.criarPromocao({ ...fs, copyFileSync() { throw new Error('retomada nao deve copiar'); } }, () => {});
+    const r = await h.promover(fn); assert.equal(r.jaExistia, true); assert(!fs.existsSync(path.join(h.media, 'E01.jpg')));
+  });
+  await test('C6 prova do indice nao persistida preserva origem e recibo permite retomar', async (h) => {
+    await h.aprovar(); const save = c.gravarJsonAtomico; let escritas = 0;
+    c.gravarJsonAtomico = (...a) => { if (a[0] === h.apPath && ++escritas === 2) throw new Error('indice sem prova'); return save(...a); };
+    let r;
+    try { r = await h.promover(promo.criarPromocao(fs, () => {})); }
+    finally { c.gravarJsonAtomico = save; }
+    assert(r.avisos.some((a) => a.includes('índice'))); assert(fs.existsSync(path.join(h.media, 'E01.jpg')));
+    assert.equal(h.lerAceites().aprovacoes.at(-1).indice, null);
+    const again = await h.promover(); assert.equal(again.jaExistia, true);
+    assert(!fs.existsSync(path.join(h.media, 'E01.jpg'))); assert.equal(h.lerAceites().aprovacoes.length, 2);
+  });
   await test('prova persistida antes da limpeza; falha de limpeza retoma sem copiar/aprovar de novo', async (h) => {
     await h.aprovar(); let copiar = 0, falhar = true; const logs = [], seq = [], save = c.gravarJsonAtomico;
     c.gravarJsonAtomico = (...args) => { seq.push('persistir'); return save(...args); };

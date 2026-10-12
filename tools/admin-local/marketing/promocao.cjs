@@ -56,7 +56,9 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
       const tmp = `${indice}.${crypto.randomUUID()}.tmp`; io.writeFileSync(tmp, texto, 'utf8'); io.renameSync(tmp, indice);
       registro.indice = path.relative(raiz, indice).split(path.sep).join('/');
       c.gravarJsonAtomico(c.caminhoPainel(raiz, 'aprovacoes.json'), dados);
-    } catch { log('promocao-indice-pendente'); avisos.push('Evidência salva no JSON; confira a linha e os links do índice semanal.'); }
+      const relida = c.lerJson(c.caminhoPainel(raiz, 'aprovacoes.json'), {}).aprovacoes?.find((a) => a.id === registro.id && a.versao === registro.versao);
+      if (!relida || JSON.stringify(relida) !== JSON.stringify(registro)) throw new Error('indice-sem-prova');
+    } catch { registro.indice = null; log('promocao-indice-pendente'); avisos.push('Evidência salva no JSON; origem preservada. Confira a linha e os links do índice semanal e retome a promoção.'); }
   }
   return function promover(raiz, id, corpo = {}) {
     return c.serializar(raiz, () => {
@@ -74,6 +76,8 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
         const arquivos = anterior.arquivosPromovidos.map((a, i) => {
           const origem = path.posix.join(path.posix.dirname(anterior.origem.caminho), p.arquivos[i].nome);
           if (a.origem !== origem || a.destino !== origem.replace('/para-aprovacao/', '/aprovados/') || a.sha1 !== p.arquivos[i].sha1) throw new c.ErroMarketing('prova-invalida', 'Confira os arquivos da promoção antes de retomar.', 409);
+          const para = seguro(raiz, a.destino);
+          if (sha(para) !== a.sha1) throw new c.ErroMarketing('prova-invalida', 'O destino mudou; preserve a origem e confira a promoção.', 409);
           return { de: seguro(raiz, origem), sha1: a.sha1 };
         });
         const avisos = [];
@@ -115,8 +119,18 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
       try {
         for (const a of arquivos) {
           io.mkdirSync(path.dirname(a.para), { recursive: true });
-          io.copyFileSync(a.de, a.para, fs.constants.COPYFILE_EXCL); copiados.push(a);
-          if (sha(a.para) !== a.sha1) throw new Error('copia-divergente');
+          // Staging em diretório exclusivo: bytes parciais/divergentes nunca
+          // entram no catálogo. Só a cópia conferida ocupa o destino, sem overwrite.
+          const pasta = io.mkdtempSync(path.join(path.dirname(a.para), '.promocao-'));
+          const tmp = path.join(pasta, 'copia.tmp');
+          try {
+            io.copyFileSync(a.de, tmp, fs.constants.COPYFILE_EXCL);
+            if (sha(tmp) !== a.sha1) throw new Error('copia-divergente');
+            io.linkSync(tmp, a.para); copiados.push(a);
+          } finally {
+            try { if (io.existsSync(tmp)) io.unlinkSync(tmp); io.rmdirSync(pasta); }
+            catch { log('promocao-temporario-pendente'); }
+          }
         }
         const nova = c.montarCatalogo(raiz).find((v) => v.caminho === novoCaminho);
         if (!nova || nova.versao !== p.versao) throw new c.ErroMarketing('destino-divergente', 'A composição ou legenda do destino mudou; confira o acervo.', 409);
@@ -130,7 +144,7 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
         // Persistência da prova ANTES de remover qualquer arquivo original.
         c.gravarJsonAtomico(arq, dados); persistido = true;
         const relida = c.lerJson(arq, {}).aprovacoes?.find((a) => a.id === nova.id && a.versao === nova.versao);
-        if (!relida || !aceiteValido(relida, nova) || relida.origem?.id !== p.id || relida.origem?.caminho !== p.caminho) throw new Error('prova-nao-confirmada');
+        if (!relida || !aceiteValido(relida, nova) || JSON.stringify(relida) !== JSON.stringify(registro)) throw new Error('prova-nao-confirmada');
         const avisos = [];
         indicePromocao(raiz, registro, dados, avisos);
         if (registro.indice) avisos.push(...limparOrigem(arquivos));
