@@ -116,7 +116,8 @@ function rotasOk(extra = {}) {
     assert.equal(envios.length, 1, 'um e-mail encaminhado, nem mais nem menos');
     const e = envios[0];
     assert.equal(e.headers['Idempotency-Key'], `encaminhar/${ID}`);
-    assert.equal(e.body.from, 'Maria Silva via suporte <suporte@granaponto.com.br>');
+    assert.equal(e.body.from, 'Grana. suporte <suporte@granaponto.com.br>');
+    assert.doesNotMatch(e.body.from, /Maria|exemplo\.org/, 'remetente original no From pareceu phishing para a Resend (12/10/2026)');
     assert.deepEqual(e.body.to, ['caixa@exemplo.com']);
     assert.deepEqual(e.body.reply_to, ['Maria Silva <maria@exemplo.org>'], 'responder vai para o cliente, não para suporte@');
     assert.equal(e.body.subject, 'Dúvida na fatura');
@@ -129,7 +130,7 @@ function rotasOk(extra = {}) {
     const f = carregar({ rotas: rotasOk({ email: { json: { ...EMAIL, to: ['outro@granaponto.com.br'], reply_to: ['resp@exemplo.org'], attachments: [], subject: '' } } }) });
     await f.chamar(pedido(RECEBIDO));
     const e = f.chamadas.find((c) => c.method === 'POST').body;
-    assert.equal(e.from, 'Maria Silva via contato <contato@granaponto.com.br>');
+    assert.equal(e.from, 'Grana. contato <contato@granaponto.com.br>');
     assert.deepEqual(e.reply_to, ['resp@exemplo.org']);
     assert.equal(e.subject, '(sem assunto)');
     assert.ok(!f.chamadas.some((c) => c.url.includes('/attachments')), 'sem anexo, não lista anexos');
@@ -145,14 +146,14 @@ function rotasOk(extra = {}) {
   {
     const f = carregar({ rotas: rotasOk({ email: { json: { ...EMAIL, to: ['marketing@granaponto.com.br'], cc: ['suporte@granaponto.com.br'], attachments: [] } } }) });
     await f.chamar(pedido(RECEBIDO));
-    assert.match(f.chamadas.find((c) => c.method === 'POST').body.from, /via suporte <suporte@/);
+    assert.match(f.chamadas.find((c) => c.method === 'POST').body.from, /^Grana\. suporte <suporte@/);
   }
 
   // 4c. admin@ é caixa própria, não cai em contato@.
   {
     const f = carregar({ rotas: rotasOk({ email: { json: { ...EMAIL, to: ['admin@granaponto.com.br'], attachments: [] } } }) });
     await f.chamar(pedido(RECEBIDO));
-    assert.equal(f.chamadas.find((c) => c.method === 'POST').body.from, 'Maria Silva via admin <admin@granaponto.com.br>');
+    assert.equal(f.chamadas.find((c) => c.method === 'POST').body.from, 'Grana. admin <admin@granaponto.com.br>');
   }
 
   // 5. Anexos grandes demais: encaminha sem eles e avisa no topo.

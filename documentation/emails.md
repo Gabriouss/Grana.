@@ -16,7 +16,10 @@ endereço do domínio; recebimento pelo MX do Registro.br
 
 - contato@, suporte@ e admin@: o webhook email.received chama a Edge Function
   email-recebido, que encaminha para EMAIL_ENCAMINHAR_PARA (o Gmail do Grana)
-  com anexos, Reply-To do cliente e remetente "Nome via caixa". Endereço
+  com anexos, Reply-To do cliente e remetente "Grana. caixa". Quem mandou
+  aparece na primeira linha do corpo, nunca no From: o nome do remetente
+  original no From ("security@facebookmail.com via admin") gerou alerta de
+  abuso na Resend em 12/10/2026. Endereço
   desconhecido do domínio entra como contato@.
 - marketing@: só envio. O que chega só para ele é descartado.
 - Resposta: pelo Gmail, "Enviar e-mail como", SMTP smtp.resend.com:465 SSL,

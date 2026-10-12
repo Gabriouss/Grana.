@@ -65,11 +65,6 @@ function enderecoDe(bruto: string): string {
   return (m ? m[1] : bruto).trim().toLowerCase();
 }
 
-function nomeDe(bruto: string): string {
-  const m = bruto.match(/^\s*"?([^"<]*?)"?\s*</);
-  return (m?.[1] ?? '').trim();
-}
-
 /** Qual caixa recebeu. null quando só caixas de envio receberam. */
 export function caixaDestino(e: Recebido): string | null {
   const nossos = [...lista(e.to), ...lista(e.cc), ...lista(e.received_for)]
@@ -78,10 +73,6 @@ export function caixaDestino(e: Recebido): string | null {
   if (caixa) return caixa;
   if (nossos.length && nossos.every((u) => SO_ENVIO.includes(u))) return null;
   return 'contato';
-}
-
-function semQuebra(s: string): string {
-  return s.replace(/[\r\n"<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
 }
 
 function escaparHtml(s: string): string {
@@ -179,7 +170,6 @@ async function encaminhar(id: string, prazo: number): Promise<boolean> {
   const caixa = caixaDestino(e);
   if (!caixa) return false;
   const remetente = e.from ?? '';
-  const quem = semQuebra(nomeDe(remetente) || enderecoDe(remetente) || 'remetente desconhecido');
   const responderPara = lista(e.reply_to).length ? lista(e.reply_to) : (remetente ? [remetente] : []);
   const { anexos, aviso } = e.attachments?.length ? await buscarAnexos(id, prazo) : { anexos: [], aviso: null };
 
@@ -188,7 +178,12 @@ async function encaminhar(id: string, prazo: number): Promise<boolean> {
     + (e.html ?? `<pre style="white-space:pre-wrap">${escaparHtml(e.text ?? '')}</pre>`);
 
   await enviar({
-    from: `${quem} via ${caixa} <${caixa}@${DOMINIO}>`,
+    // O remetente original NÃO entra no From. "security@facebookmail.com via
+    // admin" saindo do nosso domínio é o desenho de phishing, e a Resend alertou
+    // a conta em 12/10/2026 depois de encaminhar assim códigos do Facebook e
+    // links do Google e da Anthropic. Quem mandou fica no topo do corpo e no
+    // Reply-To.
+    from: `Grana. ${caixa} <${caixa}@${DOMINIO}>`,
     to: [ENCAMINHAR_PARA],
     reply_to: responderPara,
     subject: e.subject?.trim() || '(sem assunto)',
