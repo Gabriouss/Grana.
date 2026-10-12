@@ -151,7 +151,7 @@ function criarFila(deps) {
       const atual = deps.obterPeca(r.pecaId);
       if (!atual || atual.versao !== r.versaoAlvo) throw erro('versao-mudou', 'A peca mudou antes da geracao.');
       a.consumidas = 1;
-      db.eventos.push({ pedidoId: r.id, estado: r.estado, codigo: 'custo-consumido', em: deps.agora() });
+      db.eventos.push({ pedidoId: r.id, estado: r.estado, codigo: 'custo-consumido', em: deps.agora(), estimativa: { ...r.custo } });
       return { autorizado: true, geracoes: 1 };
     });
   }
@@ -293,13 +293,23 @@ function criarFila(deps) {
       const peca = deps.obterPeca(r.pecaId);
       if (!peca || peca.versao !== r.versaoAlvo) { await marcar(r.id, r.lease.id, 'desatualizado', { pecaId: r.pecaId }); return; }
       // The prompt contains an identifier and private-file location, never the author's free text.
-      try { await deps.entregar(r, instrucoesEntrega(r)); }
-      catch (e) { const motivo = MOTIVOS.has(e?.codigo) ? e.codigo : 'entrega-falhou'; await falhaEnvio(r, motivo); deps.log('ajuste-' + motivo); }
+      try {
+        await deps.entregar(r, instrucoesEntrega(r));
+      }
+      catch (e) { const motivo = MOTIVOS.has(e?.codigo) ? e.codigo : 'entrega-falhou'; await falhaEnvio(r, motivo); deps.log('ajuste-' + motivo); return; }
+      // Entrega confirmada não pode virar retry por falha ao gravar seu recibo.
+      try {
+        await deps.transacao((db) => {
+          const atual = achar(db, r.id);
+          if (atual.lease?.id === r.lease.id) db.eventos.push({ pedidoId: r.id, estado: atual.estado, codigo: 'entregue', em: deps.agora() });
+        });
+      }
+      catch { deps.log('ajuste-recibo-entrega-pendente'); }
     } catch { deps.log('ajuste-vigia-falhou'); }
     finally { ticking = false; }
   }
   return { solicitar, claim, renovar, lerPedido, marcar, autorizarCusto, recusarCusto, consumirAutorizacaoCusto, reenviar, encerrar, retry, conferirAceite, aceitar, tick, sincronizarRemoto,
-    listar: () => deps.ler().pedidos, remotoStatus: () => ({ ...remoto }) };
+    listar: () => deps.ler().pedidos, eventos: () => deps.ler().eventos, remotoStatus: () => ({ ...remoto }) };
 }
 const MOTIVOS_SEM_ENVIO = new Set(['terminal-inacessivel', 'agente-fechado', 'caixa-ocupada']);
 const MOTIVOS = new Set([...MOTIVOS_SEM_ENVIO, 'entrega-incerta', 'entrega-falhou']);

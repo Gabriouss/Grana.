@@ -580,8 +580,12 @@ function enriquecer(raiz, pecas) {
   const ajustes = Array.isArray(ap.ajustes) ? ap.ajustes : [];
   // Pedidos novos vivem na fila privada (fora do repositório), não em ajustes[]. Pedido
   // ainda aberto para a versão na tela mantém o selo "Ajuste pedido".
-  let fila = [];
-  try { fila = require('./ajustes-fila.cjs').fila.listar(); } catch { fila = []; }
+  let fila = [], eventos = [], vigia;
+  const dto = require('./ajustes-dto.cjs');
+  try {
+    const mod = require('./ajustes-fila.cjs');
+    fila = mod.fila.listar(); eventos = mod.fila.eventos?.() || []; vigia = mod.vigiaEstado?.();
+  } catch { console.error(JSON.stringify({ codigo: 'catalogo-fila-indisponivel' })); }
   const ABERTOS = new Set(['novo', 'em-correcao', 'falha-de-envio', 'aguardando-aprovacao-de-custo', 'precisa-de-atencao']);
   for (const r of fila) {
     if (ABERTOS.has(r.estado)) ajustes.push({ id: r.pecaId, versao: r.versaoAlvo, pedidoEm: r.criadoEm, pedidoId: r.id, estado: r.estado });
@@ -597,6 +601,7 @@ function enriquecer(raiz, pecas) {
     const aceite = aprovacoes.filter((a) => a.id === p.id && a.versao === p.versao).at(-1) || null;
     const aceiteAntigo = !aceite && aprovacoes.some((a) => a.id === p.id);
     const ajuste = ajustes.filter((a) => a.id === p.id && a.versao === p.versao).at(-1) || null;
+    const pedido = fila.filter((r) => r.pecaId === p.id).at(-1);
     const plano = planejados.find((c) => c.id === p.id && c.versao === p.versao) || null;
     const capaSemAceite = !!p.capaDe && p.estado !== 'historico' && !aceite;
     const aprovada = !capaSemAceite && (p.estado === 'aprovados' || !!aceite);
@@ -620,9 +625,11 @@ function enriquecer(raiz, pecas) {
         pedidoId: typeof ajuste.pedidoId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ajuste.pedidoId) ? ajuste.pedidoId : null,
         pedidoEm: typeof ajuste.pedidoEm === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(ajuste.pedidoEm) && Number.isFinite(Date.parse(ajuste.pedidoEm)) ? ajuste.pedidoEm : null,
         estado: ABERTOS.has(ajuste.estado) ? ajuste.estado : 'precisa-de-atencao',
+        alertas: dto.alertasPublicos(pedido, vigia),
       } : null,
       planejamento: plano ? { data: plano.data, hora: plano.hora || null, canal: plano.canal } : null,
       trilha: {
+        eventos: dto.trilhaPublica(p, fila, eventos, aprovacoes, planejados),
         versao: true,
         revisao: !!(p.indice && /parecer|revis|watchtower|beacon|sentinel/i.test(p.indice)),
         aceite: aprovada,

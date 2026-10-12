@@ -133,10 +133,14 @@ function espelhoPublico(p) {
   const em = typeof r?.em === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(r.em) && Number.isFinite(Date.parse(r.em)) ? r.em : null;
   return { estado, codigo: CODIGOS_ESPELHO.has(r?.codigo) ? r.codigo : null, em };
 }
-const pedidoPublico = (p) => {
+const pedidoPublico = (p, contexto) => {
   let atual;
   try { atual = marketing('catalogo').obterPeca(RAIZ_DADOS, p.pecaId); } catch { atual = null; }
-  return { ...marketing('ajustes-dto').pedidoPublico(p, atual), espelho: espelhoPublico(p) };
+  if (!contexto) {
+    const mod = marketing('ajustes-fila');
+    contexto = { eventos: mod.fila.eventos?.() || [], vigia: mod.vigiaEstado?.() };
+  }
+  return { ...marketing('ajustes-dto').pedidoPublico(p, atual, contexto), espelho: espelhoPublico(p) };
 };
 
 function funcao(mod, nomes) {
@@ -230,6 +234,8 @@ const GET = {
 
 // O autor reconhece o pedido pelo nome da peça, não pelo identificador: resolve o título uma vez por peça.
 function pedidosComTitulo(lista) {
+  const mod = marketing('ajustes-fila');
+  const contexto = { eventos: mod.fila.eventos?.() || [], vigia: mod.vigiaEstado?.() };
   const titulos = new Map();
   const titulo = (id) => {
     if (!titulos.has(id)) {
@@ -238,7 +244,7 @@ function pedidosComTitulo(lista) {
     }
     return titulos.get(id);
   };
-  return lista.map((p) => ({ ...pedidoPublico(p), pecaTitulo: titulo(p.pecaId) }));
+  return lista.map((p) => ({ ...pedidoPublico(p, contexto), pecaTitulo: titulo(p.pecaId) }));
 }
 const ID_PECA = /^\/api\/marketing\/pecas\/([0-9a-f]{16})\/(aprovar|ajuste|promover|recusar)$/;
 const ANTERIOR = /^\/api\/marketing\/ajustes\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/anterior$/i;

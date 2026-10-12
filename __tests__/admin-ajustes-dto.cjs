@@ -7,6 +7,7 @@ const raw={id,pecaId,versaoAlvo:versao,versaoCorrigida:versao,commit:'c'.repeat(
  lease:{id:'CANARIO_LEASE_PRIVADO',agente:'Beacon',inicio:'2026-10-09T00:00:00Z',expiraEm:'2026-10-09T00:45:00Z',token:'CANARIO_EXTRA_PRIVADO'},textoOriginal:'CANARIO_TEXTO_PRIVADO',remotoId:'CANARIO_REMOTO_PRIVADO',extras:'CANARIO_EXTRA_PRIVADO'};
 let calls=[];
 const fila={listar:()=>[raw],remotoStatus:()=>({status:'ativo',ultimaSync:'2026-10-09T00:00:00Z'}),retry:async()=>{calls.push('retry');return raw;},conferirAceite:()=>calls.push('conferir'),aceitar:async()=>{calls.push('aceitar');return raw;}};
+fila.eventos=()=>[{pedidoId:id,codigo:'pedido-recebido',em:raw.criadoEm,estado:'novo',textoOriginal:'CANARIO_EVENTO_PRIVADO',lease:{id:'CANARIO_EVENTO_LEASE'}}];
 const mod={exports:{}};
 const source=antes?execFileSync('git',['show','HEAD:tools/admin-local/rotas.cjs'],{cwd:root,encoding:'utf8'}):fs.readFileSync(path.join(root,'tools/admin-local/rotas.cjs'),'utf8');
 const fixtures={
@@ -27,6 +28,7 @@ function res(){return {statusCode:0,writeHead(n){this.statusCode=n;},end(s){this
 function conferir(r){assert.equal(r.statusCode,200);assert.ok(!JSON.stringify(r.json).includes('CANARIO_'),'nenhum dado privado/lease/extras no JSON');const p=r.json.dados.pedidos?.[0]||r.json.dados.pedido||r.json.dados.ajuste;assert.equal(p.id,id);assert.equal(p.pecaId,pecaId);assert.equal(p.lease.agente,'Beacon');assert.equal(p.lease.expiraEm,raw.lease.expiraEm);assert.equal(p.lease.id,undefined);assert.equal(p.textoOriginal,undefined);}
 (async()=>{
  let r=res();await mod.exports._GET['/api/marketing/ajustes']({},r);conferir(r);
+ assert.equal(r.json.dados.pedidos[0].eventos[0].tipo,'pedido');assert.equal(r.json.dados.pedidos[0].eventos[0].pedidoId,undefined);
  assert.deepEqual(r.json.dados.vigia,{ativo:false,ultimoBatimento:null});assert.equal(r.json.dados.servidor.desatualizado,true);
  for(const action of ['retry','aceitar']){r=res();await mod.exports._acao({},r,new URL('http://127.0.0.1/api/marketing/ajustes/'+action),{pedidoId:id,pecaId,versao,confirmacao:true},{id:'sessao-ficticia'});conferir(r);}
  r=res();await mod.exports._acao({},r,new URL('http://127.0.0.1/api/marketing/pecas/'+pecaId+'/ajuste'),{versao,motivo:'ajuste ficticio'},{id:'sessao-ficticia'});conferir(r);
