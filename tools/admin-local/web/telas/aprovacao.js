@@ -23,6 +23,7 @@ function guardarFiltros(filtros) {
 export async function montar(raiz, ctx) {
   const { h } = ctx;
   ctx.cabecalho(raiz, 'Aprovação', 'Revise as demandas, acompanhe os agentes e registre o aceite de cada versão. Nada é publicado ou agendado no Instagram.', [
+    h('a', { class: 'botao botao-fantasma', href: '#/marketing/calendario?secao=sem-data', texto: 'Aprovados sem data' }),
     h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Atualizar', onclick: () => ctx.recarregar() }),
   ]);
   const pedidos = await montarFila(raiz, ctx);
@@ -221,7 +222,7 @@ export async function montar(raiz, ctx) {
     }) : null;
     detalhe.appendChild(h('div', { class: 'bloco-acao' }, botaoAprovar, botaoAjuste, botaoRecusar,
       botaoMover,
-      p.aprovada && p.estado === 'aprovados' ? h('a', { class: 'botao botao-fantasma', href: `#/marketing/calendario?peca=${encodeURIComponent(p.id)}`, texto: 'Marcar data no calendário' }) : null));
+      p.aprovada && p.estado === 'aprovados' ? h('a', { class: 'botao botao-fantasma', href: `#/marketing/calendario?secao=sem-data&peca=${encodeURIComponent(p.id)}`, texto: 'Marcar data no calendário' }) : null));
   };
 
   desenharLista();

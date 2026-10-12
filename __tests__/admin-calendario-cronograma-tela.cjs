@@ -56,12 +56,16 @@ function elemento(tag, attrs = {}, ...children) {
   appendChild(v) { if (v) this.children.push(v); return v; }, replaceChildren(...v) { this.children = v.flat(Infinity).filter(Boolean); },
   get firstChild() { return this.children[0]; }, removeChild(v) { this.children = this.children.filter((c) => c !== v); },
   addEventListener() {}, setAttribute(k,v) { this.attrs[k]=v; }, getAttribute(k) { return this.attrs[k]; },
-  classList: { add() {}, remove() {} }, focus() {},
+  classList: { add() {}, remove() {} }, focus() { this.focada=true; }, scrollIntoView() { this.rolada=true; },
  };
 }
 function achar(root, label) {
  if (root?.tag === 'button' && root.attrs.texto === label) return root;
  for (const n of root?.children || []) { const b = achar(n, label); if (b) return b; }
+}
+function encontrar(root, predicado) {
+ if (root && predicado(root)) return root;
+ for (const n of root?.children || []) { const achado=encontrar(n,predicado); if(achado) return achado; }
 }
 (async () => {
  const tempBase = path.resolve(os.tmpdir()), dir = fs.mkdtempSync(path.join(tempBase, 'grana-forge-fase3-'));
@@ -113,7 +117,7 @@ function achar(root, label) {
    return {dados};
   },
   estado: { carregando: (r,t) => r.replaceChildren(elemento('p',{texto:t})), erro: (r,e,retry) => { erros.push(e);r.replaceChildren(elemento('p',{texto:e.message}),elemento('button',{texto:'Tentar novamente',onclick:retry})); } },
-  cabecalho: (r,t,sub) => r.appendChild(elemento('header',{texto:t+' '+sub})),
+  cabecalho: (r,t,sub,acoes=[]) => r.appendChild(elemento('header',{texto:t+' '+sub},acoes)),
   secao: (t,...children) => elemento('section',{},elemento('h2',{texto:t}),...children),
   alerta: (tipo,t) => elemento('p',{texto:t,tipo}), tabela: () => elemento('table'), urlArquivo: (u) => u,
   selo: (tipo,t) => elemento('span',{texto:t,class:'selo'}), midia: () => elemento('div'), markdown: (t) => elemento('p',{texto:t}),
@@ -130,6 +134,7 @@ function achar(root, label) {
   let p=c.montarCatalogo(dir).find((p)=>p.tipo==='imagem'); assert(p);
   const rootAprovacao=elemento('main');contexto.params.peca=p.id;
   await aprovacao.montar(rootAprovacao,contexto);
+  assert.equal(encontrar(rootAprovacao,n=>n.tag==='a' && n.attrs.texto==='Aprovados sem data').attrs.href,'#/marketing/calendario?secao=sem-data');
   assert.equal(achar(rootAprovacao,'Mover para aprovados'),undefined,'sem aceite não oferece promoção');
   confirms.push(true);await achar(rootAprovacao,'Aprovar esta versão').attrs.onclick();
   assert.deepEqual(posts()[0].body,{versao:p.versao,confirmacao:true});
@@ -168,7 +173,9 @@ function achar(root, label) {
   await calendario.montarCronograma(root,contexto);await achar(root,'Adicionar item ao cronograma').attrs.onclick();
   assert.equal(cr.ler(dir).versao,2);assert.equal(cr.ler(dir).itens[0].dataPrevista.diasUteis,4);
 
-  contexto.params.peca=nova.id;root.replaceChildren();await calendario.montar(root,contexto);await Promise.resolve();
+  contexto.params.peca=nova.id;contexto.params.secao='sem-data';root.replaceChildren();await calendario.montar(root,contexto);await Promise.resolve();
+  const colunaSemData=encontrar(root,n=>n.attrs?.id==='aprovados-sem-data');
+  assert(colunaSemData.focada && colunaSemData.rolada,'atalho chega a coluna sem data com foco e rolagem');
   assert(achar(root,'Ligar ao cronograma'),'vínculo usa reciboAceite real, DTO não tem aprovada');
   forms.push({itemId:'audit-reel'}); confirms.push(true);await achar(root,'Ligar ao cronograma').attrs.onclick();
   assert.deepEqual(posts().at(-1).body,{pecaId:nova.id,versao:nova.versao,versaoEsperada:2,manifestoId:'campanha-audit',itemId:'audit-reel'});

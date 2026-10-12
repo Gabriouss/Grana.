@@ -101,7 +101,7 @@ export async function montar(raiz, ctx) {
   }
 
   // --- coluna "Aprovados sem data"
-  const coluna = h('aside', { class: 'cal-sem-data', 'aria-labelledby': 'cal-sem-data-titulo' },
+  const coluna = h('aside', { class: 'cal-sem-data', id: 'aprovados-sem-data', tabindex: '-1', 'aria-labelledby': 'cal-sem-data-titulo' },
     h('h2', { class: 'secao-titulo', id: 'cal-sem-data-titulo', texto: 'Aprovados sem data' }),
     semData.length
       ? h('ul', { class: 'lista-sem-data' }, semData.map((p) => {
@@ -122,6 +122,10 @@ export async function montar(raiz, ctx) {
   corpo.appendChild(h('div', { class: 'calendario-layout' },
     h('section', { class: 'secao calendario-mes' }, titulo, grade, agenda),
     coluna));
+  if (ctx.params.secao === 'sem-data') {
+    coluna.focus({ preventScroll: true });
+    coluna.scrollIntoView?.({ block: 'start' });
+  }
 
   const entradas = [...itens, ...(Array.isArray(d.aguardandoDiaD) ? d.aguardandoDiaD : []), ...(Array.isArray(d.suspensos) ? d.suspensos : [])];
   if (entradas.length) {
