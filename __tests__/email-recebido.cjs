@@ -148,6 +148,13 @@ function rotasOk(extra = {}) {
     assert.match(f.chamadas.find((c) => c.method === 'POST').body.from, /via suporte <suporte@/);
   }
 
+  // 4c. admin@ é caixa própria, não cai em contato@.
+  {
+    const f = carregar({ rotas: rotasOk({ email: { json: { ...EMAIL, to: ['admin@granaponto.com.br'], attachments: [] } } }) });
+    await f.chamar(pedido(RECEBIDO));
+    assert.equal(f.chamadas.find((c) => c.method === 'POST').body.from, 'Maria Silva via admin <admin@granaponto.com.br>');
+  }
+
   // 5. Anexos grandes demais: encaminha sem eles e avisa no topo.
   {
     const grande = { json: { data: [{ ...ANEXOS.data[0], size: 30 * 1024 * 1024, download_url: 'https://dl/grande' }] } };

@@ -8,13 +8,13 @@
 O Supabase Auth envia esses e-mails pela Resend, remetente
 nao-responda@granaponto.com.br.
 
-## E-mail corporativo (contato@, suporte@, marketing@)
+## E-mail corporativo (contato@, suporte@, admin@, marketing@)
 
 Domínio granaponto.com.br na Resend, região sa-east-1. Envio por qualquer
 endereço do domínio; recebimento pelo MX do Registro.br
 (10 inbound-smtp.sa-east-1.amazonaws.com).
 
-- contato@ e suporte@: o webhook email.received chama a Edge Function
+- contato@, suporte@ e admin@: o webhook email.received chama a Edge Function
   email-recebido, que encaminha para EMAIL_ENCAMINHAR_PARA (o Gmail do Grana)
   com anexos, Reply-To do cliente e remetente "Nome via caixa". Endereço
   desconhecido do domínio entra como contato@.

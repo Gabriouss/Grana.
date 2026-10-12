@@ -1,5 +1,5 @@
-// Encaminha o que chega em contato@ e suporte@granaponto.com.br para a caixa
-// do autor (EMAIL_ENCAMINHAR_PARA). marketing@ só envia: o que chega só para
+// Encaminha o que chega em contato@, suporte@ e admin@granaponto.com.br para a
+// caixa do autor (EMAIL_ENCAMINHAR_PARA). marketing@ só envia: o que chega só para
 // ele é descartado (decisão do autor, 12/10/2026). Endereço desconhecido do
 // domínio entra como contato@, para cliente que errou o endereço ter resposta.
 //
@@ -22,7 +22,7 @@ const ENCAMINHAR_PARA = Deno.env.get('EMAIL_ENCAMINHAR_PARA') ?? '';
 
 const API = 'https://api.resend.com';
 const DOMINIO = 'granaponto.com.br';
-const CAIXAS = ['contato', 'suporte'];
+const CAIXAS = ['contato', 'suporte', 'admin'];
 const SO_ENVIO = ['marketing'];
 const MAX_BODY_BYTES = 256 * 1024;
 const TOLERANCIA_ASSINATURA_S = 5 * 60;
