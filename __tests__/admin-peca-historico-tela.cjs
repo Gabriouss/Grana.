@@ -42,6 +42,7 @@ const ctx = { h: node, params: {}, obsoleta: () => false, cabecalho() {}, midia:
   assert.equal(JSON.stringify({ p, pedidos }), antes);
   assert.equal(JSON.stringify(historico).includes(canario), false, 'nenhum id, texto livre ou ferramenta vira rotulo');
   const tempos = walk(historico).filter((n) => n.tag === 'time').map((n) => n.attrs.datetime);
+  for(const item of walk(historico).filter(n=>n.attrs.class==='demanda-evento')) assert.deepEqual(Array.from(item.children,n=>n.tag),['time','span'],'data antes do rotulo no markup do Prism');
   assert.deepEqual(tempos, eventos.map((e) => e.em), 'ASC e sem repeticao entre DTO peca/pedido');
   const t = text(historico);
   for (const label of ['Pedido registrado', 'Peça entregue', 'Correção registrada', 'Custo registrado: R$', '12,50', 'Versão aceita', 'Movida para aprovados', 'Data marcada: 20/10/2026 às 19:00']) assert(t.includes(label), label);

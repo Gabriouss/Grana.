@@ -140,7 +140,7 @@ export function historicoDaPeca(ctx, p, pedidos = []) {
       if (e.tipo.startsWith('custo')) texto += e.valor === null ? ': valor não informado' : `: ${e.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
       if (e.tipo === 'data' && e.data) texto += `: ${ctx.formatar.data(e.data)}${e.hora ? ` às ${e.hora}` : ''}`;
       return h('li', { class: 'demanda-evento' },
-        h('span', { class: 'demanda-evento-texto', texto }),
-        h('time', { class: 'demanda-evento-data', datetime: e.em, texto: ctx.formatar.dataHora(e.em) }));
+        h('time', { class: 'demanda-evento-data', datetime: e.em, texto: ctx.formatar.dataHora(e.em) }),
+        h('span', { class: 'demanda-evento-texto', texto }));
     })) : h('p', { class: 'campo-ajuda', texto: 'Ainda não há eventos registrados.' }));
 }
