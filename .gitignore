@@ -151,3 +151,6 @@ supabase/.temp/
 /.maestri/roles/*/
 
 __pycache__/
+
+# Arquivos-fonte do Photoshop dos criativos (PSB de ~50 MB; repositório público). PNGs exportados vão para docs/marketing/.
+/Criativos Photoshop/

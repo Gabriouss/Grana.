@@ -917,3 +917,17 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     captura-fonte ficam em `apoio`. Parecer de revisor não é aceite do autor.
     Atualize o índice semanal e links/manifests/scripts ativos junto com cada
     inclusão ou mudança de caminho.
+
+26. **Ao iniciar a produção de qualquer criativo estático do Grana., leia
+    primeiro o guia
+    `docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/apoio/referencias/guia-de-design-estatico-feed-3x4.md`.**
+    Regra dada pelo autor em 11/10/2026. Vale para post, card, carrossel,
+    capa de Reel e qualquer outra peça parada, por qualquer agente. O guia é a
+    leitura medida da série que o autor montou à mão no Photoshop: moldura e
+    painel, o G do logotipo no fundo, a tipografia de criativo (H1 em
+    `NeueMachina-Ultrabold`, H2 em `NeueMachina-Regular`), os aparelhos, os
+    ícones flutuantes do arsenal, os arquétipos de composição e a lista de
+    conferência. Ele não substitui o `docs/marketing/GUIA-DE-PRODUCAO-DE-CRIATIVOS.md`
+    nem as regras 21, 23, 24 e 25: lê-se os dois, e o que está aqui de
+    regra continua valendo. Se o guia mudar de caminho, atualize esta regra
+    no mesmo commit.

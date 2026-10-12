@@ -6,6 +6,8 @@
 
 **Encaixe é critério de aceite:** medir no arquivo final as bordas retas e os quatro cantos da área de tela do mockup. Manter respiro visível entre conteúdo do app e borda interna do aparelho/notebook; nenhum texto, ícone, botão, notificação, barra ou valor pode ficar cortado, encostado na borda ou escondido pelo arredondamento dos cantos. Recortar a imagem pela geometria real da tela, preservando proporção e perspectiva, e conferir o resultado exportado em pixels nos quatro lados e cantos. Se o mockup não comportar a tela inteira com margem, trocar o enquadramento ou o mockup antes de entregar; não esconder o corte com máscara ou sobreposição. Esta regra prevalece sobre exemplos antigos e aprovações anteriores de layout.
 
+**Criativo estático (post, card, carrossel, capa de Reel):** leia também, antes de começar, o sistema visual medido em `2026-10/semana-41-2026-10-05-a-2026-10-11/apoio/referencias/guia-de-design-estatico-feed-3x4.md` (regra 26 do `AGENTS.md`, autor, 11/10/2026).
+
 Leia este guia **antes de produzir qualquer criativo**: estático, carrossel, Story, Reel ou motion. Ele junta os materiais que o autor aprovou até 27/09/2026 e diz quando usar cada um. As regras de fundo continuam no `PRODUCT.md` ("Copy and Marketing Guidelines") e no `FUNIL.md`, que é local, das máquinas do autor.
 
 ## 1. Comece pelo que já existe

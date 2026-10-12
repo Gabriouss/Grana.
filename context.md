@@ -14906,3 +14906,22 @@ Escrita pelo orquestrador Claude por pedido direto do autor ("guarda isso aí na
 **Em aberto para o autor:** como o suporte responde. A Resend mostra o recebido só no painel, por API e por webhook, sem caixa de resposta. Caminhos: redirecionar para um Gmail e responder pelo "Enviar e-mail como" via SMTP da Resend, ou função que encaminha o evento `email.received`. Redirecionador terceiro é mais um operador de dado de cliente (rever política de privacidade). Falta também dizer para qual Gmail.
 
 **Descartado:** ImprovMX como primeiro passo, trocado pelo recebimento da própria Resend, que não acrescenta terceiro e bastava para o motivo imediato (confirmar a inscrição de um e-mail no programa de startups da Anthropic; elegibilidade não conferida na página oficial). Nota de sessão no vault NÃO foi escrita.
+
+## 11/10/2026 (M1): sistema visual dos estáticos e capas de Reel
+
+**Pedido do autor:** analisar a pasta `Criativos Photoshop` (série de quatro estáticos 1080×1440 que ele montou à mão), medir o design "pra gente replicar nos próximos, mas gerando novas variedades, consistentes", fixar a tipografia de criativo e gerar as capas 1080×1920 de dois Reels com essa análise.
+
+**O que mudou:**
+- Os quatro estáticos e as duas capas novas estão em `docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/`. Todos foram aceitos pelo autor no painel local em 11/10, às 23:06–23:07 e 23:20 (`docs/marketing/painel/aprovacoes.json`). Nada foi publicado.
+- O guia medido está em `.../semana-41.../apoio/referencias/guia-de-design-estatico-feed-3x4.md`. Ele cobre o G do logotipo no fundo cobrindo ≈ 42% do painel, a tipografia, os aparelhos, os ícones `-menta` do arsenal e os arquétipos A, B e C. A seção 13 trata da capa de Reel 1080×1920, com área segura de 1080×1440 no centro.
+- A nova **regra 26 do `AGENTS.md`** obriga a ler esse guia antes de qualquer criativo estático.
+- A tipografia de criativo ficou H1 em `NeueMachina-Ultrabold` e H2 em `NeueMachina-Regular`, só em criativo. Está em `design-system/README.md`. O `.otf` fica instalado na máquina, fora do repositório, porque a fonte é licenciada; **a M2 precisa instalar o seu**.
+- O gerador é `.../apoio/ferramentas/gerar-capas-reels.py` (PIL e Playwright, local, sem ElevenLabs). As telas do aparelho são renderizadas do `#screen` de `docs/marketing/motion-desistiu/index.html`, já na proporção do celular vazio, e ficam em `apoio/capturas-fonte/`.
+- `Criativos Photoshop/` entrou no `.gitignore`, porque o PSB tem 50 MB e o repositório é público.
+
+**Em aberto e não verificado:**
+- O "Salário caiu?" foi aprovado ainda mostrando "Contas a vencer este mês", linha que saiu do app em 25/09 (regra 20).
+- As telas de notebook do "O mês que vem" e do "Organize" ficam pouco legíveis.
+- A rotação do G só foi confirmada com segurança no "Salário".
+- O recorte 3:4 das capas foi simulado localmente, não conferido no Instagram.
+- O widget de voz da capa da v8 só existe no Android.

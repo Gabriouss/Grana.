@@ -181,6 +181,28 @@ A página de referência tem duas seções que **apontam** para o material em ve
 copiá-lo: o Granabô 3D (`docs/mascote/`, com fonte em Blender e Python) e o
 pacote de ícones de marketing (`docs/marketing/arsenal/`). As imagens da página são prévias leves em WebP (`previews-img/`, cerca de 155 KB no total), embutidas em base64 pelo `build.js` no marcador `@IMG:arquivo`, então a página gerada é auto-contida. Os originais seguem só em `docs/`. O Reels do Granabô é prévia, não publicado.
 
+## Tipografia nos criativos de marketing
+
+Regra do autor em 11/10/2026, só para **criativo** (estático e vídeo de
+marketing):
+
+| Nível | Fonte | Uso |
+| --- | --- | --- |
+| H1 | `NeueMachina-Ultrabold` | Texto de prioridade máxima: o título da peça |
+| H2 | `NeueMachina-Regular` | Subtítulo, frase de apoio, assinatura |
+
+O Ultrabold **não entra no app, na web nem na landing**. Lá continua valendo só
+Light e Regular, sem `fontWeight`. Por isso ele não vira token em
+`lib/theme.ts`, não vai para `assets/fonts` e não é embutido em
+`fonts/neue-machina.css`.
+
+O arquivo `NeueMachina-Ultrabold.otf` fica instalado na máquina de quem produz
+a peça (na M1, na pasta de fontes do usuário do Windows). Ele não é versionado:
+o repositório é público e a fonte é licenciada.
+
+As medidas do estilo (grade, tamanhos, cores, ícones flutuantes) estão no guia
+`docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/apoio/referencias/guia-de-design-estatico-feed-3x4.md`.
+
 ## Divergências entre a identidade e o app
 
 | Elemento | Marca | App hoje | Distância |

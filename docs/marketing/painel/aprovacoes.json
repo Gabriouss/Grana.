@@ -19,6 +19,192 @@
       "evidencia": "aceite pelo autor no painel local",
       "escopo": "arquivos desta versão",
       "indice": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/INDICE.md"
+    },
+    {
+      "id": "9a8864cd6e408f7f",
+      "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/para-aprovacao/Salário caiu_.png",
+      "versao": "a942620f8f9e6ee1cc149b1f5615eb37ca87cf90",
+      "aprovadoEm": "2026-10-11T23:06:25-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos desta versão",
+      "indice": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/INDICE.md"
+    },
+    {
+      "id": "09a7a8f9eb07d7b3",
+      "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/Salário caiu_.png",
+      "versao": "a942620f8f9e6ee1cc149b1f5615eb37ca87cf90",
+      "aprovadoEm": "2026-10-11T23:06:25-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos desta versão",
+      "promovidoEm": "2026-10-11T23:06:33-03:00",
+      "origem": {
+        "id": "9a8864cd6e408f7f",
+        "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/para-aprovacao/Salário caiu_.png",
+        "aprovadoEm": "2026-10-11T23:06:25-03:00"
+      },
+      "arquivosPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/para-aprovacao/Salário caiu_.png",
+          "destino": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/Salário caiu_.png",
+          "sha1": "12d22a54c2a043ad1f68656d9a09a962a948bda6"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/INDICE.md"
+    },
+    {
+      "id": "42aa4cb9bb37710a",
+      "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/para-aprovacao/Organize no computador.png",
+      "versao": "96c7b4bfbc87b1eebf77e035620e89d4b5dc95b0",
+      "aprovadoEm": "2026-10-11T23:06:42-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos desta versão",
+      "indice": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/INDICE.md"
+    },
+    {
+      "id": "528f9b217dde4d2c",
+      "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/Organize no computador.png",
+      "versao": "96c7b4bfbc87b1eebf77e035620e89d4b5dc95b0",
+      "aprovadoEm": "2026-10-11T23:06:42-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos desta versão",
+      "promovidoEm": "2026-10-11T23:06:48-03:00",
+      "origem": {
+        "id": "42aa4cb9bb37710a",
+        "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/para-aprovacao/Organize no computador.png",
+        "aprovadoEm": "2026-10-11T23:06:42-03:00"
+      },
+      "arquivosPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/para-aprovacao/Organize no computador.png",
+          "destino": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/Organize no computador.png",
+          "sha1": "18201c441494b214a44766213ef005e2a9a73a14"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/INDICE.md"
+    },
+    {
+      "id": "f32d42d2983c6657",
+      "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/para-aprovacao/O mês que vem_.png",
+      "versao": "5a7282e4cfc379989402b95719853ac82d8b4ca2",
+      "aprovadoEm": "2026-10-11T23:06:56-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos desta versão",
+      "indice": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/INDICE.md"
+    },
+    {
+      "id": "81085d0bd5c45d41",
+      "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/O mês que vem_.png",
+      "versao": "5a7282e4cfc379989402b95719853ac82d8b4ca2",
+      "aprovadoEm": "2026-10-11T23:06:56-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos desta versão",
+      "promovidoEm": "2026-10-11T23:06:59-03:00",
+      "origem": {
+        "id": "f32d42d2983c6657",
+        "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/para-aprovacao/O mês que vem_.png",
+        "aprovadoEm": "2026-10-11T23:06:56-03:00"
+      },
+      "arquivosPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/para-aprovacao/O mês que vem_.png",
+          "destino": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/O mês que vem_.png",
+          "sha1": "95b2508ae6e2a5eb695961113658dd5470c5b10d"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/INDICE.md"
+    },
+    {
+      "id": "289dff218c668ecb",
+      "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/para-aprovacao/O café, o dellivery_.png",
+      "versao": "386a6fec7528bf32add0a11e57489decb008bf55",
+      "aprovadoEm": "2026-10-11T23:07:05-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos desta versão",
+      "indice": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/INDICE.md"
+    },
+    {
+      "id": "37542cb935a5d44e",
+      "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/O café, o dellivery_.png",
+      "versao": "386a6fec7528bf32add0a11e57489decb008bf55",
+      "aprovadoEm": "2026-10-11T23:07:05-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos desta versão",
+      "promovidoEm": "2026-10-11T23:07:08-03:00",
+      "origem": {
+        "id": "289dff218c668ecb",
+        "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/para-aprovacao/O café, o dellivery_.png",
+        "aprovadoEm": "2026-10-11T23:07:05-03:00"
+      },
+      "arquivosPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/para-aprovacao/O café, o dellivery_.png",
+          "destino": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/O café, o dellivery_.png",
+          "sha1": "8de9782fa545cb82e4084fbf2e49ac6516527ce1"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/INDICE.md"
+    },
+    {
+      "id": "0a38d9f0bec8a8fa",
+      "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/para-aprovacao/grana-reels-v8-pop-capa-1080x1920.png",
+      "versao": "19d81da7338b2f6c500ddda3447a07901f1b5548",
+      "aprovadoEm": "2026-10-11T23:20:41-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos desta versão",
+      "indice": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/INDICE.md"
+    },
+    {
+      "id": "2bfce6126048a86b",
+      "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/grana-reels-v8-pop-capa-1080x1920.png",
+      "versao": "19d81da7338b2f6c500ddda3447a07901f1b5548",
+      "aprovadoEm": "2026-10-11T23:20:41-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos desta versão",
+      "promovidoEm": "2026-10-11T23:20:47-03:00",
+      "origem": {
+        "id": "0a38d9f0bec8a8fa",
+        "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/para-aprovacao/grana-reels-v8-pop-capa-1080x1920.png",
+        "aprovadoEm": "2026-10-11T23:20:41-03:00"
+      },
+      "arquivosPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/para-aprovacao/grana-reels-v8-pop-capa-1080x1920.png",
+          "destino": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/grana-reels-v8-pop-capa-1080x1920.png",
+          "sha1": "bd951bdc05d69545bd4a5053b16d4279f7470bf7"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/INDICE.md"
+    },
+    {
+      "id": "3fe8a8545cd122a4",
+      "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/para-aprovacao/grana-motion-desistiu-foto-da-nota-capa-1080x1920.png",
+      "versao": "6462e08da2012204e5ef89d794451a576fc6bdf0",
+      "aprovadoEm": "2026-10-11T23:20:52-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos desta versão",
+      "indice": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/INDICE.md"
+    },
+    {
+      "id": "a4c15caf64d08d5d",
+      "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/grana-motion-desistiu-foto-da-nota-capa-1080x1920.png",
+      "versao": "6462e08da2012204e5ef89d794451a576fc6bdf0",
+      "aprovadoEm": "2026-10-11T23:20:52-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos desta versão",
+      "promovidoEm": "2026-10-11T23:20:56-03:00",
+      "origem": {
+        "id": "3fe8a8545cd122a4",
+        "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/para-aprovacao/grana-motion-desistiu-foto-da-nota-capa-1080x1920.png",
+        "aprovadoEm": "2026-10-11T23:20:52-03:00"
+      },
+      "arquivosPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/para-aprovacao/grana-motion-desistiu-foto-da-nota-capa-1080x1920.png",
+          "destino": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/grana-motion-desistiu-foto-da-nota-capa-1080x1920.png",
+          "sha1": "39505dcd9db5eaa082c5e8aa0d12ed1597509d9b"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/INDICE.md"
     }
   ],
   "ajustes": [
