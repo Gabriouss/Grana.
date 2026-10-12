@@ -140,7 +140,7 @@ export async function montar(raiz, ctx) {
       ctx.tabela([
         { titulo: 'Peça', valor: (x) => x.titulo || x.id, classe: 'mono' },
         { titulo: 'Data marcada', valor: (x) => ctx.formatar.data(x.data) },
-        { titulo: 'Motivo', valor: (x) => x.motivo },
+        { titulo: 'Motivo', valor: (x) => [x.motivo, x.proximoPasso].filter(Boolean).join(' ') },
       ], d.desatualizados, { legenda: 'Planejamentos inválidos' })));
   }
 
@@ -368,6 +368,7 @@ function itemCalendario(ctx, i, aoClicar) {
 // Apresenta a previsão recebida; resolução e identidade pertencem ao servidor.
 export function detalhesCronograma(ctx, previsao) {
   if (!previsao) return null;
+  previsao = { ...previsao, estado: previsao.estadoCronograma || previsao.estado };
   const { h } = ctx;
   const p = previsao.dataPrevista;
   const origem = previsao.origem;
@@ -398,15 +399,15 @@ export function detalhesCronograma(ctx, previsao) {
   if (previsao.reciboAceite && !recibos.some((r) => r.tipo === 'aceite-autor')) recibos.push(previsao.reciboAceite);
   return h('div', { class: 'secao-corpo quebra' },
     h('p', { texto: `Data prevista: ${prevista}` }),
-    h('p', { class: 'campo-ajuda', texto: previsao.estado === 'planejado' ? 'Planejada no calendário local. Confira o recibo. A Meta continua em ensaio.'
+    h('p', { class: 'campo-ajuda', texto: previsao.proximoPasso || (previsao.estado === 'planejado' ? 'Planejada no calendário local. Confira o recibo. A Meta continua em ensaio.'
       : !origem ? 'Próximo passo: ligue a peça aceita a um item do cronograma. Se o item não existe, adicione-o ao cronograma.'
         : previsao.estado === 'desatualizado' ? 'Próximo passo: volte à Aprovação e aceite a versão atual.'
           : ['aguardando dia D', 'aguardando-dia-d'].includes(previsao.estado) ? 'Próximo passo: defina o dia D para resolver a previsão.'
             : ['duplicado', 'vinculo-invalido', 'vínculo inválido', 'vínculo duplicado', 'cronograma inválido'].includes(previsao.estado) ? 'Próximo passo: peça aos agentes para conferir o item e o vínculo no índice antes de planejar.'
-              : 'Próximo passo: confira a previsão e os recibos antes de seguir.' }),
+              : 'Próximo passo: confira a previsão e os recibos antes de seguir.') }),
     origem ? h('p', { class: 'campo-ajuda', texto: `Origem: ${origem.manifestoId || 'manifesto não informado'} · ${origem.itemId || 'item não informado'} · revisão ${origem.manifestoVersao ?? 'não informada'}` }) : h('p', { class: 'campo-ajuda', texto: 'Origem do cronograma não informada.' }),
     p?.modo === 'diaD' && (p.dataResolvida || previsao.dataResolvida) ? h('p', { texto: `Previsão resolvida: ${data(p.dataResolvida || previsao.dataResolvida)}` }) : null,
-    estados[previsao.estado] ? ctx.alerta('atencao', estados[previsao.estado]) : previsao.estado && !['resolvido', 'planejado'].includes(previsao.estado) ? ctx.alerta('atencao', `Estado do cronograma: ${previsao.estado}. Confira antes de seguir.`) : null,
+    previsao.motivo ? ctx.alerta('atencao', previsao.motivo) : estados[previsao.estado] ? ctx.alerta('atencao', estados[previsao.estado]) : previsao.estado && !['resolvido', 'planejado'].includes(previsao.estado) ? ctx.alerta('atencao', `Estado do cronograma: ${previsao.estado}. Confira antes de seguir.`) : null,
     manual ? h('p', { texto: `Data alterada pelo autor: ${data(manual.data)} ${horario(manual.hora)} · ${canal(manual.canal)}. A previsão de origem foi preservada.` }) : null,
     ...recibos.map((r) => h('p', { role: 'status', class: 'campo-ajuda', texto: r.tipo === 'aceite-autor'
       ? `Recibo do aceite: aceite-autor · versão ${r.versaoPeca || 'não informada'}${r.aprovadoEm ? ` · ${ctx.formatar.dataHora(r.aprovadoEm)}` : ''}${r.evidencia ? ` · ${r.evidencia}` : ''}. Não comprova publicação na Meta.`

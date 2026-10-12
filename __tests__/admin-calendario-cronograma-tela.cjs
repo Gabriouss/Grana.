@@ -43,6 +43,12 @@ assert.equal(source.includes('innerHTML'), false);
 assert.ok(render({ ...previsto, dataPrevista: { ...previsto.dataPrevista, diasUteis: 1 } }).includes('D+1 dia útil'));
 assert.equal(render({ origem: {} }).includes('undefined'), false);
 assert.ok(render({ estado: 'estado-novo' }).includes('Estado do cronograma: estado-novo'));
+for (const estadoCronograma of ['vinculo-invalido', 'duplicado', 'desatualizado']) {
+ const r={estado:'aprovados',estadoCronograma,motivo:'Motivo publico do servidor',proximoPasso:'Atualize a lista e confira o item.'};
+ const antes=JSON.stringify(r), texto=render(r);
+ assert(texto.includes(r.motivo) && texto.includes(r.proximoPasso));
+ assert(!texto.includes('Estado do cronograma: aprovados'));assert.equal(JSON.stringify(r),antes);
+}
 assert.ok(render({ dataPrevista: { modo: 'diaD' }, recibos: [null] }).includes('Posição relativa não informada'));
 console.log('admin-calendario-cronograma-tela: previsão absoluta/relativa, sem D, origem, data manual, recibo, passado e estados pendentes OK');
 
