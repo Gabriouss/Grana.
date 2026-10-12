@@ -2,7 +2,7 @@
 // Aprovar grava o aceite do autor para AQUELA versão (sha1). Não publica nem agenda nada em rede social.
 
 import { tituloPeca, rotuloSemana, rotuloEstado, trilha, agruparFamilias, idadeDemanda } from './_pecas.js';
-import { montarFila, secaoAjustesDaPeca, situacaoDaDemanda, observarPedidos, pedidoAberto, filaDisponivel } from './ajustes.js';
+import { montarFila, secaoAjustesDaPeca, situacaoDaFamilia, contarPrecisaDeVoce, observarPedidos, pedidoAberto, filaDisponivel } from './ajustes.js';
 
 // Mesmos rótulos de estado usados no detalhe dos pedidos em ajustes.js.
 const ESTADOS_AJUSTE = {
@@ -22,6 +22,7 @@ function guardarFiltros(filtros) {
 
 export async function montar(raiz, ctx) {
   const { h } = ctx;
+  ctx.contadorAprovacao?.(null);
   ctx.cabecalho(raiz, 'Aprovação', 'Revise as demandas, acompanhe os agentes e registre o aceite de cada versão. Nada é publicado ou agendado no Instagram.', [
     h('a', { class: 'botao botao-fantasma', href: '#/marketing/calendario?secao=sem-data', texto: 'Aprovados sem data' }),
     h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Atualizar', onclick: () => ctx.recarregar() }),
@@ -48,6 +49,7 @@ export async function montar(raiz, ctx) {
   const fila = pecas.filter((p) => ['para-aprovacao', 'aprovados', 'historico'].includes(p.estado))
     .sort((a, b) => (a.aprovada === b.aprovada ? String(b.semana?.inicio || '').localeCompare(String(a.semana?.inicio || '')) : a.aprovada ? 1 : -1));
   if (!fila.length) {
+    ctx.contadorAprovacao?.(filaDisponivel(pedidos) ? 0 : null);
     ctx.estado.vazio(corpo, 'Nenhuma demanda no acervo. Quando uma peça estiver disponível, ela aparece aqui.');
     return;
   }
@@ -71,14 +73,7 @@ export async function montar(raiz, ctx) {
   const contagemFamilias = h('p', { class: 'fila-contagem', 'aria-live': 'polite' });
   const grupoSelecionado = () => familias.find((g) => g.pecas.some((p) => p.id === selecionada?.id));
   const escolher = (p) => { selecionada = p; desenharLista(); desenharDetalhe(); detalhe.focus({ preventScroll: false }); };
-  const situacaoFamilia = (grupo) => {
-    const situacoes = grupo.pecas.map((p) => {
-      const s = situacaoDaDemanda(p, pedidos);
-      return p.aprovada && p.estado === 'para-aprovacao' && s.secao === 'resolvidas'
-        ? { ...s, secao: 'voce', proximo: 'Mova a versão aceita para aprovados e siga ao Calendário.' } : s;
-    });
-    return situacoes.find((s) => s.secao === 'voce') || situacoes.find((s) => s.secao === 'agentes') || situacoes[0];
-  };
+  const situacaoFamilia = (grupo) => situacaoDaFamilia(grupo, pedidos);
   const seletor = (id, rotulo, opcoes, chave) => h('div', { class: 'campo' }, h('label', { for: id, texto: rotulo }),
     h('select', { id, onchange: (e) => { filtros[chave] = e.target.value; guardarFiltros(filtros); desenharLista(); desenharDetalhe(); } },
       opcoes.map(([value, texto]) => h('option', { value, texto, selected: filtros[chave] === value }))));
@@ -89,6 +84,7 @@ export async function montar(raiz, ctx) {
   corpo.appendChild(h('div', { class: 'aprovacao mesa-demandas' }, h('div', { class: 'fila-coluna' }, contagemFamilias, lista), detalhe));
 
   const desenharLista = () => {
+    ctx.contadorAprovacao?.(filaDisponivel(pedidos) ? contarPrecisaDeVoce(familias, pedidos) : null);
     while (lista.firstChild) lista.removeChild(lista.firstChild);
     const visiveis = familias.filter((g) => g.pecas.some((p) => (filtros.tipo === 'todos' || p.tipo === filtros.tipo) &&
       (filtros.semana === 'todas' || p.semana?.inicio === filtros.semana)));
@@ -127,7 +123,7 @@ export async function montar(raiz, ctx) {
         h('span', { class: 'fila-item-titulo', texto: tituloPeca(p) }),
         h('span', { class: 'fila-item-meta', texto: `${rotuloSemana(p.semana)} · ${p.tipo}` }),
         selo,
-        h('span', { class: 'demanda-proximo', texto: s.proximo }),
+        h('span', { class: 'demanda-proximo', texto: [...s.alertas.map((a) => a.motivo), s.proximo].filter(Boolean).join(' ') }),
         h('span', { class: 'demanda-idade', texto: idadeDemanda(s.em) }))));
       }
       secao.appendChild(itens);

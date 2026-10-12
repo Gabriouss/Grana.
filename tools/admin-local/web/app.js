@@ -8,6 +8,8 @@
 
 import { SIMULADO } from './simulado.js';
 import { criarAcesso, CODIGOS_LOGIN, ROTAS_SESSAO } from './telas/_acesso.js';
+import { agruparFamilias } from './telas/_pecas.js';
+import { contarPrecisaDeVoce } from './telas/ajustes.js';
 
 const ROTAS_SEM_EFEITO = new Set(Object.values(ROTAS_SESSAO));
 
@@ -810,6 +812,26 @@ let limpezaAtual = null;
 let geracao = 0;
 let rotaMostrada = null;
 
+function contadorAprovacao(n) {
+  const link = document.querySelector('[data-contador-aprovacao]');
+  if (!link) return;
+  link.textContent = Number.isSafeInteger(n) && n >= 0 ? `Aprovação (${n})` : 'Aprovação';
+  link.title = n === null ? 'Não foi possível conferir as demandas. Abra a Aprovação para atualizar.' : '';
+}
+
+async function atualizarContadorAprovacao(obsoleta) {
+  try {
+    const [acervo, fila] = await Promise.all([api('/api/marketing/pecas'), api('/api/marketing/ajustes')]);
+    if (obsoleta()) return;
+    if (!Array.isArray(acervo.dados?.pecas) || !Array.isArray(fila.dados?.pedidos)) throw new Error('contador-indisponivel');
+    const pecas = acervo.dados.pecas.filter((p) => ['para-aprovacao', 'aprovados', 'historico'].includes(p.estado));
+    contadorAprovacao(contarPrecisaDeVoce(agruparFamilias(pecas, acervo.dados.familias), fila.dados.pedidos));
+  } catch (err) {
+    console.warn('[aprovacao-contador]', err.codigo || 'indisponivel');
+    if (!obsoleta()) contadorAprovacao(null);
+  }
+}
+
 async function renderizar() {
   if (bloqueado || (acesso && !podeDesenhar())) return;
   if (acesso && !acesso.legado && !acesso.entrou) return;
@@ -817,6 +839,7 @@ async function renderizar() {
   const def = ROTAS[rota] || { modulo: 'nao-encontrada', titulo: 'Página não encontrada' };
   if (!ROTAS[rota]) params.caminho = rota;
   const minha = ++geracao;
+  if (rota !== 'marketing/aprovacao') atualizarContadorAprovacao(() => minha !== geracao);
 
   for (const a of document.querySelectorAll('.nav-link')) {
     if (a.getAttribute('href') === `#/${rota}`) a.setAttribute('aria-current', 'page');
@@ -866,6 +889,7 @@ function criarContexto(params, obsoleta) {
     midia, markdown, copiar, urlArquivo, arquivosDaPeca, formatar,
     data: formatar.data, dataHora: formatar.dataHora, reais: formatar.reais,
     params,
+    contadorAprovacao: (n) => { if (!obsoleta()) contadorAprovacao(n); },
     obsoleta,
     get simulado() { return modoSimulado || !faixa()?.hidden; },
     navegar: (hash) => { if (location.hash === hash) renderizar(); else location.hash = hash; },

@@ -20,6 +20,8 @@ export function situacaoDaDemanda(peca, pedidos) {
   const meus = ordenarPedidos((pedidos || []).filter((p) => p.pecaId === peca.id));
   const pedido = meus.find(pedidoAberto) || meus[0];
   const estado = pedido?.estado;
+  const alertas = (Array.isArray(pedido?.alertas) ? pedido.alertas : peca.ajuste?.alertas || [])
+    .filter((a) => ['entrega-parada', 'lease-vencendo', 'lease-vencido'].includes(a?.codigo));
   const entregaParada = ['novo', 'falha-de-envio'].includes(estado) && entregasDasFilas.get(pedidos);
   const proximos = {
     novo: 'Os agentes aguardam a entrega do pedido.',
@@ -36,12 +38,27 @@ export function situacaoDaDemanda(peca, pedidos) {
   const precisa = ['corrigido-aguardando-aceite', 'aguardando-aprovacao-de-custo', 'precisa-de-atencao', 'desatualizado'].includes(estado);
   const resolvida = !comAgentes && !precisa && (peca.aprovada || peca.estado === 'historico');
   return {
-    secao: comAgentes ? 'agentes' : resolvida ? 'resolvidas' : 'voce',
-    rotulo: entregaParada || (pedido && (comAgentes || precisa || pedidoAberto(pedido)) ? ESTADOS[estado] || 'Estado não reconhecido' : peca.aprovada ? 'Aprovada nesta versão' : peca.estado === 'historico' ? 'Histórico' : 'Esperando o seu aceite'),
-    proximo: entregaParada ? 'A entrega está parada. Confira os detalhes da fila antes de tentar novamente.' : pedido && !ESTADOS[estado] ? 'Atualize os recibos antes de agir sobre este pedido.' : proximos[estado] || (peca.aprovada ? 'Confira a data no calendário.' : peca.estado === 'historico' ? 'Esta peça está no histórico.' : 'Revise a peça e escolha aprovar, pedir ajuste ou recusar.'),
+    secao: alertas.length ? 'voce' : comAgentes ? 'agentes' : resolvida ? 'resolvidas' : 'voce',
+    rotulo: alertas.length ? 'Precisa de atenção' : entregaParada || (pedido && (comAgentes || precisa || pedidoAberto(pedido)) ? ESTADOS[estado] || 'Estado não reconhecido' : peca.aprovada ? 'Aprovada nesta versão' : peca.estado === 'historico' ? 'Histórico' : 'Esperando o seu aceite'),
+    proximo: alertas[0]?.proximoPasso || (entregaParada ? 'A entrega está parada. Confira os detalhes da fila antes de tentar novamente.' : pedido && !ESTADOS[estado] ? 'Atualize os recibos antes de agir sobre este pedido.' : proximos[estado] || (peca.aprovada ? 'Confira a data no calendário.' : peca.estado === 'historico' ? 'Esta peça está no histórico.' : 'Revise a peça e escolha aprovar, pedir ajuste ou recusar.')),
     em: peca.recusa?.recusadoEm || pedido?.atualizadoEm || pedido?.criadoEm || peca.aceite?.aprovadoEm || peca.modificadoEm || null,
     pedido,
+    alertas,
   };
+}
+
+// Menu e mesa usam a mesma prioridade, contando uma demanda por família.
+export function situacaoDaFamilia(grupo, pedidos) {
+  const situacoes = grupo.pecas.map((p) => {
+    const s = situacaoDaDemanda(p, pedidos);
+    return p.aprovada && p.estado === 'para-aprovacao' && s.secao === 'resolvidas'
+      ? { ...s, secao: 'voce', proximo: 'Mova a versão aceita para aprovados e siga ao Calendário.' } : s;
+  });
+  return situacoes.find((s) => s.secao === 'voce') || situacoes.find((s) => s.secao === 'agentes') || situacoes[0];
+}
+
+export function contarPrecisaDeVoce(familias, pedidos) {
+  return familias.filter((g) => situacaoDaFamilia(g, pedidos)?.secao === 'voce').length;
 }
 
 // Atualiza a mesa de demandas com o mesmo GET já usado pelos recibos.

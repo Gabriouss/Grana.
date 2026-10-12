@@ -30,10 +30,11 @@ function carregarModulo(arquivo, sandbox) {
   // Aprovação real: o atalho reaproveita o formulário, com a versão do recibo
   // e texto novo explícito. Nenhuma leitura da fila pessoal ou POST real.
   async function montarAprovacao(pedido, respostaFormulario = { motivo: 'Ajuste novo fictício' }, pecas, familias) {
-    const raiz = n('main'), chamadas = [], formularios = [], navegacoes = [];
+    const raiz = n('main'), chamadas = [], formularios = [], navegacoes = [], contadores = [];
     const peca = { id: raw.pecaId, versao: 'd'.repeat(40), estado: 'para-aprovacao', tipo: 'imagem', titulo: 'Peça AUDIT', caminho: 'AUDIT.png', semana: { inicio: '2026-10-08' } };
     const contexto = {
       ...ctx, params: {}, cabecalho: () => {}, midia: () => n('img'),
+      contadorAprovacao: (valor) => contadores.push(valor),
       api: async (url) => ({ dados: url.endsWith('/pecas') ? { pecas: pecas || [peca], familias } : { pedidos: pedido ? [pedido] : [], remoto: { status: 'ativo' } } }),
       formulario: async (opcoes) => { formularios.push(opcoes); return respostaFormulario; },
       acao: async (url, body) => { chamadas.push({ url, body }); return { dados: {} }; },
@@ -45,7 +46,7 @@ function carregarModulo(arquivo, sandbox) {
     await vm.runInNewContext('montar(root,ctx)', tela);
     assert.equal(JSON.stringify(raiz).includes(canario), false);
     assert.equal(walk(raiz).some((x) => /autorizar.*custo/i.test(x.attrs?.texto || '')), false);
-    return { raiz, chamadas, formularios, navegacoes };
+    return { raiz, chamadas, formularios, navegacoes, contadores };
   }
   for (const estado of ['desatualizado', 'em-correcao']) {
     const pedido = { ...dto, estado, versaoAtual: 'd'.repeat(40), textoOriginal: canario };
@@ -87,6 +88,8 @@ function carregarModulo(arquivo, sandbox) {
   const acervo = [sem, narrado, capa, outra];
   const familias = [{ id: 'f1', chave: 'familia-reel-audit', principal: sem, alternativas: [narrado], capas: [capa] }, { id: 'f2', chave: 'familia-outro', principal: outra, alternativas: [], capas: [] }];
   const mesa = await montarAprovacao(null, null, acervo, familias);
+  assert.equal(mesa.contadores.at(-1), 2, 'menu conta as mesmas duas familias da secao Precisa de voce');
+  assert.ok(texto(mesa.raiz).includes('Precisa de você (2)'));
   assert.equal(walk(mesa.raiz).filter((x) => x.attrs?.class === 'demanda-familia').length, 2, 'quatro arquivos, duas famílias, duas linhas');
   assert.ok(walk(mesa.raiz).some((x) => x.textContent === '2 famílias com esses filtros'));
   const alternativas = walk(mesa.raiz).find((x) => x.attrs?.['aria-label'] === 'Alternativas da família');
