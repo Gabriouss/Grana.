@@ -406,7 +406,7 @@ export function detalhesCronograma(ctx, previsao) {
     manual ? h('p', { texto: `Data alterada pelo autor: ${data(manual.data)} ${horario(manual.hora)} · ${canal(manual.canal)}. A previsão de origem foi preservada.` }) : null,
     ...recibos.map((r) => h('p', { role: 'status', class: 'campo-ajuda', texto: r.tipo === 'aceite-autor'
       ? `Recibo do aceite: aceite-autor · versão ${r.versaoPeca || 'não informada'}${r.aprovadoEm ? ` · ${ctx.formatar.dataHora(r.aprovadoEm)}` : ''}${r.evidencia ? ` · ${r.evidencia}` : ''}. Não comprova publicação na Meta.`
-      : `Recibo do calendário: ${r.tipo || r.acao || 'tipo não informado'}${r.id ? ` · ${r.id}` : ''}${r.em ? ` · ${ctx.formatar.dataHora(r.em)}` : ''}${r.estado ? ` · ${r.estado}` : ''}. Não comprova publicação na Meta.` })),
+      : `Recibo do calendário: ${r.tipo || r.acao || 'tipo não informado'}${r.id ? ` · ${r.id}` : ''}${r.em ? ` · ${ctx.formatar.dataHora(r.em)}` : ''}${r.estado ? ` · ${['aguardando dia D', 'aguardando-dia-d'].includes(previsao.estado) && ['aguardando dia D', 'aguardando-dia-d'].includes(r.estado) ? 'Planejamento registrado' : r.estado}` : ''}. Não comprova publicação na Meta.` })),
     origem && !recibos.length ? ctx.alerta('atencao', 'Recibo do calendário ainda não informado. Atualize para conferir o registro.') : null,
     ...(Array.isArray(previsao.avisos) ? previsao.avisos : []).map((aviso) => ctx.alerta('atencao', aviso)));
 }

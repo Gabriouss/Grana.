@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const source = fs.readFileSync('tools/admin-local/web/telas/calendario.js', 'utf8').replace(/^import .*\n/m, '').replace(/export (async )?function /g, '$1function ');
+const source = fs.readFileSync('tools/admin-local/web/telas/calendario.js', 'utf8').replace(/^import .*\r?\n/m, '').replace(/export (async )?function /g, '$1function ');
 const node = (tag, attrs = {}, ...children) => ({ tag, attrs, children: children.flat(Infinity).filter(Boolean), appendChild(v) { this.children.push(v); }, replaceChildren(...v) { this.children = v; } });
 const text = (n) => typeof n === 'object' ? [n.attrs?.texto || '', ...(n.children || []).map(text)].join(' ') : String(n);
 const buttons = (n) => [ ...(n.tag === 'button' ? [n] : []), ...(n.children || []).filter((v) => typeof v === 'object').flatMap(buttons) ];
