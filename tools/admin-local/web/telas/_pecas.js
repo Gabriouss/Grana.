@@ -109,3 +109,38 @@ export function trilha(ctx, p) {
     'aria-current': i === primeiroPendente ? 'step' : undefined,
   }, h('span', { class: 'trilha-rotulo', texto: rotulo }), h('span', { class: 'trilha-estado', texto: t[k] ? 'feito' : i === primeiroPendente ? 'agora' : 'depois' }))));
 }
+
+// Só os campos públicos do contrato viram texto. IDs, lease e evidência livre
+// nunca fazem parte da linha do tempo, mesmo se vierem junto na resposta.
+export function historicoDaPeca(ctx, p, pedidos = []) {
+  const { h } = ctx;
+  const rotulos = {
+    pedido: 'Pedido registrado', entrega: 'Peça entregue', correcao: 'Correção registrada',
+    custo: 'Custo registrado', 'custo-autorizado': 'Custo autorizado pela conversa',
+    'custo-recusado': 'Custo recusado pela conversa', aceite: 'Versão aceita',
+    promocao: 'Movida para aprovados', data: 'Data marcada',
+  };
+  const fontes = [p.trilha?.eventos, ...pedidos.filter((r) => r.pecaId === p.id).map((r) => r.eventos)];
+  const unicos = new Map();
+  for (const eventos of fontes) {
+    for (const e of Array.isArray(eventos) ? eventos : []) {
+      if (!e || !Object.hasOwn(rotulos, e.tipo) || typeof e.em !== 'string' || !Number.isFinite(Date.parse(e.em))) continue;
+      const valor = Number.isFinite(e.custo?.valorReais) && e.custo.valorReais >= 0 ? e.custo.valorReais : null;
+      const data = /^\d{4}-\d{2}-\d{2}$/.test(e.data || '') ? e.data : null;
+      const hora = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(e.hora || '') ? e.hora : null;
+      const chave = JSON.stringify([e.tipo, Date.parse(e.em), valor, data, hora]);
+      if (!unicos.has(chave)) unicos.set(chave, { tipo: e.tipo, em: e.em, valor, data, hora });
+    }
+  }
+  const eventos = [...unicos.values()].sort((a, b) => Date.parse(a.em) - Date.parse(b.em));
+  return h('section', { class: 'demanda-historico', 'aria-label': 'Histórico da peça' },
+    h('h3', { texto: 'Histórico da peça' }),
+    eventos.length ? h('ol', { class: 'demanda-eventos' }, eventos.map((e) => {
+      let texto = rotulos[e.tipo];
+      if (e.tipo.startsWith('custo')) texto += e.valor === null ? ': valor não informado' : `: ${e.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+      if (e.tipo === 'data' && e.data) texto += `: ${ctx.formatar.data(e.data)}${e.hora ? ` às ${e.hora}` : ''}`;
+      return h('li', { class: 'demanda-evento' },
+        h('span', { class: 'demanda-evento-texto', texto }),
+        h('time', { class: 'demanda-evento-data', datetime: e.em, texto: ctx.formatar.dataHora(e.em) }));
+    })) : h('p', { class: 'campo-ajuda', texto: 'Ainda não há eventos registrados.' }));
+}

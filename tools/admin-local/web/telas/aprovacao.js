@@ -1,7 +1,7 @@
 // Aprovação: fila de para-aprovacao, prévia grande, trilha Versão → Revisão → Aceite → Planejamento.
 // Aprovar grava o aceite do autor para AQUELA versão (sha1). Não publica nem agenda nada em rede social.
 
-import { tituloPeca, rotuloSemana, rotuloEstado, trilha, agruparFamilias, idadeDemanda } from './_pecas.js';
+import { tituloPeca, rotuloSemana, rotuloEstado, trilha, historicoDaPeca, agruparFamilias, idadeDemanda } from './_pecas.js';
 import { montarFila, secaoAjustesDaPeca, situacaoDaFamilia, contarPrecisaDeVoce, observarPedidos, pedidoAberto, filaDisponivel } from './ajustes.js';
 
 // Mesmos rótulos de estado usados no detalhe dos pedidos em ajustes.js.
@@ -147,6 +147,10 @@ export async function montar(raiz, ctx) {
         class: 'botao botao-fantasma', type: 'button', texto: tituloPeca(a), onclick: () => escolher(a),
       })) )));
     detalhe.appendChild(trilha(ctx, p));
+    detalhe.appendChild(historicoDaPeca(ctx, p, pedidos || []));
+    for (const a of situacaoDaFamilia({ pecas: [p] }, pedidos).alertas) {
+      detalhe.appendChild(h('p', { class: 'demanda-atencao campo-ajuda', role: 'status', texto: [a.motivo, a.proximoPasso].filter(Boolean).join(' ') }));
+    }
     const corrigido = pedidos?.find((r) => r.pecaId === p.id && r.estado === 'corrigido-aguardando-aceite' && r.versaoCorrigida === p.versao);
     let comparacao;
     if (corrigido) {
