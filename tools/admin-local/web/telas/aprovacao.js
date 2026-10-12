@@ -2,7 +2,7 @@
 // Aprovar grava o aceite do autor para AQUELA versão (sha1). Não publica nem agenda nada em rede social.
 
 import { tituloPeca, rotuloSemana, rotuloEstado, trilha, historicoDaPeca, agruparFamilias, idadeDemanda } from './_pecas.js';
-import { montarFila, secaoAjustesDaPeca, situacaoDaFamilia, contarPrecisaDeVoce, observarPedidos, pedidoAberto, filaDisponivel } from './ajustes.js';
+import { montarFila, secaoAjustesDaPeca, situacaoDaFamilia, contarPrecisaDeVoce, textoAlertaDemanda, observarPedidos, pedidoAberto, filaDisponivel } from './ajustes.js';
 
 // Mesmos rótulos de estado usados no detalhe dos pedidos em ajustes.js.
 const ESTADOS_AJUSTE = {
@@ -123,7 +123,7 @@ export async function montar(raiz, ctx) {
         h('span', { class: 'fila-item-titulo', texto: tituloPeca(p) }),
         h('span', { class: 'fila-item-meta', texto: `${rotuloSemana(p.semana)} · ${p.tipo}` }),
         selo,
-        h('span', { class: 'demanda-proximo', texto: [...s.alertas.map((a) => a.motivo), s.proximo].filter(Boolean).join(' ') }),
+        h('span', { class: 'demanda-proximo', texto: [...s.alertas.map(textoAlertaDemanda), s.proximo].filter(Boolean).join(' ') }),
         h('span', { class: 'demanda-idade', texto: idadeDemanda(s.em) }))));
       }
       secao.appendChild(itens);
@@ -149,7 +149,7 @@ export async function montar(raiz, ctx) {
     detalhe.appendChild(trilha(ctx, p));
     detalhe.appendChild(historicoDaPeca(ctx, p, pedidos || []));
     for (const a of situacaoDaFamilia({ pecas: [p] }, pedidos).alertas) {
-      detalhe.appendChild(h('p', { class: 'demanda-atencao campo-ajuda', role: 'status', texto: [a.motivo, a.proximoPasso].filter(Boolean).join(' ') }));
+      detalhe.appendChild(h('p', { class: 'demanda-atencao campo-ajuda', role: 'status', texto: [textoAlertaDemanda(a), a.proximoPasso].filter(Boolean).join(' ') }));
     }
     const corrigido = pedidos?.find((r) => r.pecaId === p.id && r.estado === 'corrigido-aguardando-aceite' && r.versaoCorrigida === p.versao);
     let comparacao;

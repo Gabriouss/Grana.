@@ -56,5 +56,16 @@ const ctx = { h: node, params: {}, obsoleta: () => false, cabecalho() {}, midia:
   assert(walk(root).some((n) => n.attrs.class === 'demanda-atencao campo-ajuda' && n.attrs.texto.includes('Verifique o vigia')));
   assert.equal(ctx.contagem, 1); assert(text(root).includes('Precisa de você (1)'));
   assert.deepEqual(chamadas, ['/api/marketing/ajustes', '/api/marketing/pecas']);
+  // DTO real do servidor preserva os eventos da origem depois da promoção.
+  const dto=require('../tools/admin-local/marketing/ajustes-dto.cjs');
+  const origem='a'.repeat(16), destino='b'.repeat(16), pedidoId='12345678-1234-4234-8234-1234567890ab';
+  const codigos=['pedido-recebido','entregue','corrigido-aguardando-aceite','aguardando-aprovacao-de-custo'];
+  const privados=codigos.map((codigo,i)=>({codigo,pedidoId,em:eventos[i].em,textoOriginal:canario,lease:{id:canario},estimativa:{valorReais:12.5}}));
+  const rawPedido={id:pedidoId,pecaId:origem,estado:'novo',criadoEm:eventos[0].em,lease:{id:canario}};
+  const publico=dto.trilhaPublica({id:destino},[rawPedido],privados,[{id:destino,origem:{id:origem},evidencia:'aceite pelo autor no painel local',aprovadoEm:eventos[4].em,promovidoEm:eventos[5].em}],
+    [{id:destino,planejadoEm:eventos[6].em,data:'2026-10-20',hora:'19:00',canal:'reels'}]);
+  const integrado=helper(ctx,{id:destino,trilha:{eventos:publico}});
+  assert.equal(walk(integrado).filter(n=>n.tag==='time').length,7);
+  assert(!JSON.stringify(integrado).includes(canario));assert(text(integrado).includes('12,50'));
   console.log('admin-peca-historico-tela: modulos reais, ASC, deduplicacao, custo R$, sem ids/texto privado, vazio, insercao no detalhe/alerta/contador OK; zero POST/rede');
 })().catch((e) => { console.error(e); process.exitCode = 1; });

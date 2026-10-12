@@ -29,6 +29,9 @@ for (const codigo of ['entrega-parada', 'lease-vencendo', 'lease-vencido']) {
 }
 assert.equal(ajustes.situacaoDaDemanda(p('c', { ajuste: { alertas: [{ codigo: 'entrega-parada', proximoPasso: 'Retome a entrega.' }] } }), []).secao, 'voce');
 assert.equal(ajustes.situacaoDaDemanda(p('c'), [pedido('c', 'novo', { alertas: [{ codigo: 'desconhecido' }] })]).secao, 'agentes');
+assert.equal(ajustes.textoAlertaDemanda({codigo:'entrega-parada',idadeMs:11*60000}),'Pedido aguardando há 11 min. O vigia está inativo.');
+assert.equal(ajustes.textoAlertaDemanda({codigo:'lease-vencendo',restanteMs:4*60000}),'A reserva da correção vence em 4 min.');
+assert.equal(ajustes.textoAlertaDemanda({codigo:'lease-vencido'}),'A reserva da correção venceu.');
 const src = fs.readFileSync('tools/admin-local/web/app.js', 'utf8');
 const trecho = src.slice(src.indexOf('function contadorAprovacao(n)'), src.indexOf('async function renderizar()'));
 const link = {}, calls = [], logs = [];

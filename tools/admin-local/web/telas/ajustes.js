@@ -61,6 +61,18 @@ export function contarPrecisaDeVoce(familias, pedidos) {
   return familias.filter((g) => situacaoDaFamilia(g, pedidos)?.secao === 'voce').length;
 }
 
+export function textoAlertaDemanda(a) {
+  // O servidor decide se há alerta; a tela só formata a duração do DTO.
+  const tempo = (ms) => {
+    const minutos = Math.max(1, Math.ceil(ms / 60000));
+    return minutos < 60 ? `${minutos} min` : `${Math.floor(minutos / 60)} h`;
+  };
+  if (a.codigo === 'entrega-parada' && Number.isFinite(a.idadeMs) && a.idadeMs >= 0) return `Pedido aguardando há ${tempo(a.idadeMs)}. O vigia está inativo.`;
+  if (a.codigo === 'lease-vencendo' && Number.isFinite(a.restanteMs) && a.restanteMs >= 0) return `A reserva da correção vence em ${tempo(a.restanteMs)}.`;
+  if (a.codigo === 'lease-vencido') return 'A reserva da correção venceu.';
+  return a.motivo || 'Confira o pedido que precisa de atenção.';
+}
+
 // Atualiza a mesa de demandas com o mesmo GET já usado pelos recibos.
 export function observarPedidos(pedidos, redesenhar) {
   if (!Array.isArray(pedidos)) return;
