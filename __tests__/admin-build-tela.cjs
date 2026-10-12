@@ -55,7 +55,7 @@ function ambiente(estado, resposta, confirmar = true) {
   const push = ambiente('push-falhou', () => ({ dados: {} }));
   assert.equal(find(push.root, 'Disparar build'), undefined); await find(push.root, 'Publicar este preparo').attrs.onclick();
   assert.equal(push.confirms[0].frase, undefined);
-  const telaEas = fs.readFileSync('tools/admin-local/web/telas/eas.js', 'utf8').replace(/^import .*\n/m, '').replace('export async function ', 'async function ');
+  const telaEas = fs.readFileSync('tools/admin-local/web/telas/eas.js', 'utf8').replace(/^import .*\r?\n/m, '').replace('export async function ', 'async function ');
   const root = node('section'), botaoPreparo = node('button'), avisos = [], acoes = [];
   const ctx = { h: node, alerta: (tipo, texto) => { avisos.push(texto); return node('p', { tipo, texto }); },
     formulario: async () => ({ tipo: 'patch', mensagem: 'Linha 1\nLinha 2' }), confirmar: async () => true,

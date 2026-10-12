@@ -13,21 +13,21 @@ export async function montar(raiz, ctx) {
   const recibo = h('div', { class: 'secao-corpo' });
 
   raiz.appendChild(ctx.bloco('Saldo e builds recentes', '/api/eas/builds', (d) => {
-    saldoAtual = normalizarSaldo(d.saldo);
+    saldoAtual = d.saldo || null;
     desenharPreparo(ctx, preparo, saldoAtual, d.preparoPersistido);
     montarReciboBuild(ctx, recibo, d.preparoPersistido, ctx.obsoleta);
     const sem = saldoAtual?.semana;
     const mes = saldoAtual?.mes;
-    const builds = d.builds || d.itens || [];
-    const esgotada = sem && sem.usadas >= (sem.teto ?? 3);
+    const builds = d.itens || [];
+    const esgotada = sem && sem.feitos >= (sem.teto ?? 3);
     return [
       h('div', { class: 'grade-cartoes' },
-        ctx.cartao({ titulo: 'Esta semana', valor: sem ? `${sem.usadas} de ${sem.teto ?? 3}` : 'sem dado',
-          detalhe: sem ? (esgotada ? 'Teto da semana atingido. Só com liberação de emergência pedida por você no terminal.' : `Restam ${(sem.teto ?? 3) - sem.usadas}. A semana vai de segunda a domingo${sem.zeraEm ? `; zera em ${ctx.formatar.data(sem.zeraEm)}` : ''}.`) : 'Saldo não calculado.',
+        ctx.cartao({ titulo: 'Esta semana', valor: sem ? `${sem.feitos} de ${sem.teto ?? 3}` : 'sem dado',
+          detalhe: sem ? (esgotada ? 'Teto da semana atingido. Só com liberação de emergência pedida por você no terminal.' : `Restam ${(sem.teto ?? 3) - sem.feitos}. A semana vai de segunda a domingo${sem.zeraEm ? `; zera em ${ctx.formatar.data(sem.zeraEm)}` : ''}.`) : 'Saldo não calculado.',
           status: esgotada ? 'alerta' : undefined }),
-        ctx.cartao({ titulo: 'Este mês', valor: mes ? `${mes.usadas} de ${mes.cota ?? 15}` : 'sem dado',
-          detalhe: mes ? `Restam ${(mes.cota ?? 15) - mes.usadas} na cota do EAS.` : 'Contagem do mês não lida.',
-          status: mes && mes.usadas >= (mes.cota ?? 15) ? 'erro' : undefined })),
+        ctx.cartao({ titulo: 'Este mês', valor: mes ? `${mes.preparos} de ${mes.cota ?? 15}` : 'sem dado',
+          detalhe: mes ? `Restam ${(mes.cota ?? 15) - mes.preparos} na cota do EAS.` : 'Contagem do mês não lida.',
+          status: mes && mes.preparos >= (mes.cota ?? 15) ? 'erro' : undefined })),
       d.saldo?.fonte ? h('p', { class: 'nota-explicativa', texto: d.saldo.fonte }) : null,
       d.saldo?.contagemIncompleta ? ctx.alerta('atencao', 'O git fetch falhou: a contagem da semana pode estar incompleta.') : null,
       d.status === 'parcial' && d.motivo ? ctx.alerta('info', d.motivo) : null,
@@ -35,26 +35,19 @@ export async function montar(raiz, ctx) {
         { titulo: 'Quando', valor: (b) => ctx.formatar.dataHora(b.criadoEm) },
         { titulo: 'Versão', valor: (b) => b.versao, classe: 'mono' },
         { titulo: 'Perfil', valor: (b) => b.perfil },
-        { titulo: 'Estado', valor: (b) => seloBuild(ctx, b.estado || b.status) },
+        { titulo: 'Estado', valor: (b) => seloBuild(ctx, b.status) },
         { titulo: 'Commit', valor: (b) => (b.commit ? String(b.commit.hash || b.commit).slice(0, 7) : null), classe: 'mono' },
         { titulo: 'Nota', valor: (b) => (b.mensagem && b.mensagem.length > 90 ? `${b.mensagem.slice(0, 90)}…` : b.mensagem) },
         { titulo: 'Links', valor: (b) => [
-          (b.apk || b.artefato) ? h('a', { href: b.apk || b.artefato, target: '_blank', rel: 'noopener noreferrer', texto: 'APK' }) : null,
+          b.apk ? h('a', { href: b.apk, target: '_blank', rel: 'noopener noreferrer', texto: 'APK' }) : null,
           b.pagina ? [' ', h('a', { href: b.pagina, target: '_blank', rel: 'noopener noreferrer', texto: 'EAS' })] : null] },
-      ], builds, { legenda: 'Builds recentes no EAS' }) : ctx.estado.bloco.vazio(d.buildsStatus === 'ausente' ? 'A CLI do EAS não está logada neste computador, então a lista de builds não foi lida. O saldo acima vem do git.' : 'Nenhuma build recente.'),
+      ], builds, { legenda: 'Builds recentes no EAS' }) : ctx.estado.bloco.vazio(d.status === 'ausente' ? 'A CLI do EAS não está logada neste computador, então a lista de builds não foi lida. O saldo acima vem do git.' : 'Nenhuma build recente.'),
     ];
   }, { integracao: 'eas' }));
 
   raiz.appendChild(h('section', { class: 'secao' }, h('h2', { class: 'secao-titulo', texto: 'Preparar uma build' }), preparo));
   raiz.appendChild(h('section', { class: 'secao' }, h('h2', { class: 'secao-titulo', texto: 'Recibo do preparo e do disparo' }), recibo));
   desenharPreparo(ctx, preparo, null);
-}
-
-function normalizarSaldo(s) {
-  if (!s) return null;
-  const sem = s.semana ? { ...s.semana, usadas: s.semana.usadas ?? s.semana.feitos } : undefined;
-  const mes = s.mes ? { ...s.mes, usadas: s.mes.usadas ?? s.mes.preparos } : undefined;
-  return { ...s, semana: sem, mes };
 }
 
 function seloBuild(ctx, e) {
@@ -68,14 +61,14 @@ function desenharPreparo(ctx, raiz, saldo, persistido) {
   while (raiz.firstChild) raiz.removeChild(raiz.firstChild);
   const sem = saldo?.semana;
   const mes = saldo?.mes;
-  const esgotada = sem && sem.usadas >= (sem.teto ?? 3);
+  const esgotada = sem && sem.feitos >= (sem.teto ?? 3);
   const pendente = persistido && ['preparando', 'preparado', 'disparando', 'desconhecido', 'push-falhou', 'commit-falhou'].includes(persistido.estado);
   if (pendente) raiz.appendChild(ctx.alerta('atencao', 'Há um preparo pendente. Continue pelo recibo abaixo antes de preparar outra versão.'));
   raiz.appendChild(h('p', { class: 'nota-explicativa', texto: 'Preparar valida a nota, sobe a versão e publica o preparo no GitHub. Disparar é uma etapa separada: exige sua confirmação e envia a nota inteira ao EAS.' }));
   if (sem) {
     raiz.appendChild(ctx.alerta(esgotada ? 'critico' : 'info', esgotada
-      ? `Esta semana já teve ${sem.usadas} de ${sem.teto ?? 3} builds. O preparo será recusado pelo script.`
-      : `Esta seria a build ${sem.usadas + 1} de ${sem.teto ?? 3} desta semana${mes ? ` e ${mes.usadas + 1} de ${mes.cota ?? 15} do mês` : ''}.`));
+      ? `Esta semana já teve ${sem.feitos} de ${sem.teto ?? 3} builds. O preparo será recusado pelo script.`
+      : `Esta seria a build ${sem.feitos + 1} de ${sem.teto ?? 3} desta semana${mes ? ` e ${mes.preparos + 1} de ${mes.cota ?? 15} do mês` : ''}.`));
   } else {
     raiz.appendChild(ctx.alerta('atencao', 'Saldo da semana ainda não lido. O script confere de novo antes de preparar.'));
   }
@@ -107,7 +100,7 @@ async function preparar(ctx, saldo, saida, botao) {
     detalhes: [
       `Tipo: ${valores.tipo === 'minor' ? 'novidade' : 'correção'}`,
       `Nota: ${valores.mensagem}`,
-      sem ? `Saldo depois: ${sem.usadas + 1} de ${sem.teto ?? 3} na semana` : 'Saldo da semana não lido',
+      sem ? `Saldo depois: ${sem.feitos + 1} de ${sem.teto ?? 3} na semana` : 'Saldo da semana não lido',
     ],
     rotuloBotao: 'Preparar', perigo: true,
   });

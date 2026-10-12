@@ -27,8 +27,8 @@ export async function montar(raiz, ctx) {
       h('div', { class: 'lista-alertas' }, alertas.map((a) => ctx.alerta(a.nivel, a.texto || a.mensagem, a.link)))));
   }
 
-  const semana = d.builds?.semana;
-  const mes = d.builds?.mes;
+  const semana = d.buildsDaSemana;
+  const mes = semana?.mes;
   const deploy = d.vercel?.ultimoDeploy;
   const commit = d.git?.commit;
   const versaoLocal = d.app?.versao;
@@ -53,9 +53,9 @@ export async function montar(raiz, ctx) {
     }),
     ctx.cartao({
       titulo: 'Builds desta semana',
-      valor: semana ? `${semana.usadas} de ${semana.teto ?? 3}` : 'sem dado',
-      detalhe: mes ? `No mês: ${mes.usadas} de ${mes.cota ?? 15}, somando as duas máquinas.` : 'Contagem do mês não lida.',
-      status: semana && semana.usadas >= (semana.teto ?? 3) ? 'alerta' : undefined,
+      valor: semana ? `${semana.feitos} de ${semana.teto ?? 3}` : 'sem dado',
+      detalhe: mes ? `No mês: ${mes.preparos} de ${mes.cota ?? 15}, somando as duas máquinas.` : 'Contagem do mês não lida.',
+      status: semana && semana.feitos >= (semana.teto ?? 3) ? 'alerta' : undefined,
       link: '#/eas', rotuloLink: 'Ver saldo',
     }),
     ctx.cartao({
@@ -111,13 +111,11 @@ export async function montar(raiz, ctx) {
 
 // Aceita o formato do contrato e o que o servidor do Keel devolve hoje.
 function normalizar(d) {
-  const bs = d.buildsDaSemana;
   const integ = d.integracoes || {};
   const alertasFuncoes = (integ.funcoes?.alertas || []).map((a) => (typeof a === 'string' ? { nivel: 'atencao', texto: a } : a));
   return {
     ...d,
     app: d.app || { versao: d.versaoApp, versaoAnunciada: d.versaoAnunciada?.versao ?? d.versaoAnunciada },
-    builds: d.builds || (bs ? { semana: { usadas: bs.feitos, teto: bs.teto }, mes: bs.mes ? { usadas: bs.mes.preparos, cota: bs.mes.cota } : undefined } : undefined),
     vercel: d.vercel || { ultimoDeploy: d.ultimoDeploy || integ.vercel?.ultimoProducao },
     git: { ...(d.git || {}), commit: d.git?.commit || d.ultimoCommit },
     assinantes: { ativos: d.assinantes?.ativos ?? d.assinantes?.ativas },

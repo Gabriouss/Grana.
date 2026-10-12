@@ -8,6 +8,15 @@ const isoDia = (d) => `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate()
 const diasAtras = (n, h = 10) => { const d = new Date(hoje); d.setDate(d.getDate() - n); d.setHours(h, 12, 0, 0); return d.toISOString(); };
 const diaDoMes = (n) => isoDia(new Date(hoje.getFullYear(), hoje.getMonth(), n));
 const MARCA = 'design-system/marca/';
+const proximaSegunda = new Date(hoje);
+proximaSegunda.setDate(hoje.getDate() + ((8 - hoje.getDay()) % 7 || 7));
+proximaSegunda.setHours(0, 0, 0, 0);
+const saldoBuilds = {
+  status: 'ok',
+  semana: { feitos: 1, teto: 3, restam: 2, podePreparar: true, zeraEm: proximaSegunda.toISOString(), preparos: [diasAtras(0)] },
+  mes: { preparos: 2, cota: 15, restam: 13 },
+  fonte: 'Simulado: contagem fictícia de preparos. Nenhum histórico real foi lido.',
+};
 
 const pecas = [
   { id: 'sim-01', versao: 'a1b2c3d4', semana: 'semana-41', estado: 'para-aprovacao', tipo: 'carrossel', canal: 'instagram-feed',
@@ -69,7 +78,7 @@ const leituras = {
       { id: 'git', nome: 'Git local', status: 'ok' },
     ],
     git: { branch: 'main', commit: { hash: '0000000', assunto: 'commit simulado', data: diasAtras(0, 9) }, aFrente: 0, atras: 0 },
-    builds: { semana: { usadas: 1, teto: 3 }, mes: { usadas: 2, cota: 15 } },
+    buildsDaSemana: { feitos: saldoBuilds.semana.feitos, teto: saldoBuilds.semana.teto, texto: '1 de 3', zeraEm: saldoBuilds.semana.zeraEm, mes: saldoBuilds.mes },
     vercel: { ultimoDeploy: { estado: 'READY', url: 'exemplo-simulado.vercel.app', criadoEm: diasAtras(1), commit: '0000000' } },
     assinantes: { ativos: 0 },
     marketing: { paraAprovacao: pecas.filter((x) => x.estado === 'para-aprovacao').length },
@@ -103,8 +112,15 @@ const leituras = {
   '/api/vercel/projeto': () => ({ status: 'ok', nome: 'simulado', framework: 'expo', dominios: [{ nome: 'exemplo.simulado', verificado: true }] }),
   '/api/eas/builds': () => ({
     status: 'ok',
-    builds: [{ id: 'sim-build', versao: '0.0.0', perfil: 'preview', plataforma: 'android', estado: 'FINISHED', criadoEm: diasAtras(4), artefato: null }],
-    saldo: { semana: { usadas: 1, teto: 3 }, mes: { usadas: 2, cota: 15 } },
+    cli: 'simulado',
+    itens: [{ id: 'sim-build', status: 'FINISHED', perfil: 'preview', versao: '0.0.0', versaoBuild: null, mensagem: 'Build simulada.', commit: null,
+      criadoEm: diasAtras(4), concluidoEm: diasAtras(4, 11), apk: null, pagina: null, quem: 'simulado', erro: null }],
+    doMesNoEas: 1,
+    observacaoMes: 'Simulado: uma build fictícia no EAS neste mês.',
+    saldo: saldoBuilds,
+    preparoPendente: null,
+    preparoPersistido: null,
+    comoDisparar: 'Simulado: nenhum build real será disparado.',
   }),
   '/api/github/releases': () => ({ status: 'ok', releases: [{ tag: 'v0.0.0-sim', nome: 'Release simulada', publicadoEm: diasAtras(4), url: null, assets: [{ nome: 'grana.apk', tamanho: 0, downloads: 0 }] }] }),
   '/api/cakto/resumo': () => ({ status: 'ausente', motivo: 'Simulado: a Cakto não oferece leitura configurada neste computador.' }),
