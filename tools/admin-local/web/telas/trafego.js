@@ -35,15 +35,16 @@ export async function montar(raiz, ctx) {
   if (d.situacao) corpo.appendChild(ctx.alerta('atencao', d.situacao));
   for (const a of d.avisos || []) corpo.appendChild(ctx.alerta('info', a));
 
+  // Campanhas primeiro. O bloqueio de verba fica resumido e visível logo acima delas; portas,
+  // pré-requisitos, limites e ângulos ficam recolhidos abaixo, a um clique.
+  const recolhido = (titulo, ...filhos) => h('details', { class: 'secao-recolhida' },
+    h('summary', { class: 'secao-recolhida-titulo', texto: titulo }), h('div', { class: 'secao' }, ...filhos));
   const portas = d.portas || [];
+  const fechadas = portas.filter((p) => p.estado !== 'aberta').length;
   if (portas.length) {
-    const fechadas = portas.filter((p) => p.estado !== 'aberta').length;
-    corpo.appendChild(ctx.secao('Portas para abrir verba',
-      fechadas ? ctx.alerta('critico', `${fechadas} de ${portas.length} portas não estão abertas. A verba não abre enquanto houver porta fechada.`) : ctx.alerta('info', 'Todas as portas abertas. A verba ainda depende da sua decisão.'),
-      h('ul', { class: 'lista-portas' }, portas.map((p) => {
-        const [s, t] = PORTA[p.estado] || ['neutro', p.estado];
-        return h('li', { class: 'porta' }, ctx.selo(s, t), h('span', { texto: p.texto }), p.fonte ? h('span', { class: 'campo-ajuda', texto: p.fonte }) : null);
-      }))));
+    corpo.appendChild(fechadas
+      ? ctx.alerta('critico', `Verba bloqueada: ${fechadas} de ${portas.length} portas não estão abertas. Veja "Portas para abrir verba", abaixo das campanhas.`)
+      : ctx.alerta('info', 'Todas as portas abertas. A verba ainda depende da sua decisão.'));
   }
 
   const campanhas = d.campanhas || [];
@@ -52,9 +53,22 @@ export async function montar(raiz, ctx) {
       : ctx.estado.bloco.vazio('Nenhuma campanha planejada.'),
     !disponiveis.length ? h('p', { class: 'nota-explicativa', texto: 'Nenhuma peça aprovada ainda. Anúncio só pode usar peça com o seu aceite; aprove na tela de Aprovação para poder vincular.' }) : null));
 
+  const contexto = h('div', { class: 'trafego-contexto' });
+  corpo.appendChild(contexto);
+
+  if (portas.length) {
+    contexto.appendChild(recolhido(`Portas para abrir verba (${portas.length - fechadas} de ${portas.length} abertas)`,
+      fechadas ? ctx.alerta('critico', `${fechadas} de ${portas.length} portas não estão abertas. A verba não abre enquanto houver porta fechada.`) : ctx.alerta('info', 'Todas as portas abertas. A verba ainda depende da sua decisão.'),
+      h('ul', { class: 'lista-portas' }, portas.map((p) => {
+        const [s, t] = PORTA[p.estado] || ['neutro', p.estado];
+        return h('li', { class: 'porta' }, ctx.selo(s, t), h('span', { texto: p.texto }), p.fonte ? h('span', { class: 'campo-ajuda', texto: p.fonte }) : null);
+      }))));
+  }
+
   const pre = d.prerequisitos || [];
   if (pre.length) {
-    corpo.appendChild(ctx.secao('Pré-requisitos técnicos',
+    const pendentes = pre.filter((p) => p.estado !== 'feito').length;
+    contexto.appendChild(recolhido(`Pré-requisitos técnicos (${pendentes ? `${pendentes} ${pendentes === 1 ? 'pendente' : 'pendentes'}` : 'todos feitos'})`,
       h('ul', { class: 'lista-portas' }, pre.map((p) => {
         const [s, t] = PREREQ[p.estado] || ['neutro', p.estado];
         return h('li', { class: 'porta' }, ctx.selo(s, t), h('span', { texto: p.texto }));
@@ -63,7 +77,7 @@ export async function montar(raiz, ctx) {
 
   const lim = d.limitesDeReferencia;
   if (lim) {
-    corpo.appendChild(ctx.secao('Limites de referência',
+    contexto.appendChild(recolhido('Limites de referência',
       lim.aviso ? h('p', { class: 'nota-explicativa', texto: lim.aviso }) : null,
       (lim.itens || []).length ? ctx.tabela([
         { titulo: 'Sinal', valor: (x) => x.sinal },
@@ -79,14 +93,14 @@ export async function montar(raiz, ctx) {
   if (ang) {
     const etapas = [['prospeccao', 'Prospecção'], ['consideracaoRetargeting', 'Consideração e retargeting'], ['conversao', 'Conversão']].filter(([k]) => ang[k]);
     if (etapas.length) {
-      corpo.appendChild(ctx.secao('Ângulos por etapa',
+      contexto.appendChild(recolhido('Ângulos por etapa',
         h('dl', { class: 'lista-chave-valor' }, etapas.map(([k, t]) => [h('dt', { texto: t }), h('dd', { texto: ang[k] })])),
         ang.fonte ? h('p', { class: 'campo-ajuda', texto: `Fonte: ${ang.fonte}` }) : null));
     }
   }
 
   if ((d.fonte || []).length) {
-    corpo.appendChild(h('p', { class: 'rodape-leitura', texto: `Fontes: ${d.fonte.join('; ')}` }));
+    contexto.appendChild(h('p', { class: 'rodape-leitura', texto: `Fontes: ${d.fonte.join('; ')}` }));
   }
 }
 
