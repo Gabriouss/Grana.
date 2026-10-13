@@ -67,7 +67,7 @@ Objetivo: fazer a pessoa descobrir o Grana., salvar e compartilhar. Sem preço, 
 - **Texto:** "Ele responde com os seus lançamentos. Confira sempre os valores."
 - **Fecho:** "Conhece o Granabô." Logo.
 
-### 2.2 Carrosséis (5 telas, 1080×1350)
+### 2.2 Carrosséis (5 telas, 1080×1440)
 
 **CO-1 · "Por que o dinheiro some?"**
 1. "Muita gente não gasta demais. Gasta sem ver."
@@ -83,7 +83,7 @@ Objetivo: fazer a pessoa descobrir o Grana., salvar e compartilhar. Sem preço, 
 4. "Assim o que sobra no mês continua sendo o que sobra de verdade."
 5. "Veja o cartão e a fatura no mesmo lugar. Manda pra quem vive no cartão."
 
-### 2.3 Estáticos (1080×1350)
+### 2.3 Estáticos (1080×1440)
 
 - **EO-1 · Título:** "Dia 20 e você não lembra pra onde foi o mês?" Apoio: "Anota agora, mesmo que seja pouco. Salva pra lembrar." CTA: "Salva pra depois".
 - **EO-2 · Título:** "Ninguém planeja gasto de café. Mas o café conta." Apoio: "O Grana. registra os pequenos gastos pela voz no Android ou no navegador, sem sofrimento." CTA: "Quer ver como funciona?"
