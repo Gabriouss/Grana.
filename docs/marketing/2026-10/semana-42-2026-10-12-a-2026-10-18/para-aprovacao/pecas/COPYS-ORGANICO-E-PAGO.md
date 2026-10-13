@@ -29,7 +29,7 @@
 | C07 e C13 Assinatura | O título é só preço, sem benefício. | "Organizar o mês custa menos de R$ 0,37 por dia." Legenda com o gate da seção 4. |
 | C08 Voz pelo widget | Ok. Android declarado. | Manter. |
 | C09 Widget | Título sem graça. | "Lance um gasto direto da tela inicial." |
-| C10 Foto da nota | **Bloqueada.** O teste dos 10 cupons ainda não rodou (Lynx, C17). | Tirar do pacote até o teste passar. |
+| C10 Foto da nota | Estava bloqueada pelo teste dos 10 cupons (Lynx, C17). O autor afirmou em 13/10/2026 que o teste passou, sem relatório anexo. | Volta ao pacote como proposta, com o texto atual: "Fotografe a nota e confira o valor lido." |
 | C11 Biometria | Título descritivo, sem motivo. | "Quem pegar seu celular não abre suas contas." |
 | C12 Baixar o app | Ok. A legenda já declara que não está na Play Store. | Manter. |
 | C14 Carrossel do Livre para gastar | Slide 4 é uma fórmula. Slide 5 repete "Conheça o Grana.". | Slide 4 vira "Ele subtrai o que você guardou e divide o resto pelos dias que faltam." Slide 5 com CTA variado. |
@@ -128,7 +128,7 @@ Toda peça paga que cita preço, reembolso ou assinatura precisa:
 
 ## 5. Gates antes de publicar
 
-- **C10, foto da nota:** fora do pacote até o teste dos 10 cupons passar.
+- **C10, foto da nota:** o teste dos 10 cupons foi afirmado pelo autor em 13/10/2026, sem relatório anexo. Registrar o relatório quando existir.
 - **Peças Android (P-2, C08, C09, C11, C12):** só depois de QA no APK e no widget, num aparelho real.
 - **Peças web (P-1, P-3, EO-2, CO-2 e CO-1 slide 4):** só depois de QA no Chrome.
 - **Reels:** todas as telas com dados de exemplo; sem foto de cliente; sem música com licença não comprovada (ver guia de vídeo).
