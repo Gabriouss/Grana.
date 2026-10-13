@@ -44,7 +44,7 @@ const dependencias = {
 const fonte = fs.readFileSync(path.join(__dirname, '../scripts/galeria-midia.mjs'), 'utf8');
 const js = ts.transpileModule(fonte, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText
   + '\n;globalThis.__galeria = { listarImagensBrutas, agruparMidias, servirArquivo, MIME, BASE_DIR };';
-const sandbox = { exports: {}, console: { log() {} }, URL, Buffer,
+const sandbox = { exports: {}, console: { log() {} }, URL, Buffer, process: { env: {} },
   require: (id) => { if (id in dependencias) return dependencias[id]; throw new Error(`Import não simulado: ${id}`); } };
 vm.runInNewContext(js, sandbox, { filename: 'galeria-midia.mjs' });
 const g = sandbox.__galeria;

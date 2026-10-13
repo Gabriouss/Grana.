@@ -1,7 +1,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 
 const PORT = 3847;
 const BASE_DIR = path.resolve('docs/marketing');
@@ -11,6 +11,28 @@ const SOLICITACOES_DIR = path.resolve('docs/marketing/solicitacoes-correcao');
 if (!fs.existsSync(BASE_DIR)) fs.mkdirSync(BASE_DIR, { recursive: true });
 if (!fs.existsSync(TRASH_DIR)) fs.mkdirSync(TRASH_DIR, { recursive: true });
 if (!fs.existsSync(SOLICITACOES_DIR)) fs.mkdirSync(SOLICITACOES_DIR, { recursive: true });
+
+// Caminho dentro de docs/marketing, por path.relative: recusa '..', absoluto e pasta irmã
+// (docs/marketing-x passava no startsWith antigo). Devolve o caminho absoluto ou null.
+function dentroDaBase(relativo) {
+  const alvo = path.resolve(BASE_DIR, String(relativo || ''));
+  const rel = path.relative(BASE_DIR, alvo);
+  if (!rel || rel === '..' || rel.startsWith('..' + path.sep) || path.isAbsolute(rel)) return null;
+  return alvo;
+}
+
+// Rotas que escrevem só aceitam pedido desta página: Host do próprio servidor e, quando o
+// navegador manda Origin, a mesma origem. Outro site aberto no navegador recebe 403.
+const ORIGENS = [`http://127.0.0.1:${PORT}`, `http://localhost:${PORT}`];
+function pedidoDaPropriaPagina(req) {
+  const host = String((req.headers && req.headers.host) || '').toLowerCase();
+  if (!ORIGENS.some((o) => o.slice('http://'.length) === host)) return false;
+  const origem = req.headers && req.headers.origin;
+  return origem === undefined || ORIGENS.includes(String(origem).toLowerCase());
+}
+
+// Sem shell: o texto do autor vai como UM argumento, nunca como linha de comando.
+const MAESTRI = process.env.MAESTRI_CLI || 'maestri';
 
 function classificarMidia(relPath) {
   const norm = relPath.toLowerCase().replace(/\\/g, '/');
@@ -166,6 +188,11 @@ function agruparMidias(lista) {
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
+  if (req.method !== 'GET' && req.method !== 'HEAD' && !pedidoDaPropriaPagina(req)) {
+    res.writeHead(403);
+    return res.end('Origem recusada.');
+  }
+
   if (url.pathname === '/api/imagens') {
     const brutas = listarImagensBrutas(BASE_DIR);
     const agrupadas = agruparMidias(brutas);
@@ -198,7 +225,7 @@ ${instrucoes}
 
         const promptMaestri = `O autor solicitou uma correcao no criativo "docs/marketing/${arquivo}". Instrucoes detalhadas: "${instrucoes.replace(/"/g, "'")}". O chamado foi registrado em docs/marketing/solicitacoes-correcao/${nomeArquivoLog}. Por favor, analise a peca e prepare o plano de ajuste.`;
         
-        exec(`maestri ask "Orquestrador Supremo" "${promptMaestri.replace(/"/g, '\\"')}"`, (err) => {
+        execFile(MAESTRI, ['ask', 'Orquestrador Supremo', promptMaestri], (err) => {
           if (err) console.log('Aviso ao notificar Orquestrador:', err.message);
         });
 
@@ -224,8 +251,8 @@ ${instrucoes}
         }
         let movidos = 0;
         for (const relPath of itens) {
-          const origem = path.normalize(path.join(BASE_DIR, relPath));
-          if (origem.startsWith(BASE_DIR) && fs.existsSync(origem)) {
+          const origem = dentroDaBase(relPath);
+          if (origem && fs.existsSync(origem)) {
             const timestamp = Date.now();
             const nomeDestino = `${timestamp}_${path.basename(origem)}`;
             const destino = path.join(TRASH_DIR, nomeDestino);
@@ -245,8 +272,8 @@ ${instrucoes}
 
   if (url.pathname.startsWith('/midia/')) {
     const decoded = decodeURIComponent(url.pathname.replace('/midia/', ''));
-    const safePath = path.normalize(path.join(BASE_DIR, decoded));
-    if (!safePath.startsWith(BASE_DIR) || !fs.existsSync(safePath) || !fs.statSync(safePath).isFile()) {
+    const safePath = dentroDaBase(decoded);
+    if (!safePath || !fs.existsSync(safePath) || !fs.statSync(safePath).isFile()) {
       res.writeHead(404);
       return res.end('Arquivo nao encontrado');
     }
