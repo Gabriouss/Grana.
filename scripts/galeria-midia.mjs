@@ -35,6 +35,46 @@ function classificarMidia(relPath) {
   return 'producao';
 }
 
+// Imagens e vídeos. O vídeo (Reel) não aparecia porque a lista só aceitava imagem.
+const EXT_IMAGEM = ['.png', '.jpg', '.jpeg', '.webp', '.svg'];
+const EXT_VIDEO = ['.mp4', '.webm', '.mov'];
+const MIME = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.mov': 'video/quicktime'
+};
+
+// Serve o arquivo com Range (206/416): sem isso o navegador não consegue buscar no meio do vídeo.
+function servirArquivo(req, res, caminho) {
+  const tipo = MIME[path.extname(caminho).toLowerCase()] || 'application/octet-stream';
+  const tamanho = fs.statSync(caminho).size;
+  const range = req.headers && req.headers.range;
+  if (range) {
+    const m = /^bytes=(\d*)-(\d*)$/.exec(String(range).trim());
+    let inicio = NaN;
+    let fim = NaN;
+    if (m && (m[1] !== '' || m[2] !== '')) {
+      if (m[1] === '') { inicio = Math.max(0, tamanho - Number(m[2])); fim = tamanho - 1; }
+      else { inicio = Number(m[1]); fim = m[2] === '' ? tamanho - 1 : Math.min(Number(m[2]), tamanho - 1); }
+    }
+    if (!Number.isSafeInteger(inicio) || !Number.isSafeInteger(fim) || inicio > fim || inicio >= tamanho) {
+      res.writeHead(416, { 'Content-Range': `bytes */${tamanho}` });
+      return res.end();
+    }
+    res.writeHead(206, { 'Content-Type': tipo, 'Content-Length': fim - inicio + 1, 'Content-Range': `bytes ${inicio}-${fim}/${tamanho}`, 'Accept-Ranges': 'bytes' });
+    if (req.method === 'HEAD') return res.end();
+    return fs.createReadStream(caminho, { start: inicio, end: fim }).pipe(res);
+  }
+  res.writeHead(200, { 'Content-Type': tipo, 'Content-Length': tamanho, 'Accept-Ranges': 'bytes' });
+  if (req.method === 'HEAD') return res.end();
+  return fs.createReadStream(caminho).pipe(res);
+}
+
 function listarImagensBrutas(dir) {
   let resultados = [];
   if (!fs.existsSync(dir)) return resultados;
@@ -46,7 +86,8 @@ function listarImagensBrutas(dir) {
       resultados = resultados.concat(listarImagensBrutas(caminhoCompleto));
     } else {
       const ext = path.extname(item.name).toLowerCase();
-      if (['.png', '.jpg', '.jpeg', '.webp', '.svg'].includes(ext)) {
+      const ehVideo = EXT_VIDEO.includes(ext);
+      if (EXT_IMAGEM.includes(ext) || ehVideo) {
         const stats = fs.statSync(caminhoCompleto);
         const relPath = path.relative(BASE_DIR, caminhoCompleto).replace(/\\/g, '/');
         const categoria = classificarMidia(relPath);
@@ -55,7 +96,8 @@ function listarImagensBrutas(dir) {
           caminhoRelativo: relPath,
           tamanhoKb: Math.round(stats.size / 1024),
           modificadoEm: stats.mtime,
-          categoria
+          categoria,
+          midia: ehVideo ? 'video' : 'imagem'
         });
       }
     }
@@ -68,7 +110,7 @@ function agruparMidias(lista) {
   const carrosselMap = new Map();
 
   for (const item of lista) {
-    const match = item.nome.match(/^(.*carrossel[_-]?|.*slide[_-]?|.*pagina[_-]?)(\d+)(\.[a-z0-9]+)$/i);
+    const match = item.midia === 'video' ? null : item.nome.match(/^(.*carrossel[_-]?|.*slide[_-]?|.*pagina[_-]?)(\d+)(\.[a-z0-9]+)$/i);
     if (match) {
       const dirPai = path.dirname(item.caminhoRelativo);
       const prefixo = match[1];
@@ -99,6 +141,7 @@ function agruparMidias(lista) {
     } else {
       grupos.push({
         tipo: 'unico',
+        midia: item.midia,
         nome: item.nome,
         caminhoRelativo: item.caminhoRelativo,
         tamanhoKb: item.tamanhoKb,
@@ -203,20 +246,11 @@ ${instrucoes}
   if (url.pathname.startsWith('/midia/')) {
     const decoded = decodeURIComponent(url.pathname.replace('/midia/', ''));
     const safePath = path.normalize(path.join(BASE_DIR, decoded));
-    if (!safePath.startsWith(BASE_DIR) || !fs.existsSync(safePath)) {
+    if (!safePath.startsWith(BASE_DIR) || !fs.existsSync(safePath) || !fs.statSync(safePath).isFile()) {
       res.writeHead(404);
       return res.end('Arquivo nao encontrado');
     }
-    const ext = path.extname(safePath).toLowerCase();
-    const mimeTypes = {
-      '.png': 'image/png',
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.webp': 'image/webp',
-      '.svg': 'image/svg+xml'
-    };
-    res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
-    return fs.createReadStream(safePath).pipe(res);
+    return servirArquivo(req, res, safePath);
   }
 
   // Interface Web com Visualização Expandida (Lightbox)
@@ -264,7 +298,9 @@ ${instrucoes}
     
     .img-wrapper { aspect-ratio: 4/5; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: zoom-in; position: relative; }
     .img-wrapper img { width: 100%; height: 100%; object-fit: contain; }
-    .expand-hint { position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; font-size: 12px; font-weight: 600; color: #fff; gap: 6px; }
+    .img-wrapper video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+    .tag-video { background: #0f766e; color: #fff; border-radius: 6px; font-size: 10px; font-weight: 700; padding: 3px 7px; text-transform: uppercase; }
+    .expand-hint { pointer-events: none; position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; font-size: 12px; font-weight: 600; color: #fff; gap: 6px; }
     .img-wrapper:hover .expand-hint { opacity: 1; }
     
     .carousel-nav { position: absolute; bottom: 8px; left: 0; right: 0; display: flex; justify-content: center; gap: 6px; z-index: 8; }
@@ -347,6 +383,7 @@ ${instrucoes}
     </div>
     <div class="lightbox-content">
       <img class="lightbox-img" id="lightboxImg" src="" alt="Ampliado" />
+      <video class="lightbox-img" id="lightboxVideo" controls playsinline preload="metadata" hidden></video>
     </div>
     <div class="lightbox-actions">
       <button class="btn-lightbox-action" id="btnLightboxFeedback" onclick="pedirCorrecaoDoLightbox()">💬 Pedir Correção desta Peça</button>
@@ -440,12 +477,15 @@ ${instrucoes}
             
             <div class="tags">
               \${isCarrossel ? \`<div class="tag-carrossel">🎠 \${totalPags} slides</div>\` : ''}
+              \${item.midia === 'video' ? '<div class="tag-video">🎬 Vídeo</div>' : ''}
               <div class="tag-cat \${item.categoria}">\${item.categoria === 'criativo' ? 'Criativo' : 'Produção'}</div>
             </div>
 
             <!-- Clique na imagem abre a Visualização Expandida -->
             <div class="img-wrapper" onclick="abrirLightbox('\${dadosPagina.caminhoRelativo}', '\${dadosPagina.nome}', event)">
-              <img src="/midia/\${encodeURIComponent(dadosPagina.caminhoRelativo)}" alt="\${dadosPagina.nome}" loading="lazy" />
+              \${item.midia === 'video'
+                ? \`<video src="/midia/\${encodeURIComponent(dadosPagina.caminhoRelativo)}" controls playsinline preload="metadata" onclick="event.stopPropagation()"></video>\`
+                : \`<img src="/midia/\${encodeURIComponent(dadosPagina.caminhoRelativo)}" alt="\${dadosPagina.nome}" loading="lazy" />\`}
               <div class="expand-hint">🔍 Clique para expandir</div>
               \${isCarrossel ? \`
                 <div class="carousel-nav">
@@ -486,12 +526,26 @@ ${instrucoes}
       if (evt) evt.stopPropagation();
       arquivoAbertoNoLightbox = caminho;
       document.getElementById('lightboxTitle').textContent = nome + ' (' + caminho + ')';
-      document.getElementById('lightboxImg').src = '/midia/' + encodeURIComponent(caminho);
+      const ehVideo = /\\.(mp4|webm|mov)$/i.test(caminho);
+      const img = document.getElementById('lightboxImg');
+      const video = document.getElementById('lightboxVideo');
+      img.hidden = ehVideo;
+      video.hidden = !ehVideo;
+      if (ehVideo) { img.removeAttribute('src'); video.src = '/midia/' + encodeURIComponent(caminho); }
+      else { pararVideoDoLightbox(); img.src = '/midia/' + encodeURIComponent(caminho); }
       document.getElementById('lightboxOverlay').style.display = 'flex';
+    }
+
+    function pararVideoDoLightbox() {
+      const video = document.getElementById('lightboxVideo');
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
     }
 
     function fecharLightbox(evt) {
       if (!evt || evt.target.id === 'lightboxOverlay' || evt.target.classList.contains('lightbox-close')) {
+        pararVideoDoLightbox();
         document.getElementById('lightboxOverlay').style.display = 'none';
         arquivoAbertoNoLightbox = null;
       }
