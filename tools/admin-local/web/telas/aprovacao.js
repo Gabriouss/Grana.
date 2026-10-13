@@ -314,7 +314,7 @@ export async function montar(raiz, ctx) {
       detalhe.appendChild(h('button', {
         class: 'botao', type: 'button', texto: 'Pedir ajuste na versão atual',
         disabled: !filaDisponivel(pedidos) || p.estado === 'historico',
-        onclick: () => { janela.close?.(); pedirAjuste(ctx, { ...p, versao: pedidoComVersaoAtual.versaoAtual }); },
+        onclick: () => { janela.close?.(); return pedirAjuste(ctx, { ...p, versao: pedidoComVersaoAtual.versaoAtual }); },
       }));
     }
     const botaoAprovar = h('button', { class: 'botao botao-primario', type: 'button', texto: p.aprovada ? 'Aprovada nesta versão' : temPedidoAberto ? 'Aceite pela fila de ajustes' : 'Aprovar esta versão', disabled: !!p.aprovada || temPedidoAberto || filaIndisponivel || p.estado === 'historico',
