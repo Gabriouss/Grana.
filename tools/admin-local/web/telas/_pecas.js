@@ -78,6 +78,62 @@ export function agruparFamilias(pecas, familiasServidor) {
   return [...grupos.values()];
 }
 
+// Documento editorial de referência (o COPYS-FINAIS.md da semana): o catálogo lê dali as
+// legendas, mas ele não é peça publicável. Fica fora da fila de Aprovação e do contador
+// do menu, pelo MESMO predicado nos dois lugares, e continua acessível no Acervo.
+export function ehReferenciaEditorial(p) {
+  const nome = String(p?.nome || p?.caminho || '').split('/').pop();
+  return /^COPYS-FINAIS\.md$/i.test(nome) || p?.papel === 'referencia';
+}
+
+// O que entra na mesa de Aprovação e no contador "Aprovação (N)".
+export function pecaDaFila(p) {
+  return ['para-aprovacao', 'aprovados', 'historico'].includes(p?.estado) && !ehReferenciaEditorial(p);
+}
+
+// Formato de apresentação de uma família, para os filtros Reels | Estáticos.
+// Capa (pareada ou órfã) pertence ao Reel; o canal só vale quando há prova dele
+// (planejamento gravado ou destino escrito no nome/pasta). Imagem 9:16 sozinha não
+// prova Stories: sem prova, o formato fica "a conferir".
+export function formatoDaPeca(p) {
+  if (!p) return 'conferir';
+  if (p.tipo === 'texto') return 'texto';
+  if (p.tipo === 'video' || p.capaDe || p.capaOrfa || p.editorial?.tipo === 'capa') return 'reels';
+  if (p.tipo === 'carrossel') return 'carrossel';
+  const canal = p.planejamento?.canal || p.destino;
+  if (canal === 'reels') return 'reels';
+  if (canal === 'stories') return 'stories';
+  if (canal === 'instagram-feed') return 'feed';
+  const caminho = String(p.caminho || '').toLowerCase();
+  if (/(^|[\/_-])stor(y|ies)([\/_.-]|$)/.test(caminho)) return 'stories';
+  if (/(^|[\/_-])(feed|card)([\/_.-]|$)/.test(caminho)) return 'feed';
+  return 'conferir';
+}
+
+// Capa de Reel nunca é card próprio: a família que só tem capas pareadas (capaDe) é
+// absorvida pela família do vídeo, quando o vídeo está na mesma lista. Assim a galeria e o
+// contador do menu contam o Reel uma vez só, e a capa pendente puxa o Reel para
+// "Precisa de você". Capa cujo vídeo não está na lista continua visível, sozinha.
+export function juntarCapasAoReel(familias) {
+  const familiaDoVideo = new Map();
+  for (const g of familias) for (const p of g.pecas) if (!p.capaDe) familiaDoVideo.set(p.id, g);
+  const saida = [];
+  for (const g of familias) {
+    const soCapas = g.pecas.length > 0 && g.pecas.every((p) => p.capaDe);
+    const alvo = soCapas ? familiaDoVideo.get(g.principal?.capaDe) : null;
+    if (alvo && alvo !== g) {
+      for (const p of g.pecas) if (!alvo.pecas.includes(p)) alvo.pecas.push(p);
+      continue;
+    }
+    saida.push(g);
+  }
+  return saida;
+}
+
+export const ROTULOS_FORMATO = {
+  reels: 'Reel', feed: 'Feed', stories: 'Stories', carrossel: 'Carrossel', texto: 'Texto', conferir: 'Formato a conferir',
+};
+
 export function idadeDemanda(em, agora = Date.now()) {
   const instante = typeof em === 'string' ? Date.parse(em) : NaN;
   if (!Number.isFinite(instante) || instante > agora) return 'tempo não informado';

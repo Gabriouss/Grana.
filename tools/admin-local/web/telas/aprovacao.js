@@ -1,7 +1,7 @@
 // Aprovação: galeria de famílias; clicar abre a prévia do post com legenda e decisão.
 // Aprovar grava o aceite do autor para AQUELA versão (sha1). Não publica nem agenda nada em rede social.
 
-import { tituloPeca, rotuloSemana, rotuloEstado, trilha, historicoDaPeca, agruparFamilias, idadeDemanda } from './_pecas.js';
+import { tituloPeca, rotuloSemana, rotuloEstado, trilha, historicoDaPeca, agruparFamilias, idadeDemanda, formatoDaPeca, ROTULOS_FORMATO, juntarCapasAoReel } from './_pecas.js';
 import { montarMidia, midiasDaPeca, topoDaPrevia } from './_previa-publicacao.js';
 import { montarFila, secaoAjustesDaPeca, situacaoDaFamilia, contarPrecisaDeVoce, textoAlertaDemanda, observarPedidos, pedidoAberto, filaDisponivel } from './ajustes.js';
 
@@ -58,13 +58,15 @@ export async function montar(raiz, ctx) {
   let selecionada = fila.find((p) => p.id === ctx.params.peca) || fila.find((p) => !p.aprovada) || fila[0];
   while (corpo.firstChild) corpo.removeChild(corpo.firstChild);
 
-  const familias = agruparFamilias(fila, familiasServidor);
+  const familias = juntarCapasAoReel(agruparFamilias(fila, familiasServidor));
   const preferencias = lerFiltros();
-  const tipos = ['todos', 'imagem', 'video', 'carrossel', 'texto'];
+  const formatos = ['todos', 'reels', 'estaticos'];
+  const estaticos = ['todos', 'feed', 'stories', 'carrossel', 'conferir'];
   const estados = ['todos', 'voce', 'agentes', 'resolvidas'];
   const semanas = [...new Map(fila.filter((p) => p.semana?.inicio).map((p) => [p.semana.inicio, p.semana])).values()].sort((a, b) => b.inicio.localeCompare(a.inicio));
   const filtros = {
-    tipo: tipos.includes(preferencias.tipo) ? preferencias.tipo : 'todos',
+    formato: formatos.includes(preferencias.formato) ? preferencias.formato : 'todos',
+    estatico: estaticos.includes(preferencias.estatico) ? preferencias.estatico : 'todos',
     estado: estados.includes(preferencias.estado) ? preferencias.estado : 'todos',
     semana: semanas.some((s) => s.inicio === preferencias.semana) ? preferencias.semana : 'todas',
   };
@@ -77,9 +79,20 @@ export async function montar(raiz, ctx) {
       opcoes.map(([value, texto]) => h('option', { value, texto, selected: filtros[chave] === value }))));
   corpo.appendChild(h('div', { class: 'barra-filtros filtros-demandas form-linha' },
     seletor('demandas-semana', 'Semana', [['todas', 'Todas as semanas'], ...semanas.map((s) => [s.inicio, rotuloSemana(s)])], 'semana'),
-    seletor('demandas-tipo', 'Formato', [['todos', 'Todos os formatos'], ['imagem', 'Imagem'], ['video', 'Vídeo'], ['carrossel', 'Carrossel'], ['texto', 'Texto']], 'tipo'),
     seletor('demandas-estado', 'Próxima ação', [['todos', 'Todas'], ['voce', 'Precisa de você'], ['agentes', 'Com os agentes'], ['resolvidas', 'Resolvidas']], 'estado')));
-  corpo.appendChild(h('div', { class: 'galeria-demandas' }, contagemFamilias, lista));
+  // Formato em fichas: Reels separados dos estáticos, e os estáticos por destino comprovado.
+  const fichas = (rotulo, opcoes, chave) => h('div', { class: 'filtros', role: 'group', 'aria-label': rotulo },
+    opcoes.map(([valor, texto]) => h('button', { class: 'chip', type: 'button', texto, 'aria-pressed': String(filtros[chave] === valor),
+      onclick: () => { filtros[chave] = valor; guardarFiltros(filtros); desenharFichas(); desenharLista(); desenharDetalhe(); } })));
+  const areaFichas = h('div', { class: 'galeria-fichas' });
+  const desenharFichas = () => {
+    while (areaFichas.firstChild) areaFichas.removeChild(areaFichas.firstChild);
+    areaFichas.appendChild(fichas('Formato', [['todos', 'Todos'], ['reels', 'Reels'], ['estaticos', 'Estáticos']], 'formato'));
+    if (filtros.formato === 'estaticos') areaFichas.appendChild(fichas('Tipo de estático',
+      [['todos', 'Todos os estáticos'], ['feed', 'Feed'], ['stories', 'Stories'], ['carrossel', 'Carrossel'], ['conferir', 'Formato a conferir']], 'estatico'));
+  };
+  desenharFichas();
+  corpo.appendChild(h('div', { class: 'galeria-demandas' }, areaFichas, contagemFamilias, lista));
 
   // Janela de prévia: a mesma gramática do post aberto no Feed (mídia à esquerda, legenda e
   // decisão ao lado). A mídia só é montada ao abrir, para a galeria não baixar vídeo à toa;
@@ -160,8 +173,13 @@ export async function montar(raiz, ctx) {
   const desenharLista = () => {
     ctx.contadorAprovacao?.(filaDisponivel(pedidos) ? contarPrecisaDeVoce(familias, pedidos) : null);
     while (lista.firstChild) lista.removeChild(lista.firstChild);
-    const visiveis = familias.filter((g) => g.pecas.some((p) => (filtros.tipo === 'todos' || p.tipo === filtros.tipo) &&
-      (filtros.semana === 'todas' || p.semana?.inicio === filtros.semana)));
+    const passaFormato = (g) => {
+      const f = formatoDaPeca(g.principal);
+      if (filtros.formato === 'reels') return f === 'reels';
+      if (filtros.formato === 'estaticos') return ['feed', 'stories', 'carrossel', 'conferir'].includes(f) && (filtros.estatico === 'todos' || filtros.estatico === f);
+      return true;
+    };
+    const visiveis = familias.filter((g) => passaFormato(g) && g.pecas.some((p) => filtros.semana === 'todas' || p.semana?.inicio === filtros.semana));
     const grupos = { voce: [], agentes: [], resolvidas: [] };
     for (const g of visiveis) {
       const s = situacaoFamilia(g);
@@ -202,7 +220,9 @@ export async function montar(raiz, ctx) {
     },
     h('span', { class: 'galeria-card-midia', 'aria-hidden': 'true' },
       miniatura(ctx, p),
-      h('span', { class: 'galeria-card-formato', texto: paginas ? `${rotuloFormato(p)} · ${paginas} páginas` : rotuloFormato(p) })),
+      h('span', { class: 'galeria-card-formato', dados: { formato: formatoDaPeca(p) }, texto: paginas ? `${rotuloFormato(p)} · ${paginas} páginas` : rotuloFormato(p) }),
+      p.capaOrfa ? h('span', { class: 'galeria-card-aviso', texto: 'Capa sem Reel' })
+        : p.tipo === 'video' && !p.capa ? h('span', { class: 'galeria-card-aviso', texto: 'Sem capa' }) : null),
     h('span', { class: 'galeria-card-corpo' },
       h('span', { class: 'galeria-card-titulo', texto: tituloPeca(p) }),
       h('span', { class: 'galeria-card-meta', texto: rotuloSemana(p.semana) }),
@@ -338,7 +358,7 @@ export async function montar(raiz, ctx) {
 // Formato visível de uma peça na galeria e no topo da prévia.
 function rotuloFormato(p) {
   if (p.capaDe || p.capaOrfa) return 'Capa de Reel';
-  return { video: 'Reel', carrossel: 'Carrossel', imagem: 'Imagem', texto: 'Texto' }[p.tipo] || 'Peça';
+  return ROTULOS_FORMATO[formatoDaPeca(p)];
 }
 
 // Miniatura do card: capa do Reel, primeira página, primeiro quadro do vídeo ou o título.

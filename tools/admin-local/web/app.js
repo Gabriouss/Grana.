@@ -8,7 +8,7 @@
 
 import { SIMULADO } from './simulado.js';
 import { criarAcesso, CODIGOS_LOGIN, ROTAS_SESSAO } from './telas/_acesso.js';
-import { agruparFamilias } from './telas/_pecas.js';
+import { agruparFamilias, juntarCapasAoReel } from './telas/_pecas.js';
 import { contarPrecisaDeVoce } from './telas/ajustes.js';
 
 const ROTAS_SEM_EFEITO = new Set(Object.values(ROTAS_SESSAO));
@@ -828,7 +828,7 @@ async function atualizarContadorAprovacao(obsoleta) {
     if (obsoleta()) return;
     if (!Array.isArray(acervo.dados?.pecas) || !Array.isArray(fila.dados?.pedidos)) throw new Error('contador-indisponivel');
     const pecas = acervo.dados.pecas.filter((p) => ['para-aprovacao', 'aprovados', 'historico'].includes(p.estado));
-    contadorAprovacao(contarPrecisaDeVoce(agruparFamilias(pecas, acervo.dados.familias), fila.dados.pedidos));
+    contadorAprovacao(contarPrecisaDeVoce(juntarCapasAoReel(agruparFamilias(pecas, acervo.dados.familias)), fila.dados.pedidos));
   } catch (err) {
     if (obsoleta()) return;
     console.warn('[aprovacao-contador]', err.codigo || 'indisponivel');

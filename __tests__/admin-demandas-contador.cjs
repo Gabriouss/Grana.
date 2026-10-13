@@ -42,7 +42,7 @@ const s = { epoca: 0, geracao: 1, bloqueado: null, acesso: null,
   h: () => ({ querySelector: () => ({ focus() {} }) }), faixa: () => null, limpar() {}, limpezaAtual: null,
   MOTIVOS_COM_CAUSA: ['saiu'], TEXTO_BLOQUEIO: { 'servidor-fora': { titulo: 'Servidor fora', texto: 'Fixture' }, saiu: { titulo: 'Saiu', texto: 'Fixture' } },
   setTimeout: (f, ms) => { assert.equal(ms,15000); timers.set(++timerId,f); return timerId; }, clearTimeout: (id) => timers.delete(id),
-  agruparFamilias: pecas.agruparFamilias, contarPrecisaDeVoce: ajustes.contarPrecisaDeVoce,
+  agruparFamilias: pecas.agruparFamilias, juntarCapasAoReel: pecas.juntarCapasAoReel, contarPrecisaDeVoce: ajustes.contarPrecisaDeVoce,
   api: async (url) => { calls.push(url); if (falha) throw Error('fixture'); return { dados: url.endsWith('/pecas') ? { pecas: acervo } : { pedidos: fila } }; },
 };
 vm.runInNewContext(trecho, s);
