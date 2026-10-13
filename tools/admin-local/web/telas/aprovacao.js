@@ -110,9 +110,14 @@ export async function montar(raiz, ctx) {
       pausarMidia();
       rascunhoAberto = null;
       // A galeria é redesenhada ao abrir: o foco volta ao card da família, achado pelo id.
-      const alvo = lista.querySelector?.(`[data-peca="${CSS.escape(grupoSelecionado()?.principal?.id || '')}"]`)
-        || (devolverFoco?.isConnected ? devolverFoco : null);
-      alvo?.focus?.();
+      // Roda depois da restauração nativa do <dialog>, que mira o card antigo já recriado.
+      const focar = () => {
+        const alvo = lista.querySelector?.(`[data-peca="${CSS.escape(grupoSelecionado()?.principal?.id || '')}"]`)
+          || (devolverFoco?.isConnected ? devolverFoco : null);
+        alvo?.focus?.();
+      };
+      focar();
+      setTimeout(focar, 0);
     },
     onclick: (e) => { if (e.target === janela) janela.close(); },
   }, h('div', { class: 'feed-post-corpo' }, midiaSlot, h('div', { class: 'feed-post-lado aprovacao-janela-lado' }, cabecaJanela, detalhe)));
@@ -179,6 +184,14 @@ export async function montar(raiz, ctx) {
     if (abrir) abrirJanela();
   };
 
+  // Mesmo código editorial (C14, R5…) em mais de uma família da mesma semana: é revisão que o
+  // catálogo ainda não junta (backend, Harbor). A tela não escolhe a vigente; ela avisa.
+  const outrasVersoes = (g) => {
+    const p = g.principal;
+    if (!p?.codigo || p.estado === 'historico') return [];
+    return familias.filter((o) => o !== g && o.principal?.codigo === p.codigo && o.principal.estado !== 'historico'
+      && o.principal.semana?.inicio === p.semana?.inicio);
+  };
   const desenharLista = () => {
     ctx.contadorAprovacao?.(filaDisponivel(pedidos) ? contarPrecisaDeVoce(familias, pedidos) : null);
     while (lista.firstChild) lista.removeChild(lista.firstChild);
@@ -216,6 +229,7 @@ export async function montar(raiz, ctx) {
 
   const cardDaFamilia = (g) => {
     const p = g.principal;
+    const irmas = outrasVersoes(g);
     const s = situacaoFamilia(g);
     const selo = ctx.selo(s.secao === 'voce' ? 'alerta' : s.secao === 'resolvidas' ? 'ok' : 'neutro', s.rotulo);
     selo.setAttribute('class', `${selo.getAttribute?.('class') || selo.attrs?.class || 'selo'} demanda-selo`);
@@ -230,7 +244,8 @@ export async function montar(raiz, ctx) {
     h('span', { class: 'galeria-card-midia', 'aria-hidden': 'true' },
       miniatura(ctx, p),
       h('span', { class: 'galeria-card-formato', dados: { formato: formatoDaPeca(p) }, texto: paginas ? `${rotuloFormato(p)} · ${paginas} páginas` : rotuloFormato(p) }),
-      p.capaOrfa ? h('span', { class: 'galeria-card-aviso', texto: 'Capa sem Reel' })
+      irmas.length ? h('span', { class: 'galeria-card-aviso', texto: `Outra versão na fila (${irmas.length + 1})` })
+        : p.capaOrfa ? h('span', { class: 'galeria-card-aviso', texto: 'Capa sem Reel' })
         : p.tipo === 'video' && !p.capa ? h('span', { class: 'galeria-card-aviso', texto: 'Sem capa' }) : null),
     h('span', { class: 'galeria-card-corpo' },
       h('span', { class: 'galeria-card-titulo', texto: tituloPeca(p) }),
@@ -288,6 +303,12 @@ export async function montar(raiz, ctx) {
     }
 
     // 3. Avisos que mudam a decisão.
+    const irmas = familiaAtual ? outrasVersoes(familiaAtual) : [];
+    if (irmas.length) {
+      detalhe.appendChild(ctx.alerta('atencao', `Há ${irmas.length === 1 ? 'outra versão' : `${irmas.length} outras versões`} de ${p.codigo} na fila desta semana, como peça separada. Confira qual é a vigente antes de aprovar: aprovar esta não recusa a outra.`));
+      detalhe.appendChild(h('div', { class: 'bloco-acao' }, irmas.map((o) => h('button', {
+        class: 'botao botao-fantasma', type: 'button', texto: `Ver ${tituloPeca(o.principal)}`, onclick: () => escolher(o.principal) }))));
+    }
     for (const a of situacaoDaFamilia({ pecas: [p] }, pedidos).alertas) {
       detalhe.appendChild(h('p', { class: 'demanda-atencao campo-ajuda', role: 'status', texto: [textoAlertaDemanda(a), a.proximoPasso].filter(Boolean).join(' ') }));
     }

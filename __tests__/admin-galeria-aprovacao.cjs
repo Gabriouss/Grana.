@@ -161,5 +161,16 @@ assert.equal(_pecas.juntarCapasAoReel([{ chave: 'c', principal: capa, pecas: [ca
     const acervoSrc = fs.readFileSync('tools/admin-local/web/telas/acervo.js', 'utf8');
     assert.ok(acervoSrc.includes("p.estado === 'para-aprovacao' && !ehReferenciaEditorial(p)"), 'Acervo não manda o documento para a Aprovação');
   }
-  console.log('admin-galeria-aprovacao: formatos, capa no Reel, órfã visível, carrossel uma peça, filtros e contador igual à galeria, ajuste na janela com categoria, clique duplo e versão obsoleta, COPYS-FINAIS fora da fila e do contador: OK');
+  // 6. Duas famílias com o mesmo código na semana (revisão que o catálogo não juntou): aviso nos dois cards.
+  {
+    const v6 = peca('6'.repeat(16), { tipo: 'carrossel', codigo: 'C14', caminho: D + 'lumen-v6/c14-*', nome: 'lumen-v6/c14-*', arquivos: [{ nome: 'c14-1.png', tipo: 'imagem', url: '/x/a.png' }, { nome: 'c14-2.png', tipo: 'imagem', url: '/x/b.png' }] });
+    const v7 = peca('7'.repeat(16), { tipo: 'carrossel', codigo: 'C14', caminho: D + 'lumen-v7/c14-*', nome: 'lumen-v7/c14-*', arquivos: [{ nome: 'c14-1.png', tipo: 'imagem', url: '/x/c.png' }, { nome: 'c14-2.png', tipo: 'imagem', url: '/x/d.png' }] });
+    const c = { ...ctx, contadorAprovacao() {}, api: async (url) => ({ dados: url.endsWith('/pecas') ? { pecas: [v6, v7] } : { pedidos: [], remoto: { status: 'ativo' } } }) };
+    const r = node('main');
+    await load('aprovacao.js').montar(r, c);
+    assert.equal(walk(r).filter((n) => n.attrs.class === 'galeria-card-aviso' && n.attrs.texto === 'Outra versão na fila (2)').length, 2);
+    assert.ok(text(r).includes('Há outra versão de C14 na fila desta semana'));
+    assert.ok(walk(r).some((n) => n.tag === 'button' && String(n.attrs.texto).startsWith('Ver C14')), 'atalho para a outra versão');
+  }
+  console.log('admin-galeria-aprovacao: formatos, capa no Reel, órfã visível, carrossel uma peça, filtros e contador igual à galeria, ajuste na janela com categoria, clique duplo e versão obsoleta, COPYS-FINAIS fora da fila e do contador, aviso de versão duplicada: OK');
 })().catch((e) => { console.error(e); process.exitCode = 1; });

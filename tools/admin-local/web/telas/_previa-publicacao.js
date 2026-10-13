@@ -83,7 +83,8 @@ export function montarMidia(h, p) {
       clearTimeout(espera);
       espera = setTimeout(() => marcar(Math.round(trilho.scrollLeft / Math.max(1, trilho.clientWidth))), 80);
     }, { passive: true });
-    trilho.addEventListener('keydown', (e) => {
+    // Teclado na área inteira: com o foco na seta, no trilho ou nos pontos, as setas mudam de página.
+    midiaEl.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'VIDEO') return; // setas do vídeo continuam sendo do vídeo
       if (e.key === 'ArrowLeft') { e.preventDefault(); ir(atual - 1); }
       if (e.key === 'ArrowRight') { e.preventDefault(); ir(atual + 1); }
