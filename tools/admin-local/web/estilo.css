@@ -1230,6 +1230,8 @@ details.peca-indice[open] { padding-bottom: var(--s-lg); }
 /* Aprovação em galeria: um card por família, e a prévia abre na janela do post (a mesma do Feed).
    Material primeiro, decisão ao lado, evidência recolhida. */
 .galeria-demandas { display: flex; flex-direction: column; gap: var(--s-sm); min-width: 0; }
+.galeria-fichas { display: flex; flex-direction: column; gap: var(--s-sm); margin-bottom: var(--s-sm); }
+.galeria-fichas .filtros { margin-bottom: 0; }
 .galeria-grade {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
