@@ -368,7 +368,10 @@ function itemCalendario(ctx, i, aoClicar) {
 // Apresenta a previsão recebida; resolução e identidade pertencem ao servidor.
 export function detalhesCronograma(ctx, previsao) {
   if (!previsao) return null;
-  previsao = { ...previsao, estado: previsao.estadoCronograma || previsao.estado };
+  // Resumos de peça usam estado para a pasta; entradas usam o estado do planejamento.
+  // Um estado novo da entrada não pode ser escondido por um resumo antigo.
+  const estadoDaPeca = ['para-aprovacao', 'aprovados', 'historico', 'apoio'].includes(previsao.estado);
+  previsao = { ...previsao, estado: estadoDaPeca || !previsao.estado ? previsao.estadoCronograma || previsao.estado : previsao.estado };
   const { h } = ctx;
   const p = previsao.dataPrevista;
   const origem = previsao.origem;
@@ -407,7 +410,8 @@ export function detalhesCronograma(ctx, previsao) {
               : 'Próximo passo: confira a previsão e os recibos antes de seguir.') }),
     origem ? h('p', { class: 'campo-ajuda', texto: `Origem: ${origem.manifestoId || 'manifesto não informado'} · ${origem.itemId || 'item não informado'} · revisão ${origem.manifestoVersao ?? 'não informada'}` }) : h('p', { class: 'campo-ajuda', texto: 'Origem do cronograma não informada.' }),
     p?.modo === 'diaD' && (p.dataResolvida || previsao.dataResolvida) ? h('p', { texto: `Previsão resolvida: ${data(p.dataResolvida || previsao.dataResolvida)}` }) : null,
-    previsao.motivo ? ctx.alerta('atencao', previsao.motivo) : estados[previsao.estado] ? ctx.alerta('atencao', estados[previsao.estado]) : previsao.estado && !['resolvido', 'planejado'].includes(previsao.estado) ? ctx.alerta('atencao', `Estado do cronograma: ${previsao.estado}. Confira antes de seguir.`) : null,
+    estados[previsao.estado] ? ctx.alerta('atencao', estados[previsao.estado]) : previsao.estado && !['resolvido', 'planejado'].includes(previsao.estado) ? ctx.alerta('atencao', `Estado do cronograma: ${previsao.estado}. Confira antes de seguir.`) : null,
+    previsao.motivo && previsao.motivo !== previsao.estado ? ctx.alerta('atencao', previsao.motivo) : null,
     manual ? h('p', { texto: `Data alterada pelo autor: ${data(manual.data)} ${horario(manual.hora)} · ${canal(manual.canal)}. A previsão de origem foi preservada.` }) : null,
     ...recibos.map((r) => h('p', { role: 'status', class: 'campo-ajuda', texto: r.tipo === 'aceite-autor'
       ? `Recibo do aceite: aceite-autor · versão ${r.versaoPeca || 'não informada'}${r.aprovadoEm ? ` · ${ctx.formatar.dataHora(r.aprovadoEm)}` : ''}${r.evidencia ? ` · ${r.evidencia}` : ''}. Não comprova publicação na Meta.`
@@ -416,30 +420,43 @@ export function detalhesCronograma(ctx, previsao) {
     ...(Array.isArray(previsao.avisos) ? previsao.avisos : []).map((aviso) => ctx.alerta('atencao', aviso)));
 }
 
-async function escolherData(ctx, peca, dataInicial, canais) {
-  const v = await ctx.formulario({
-    titulo: 'Data de publicação',
-    texto: `${peca.titulo || peca.id}. Isto só marca no calendário do painel. Ninguém publica nada por aqui.`,
-    campos: [
-      { nome: 'data', rotulo: 'Dia', tipo: 'date', obrigatorio: true, valor: dataInicial || '' },
-      { nome: 'hora', rotulo: 'Horário (opcional)', tipo: 'time', valor: '' },
-      { nome: 'canal', rotulo: 'Onde', tipo: 'select', valor: peca.tipo === 'video' ? 'reels' : 'instagram-feed',
-        opcoes: canais.map((c) => ({ valor: c, rotulo: rotuloCanal(c) })) },
-      { nome: 'observacao', rotulo: 'Observação (opcional)', tipo: 'textarea', linhas: 2, ajuda: 'Este texto fica gravado em docs/marketing/painel e vai para o GitHub público no próximo commit.' },
-    ],
-    rotuloBotao: 'Marcar data',
-  });
-  if (!v) return;
+const planejamentosEmCurso = new WeakSet();
+export async function escolherData(ctx, peca, dataInicial, canais) {
+  if (ctx.obsoleta() || planejamentosEmCurso.has(ctx)) return;
+  planejamentosEmCurso.add(ctx);
   try {
+    const v = await ctx.formulario({
+      titulo: 'Data de publicação',
+      texto: `${peca.titulo || peca.id}. Isto só marca no calendário do painel. Ninguém publica nada por aqui.`,
+      campos: [
+        { nome: 'data', rotulo: 'Dia', tipo: 'date', obrigatorio: true, valor: dataInicial || '' },
+        { nome: 'hora', rotulo: 'Horário (opcional)', tipo: 'time', valor: '' },
+        { nome: 'canal', rotulo: 'Onde', tipo: 'select', valor: peca.tipo === 'video' ? 'reels' : 'instagram-feed',
+          opcoes: canais.map((c) => ({ valor: c, rotulo: rotuloCanal(c) })) },
+        { nome: 'observacao', rotulo: 'Observação (opcional)', tipo: 'textarea', linhas: 2, ajuda: 'Este texto fica gravado em docs/marketing/painel e vai para o GitHub público no próximo commit.' },
+      ],
+      rotuloBotao: 'Marcar data',
+    });
+    if (!v || ctx.obsoleta()) return;
+    if (!dataValida(v.data) || (v.hora && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(v.hora)) || !canais.includes(v.canal)) {
+      throw new Error('Confira a data, o horário e o canal antes de marcar.');
+    }
     const r = await ctx.acao('/api/marketing/calendario', {
       id: peca.id, versao: peca.versao, data: v.data, hora: v.hora || undefined, canal: v.canal, observacao: v.observacao || undefined,
     });
-    ctx.aviso(`Marcado para ${ctx.formatar.data(v.data)}.`, 'ok');
+    if (ctx.obsoleta()) return;
     for (const a of r.dados?.avisos || []) ctx.aviso(a, 'info');
+    const recibo = r.dados?.planejamento;
+    if (recibo?.id !== peca.id || recibo.versao !== peca.versao || recibo.data !== v.data ||
+      (recibo.hora || null) !== (v.hora || null) || recibo.canal !== v.canal || !Number.isFinite(Date.parse(recibo.planejadoEm))) {
+      throw new Error('A resposta não confirmou o planejamento. Atualize e confira os recibos antes de repetir.');
+    }
+    ctx.aviso(`Marcado para ${ctx.formatar.data(recibo.data)}.`, 'ok');
     ctx.navegar(`#/marketing/calendario?mes=${v.data.slice(0, 7)}`);
   } catch (err) {
-    ctx.aviso(err.codigo === 'versao-mudou'
+    console.warn('[calendario-planejar]', err.codigo || 'falha');
+    if (!ctx.obsoleta()) ctx.aviso(err.codigo === 'versao-mudou'
       ? 'A peça mudou depois do aceite. Ela precisa de novo aceite antes de ganhar data.'
-      : `A data não foi marcada: ${err.message}`, 'erro');
-  }
+      : 'Não foi possível confirmar a data; atualize e confira antes de repetir.', 'erro');
+  } finally { planejamentosEmCurso.delete(ctx); }
 }

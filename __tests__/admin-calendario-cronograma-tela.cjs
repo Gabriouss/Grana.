@@ -14,6 +14,9 @@ const previsto = { origem, dataPrevista: { modo: 'diaD', diasUteis: 4, hora: '19
 let t = render(previsto);
 assert.ok(t.includes('D+4 dias úteis às 19:00'));
 assert.ok(t.includes('Aguardando dia D'));
+const comMotivoEstado = render({ ...previsto, estadoCronograma: 'aguardando dia D', motivo: 'aguardando dia D', proximoPasso: 'Defina o Dia D para resolver a previsão desta peça.' });
+assert.ok(comMotivoEstado.includes('Aguardando dia D. A data sai quando o dia D for marcado.'), 'motivo identico ao estado nao suprime rotulo explicativo');
+assert.ok(comMotivoEstado.includes('Defina o Dia D para resolver a previsão desta peça.'));
 assert.ok(t.includes('reels-widget-padaria'));
 assert.equal(/\d{2}\/\d{2}\/\d{4}/.test(t), false, 'não inventa data absoluta');
 t = render({ ...previsto, estado: 'planejado', dataPrevista: { ...previsto.dataPrevista, dataResolvida: '2026-10-15' }, substituicaoManual: { data: '2026-10-16', hora: '20:00', canal: 'stories' }, recibo: { tipo: 'aceite-autor', versaoPeca: 'versao-ficticia', aprovadoEm: '2026-10-07T10:31:32-03:00', evidencia: 'aceite fictício no painel' } });
@@ -43,6 +46,7 @@ assert.equal(source.includes('innerHTML'), false);
 assert.ok(render({ ...previsto, dataPrevista: { ...previsto.dataPrevista, diasUteis: 1 } }).includes('D+1 dia útil'));
 assert.equal(render({ origem: {} }).includes('undefined'), false);
 assert.ok(render({ estado: 'estado-novo' }).includes('Estado do cronograma: estado-novo'));
+assert.ok(render({ estado: 'estado-novo', estadoCronograma: 'aguardando dia D', motivo: 'aguardando dia D' }).includes('Estado do cronograma: estado-novo'), 'estado da entrada desconhecido nao fica oculto pelo resumo antigo');
 for (const estadoCronograma of ['vinculo-invalido', 'duplicado', 'desatualizado']) {
  const r={estado:'aprovados',estadoCronograma,motivo:'Motivo publico do servidor',proximoPasso:'Atualize a lista e confira o item.'};
  const antes=JSON.stringify(r), texto=render(r);
@@ -119,6 +123,7 @@ function encontrar(root, predicado) {
    else if (url === '/api/marketing/cronograma/vinculo') dados=await cr.registrarVinculo(dir,body.pecaId,body);
    else if (url.endsWith('/promover')) dados=await pr.promover(dir,url.split('/')[4],body);
    else if (url.endsWith('/aprovar')) dados=await ap.aprovar(dir,url.split('/')[4],body);
+   else if (url === '/api/marketing/calendario') dados=await cal.planejar(dir,body);
    else throw Error('POST inesperado '+url);
    return {dados};
   },
@@ -225,6 +230,26 @@ function encontrar(root, predicado) {
   obsoleta=true;resolverPost({dados:{manifesto:{...m,versao:4,diaD:'2099-02-01'},avisos:['não exibir']}});await salvarTardio;
   assert.equal(avisos.length,antesAvisos);assert.equal(recargas,antesRecarga);obsoleta=false;
   obsoleta=true;await calendario.editarCronograma(contexto,m,'diaD',botao());await aprovacao.promoverPeca(contexto,p,botao());assert.equal(posts().length,n);obsoleta=false;
+  // Marcação manual pela UI real: recibo conferido, bloqueio de duplicata e navegação antiga.
+  const dataManual={data:'2099-01-20',hora:'20:00',canal:'reels',observacao:''};
+  n=posts().length;forms.push(dataManual);await calendario.escolherData(contexto,nova,undefined,['reels']);
+  assert.equal(posts().length,n+1);assert.equal(posts().at(-1).url,'/api/marketing/calendario');
+  assert.equal(cal.obterCalendario(dir,'2099-01').itens[0].data,dataManual.data);
+  assert.match(avisos.at(-1).t,/Marcado para/);assert.equal(avisos.at(-1).tipo,'ok');
+  n=posts().length;forms.push(null);await calendario.escolherData(contexto,nova,undefined,['reels']);assert.equal(posts().length,n);
+  forms.push({...dataManual,data:'2099-02-30'});await calendario.escolherData(contexto,nova,undefined,['reels']);assert.equal(posts().length,n);assert.equal(avisos.at(-1).tipo,'erro');
+  let resolverFormulario,aberturas=0;
+  const formularioPendente={...contexto,formulario:()=>{aberturas++;return new Promise(r=>resolverFormulario=r);}};
+  const escolha=calendario.escolherData(formularioPendente,nova,undefined,['reels']);
+  await calendario.escolherData(formularioPendente,nova,undefined,['reels']);assert.equal(aberturas,1);
+  obsoleta=true;resolverFormulario(dataManual);await escolha;obsoleta=false;assert.equal(posts().length,n,'nenhum POST de formulario da tela antiga');
+  const navManual=navegacoes.length;forms.push(dataManual);await calendario.escolherData(incompleta,nova,undefined,['reels']);
+  assert.equal(navegacoes.length,navManual);assert.equal(avisos.at(-1).tipo,'erro','resposta incompleta nao confirma sucesso');
+  assert.equal(avisos.at(-1).t,'Não foi possível confirmar a data; atualize e confira antes de repetir.','recibo incompleto deixa gravacao incerta, sem afirmar ausencia');
+  resolverPost=null;forms.push(dataManual);const manualTardio=calendario.escolherData(tardia,nova,undefined,['reels']);
+  for(let i=0;i<50 && !resolverPost;i++) await new Promise(r=>setImmediate(r));assert.equal(typeof resolverPost,'function');
+  const avisosManual=avisos.length;obsoleta=true;resolverPost({dados:{planejamento:{id:nova.id,versao:nova.versao,...dataManual,planejadoEm:new Date().toISOString()},avisos:['nao exibir']}});await manualTardio;obsoleta=false;
+  assert.equal(avisos.length,avisosManual);assert.equal(navegacoes.length,navManual,'resposta tardia nao navega');
   assert.equal(meta,0);assert(chamadas.every((c)=>c.url.startsWith('/api/marketing/')));
   console.log(`admin-calendario-cronograma-tela Fase 3: módulos reais UI/backend; promoção/ID novo/retomada -> criação -> item -> vínculo INDICE.md -> D -> planejada/recibos OK; cancelamento, validação, CAS, erros e obsoleta OK; ${posts().length} POST locais em fixture; zero chamadas Meta/rede/credenciais`);
  } finally {

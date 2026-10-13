@@ -77,7 +77,7 @@ function render(helper, dto) {
       assert(t.includes('Não comprova publicação na Meta.')); assert(!t.includes('undefined'));
       // Falhas/variantes injetadas sobre a resposta real, nao um DTO paralelo.
       for (const estado of ['aguardando dia D', 'aguardando-dia-d']) {
-        const v = structuredClone(dto); v.estado = estado; v.recibos = []; v.recibo.estado = estado;
+        const v = structuredClone(dto); v.estado = estado; v.estadoCronograma = estado; v.recibos = []; v.recibo.estado = estado;
         const r = render(helper, v).linhas;
         assert(r.some((s) => s.startsWith('Recibo do calendário:') && s.includes('Planejamento registrado.')));
         assert.equal((r.join(' ').match(/Aguardando dia D\./g) || []).length, 1);
@@ -88,8 +88,12 @@ function render(helper, dto) {
         assert(origem.includes(campo === 'manifestoVersao' ? 'revisão não informada' : campo === 'manifestoId' ? 'manifesto não informado' : 'item não informado'));
         assert(!origem.includes('undefined'));
       }
-      const desconhecido = structuredClone(dto); desconhecido.estado = '<script>estado-novo</script>';
-      assert(render(helper, desconhecido).linhas.includes('Estado do cronograma: <script>estado-novo</script>. Confira antes de seguir.'));
+      for (const campo of ['estadoCronograma', 'estado']) {
+        const desconhecido = structuredClone(dto);
+        if (campo === 'estadoCronograma') desconhecido.estado = 'aprovados'; // resumo da peça, não estado da entrada
+        desconhecido[campo] = '<script>estado-novo</script>';
+        assert(render(helper, desconhecido).linhas.includes('Estado do cronograma: <script>estado-novo</script>. Confira antes de seguir.'), `fallback desconhecido por ${campo}`);
+      }
       const plural = structuredClone(dto); plural.dataPrevista.diasUteis = 2;
       assert(render(helper, plural).linhas.join(' ').includes('D+2 dias úteis'));
       const estadoRecibo = structuredClone(dto); estadoRecibo.recibos[0].estado = 'outro-estado';
