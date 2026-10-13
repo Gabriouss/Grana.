@@ -93,5 +93,51 @@ assert.equal(_pecas.juntarCapasAoReel([{ chave: 'c', principal: capa, pecas: [ca
   ficha('Todos').attrs.onclick();
   assert.equal(cards().length, 5);
   assert.deepEqual(chamadas, ['/api/marketing/ajustes', '/api/marketing/pecas'], 'só leitura');
-  console.log('admin-galeria-aprovacao: formatos, capa no Reel, órfã visível, carrossel uma peça, filtros e contador igual à galeria: OK');
+  // 4. Pedido de ajuste dentro da janela: categorias como prefixo, mesma rota e corpo de hoje.
+  const ap = load('aprovacao.js');
+  assert.equal(ap.motivoDoAjuste(new Set(['copy', 'legenda']), '  Trocar a frase final  '), 'Legenda, Copy da arte: Trocar a frase final');
+  assert.equal(ap.motivoDoAjuste(new Set(), 'texto'), '', 'sem categoria não há motivo');
+  assert.equal(ap.motivoDoAjuste(new Set(['visual']), '   '), '', 'sem texto não há motivo');
+  async function janelaComAjuste(acao) {
+    const posts = [], avisos = [], navegacoes = [];
+    const c = { ...ctx, contadorAprovacao() {}, acao: async (url, body) => { posts.push({ url, body }); return acao(url, body); },
+      aviso: (t, tipo) => avisos.push([tipo, t]), navegar: (u) => navegacoes.push(u),
+      formulario: () => assert.fail('nada de formulário por cima da janela') };
+    const r = node('main');
+    await load('aprovacao.js').montar(r, c);
+    const botao = (t) => walk(r).find((n) => n.tag === 'button' && n.attrs.texto === t);
+    assert.equal(walk(r).some((n) => n.attrs.class === 'aprovacao-ajuste'), false, 'fechado até pedir');
+    botao('Pedir ajuste').attrs.onclick();
+    const secao = walk(r).find((n) => n.attrs.class === 'aprovacao-ajuste');
+    assert.ok(secao, 'abre dentro da janela');
+    assert.deepEqual(walk(secao).filter((n) => n.tag === 'input').map((n) => n.attrs.value), ['legenda', 'visual', 'design', 'copy']);
+    return { r, secao, botao, posts, avisos, navegacoes };
+  }
+  {
+    const t = await janelaComAjuste(async () => ({ dados: {} }));
+    const registrar = walk(t.secao).find((n) => n.attrs.texto === 'Registrar pedido');
+    await registrar.attrs.onclick();
+    assert.equal(t.posts.length, 0, 'sem categoria e sem texto não envia');
+    assert.ok(text(t.secao).includes('Escolha ao menos uma categoria') || walk(t.secao).some((n) => String(n.textContent || '').includes('Escolha ao menos uma categoria')));
+    const input = (v) => walk(t.secao).find((n) => n.tag === 'input' && n.attrs.value === v);
+    input('legenda').attrs.onchange({ target: { checked: true } });
+    input('design').attrs.onchange({ target: { checked: true } });
+    walk(t.secao).find((n) => n.tag === 'textarea').attrs.oninput({ target: { value: 'Legenda AUDIT mais curta' } });
+    const primeiro = registrar.attrs.onclick(); await registrar.attrs.onclick(); await primeiro;
+    assert.equal(t.posts.length, 1, 'clique duplo grava uma vez');
+    assert.equal(t.posts[0].url, `/api/marketing/pecas/${reel.id}/ajuste`);
+    assert.deepEqual(JSON.parse(JSON.stringify(t.posts[0].body)), { versao: reel.versao, motivo: 'Legenda, Design: Legenda AUDIT mais curta' });
+    assert.deepEqual(t.navegacoes, [`#/marketing/aprovacao?peca=${encodeURIComponent(reel.id)}`], 'recarrega a mesma peça, sem card novo');
+  }
+  {
+    const t = await janelaComAjuste(async () => { throw Object.assign(new Error('mudou'), { codigo: 'versao-mudou' }); });
+    walk(t.secao).find((n) => n.tag === 'input' && n.attrs.value === 'visual').attrs.onchange({ target: { checked: true } });
+    walk(t.secao).find((n) => n.tag === 'textarea').attrs.oninput({ target: { value: 'Visual AUDIT' } });
+    await walk(t.secao).find((n) => n.attrs.texto === 'Registrar pedido').attrs.onclick();
+    assert.equal(t.posts.length, 1);
+    assert.equal(t.navegacoes.length, 0, 'versão que mudou não navega como sucesso');
+    assert.ok(walk(t.secao).some((n) => String(n.textContent || '').includes('Recarregue a Aprovação')), 'avisa e pede para recarregar');
+    assert.equal(t.avisos.some(([tipo]) => tipo === 'ok'), false);
+  }
+  console.log('admin-galeria-aprovacao: formatos, capa no Reel, órfã visível, carrossel uma peça, filtros e contador igual à galeria, ajuste na janela com categoria, clique duplo e versão obsoleta: OK');
 })().catch((e) => { console.error(e); process.exitCode = 1; });

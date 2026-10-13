@@ -107,6 +107,7 @@ export async function montar(raiz, ctx) {
     class: 'feed-post aprovacao-janela', 'aria-label': 'Prévia da peça',
     onclose: () => {
       pausarMidia();
+      rascunhoAberto = null;
       // A galeria é redesenhada ao abrir: o foco volta ao card da família, achado pelo id.
       const alvo = lista.querySelector?.(`[data-peca="${CSS.escape(grupoSelecionado()?.principal?.id || '')}"]`)
         || (devolverFoco?.isConnected ? devolverFoco : null);
@@ -165,7 +166,14 @@ export async function montar(raiz, ctx) {
     desenharCabeca();
     cabecaJanela.querySelector?.('.feed-fechar')?.focus();
   };
+  // Pedido de ajuste dentro da janela. O rascunho é por peça e versão: fechar a janela ou
+  // trocar de peça guarda o texto em memória (nada de confirmação por cima da janela), e o
+  // polling não redesenha a coluna enquanto há um rascunho aberto, para não roubar o foco.
+  const rascunhos = new Map();
+  let rascunhoAberto = null;
+  const chaveRascunho = (p) => `${p.id}:${p.versao || ''}`;
   const escolher = (p, abrir = true) => {
+    if (selecionada?.id !== p.id) rascunhoAberto = null;
     selecionada = p; desenharLista(); desenharDetalhe();
     if (abrir) abrirJanela();
   };
@@ -306,12 +314,22 @@ export async function montar(raiz, ctx) {
       detalhe.appendChild(h('button', {
         class: 'botao', type: 'button', texto: 'Pedir ajuste na versão atual',
         disabled: !filaDisponivel(pedidos) || p.estado === 'historico',
-        onclick: () => pedirAjuste(ctx, { ...p, versao: pedidoComVersaoAtual.versaoAtual }),
+        onclick: () => { janela.close?.(); pedirAjuste(ctx, { ...p, versao: pedidoComVersaoAtual.versaoAtual }); },
       }));
     }
     const botaoAprovar = h('button', { class: 'botao botao-primario', type: 'button', texto: p.aprovada ? 'Aprovada nesta versão' : temPedidoAberto ? 'Aceite pela fila de ajustes' : 'Aprovar esta versão', disabled: !!p.aprovada || temPedidoAberto || filaIndisponivel || p.estado === 'historico',
       onclick: () => aprovar(ctx, p, botaoAprovar) });
-    const botaoAjuste = h('button', { class: 'botao', type: 'button', texto: 'Pedir ajuste', disabled: filaIndisponivel || p.estado === 'historico', onclick: () => pedirAjuste(ctx, p) });
+    const podePedir = !filaIndisponivel && p.estado !== 'historico';
+    const aberto = rascunhoAberto === chaveRascunho(p);
+    const botaoAjuste = h('button', { class: 'botao', type: 'button', texto: aberto ? 'Fechar pedido de ajuste' : rascunhos.get(chaveRascunho(p))?.texto ? 'Pedir ajuste (rascunho guardado)' : 'Pedir ajuste', 'aria-expanded': String(aberto),
+      disabled: !podePedir, onclick: () => { rascunhoAberto = aberto ? null : chaveRascunho(p); desenharDetalhe(); } });
+    if (aberto && podePedir) {
+      if (!rascunhos.has(chaveRascunho(p))) rascunhos.set(chaveRascunho(p), { categorias: new Set(), texto: '' });
+      detalhe.appendChild(ajusteNaJanela(ctx, p, rascunhos.get(chaveRascunho(p)), {
+        cancelar: () => { rascunhoAberto = null; desenharDetalhe(); },
+        enviado: () => { rascunhos.delete(chaveRascunho(p)); rascunhoAberto = null; },
+      }));
+    }
     const botaoRecusar = h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Recusar peça',
       disabled: filaIndisponivel || temPedidoAberto || p.estado === 'historico',
       onclick: () => recusarPeca(ctx, p, familiaAtual?.pecas || [p], pedidos, botaoRecusar) });
@@ -351,8 +369,68 @@ export async function montar(raiz, ctx) {
   desenharLista();
   desenharDetalhe();
   if (ctx.params.peca && selecionada?.id === ctx.params.peca) abrirJanela();
-  observarPedidos(pedidos, () => { if (!ctx.obsoleta()) { desenharLista(); desenharDetalhe(); } });
+  observarPedidos(pedidos, () => { if (!ctx.obsoleta()) { desenharLista(); if (!rascunhoAberto) desenharDetalhe(); } });
   return () => { pausarMidia(); limparComparacao(); if (janela.open) janela.close(); };
+}
+
+// Categorias do pedido de ajuste. Viram prefixo do motivo, na MESMA rota de hoje
+// (POST /pecas/:id/ajuste { versao, motivo }): nenhum campo novo no servidor.
+export const CATEGORIAS_AJUSTE = [
+  ['legenda', 'Legenda', 'Texto do post.'],
+  ['visual', 'Visual', 'Imagem, cena ou quadro mostrado.'],
+  ['design', 'Design', 'Composição, hierarquia, tipografia.'],
+  ['copy', 'Copy da arte', 'Palavras dentro da arte, texto em tela ou locução.'],
+];
+const LIMITE_MOTIVO = 2000; // limite efetivo do backend para o motivo
+
+export function motivoDoAjuste(categorias, texto) {
+  const rotulos = CATEGORIAS_AJUSTE.filter(([k]) => categorias.has(k)).map(([, r]) => r);
+  const corpo = String(texto || '').trim();
+  return rotulos.length && corpo ? `${rotulos.join(', ')}: ${corpo}` : '';
+}
+
+function ajusteNaJanela(ctx, p, rascunho, { cancelar, enviado }) {
+  const { h } = ctx;
+  const idBase = `ajuste-${p.id}`;
+  const recibo = h('p', { class: 'campo-ajuda', role: 'status', 'aria-live': 'polite' });
+  let enviando = false;
+  const registrar = h('button', { class: 'botao botao-primario', type: 'button', texto: 'Registrar pedido', onclick: async () => {
+    if (enviando || ctx.obsoleta()) return;
+    const motivo = motivoDoAjuste(rascunho.categorias, rascunho.texto);
+    if (!motivo) { recibo.textContent = 'Escolha ao menos uma categoria e escreva o que precisa mudar.'; return; }
+    if (Array.from(motivo).length > LIMITE_MOTIVO) { recibo.textContent = `O pedido passou de ${LIMITE_MOTIVO} caracteres. Encurte o texto.`; return; }
+    enviando = true; registrar.disabled = true; registrar.textContent = 'Registrando…';
+    try {
+      const r = await ctx.acao(`/api/marketing/pecas/${encodeURIComponent(p.id)}/ajuste`, { versao: p.versao, motivo });
+      if (ctx.obsoleta()) return;
+      enviado();
+      ctx.aviso('Pedido de ajuste registrado nesta versão.', 'ok');
+      for (const a of r?.dados?.avisos || []) ctx.aviso(a, 'info');
+      ctx.navegar(`#/marketing/aprovacao?peca=${encodeURIComponent(p.id)}`);
+    } catch (err) {
+      console.warn('[aprovacao-ajuste]', err.codigo || 'falha');
+      if (ctx.obsoleta()) return;
+      recibo.textContent = err.codigo === 'versao-mudou'
+        ? 'A peça mudou depois que você abriu esta janela. Recarregue a Aprovação e revise a versão nova antes de pedir o ajuste. O seu texto continua aqui.'
+        : `O pedido não foi registrado: ${err.message}. Recarregue e confira os recibos antes de repetir.`;
+      enviando = false; registrar.disabled = false; registrar.textContent = 'Registrar pedido';
+    }
+  } });
+  return h('section', { class: 'aprovacao-ajuste', 'aria-label': 'Pedir ajuste nesta versão' },
+    h('h3', { texto: 'Pedir ajuste' }),
+    h('fieldset', { class: 'aprovacao-ajuste-categorias' },
+      h('legend', { texto: 'O que precisa mudar' }),
+      CATEGORIAS_AJUSTE.map(([k, rotulo, ajuda]) => h('label', { class: 'aprovacao-ajuste-categoria', for: `${idBase}-${k}`, title: ajuda },
+        h('input', { id: `${idBase}-${k}`, type: 'checkbox', value: k, checked: rascunho.categorias.has(k),
+          onchange: (e) => { if (e.target.checked) rascunho.categorias.add(k); else rascunho.categorias.delete(k); } }),
+        h('span', { texto: rotulo })))),
+    h('div', { class: 'campo' },
+      h('label', { for: `${idBase}-texto`, texto: 'Descreva o ajuste' }),
+      h('textarea', { id: `${idBase}-texto`, class: 'aprovacao-ajuste-texto', rows: 4, maxlength: LIMITE_MOTIVO, texto: rascunho.texto,
+        oninput: (e) => { rascunho.texto = e.target.value; } })),
+    h('p', { class: 'campo-ajuda', texto: 'Fica registrado só no painel, junto desta versão. A peça continua na fila e o card não se duplica.' }),
+    recibo,
+    h('div', { class: 'bloco-acao' }, registrar, h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Cancelar', onclick: cancelar })));
 }
 
 // Formato visível de uma peça na galeria e no topo da prévia.
