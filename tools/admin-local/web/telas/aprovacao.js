@@ -1,7 +1,7 @@
 // Aprovação: galeria de famílias; clicar abre a prévia do post com legenda e decisão.
 // Aprovar grava o aceite do autor para AQUELA versão (sha1). Não publica nem agenda nada em rede social.
 
-import { tituloPeca, rotuloSemana, rotuloEstado, trilha, historicoDaPeca, agruparFamilias, idadeDemanda, formatoDaPeca, ROTULOS_FORMATO, juntarCapasAoReel } from './_pecas.js';
+import { tituloPeca, rotuloSemana, rotuloEstado, trilha, historicoDaPeca, agruparFamilias, idadeDemanda, formatoDaPeca, ROTULOS_FORMATO, juntarCapasAoReel, pecaDaFila } from './_pecas.js';
 import { montarMidia, midiasDaPeca, topoDaPrevia } from './_previa-publicacao.js';
 import { montarFila, secaoAjustesDaPeca, situacaoDaFamilia, contarPrecisaDeVoce, textoAlertaDemanda, observarPedidos, pedidoAberto, filaDisponivel } from './ajustes.js';
 
@@ -47,7 +47,8 @@ export async function montar(raiz, ctx) {
   }
   if (ctx.obsoleta()) return;
 
-  const fila = pecas.filter((p) => ['para-aprovacao', 'aprovados', 'historico'].includes(p.estado))
+  // COPYS-FINAIS.md é referência editorial, não peça: fica no Acervo (mesmo predicado do contador).
+  const fila = pecas.filter(pecaDaFila)
     .sort((a, b) => (a.aprovada === b.aprovada ? String(b.semana?.inicio || '').localeCompare(String(a.semana?.inicio || '')) : a.aprovada ? 1 : -1));
   if (!fila.length) {
     ctx.contadorAprovacao?.(filaDisponivel(pedidos) ? 0 : null);

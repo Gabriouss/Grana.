@@ -1,6 +1,6 @@
 // Acervo: todas as peças de docs/marketing, por semana e estado, com filtro.
 
-import { tituloPeca, rotuloSemana, rotuloEstado } from './_pecas.js';
+import { tituloPeca, rotuloSemana, rotuloEstado, ehReferenciaEditorial } from './_pecas.js';
 
 const FILTROS_ESTADO = [
   ['todos', 'Todas'], ['para-aprovacao', 'Esperando aprovação'], ['aprovadas', 'Aprovadas'], ['historico', 'Histórico'],
@@ -77,10 +77,12 @@ export async function montar(raiz, ctx) {
         h('div', { class: 'peca-info' },
           h('h2', { class: 'peca-titulo', texto: tituloPeca(p) }),
           h('p', { class: 'peca-meta', texto: `${rotuloSemana(p.semana)} · ${p.tipo}${p.arquivos?.length > 1 ? ` · ${p.arquivos.length} arquivos` : ''}` }),
-          h('span', { class: `peca-estado selo selo-${p.aprovada ? 'ok' : p.estado === 'historico' ? 'neutro' : p.ajuste ? 'alerta' : 'neutro'}`, texto: rotuloEstado(p) }),
+          ehReferenciaEditorial(p)
+            ? h('span', { class: 'peca-estado selo selo-neutro', texto: 'Referência editorial, fora da Aprovação' })
+            : h('span', { class: `peca-estado selo selo-${p.aprovada ? 'ok' : p.estado === 'historico' ? 'neutro' : p.ajuste ? 'alerta' : 'neutro'}`, texto: rotuloEstado(p) }),
           p.legenda ? h('p', { class: 'peca-legenda-curta', texto: p.legenda.length > 160 ? `${p.legenda.slice(0, 160)}…` : p.legenda }) : null,
           p.tipo === 'texto' && p.arquivos?.[0]?.url ? h('a', { href: p.arquivos[0].url, target: '_blank', rel: 'noopener', texto: 'Abrir texto' }) : null,
-          p.estado === 'para-aprovacao' ? h('a', { class: 'botao botao-fantasma', href: `#/marketing/aprovacao?peca=${encodeURIComponent(p.id)}`, texto: 'Revisar' }) : null)));
+          p.estado === 'para-aprovacao' && !ehReferenciaEditorial(p) ? h('a', { class: 'botao botao-fantasma', href: `#/marketing/aprovacao?peca=${encodeURIComponent(p.id)}`, texto: 'Revisar' }) : null)));
     }
   };
   desenhar();

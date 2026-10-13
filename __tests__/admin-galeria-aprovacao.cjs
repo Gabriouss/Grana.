@@ -139,5 +139,27 @@ assert.equal(_pecas.juntarCapasAoReel([{ chave: 'c', principal: capa, pecas: [ca
     assert.ok(walk(t.secao).some((n) => String(n.textContent || '').includes('Recarregue a Aprovação')), 'avisa e pede para recarregar');
     assert.equal(t.avisos.some(([tipo]) => tipo === 'ok'), false);
   }
-  console.log('admin-galeria-aprovacao: formatos, capa no Reel, órfã visível, carrossel uma peça, filtros e contador igual à galeria, ajuste na janela com categoria, clique duplo e versão obsoleta: OK');
+  // 5. COPYS-FINAIS.md fora da fila e do contador, pelo mesmo predicado; continua no Acervo.
+  const copys = peca('9'.repeat(16), { tipo: 'texto', caminho: D + 'COPYS-FINAIS.md', nome: 'COPYS-FINAIS.md', arquivos: [{ nome: 'COPYS-FINAIS.md', tipo: 'texto', url: '/x/COPYS-FINAIS.md' }] });
+  const roteiro = peca('8'.repeat(16), { tipo: 'texto', caminho: D + 'roteiro-audit.md', nome: 'roteiro-audit.md' });
+  assert.equal(_pecas.ehReferenciaEditorial(copys), true);
+  assert.equal(_pecas.pecaDaFila(copys), false);
+  assert.equal(_pecas.pecaDaFila(roteiro), true, 'só o documento de referência sai; outro texto segue revisável');
+  assert.equal(_pecas.pecaDaFila({ ...reel, estado: 'apoio' }), false);
+  {
+    const lista = [reel, capa, copys, roteiro];
+    const conta = [];
+    const c = { ...ctx, contadorAprovacao: (n) => conta.push(n), api: async (url) => ({ dados: url.endsWith('/pecas') ? { pecas: lista, familias } : { pedidos: [], remoto: { status: 'ativo' } } }) };
+    const r = node('main');
+    await load('aprovacao.js').montar(r, c);
+    assert.equal(walk(r).filter((n) => n.attrs.class === 'demanda-familia').length, 2, 'Reel e roteiro; COPYS-FINAIS fora');
+    assert.ok(!text(r).includes('COPYS-FINAIS.md'));
+    assert.equal(conta.at(-1), 2);
+    const appSrc = fs.readFileSync('tools/admin-local/web/app.js', 'utf8');
+    const trecho = appSrc.slice(appSrc.indexOf('async function atualizarContadorAprovacao'), appSrc.indexOf('let timerContadorAprovacao'));
+    assert.ok(trecho.includes('.filter(pecaDaFila)') && trecho.includes('juntarCapasAoReel('), 'contador do menu usa o mesmo predicado e a mesma junção da galeria');
+    const acervoSrc = fs.readFileSync('tools/admin-local/web/telas/acervo.js', 'utf8');
+    assert.ok(acervoSrc.includes("p.estado === 'para-aprovacao' && !ehReferenciaEditorial(p)"), 'Acervo não manda o documento para a Aprovação');
+  }
+  console.log('admin-galeria-aprovacao: formatos, capa no Reel, órfã visível, carrossel uma peça, filtros e contador igual à galeria, ajuste na janela com categoria, clique duplo e versão obsoleta, COPYS-FINAIS fora da fila e do contador: OK');
 })().catch((e) => { console.error(e); process.exitCode = 1; });
