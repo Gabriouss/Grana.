@@ -72,6 +72,7 @@ const base = (api) => ({
 
   // Tráfego
   const dadosTr = {
+    situacao: '1 porta(s) do plano ainda não abertas: a verba não abre.',
     portas: [{ estado: 'fechada', texto: 'AUDIT pixel' }, { estado: 'aberta', texto: 'AUDIT conta' }],
     prerequisitos: [{ estado: 'pendente', texto: 'AUDIT domínio' }, { estado: 'feito', texto: 'AUDIT página' }],
     limitesDeReferencia: { aviso: 'AUDIT', itens: [{ sinal: 'CTR', limite: '1%', decisao: 'trocar' }] },
@@ -90,6 +91,7 @@ const base = (api) => ({
   assert.deepEqual(titulos, ['Portas para abrir verba (1 de 2 abertas)', 'Pré-requisitos técnicos (1 pendente)', 'Limites de referência', 'Ângulos por etapa']);
   assert.ok(walk(raiz).filter((n) => n.tag === 'details').every((d) => !d.attrs.open));
   assert.ok(text(raiz).includes('AUDIT campanha'));
+  assert.equal(walk(raiz).filter((n) => /porta/i.test(n.attrs.texto || '') && /verba/i.test(n.attrs.texto || '') && n.attrs.class?.startsWith('alerta')).length, 2, 'um aviso de portas no topo e o detalhe dentro do bloco recolhido, sem repetir a situação do servidor (T1)');
   assert.deepEqual(chamadas, ['/api/marketing/trafego'], 'só leitura');
   console.log('admin-calendario-trafego-layout: mês e campanhas no topo, sem-data recolhido com contagem e atalho, contexto em details, bloqueio de verba visível: OK');
 })().catch((e) => { console.error(e); process.exitCode = 1; });

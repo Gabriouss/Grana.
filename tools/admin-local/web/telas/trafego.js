@@ -32,15 +32,16 @@ export async function montar(raiz, ctx) {
   disponiveis = d.pecasAprovadasDisponiveis || [];
   while (corpo.firstChild) corpo.removeChild(corpo.firstChild);
 
-  if (d.situacao) corpo.appendChild(ctx.alerta('atencao', d.situacao));
+  const portas = d.portas || [];
+  const fechadas = portas.filter((p) => p.estado !== 'aberta').length;
+  // A situação do servidor sobre portas diz o mesmo que o resumo de verba abaixo: um aviso por fato (T1).
+  if (d.situacao && !(fechadas && /porta/i.test(d.situacao))) corpo.appendChild(ctx.alerta('atencao', d.situacao));
   for (const a of d.avisos || []) corpo.appendChild(ctx.alerta('info', a));
 
   // Campanhas primeiro. O bloqueio de verba fica resumido e visível logo acima delas; portas,
   // pré-requisitos, limites e ângulos ficam recolhidos abaixo, a um clique.
   const recolhido = (titulo, ...filhos) => h('details', { class: 'secao-recolhida' },
     h('summary', { class: 'secao-recolhida-titulo', texto: titulo }), h('div', { class: 'secao' }, ...filhos));
-  const portas = d.portas || [];
-  const fechadas = portas.filter((p) => p.estado !== 'aberta').length;
   if (portas.length) {
     corpo.appendChild(fechadas
       ? ctx.alerta('critico', `Verba bloqueada: ${fechadas} de ${portas.length} portas não estão abertas. Veja "Portas para abrir verba", abaixo das campanhas.`)
