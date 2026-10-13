@@ -1227,6 +1227,165 @@ details.peca-indice[open] { padding-bottom: var(--s-lg); }
   .fila-coluna { position: static; max-height: none; overflow: visible; }
 }
 
+/* Aprovação em galeria: um card por família, e a prévia abre na janela do post (a mesma do Feed).
+   Material primeiro, decisão ao lado, evidência recolhida. */
+.galeria-demandas { display: flex; flex-direction: column; gap: var(--s-sm); min-width: 0; }
+.galeria-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+  gap: var(--s-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.demanda-resolvidas > .galeria-grade { padding: var(--s-sm) var(--s-md) var(--s-md); }
+.galeria-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-lg);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur-hover) ease-out, background-color var(--dur-hover) ease-out;
+}
+.galeria-card:hover { border-color: var(--rule-strong); background: var(--paper-selected); }
+.galeria-card:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+.galeria-card[aria-current="true"] { border-color: var(--accent); }
+.galeria-card-midia {
+  position: relative;
+  display: block;
+  aspect-ratio: 3 / 4;
+  background: var(--paper-deep);
+  overflow: hidden;
+}
+.galeria-card-midia img,
+.galeria-card-midia video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.galeria-card-texto {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: var(--s-lg);
+  color: var(--ink-soft);
+  font-size: var(--t-legenda);
+  line-height: 1.4;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.galeria-card-formato {
+  position: absolute;
+  top: var(--s-sm);
+  left: var(--s-sm);
+  max-width: calc(100% - 2 * var(--s-sm));
+  padding: 2px var(--s-sm);
+  border-radius: var(--r-pill);
+  background: rgba(2, 20, 26, 0.78);
+  color: var(--ink);
+  font-size: var(--t-micro);
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.galeria-card-formato[data-formato="conferir"] { color: var(--atencao); }
+.galeria-card-aviso {
+  position: absolute;
+  left: var(--s-sm);
+  bottom: var(--s-sm);
+  max-width: calc(100% - 2 * var(--s-sm));
+  padding: 2px var(--s-sm);
+  border-radius: var(--r-pill);
+  background: rgba(2, 20, 26, 0.78);
+  color: var(--atencao);
+  font-size: var(--t-micro);
+  line-height: 1.5;
+}
+.galeria-card-corpo { display: flex; flex: 1; flex-direction: column; gap: var(--s-xs); min-width: 0; padding: var(--s-md); }
+.galeria-card-titulo {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: var(--t-nota);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.galeria-card-meta { color: var(--ink-faint); font-size: var(--t-micro); }
+.galeria-card .demanda-selo { align-self: flex-start; max-width: 100%; white-space: normal; line-height: 1.25; padding-block: 4px; }
+.galeria-card[data-secao="voce"] .demanda-proximo { color: var(--ink); }
+.galeria-card[data-secao="resolvidas"] .demanda-proximo { color: var(--ink-faint); }
+.galeria-card .demanda-idade { align-self: flex-end; }
+
+/* Janela da Aprovação: corpo do post do Feed, coluna lateral mais larga porque carrega a decisão. */
+dialog.aprovacao-janela .feed-post-corpo { grid-template-columns: minmax(0, 1fr) 400px; }
+.aprovacao-janela-midia {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  background: var(--paper-deep);
+  overflow: auto;
+}
+.aprovacao-janela-midia > .feed-post-midia { height: 100%; max-width: 100%; }
+.aprovacao-janela-midia > section,
+.aprovacao-janela-midia > .previa { align-self: start; width: 100%; padding: var(--s-lg); }
+.aprovacao-janela-lado { overflow: hidden; }
+.aprovacao-janela-conteudo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--s-lg);
+  min-height: 0;
+  padding: var(--s-lg);
+  overflow-y: auto;
+}
+.aprovacao-janela-titulo { margin: 0; font-size: var(--t-apoio); line-height: 1.35; overflow-wrap: anywhere; }
+.aprovacao-janela-estado { display: flex; flex-direction: column; gap: var(--s-xs); margin: 0; color: var(--ink-soft); font-size: var(--t-legenda); }
+.aprovacao-janela-estado .campo-ajuda { margin: 0; }
+.aprovacao-janela-conteudo .peca-legenda,
+.aprovacao-janela-conteudo .demanda-alternativas,
+.aprovacao-janela-conteudo .demanda-capa { padding: var(--s-md); }
+.demanda-capa-miniatura { width: 96px; aspect-ratio: 9 / 16; object-fit: cover; border-radius: var(--r-sm); background: var(--paper-deep); }
+.aprovacao-decisao {
+  position: sticky;
+  bottom: calc(-1 * var(--s-lg));
+  z-index: 1;
+  margin: 0 calc(-1 * var(--s-lg));
+  padding: var(--s-md) var(--s-lg) var(--s-lg);
+  border-top: 1px solid var(--rule);
+  background: var(--paper);
+}
+details.aprovacao-mais { border: 1px solid var(--rule); border-radius: var(--r-md); padding: 0 var(--s-md); background: transparent; }
+details.aprovacao-mais > summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--alvo);
+  color: var(--ink-soft);
+  font-size: var(--t-nota);
+  cursor: pointer;
+  list-style: none;
+}
+details.aprovacao-mais > summary::-webkit-details-marker { display: none; }
+details.aprovacao-mais > summary::before { content: '+'; width: 20px; color: var(--accent); }
+details.aprovacao-mais[open] > summary::before { content: '\2212'; }
+details.aprovacao-mais[open] { display: flex; flex-direction: column; gap: var(--s-md); padding-bottom: var(--s-md); }
+
+@media (max-width: 899px) {
+  dialog.aprovacao-janela .feed-post-corpo { display: flex; flex-direction: column; }
+  .aprovacao-janela .feed-post-lado { display: contents; }
+  .aprovacao-janela-cabeca { order: 1; flex: none; }
+  .aprovacao-janela-midia { order: 2; flex: none; height: min(70vh, 125vw); }
+  .aprovacao-janela-midia:has(> section),
+  .aprovacao-janela-midia:has(> .previa) { height: auto; }
+  .aprovacao-janela-conteudo { order: 3; flex: none; overflow: visible; }
+  .aprovacao-decisao { bottom: 0; margin: 0 calc(-1 * var(--s-lg)); }
+}
+
 /* Acervo */
 .barra-filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-md) var(--s-lg); margin-bottom: var(--s-xl); }
 .barra-filtros .campo { min-width: 160px; flex: 0 1 220px; }
