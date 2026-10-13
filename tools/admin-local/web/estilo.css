@@ -1597,6 +1597,8 @@ button.cal-item { cursor: pointer; }
 .cal-item-canal { flex: none; color: var(--ink-faint); font-weight: 300; }
 .cal-dia .cal-item-canal { display: none; }
 .cal-sem-data { position: sticky; top: var(--s-xl); }
+/* O atalho ?secao=sem-data rola até aqui; a margem livra o cabeçalho fixo do estreito (C1). */
+#aprovados-sem-data { scroll-margin-top: calc(var(--alvo) + var(--s-xxl)); }
 .lista-sem-data { display: flex; flex-direction: column; gap: var(--s-xs); margin: 0; padding: 0; list-style: none; }
 /* coluna sem data: capa e título em cima, botão embaixo; o título quebra em vez
    de ser cortado (achado do Vigil, 07/10/2026) */
