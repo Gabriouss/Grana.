@@ -154,3 +154,6 @@ __pycache__/
 
 # Arquivos-fonte do Photoshop dos criativos (PSB de ~50 MB; repositório público). PNGs exportados vão para docs/marketing/.
 /Criativos Photoshop/
+
+# Lixeira da galeria de midia do Antigravity: descarte local, nunca versionar (autor, 13/10/2026)
+docs/marketing/.lixeira/
