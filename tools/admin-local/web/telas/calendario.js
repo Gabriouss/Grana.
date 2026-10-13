@@ -22,14 +22,20 @@ export async function montar(raiz, ctx) {
     h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Hoje', onclick: () => ctx.navegar('#/marketing/calendario') }),
     h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Próximo mês', onclick: () => irPara(1) }),
   ]);
-  const ensaio = h('section', { class: 'secao', 'aria-label': 'Ensaio do calendário Meta' });
-  raiz.appendChild(ensaio);
-  montarEnsaioCalendario(ensaio, ctx);
-  const cronograma = h('section', { class: 'secao', 'aria-label': 'Cronograma editorial' });
-  raiz.appendChild(cronograma);
-  montarCronograma(cronograma, ctx);
+  // O mês vem primeiro. Cronograma, ensaio Meta, previsões e referências ficam recolhidos
+  // abaixo dele: continuam a um clique, sem empurrar o calendário para longe do topo.
   const corpo = h('div', { class: 'tela-corpo' });
   raiz.appendChild(corpo);
+  const contexto = h('div', { class: 'calendario-contexto' });
+  raiz.appendChild(contexto);
+  const recolhido = (titulo, ...filhos) => h('details', { class: 'secao-recolhida' },
+    h('summary', { class: 'secao-recolhida-titulo', texto: titulo }), ...filhos);
+  const cronograma = h('section', { class: 'secao', 'aria-label': 'Cronograma editorial' });
+  contexto.appendChild(recolhido('Cronograma editorial', cronograma));
+  montarCronograma(cronograma, ctx);
+  const ensaio = h('section', { class: 'secao', 'aria-label': 'Ensaio do calendário Meta' });
+  contexto.appendChild(recolhido('Ensaio do calendário Meta', ensaio));
+  montarEnsaioCalendario(ensaio, ctx);
   ctx.estado.carregando(corpo, 'Lendo o calendário…');
 
   let d;
@@ -46,7 +52,9 @@ export async function montar(raiz, ctx) {
   const semData = d.aprovadosSemData || d.semData || [];
   const canais = (d.canais && d.canais.length ? d.canais : CANAIS.map((c) => c.valor));
 
-  const avisos = [...(d.avisos || []).map((a) => ctx.alerta('info', a)), d.diaD ? ctx.alerta('info', `Dia D declarado: ${ctx.formatar.data(d.diaD)}.`) : null].filter(Boolean);
+  const invalidos = (d.desatualizados || []).length;
+  const avisos = [...(d.avisos || []).map((a) => ctx.alerta('info', a)), d.diaD ? ctx.alerta('info', `Dia D declarado: ${ctx.formatar.data(d.diaD)}.`) : null,
+    invalidos ? ctx.alerta('atencao', `${invalidos} ${invalidos === 1 ? 'planejamento perdeu' : 'planejamentos perderam'} a validade. Veja "Planejamentos que perderam a validade", abaixo do calendário.`) : null].filter(Boolean);
   if (avisos.length) corpo.appendChild(h('div', { class: 'lista-alertas' }, avisos));
 
   const planejar = (peca, dataInicial) => escolherData(ctx, peca, dataInicial, canais);
@@ -101,8 +109,11 @@ export async function montar(raiz, ctx) {
   }
 
   // --- coluna "Aprovados sem data"
-  const coluna = h('aside', { class: 'cal-sem-data', id: 'aprovados-sem-data', tabindex: '-1', 'aria-labelledby': 'cal-sem-data-titulo' },
-    h('h2', { class: 'secao-titulo', id: 'cal-sem-data-titulo', texto: 'Aprovados sem data' }),
+  // "Sem data (N)": a lista cresce a cada aceite sem data, então começa recolhida, com a
+  // contagem à vista. O atalho ?secao=sem-data (ou uma peça recém-aceita) abre o bloco.
+  const abrirSemData = ctx.params.secao === 'sem-data' || semData.some((p) => p.id === ctx.params.peca);
+  const blocoSemData = h('details', { class: 'cal-sem-data-bloco', open: abrirSemData },
+    h('summary', { class: 'secao-titulo cal-sem-data-resumo', id: 'cal-sem-data-titulo', texto: `Aprovados sem data (${semData.length})` }),
     semData.length
       ? h('ul', { class: 'lista-sem-data' }, semData.map((p) => {
         const li = h('div', { class: 'cal-item', draggable: 'true', title: p.titulo || p.id, dados: { id: p.id } },
@@ -118,6 +129,7 @@ export async function montar(raiz, ctx) {
       }))
       : h('p', { class: 'texto-fraco', texto: 'Nenhuma peça aprovada sem previsão válida. As previsões vinculadas entram automaticamente no calendário.' }),
     semData.length ? h('p', { class: 'campo-ajuda', texto: 'Arraste para um dia ou use "Escolher data".' }) : null);
+  const coluna = h('aside', { class: 'cal-sem-data', id: 'aprovados-sem-data', tabindex: '-1', 'aria-labelledby': 'cal-sem-data-titulo' }, blocoSemData);
 
   corpo.appendChild(h('div', { class: 'calendario-layout' },
     h('section', { class: 'secao calendario-mes' }, titulo, grade, agenda),
@@ -129,14 +141,14 @@ export async function montar(raiz, ctx) {
 
   const entradas = [...itens, ...(Array.isArray(d.aguardandoDiaD) ? d.aguardandoDiaD : []), ...(Array.isArray(d.suspensos) ? d.suspensos : [])];
   if (entradas.length) {
-    corpo.appendChild(ctx.secao('Previsões e entradas no calendário',
+    contexto.appendChild(recolhido(`Previsões e entradas no calendário (${entradas.length})`,
       h('p', { class: 'nota-explicativa', texto: 'A previsão vem do cronograma. Uma alteração manual preserva essa origem; o recibo do calendário não comprova publicação na Meta.' }),
       ...entradas.map((i) => h('article', { class: 'secao' },
         h('h3', { class: 'secao-titulo quebra', texto: i.peca?.titulo || i.peca?.id || 'Peça' }), detalhesCronograma(ctx, i), botaoVinculo(ctx, i.peca)))));
   }
 
   if ((d.desatualizados || []).length) {
-    corpo.appendChild(ctx.secao('Planejamentos que perderam a validade',
+    contexto.appendChild(recolhido(`Planejamentos que perderam a validade (${invalidos})`,
       ctx.tabela([
         { titulo: 'Peça', valor: (x) => x.titulo || x.id, classe: 'mono' },
         { titulo: 'Data marcada', valor: (x) => ctx.formatar.data(x.data) },
@@ -145,7 +157,7 @@ export async function montar(raiz, ctx) {
   }
 
   if ((d.referenciaFunil || []).length) {
-    corpo.appendChild(ctx.secao('Ordem do funil (FUNIL.md)',
+    contexto.appendChild(recolhido('Ordem do funil (FUNIL.md)',
       h('p', { class: 'nota-explicativa', texto: d.diaD ? 'Datas calculadas a partir do dia D, em dias úteis.' : 'Posições relativas ao dia D, em dias úteis. Viram datas quando o dia D for declarado. São códigos editoriais, não peças do acervo.' }),
       ctx.tabela([
         { titulo: 'Posição', valor: (r) => r.ordem, classe: 'mono' },
