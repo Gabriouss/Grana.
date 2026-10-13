@@ -1,7 +1,8 @@
-// Aprovação: fila de para-aprovacao, prévia grande, trilha Versão → Revisão → Aceite → Planejamento.
+// Aprovação: galeria de famílias; clicar abre a prévia do post com legenda e decisão.
 // Aprovar grava o aceite do autor para AQUELA versão (sha1). Não publica nem agenda nada em rede social.
 
 import { tituloPeca, rotuloSemana, rotuloEstado, trilha, historicoDaPeca, agruparFamilias, idadeDemanda } from './_pecas.js';
+import { montarMidia, midiasDaPeca, topoDaPrevia } from './_previa-publicacao.js';
 import { montarFila, secaoAjustesDaPeca, situacaoDaFamilia, contarPrecisaDeVoce, textoAlertaDemanda, observarPedidos, pedidoAberto, filaDisponivel } from './ajustes.js';
 
 // Mesmos rótulos de estado usados no detalhe dos pedidos em ajustes.js.
@@ -23,7 +24,7 @@ function guardarFiltros(filtros) {
 export async function montar(raiz, ctx) {
   const { h } = ctx;
   ctx.contadorAprovacao?.(null);
-  ctx.cabecalho(raiz, 'Aprovação', 'Revise as demandas, acompanhe os agentes e registre o aceite de cada versão. Nada é publicado ou agendado no Instagram.', [
+  ctx.cabecalho(raiz, 'Aprovação', 'Clique numa peça para abrir a prévia, ler a legenda e decidir. Aprovar registra o seu aceite daquela versão; nada é publicado ou agendado no Instagram.', [
     h('a', { class: 'botao botao-fantasma', href: '#/marketing/calendario?secao=sem-data', texto: 'Aprovados sem data' }),
     h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Atualizar', onclick: () => ctx.recarregar() }),
   ]);
@@ -58,7 +59,6 @@ export async function montar(raiz, ctx) {
   while (corpo.firstChild) corpo.removeChild(corpo.firstChild);
 
   const familias = agruparFamilias(fila, familiasServidor);
-  let limparComparacao = () => {};
   const preferencias = lerFiltros();
   const tipos = ['todos', 'imagem', 'video', 'carrossel', 'texto'];
   const estados = ['todos', 'voce', 'agentes', 'resolvidas'];
@@ -68,11 +68,9 @@ export async function montar(raiz, ctx) {
     estado: estados.includes(preferencias.estado) ? preferencias.estado : 'todos',
     semana: semanas.some((s) => s.inicio === preferencias.semana) ? preferencias.semana : 'todas',
   };
-  const lista = h('div', { class: 'demanda-secoes', 'aria-label': 'Mesa de demandas' });
-  const detalhe = h('div', { class: 'fila-detalhe demanda-detalhe' });
+  const lista = h('div', { class: 'demanda-secoes', 'aria-label': 'Galeria de demandas' });
   const contagemFamilias = h('p', { class: 'fila-contagem', 'aria-live': 'polite' });
   const grupoSelecionado = () => familias.find((g) => g.pecas.some((p) => p.id === selecionada?.id));
-  const escolher = (p) => { selecionada = p; desenharLista(); desenharDetalhe(); detalhe.focus({ preventScroll: false }); };
   const situacaoFamilia = (grupo) => situacaoDaFamilia(grupo, pedidos);
   const seletor = (id, rotulo, opcoes, chave) => h('div', { class: 'campo' }, h('label', { for: id, texto: rotulo }),
     h('select', { id, onchange: (e) => { filtros[chave] = e.target.value; guardarFiltros(filtros); desenharLista(); desenharDetalhe(); } },
@@ -81,7 +79,83 @@ export async function montar(raiz, ctx) {
     seletor('demandas-semana', 'Semana', [['todas', 'Todas as semanas'], ...semanas.map((s) => [s.inicio, rotuloSemana(s)])], 'semana'),
     seletor('demandas-tipo', 'Formato', [['todos', 'Todos os formatos'], ['imagem', 'Imagem'], ['video', 'Vídeo'], ['carrossel', 'Carrossel'], ['texto', 'Texto']], 'tipo'),
     seletor('demandas-estado', 'Próxima ação', [['todos', 'Todas'], ['voce', 'Precisa de você'], ['agentes', 'Com os agentes'], ['resolvidas', 'Resolvidas']], 'estado')));
-  corpo.appendChild(h('div', { class: 'aprovacao mesa-demandas' }, h('div', { class: 'fila-coluna' }, contagemFamilias, lista), detalhe));
+  corpo.appendChild(h('div', { class: 'galeria-demandas' }, contagemFamilias, lista));
+
+  // Janela de prévia: a mesma gramática do post aberto no Feed (mídia à esquerda, legenda e
+  // decisão ao lado). A mídia só é montada ao abrir, para a galeria não baixar vídeo à toa;
+  // a comparação de uma correção começa na hora, porque é ela que libera o aceite.
+  const midiaSlot = h('div', { class: 'aprovacao-janela-midia' });
+  const cabecaJanela = h('div', { class: 'aprovacao-janela-cabeca' });
+  const detalhe = h('div', { class: 'aprovacao-janela-conteudo demanda-detalhe' });
+  let devolverFoco = null;
+  let midiaAtual = { chave: null, pausar: () => {}, limpar: () => {}, comparacao: null };
+  const pausarMidia = () => { midiaAtual.pausar(); midiaSlot.querySelectorAll?.('video').forEach((v) => v.pause()); };
+  const janela = h('dialog', {
+    class: 'feed-post aprovacao-janela', 'aria-label': 'Prévia da peça',
+    onclose: () => {
+      pausarMidia();
+      // A galeria é redesenhada ao abrir: o foco volta ao card da família, achado pelo id.
+      const alvo = lista.querySelector?.(`[data-peca="${CSS.escape(grupoSelecionado()?.principal?.id || '')}"]`)
+        || (devolverFoco?.isConnected ? devolverFoco : null);
+      alvo?.focus?.();
+    },
+    onclick: (e) => { if (e.target === janela) janela.close(); },
+  }, h('div', { class: 'feed-post-corpo' }, midiaSlot, h('div', { class: 'feed-post-lado aprovacao-janela-lado' }, cabecaJanela, detalhe)));
+  corpo.appendChild(janela);
+  const limparComparacao = () => { midiaAtual.limpar(); };
+
+  const chaveDaMidia = (p, corrigido) => `${p.id}:${p.versao || ''}:${corrigido?.id || ''}`;
+  const montarMidiaDaPeca = (p) => {
+    while (midiaSlot.firstChild) midiaSlot.removeChild(midiaSlot.firstChild);
+    if (p.tipo === 'texto') { midiaSlot.appendChild(previaTexto(ctx, p)); return () => {}; }
+    const previa = montarMidia(h, {
+      titulo: tituloPeca(p),
+      midias: midiasDaPeca(p, ctx.urlArquivo),
+      capa: p.capa?.url ? { url: ctx.urlArquivo ? ctx.urlArquivo(p.capa.url) : p.capa.url } : null,
+      ehVideo: p.tipo === 'video',
+      legenda: p.legenda,
+    });
+    midiaSlot.appendChild(previa.elemento);
+    return previa.pausar;
+  };
+  // Troca de peça pausa o vídeo anterior; o redesenho do polling, na mesma peça, mantém o player.
+  const prepararMidia = (p, corrigido) => {
+    const chave = chaveDaMidia(p, corrigido);
+    if (midiaAtual.chave === chave) return;
+    pausarMidia();
+    midiaAtual.limpar();
+    midiaAtual = { chave: null, pausar: () => {}, limpar: () => {}, comparacao: null };
+    while (midiaSlot.firstChild) midiaSlot.removeChild(midiaSlot.firstChild);
+    if (corrigido) {
+      const comparacao = compararVersoes(ctx, p, corrigido);
+      midiaSlot.appendChild(comparacao.elemento);
+      midiaAtual = { chave, pausar: () => {}, limpar: comparacao.limpar, comparacao };
+    } else if (janela.open) {
+      midiaAtual = { chave, pausar: montarMidiaDaPeca(p), limpar: () => {}, comparacao: null };
+    }
+  };
+  const desenharCabeca = () => {
+    const p = selecionada;
+    while (cabecaJanela.firstChild) cabecaJanela.removeChild(cabecaJanela.firstChild);
+    if (!p) return;
+    cabecaJanela.appendChild(topoDaPrevia(h, { formato: rotuloFormato(p), aoFechar: () => janela.close() }));
+  };
+  const abrirJanela = () => {
+    if (!selecionada) return;
+    if (!janela.open) devolverFoco = typeof document !== 'undefined' ? document.activeElement : null;
+    const corrigido = pedidos?.find((r) => r.pecaId === selecionada.id && r.estado === 'corrigido-aguardando-aceite' && r.versaoCorrigida === selecionada.versao);
+    if (!janela.open) janela.showModal?.();
+    if (!corrigido && midiaAtual.chave !== chaveDaMidia(selecionada, null)) {
+      pausarMidia();
+      midiaAtual = { chave: chaveDaMidia(selecionada, null), pausar: montarMidiaDaPeca(selecionada), limpar: () => {}, comparacao: null };
+    }
+    desenharCabeca();
+    cabecaJanela.querySelector?.('.feed-fechar')?.focus();
+  };
+  const escolher = (p, abrir = true) => {
+    selecionada = p; desenharLista(); desenharDetalhe();
+    if (abrir) abrirJanela();
+  };
 
   const desenharLista = () => {
     ctx.contadorAprovacao?.(filaDisponivel(pedidos) ? contarPrecisaDeVoce(familias, pedidos) : null);
@@ -106,86 +180,102 @@ export async function montar(raiz, ctx) {
       const secao = h(resolvidas ? 'details' : 'section', { class: `demanda-secao${resolvidas ? ' demanda-resolvidas' : ''}`, 'aria-label': titulo },
         h(resolvidas ? 'summary' : 'h2', { class: 'demanda-secao-titulo', texto: `${titulo} (${grupos[chave].length})` }));
       if (!grupos[chave].length) secao.appendChild(h('p', { class: 'campo-ajuda demanda-vazio', texto: resolvidas ? 'Nenhuma demanda resolvida nos últimos 7 dias com esses filtros.' : 'Nenhuma demanda nesta seção com esses filtros.' }));
-      const itens = h('ul', { class: 'fila demanda-lista' });
-      for (const g of grupos[chave]) {
-        const p = g.principal;
-        const s = situacaoFamilia(g);
-        const imagem = p.capa?.url || (p.tipo === 'imagem' ? p.arquivos?.[0]?.url : null);
-        const selo = ctx.selo(s.secao === 'voce' ? 'alerta' : s.secao === 'resolvidas' ? 'ok' : 'neutro', s.rotulo);
-        selo.setAttribute('class', `${selo.getAttribute?.('class') || selo.attrs?.class || 'selo'} demanda-selo`);
-        selo.setAttribute('data-estado', s.pedido?.estado || p.estadoEfetivo || p.estado);
-        itens.appendChild(h('li', { class: 'demanda-familia' }, h('button', {
-          class: 'fila-item demanda-item', type: 'button', 'aria-current': g === grupoSelecionado() ? 'true' : undefined,
-          'data-estado': s.pedido?.estado || p.estadoEfetivo || p.estado, 'data-secao': s.secao,
-          onclick: () => escolher(p),
-        },
-        imagem ? h('img', { class: 'demanda-miniatura', src: ctx.urlArquivo ? ctx.urlArquivo(imagem) : imagem, alt: '', loading: 'lazy' }) : null,
-        h('span', { class: 'fila-item-titulo', texto: tituloPeca(p) }),
-        h('span', { class: 'fila-item-meta', texto: `${rotuloSemana(p.semana)} · ${p.tipo}` }),
-        selo,
-        h('span', { class: 'demanda-proximo', texto: [...s.alertas.map(textoAlertaDemanda), s.proximo].filter(Boolean).join(' ') }),
-        h('span', { class: 'demanda-idade', texto: idadeDemanda(s.em) }))));
-      }
+      const itens = h('ul', { class: 'galeria-grade demanda-lista' });
+      for (const g of grupos[chave]) itens.appendChild(cardDaFamilia(g));
       secao.appendChild(itens);
       lista.appendChild(secao);
     }
   };
 
+  const cardDaFamilia = (g) => {
+    const p = g.principal;
+    const s = situacaoFamilia(g);
+    const selo = ctx.selo(s.secao === 'voce' ? 'alerta' : s.secao === 'resolvidas' ? 'ok' : 'neutro', s.rotulo);
+    selo.setAttribute('class', `${selo.getAttribute?.('class') || selo.attrs?.class || 'selo'} demanda-selo`);
+    selo.setAttribute('data-estado', s.pedido?.estado || p.estadoEfetivo || p.estado);
+    const paginas = p.tipo === 'carrossel' ? (p.arquivos || []).length : 0;
+    return h('li', { class: 'demanda-familia' }, h('button', {
+      class: 'galeria-card demanda-item', type: 'button', 'aria-current': g === grupoSelecionado() ? 'true' : undefined,
+      'aria-haspopup': 'dialog', dados: { peca: p.id },
+      'data-estado': s.pedido?.estado || p.estadoEfetivo || p.estado, 'data-secao': s.secao,
+      onclick: () => escolher(p),
+    },
+    h('span', { class: 'galeria-card-midia', 'aria-hidden': 'true' },
+      miniatura(ctx, p),
+      h('span', { class: 'galeria-card-formato', texto: paginas ? `${rotuloFormato(p)} · ${paginas} páginas` : rotuloFormato(p) })),
+    h('span', { class: 'galeria-card-corpo' },
+      h('span', { class: 'galeria-card-titulo', texto: tituloPeca(p) }),
+      h('span', { class: 'galeria-card-meta', texto: rotuloSemana(p.semana) }),
+      selo,
+      h('span', { class: 'demanda-proximo', texto: [...s.alertas.map(textoAlertaDemanda), s.proximo].filter(Boolean).join(' ') }),
+      h('span', { class: 'demanda-idade', texto: idadeDemanda(s.em) }))));
+  };
+
   const desenharDetalhe = () => {
-    limparComparacao();
-    limparComparacao = () => {};
     while (detalhe.firstChild) detalhe.removeChild(detalhe.firstChild);
     const p = selecionada;
     if (!p) { detalhe.appendChild(h('p', { class: 'campo-ajuda', texto: 'Selecione uma demanda para revisar.' })); return; }
-    detalhe.setAttribute('tabindex', '-1');
-    detalhe.setAttribute('aria-label', `Detalhe de ${tituloPeca(p)}`);
-    detalhe.appendChild(h('h2', { class: 'secao-titulo', texto: tituloPeca(p) }));
+    janela.setAttribute('aria-label', `Prévia de ${tituloPeca(p)}`);
+    const corrigido = pedidos?.find((r) => r.pecaId === p.id && r.estado === 'corrigido-aguardando-aceite' && r.versaoCorrigida === p.versao);
+    prepararMidia(p, corrigido);
+    if (janela.open) desenharCabeca();
+    const comparacao = midiaAtual.comparacao;
+    comparacao?.estado.observadores.clear();
     const familiaAtual = grupoSelecionado();
+    const s = situacaoDaFamilia(familiaAtual || { pecas: [p] }, pedidos);
+
+    // 1. O que é e o que falta: título, estado e próximo passo.
+    detalhe.appendChild(h('h2', { class: 'secao-titulo aprovacao-janela-titulo', texto: tituloPeca(p) }));
+    detalhe.appendChild(h('p', { class: 'aprovacao-janela-estado' },
+      h('span', { texto: `${rotuloEstado(p)} · ${rotuloSemana(p.semana)}` }),
+      s?.proximo ? h('span', { class: 'campo-ajuda', texto: s.proximo }) : null));
+    // 2. Legenda, como no post.
+    detalhe.appendChild(h('div', { class: 'peca-legenda aprovacao-legenda' },
+      h('h3', { texto: 'Legenda' }),
+      p.legenda ? h('p', { class: 'texto-legenda', texto: p.legenda }) : h('p', { class: 'texto-fraco', texto: 'Sem legenda registrada para esta peça.' }),
+      p.fonteLegenda ? h('p', { class: 'campo-ajuda', texto: `Fonte da legenda: ${p.fonteLegenda}` }) : null));
+
     const alternativas = familiaAtual?.pecas.filter((a) => !a.capaDe && a.id !== p.id) || [];
     if (alternativas.length) detalhe.appendChild(h('section', { class: 'demanda-alternativas', 'aria-label': 'Alternativas da família' },
       h('h3', { texto: 'Alternativas' }), h('div', { class: 'bloco-acao' }, alternativas.map((a) => h('button', {
         class: 'botao botao-fantasma', type: 'button', texto: tituloPeca(a), onclick: () => escolher(a),
       })) )));
-    detalhe.appendChild(trilha(ctx, p));
-    detalhe.appendChild(historicoDaPeca(ctx, p, pedidos || []));
-    for (const a of situacaoDaFamilia({ pecas: [p] }, pedidos).alertas) {
-      detalhe.appendChild(h('p', { class: 'demanda-atencao campo-ajuda', role: 'status', texto: [textoAlertaDemanda(a), a.proximoPasso].filter(Boolean).join(' ') }));
-    }
-    const corrigido = pedidos?.find((r) => r.pecaId === p.id && r.estado === 'corrigido-aguardando-aceite' && r.versaoCorrigida === p.versao);
-    let comparacao;
-    if (corrigido) {
-      comparacao = compararVersoes(ctx, p, corrigido);
-      detalhe.appendChild(comparacao.elemento);
-      limparComparacao = comparacao.limpar;
-    } else detalhe.appendChild(p.tipo === 'texto' ? previaTexto(ctx, p) : ctx.midia(p, { grande: true }));
-    if (!corrigido && pedidos?.some((r) => r.pecaId === p.id && r.estado === 'corrigido-aguardando-aceite')) {
-      detalhe.appendChild(ctx.alerta('atencao', 'A versão da peça não confere com a correção entregue. Atualize antes de comparar e dar o aceite.'));
-    }
     if (p.capa?.pecaId) {
       const capa = fila.find((a) => a.id === p.capa.pecaId);
       if (capa) detalhe.appendChild(h('section', { class: 'demanda-capa', 'aria-label': 'Capa do vídeo' },
-        h('h3', { texto: 'Capa do vídeo' }), ctx.midia(capa),
+        h('h3', { texto: 'Capa deste Reel' }),
+        capa.arquivos?.[0]?.url ? h('img', { class: 'demanda-capa-miniatura', src: ctx.urlArquivo ? ctx.urlArquivo(capa.arquivos[0].url) : capa.arquivos[0].url, alt: `Capa de ${tituloPeca(p)}`, loading: 'lazy' }) : null,
         h('p', { class: 'campo-ajuda', texto: capa.aprovada ? 'Capa aprovada nesta versão, com aceite próprio.' : 'A capa exige aceite próprio; o aceite do vídeo não vale para ela.' }),
         h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Revisar capa', onclick: () => escolher(capa) })));
+    } else if (p.tipo === 'video') {
+      detalhe.appendChild(ctx.alerta('atencao', 'Este Reel ainda não tem capa vinculada. Sem capa, a publicação usa o primeiro quadro do vídeo.'));
     }
-    if (p.editorial?.copyCanonica) detalhe.appendChild(h('div', { class: 'peca-legenda demanda-copy' },
-      h('h3', { texto: 'Copy de referência' }), h('p', { class: 'texto-legenda', texto: p.editorial.copyCanonica }),
-      p.editorial.avisoHarmonizacao ? h('p', { class: 'campo-ajuda', texto: p.editorial.avisoHarmonizacao }) : null));
+    if (p.capaDe) {
+      const video = fila.find((a) => a.id === p.capaDe);
+      detalhe.appendChild(h('p', { class: 'campo-ajuda aprovacao-capa-de', texto: video ? `Esta imagem é a capa do Reel "${tituloPeca(video)}". Ela entra no Reel, nunca como post próprio.` : 'Esta imagem é capa de um Reel. Ela entra no Reel, nunca como post próprio.' }));
+      if (video) detalhe.appendChild(h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Voltar ao Reel', onclick: () => escolher(video) }));
+    } else if (p.capaOrfa) {
+      detalhe.appendChild(ctx.alerta('atencao', 'Capa sem Reel vinculado. Ela continua visível aqui para não se perder, mas não deve ser publicada como post comum. Peça aos agentes o vínculo com o vídeo certo.'));
+    }
+
+    // 3. Avisos que mudam a decisão.
+    for (const a of situacaoDaFamilia({ pecas: [p] }, pedidos).alertas) {
+      detalhe.appendChild(h('p', { class: 'demanda-atencao campo-ajuda', role: 'status', texto: [textoAlertaDemanda(a), a.proximoPasso].filter(Boolean).join(' ') }));
+    }
+    if (!corrigido && pedidos?.some((r) => r.pecaId === p.id && r.estado === 'corrigido-aguardando-aceite')) {
+      detalhe.appendChild(ctx.alerta('atencao', 'A versão da peça não confere com a correção entregue. Atualize antes de comparar e dar o aceite.'));
+    }
+    if (p.aceiteDeVersaoAnterior) detalhe.appendChild(ctx.alerta('atencao', 'Uma versão anterior desta peça foi aprovada, mas o arquivo mudou depois. O aceite antigo não vale para esta versão.'));
     if (p.recusa) detalhe.appendChild(h('section', { class: 'demanda-recusa' },
       h('h3', { texto: 'Motivo público da recusa' }),
       h('p', { class: 'campo-ajuda', texto: p.recusa.motivo }),
       h('p', { class: 'campo-ajuda', texto: ctx.formatar.dataHora(p.recusa.recusadoEm) })));
-    detalhe.appendChild(h('div', { class: 'peca-legenda' },
-      h('h3', { texto: 'Legenda' }),
-      p.legenda ? h('p', { class: 'texto-legenda', texto: p.legenda }) : h('p', { class: 'texto-fraco', texto: 'Sem legenda registrada para esta peça.' }),
-      p.fonteLegenda ? h('p', { class: 'campo-ajuda', texto: `Fonte da legenda: ${p.fonteLegenda}` }) : null));
-    detalhe.appendChild(h('dl', { class: 'lista-chave-valor' },
-      h('dt', { texto: 'Estado' }), h('dd', { texto: rotuloEstado(p) }),
-      h('dt', { texto: 'Semana' }), h('dd', { texto: rotuloSemana(p.semana) }),
-      h('dt', { texto: 'Versão' }), h('dd', { class: 'mono', texto: String(p.versao || '').slice(0, 12) }),
-      h('dt', { texto: 'Arquivo' }), h('dd', { class: 'mono quebra', texto: p.caminho }),
-      p.aceite ? [h('dt', { texto: 'Aceite' }), h('dd', { texto: `${ctx.formatar.dataHora(p.aceite.aprovadoEm)}${p.aceite.evidencia ? `, ${p.aceite.evidencia}` : ''}` })] : null,
-      p.ajuste ? [h('dt', { texto: 'Ajuste pedido' }), h('dd', { texto: `${Object.hasOwn(ESTADOS_AJUSTE, p.ajuste.estado) ? ESTADOS_AJUSTE[p.ajuste.estado] : 'Estado não reconhecido. Atualize antes de agir.'}${p.ajuste.pedidoEm ? ` (${ctx.formatar.dataHora(p.ajuste.pedidoEm)})` : ''}` })] : null));
+    const temPedidoAberto = pedidos?.some((r) => r.pecaId === p.id && pedidoAberto(r));
+    const filaIndisponivel = !filaDisponivel(pedidos);
+    if (temPedidoAberto) detalhe.appendChild(ctx.alerta('atencao', 'Esta peça tem pedido aberto. Revise a correção e dê o aceite pelo pedido abaixo.'));
+    if (filaIndisponivel) detalhe.appendChild(ctx.alerta('atencao', 'A fila não pôde ser conferida. Atualize antes de registrar aceite.'));
+
+    // 4. Pedidos já feitos e a decisão.
     const ajustesDaPeca = secaoAjustesDaPeca(ctx, pedidos, p.id, comparacao?.estado || { pronta: false, observadores: new Set() });
     if (ajustesDaPeca) detalhe.appendChild(ajustesDaPeca);
     const pedidoComVersaoAtual = pedidos?.find((r) => r.pecaId === p.id &&
@@ -199,17 +289,6 @@ export async function montar(raiz, ctx) {
         onclick: () => pedirAjuste(ctx, { ...p, versao: pedidoComVersaoAtual.versaoAtual }),
       }));
     }
-    if (p.aceiteDeVersaoAnterior) detalhe.appendChild(ctx.alerta('atencao', 'Uma versão anterior desta peça foi aprovada, mas o arquivo mudou depois. O aceite antigo não vale para esta versão.'));
-    if (p.indice) {
-      detalhe.appendChild(h('details', { class: 'peca-indice' },
-        h('summary', { texto: 'Linha do índice da semana (pareceres e pendências)' }),
-        h('p', { class: 'campo-ajuda', texto: 'Parecer de revisor não é aceite seu. Só o botão abaixo registra aceite.' }),
-        ctx.markdown(p.indice.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map((x) => `- ${x.trim()}`).join('\n'))));
-    }
-    const temPedidoAberto = pedidos?.some((r) => r.pecaId === p.id && pedidoAberto(r));
-    const filaIndisponivel = !filaDisponivel(pedidos);
-    if (temPedidoAberto) detalhe.appendChild(ctx.alerta('atencao', 'Esta peça tem pedido aberto. Revise a correção e dê o aceite pelo pedido na fila de ajustes.'));
-    if (filaIndisponivel) detalhe.appendChild(ctx.alerta('atencao', 'A fila não pôde ser conferida. Atualize antes de registrar aceite.'));
     const botaoAprovar = h('button', { class: 'botao botao-primario', type: 'button', texto: p.aprovada ? 'Aprovada nesta versão' : temPedidoAberto ? 'Aceite pela fila de ajustes' : 'Aprovar esta versão', disabled: !!p.aprovada || temPedidoAberto || filaIndisponivel || p.estado === 'historico',
       onclick: () => aprovar(ctx, p, botaoAprovar) });
     const botaoAjuste = h('button', { class: 'botao', type: 'button', texto: 'Pedir ajuste', disabled: filaIndisponivel || p.estado === 'historico', onclick: () => pedirAjuste(ctx, p) });
@@ -220,15 +299,57 @@ export async function montar(raiz, ctx) {
       class: 'botao', type: 'button', texto: 'Mover para aprovados', disabled: filaIndisponivel || temPedidoAberto,
       onclick: () => promoverPeca(ctx, p, botaoMover),
     }) : null;
-    detalhe.appendChild(h('div', { class: 'bloco-acao' }, botaoAprovar, botaoAjuste, botaoRecusar,
+    detalhe.appendChild(h('div', { class: 'bloco-acao aprovacao-decisao' }, botaoAprovar, botaoAjuste, botaoRecusar,
       botaoMover,
       p.aprovada && p.estado === 'aprovados' ? h('a', { class: 'botao botao-fantasma', href: `#/marketing/calendario?secao=sem-data&peca=${encodeURIComponent(p.id)}`, texto: 'Marcar data no calendário' }) : null));
+
+    // 5. Evidência, recolhida: andamento, histórico, referência e dados técnicos.
+    detalhe.appendChild(h('details', { class: 'aprovacao-mais' },
+      h('summary', { texto: 'Andamento e histórico' }),
+      trilha(ctx, p),
+      historicoDaPeca(ctx, p, pedidos || [])));
+    if (p.editorial?.copyCanonica) detalhe.appendChild(h('details', { class: 'aprovacao-mais peca-legenda demanda-copy' },
+      h('summary', { texto: 'Copy de referência' }), h('p', { class: 'texto-legenda', texto: p.editorial.copyCanonica }),
+      p.editorial.avisoHarmonizacao ? h('p', { class: 'campo-ajuda', texto: p.editorial.avisoHarmonizacao }) : null));
+    detalhe.appendChild(h('details', { class: 'aprovacao-mais' },
+      h('summary', { texto: 'Dados técnicos' }),
+      h('dl', { class: 'lista-chave-valor' },
+        h('dt', { texto: 'Estado' }), h('dd', { texto: rotuloEstado(p) }),
+        h('dt', { texto: 'Semana' }), h('dd', { texto: rotuloSemana(p.semana) }),
+        h('dt', { texto: 'Versão' }), h('dd', { class: 'mono', texto: String(p.versao || '').slice(0, 12) }),
+        h('dt', { texto: 'Arquivo' }), h('dd', { class: 'mono quebra', texto: p.caminho }),
+        p.aceite ? [h('dt', { texto: 'Aceite' }), h('dd', { texto: `${ctx.formatar.dataHora(p.aceite.aprovadoEm)}${p.aceite.evidencia ? `, ${p.aceite.evidencia}` : ''}` })] : null,
+        p.ajuste ? [h('dt', { texto: 'Ajuste pedido' }), h('dd', { texto: `${Object.hasOwn(ESTADOS_AJUSTE, p.ajuste.estado) ? ESTADOS_AJUSTE[p.ajuste.estado] : 'Estado não reconhecido. Atualize antes de agir.'}${p.ajuste.pedidoEm ? ` (${ctx.formatar.dataHora(p.ajuste.pedidoEm)})` : ''}` })] : null)));
+    if (p.indice) {
+      detalhe.appendChild(h('details', { class: 'aprovacao-mais peca-indice' },
+        h('summary', { texto: 'Linha do índice da semana (pareceres e pendências)' }),
+        h('p', { class: 'campo-ajuda', texto: 'Parecer de revisor não é aceite seu. Só o botão Aprovar registra aceite.' }),
+        ctx.markdown(p.indice.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map((x) => `- ${x.trim()}`).join('\n'))));
+    }
   };
 
   desenharLista();
   desenharDetalhe();
+  if (ctx.params.peca && selecionada?.id === ctx.params.peca) abrirJanela();
   observarPedidos(pedidos, () => { if (!ctx.obsoleta()) { desenharLista(); desenharDetalhe(); } });
-  return () => limparComparacao();
+  return () => { pausarMidia(); limparComparacao(); if (janela.open) janela.close(); };
+}
+
+// Formato visível de uma peça na galeria e no topo da prévia.
+function rotuloFormato(p) {
+  if (p.capaDe || p.capaOrfa) return 'Capa de Reel';
+  return { video: 'Reel', carrossel: 'Carrossel', imagem: 'Imagem', texto: 'Texto' }[p.tipo] || 'Peça';
+}
+
+// Miniatura do card: capa do Reel, primeira página, primeiro quadro do vídeo ou o título.
+function miniatura(ctx, p) {
+  const { h } = ctx;
+  const u = (x) => (ctx.urlArquivo ? ctx.urlArquivo(x) : x);
+  if (p.capa?.url) return h('img', { src: u(p.capa.url), alt: '', loading: 'lazy', decoding: 'async' });
+  const arq = (p.arquivos || []).map((a) => (typeof a === 'string' ? a : a?.url)).find((x) => /\.(png|jpe?g|webp|gif|svg|avif|mp4|webm|mov|m4v)$/i.test(x || ''));
+  if (!arq) return h('span', { class: 'galeria-card-texto', texto: tituloPeca(p) });
+  if (/\.(mp4|webm|mov|m4v)$/i.test(arq)) return h('video', { src: `${u(arq)}#t=0.1`, preload: 'metadata', muted: true, playsinline: true, tabindex: '-1' });
+  return h('img', { src: u(arq), alt: '', loading: 'lazy', decoding: 'async' });
 }
 
 // O servidor comprova a versão alvo. Nunca montamos uma URL de Git ou caminho histórico no cliente.
