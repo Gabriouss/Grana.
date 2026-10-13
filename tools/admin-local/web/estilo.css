@@ -1362,6 +1362,36 @@ dialog.aprovacao-janela .feed-post-corpo { grid-template-columns: minmax(0, 1fr)
   border-top: 1px solid var(--rule);
   background: var(--paper);
 }
+.aprovacao-ajuste {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-sm);
+  min-width: 0;
+  padding: var(--s-md);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-lg);
+  background: var(--paper-raised);
+}
+.aprovacao-ajuste > h3 { margin: 0; font-size: var(--t-apoio); }
+.aprovacao-ajuste-categorias { display: flex; flex-wrap: wrap; gap: var(--s-sm); margin: 0; padding: 0; border: 0; }
+.aprovacao-ajuste-categorias > legend { width: 100%; margin-bottom: var(--s-xs); padding: 0; color: var(--ink-soft); font-size: var(--t-legenda); }
+.aprovacao-ajuste-categoria {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-sm);
+  min-height: var(--alvo);
+  padding: 0 var(--s-md);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-pill);
+  color: var(--ink-soft);
+  font-size: var(--t-legenda);
+  cursor: pointer;
+}
+.aprovacao-ajuste-categoria:has(input:checked) { border-color: var(--accent); color: var(--ink); background: var(--paper-selected); }
+.aprovacao-ajuste-categoria:has(input:focus-visible) { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+.aprovacao-ajuste-categoria input { accent-color: var(--accent); margin: 0; }
+.aprovacao-ajuste-texto { width: 100%; min-height: 96px; resize: vertical; }
+.aprovacao-ajuste .campo-ajuda { margin: 0; }
 details.aprovacao-mais { border: 1px solid var(--rule); border-radius: var(--r-md); padding: 0 var(--s-md); background: transparent; }
 details.aprovacao-mais > summary {
   display: flex;
