@@ -181,11 +181,19 @@ function planejar(raiz, corpo = {}) {
       planejadoEm: agoraLocalIso(),
     };
     const cr = require('./cronograma.cjs');
-    const auto = dados.planejados.find((r) => r.id === peca.id && r.versao === peca.versao && r.manifestoId);
+    const anterior = dados.planejados.find((r) => r.id === peca.id && r.versao === peca.versao);
+    const auto = anterior?.manifestoId ? anterior : null;
+    const recibos = [...(anterior?.recibos || [])];
+    // Legado tem a última marcação datada, mesmo sem lista de recibos.
+    // Preserve essa evidência antes de substituir o registro manual.
+    if (!auto && anterior?.planejadoEm && Number.isFinite(Date.parse(anterior.planejadoEm)) && dataValida(anterior.data) &&
+      !recibos.some((r) => r.em === anterior.planejadoEm && (r.tipo === 'data-marcada' || r.acao === 'substituicao-manual'))) {
+      recibos.push({ tipo: 'data-marcada', em: anterior.planejadoEm, data: anterior.data, hora: anterior.hora, canal: anterior.canal });
+    }
     if (auto) {
       const substituicaoManual = { data: registro.data, hora: registro.hora, canal: registro.canal, observacao: registro.observacao };
-      Object.assign(registro, auto, substituicaoManual, { planejadoEm: registro.planejadoEm, substituicaoManual, estado: 'planejado', recibos: [...(auto.recibos || []), { acao: 'substituicao-manual', em: registro.planejadoEm, data: registro.data, hora: registro.hora, canal: registro.canal }] });
-    }
+      Object.assign(registro, auto, substituicaoManual, { planejadoEm: registro.planejadoEm, substituicaoManual, estado: 'planejado', recibos: [...recibos, { acao: 'substituicao-manual', em: registro.planejadoEm, data: registro.data, hora: registro.hora, canal: registro.canal }] });
+    } else registro.recibos = [...recibos, { tipo: 'data-marcada', em: registro.planejadoEm, data: registro.data, hora: registro.hora, canal: registro.canal }];
     dados.planejados = dados.planejados.filter((c) => c.id !== peca.id);
     dados.planejados.push(registro);
     gravarJsonAtomico(caminhoPainel(raiz, ARQUIVO), dados);

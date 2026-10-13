@@ -466,5 +466,40 @@ async function test(nome, fn, padaria, nomes) {
     await cal.planejar(h.dir, { id: r.peca.id, versao: r.peca.versao, data: '2026-10-22', hora: '20:00', canal: 'stories' });
     r = cal.obterCalendario(h.dir, '2026-10').itens[0]; assert.equal(r.previsaoResolvida.data, '2026-10-15'); assert.equal(r.data, '2026-10-22'); assert.equal(r.previsaoResolvida.canal, 'instagram-feed'); assert.equal(r.canal, 'stories'); assert.equal(r.recibo.id, id);
   });
+  await test('F4 remarcação manual sem vínculo preserva datas e migração/promoção conserva recibos', async (h) => {
+    await h.aprovar();
+    await cal.planejar(h.dir, { id: h.p.id, versao: h.p.versao, data: '2026-10-20', hora: '19:00', canal: 'reels' });
+    const arq = path.join(h.painel, 'calendario.json'), primeira = h.raw().planejados[0].recibos[0];
+    assert.equal(primeira.data, '2026-10-20');
+    await cal.planejar(h.dir, { id: h.p.id, versao: h.p.versao, data: '2026-10-21', hora: '20:00', canal: 'stories' });
+    let plano = h.raw().planejados[0];
+    assert.equal(plano.recibos.length, 2);
+    assert.deepEqual(plano.recibos[0], primeira, 'recibo original imutável');
+    const manuais = structuredClone(plano.recibos);
+    assert.deepEqual(Array.from(c.obterPeca(h.dir, h.p.id).trilha.eventos.filter((e) => e.tipo === 'data'), (e) => e.data), ['2026-10-20', '2026-10-21']);
+    const bytes = fs.readFileSync(arq); cal.obterCalendario(h.dir, '2026-10'); c.obterPeca(h.dir, h.p.id);
+    assert(fs.readFileSync(arq).equals(bytes), 'GET não grava recibo');
+    await h.iniciar(); await h.declararD(); const promovida = await h.promover();
+    plano = h.raw().planejados.find((r) => r.id === promovida.promocao.id);
+    assert.deepEqual(plano.recibos.slice(0, 2), manuais, 'vínculo e promoção preservam os dois recibos exatos');
+    const datas = c.obterPeca(h.dir, promovida.promocao.id).trilha.eventos.filter((e) => e.tipo === 'data');
+    assert(datas.some((e) => e.data === '2026-10-20' && e.em === primeira.em));
+    assert(datas.some((e) => e.data === '2026-10-21' && e.canal === 'stories'));
+    assert.equal(cal.obterCalendario(h.dir, '2026-10').itens[0].data, '2026-10-21');
+    assert.equal(en.ensaiar(h.dir).chamadasMeta, 0);
+  });
+  await test('F4 legado manual sem recibos preserva planejadoEm existente ao remarcar', async (h) => {
+    await h.aprovar();
+    const arq = path.join(h.painel, 'calendario.json'), em = '2026-10-10T10:00:00-03:00';
+    fs.writeFileSync(arq, JSON.stringify({ formato: 1, planejados: [{ id: h.p.id, caminho: h.p.caminho, versao: h.p.versao,
+      data: '2026-10-20', hora: '19:00', canal: 'reels', planejadoEm: em }] }));
+    await cal.planejar(h.dir, { id: h.p.id, versao: h.p.versao, data: '2026-10-21', canal: 'stories' });
+    const eventos = c.obterPeca(h.dir, h.p.id).trilha.eventos.filter((e) => e.tipo === 'data');
+    assert.deepEqual(Array.from(eventos, (e) => e.data), ['2026-10-20', '2026-10-21']);
+    assert.equal(eventos[0].em, em, 'sem inventar data de evento legado');
+    const antes = fs.readFileSync(arq);
+    await assert.rejects(cal.planejar(h.dir, { id: h.p.id, versao: 'f'.repeat(40), data: '2026-10-22', canal: 'stories' }), (e) => e.codigo === 'versao-mudou');
+    assert(fs.readFileSync(arq).equals(antes), 'recusa não grava recibo');
+  });
   assert.deepEqual(chamadas, []); console.log(`admin-cronograma: ${grupos} grupos passaram, módulos reais, zero rede/Meta`);
 })().catch((e) => { console.error(e); process.exitCode = 1; });

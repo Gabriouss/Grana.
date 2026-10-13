@@ -232,7 +232,7 @@ function projetar(raiz, operacional = {}, pecas = c.montarCatalogo(raiz)) {
     const dataPrevista = d ? { ...d, dataResolvida: data } : null;
     const efetivo = estado && estado !== 'aguardando dia D' ? { data: null, hora: d?.hora || null, canal: d?.canal || null } : substituicaoManual || { data, hora: d?.hora || null, canal: d?.canal || null };
     if (efetivo.data && estado === 'aguardando dia D') estado = null;
-    planos.push({ ...base, ...efetivo, dataPrevista, substituicaoManual, registroLegado: anterior?.registroLegado || legado || null, recibos: anterior?.recibos || [], estado: estado || 'planejado', origem });
+    planos.push({ ...base, ...efetivo, dataPrevista, substituicaoManual, registroLegado: anterior?.registroLegado || legado || null, recibos: anterior?.recibos || legado?.recibos || [], estado: estado || 'planejado', origem });
     if (estado) avisos.push(`${p.id}: ${estado}.`);
     if (efetivo.data && efetivo.data < c.hojeLocal()) avisos.push(`${p.id}: data prevista no passado; nada será publicado automaticamente.`);
     for (const d of m.datasComAviso || []) if (efetivo.data === d.data) avisos.push(`${p.id}: ${d.motivo}. O cálculo não exclui feriados.`);
