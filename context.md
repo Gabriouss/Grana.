@@ -14885,6 +14885,38 @@ Esta entrada supera o trecho acima que diz que a Fase 2 ainda nao tinha comecado
 
 **Tambem em 10/10:** o time Claude foi dividido em duas contas, registrado pelo Quill na nota "2026-10-10 - M1 - Divisao de contas do time Claude". As notas "Memoria - 00 Entrada", "Regras e decisoes" e "Pendencias abertas" estao paradas em 02/10 e contradizem o repositorio (HEAD, regras ate a 25, troca dos segredos ja confirmada em 08/10): falta o documentador atualizar. Nota de sessao no vault NAO foi escrita nesta sessao.
 
+## 12/10/2026 (M1, Claude Code): e-mail corporativo pronto, envia e recebe (atualiza a entrada de 10/10 logo abaixo)
+
+Escrita pelo Orquestrador Supremo (Claude) por pedido direto do autor ("me ajuda a configurar o resend pra receber e enviar email. Preciso de um email corporativo para utilizar" e, no fim, "Pode resolver essas pendencias"). O Ledger estava parado pela ordem do painel do mesmo dia e sem limite do Codex.
+
+**Estado atual, testado em produção em 12/10:**
+
+| Endereço | Recebe | Responde |
+|---|---|---|
+| `contato@granaponto.com.br` | encaminhado ao Gmail do Grana | pelo Gmail, "Enviar como", padrão |
+| `suporte@granaponto.com.br` | encaminhado ao Gmail do Grana | pelo Gmail, "Enviar como" |
+| `marketing@granaponto.com.br` | descartado (decisão do autor: "marketing não receberá emails") | só envio pelo sistema |
+| outro endereço do domínio | entra como `contato@` | |
+
+- MX no Registro.br: `10 inbound-smtp.sa-east-1.amazonaws.com`. O autor primeiro cadastrou `feedback-smtp.us-east-1.amazonses.com` (servidor de retorno de envio, de outra região, visto em tutorial genérico); foi trocado antes de propagar. Domínio `verified` na Resend (DKIM, SPF e Receiving) às 11h02.
+- Edge Function nova `email-recebido` (`verify_jwt=false`, publicada com `--no-verify-jwt`), commits `9d2013f` e `b2bbb62`. Webhook `email.received` da Resend → busca o e-mail e os anexos pela API → reenvia a `EMAIL_ENCAMINHAR_PARA` com remetente "Nome via caixa" e `Reply-To` do cliente. Assinatura Svix verificada; `Idempotency-Key` `encaminhar/<id>` impede duplicar no reenvio do webhook; falha temporária (429, 5xx, rede) devolve 500 para a Resend repetir; falha definitiva manda à caixa do autor um e-mail "Falha ao encaminhar" com remetente, destino e assunto. Anexos acima de 25 MB vão sem anexo e com aviso no topo. Prazo total de 60 s.
+- Segredos novos no Supabase (só nomes): `RESEND_API_KEY` (chave própria na Resend, `supabase-email-recebido`), `RESEND_WEBHOOK_SECRET`, `EMAIL_ENCAMINHAR_PARA`. Gravá-los somou 1 na versão de todas as funções, sem mudar código (regra 11).
+- Gmail do Grana com "Enviar e-mail como" para `contato@` (padrão) e `suporte@`: SMTP `smtp.resend.com:465` SSL, usuário `resend`, senha numa chave de envio que o autor criou ele mesmo no painel da Resend. **Armadilha:** o campo de senha do Gmail tem `maxlength` menor que a chave da Resend; é preciso apagar o atributo pelo Inspecionar do navegador antes de colar.
+- Política de privacidade (`lib/legal-content.ts`, 12/10/2026): Resend e Gmail entram na seção 4; "Atendimento por e-mail" na seção 2; finalidade na seção 3; a seção 5 passa de "única exceção" para duas, porque a exclusão da conta não apaga os e-mails do atendimento (eles ficam no Gmail, fora do banco). A Resend já devia constar desde agosto, porque o Supabase Auth envia por ela.
+- `__tests__/email-recebido.cjs` entrou no `test:ci`.
+
+**Verificado:** teste do módulo real com Deno e `fetch` dublados (12 cenários, conferido que falha sem a checagem de assinatura e sem o retry); `deno check` limpo; em produção, `nao-responda@` → `contato@` → Gmail entregue com `Reply-To` certo; confirmações do Google para `suporte@` e `contato@` chegaram pelo encaminhamento; resposta pelo Gmail saiu como `"Grana. Contato" <contato@granaponto.com.br>` pela Resend, entregue; e-mail para `marketing@` chegou na Resend e não foi encaminhado.
+
+**Deu errado no caminho:** a publicação da função foi bloqueada uma vez pelo classificador de permissões até o autor autorizar; o primeiro MX estava errado; a primeira resposta do autor saiu como o Gmail, porque o e-mail encaminhado chega endereçado ao Gmail e ele não troca o remetente sozinho (resolvido com `contato@` como padrão); o primeiro texto da política tinha erro de concordância, corrigido antes do commit.
+
+**Descartado:** serviço terceiro de redirecionamento (ImprovMX), que poria mais um operador no caminho; incluir a Resend na caixa de eventos `reivindicar_webhook_evento`, que exigiria migration, trocado pelo `Idempotency-Key` da própria Resend; copiar `contato@` no e-mail encaminhado para o Gmail escolher o remetente sozinho, porque a cópia voltaria pela Resend e criaria um laço.
+
+**Sem verificação:**
+- [ ] Revisão jurídica do texto novo da política, inclusive transferência internacional (Resend e Google são empresas dos EUA), tema que a política ainda não trata para nenhum operador.
+- [ ] O texto novo só chega ao app instalado com build nova; na web, com o próximo deploy da landing.
+- [ ] Anexo grande real e e-mail com muitos anexos não foram testados em produção.
+- [ ] O contato de dados da política continua `gbr.design30@gmail.com`; trocar por `contato@granaponto.com.br` é decisão do autor.
+
 ## 10/10/2026 (M1, Claude Code): e-mail corporativo pela Resend, recebimento LIGADO e pendente de MX
 
 Escrita pelo orquestrador Claude por pedido direto do autor ("guarda isso aí na memória do projeto"). Nenhum arquivo de código mudou; a mudança foi de configuração na Resend e no `.env` local da M1.

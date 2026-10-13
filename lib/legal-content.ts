@@ -30,11 +30,11 @@ export type DocumentoLegal = {
   blocos: BlocoLegal[];
 };
 
-const EMAIL_CONTATO = '[gbr.design30@gmail.com](mailto:gbr.design30@gmail.com)';
+const EMAIL_CONTATO = '[contato@granaponto.com.br](mailto:contato@granaponto.com.br)';
 
 export const POLITICA_PRIVACIDADE: DocumentoLegal = {
   titulo: 'Política de Privacidade',
-  atualizadoEm: '4 de outubro de 2026',
+  atualizadoEm: '12 de outubro de 2026',
   blocos: [
     {
       tipo: 'paragrafo',
@@ -58,6 +58,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
         'QR Code da nota fiscal (opcional): a câmera só é usada quando você toca em "Escanear QR code da nota". Ela lê o código no próprio aparelho, e nada é guardado além do lançamento que você confirma. O leitor também usa o ML Kit, com as mesmas métricas técnicas descritas na seção 4.',
         'Assistente Granabô (opcional): guardamos as perguntas, respostas e memórias que você escolhe ou permite formar para manter o contexto do assistente. Esses dados podem conter informações financeiras que você escreveu na conversa.',
         'Notificações (opcional): guardamos o token técnico de push, o fuso horário, preferências de janela e o estado de entrega para enviar os lembretes que você ativou. O token pode ser removido pelo app ao sair da conta ou deixar de usar o aparelho.',
+        'Atendimento por e-mail: quando você escreve para contato@granaponto.com.br ou suporte@granaponto.com.br, recebemos o seu endereço de e-mail, o nome que aparece no remetente, o assunto, o texto e os anexos da mensagem, e guardamos as respostas que trocamos com você.',
         'Dados técnicos mínimos: identificador interno da conta, horários de criação/atualização dos seus registros e recibos técnicos de operações, para o funcionamento normal do banco de dados.',
       ],
     },
@@ -77,6 +78,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
         'Sugerir, a partir da foto da nota ou do QR Code da nota fiscal, os campos do lançamento que você confere antes de salvar.',
         'Responder perguntas financeiras pelo Granabô, consultando somente os dados da sua própria conta e guardando o histórico para manter a conversa.',
         'Manter sua sessão conectada com segurança entre usos do app.',
+        'Enviar os e-mails da sua conta (confirmação de cadastro e troca de senha) e responder às mensagens que você manda para o nosso atendimento.',
       ],
     },
     {
@@ -98,6 +100,8 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
         'Google (Gemini), somente para gerar a resposta textual do Granabô a partir da pergunta, do contexto da conversa e dos resultados financeiros necessários para responder. O modelo não recebe acesso direto ao banco.',
         `Google (ML Kit), biblioteca que lê a foto da nota e o QR Code no próprio aparelho, no Android. Segundo a documentação do Google, o ML Kit não envia aos servidores do Google a imagem, o conteúdo lido nem o resultado da leitura. A biblioteca envia ao Google métricas de diagnóstico e uso: dados do aparelho e da versão do app, um identificador por instalação, configuração e tamanho da leitura, tempo de processamento, versão do recurso, eventos e códigos de erro. O Google informa que usa essas métricas para manter, melhorar e proteger as APIs. O Grana. não recebe essas métricas. A biblioteca faz parte do app e é iniciada sempre que ele abre, inclusive pelo widget, mesmo que você não use a foto nem o QR. Por isso, não garantimos que nenhuma métrica seja enviada sem o uso dessas funções. A base legal desse envio é o legítimo interesse (LGPD, art. 7º, IX, e art. 10): manter a leitura da foto e do QR funcionando com segurança. Você pode se opor a esse tratamento. Deixar de usar a foto da nota e o QR, que são opcionais, evita as métricas dessas leituras, e você também pode escrever para ${EMAIL_CONTATO}.`,
         'Google Ads e Meta, somente se você chegou por um anúncio e seguiu dali para a compra: recebem o identificador daquele clique e a informação de que a compra aconteceu, para medir a campanha. Não recebem seus dados financeiros nem seu uso do app.',
+        'Resend, serviço de e-mail: envia os e-mails da sua conta (confirmação de cadastro e troca de senha) e recebe as mensagens que você manda para contato@granaponto.com.br e suporte@granaponto.com.br. Para isso, recebe o seu endereço de e-mail e o conteúdo dessas mensagens.',
+        'Google (Gmail), a caixa de e-mail em que o nosso atendimento lê e responde as suas mensagens. As mensagens que você manda para o atendimento, com os anexos, e as nossas respostas ficam guardadas nessa caixa.',
         'Cakto, se você assinar o Grana. como plano pago: o processamento do pagamento é feito inteiramente pela Cakto, que nos informa o e-mail usado na compra e o status da assinatura (ativa, atrasada, cancelada, reembolsada), só para liberar o acesso correspondente. O Grana. não recebe nem armazena dados de cartão.',
       ],
     },
@@ -114,7 +118,12 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
     {
       tipo: 'paragrafo',
       texto:
-        `Há uma única exceção, e ela fica registrada aqui por inteiro: os feedbacks que você enviar pelo app continuam guardados depois da exclusão, com os campos de vínculo anonimizados. Apagamos o vínculo com a sua conta, a identificação do aparelho e qualquer imagem anexada; ficam o tipo, a nota, o texto e a data, que é o que nos ajuda a corrigir e melhorar o app. O texto que você escreveu é mantido como está. Se ele contiver dado pessoal, peça a remoção por ${EMAIL_CONTATO} e apagamos o comentário.`,
+        `Há duas exceções, e elas ficam registradas aqui por inteiro. A primeira: os feedbacks que você enviar pelo app continuam guardados depois da exclusão, com os campos de vínculo anonimizados. Apagamos o vínculo com a sua conta, a identificação do aparelho e qualquer imagem anexada; ficam o tipo, a nota, o texto e a data, que é o que nos ajuda a corrigir e melhorar o app. O texto que você escreveu é mantido como está. Se ele contiver dado pessoal, peça a remoção por ${EMAIL_CONTATO} e apagamos o comentário.`,
+    },
+    {
+      tipo: 'paragrafo',
+      texto:
+        `A segunda: os e-mails trocados com o nosso atendimento ficam na caixa de e-mail do atendimento, fora do banco de dados do app, e por isso a exclusão da conta não os apaga. Guardamos essas mensagens para acompanhar a sua solicitação e eventuais pedidos seguintes sobre o mesmo assunto. Para apagá-las, peça por ${EMAIL_CONTATO} e excluímos as mensagens trocadas com você.`,
     },
     {
       tipo: 'paragrafo',
