@@ -1372,6 +1372,7 @@ dialog.aprovacao-janela .feed-post-corpo { grid-template-columns: minmax(0, 1fr)
   border-radius: var(--r-lg);
   background: var(--paper-raised);
 }
+.aprovacao-ajuste { scroll-margin-bottom: calc(2 * var(--alvo) + var(--s-xxl)); }
 .aprovacao-ajuste > h3 { margin: 0; font-size: var(--t-apoio); }
 .aprovacao-ajuste-categorias { display: flex; flex-wrap: wrap; gap: var(--s-sm); margin: 0; padding: 0; border: 0; }
 .aprovacao-ajuste-categorias > legend { width: 100%; margin-bottom: var(--s-xs); padding: 0; color: var(--ink-soft); font-size: var(--t-legenda); }

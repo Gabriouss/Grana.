@@ -120,6 +120,14 @@ export async function montar(raiz, ctx) {
       setTimeout(focar, 0);
     },
     onclick: (e) => { if (e.target === janela) janela.close(); },
+    // Esc com o pedido de ajuste aberto fecha só o pedido; o texto fica guardado.
+    oncancel: (e) => {
+      if (!rascunhoAberto) return;
+      e.preventDefault();
+      rascunhoAberto = null;
+      desenharDetalhe();
+      detalhe.querySelector?.('.aprovacao-decisao [aria-expanded]')?.focus();
+    },
   }, h('div', { class: 'feed-post-corpo' }, midiaSlot, h('div', { class: 'feed-post-lado aprovacao-janela-lado' }, cabecaJanela, detalhe)));
   corpo.appendChild(janela);
   const limparComparacao = () => { midiaAtual.limpar(); };
@@ -161,7 +169,8 @@ export async function montar(raiz, ctx) {
     cabecaJanela.appendChild(topoDaPrevia(h, { formato: rotuloFormato(p), aoFechar: () => janela.close() }));
   };
   const abrirJanela = () => {
-    if (!selecionada) return;
+    // Sem <dialog> modal (ambiente sem DOM real) não há janela aberta, e a mídia não é montada.
+    if (!selecionada || typeof janela.showModal !== 'function') return;
     if (!janela.open) devolverFoco = typeof document !== 'undefined' ? document.activeElement : null;
     const corrigido = pedidos?.find((r) => r.pecaId === selecionada.id && r.estado === 'corrigido-aguardando-aceite' && r.versaoCorrigida === selecionada.versao);
     if (!janela.open) janela.showModal?.();
@@ -177,6 +186,7 @@ export async function montar(raiz, ctx) {
   // polling não redesenha a coluna enquanto há um rascunho aberto, para não roubar o foco.
   const rascunhos = new Map();
   let rascunhoAberto = null;
+  let focarAjuste = false;
   const chaveRascunho = (p) => `${p.id}:${p.versao || ''}`;
   const escolher = (p, abrir = true) => {
     if (selecionada?.id !== p.id) rascunhoAberto = null;
@@ -344,13 +354,23 @@ export async function montar(raiz, ctx) {
     const podePedir = !filaIndisponivel && p.estado !== 'historico';
     const aberto = rascunhoAberto === chaveRascunho(p);
     const botaoAjuste = h('button', { class: 'botao', type: 'button', texto: aberto ? 'Fechar pedido de ajuste' : rascunhos.get(chaveRascunho(p))?.texto ? 'Pedir ajuste (rascunho guardado)' : 'Pedir ajuste', 'aria-expanded': String(aberto),
-      disabled: !podePedir, onclick: () => { rascunhoAberto = aberto ? null : chaveRascunho(p); desenharDetalhe(); } });
+      disabled: !podePedir, onclick: () => { rascunhoAberto = aberto ? null : chaveRascunho(p); focarAjuste = !aberto; desenharDetalhe(); } });
     if (aberto && podePedir) {
       if (!rascunhos.has(chaveRascunho(p))) rascunhos.set(chaveRascunho(p), { categorias: new Set(), texto: '' });
-      detalhe.appendChild(ajusteNaJanela(ctx, p, rascunhos.get(chaveRascunho(p)), {
+      const secaoAjuste = ajusteNaJanela(ctx, p, rascunhos.get(chaveRascunho(p)), {
         cancelar: () => { rascunhoAberto = null; desenharDetalhe(); },
         enviado: () => { rascunhos.delete(chaveRascunho(p)); rascunhoAberto = null; },
-      }));
+      });
+      detalhe.appendChild(secaoAjuste);
+      // Ao abrir, o pedido entra na vista e o foco vai para a primeira categoria (achado L8).
+      if (focarAjuste) {
+        focarAjuste = false;
+        const reduzir = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+        setTimeout(() => {
+          secaoAjuste.scrollIntoView?.({ block: 'nearest', behavior: reduzir ? 'auto' : 'smooth' });
+          secaoAjuste.querySelector?.('input')?.focus({ preventScroll: true });
+        }, 0);
+      }
     }
     const botaoRecusar = h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Recusar peça',
       disabled: filaIndisponivel || temPedidoAberto || p.estado === 'historico',
