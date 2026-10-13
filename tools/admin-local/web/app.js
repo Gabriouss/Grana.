@@ -192,6 +192,8 @@ export function bloquearPainel(motivo) {
   if (bloqueado) for (const el of document.querySelectorAll('.bloqueio')) el.remove();
   bloqueado = motivo;
   epoca++;
+  geracao++;
+  cancelarContadorAprovacao();
   if (acesso) acesso.parar();
   const t = TEXTO_BLOQUEIO[motivo] || TEXTO_BLOQUEIO['nao-pareado'];
   const casca = document.querySelector('.casca');
@@ -820,6 +822,7 @@ function contadorAprovacao(n) {
 }
 
 async function atualizarContadorAprovacao(obsoleta) {
+  if (obsoleta()) return;
   try {
     const [acervo, fila] = await Promise.all([api('/api/marketing/pecas'), api('/api/marketing/ajustes')]);
     if (obsoleta()) return;
@@ -827,9 +830,28 @@ async function atualizarContadorAprovacao(obsoleta) {
     const pecas = acervo.dados.pecas.filter((p) => ['para-aprovacao', 'aprovados', 'historico'].includes(p.estado));
     contadorAprovacao(contarPrecisaDeVoce(agruparFamilias(pecas, acervo.dados.familias), fila.dados.pedidos));
   } catch (err) {
+    if (obsoleta()) return;
     console.warn('[aprovacao-contador]', err.codigo || 'indisponivel');
     if (!obsoleta()) contadorAprovacao(null);
   }
+}
+
+let timerContadorAprovacao = null;
+function cancelarContadorAprovacao() {
+  clearTimeout(timerContadorAprovacao);
+  timerContadorAprovacao = null;
+}
+function acompanharContadorAprovacao(obsoleta, naAprovacao) {
+  cancelarContadorAprovacao();
+  if (naAprovacao) return; // A mesa já atualiza o contador pelo polling da fila.
+  const epocaContador = epoca;
+  const encerrado = () => obsoleta() || epocaContador !== epoca || bloqueado || (acesso && !podeDesenhar());
+  async function conferir() {
+    if (encerrado()) return;
+    await atualizarContadorAprovacao(encerrado);
+    if (!encerrado()) timerContadorAprovacao = setTimeout(conferir, 15000);
+  }
+  conferir();
 }
 
 async function renderizar() {
@@ -839,7 +861,7 @@ async function renderizar() {
   const def = ROTAS[rota] || { modulo: 'nao-encontrada', titulo: 'Página não encontrada' };
   if (!ROTAS[rota]) params.caminho = rota;
   const minha = ++geracao;
-  if (rota !== 'marketing/aprovacao') atualizarContadorAprovacao(() => minha !== geracao);
+  acompanharContadorAprovacao(() => minha !== geracao, rota === 'marketing/aprovacao');
 
   for (const a of document.querySelectorAll('.nav-link')) {
     if (a.getAttribute('href') === `#/${rota}`) a.setAttribute('aria-current', 'page');
@@ -965,6 +987,7 @@ const podeDesenhar = () => acesso && (acesso.legado || acesso.entrou);
 
 function esconderPainel() {
   epoca++;
+  cancelarContadorAprovacao();
   const casca = document.querySelector('.casca');
   if (casca) { casca.inert = true; casca.hidden = true; }
   // nada de dado na tela enquanto não houver sessão
