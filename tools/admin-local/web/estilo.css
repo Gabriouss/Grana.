@@ -1391,6 +1391,13 @@ dialog.aprovacao-janela .feed-post-corpo { display: contents; }
 .aprovacao-janela-conteudo .peca-legenda,
 .aprovacao-janela-conteudo .demanda-alternativas,
 .aprovacao-janela-conteudo .demanda-capa { padding: var(--s-md); }
+/* Cartões da coluna: título e conteúdo no mesmo ritmo, sem a margem padrão do h3 nem a do bloco de botões. */
+.aprovacao-janela-conteudo .peca-legenda,
+.aprovacao-janela-conteudo .demanda-alternativas,
+.aprovacao-janela-conteudo .demanda-capa { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-sm); }
+.aprovacao-janela-conteudo :is(.peca-legenda, .demanda-alternativas, .demanda-capa) > h3 { margin: 0; font-size: var(--t-apoio); line-height: var(--lh-titulo); }
+.aprovacao-janela-conteudo :is(.peca-legenda, .demanda-alternativas, .demanda-capa) > :is(p, .bloco-acao) { margin: 0; }
+.aprovacao-janela-conteudo .peca-legenda > .texto-legenda { align-self: stretch; }
 .demanda-capa-miniatura { width: 96px; aspect-ratio: 9 / 16; object-fit: cover; border-radius: var(--r-sm); background: var(--paper-deep); }
 .aprovacao-decisao .botao-fantasma { border-color: var(--rule); }
 .aprovacao-decisao {
