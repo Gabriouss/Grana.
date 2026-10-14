@@ -2677,6 +2677,7 @@ dialog.feed-post[open] { animation: modal-entra 240ms var(--ease-saida); }
   display: grid;
   place-items: center;
   width: var(--alvo); height: var(--alvo);
+  padding: 0;
   border: 0;
   border-radius: var(--r-md);
   background: transparent;
