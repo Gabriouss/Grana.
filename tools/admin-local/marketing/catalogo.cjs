@@ -260,12 +260,16 @@ function lerRegistroFamilias(raiz) {
 // Recusas do autor (historico.json), por id+versão. A recusa de uma revisão prevalece sobre a
 // marcação estática de vigente no registro de famílias até haver nova decisão ou versão (H-02).
 // Vale para a cópia em historico (id+versão) e para a ORIGEM preservada quando o índice ou a
-// limpeza falharam (origem.id com os mesmos bytes), para a recusa não depender da limpeza (W-A4).
+// limpeza falharam, para a recusa não depender da limpeza (W-A4). A origem casa pela versão dela
+// gravada na recusa (origem.versao, desde 14/10): versão nova só por legenda ou capa não herda a
+// recusa e pede decisão nova (H-02c). Recusa antiga sem origem.versao cai no casamento por bytes,
+// que falha fechado.
 function predicadoRecusa(recusas) {
   const lista = (Array.isArray(recusas) ? recusas : []).filter((r) => r && r.id && r.versao);
+  const mesmosBytes = (r, p) => Array.isArray(r.arquivos) && Array.isArray(p.arquivos) && r.arquivos.length === p.arquivos.length
+    && r.arquivos.every((a, i) => a?.sha1 === p.arquivos[i].sha1);
   return (p) => lista.some((r) => (r.id === p.id && r.versao === p.versao)
-    || (r.origem?.id === p.id && Array.isArray(r.arquivos) && Array.isArray(p.arquivos) && r.arquivos.length === p.arquivos.length
-      && r.arquivos.every((a, i) => a?.sha1 === p.arquivos[i].sha1)));
+    || (r.origem?.id === p.id && (typeof r.origem.versao === 'string' ? r.origem.versao === p.versao : mesmosBytes(r, p))));
 }
 function recusasDoPainel(raiz) {
   return predicadoRecusa(lerJson(caminhoPainel(raiz, 'historico.json'), { recusas: [] }).recusas);

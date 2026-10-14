@@ -115,7 +115,7 @@ function criarHistorico(io = fs, log = (codigo) => console.error(JSON.stringify(
         // Compara os arquivos movidos; a versão composta do Reel muda se a capa pareada por nome ficou para trás.
         if (!nova || nova.versaoArquivos !== p.versaoArquivos) throw new Error('destino-divergente');
         const registro = { id: nova.id, caminho: nova.caminho, versao: nova.versao, motivo: corpo.motivo.trim(), sucessora,
-          recusadoEm: c.agoraLocalIso(), evidencia: 'recusa pelo autor no painel local', origem: { id: p.id, caminho: p.caminho },
+          recusadoEm: c.agoraLocalIso(), evidencia: 'recusa pelo autor no painel local', origem: { id: p.id, caminho: p.caminho, versao: p.versao },
           arquivos: arquivos.map(({ origem, destino, sha1 }) => ({ origem, destino, sha1 })), indice: null };
         dados.recusas.push(registro); gravar(arq, dados); persistido = true;
         const relida = c.lerJson(arq, {}).recusas?.find((r) => r.id === registro.id && r.versao === registro.versao);

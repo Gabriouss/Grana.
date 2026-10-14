@@ -131,6 +131,81 @@ async function filaReal() {
     fs.writeFileSync(path.join(h.media, 'E01.jpg'), 'AUDIT revisao 1 corrigida');
     assert.equal(c.obterPeca(h.dir, h.p.id).recusada, false);
   });
+  // H-02c (Harbor, 14/10): a recusa prende a VERSÃO da origem. Matriz R1-R9 em cada falha (índice e
+  // limpeza): versão nova só por legenda, mesmo id e mesmos bytes, pede decisão nova e aceita.
+  const copy = (h, txt) => fs.writeFileSync(path.join(h.media, 'COPYS-FINAIS.md'), '## E01 · AUDIT legenda\n\n**Legenda:** ' + txt + '\n');
+  for (const falha of ['cleanup', 'indice']) {
+    await fixture(async (h) => {
+      copy(h, 'AUDIT legenda antiga');
+      const antiga = c.obterPeca(h.dir, h.p.id); assert.equal(antiga.legenda, 'AUDIT legenda antiga');
+      await ap.aprovar(h.dir, antiga.id, { versao: antiga.versao, confirmacao: true });
+      const origemArq = path.join(h.media, 'E01.jpg'), indiceArq = path.join(h.dir, h.semana, 'INDICE.md');
+      const io = { ...fs,
+        unlinkSync(x) { if (falha === 'cleanup' && x === origemArq) throw Error('AUDIT cleanup'); return fs.unlinkSync(x); },
+        renameSync(de, para) { if (falha === 'indice' && para === indiceArq) throw Error('AUDIT indice'); return fs.renameSync(de, para); } };
+      const r = await hist.criarHistorico(io, () => {})(h.dir, antiga.id, { versao: antiga.versao, motivo: 'AUDIT recusa legenda antiga', confirmacao: true });
+      // R1: recusa persistida com a versão da origem, origem preservada.
+      assert.ok(fs.existsSync(origemArq), `${falha}: origem preservada`); assert.equal(r.recusa.origem.versao, antiga.versao);
+      // R2/R3: mesma versão recusada na origem e no destino, sem efeito.
+      assert.equal(c.obterPeca(h.dir, antiga.id).recusada, true);
+      await recusaSemEscrita(h.dir, () => ap.aprovar(h.dir, antiga.id, { versao: antiga.versao, confirmacao: true }), 'revisao-recusada', `${falha} R2 origem`);
+      await recusaSemEscrita(h.dir, () => ap.aprovar(h.dir, r.recusa.id, { versao: r.recusa.versao, confirmacao: true }), 'revisao-recusada', `${falha} R2 destino`);
+      await recusaSemEscrita(h.dir, () => cal.planejar(h.dir, { id: antiga.id, versao: antiga.versao, data: '2026-10-20', canal: 'instagram-feed' }), 'revisao-recusada', `${falha} R3 planejar`);
+      await recusaSemEscrita(h.dir, () => promo.promover(h.dir, antiga.id, { versao: antiga.versao, confirmacao: true }), 'revisao-recusada', `${falha} R3 promover`);
+      // R4: só a legenda muda.
+      copy(h, 'AUDIT legenda NOVA');
+      const nova = c.obterPeca(h.dir, antiga.id);
+      assert.equal(nova.id, antiga.id); assert.notEqual(nova.versao, antiga.versao);
+      assert.deepEqual(nova.arquivos.map((x) => x.sha1), antiga.arquivos.map((x) => x.sha1));
+      // R5: versão antiga na tela não grava.
+      await recusaSemEscrita(h.dir, () => ap.aprovar(h.dir, antiga.id, { versao: antiga.versao, confirmacao: true }), 'versao-mudou', `${falha} R5 stale`);
+      // R6: versão nova sem recusa nem aceite herdados; aceite explícito grava a prova dela.
+      assert.equal(nova.recusada, false); assert.equal(nova.aprovada, false); assert.equal(nova.aceite, null); assert.equal(nova.estadoEfetivo, 'aguardando-aceite');
+      const ok = await ap.aprovar(h.dir, nova.id, { versao: nova.versao, confirmacao: true });
+      assert.equal(ok.aprovacao.versao, nova.versao); assert.equal(c.obterPeca(h.dir, nova.id).aprovada, true);
+      assert.ok(JSON.parse(fs.readFileSync(path.join(h.dir, 'docs/marketing/painel/historico.json'), 'utf8')).recusas.some((x) => x.origem.versao === antiga.versao), 'recusa anterior preservada');
+      // R7: voltar à legenda antiga não reabilita o pacote recusado.
+      copy(h, 'AUDIT legenda antiga');
+      const deNovo = c.obterPeca(h.dir, antiga.id); assert.equal(deNovo.versao, antiga.versao); assert.equal(deNovo.recusada, true); assert.equal(deNovo.aprovada, false);
+      await recusaSemEscrita(h.dir, () => ap.aprovar(h.dir, antiga.id, { versao: antiga.versao, confirmacao: true }), 'revisao-recusada', `${falha} R7`);
+      // R9: bytes novos no caminho são outra versão e não herdam a recusa.
+      fs.writeFileSync(origemArq, 'AUDIT revisao 1 refeita');
+      assert.equal(c.obterPeca(h.dir, antiga.id).recusada, false);
+    });
+  }
+  // R8: controle sem recusa anterior.
+  await fixture(async (h) => {
+    copy(h, 'AUDIT legenda antiga'); const p = c.obterPeca(h.dir, h.p.id);
+    copy(h, 'AUDIT legenda NOVA'); const n = c.obterPeca(h.dir, h.p.id);
+    assert.notEqual(n.versao, p.versao); assert.equal(n.recusada, false);
+    assert.ok((await ap.aprovar(h.dir, n.id, { versao: n.versao, confirmacao: true })).aprovacao);
+  });
+  // R11: Reel com capa do registro. A recusa prende a versão composta da origem; trocar só a capa
+  // cria versão nova, sem recusa e sem o aceite composto antigo.
+  {
+    const tmpRoot = path.resolve(os.tmpdir()), dir = fs.mkdtempSync(path.join(tmpRoot, 'grana-ciclos-'));
+    try {
+      const semana = 'docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11';
+      const reelRel = `${semana}/para-aprovacao/pecas/reels/audit-reel.mp4`, capaRel = `${semana}/aprovados/audit-reel-capa-1080x1920.png`;
+      for (const [rel, txt] of [[reelRel, 'AUDIT-reel'], [capaRel, 'AUDIT-capa'], [`${semana}/INDICE.md`, '# AUDIT\n'], ['docs/marketing/painel/calendario.json', '{"planejados":[]}']]) {
+        fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true }); fs.writeFileSync(path.join(dir, rel), txt);
+      }
+      fs.writeFileSync(path.join(dir, 'docs/marketing/painel/familias.json'), JSON.stringify({ familias: [{ id: 'R', nome: 'Reel AUDIT', revisoes: [{ caminho: reelRel }], vigente: reelRel }], capas: [{ capa: capaRel, reel: reelRel }] }));
+      const reel = c.montarCatalogo(dir).find((x) => x.caminho === reelRel);
+      assert.ok(reel.composicao, 'Reel composto');
+      await ap.aprovar(dir, reel.id, { versao: reel.versao, confirmacao: true });
+      const origemArq = path.join(dir, reelRel);
+      const io = { ...fs, unlinkSync(x) { if (x === origemArq) throw Error('AUDIT cleanup'); return fs.unlinkSync(x); } };
+      const r = await hist.criarHistorico(io, () => {})(dir, reel.id, { versao: reel.versao, motivo: 'AUDIT recusa Reel', confirmacao: true });
+      assert.ok(fs.existsSync(origemArq)); assert.equal(r.recusa.origem.versao, reel.versao);
+      assert.equal(c.obterPeca(dir, reel.id).recusada, true, 'Reel de origem com a mesma composição: recusado');
+      await recusaSemEscrita(dir, () => ap.aprovar(dir, reel.id, { versao: reel.versao, confirmacao: true }), 'revisao-recusada', 'R11 Reel mesma composição');
+      fs.writeFileSync(path.join(dir, capaRel), 'AUDIT-capa-nova');
+      const novo = c.obterPeca(dir, reel.id);
+      assert.notEqual(novo.versao, reel.versao); assert.equal(novo.recusada, false); assert.equal(novo.aprovada, false, 'aceite composto antigo não vale para a capa nova');
+    } finally { assert.equal(path.dirname(path.resolve(dir)), tmpRoot); fs.rmSync(dir, { recursive: true, force: true }); }
+  }
+  console.log('OK H-02c recusa prende a versão da origem: R1-R9 em falha de índice e de limpeza, R8 controle, R11 Reel composto');
   console.log('OK H-02 recusa da vigente prevalece: reler -> aprovar/planejar 409 sem escrita; aceite antigo não reabre');
 
   // H-03: fila real, dependências sintéticas em memória.
