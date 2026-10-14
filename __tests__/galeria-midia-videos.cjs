@@ -132,6 +132,8 @@ const pedir = (url, { metodo = 'GET', range } = {}) => new Promise((resolve) => 
     // G2/G3 do Vigil: Esc fecha (e o fechar para o vídeo), o foco entra no X e volta para quem abriu.
     assert.ok(html.includes("e.key === 'Escape' && lightboxAberto()") && html.includes("document.getElementById('lightboxClose').focus();"));
     assert.ok(html.includes('role="dialog" aria-modal="true" aria-labelledby="lightboxTitle"') && html.includes('volta.focus()'));
+    // G1: cabeçalho e abas quebram linha em vez de criar rolagem lateral.
+    assert.ok(/\.tabs \{[^}]*flex-wrap: wrap/.test(html) && /\.top-bar \{[^}]*flex-wrap: wrap/.test(html));
     const script = html.slice(html.indexOf('<script>') + 8, html.lastIndexOf('</script>'));
     assert.doesNotThrow(() => new vm.Script(script), 'o JavaScript gerado para o navegador compila');
 

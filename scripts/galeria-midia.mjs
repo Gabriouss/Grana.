@@ -263,14 +263,14 @@ const server = http.createServer((req, res) => {
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0c0d0e; color: #f3f4f6; padding: 24px; user-select: none; }
     header { border-bottom: 1px solid #22252a; padding-bottom: 16px; margin-bottom: 24px; position: sticky; top: 0; background: #0c0d0e; z-index: 100; }
-    .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .top-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
     h1 { font-size: 20px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-    .tabs { display: flex; gap: 8px; align-items: center; }
-    .tab-btn { background: #16181b; color: #9ca3af; border: 1px solid #23272e; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; }
+    .tab-btn { background: #16181b; color: #9ca3af; border: 1px solid #23272e; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; text-align: left; }
     .tab-btn:hover { background: #23272e; color: #fff; }
     .tab-btn.active { background: #10b981; color: #000; border-color: #10b981; font-weight: 700; }
     .tab-badge { background: rgba(0,0,0,0.25); color: inherit; padding: 2px 7px; border-radius: 9999px; font-size: 11px; }
-    .actions { display: flex; align-items: center; gap: 10px; }
+    .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
     button { border: none; padding: 8px 14px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 13px; }
     .btn-refresh { background: #1f2937; color: #f3f4f6; }
     .btn-refresh:hover { background: #374151; }
