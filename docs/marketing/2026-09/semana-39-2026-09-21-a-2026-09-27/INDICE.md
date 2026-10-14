@@ -58,3 +58,7 @@ Correção pronta, aguardando aceite do autor. Os quatro pedidos de 07/10 sobre 
 | E05 | d43a0cfde4616 | 7ecae57067dc |
 | E06 | 9ec5b2ded738 | da00f8ec9ddb |
 - 25/09/2026: aceite pelo autor do vídeo `aprovados/pecas/reels/grana-motion-desistiu-foto-da-nota.mp4` (motion "desistiu porque cansa", 20 s, dados fictícios). Evidência: regra 23 do `AGENTS.md` ("aprovado em 25/09/2026", referência de estilo de todos os vídeos) e a frase do autor em 09/10/2026: "Temos outro reels aprovado, já: grana-motion-desistiu-foto-da-nota.mp4, esse aqui que está no vault". Cópia do arquivo do vault, original intacto; fonte de render em `docs/marketing/motion-desistiu/`. Semana 39 pela data de produção/aceite, sem publicação prevista registrada. Aceite não é publicação e não autoriza prometer a função mostrada antes de build pública e QA.
+
+## Revisão superada (registro de famílias, 14/10/2026)
+
+- `para-aprovacao/pecas/reels/grana-reels-v8-pop.mp4` é **revisão superada** da família `R-P` em `docs/marketing/painel/familias.json`, por decisão do autor em 13/10/2026: a vigente é a versão curta com notificação, `2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/grana-reels-notificacao-1.mp4`. O aceite de 07/10/2026 10:31:32 (versão `bc01c04e92ba`) continua registrado acima e em `aprovacoes.json`, mas não vale mais para publicação: o painel recusa aprovar, planejar, vincular ou promover a superada. O arquivo fica nesta pasta até a mudança física para `historico`, que depende de nova autorização.

@@ -66,3 +66,9 @@ Cada linha registra o aceite explícito do autor dado no painel local, para a ve
 
 <!-- promocao:a4c15caf64d08d5d:6462e08da2012204e5ef89d794451a576fc6bdf0 -->
 - Promoção 2026-10-11T23:20:56-03:00: [peça em aprovados](aprovados/grana-motion-desistiu-foto-da-nota-capa-1080x1920.png); aceite do autor em 2026-10-11T23:20:52-03:00, versão `6462e08da2012204e5ef89d794451a576fc6bdf0`. Origem `docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/para-aprovacao/grana-motion-desistiu-foto-da-nota-capa-1080x1920.png`. Nada publicado ou agendado.
+
+## Vínculo das capas (registro de famílias, 14/10/2026)
+
+- `aprovados/grana-reels-v8-pop-capa-1080x1920.png` passa a ser a capa do Reel vigente da família `R-P`, `2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/grana-reels-notificacao-1.mp4`, por decisão do autor em 13/10/2026 (foi a capa usada na publicação de 12/10). O v8-pop é revisão superada.
+- `aprovados/grana-motion-desistiu-foto-da-nota-capa-1080x1920.png` fica vinculada a `2026-09/semana-39-2026-09-21-a-2026-09-27/aprovados/pecas/reels/grana-motion-desistiu-foto-da-nota.mp4`, como diz a tabela acima.
+- Os dois vínculos estão em `docs/marketing/painel/familias.json` (`capas`); a capa vinculada não aparece como post no Feed simulado.

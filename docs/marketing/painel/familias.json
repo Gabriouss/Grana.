@@ -1,0 +1,40 @@
+{
+  "formato": 1,
+  "descricao": "Registro explícito de famílias de peças. Cada família lista, da mais antiga para a mais nova, os caminhos que são revisões da MESMA peça, e aponta a vigente. Só a vigente pode ser aprovada, agendada, vinculada ou promovida; as outras são superadas e o servidor recusa ação sobre elas. A pasta de estado (para-aprovacao, aprovados, historico) não faz parte da identidade. Carrossel usa o caminho do grupo (`.../carrossel-*`). 'capas' liga uma capa a um Reel quando o pareamento pelo nome não pega. Peça fora deste registro continua agrupada pelo caminho. Editar à mão exige decisão datada do autor em 'decisao'.",
+  "familias": [
+    {
+      "id": "R-P",
+      "nome": "Reel da padaria (widget de voz)",
+      "revisoes": [
+        { "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/reels/grana-reels-v8-pop.mp4", "nota": "v8-pop, 24,7 s. Aceite de 07/10/2026 10:31:32 dado por engano; publicado por erro em 12/10/2026 16:52 e arquivado pelo autor." },
+        { "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/grana-reels-notificacao-1.mp4", "nota": "Versão curta com a notificação na tela, 16,8 s, SHA-1 95eee60e. Cópia do vault. Publicada em 12/10/2026 ~17:01 (mídia 18132974281756527)." }
+      ],
+      "vigente": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/grana-reels-notificacao-1.mp4",
+      "decisao": { "autor": "Gabriel", "data": "2026-10-13", "evidencia": "Autor em 12/10/2026 16:59 (\"o correto é esse aqui\") e em 13/10/2026 ~20h25: a versão curta com notificação é a correta; o v8-pop é superado. Registro em E:/Grana-temporarios/2026-10-13-marketing-ph/PARA-O-CODEX-AO-VOLTAR.md e no INDICE da semana 42." }
+    },
+    {
+      "id": "R13",
+      "nome": "R13, Reel",
+      "revisoes": [
+        { "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/r13-v3/reel-r13-v3.mp4", "nota": "v3, 08/10/2026." },
+        { "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/historico/pecas/r13/reel-r13-final.mp4", "nota": "Final. Guardada em historico; vigente pelo registro. Ainda sem aceite do autor no painel." }
+      ],
+      "vigente": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/historico/pecas/r13/reel-r13-final.mp4",
+      "decisao": { "autor": "Gabriel", "data": "2026-10-13", "evidencia": "Autor em 13/10/2026 ~20h40: o Reel correto é o reel-r13-final.mp4, que substitui a v3; o pedido de ajuste de 07/10 fica atendido pela troca. As quatro final-com-aviso-* não foram escolhidas e ficam fora da família." }
+    },
+    {
+      "id": "C14",
+      "nome": "C14, carrossel Lumen",
+      "revisoes": [
+        { "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/lumen-v6/carrossel-*", "nota": "v6, 04/10/2026. O card.png da mesma pasta é a peça C01, outra família." },
+        { "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/lumen-v7/carrossel-*", "nota": "v7, 12/10/2026, com ajuste pedido pelo autor (fila do painel)." }
+      ],
+      "vigente": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/lumen-v7/carrossel-*",
+      "decisao": { "autor": "Gabriel", "data": "2026-10-13", "evidencia": "Autor em 13/10/2026 ~20h55: a vigente é a lumen-v7, que precisa de ajuste; a lumen-v6 é superada. Os pedidos de 12/10 em docs/marketing/solicitacoes-correcao/ e o pedido 'Troca o (O Grana. te ajuda!) para (Arrasta pro lado!)' foram levados à fila do painel sobre a v7." }
+    }
+  ],
+  "capas": [
+    { "capa": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/grana-reels-v8-pop-capa-1080x1920.png", "reel": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/grana-reels-notificacao-1.mp4", "nota": "Feita para o v8-pop, usada pelo autor no Reel publicado em 12/10 (decisão de 13/10/2026: a capa passa a ser do notificacao-1)." },
+    { "capa": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/grana-motion-desistiu-foto-da-nota-capa-1080x1920.png", "reel": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/aprovados/pecas/reels/grana-motion-desistiu-foto-da-nota.mp4", "nota": "INDICE da semana 41: capa do Reel motion base." }
+  ]
+}

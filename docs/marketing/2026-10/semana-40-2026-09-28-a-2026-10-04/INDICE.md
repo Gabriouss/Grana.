@@ -32,3 +32,10 @@ Arte candidata mencionada nas fontes fora do repositório não foi incluída nes
 ## Regra futura
 
 Use a data prevista de publicação; sem previsão, a produção/criação. Semana ISO vai de segunda a domingo; o mês-pai segue a quinta-feira. Consulte [a regra comum](../../README.md). Registre em separado revisor, aceite explícito do autor, QA por plataforma e publicação. O status “copy aprovada por revisor” não é aceite do autor.
+
+## Famílias e revisões (registro de famílias, 14/10/2026)
+
+Decisões do autor de 13/10/2026, registradas em `docs/marketing/painel/familias.json`:
+
+- **R13:** a vigente é `historico/pecas/r13/reel-r13-final.mp4` (guardada em historico, vigente pelo registro, ainda sem aceite no painel). `para-aprovacao/pecas/r13-v3/reel-r13-v3.mp4` é revisão superada; o pedido de ajuste de 07/10 sobre a v3 fica atendido pela troca. As quatro `reel-r13-final-com-aviso-*` não foram escolhidas e ficam fora da família.
+- **C14, carrossel Lumen:** a vigente é `para-aprovacao/pecas/lumen-v7/carrossel-*`, com ajuste pedido pelo autor (fila do painel); `para-aprovacao/pecas/lumen-v6/carrossel-*` é revisão superada. O `lumen-v6/card.png` (C01) é outra peça e não muda.

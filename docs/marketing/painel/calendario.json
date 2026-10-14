@@ -3,7 +3,43 @@
   "descricao": "Planejamento de publicação do painel local. Guarda só peça, versão, data, hora e canal. Planejar não publica nem agenda.",
   "diaD": null,
   "diaDObservacao": "Dia D não declarado. Pela decisão do autor de 25/09/2026 nada da campanha é publicado antes da build nova publicada e testada; o portão está em FUNIL.md, seção 5.",
-  "planejados": [],
+  "planejados": [
+    {
+      "id": "a4d997e49dfa98fa",
+      "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/grana-reels-notificacao-1.mp4",
+      "versao": "d2291cb48d01c6943cb7d758c70a661c0119149e",
+      "data": "2026-10-12",
+      "hora": "17:00",
+      "canal": "reels",
+      "observacao": "Publicado no Instagram em 12/10/2026 ~17:01 (mídia 18132974281756527), com a capa grana-reels-v8-pop-capa-1080x1920.png. Registro retroativo: o planejamento de 13/10 09:24 apontava o v8-pop (vídeo errado, hoje revisão superada) com canal instagram-feed; corrigido em 14/10 por decisão do autor (13/10).",
+      "planejadoEm": "2026-10-14T00:12:02-03:00",
+      "recibos": [
+        {
+          "tipo": "data-marcada",
+          "em": "2026-10-13T09:24:46-03:00",
+          "data": "2026-10-12",
+          "hora": "17:00",
+          "canal": "instagram-feed",
+          "peca": "v8-pop 44f4151757801600 (superada)"
+        },
+        {
+          "acao": "correcao-de-peca",
+          "em": "2026-10-14T00:12:02-03:00",
+          "de": {
+            "id": "44f4151757801600",
+            "versao": "bc01c04e92badb8c64de75c15d46eb13e7a920cb",
+            "canal": "instagram-feed"
+          },
+          "para": {
+            "id": "a4d997e49dfa98fa",
+            "versao": "d2291cb48d01c6943cb7d758c70a661c0119149e",
+            "canal": "reels"
+          },
+          "motivo": "v8-pop superado pela versão curta com notificação (decisão do autor, 13/10/2026)"
+        }
+      ]
+    }
+  ],
   "referenciaFunilFonte": "FUNIL.md, seção 5 (Calendário único da campanha, após o dia D). Posições relativas em dias úteis; não autorizam publicar nem gastar.",
   "referenciaFunil": [
     {
@@ -168,5 +204,6 @@
       "peca": "S1",
       "situacao": "Estático: título e arte revistos; captura da Início reconferida."
     }
-  ]
+  ],
+  "avisosCronograma": []
 }
