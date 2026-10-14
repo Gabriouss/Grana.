@@ -24,6 +24,7 @@ const ESTADOS = {
   aprovada: 'Aprovada',
   'aprovada-com-data': 'Aprovada, com data',
   'ajuste-pedido': 'Ajuste pedido',
+  superada: 'Substituída por revisão nova',
 };
 export function rotuloEstado(p) {
   if (p.aprovada) return p.planejamento ? 'Aprovada, com data marcada' : 'Aprovada, sem data';
@@ -43,6 +44,12 @@ export function familia(p) {
   return `${m[1]}/${m[2] === 'historico' ? 'historico/' : ''}${m[3]}/${nome}`;
 }
 
+// Peça arquivada de fato. A revisão vigente escolhida no registro pode morar em historico/
+// (R13 final) e mesmo assim é decidível: o servidor calcula estadoEfetivo, e é ele que vale.
+export function arquivada(p) {
+  return (p?.estadoEfetivo || p?.estado) === 'historico';
+}
+
 export function agruparFamilias(pecas, familiasServidor) {
   if (Array.isArray(familiasServidor)) {
     const porId = new Map(pecas.map((p) => [p.id, p]));
@@ -52,7 +59,9 @@ export function agruparFamilias(pecas, familiasServidor) {
       const membros = [...new Map(itens.filter((p) => p && porId.has(p.id)).map((p) => [p.id, porId.get(p.id)])).values()];
       if (!membros.length) return [];
       membros.forEach((p) => incluidos.add(p.id));
-      return [{ chave: f.chave || f.id, principal: porId.get(f.principal?.id) || membros[0], pecas: membros }];
+      // Registro explícito (familias.json): nome legível, pendência e revisões superadas, só leitura.
+      return [{ chave: f.chave || f.id, principal: porId.get(f.principal?.id) || membros[0], pecas: membros,
+        registro: f.registro || null, superadas: Array.isArray(f.superadas) ? f.superadas : [] }];
     });
     // Uma peça fora de uma família válida permanece visível, sem adivinhar
     // outra família que altere o contrato usado pela recusa.

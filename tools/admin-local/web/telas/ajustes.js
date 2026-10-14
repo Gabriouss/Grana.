@@ -34,11 +34,13 @@ export function situacaoDaDemanda(peca, pedidos) {
   };
   const comAgentes = ['novo', 'em-correcao', 'falha-de-envio'].includes(estado);
   const precisa = ['corrigido-aguardando-aceite', 'aguardando-aprovacao-de-custo', 'precisa-de-atencao', 'desatualizado'].includes(estado);
-  const resolvida = !comAgentes && !precisa && (peca.aprovada || peca.estado === 'historico');
+  // estadoEfetivo manda: a vigente do registro guardada em historico/ ainda espera decisão.
+  const historico = (peca.estadoEfetivo || peca.estado) === 'historico';
+  const resolvida = !comAgentes && !precisa && (peca.aprovada || historico);
   return {
     secao: alertas.length ? 'voce' : comAgentes ? 'agentes' : resolvida ? 'resolvidas' : 'voce',
-    rotulo: alertas.length ? 'Precisa de atenção' : entregaParada || (pedido && (comAgentes || precisa || pedidoAberto(pedido)) ? ESTADOS[estado] || 'Estado não reconhecido' : peca.aprovada ? 'Aprovada nesta versão' : peca.estado === 'historico' ? 'Histórico' : 'Esperando o seu aceite'),
-    proximo: alertas[0]?.proximoPasso || (entregaParada ? 'A entrega está parada. Confira os detalhes da fila antes de tentar novamente.' : pedido && !ESTADOS[estado] ? 'Atualize os recibos antes de agir sobre este pedido.' : proximos[estado] || (peca.aprovada ? 'Confira a data no calendário.' : peca.estado === 'historico' ? 'Esta peça está no histórico.' : 'Revise a peça e escolha aprovar, pedir ajuste ou recusar.')),
+    rotulo: alertas.length ? 'Precisa de atenção' : entregaParada || (pedido && (comAgentes || precisa || pedidoAberto(pedido)) ? ESTADOS[estado] || 'Estado não reconhecido' : peca.aprovada ? 'Aprovada nesta versão' : historico ? 'Histórico' : 'Esperando o seu aceite'),
+    proximo: alertas[0]?.proximoPasso || (entregaParada ? 'A entrega está parada. Confira os detalhes da fila antes de tentar novamente.' : pedido && !ESTADOS[estado] ? 'Atualize os recibos antes de agir sobre este pedido.' : proximos[estado] || (peca.aprovada ? 'Confira a data no calendário.' : historico ? 'Esta peça está no histórico.' : 'Revise a peça e escolha aprovar, pedir ajuste ou recusar.')),
     em: peca.recusa?.recusadoEm || pedido?.atualizadoEm || pedido?.criadoEm || peca.aceite?.aprovadoEm || peca.modificadoEm || null,
     pedido,
     alertas,

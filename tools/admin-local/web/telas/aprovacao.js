@@ -1,7 +1,7 @@
 // Aprovação: galeria de famílias; clicar abre a prévia do post com legenda e decisão.
 // Aprovar grava o aceite do autor para AQUELA versão (sha1). Não publica nem agenda nada em rede social.
 
-import { tituloPeca, rotuloSemana, rotuloEstado, trilha, historicoDaPeca, agruparFamilias, idadeDemanda, formatoDaPeca, ROTULOS_FORMATO, juntarCapasAoReel, pecaDaFila } from './_pecas.js';
+import { tituloPeca, rotuloSemana, rotuloEstado, trilha, historicoDaPeca, agruparFamilias, idadeDemanda, formatoDaPeca, ROTULOS_FORMATO, juntarCapasAoReel, pecaDaFila, arquivada } from './_pecas.js';
 import { montarMidia, midiasDaPeca, topoDaPrevia } from './_previa-publicacao.js';
 import { montarFila, secaoAjustesDaPeca, situacaoDaFamilia, contarPrecisaDeVoce, textoAlertaDemanda, observarPedidos, pedidoAberto, filaDisponivel } from './ajustes.js';
 
@@ -198,8 +198,8 @@ export async function montar(raiz, ctx) {
   // catálogo ainda não junta (backend, Harbor). A tela não escolhe a vigente; ela avisa.
   const outrasVersoes = (g) => {
     const p = g.principal;
-    if (!p?.codigo || p.estado === 'historico') return [];
-    return familias.filter((o) => o !== g && o.principal?.codigo === p.codigo && o.principal.estado !== 'historico'
+    if (!p?.codigo || arquivada(p) || g.registro) return [];
+    return familias.filter((o) => o !== g && !o.registro && o.principal?.codigo === p.codigo && !arquivada(o.principal)
       && o.principal.semana?.inicio === p.semana?.inicio);
   };
   const desenharLista = () => {
@@ -254,12 +254,13 @@ export async function montar(raiz, ctx) {
     h('span', { class: 'galeria-card-midia', 'aria-hidden': 'true' },
       miniatura(ctx, p),
       h('span', { class: 'galeria-card-formato', dados: { formato: formatoDaPeca(p) }, texto: paginas ? `${rotuloFormato(p)} · ${paginas} páginas` : rotuloFormato(p) }),
-      irmas.length ? h('span', { class: 'galeria-card-aviso', texto: `Outra versão na fila (${irmas.length + 1})` })
+      g.registro?.pendencia ? h('span', { class: 'galeria-card-aviso', texto: 'Falta escolher a revisão' })
+        : irmas.length ? h('span', { class: 'galeria-card-aviso', texto: `Outra versão na fila (${irmas.length + 1})` })
         : p.capaOrfa ? h('span', { class: 'galeria-card-aviso', texto: 'Capa sem Reel' })
         : p.tipo === 'video' && !p.capa ? h('span', { class: 'galeria-card-aviso', texto: 'Sem capa' }) : null),
     h('span', { class: 'galeria-card-corpo' },
       h('span', { class: 'galeria-card-titulo', texto: tituloPeca(p) }),
-      h('span', { class: 'galeria-card-meta', texto: rotuloSemana(p.semana) }),
+      h('span', { class: 'galeria-card-meta', texto: g.superadas?.length ? `${rotuloSemana(p.semana)} · ${g.superadas.length === 1 ? '1 revisão anterior' : `${g.superadas.length} revisões anteriores`}` : rotuloSemana(p.semana) }),
       selo,
       h('span', { class: 'demanda-proximo', texto: [...s.alertas.map(textoAlertaDemanda), s.proximo].filter(Boolean).join(' ') }),
       h('span', { class: 'demanda-idade', texto: idadeDemanda(s.em) }))));
@@ -282,7 +283,8 @@ export async function montar(raiz, ctx) {
     detalhe.appendChild(h('h2', { class: 'secao-titulo aprovacao-janela-titulo', texto: tituloPeca(p) }));
     detalhe.appendChild(h('p', { class: 'aprovacao-janela-estado' },
       h('span', { texto: `${rotuloEstado(p)} · ${rotuloSemana(p.semana)}` }),
-      s?.proximo ? h('span', { class: 'campo-ajuda', texto: s.proximo }) : null));
+      s?.proximo ? h('span', { class: 'campo-ajuda', texto: s.proximo }) : null,
+      p.revisao?.total > 1 && p.revisao.vigente ? h('span', { class: 'campo-ajuda', texto: `Revisão ${p.revisao.ordem} de ${p.revisao.total}, a vigente${p.revisao.nome ? ` de ${p.revisao.nome}` : ''}.` }) : null));
     // 2. Legenda, como no post.
     detalhe.appendChild(h('div', { class: 'peca-legenda aprovacao-legenda' },
       h('h3', { texto: 'Legenda' }),
@@ -313,6 +315,15 @@ export async function montar(raiz, ctx) {
     }
 
     // 3. Avisos que mudam a decisão.
+    const pendencia = familiaAtual?.registro?.pendencia || p.revisao?.pendencia || null;
+    if (pendencia) detalhe.appendChild(ctx.alerta('atencao', `Falta você escolher a revisão vigente${familiaAtual?.registro?.nome ? ` de ${familiaAtual.registro.nome}` : ''}: ${pendencia}. Até lá, aprovar e mover ficam bloqueados. Pedir ajuste continua possível.`));
+    const superadas = familiaAtual?.superadas || [];
+    if (superadas.length) detalhe.appendChild(h('details', { class: 'aprovacao-mais demanda-superadas' },
+      h('summary', { texto: `Revisões anteriores (${superadas.length})` }),
+      h('p', { class: 'campo-ajuda', texto: 'Substituídas pela revisão vigente. Ficam só para consulta: não podem ser aprovadas, agendadas nem publicadas.' }),
+      h('ul', { class: 'demanda-superadas-lista' }, superadas.map((a) => h('li', {},
+        h('span', { texto: `${a.revisao?.ordem ? `Revisão ${a.revisao.ordem}` : 'Revisão anterior'} · ${tituloPeca(a)} · ${rotuloSemana(a.semana)}` }),
+        a.aceiteSuperado ? h('span', { class: 'campo-ajuda', texto: ` Tinha aceite de ${ctx.formatar.dataHora(a.aceiteSuperado.aprovadoEm)}, que não vale mais.` } ) : null)))));
     const irmas = familiaAtual ? outrasVersoes(familiaAtual) : [];
     if (irmas.length) {
       detalhe.appendChild(ctx.alerta('atencao', `Há ${irmas.length === 1 ? 'outra versão' : `${irmas.length} outras versões`} de ${p.codigo} na fila desta semana, como peça separada. Confira qual é a vigente antes de aprovar: aprovar esta não recusa a outra.`));
@@ -345,13 +356,13 @@ export async function montar(raiz, ctx) {
     if (pedidoComVersaoAtual) {
       detalhe.appendChild(h('button', {
         class: 'botao', type: 'button', texto: 'Pedir ajuste na versão atual',
-        disabled: !filaDisponivel(pedidos) || p.estado === 'historico',
+        disabled: !filaDisponivel(pedidos) || arquivada(p),
         onclick: () => { janela.close?.(); return pedirAjuste(ctx, { ...p, versao: pedidoComVersaoAtual.versaoAtual }); },
       }));
     }
-    const botaoAprovar = h('button', { class: 'botao botao-primario', type: 'button', texto: p.aprovada ? 'Aprovada nesta versão' : temPedidoAberto ? 'Aceite pela fila de ajustes' : 'Aprovar esta versão', disabled: !!p.aprovada || temPedidoAberto || filaIndisponivel || p.estado === 'historico',
+    const botaoAprovar = h('button', { class: 'botao botao-primario', type: 'button', texto: p.aprovada ? 'Aprovada nesta versão' : temPedidoAberto ? 'Aceite pela fila de ajustes' : 'Aprovar esta versão', disabled: !!p.aprovada || temPedidoAberto || filaIndisponivel || arquivada(p) || !!pendencia,
       onclick: () => aprovar(ctx, p, botaoAprovar) });
-    const podePedir = !filaIndisponivel && p.estado !== 'historico';
+    const podePedir = !filaIndisponivel && !arquivada(p);
     const aberto = rascunhoAberto === chaveRascunho(p);
     const botaoAjuste = h('button', { class: 'botao', type: 'button', texto: aberto ? 'Fechar pedido de ajuste' : rascunhos.get(chaveRascunho(p))?.texto ? 'Pedir ajuste (rascunho guardado)' : 'Pedir ajuste', 'aria-expanded': String(aberto),
       disabled: !podePedir, onclick: () => { rascunhoAberto = aberto ? null : chaveRascunho(p); focarAjuste = !aberto; desenharDetalhe(); } });
@@ -373,10 +384,10 @@ export async function montar(raiz, ctx) {
       }
     }
     const botaoRecusar = h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Recusar peça',
-      disabled: filaIndisponivel || temPedidoAberto || p.estado === 'historico',
+      disabled: filaIndisponivel || temPedidoAberto || arquivada(p),
       onclick: () => recusarPeca(ctx, p, familiaAtual?.pecas || [p], pedidos, botaoRecusar) });
     const botaoMover = p.aprovada && p.estado === 'para-aprovacao' ? h('button', {
-      class: 'botao', type: 'button', texto: 'Mover para aprovados', disabled: filaIndisponivel || temPedidoAberto,
+      class: 'botao', type: 'button', texto: 'Mover para aprovados', disabled: filaIndisponivel || temPedidoAberto || !!pendencia,
       onclick: () => promoverPeca(ctx, p, botaoMover),
     }) : null;
     detalhe.appendChild(h('div', { class: 'bloco-acao aprovacao-decisao' }, botaoAprovar, botaoAjuste, botaoRecusar,
@@ -565,7 +576,7 @@ export async function recusarPeca(ctx, p, familia, pedidos, botao) {
   if (botao.disabled || ctx.obsoleta() || !filaDisponivel(pedidos) || pedidos.some((r) => r.pecaId === p.id && pedidoAberto(r))) return;
   botao.disabled = true;
   try {
-    const sucessoras = familia.filter((a) => a.id !== p.id && a.estado !== 'historico');
+    const sucessoras = familia.filter((a) => a.id !== p.id && !arquivada(a));
     const valores = await ctx.formulario({
       titulo: 'Recusar peça', texto: 'A peça e o motivo da recusa vão para o histórico público. Escreva um texto público sobre a peça. Escolher uma sucessora não dá aceite a ela.',
       campos: [
