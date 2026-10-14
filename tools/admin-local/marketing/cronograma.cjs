@@ -152,6 +152,7 @@ function registrarVinculo(raiz, id, corpo = {}) {
   return c.serializar(raiz, () => {
     const m = ler(raiz), p = c.obterPeca(raiz, id);
     c.exigirVigente(p, 'O vínculo com o cronograma');
+    c.exigirItemAutonomo(p, 'O vínculo com o cronograma');
     if (!m || corpo.versaoEsperada !== m.versao) erro('cronograma-conflito', 'O cronograma mudou. Recarregue.');
     if (corpo.versao !== p.versao || corpo.manifestoId !== m.manifestoId || !m.itens.some((i) => i.id === corpo.itemId)) erro('vinculo-invalido', 'Confira a peça, a versão e o item do cronograma.');
     for (const outra of c.montarCatalogo(raiz)) {
@@ -214,7 +215,7 @@ function projetar(raiz, operacional = {}, pecas = c.montarCatalogo(raiz)) {
   const aceites = c.lerJson(c.caminhoPainel(raiz, 'aprovacoes.json'), { aprovacoes: [] }).aprovacoes || [];
   // Revisão superada (e a capa de um Reel superado) não projeta plano, mesmo com aceite antigo.
   const superadas = new Set(pecas.filter((p) => p.revisao?.superada).map((p) => p.id));
-  const ativos = pecas.filter((p) => (p.estado !== 'historico' || p.revisao?.vigente) && !superadas.has(p.id) && !superadas.has(p.capaDe) && !p.revisao?.pendencia);
+  const ativos = pecas.filter((p) => (p.estado !== 'historico' || p.revisao?.vigente) && !superadas.has(p.id) && !superadas.has(p.capaDe) && !p.capaDe && !p.revisao?.pendencia);
   const ligadas = ativos.map((p) => ({ p, v: vinculo(raiz, p) }));
   const planos = [], avisos = [], antigos = operacional.planejados || [];
   for (const { p, v } of ligadas) {

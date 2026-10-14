@@ -47,6 +47,7 @@ function criarEnsaio(deps) {
       if (!quandoUtc) negar('data-ou-hora-invalida');
       else if (Date.parse(quandoUtc) <= agora) negar('horario-nao-futuro');
       if (!p) negar('peca-ausente');
+      if (p?.capaDe) negar('componente-do-reel');
       if (!versao || !p || versao !== p.versao || r.caminho !== p.caminho) negar('versao-ou-caminho-mudou');
       if (!p || p.estado !== 'aprovados' || !/^docs\/marketing\/\d{4}-\d{2}\/semana-[^/]+\/aprovados\//.test(p.caminho)) negar('fora-de-aprovados');
       const aceite = p && aceites.find((a) => aceiteValido(a, p, agora, aceites));

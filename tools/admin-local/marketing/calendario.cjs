@@ -117,7 +117,7 @@ function obterCalendario(raiz, mes) {
 
   const planejadosValidos = new Set(dados.planejados.filter((c) => c.estado === 'aguardando dia D' || (c.data && ['planejado', undefined].includes(c.estado))).map((c) => `${c.id}:${c.versao}`));
   const aprovadosSemData = pecas
-    .filter((p) => p.aprovada && p.tipo !== 'texto' && !planejadosValidos.has(`${p.id}:${p.versao}`))
+    .filter((p) => p.aprovada && p.tipo !== 'texto' && !p.capaDe && !planejadosValidos.has(`${p.id}:${p.versao}`))
     .map((p) => resumoPeca(p, dados.planejados.find((r) => r.id === p.id && r.versao === p.versao)));
 
   const referenciaFunil = dados.referenciaFunil.map((r) => ({
@@ -161,6 +161,7 @@ function planejar(raiz, corpo = {}) {
       throw new ErroMarketing('versao-mudou', 'A peça mudou depois que a tela foi aberta. Recarregue antes de planejar.', 409);
     }
     require('./catalogo.cjs').exigirVigente(peca, 'O planejamento');
+    require('./catalogo.cjs').exigirItemAutonomo(peca, 'O planejamento');
     if (!peca.aprovada) {
       throw new ErroMarketing('sem-aceite', 'Só peça aprovada nesta versão entra no calendário.', 409);
     }

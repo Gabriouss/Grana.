@@ -118,6 +118,15 @@ async function recusaSemEscrita(acao, codigo, rotulo) {
     const notifOk = cat.obterPeca(raiz, notif.id), capaOk = cat.obterPeca(raiz, capa.id);
     assert.equal(notifOk.aprovada, true); assert.equal(capaOk.estadoEfetivo, 'aprovada', 'o composto cobre a capa selada nele');
     assert.ok(cat.feed(raiz).pecas.some((p) => p.id === notif.id) && !cat.feed(raiz).pecas.some((p) => p.id === capa.id));
+    // W-C2 (Watchtower, 14/10): a capa aprovada pelo composto continua componente do Reel.
+    // Nenhuma ação a trata como item autônomo: 409 e nenhum byte gravado.
+    assert.equal(capaOk.aprovada, true, 'premissa do W-C2: capa aprovada');
+    await recusaSemEscrita(() => calendario.planejar(raiz, { id: capa.id, versao: capaOk.versao, data: '2026-10-20', canal: 'instagram-feed' }), 'componente-do-reel', 'planejar a capa sozinha');
+    await recusaSemEscrita(() => cronograma.registrarVinculo(raiz, capa.id, { versao: capaOk.versao }), 'componente-do-reel', 'vincular a capa sozinha');
+    await recusaSemEscrita(() => promover(raiz, capa.id, { versao: capaOk.versao, confirmacao: true }), 'componente-do-reel', 'promover a capa sozinha');
+    const calCapa = calendario.obterCalendario(raiz, '2026-10');
+    assert.ok(!calCapa.aprovadosSemData.some((x) => x.id === capa.id), 'capa não aparece como aprovada sem data no calendário');
+    assert.ok(calCapa.aprovadosSemData.some((x) => x.id === notif.id), 'o Reel aparece');
     // Trocar só a capa muda a versão do Reel: o aceite composto antigo deixa de valer.
     grava(`${S41}/aprovados/audit-reel-capa-1080x1920.png`, 'AUDIT-capa-trocada');
     const notifTroca = cat.obterPeca(raiz, notif.id);
