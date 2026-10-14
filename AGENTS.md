@@ -968,6 +968,11 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     - **Não se contorna a trava.** Nada de apagar o arquivo de estado,
       desligar o gancho ou trocar de conta para continuar. Só o autor, na
       sessão, libera passar de 75%.
+    - **Só a conta PH.** Decisão do autor na mesma tarde: "A conta Gabriel [...] pode ser sempre
+      utilizada até o final do uso [...] essa regra vale apenas para conta PH. Conta codex também
+      pode ser utilizada até o final." Por isso a trava só age sobre conta com apelido em
+      `contas.json`, e só a PH tem apelido. A cada volta, o Orquestrador Supremo retoma o plano do
+      painel admin orquestrando o time Claude e o time Codex, e para de novo em 75%.
     - **Configuração por máquina.** A linha de status e os ganchos vivem em
       `.claude/settings.local.json` (ignorado pelo git); os scripts são
       versionados. A M2 precisa registrar os mesmos ganchos e a mesma rotina.
