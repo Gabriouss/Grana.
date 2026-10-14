@@ -1,6 +1,6 @@
 'use strict';
 // Segurança da galeria local (scripts/galeria-midia.mjs), achados S1 e S2 de 13/10:
-// - S1: o texto do autor chega ao maestri como UM argumento de execFile, sem shell;
+// - S1 encerrado em 13/10: /api/notificar-correcao responde 410 (fila do painel é o caminho único);
 // - rotas que escrevem recusam Origin/Host estranhos com 403 e não chamam nada;
 // - S2: caminho com '..', absoluto ou pasta irmã (docs/marketing-x) é recusado.
 // Módulo real em sandbox: http, child_process e as escritas de fs são dublês que REGISTRAM.
@@ -66,21 +66,16 @@ const zerar = () => { for (const k of Object.keys(chamadas)) chamadas[k].length 
   try {
     assert.equal(chamadas.mkdirSync.length, 0, 'fixture já tem as pastas; subir não criou nada');
 
-    // S1: texto hostil vira um argumento só, sem shell, e exec nunca é usado.
+    // Caminho único de correção (13/10): a galeria não grava chamado nem chama agente; responde 410
+    // e manda pedir pela Aprovação do painel. Texto hostil não muda nada disso.
     for (const hostil of ['Trocar $(calc) e $(rm -rf ~)', 'Trocar `calc` agora', 'aspas " e \\" e ; & | >']) {
       zerar();
       const r = await pedir('/api/notificar-correcao', { corpo: { arquivo: 'semana/pecas/card.png', instrucoes: hostil } });
-      assert.equal(r.status, 200);
-      assert.equal(chamadas.exec.length, 0, 'exec (com shell) não é chamado');
-      assert.equal(chamadas.execFile.length, 1);
-      const [cmd, args, opcoesOuCb] = chamadas.execFile[0];
-      assert.equal(cmd, 'maestri');
-      assert.equal(args.length, 3, 'ask, destino e prompt: três argumentos');
-      assert.equal(args[0], 'ask');
-      assert.equal(args[1], 'Orquestrador Supremo');
-      assert.ok(args[2].includes(hostil.replace(/"/g, "'")), 'o texto do autor vai inteiro dentro do prompt');
-      assert.equal(typeof opcoesOuCb, 'function', 'sem opções: nada de shell: true');
-      assert.equal(chamadas.writeFileSync.length, 1, 'o chamado é registrado uma vez');
+      assert.equal(r.status, 410);
+      assert.equal(JSON.parse(r.corpo).codigo, 'correcao-pelo-painel');
+      assert.equal(chamadas.exec.length, 0, 'exec nunca é chamado');
+      assert.equal(chamadas.execFile.length, 0, 'nenhum agente é avisado pela galeria');
+      assert.equal(chamadas.writeFileSync.length + chamadas.renameSync.length + chamadas.mkdirSync.length, 0, 'nenhum chamado é gravado');
     }
 
     // Origin/Host: POST de outra origem recebe 403 e não chama nada.
@@ -121,7 +116,7 @@ const zerar = () => { for (const k of Object.keys(chamadas)) chamadas[k].length 
     assert.equal((await pedir('/midia/' + encodeURIComponent('../marketing-x/segredo.png'), { metodo: 'GET', headers: { host: HOST } })).status, 404);
     assert.equal((await pedir('/midia/' + encodeURIComponent('semana/pecas/card.png'), { metodo: 'GET', headers: { host: HOST } })).status, 200);
 
-    console.log('galeria-midia-seguranca: execFile sem shell com o texto como um argumento, 403 por Origin/Host em toda rota que escreve, path.relative recusa .. / absoluto / pasta irmã: OK');
+    console.log('galeria-midia-seguranca: notificar-correcao responde 410 sem gravar nem chamar agente, 403 por Origin/Host em toda rota que escreve, path.relative recusa .. / absoluto / pasta irmã: OK');
   } finally {
     fs.rmSync(raiz, { recursive: true, force: true });
   }

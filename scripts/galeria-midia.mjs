@@ -1,16 +1,13 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
 
 const PORT = 3847;
 const BASE_DIR = path.resolve('docs/marketing');
 const TRASH_DIR = path.resolve('docs/marketing/.lixeira');
-const SOLICITACOES_DIR = path.resolve('docs/marketing/solicitacoes-correcao');
 
 if (!fs.existsSync(BASE_DIR)) fs.mkdirSync(BASE_DIR, { recursive: true });
 if (!fs.existsSync(TRASH_DIR)) fs.mkdirSync(TRASH_DIR, { recursive: true });
-if (!fs.existsSync(SOLICITACOES_DIR)) fs.mkdirSync(SOLICITACOES_DIR, { recursive: true });
 
 // Caminho dentro de docs/marketing, por path.relative: recusa '..', absoluto e pasta irmã
 // (docs/marketing-x passava no startsWith antigo). Devolve o caminho absoluto ou null.
@@ -31,8 +28,6 @@ function pedidoDaPropriaPagina(req) {
   return origem === undefined || ORIGENS.includes(String(origem).toLowerCase());
 }
 
-// Sem shell: o texto do autor vai como UM argumento, nunca como linha de comando.
-const MAESTRI = process.env.MAESTRI_CLI || 'maestri';
 
 function classificarMidia(relPath) {
   const norm = relPath.toLowerCase().replace(/\\/g, '/');
@@ -200,43 +195,12 @@ const server = http.createServer((req, res) => {
     return res.end(JSON.stringify(agrupadas));
   }
 
+  // Caminho único de pedido de correção (13/10): a fila do painel admin, na Aprovação, que
+  // liga o pedido à peça e à versão. Esta galeria não grava chamado nem avisa agente.
   if (url.pathname === '/api/notificar-correcao' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', () => {
-      try {
-        const { arquivo, instrucoes } = JSON.parse(body);
-        if (!arquivo || !instrucoes) {
-          res.writeHead(400);
-          return res.end('Arquivo e instrucoes sao obrigatorios.');
-        }
-
-        const dataIso = new Date().toISOString().replace(/[:.]/g, '-');
-        const nomeArquivoLog = `correcao-${dataIso}.md`;
-        const caminhoLog = path.join(SOLICITACOES_DIR, nomeArquivoLog);
-
-        const conteudoMd = `# Solicitação de Correção de Criativo
-- **Data:** ${new Date().toLocaleString('pt-BR')}
-- **Arquivo Alvo:** \`docs/marketing/${arquivo}\`
-- **Instruções do Autor:**
-${instrucoes}
-`;
-        fs.writeFileSync(caminhoLog, conteudoMd, 'utf8');
-
-        const promptMaestri = `O autor solicitou uma correcao no criativo "docs/marketing/${arquivo}". Instrucoes detalhadas: "${instrucoes.replace(/"/g, "'")}". O chamado foi registrado em docs/marketing/solicitacoes-correcao/${nomeArquivoLog}. Por favor, analise a peca e prepare o plano de ajuste.`;
-        
-        execFile(MAESTRI, ['ask', 'Orquestrador Supremo', promptMaestri], (err) => {
-          if (err) console.log('Aviso ao notificar Orquestrador:', err.message);
-        });
-
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        return res.end(JSON.stringify({ ok: true, chamado: nomeArquivoLog }));
-      } catch (err) {
-        res.writeHead(500);
-        return res.end(err.message);
-      }
-    });
-    return;
+    res.writeHead(410, { 'Content-Type': 'application/json; charset=utf-8' });
+    return res.end(JSON.stringify({ ok: false, codigo: 'correcao-pelo-painel',
+      mensagem: 'Pedidos de correção agora são feitos na Aprovação do painel admin, na janela da peça. Nada foi gravado aqui.' }));
   }
 
   if (url.pathname === '/api/lixeira' && req.method === 'POST') {
@@ -678,8 +642,9 @@ ${instrucoes}
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ arquivo: arquivoParaCorrecao, instrucoes })
         });
-        if (res.ok) {
-          alert('✅ Solicitação enviada aos agentes com sucesso!');
+        if (res.status === 410) {
+          const r = await res.json().catch(() => ({}));
+          alert(r.mensagem || 'Peça a correção pela Aprovação do painel admin. Nada foi gravado aqui.');
           fecharModal();
         } else {
           alert('Erro ao enviar solicitação.');
