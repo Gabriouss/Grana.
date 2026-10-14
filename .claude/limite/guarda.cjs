@@ -16,6 +16,7 @@ process.stdin.on('end', () => {
 
 function principal() {
   const conta = lerConta();
+  if (/^(conta-|desconhecida)/.test(conta)) return; // a regra 27 vale para conta com apelido em contas.json (a PH)
   const estado = ler(caminhoEstado(conta));
   if (!estado) return; // sem leitura ainda: não trava (a linha de status grava na primeira resposta)
   const r = avaliar(estado);
