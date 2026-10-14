@@ -216,8 +216,11 @@ function projetar(raiz, operacional = {}, pecas = c.montarCatalogo(raiz)) {
   // Revisão superada (e a capa de um Reel superado) não projeta plano, mesmo com aceite antigo.
   const superadas = new Set(pecas.filter((p) => p.revisao?.superada).map((p) => p.id));
   // Vigente recusada pelo autor não projeta plano (H-02).
-  const recusadas = c.recusasDoPainel(raiz);
-  const ativos = pecas.filter((p) => (p.estado !== 'historico' || (p.revisao?.vigente && !recusadas.has(`${p.id}:${p.versao}`))) && !superadas.has(p.id) && !superadas.has(p.capaDe) && !p.capaDe && !p.revisao?.pendencia);
+  const recusada = c.recusasDoPainel(raiz);
+  const ativos = pecas.filter((p) => (p.estado !== 'historico' || p.revisao?.vigente) && !recusada(p) && !superadas.has(p.id) && !superadas.has(p.capaDe) && !p.capaDe && !p.revisao?.pendencia);
+  // Aviso visível cita a peça pelo nome legível, nunca pelo id técnico (F4-1, V1 do Vigil).
+  const rotulo = (p) => `"${p?.titulo || p?.nome || 'peça sem nome'}"`;
+  const rotuloDe = (id) => { const p = pecas.find((x) => x.id === id); return p ? rotulo(p) : 'Peça fora do acervo'; };
   const ligadas = ativos.map((p) => ({ p, v: vinculo(raiz, p) }));
   const planos = [], avisos = [], antigos = operacional.planejados || [];
   for (const { p, v } of ligadas) {
@@ -239,16 +242,18 @@ function projetar(raiz, operacional = {}, pecas = c.montarCatalogo(raiz)) {
     const efetivo = estado && estado !== 'aguardando dia D' ? { data: null, hora: d?.hora || null, canal: d?.canal || null } : substituicaoManual || { data, hora: d?.hora || null, canal: d?.canal || null };
     if (efetivo.data && estado === 'aguardando dia D') estado = null;
     planos.push({ ...base, ...efetivo, dataPrevista, substituicaoManual, registroLegado: anterior?.registroLegado || legado || null, recibos: anterior?.recibos || legado?.recibos || [], estado: estado || 'planejado', origem });
-    if (estado) avisos.push(`${p.id}: ${estado}.`);
-    if (efetivo.data && efetivo.data < c.hojeLocal()) avisos.push(`${p.id}: data prevista no passado; nada será publicado automaticamente.`);
-    for (const d of m.datasComAviso || []) if (efetivo.data === d.data) avisos.push(`${p.id}: ${d.motivo}. O cálculo não exclui feriados.`);
-    if (d && (!efetivo.hora || !efetivo.canal)) avisos.push(`${p.id}: ${!efetivo.hora ? 'horário pendente' : ''}${!efetivo.hora && !efetivo.canal ? '; ' : ''}${!efetivo.canal ? 'canal pendente' : ''}; envio Meta bloqueado.`);
+    if (estado) avisos.push(`${rotulo(p)}: ${estado}.`);
+    if (efetivo.data && efetivo.data < c.hojeLocal()) avisos.push(`${rotulo(p)}: data prevista no passado; nada será publicado automaticamente.`);
+    for (const d of m.datasComAviso || []) if (efetivo.data === d.data) avisos.push(`${rotulo(p)}: ${d.motivo}. O cálculo não exclui feriados.`);
+    if (d && (!efetivo.hora || !efetivo.canal)) avisos.push(`${rotulo(p)}: ${!efetivo.hora ? 'horário pendente' : ''}${!efetivo.hora && !efetivo.canal ? '; ' : ''}${!efetivo.canal ? 'canal pendente' : ''}; envio Meta bloqueado.`);
   }
   // Preserva registros sem vínculo e versões antigas para recibo/recuperação, sem reenviá-los.
   for (const antigo of antigos) {
     if (planos.some((r) => antigo.manifestoId ? chave(r) === chave(antigo) : r.id === antigo.id && r.versao === antigo.versao)) continue;
+    // Plano antigo de capa vinculada (W-C2b): fica como recibo, desatualizado, nunca ativo.
+    if (pecas.some((p) => p.id === antigo.id && p.capaDe)) { planos.push({ ...antigo, estado: 'desatualizado', motivo: 'componente-do-reel' }); avisos.push(`${rotuloDe(antigo.id)}: capa de Reel; planeje o Reel.`); continue; }
     planos.push({ ...antigo, ...(antigo.manifestoId ? { estado: 'desatualizado' } : { legado: true }) });
-    if (!antigo.manifestoId) avisos.push(`${antigo.id}: vínculo de cronograma pendente; data manual preservada.`);
+    if (!antigo.manifestoId) avisos.push(`${rotuloDe(antigo.id)}: vínculo de cronograma pendente; data manual preservada.`);
   }
   const referenciaFunilLegado = operacional.referenciaFunilLegado || operacional.referenciaFunil || [];
   if (referenciaFunilLegado.length) avisos.push('Referência do funil preservada como legado; IDs, horas e canais precisam de migração explícita.');

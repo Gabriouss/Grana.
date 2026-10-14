@@ -284,6 +284,7 @@ async function test(nome, fn, padaria, nomes) {
     assert.equal(dto.aguardandoDiaD.length, 0); assert.equal(dto.itens.length, 1); assert.equal(dto.itens[0].data, '2026-10-15');
     assert.equal(dto.itens[0].canal, null); assert.equal(dto.itens[0].hora, null); assert.equal(dto.itens[0].origem.itemId, 'reels-widget-padaria');
     assert(dto.avisos.some((s) => s.includes('horário pendente') && s.includes('canal pendente')));
+    assert(!dto.avisos.some((s) => /\b[0-9a-f]{16}\b/.test(s)), 'aviso visível sem id técnico (F4-1, V1 do Vigil)');
     const reciboAntes = en.ensaiar(h.dir).itens[0].recibo;
     const promoted = await h.promover(); dto = cal.obterCalendario(h.dir, '2026-10');
     assert.equal(dto.itens.length, 1); assert.equal(dto.itens[0].peca.id, promoted.promocao.id);
@@ -326,7 +327,7 @@ async function test(nome, fn, padaria, nomes) {
   await test('legado sem vínculo preserva data manual e aviso; nenhum manifesto inventado', async (h) => {
     await h.aprovar(); await cal.planejar(h.dir, { id: h.p.id, versao: h.p.versao, data: '2026-10-22', canal: 'stories' });
     await cr.salvarManifesto(h.dir, { manifesto: h.manifesto, versaoEsperada: 0 });
-    let r = cal.obterCalendario(h.dir, '2026-10'); assert.equal(r.itens[0].data, '2026-10-22'); assert(r.avisos.some((s) => s.includes('vínculo de cronograma pendente')));
+    let r = cal.obterCalendario(h.dir, '2026-10'); assert.equal(r.itens[0].data, '2026-10-22'); assert(r.avisos.some((s) => s.includes('vínculo de cronograma pendente'))); assert(!r.avisos.some((s) => /\b[0-9a-f]{16}\b/.test(s)), 'aviso sem id técnico');
     await cr.registrarVinculo(h.dir, h.p.id, { versao: h.p.versao, versaoEsperada: 1, manifestoId: 'campanha-teste', itemId: 'peca-teste' });
     r = cal.obterCalendario(h.dir, '2026-10'); assert.equal(r.itens[0].substituicaoManual.data, '2026-10-22');
   });

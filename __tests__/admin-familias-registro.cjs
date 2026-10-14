@@ -127,6 +127,18 @@ async function recusaSemEscrita(acao, codigo, rotulo) {
     const calCapa = calendario.obterCalendario(raiz, '2026-10');
     assert.ok(!calCapa.aprovadosSemData.some((x) => x.id === capa.id), 'capa não aparece como aprovada sem data no calendário');
     assert.ok(calCapa.aprovadosSemData.some((x) => x.id === notif.id), 'o Reel aparece');
+    // W-C2b: plano antigo da capa, gravado antes da correção, não aparece como item ativo; GET sem escrita.
+    const calArq = path.join(PAINEL, 'calendario.json');
+    const calAntes = fs.existsSync(calArq) ? fs.readFileSync(calArq) : null;
+    fs.writeFileSync(calArq, JSON.stringify({ planejados: [{ id: capa.id, caminho: capa.caminho, versao: capaOk.versao, data: '2026-10-20', hora: '10:00', canal: 'instagram-feed', planejadoEm: '2026-10-13T10:00:00-03:00' }] }));
+    const fotoCal = fotografia();
+    const calLegado = calendario.obterCalendario(raiz, '2026-10');
+    assert.ok(!calLegado.itens.some((x) => x.peca?.id === capa.id) && !calLegado.aguardandoDiaD.some((x) => x.peca?.id === capa.id), 'plano legado da capa fora dos itens ativos');
+    const recibo = calLegado.desatualizados.find((x) => x.id === capa.id);
+    assert.ok(recibo, 'plano legado preservado como recibo'); assert.match(recibo.motivo, /componente do Reel/);
+    const fotoCalDepois = fotografia();
+    for (const [f, b] of fotoCal) assert.equal(fotoCalDepois.get(f), b, 'GET do calendário não grava');
+    if (calAntes) fs.writeFileSync(calArq, calAntes); else fs.rmSync(calArq);
     // Trocar só a capa muda a versão do Reel: o aceite composto antigo deixa de valer.
     grava(`${S41}/aprovados/audit-reel-capa-1080x1920.png`, 'AUDIT-capa-trocada');
     const notifTroca = cat.obterPeca(raiz, notif.id);

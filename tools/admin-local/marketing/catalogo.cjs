@@ -259,9 +259,16 @@ function lerRegistroFamilias(raiz) {
 
 // Recusas do autor (historico.json), por id+versão. A recusa de uma revisão prevalece sobre a
 // marcação estática de vigente no registro de famílias até haver nova decisão ou versão (H-02).
+// Vale para a cópia em historico (id+versão) e para a ORIGEM preservada quando o índice ou a
+// limpeza falharam (origem.id com os mesmos bytes), para a recusa não depender da limpeza (W-A4).
+function predicadoRecusa(recusas) {
+  const lista = (Array.isArray(recusas) ? recusas : []).filter((r) => r && r.id && r.versao);
+  return (p) => lista.some((r) => (r.id === p.id && r.versao === p.versao)
+    || (r.origem?.id === p.id && Array.isArray(r.arquivos) && Array.isArray(p.arquivos) && r.arquivos.length === p.arquivos.length
+      && r.arquivos.every((a, i) => a?.sha1 === p.arquivos[i].sha1)));
+}
 function recusasDoPainel(raiz) {
-  const h = lerJson(caminhoPainel(raiz, 'historico.json'), { recusas: [] });
-  return new Set((Array.isArray(h.recusas) ? h.recusas : []).filter((r) => r && r.id && r.versao).map((r) => `${r.id}:${r.versao}`));
+  return predicadoRecusa(lerJson(caminhoPainel(raiz, 'historico.json'), { recusas: [] }).recusas);
 }
 // Recusa no servidor qualquer decisão sobre revisão que não é a vigente.
 function exigirVigente(peca, acao) {
@@ -747,12 +754,12 @@ function enriquecer(raiz, pecas) {
     const cp = pecas.find((x) => x.id === id);
     return !!cp && (capasEmComposto.has(cp.id) || aprovacoes.some((a) => valido(a, cp)));
   };
-  const recusadas = new Set((Array.isArray(historico.recusas) ? historico.recusas : []).filter((r) => r && r.id && r.versao).map((r) => `${r.id}:${r.versao}`));
+  const foiRecusada = predicadoRecusa(historico.recusas);
   return pecas.map((p) => {
     const superada = superadas.has(p.id) || (!!p.capaDe && superadas.has(p.capaDe));
     const pendente = !superada && !!p.revisao?.pendencia;
     // Recusa registrada desta versão prevalece: a vigente recusada não volta a ser acionável (H-02).
-    const recusada = !superada && p.estado === 'historico' && recusadas.has(`${p.id}:${p.versao}`);
+    const recusada = !superada && foiRecusada(p);
     // A vigente escolhida no registro decide pelo registro, mesmo guardada em historico, se não foi recusada.
     const estado = p.revisao?.vigente && p.estado === 'historico' && !recusada ? 'para-aprovacao' : p.estado;
     const aceiteDaVersao = aprovacoes.filter((a) => valido(a, p)).at(-1) || null;
@@ -769,6 +776,7 @@ function enriquecer(raiz, pecas) {
     const aprovada = !superada && !recusada && !pendente && !capaSemAceite && !reelSemComposto && (estado === 'aprovados' || !!aceite);
     let estadoEfetivo = estado;
     if (superada) estadoEfetivo = 'superada';
+    else if (recusada) estadoEfetivo = 'historico';
     else if (capaSemAceite) estadoEfetivo = ajuste ? 'ajuste-pedido' : 'aguardando-aceite';
     else if (estado === 'para-aprovacao') estadoEfetivo = aceite ? 'aprovada' : ajuste ? 'ajuste-pedido' : 'aguardando-aceite';
     else if (estado === 'aprovados') estadoEfetivo = pendente || reelSemComposto ? 'aguardando-aceite' : 'aprovada';

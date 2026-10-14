@@ -117,6 +117,20 @@ async function filaReal() {
     assert.equal(comAceite.aprovada, false); assert.equal(comAceite.aceite, null);
     assert.ok(!c.feed(h.dir).pecas.some((x) => x.id === recusada.id), 'recusada fora do feed mesmo com aceite');
   });
+  // H-02b (W-A4): limpeza da origem falhou e a origem ficou com os mesmos bytes. Ela também é recusada.
+  await fixture(async (h) => {
+    await hist.recusar(h.dir, h.p.id, { versao: h.p.versao, motivo: 'AUDIT recusa da vigente', confirmacao: true });
+    fs.writeFileSync(path.join(h.media, 'E01.jpg'), 'AUDIT revisao 1'); // origem preservada
+    const origem = c.obterPeca(h.dir, h.p.id);
+    assert.equal(origem.estado, 'para-aprovacao'); assert.equal(origem.recusada, true); assert.equal(origem.aprovada, false);
+    assert.equal(origem.estadoEfetivo, 'historico', 'origem preservada sai da fila acionável');
+    await recusaSemEscrita(h.dir, () => ap.aprovar(h.dir, origem.id, { versao: origem.versao, confirmacao: true }), 'revisao-recusada', 'H-02b aprovar a origem preservada');
+    await recusaSemEscrita(h.dir, () => cal.planejar(h.dir, { id: origem.id, versao: origem.versao, data: '2026-10-20', canal: 'instagram-feed' }), 'revisao-recusada', 'H-02b planejar a origem preservada');
+    await recusaSemEscrita(h.dir, () => promo.promover(h.dir, origem.id, { versao: origem.versao, confirmacao: true }), 'revisao-recusada', 'H-02b promover a origem preservada');
+    // Bytes novos no mesmo caminho são outra versão e não herdam a recusa.
+    fs.writeFileSync(path.join(h.media, 'E01.jpg'), 'AUDIT revisao 1 corrigida');
+    assert.equal(c.obterPeca(h.dir, h.p.id).recusada, false);
+  });
   console.log('OK H-02 recusa da vigente prevalece: reler -> aprovar/planejar 409 sem escrita; aceite antigo não reabre');
 
   // H-03: fila real, dependências sintéticas em memória.
