@@ -29,7 +29,8 @@ function setup(api) {
  assert.ok(text(itens.root).includes('Ensaiado, sem agendamento real'));
  assert.ok(text(itens.root).includes('Bloqueado no ensaio'));
  assert.ok(text(itens.root).includes('Não informado'));
- assert.ok(text(itens.root).includes('Recibo de simulação: sim-2'));
+ assert.ok(text(itens.root).includes('Recibo de simulação registrado.'));
+assert.equal(/sim-[12]|peca1|\bv1\b/.test(text(itens.root)), false, 'F4-1: chave do recibo, id e versão fora do texto');
  assert.ok(text(itens.root).includes('<script>alert(1)</script>')); // texto, nunca innerHTML
  let fail = true;
  const retry = setup(async () => { if (fail) throw Object.assign(Error('Falha de leitura'), { codigo: 'prazo' }); return { dados: dto() }; });

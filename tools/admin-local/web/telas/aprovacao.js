@@ -392,12 +392,13 @@ export async function montar(raiz, ctx) {
       h('summary', { texto: 'Copy de referência' }), h('p', { class: 'texto-legenda', texto: p.editorial.copyCanonica }),
       p.editorial.avisoHarmonizacao ? h('p', { class: 'campo-ajuda', texto: p.editorial.avisoHarmonizacao }) : null));
     detalhe.appendChild(h('details', { class: 'aprovacao-mais' },
-      h('summary', { texto: 'Dados técnicos' }),
+      h('summary', { texto: 'Detalhes do arquivo' }),
       h('dl', { class: 'lista-chave-valor' },
         h('dt', { texto: 'Estado' }), h('dd', { texto: rotuloEstado(p) }),
         h('dt', { texto: 'Semana' }), h('dd', { texto: rotuloSemana(p.semana) }),
-        h('dt', { texto: 'Versão' }), h('dd', { class: 'mono', texto: String(p.versao || '').slice(0, 12) }),
-        h('dt', { texto: 'Arquivo' }), h('dd', { class: 'mono quebra', texto: p.caminho }),
+        // F4-1: sem hash da versão; o arquivo pelo nome e pela data em que mudou.
+        h('dt', { texto: 'Arquivo' }), h('dd', { class: 'quebra', texto: String(p.caminho || p.nome || 'não informado').split('/').pop() }),
+        p.modificadoEm ? [h('dt', { texto: 'Alterado em' }), h('dd', { texto: ctx.formatar.dataHora(p.modificadoEm) })] : null,
         p.aceite ? [h('dt', { texto: 'Aceite' }), h('dd', { texto: `${ctx.formatar.dataHora(p.aceite.aprovadoEm)}${p.aceite.evidencia ? `, ${p.aceite.evidencia}` : ''}` })] : null,
         p.ajuste ? [h('dt', { texto: 'Ajuste pedido' }), h('dd', { texto: `${Object.hasOwn(ESTADOS_AJUSTE, p.ajuste.estado) ? ESTADOS_AJUSTE[p.ajuste.estado] : 'Estado não reconhecido. Atualize antes de agir.'}${p.ajuste.pedidoEm ? ` (${ctx.formatar.dataHora(p.ajuste.pedidoEm)})` : ''}` })] : null)));
     if (p.indice) {
@@ -629,7 +630,7 @@ async function aprovar(ctx, p, botao) {
   const ok = await ctx.confirmar({
     titulo: 'Aprovar esta versão',
     texto: 'Isto registra o seu aceite desta peça e desta legenda, na versão que está na tela. Não publica, não agenda e não envia nada ao Instagram ou à Meta. Se o arquivo mudar depois, o aceite deixa de valer.',
-    detalhes: [tituloPeca(p), `Versão ${String(p.versao || '').slice(0, 12)}`, p.legenda ? `Legenda: ${p.legenda.slice(0, 140)}${p.legenda.length > 140 ? '…' : ''}` : 'Sem legenda registrada'],
+    detalhes: [tituloPeca(p), p.modificadoEm ? `Arquivo de ${ctx.formatar.dataHora(p.modificadoEm)}` : 'Versão que está na tela agora', p.legenda ? `Legenda: ${p.legenda.slice(0, 140)}${p.legenda.length > 140 ? '…' : ''}` : 'Sem legenda registrada'],
     rotuloBotao: 'Aprovar',
   });
   if (!ok) return;

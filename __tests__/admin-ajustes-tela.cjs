@@ -37,7 +37,7 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   const base = { id: 'pedido-ficticio', pecaTitulo: 'Reel de teste', pecaId: 'a'.repeat(16), versaoAlvo: 'a'.repeat(40), versaoCorrigida: 'b'.repeat(40), commit: 'c'.repeat(40), tentativas: 1, criadoEm: '2026-10-08T10:00:00-03:00', textoOriginal: 'CANARIO_PRIVADO_NAO_LOGAR' };
   for (const estado of ['novo', 'em-correcao', 'corrigido-aguardando-aceite', 'aceito', 'falha-de-envio', 'aguardando-aprovacao-de-custo', 'desatualizado', 'precisa-de-atencao', 'desconhecido']) {
     pedidos.splice(0, pedidos.length, { ...base, estado });
-    const t = await render(); assert.ok(t.includes('Reel de teste · ') && t.includes('Pedido pedido-f'), 'lista pelo nome da peca, id curto'); assert.ok(!t.includes('pedido-ficticio') && !t.includes('a'.repeat(40)) && !t.includes('b'.repeat(40)) && !t.includes('c'.repeat(40)), 'nem id nem SHA inteiros ao autor'); assert.equal(t.includes(base.textoOriginal), false);
+    const t = await render(); assert.ok(t.includes('Reel de teste · '), 'lista pelo nome da peca'); assert.ok(!t.includes('pedido-f') && !t.includes('aaaaaaaa') && !t.includes('bbbbbbbb') && !t.includes('cccccccc'), 'F4-1: nem id curto nem versão curta ao autor'); assert.ok(!t.includes('pedido-ficticio') && !t.includes('a'.repeat(40)) && !t.includes('b'.repeat(40)) && !t.includes('c'.repeat(40)), 'nem id nem SHA inteiros ao autor'); assert.equal(t.includes(base.textoOriginal), false);
     // Fase 2: precisa-de-atencao oferece Reenviar e Encerrar; os demais seguem com uma ação ou nenhuma.
     assert.deepEqual(walk(root).filter((n) => n.tag === 'button').map((n) => n.attrs.texto), { 'corrigido-aguardando-aceite': ['Aceitar versão corrigida'], 'falha-de-envio': ['Tentar entrega novamente'], 'precisa-de-atencao': ['Reenviar pedido', 'Encerrar pedido'] }[estado] || [], estado);
   }
@@ -49,7 +49,7 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   resolver({}); await first; resolver = null;
   pedidos.splice(0, pedidos.length, { ...base, estado: 'falha-de-envio' }); await render(); b = walk(root).find((n) => n.tag === 'button'); await b.attrs.onclick();
   assert.equal(calls.filter((c) => c[0] === 'POST').at(-1)[2].confirmacao, true);
-  erro = true; assert.ok((await render()).includes('Falha com recibo')); erro = false; antigo = true; assert.equal((await render()).includes('Pedido pedido-f'), false);
+  erro = true; assert.ok((await render()).includes('Falha com recibo')); erro = false; antigo = true; assert.equal((await render()).includes('Reel de teste · '), false);
   assert.equal(JSON.stringify([calls, avisos]).includes(base.textoOriginal), false);
   assert.equal(fs.readFileSync('tools/admin-local/web/telas/aprovacao.js', 'utf8').includes('vai para o GitHub público'), false);
   antigo = false; erro = false;
@@ -118,7 +118,7 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   ctx.api = async () => ({ dados: { pedidos, remoto: { status: 'ausente' }, ...extra } });
   let tela = await render();
   assert.ok(tela.includes('vigia de entrega não está ativo') && tela.includes('vigia-ajustes.cjs'), 'avisa vigia parado com o comando');
-  assert.ok(tela.includes('Recebido, aguardando entrega') && tela.includes('tentativas 0'), 'pedido fica recebido, sem gastar tentativa');
+  assert.ok(tela.includes('Recebido, aguardando entrega') && tela.includes('Tentativas de entrega: 0'), 'pedido fica recebido, sem gastar tentativa');
   assert.ok(tela.includes('Feche a janela') && tela.includes('abra de novo pelo atalho'), 'avisa servidor com codigo antigo');
   extra = { vigia: { ativo: true, ultimoBatimento: '2026-10-09T14:00:00Z' }, servidor: { desatualizado: false } };
   assert.ok(!(await render()).includes('vigia de entrega não está ativo') && !text(root).includes('Feche a janela'));

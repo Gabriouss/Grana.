@@ -2,8 +2,6 @@
 // No topo da tela fica uma linha só, de altura fixa, que não cresce com a quantidade de pedidos:
 // o resumo e, recolhida, a lista completa. Ações (aceitar, tentar de novo) ficam no detalhe da peça.
 
-// Identificadores são para conferência, não para leitura: oito caracteres bastam e ficam em segundo plano.
-const curto = (v) => (typeof v === 'string' && v ? v.slice(0, 8) : 'não informado');
 // A lista recolhe e abre por escolha da pessoa; recarregar a tela não muda isso nem faz a tela pular.
 const estadoLista = { aberta: false };
 const detalhesDasFilas = new WeakMap();
@@ -261,7 +259,6 @@ function linhaPedido(ctx, p, { acoes, disponivel = true, aceitePermitido = true 
   } else {
     bloco.appendChild(h('a', { class: 'botao botao-fantasma', href: `#/marketing/aprovacao?peca=${encodeURIComponent(p.pecaId)}`, texto: 'Abrir a peça' }));
   }
-  const ids = [`Pedido ${curto(p.id)}`, `Versão alvo ${curto(p.versaoAlvo)}`, p.versaoCorrigida ? `Versão corrigida ${curto(p.versaoCorrigida)}` : null, p.commit ? `Commit ${curto(p.commit)}` : null, p.aceite ? `Aceite ${curto(p.aceite.versao)}` : null].filter(Boolean).join(' · ');
   const estado = ESTADOS[p.estado] || `Estado não reconhecido: ${p.estado || 'ausente'}. Atualize antes de agir.`;
   const nomeDaPeca = acoes ? '' : `${p.pecaTitulo || 'Peça sem nome'} · `;
   const espelho = avisoEspelho(p);
@@ -282,7 +279,8 @@ function linhaPedido(ctx, p, { acoes, disponivel = true, aceitePermitido = true 
     p.estado === 'corrigido-aguardando-aceite' ? h('p', { class: 'campo-ajuda', texto: 'Revise a peça e a versão corrigida antes de aceitar. Correção pronta não é aceite nem publicação.' }) : null,
     p.aceite ? h('p', { class: 'campo-ajuda', texto: `Aceito em ${quando(p.aceite.em)}. O aceite não comprova publicação.` }) : null,
     bloco,
-    h('p', { class: 'campo-ajuda mono quebra', texto: `${ids} · tentativas ${p.tentativas ?? 'não informadas'}` }));
+    // F4-1: id do pedido, versões e commit não viram texto na tela, nem recolhidos. O agente acha o pedido pelo nome da peça e pela data.
+    h('p', { class: 'campo-ajuda', texto: `Tentativas de entrega: ${p.tentativas ?? 'não informadas'}` }));
 }
 
 const ESTADOS = {
@@ -322,7 +320,7 @@ export async function agir(ctx, pedido, tipo, botao) {
     }
     const confirmado = await ctx.confirmar({ titulo: tipo === 'encerrar' ? 'Confirmar encerramento' : tipo === 'aceitar' ? 'Aceitar esta correção' : tipo === 'reenviar' ? 'Reenviar pedido' : 'Tentar entrega novamente',
       texto: tipo === 'encerrar' ? 'O pedido será encerrado localmente. A sincronização remota ainda precisa de confirmação. Nenhum custo é autorizado.' : tipo === 'aceitar' ? 'Confirme somente depois de revisar a versão corrigida. Nada será publicado ou enviado à Meta.' : 'Confira primeiro se o agente recebeu o pedido. Repetir uma entrega incerta pode duplicar trabalho.',
-      detalhes: [pedido.pecaTitulo || 'Peça sem nome', `Pedido ${curto(pedido.id)} · versão ${curto(pedido.versaoCorrigida || pedido.versaoAlvo)}`], rotuloBotao: 'Confirmar' });
+      detalhes: [pedido.pecaTitulo || 'Peça sem nome', `Pedido de ${pedido.criadoEm ? ctx.formatar.dataHora(pedido.criadoEm) : 'data não informada'}`], rotuloBotao: 'Confirmar' });
     if (confirmado !== true) return;
     if (ctx.obsoleta()) return;
     const corpo = { pedidoId: pedido.id, confirmacao: true };

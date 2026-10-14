@@ -103,7 +103,7 @@ export async function montar(raiz, ctx) {
   for (const i of itens) {
     agenda.appendChild(h('li', { class: 'agenda-item' },
       h('span', { class: 'agenda-data', texto: `${ctx.formatar.data(i.data)}${i.hora ? ` às ${i.hora}` : ''}` }),
-      h('span', { class: 'agenda-titulo', texto: i.peca.titulo || i.peca.id }),
+      h('span', { class: 'agenda-titulo', texto: i.peca.titulo || 'Peça sem título' }),
       h('span', { class: 'agenda-canal', texto: rotuloCanal(i.canal) }),
       h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Mudar data', onclick: () => planejar(i.peca, i.data) })));
   }
@@ -118,7 +118,7 @@ export async function montar(raiz, ctx) {
       ? h('ul', { class: 'lista-sem-data' }, semData.map((p) => {
         const li = h('div', { class: 'cal-item', draggable: 'true', title: p.titulo || p.id, dados: { id: p.id } },
           p.capa?.url && p.capa.tipo === 'imagem' ? h('img', { class: 'cal-item-capa', src: ctx.urlArquivo(p.capa.url), alt: '', loading: 'lazy' }) : null,
-          h('span', { class: 'cal-item-titulo', texto: p.titulo || p.id }),
+          h('span', { class: 'cal-item-titulo', texto: p.titulo || 'Peça sem título' }),
           h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Escolher data', onclick: () => planejar(p) }));
         const item = h('li', {}, li, h('div', { class: 'bloco-acao' }, botaoVinculo(ctx, p)), detalhesCronograma(ctx, p));
         if (ctx.params.peca === p.id) {
@@ -144,7 +144,7 @@ export async function montar(raiz, ctx) {
     contexto.appendChild(recolhido(`Previsões e entradas no calendário (${entradas.length})`,
       h('p', { class: 'nota-explicativa', texto: 'A previsão vem do cronograma. Uma alteração manual preserva essa origem; o recibo do calendário não comprova publicação na Meta.' }),
       ...entradas.map((i) => h('article', { class: 'secao' },
-        h('h3', { class: 'secao-titulo quebra', texto: i.peca?.titulo || i.peca?.id || 'Peça' }), detalhesCronograma(ctx, i), botaoVinculo(ctx, i.peca)))));
+        h('h3', { class: 'secao-titulo quebra', texto: i.peca?.titulo || 'Peça sem título' }), detalhesCronograma(ctx, i), botaoVinculo(ctx, i.peca)))));
   }
 
   if ((d.desatualizados || []).length) {
@@ -281,18 +281,18 @@ export async function ligarCronograma(ctx, p, botao) {
     if (!manifestoValido(m) || !m.itens.length) throw new Error('Crie o cronograma e adicione um item antes de ligar a peça');
     const v = await ctx.formulario({ titulo: 'Ligar ao cronograma', texto: `${p.titulo || 'Peça aceita'}. O vínculo será registrado no INDICE.md da semana.`,
       campos: [{ nome: 'itemId', rotulo: 'Item do cronograma', tipo: 'select', obrigatorio: true, valor: m.itens[0].id,
-        opcoes: m.itens.map((i) => ({ valor: i.id, rotulo: `${m.manifestoId}#${i.id}@${m.versao}` })) }], rotuloBotao: 'Conferir vínculo' });
+        opcoes: m.itens.map((i) => ({ valor: i.id, rotulo: i.id })) }], rotuloBotao: 'Conferir vínculo' });
     if (!v || ctx.obsoleta()) return;
     if (!m.itens.some((i) => i.id === v.itemId)) throw new Error('Escolha um item da lista atual');
     const ok = await ctx.confirmar({ titulo: 'Confirmar vínculo', texto: 'Liga esta versão aceita à previsão local. Nenhuma ação real da Meta será habilitada.',
-      detalhes: [p.titulo || 'Peça aceita', `${m.manifestoId}#${v.itemId}@${m.versao}`], rotuloBotao: 'Ligar ao cronograma' });
+      detalhes: [p.titulo || 'Peça aceita', `Item ${v.itemId} do cronograma`], rotuloBotao: 'Ligar ao cronograma' });
     if (ok !== true || ctx.obsoleta()) return;
     const r = await ctx.acao('/api/marketing/cronograma/vinculo', { pecaId: p.id, versao: p.versao, versaoEsperada: m.versao, manifestoId: m.manifestoId, itemId: v.itemId });
     if (ctx.obsoleta()) return;
     mostrarAvisos(ctx, r);
     const recibo = r.dados?.cronograma;
     if (recibo?.manifestoId !== m.manifestoId || recibo.itemId !== v.itemId || recibo.manifestoVersao !== m.versao) throw new Error('O servidor não confirmou o vínculo no índice');
-    ctx.aviso(`Vínculo registrado no INDICE.md: ${m.manifestoId}#${v.itemId}@${m.versao}. Confira a previsão e o recibo do calendário.`, 'ok');
+    ctx.aviso(`Vínculo registrado no INDICE.md da semana: item ${v.itemId}. Confira a previsão e o recibo do calendário.`, 'ok');
     ctx.recarregar();
   } catch (err) { erroCronograma(ctx, err); }
   finally { if (!ctx.obsoleta()) botao.disabled = false; }
@@ -347,11 +347,11 @@ export function montarEnsaioCalendario(raiz, ctx) {
       if (!d.itens.length) corpo.appendChild(h('p', { texto: 'Nenhum planejamento disponível para ensaiar. Declare o dia D e marque as datas no calendário editorial.' }));
       for (const i of d.itens) {
         corpo.appendChild(h('article', { class: 'secao' },
-          h('h3', { class: 'secao-titulo', texto: `${texto(i.pecaId)} · ${i.estado === 'ensaio' ? 'Ensaiado, sem agendamento real' : 'Bloqueado no ensaio'}` }),
+          h('h3', { class: 'secao-titulo', texto: `${texto(i.midias?.[0]?.nome || 'Peça do ensaio')} · ${i.estado === 'ensaio' ? 'Ensaiado, sem agendamento real' : 'Bloqueado no ensaio'}` }),
           h('div', { class: 'secao-corpo' },
             h('p', { texto: `Canal: ${texto(i.canal)} · Data: ${texto(i.data)} · Hora: ${texto(i.hora)} · Fuso: ${texto(i.fuso)}` }),
-            h('p', { class: 'campo-ajuda', texto: `Versão: ${texto(i.versao)} · Instante UTC: ${texto(i.quandoUtc)} · Evidência: ${texto(i.evidenciaEm)}` }),
-            h('p', { class: 'campo-ajuda', texto: `Recibo de simulação: ${texto(i.recibo)}` }),
+            // F4-1: id da peça, versão, chave do recibo e instante UTC não viram texto; o recibo existe ou não.
+            i.recibo ? h('p', { class: 'campo-ajuda', texto: 'Recibo de simulação registrado.' }) : null,
             lista(i.bloqueios),
             h('ul', {}, (Array.isArray(i.midias) ? i.midias : []).map((m) => h('li', { texto: `${texto(m.nome)} (${texto(m.tipo)})` }))))));
       }
@@ -369,9 +369,9 @@ export function montarEnsaioCalendario(raiz, ctx) {
 
 function itemCalendario(ctx, i, aoClicar) {
   const { h } = ctx;
-  const el = h('button', { class: 'cal-item', type: 'button', draggable: 'true', title: `${i.peca.titulo || i.peca.id}, ${rotuloCanal(i.canal)}`, onclick: aoClicar },
+  const el = h('button', { class: 'cal-item', type: 'button', draggable: 'true', title: `${i.peca.titulo || 'Peça sem título'}, ${rotuloCanal(i.canal)}`, onclick: aoClicar },
     i.hora ? h('span', { class: 'cal-item-hora', texto: i.hora }) : null,
-    h('span', { class: 'cal-item-titulo', texto: i.peca.titulo || i.peca.id }),
+    h('span', { class: 'cal-item-titulo', texto: i.peca.titulo || 'Peça sem título' }),
     h('span', { class: 'cal-item-canal', texto: rotuloCanal(i.canal) }));
   el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/x-grana-peca', i.peca.id); e.dataTransfer.effectAllowed = 'move'; });
   return el;
@@ -426,8 +426,8 @@ export function detalhesCronograma(ctx, previsao) {
     previsao.motivo && previsao.motivo !== previsao.estado ? ctx.alerta('atencao', previsao.motivo) : null,
     manual ? h('p', { texto: `Data alterada pelo autor: ${data(manual.data)} ${horario(manual.hora)} · ${canal(manual.canal)}. A previsão de origem foi preservada.` }) : null,
     ...recibos.map((r) => h('p', { role: 'status', class: 'campo-ajuda', texto: r.tipo === 'aceite-autor'
-      ? `Recibo do aceite: aceite-autor · versão ${r.versaoPeca || 'não informada'}${r.aprovadoEm ? ` · ${ctx.formatar.dataHora(r.aprovadoEm)}` : ''}${r.evidencia ? ` · ${r.evidencia}` : ''}. Não comprova publicação na Meta.`
-      : `Recibo do calendário: ${r.tipo || r.acao || 'tipo não informado'}${r.id ? ` · ${r.id}` : ''}${r.em ? ` · ${ctx.formatar.dataHora(r.em)}` : ''}${r.estado ? ` · ${['aguardando dia D', 'aguardando-dia-d'].includes(previsao.estado) && ['aguardando dia D', 'aguardando-dia-d'].includes(r.estado) ? 'Planejamento registrado' : r.estado}` : ''}. Não comprova publicação na Meta.` })),
+      ? `Recibo do aceite: seu aceite no painel${r.aprovadoEm ? ` · ${ctx.formatar.dataHora(r.aprovadoEm)}` : ''}${r.evidencia ? ` · ${r.evidencia}` : ''}. Não comprova publicação na Meta.`
+      : `Recibo do calendário: ${r.tipo || r.acao || 'tipo não informado'}${r.em ? ` · ${ctx.formatar.dataHora(r.em)}` : ''}${r.estado ? ` · ${['aguardando dia D', 'aguardando-dia-d'].includes(previsao.estado) && ['aguardando dia D', 'aguardando-dia-d'].includes(r.estado) ? 'Planejamento registrado' : r.estado}` : ''}. Não comprova publicação na Meta.` })),
     origem && !recibos.length ? ctx.alerta('atencao', 'Recibo do calendário ainda não informado. Atualize para conferir o registro.') : null,
     ...(Array.isArray(previsao.avisos) ? previsao.avisos : []).map((aviso) => ctx.alerta('atencao', aviso)));
 }
@@ -439,7 +439,7 @@ export async function escolherData(ctx, peca, dataInicial, canais) {
   try {
     const v = await ctx.formulario({
       titulo: 'Data de publicação',
-      texto: `${peca.titulo || peca.id}. Isto só marca no calendário do painel. Ninguém publica nada por aqui.`,
+      texto: `${peca.titulo || 'Peça sem título'}. Isto só marca no calendário do painel. Ninguém publica nada por aqui.`,
       campos: [
         { nome: 'data', rotulo: 'Dia', tipo: 'date', obrigatorio: true, valor: dataInicial || '' },
         { nome: 'hora', rotulo: 'Horário (opcional)', tipo: 'time', valor: '' },

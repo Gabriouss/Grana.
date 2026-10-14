@@ -8,6 +8,9 @@ const ctx = { h: node, alerta: (tipo, texto) => node('p', { tipo, texto }), form
 const sandbox = { ctx, rotuloCanal: (s) => s || 'sem canal', console };
 vm.runInNewContext(source, sandbox);
 function render(previsao) { sandbox.previsao = previsao; return text(vm.runInNewContext('detalhesCronograma(ctx,previsao)', sandbox)); }
+// F4-1: o texto visível sem abrir "Referências para os agentes" (details) não traz id, versão nem código interno.
+const semDetails = (n) => n == null ? '' : typeof n === 'object' ? (n.tag === 'details' ? '' : [n.attrs?.texto || '', ...(n.children || []).map(semDetails)].join(' ')) : String(n);
+function visivel(previsao) { sandbox.previsao = previsao; return semDetails(vm.runInNewContext('detalhesCronograma(ctx,previsao)', sandbox)); }
 assert.equal(render(null), '');
 const origem = { manifestoId: 'campanha-grana', itemId: 'reels-widget-padaria', manifestoVersao: 2 };
 const previsto = { origem, dataPrevista: { modo: 'diaD', diasUteis: 4, hora: '19:00', canal: 'reels' }, estado: 'aguardando-dia-d' };
@@ -23,14 +26,22 @@ t = render({ ...previsto, estado: 'planejado', dataPrevista: { ...previsto.dataP
 assert.ok(t.includes('15/10/2026'));
 assert.ok(t.includes('Data alterada pelo autor: 16/10/2026 às 20:00'));
 assert.ok(t.includes('previsão de origem foi preservada'));
-assert.ok(t.includes('Recibo do aceite: aceite-autor'));
-assert.ok(t.includes('versao-ficticia'));
+assert.ok(t.includes('Recibo do aceite: seu aceite no painel'));
+assert.equal(t.includes('versao-ficticia'), false, 'F4-1: sem versão no texto, nem recolhida');
 assert.ok(t.includes('data formatada 2026-10-07'));
 assert.ok(t.includes('aceite fictício no painel'));
 assert.ok(t.includes('Não comprova publicação na Meta'));
 t = render({ origem, recibos: [{ id: 'recibo-ficticio-entrada', tipo: 'entrada-automatica', em: '2026-10-08T19:00:00-03:00', estado: 'aguardando dia D' }, { acao: 'substituicao-manual', em: '2026-10-09T10:00:00-03:00' }] });
 assert.ok(t.includes('Recibo do calendário: entrada-automatica'));
-assert.ok(t.includes('recibo-ficticio-entrada'));
+assert.equal(t.includes('recibo-ficticio-entrada'), false, 'F4-1: sem id do recibo no texto, nem recolhido');
+{
+  const v = visivel({ origem, recibos: [{ id: 'recibo-ficticio-entrada', tipo: 'entrada-automatica', em: '2026-10-08T19:00:00-03:00', estado: 'aguardando dia D' }] });
+  assert.ok(v.includes('Recibo do calendário: entrada-automatica'));
+  assert.equal(v.includes('recibo-ficticio-entrada'), false, 'id do recibo fora do texto visível (F4-1)');
+  const a = visivel({ ...previsto, recibo: { tipo: 'aceite-autor', versaoPeca: 'versao-ficticia', aprovadoEm: '2026-10-07T10:31:32-03:00' } });
+  assert.ok(a.includes('Recibo do aceite: seu aceite no painel'));
+  assert.equal(a.includes('versao-ficticia') || a.includes('aceite-autor'), false, 'versão e código interno fora do texto visível (F4-1)');
+}
 assert.ok(t.includes('substituicao-manual'));
 assert.equal(t.includes('Recibo do aceite'), false, 'evento operacional não é aceite');
 t = render({ dataPrevista: { modo: 'absoluta', data: '2026-10-12', hora: '09:00', canal: 'instagram-feed' }, estado: 'data-passada', avisos: ['Feriado explicitamente registrado no manifesto.'] });
@@ -193,7 +204,9 @@ function encontrar(root, predicado) {
   assert.match(fs.readFileSync(indice,'utf8'),/campanha-audit#audit-reel@2/);
   assert.equal(cal.obterCalendario(dir,'2099-01').aguardandoDiaD.length,1);
   assert(avisos.some((a)=>a.t.includes('Vínculo registrado no INDICE.md')));
-  assert.equal(contexto.ultimoFormulario.campos[0].opcoes[0].rotulo,'campanha-audit#audit-reel@2');
+  // F4-1: a opção mostra o item; a notação manifesto#item@versão fica só no INDICE.md (conferido acima).
+  assert.equal(contexto.ultimoFormulario.campos[0].opcoes[0].rotulo,'audit-reel');
+  assert(!avisos.some((a)=>/#audit-reel@/.test(a.t)),'aviso de vínculo sem a notação técnica');
 
   forms.push({diaD:'2099-01-01'}); confirms.push(true);await calendario.montarCronograma(root,contexto);await achar(root,'Definir dia D').attrs.onclick();
   const m=cr.ler(dir);assert.equal(m.versao,3);assert.equal(m.diaD,'2099-01-01');assert.equal(m.itens.length,1,'salva objeto completo');

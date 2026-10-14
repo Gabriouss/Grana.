@@ -273,8 +273,7 @@ function abrirPost(area, lista, indice, ctx) {
     h('div', { class: 'feed-post-acoes', 'aria-hidden': 'true' }, iconeSvg('curtir'), iconeSvg('comentar'), iconeSvg('enviar'), h('span', null, iconeSvg('salvar'))),
     h('div', { class: 'feed-post-dados' },
       dados.map((t) => h('span', { texto: t })),
-      p.versao ? h('span', { class: 'mono', texto: `versão ${String(p.versao).slice(0, 12)}` }) : null,
-      p.caminho ? h('span', { class: 'mono', texto: p.caminho }) : null),
+      p.caminho ? h('span', { texto: `Arquivo: ${String(p.caminho).split('/').pop()}` }) : null),
     h('div', { class: 'fileira' },
       h('a', { class: 'botao botao-fantasma', href: '#/marketing/calendario', texto: p.data ? 'Ver no calendário' : 'Marcar data no calendário' }),
       lista.length > 1 ? navPost(h, area, lista, indice, ctx, dlg) : null));
