@@ -257,8 +257,17 @@ function lerRegistroFamilias(raiz) {
   return { revisoes, capas };
 }
 
+// Recusas do autor (historico.json), por id+versão. A recusa de uma revisão prevalece sobre a
+// marcação estática de vigente no registro de famílias até haver nova decisão ou versão (H-02).
+function recusasDoPainel(raiz) {
+  const h = lerJson(caminhoPainel(raiz, 'historico.json'), { recusas: [] });
+  return new Set((Array.isArray(h.recusas) ? h.recusas : []).filter((r) => r && r.id && r.versao).map((r) => `${r.id}:${r.versao}`));
+}
 // Recusa no servidor qualquer decisão sobre revisão que não é a vigente.
 function exigirVigente(peca, acao) {
+  if (peca?.recusada) {
+    throw new ErroMarketing('revisao-recusada', `Esta revisão foi recusada pelo autor. ${acao} só vale para uma revisão nova ou uma nova decisão.`, 409);
+  }
   if (peca?.revisao?.superada || peca?.estadoEfetivo === 'superada') {
     const vigente = peca.revisao?.vigenteCaminho ? path.posix.basename(peca.revisao.vigenteCaminho) : 'a revisão vigente';
     throw new ErroMarketing('revisao-superada', `Esta revisão foi substituída por ${vigente}. ${acao} só vale para a revisão vigente da família.`, 409);
@@ -738,14 +747,17 @@ function enriquecer(raiz, pecas) {
     const cp = pecas.find((x) => x.id === id);
     return !!cp && (capasEmComposto.has(cp.id) || aprovacoes.some((a) => valido(a, cp)));
   };
+  const recusadas = new Set((Array.isArray(historico.recusas) ? historico.recusas : []).filter((r) => r && r.id && r.versao).map((r) => `${r.id}:${r.versao}`));
   return pecas.map((p) => {
     const superada = superadas.has(p.id) || (!!p.capaDe && superadas.has(p.capaDe));
     const pendente = !superada && !!p.revisao?.pendencia;
-    // A vigente escolhida no registro decide pelo registro, mesmo guardada em historico.
-    const estado = p.revisao?.vigente && p.estado === 'historico' ? 'para-aprovacao' : p.estado;
+    // Recusa registrada desta versão prevalece: a vigente recusada não volta a ser acionável (H-02).
+    const recusada = !superada && p.estado === 'historico' && recusadas.has(`${p.id}:${p.versao}`);
+    // A vigente escolhida no registro decide pelo registro, mesmo guardada em historico, se não foi recusada.
+    const estado = p.revisao?.vigente && p.estado === 'historico' && !recusada ? 'para-aprovacao' : p.estado;
     const aceiteDaVersao = aprovacoes.filter((a) => valido(a, p)).at(-1) || null;
     // Aceite de revisão superada fica no histórico e não vale mais para publicar.
-    const aceite = superada ? null : aceiteDaVersao;
+    const aceite = superada || recusada ? null : aceiteDaVersao;
     const aceiteAntigo = !aceiteDaVersao && aprovacoes.some((a) => a.id === p.id);
     const ajuste = ajustes.filter((a) => a.id === p.id && a.versao === p.versao).at(-1) || null;
     const pedido = fila.filter((r) => r.pecaId === p.id).at(-1);
@@ -754,7 +766,7 @@ function enriquecer(raiz, pecas) {
     // Reel com capa só é aprovado com aceite composto desta versão (vídeo + capa + legenda),
     // mesmo na pasta aprovados: a pasta não sela a capa (decisão do Supremo, 14/10).
     const reelSemComposto = !!p.composicao && !aceite;
-    const aprovada = !superada && !pendente && !capaSemAceite && !reelSemComposto && (estado === 'aprovados' || !!aceite);
+    const aprovada = !superada && !recusada && !pendente && !capaSemAceite && !reelSemComposto && (estado === 'aprovados' || !!aceite);
     let estadoEfetivo = estado;
     if (superada) estadoEfetivo = 'superada';
     else if (capaSemAceite) estadoEfetivo = ajuste ? 'ajuste-pedido' : 'aguardando-aceite';
@@ -765,6 +777,7 @@ function enriquecer(raiz, pecas) {
       revisao: p.revisao ? { ...p.revisao, superada } : (superada ? { superada: true, vigente: false, vigenteCaminho: null, familia: null, nome: null, pendencia: null } : null),
       capa: p.capa ? { ...p.capa, aprovada: capaAprovada(p.capa.pecaId) } : null,
       aprovada,
+      recusada,
       estadoEfetivo,
       aceite,
       aceiteSuperado: superada ? aceiteDaVersao : null,
@@ -937,6 +950,7 @@ module.exports = {
   lerRegistroFamilias,
   exigirVigente,
   exigirItemAutonomo,
+  recusasDoPainel,
   EVIDENCIAS_AUTOR,
   EVIDENCIA_DERIVADA,
   DERIVACOES_AUTORIZADAS,

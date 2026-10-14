@@ -14,6 +14,9 @@ const estadoTerminal = (estado) => ESTADOS_TERMINAIS.includes(estado);
 // UTF-16 units: 1001 emoji are 1001 characters there and 2002 units in .length.
 const caracteres = (s) => [...s].length;
 function erro(codigo, mensagem, status = 409) { return Object.assign(new Error(mensagem), { codigo, status }); }
+// Revisão que deixou de ser a vigente da família (ou foi recusada) depois do pedido: o pedido não é
+// entregue, não gasta custo e não é concluído; vira 'desatualizado' com recibo (H-03).
+const foraDeVigencia = (p) => !!p && (p.estadoEfetivo === 'superada' || !!p.revisao?.superada || !!p.recusada);
 function criarFila(deps) {
   const pendenteEspelho = (r) => {
     r.espelhoRevisao = (r.espelhoRevisao || 0) + 1;
@@ -93,6 +96,7 @@ function criarFila(deps) {
     const atual = deps.obterPeca(dados.pecaId);
     const estimativa = estado === 'aguardando-aprovacao-de-custo' ? validarEstimativa(dados.estimativa) : null;
     if (estado === 'corrigido-aguardando-aceite' && deps.ler().pedidos.find((p) => p.id === id)?.somenteEstimativa) throw erro('somente-estimativa', 'Esta tarefa permite apenas estimativa.');
+    if (['corrigido-aguardando-aceite', 'aguardando-aprovacao-de-custo'].includes(estado) && foraDeVigencia(atual)) throw erro('revisao-superada', 'Esta revisao deixou de ser a vigente da familia. O pedido nao pode ser concluido nela.');
     if (estado === 'corrigido-aguardando-aceite') await deps.verificarCommit(dados.commit, atual?.caminho);
     return deps.transacao((db) => {
       const r = leaseValido(db, id, leaseId);
@@ -106,7 +110,7 @@ function criarFila(deps) {
         // Pause keeps the capability private. No claim can reclaim this state;
         // the conversation decision renews the same lease before work resumes.
       } else r.lease = null;
-      mudar(db, r, estado, estado);
+      mudar(db, r, estado, estado === 'desatualizado' && dados.codigo === 'revisao-superada' ? 'revisao-superada' : estado);
       if (estimativa) db.eventos.at(-1).estimativa = { ...estimativa };
       return r;
     });
@@ -117,6 +121,7 @@ function criarFila(deps) {
     validarEstimativa(r.custo);
     const atual = deps.obterPeca(r.pecaId);
     if (!atual || atual.versao !== r.versaoAlvo) throw erro('versao-mudou', 'A peca mudou antes da decisao de custo.');
+    if (foraDeVigencia(atual)) throw erro('revisao-superada', 'Esta revisao deixou de ser a vigente da familia.');
     return r;
   };
   async function autorizarCusto(id, leaseId, evidencia) {
@@ -151,6 +156,7 @@ function criarFila(deps) {
       if (r.somenteEstimativa || r.somenteLocal || !a || a.leaseId !== leaseId || a.geracoes !== 1 || a.consumidas !== 0) throw erro('custo-nao-autorizado', 'Esta geracao nao tem autorizacao.');
       const atual = deps.obterPeca(r.pecaId);
       if (!atual || atual.versao !== r.versaoAlvo) throw erro('versao-mudou', 'A peca mudou antes da geracao.');
+      if (foraDeVigencia(atual)) throw erro('revisao-superada', 'Esta revisao deixou de ser a vigente da familia.');
       a.consumidas = 1;
       db.eventos.push({ pedidoId: r.id, estado: r.estado, codigo: 'custo-consumido', em: deps.agora(), estimativa: { ...r.custo } });
       return { autorizado: true, geracoes: 1 };
@@ -293,6 +299,7 @@ function criarFila(deps) {
       const r = await claim(); if (!r) return;
       const peca = deps.obterPeca(r.pecaId);
       if (!peca || peca.versao !== r.versaoAlvo) { await marcar(r.id, r.lease.id, 'desatualizado', { pecaId: r.pecaId }); return; }
+      if (foraDeVigencia(peca)) { await marcar(r.id, r.lease.id, 'desatualizado', { pecaId: r.pecaId, codigo: 'revisao-superada' }); deps.log('ajuste-revisao-superada'); return; }
       // The prompt contains an identifier and private-file location, never the author's free text.
       try {
         await deps.entregar(r, instrucoesEntrega(r));

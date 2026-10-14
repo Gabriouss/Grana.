@@ -112,7 +112,7 @@ function aprovar(raiz, id, corpo = {}) {
     if (peca.ajuste || pedidos.some((r) => r?.pecaId === peca.id && AJUSTE_ABERTO.has(r.estado))) {
       throw new ErroMarketing('ajuste-aberto', 'Há pedido de ajuste aberto para esta peça. Aprove a versão corrigida quando ela chegar.', 409);
     }
-    if (peca.estado === 'historico' && !peca.revisao?.vigente) {
+    if (peca.estado === 'historico' && (!peca.revisao?.vigente || peca.recusada)) {
       throw new ErroMarketing('peca-no-historico', 'Peça do histórico foi substituída ou rejeitada e não recebe aceite.', 409);
     }
     // Reel em aprovados ainda sem aceite composto pode recebê-lo; o resto da pasta já está aceito.

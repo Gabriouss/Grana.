@@ -72,6 +72,10 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
       if (anterior) {
         const p = pecas.find((v) => v.id === anterior.id);
         if (!p || p.estado !== 'aprovados' || !aceiteValido(anterior, p, Date.now(), dados.aprovacoes)) throw new c.ErroMarketing('promocao-desatualizada', 'A peça promovida mudou; confira a versão.', 409);
+        // Retomada não contorna a supersessão nem a recusa (H-01): confere a revisão atual do destino
+        // antes de índice, limpeza de origem ou sincronização do calendário.
+        c.exigirVigente(c.obterPeca(raiz, p.id), 'A promoção');
+        c.exigirItemAutonomo(p, 'A promoção');
         if (!PREFIXO.test(anterior.origem.caminho) || !Array.isArray(anterior.arquivosPromovidos) || anterior.arquivosPromovidos.length !== p.arquivos.length) throw new c.ErroMarketing('prova-invalida', 'Confira a prova da promoção antes de retomar.', 409);
         const arquivos = anterior.arquivosPromovidos.map((a, i) => {
           const origem = path.posix.join(path.posix.dirname(anterior.origem.caminho), p.arquivos[i].nome);

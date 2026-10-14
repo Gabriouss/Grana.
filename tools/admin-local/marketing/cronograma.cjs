@@ -215,7 +215,9 @@ function projetar(raiz, operacional = {}, pecas = c.montarCatalogo(raiz)) {
   const aceites = c.lerJson(c.caminhoPainel(raiz, 'aprovacoes.json'), { aprovacoes: [] }).aprovacoes || [];
   // Revisão superada (e a capa de um Reel superado) não projeta plano, mesmo com aceite antigo.
   const superadas = new Set(pecas.filter((p) => p.revisao?.superada).map((p) => p.id));
-  const ativos = pecas.filter((p) => (p.estado !== 'historico' || p.revisao?.vigente) && !superadas.has(p.id) && !superadas.has(p.capaDe) && !p.capaDe && !p.revisao?.pendencia);
+  // Vigente recusada pelo autor não projeta plano (H-02).
+  const recusadas = c.recusasDoPainel(raiz);
+  const ativos = pecas.filter((p) => (p.estado !== 'historico' || (p.revisao?.vigente && !recusadas.has(`${p.id}:${p.versao}`))) && !superadas.has(p.id) && !superadas.has(p.capaDe) && !p.capaDe && !p.revisao?.pendencia);
   const ligadas = ativos.map((p) => ({ p, v: vinculo(raiz, p) }));
   const planos = [], avisos = [], antigos = operacional.planejados || [];
   for (const { p, v } of ligadas) {
