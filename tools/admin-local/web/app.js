@@ -376,8 +376,10 @@ function marcarSimulado(motivo) {
   if (!f) return;
   f.hidden = false;
   limpar(f);
-  f.appendChild(h('strong', { texto: 'Dados simulados. ' }));
-  f.appendChild(document.createTextNode(`${motivo} Nada aqui veio do Supabase, da Vercel, do EAS ou da Cakto, e nenhuma ação sai desta aba.`));
+  const texto = h('p', { class: 'faixa-texto' });
+  texto.appendChild(h('strong', { texto: 'Dados simulados. ' }));
+  texto.appendChild(document.createTextNode(`${motivo} Nada aqui veio do Supabase, da Vercel, do EAS ou da Cakto, e nenhuma ação sai desta aba.`));
+  f.appendChild(texto);
   if (modoSimulado) {
     f.appendChild(h('button', {
       class: 'botao botao-fantasma', type: 'button', texto: 'Tentar o servidor de novo',

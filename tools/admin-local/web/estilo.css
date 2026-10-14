@@ -324,7 +324,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 .faixa-simulado {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--s-sm);
   margin: 0 0 var(--s-xl);
   padding: var(--s-sm) var(--s-md);
@@ -332,12 +332,16 @@ button, input, select, textarea { font: inherit; color: inherit; }
   border-radius: var(--r-md);
   color: var(--ink-soft);
   font-size: var(--t-nota);
+  line-height: var(--lh-compacto);
 }
+.faixa-simulado > p { flex: 1; min-width: 0; margin: 0; max-width: var(--medida); }
+.faixa-simulado > button { margin-left: auto; align-self: center; }
 .faixa-simulado::before {
   content: '';
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--atencao);
   flex: none;
+  margin-top: calc((1lh - 8px) / 2);
 }
 
 @media (max-width: 899px) {
@@ -2760,7 +2764,8 @@ dialog.feed-post[open] { animation: modal-entra 240ms var(--ease-saida); }
 
 @media (max-width: 640px) {
   .faixa-simulado { flex-wrap: wrap; }
-  .faixa-simulado > p { flex-basis: 100%; }
+  .faixa-simulado > p { flex-basis: calc(100% - var(--s-lg)); }
+  .faixa-simulado > button { margin-left: var(--s-lg); }
   .faixa-simulado > button { white-space: normal; }
 }
 
