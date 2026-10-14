@@ -1550,9 +1550,10 @@ details.aprovacao-mais[open] { display: flex; flex-direction: column; gap: var(-
   border-radius: var(--r-lg);
   background: var(--paper-raised);
 }
+.aprovacao-legenda > h3,
 .demanda-alternativas > h3,
 .demanda-capa > h3,
-.demanda-copy > h3 { margin: 0; color: var(--ink); font-size: var(--t-apoio); }
+.demanda-copy > h3 { margin: 0; color: var(--ink); font-size: var(--t-apoio); line-height: var(--lh-titulo); }
 .demanda-alternativas .bloco-acao > .botao { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .demanda-capa .previa { min-height: 200px; max-height: min(48vh, 360px); }
 .demanda-capa .previa img,
