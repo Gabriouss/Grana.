@@ -143,8 +143,21 @@ Todos os arquivos citados ficam em `E:/Grana-temporarios/2026-10-13-marketing-ph
 **O verde do `e788118` e do `fa1aa93` é focal do dono e não fecha o gate global.** Nenhum
 dos dois é o `test:ci` com `tsc` num clone limpo do HEAD final.
 
+**Linha 1, estado em 14/10 ~11h (achado 5 do Ledger).** Cada item vale só no hash e no
+escopo indicados. Nada aqui fecha a linha 1, F3/F4 ou o gate integrado, nem aceita o HEAD
+posterior a esses hashes:
+
+| Item | Hash | Estado | Fonte |
+|---|---|---|---|
+| W-C1: validador único `aceiteValido`, derivação composta só nas duas autorizadas, com a cadeia conferida | `5858987` | DE ACORDO do Watchtower, conferido em `3c9a940` | `revisao-watchtower-aceite-seguranca.md`, retomada de 14/10 10h07 |
+| W-C2: capa vinculada (`capaDe`) recusada como item autônomo em planejar, cronograma e promover | `3c9a940` | DE ACORDO do Watchtower **só para ações novas** | idem |
+| W-C2b: plano de capa gravado antes da correção continua ativo no calendário (`calendario.cjs:101-109`, `cronograma.cjs:246-249`) | `3c9a940` | **aberto**, P2, primeira volta | idem, achado 6 |
+| H-01 e H-03 (Harbor) | `4c59d4e` | prova favorável do Harbor no commit, sem DE ACORDO | `revisao-harbor-backend-familias.md`, "Reconferência do commit corretivo 4c59d4e" |
+| H-02b (Harbor) | `4c59d4e` | **aberto**: o destino foi corrigido, mas a origem preservada (`catalogo.cjs:262-264` e `:755`) continua aprovável | idem |
+
 **Continua pendente:**
-- W-C1 e W-C2 do Watchtower e H-01 a H-03 do Harbor, com o Keel desde a retomada de 14/10;
+- W-C2b e o resíduo de H-02b, com o Keel, e depois o DE ACORDO do Watchtower e do Harbor
+  sobre o freeze corretivo;
 - o freeze da tela entregue ao Prism, e a revisão dele;
 - a medição "depois" do Vigil sobre o acabamento visual, em 320/390/768/1440;
 - HTTP/CSRF/auth e browser/E2E com fixture `AUDIT-F3F4` nos bytes finais;
