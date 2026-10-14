@@ -205,6 +205,72 @@
         }
       ],
       "indice": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/INDICE.md"
+    },
+    {
+      "id": "a73f19a82efb0f87",
+      "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/aprovados/pecas/reels/grana-motion-desistiu-foto-da-nota.mp4",
+      "versao": "c3f392ddc38abb04b0dca30d95490338db99e80a",
+      "aprovadoEm": "2026-10-14T00:20:33-03:00",
+      "evidencia": "composto derivado de aceites separados",
+      "escopo": "vídeo, capa e legenda desta versão (aceite composto)",
+      "composicao": {
+        "video": [
+          "1d28de9a3bca5c4a7db009ef74aa50b1e976032b"
+        ],
+        "capa": "39505dcd9db5eaa082c5e8aa0d12ed1597509d9b",
+        "capaPecaId": "a4c15caf64d08d5d",
+        "legenda": "sem-legenda"
+      },
+      "derivadoDe": {
+        "video": {
+          "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/aprovados/pecas/reels/grana-motion-desistiu-foto-da-nota.mp4",
+          "sha1": "1d28de9a3bca5c4a7db009ef74aa50b1e976032b",
+          "data": "2026-09-25",
+          "evidencia": "INDICE da semana 39: aceite do autor de 25/09/2026 (regra 23 do AGENTS.md e frase de 09/10/2026)"
+        },
+        "capa": {
+          "id": "a4c15caf64d08d5d",
+          "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/grana-motion-desistiu-foto-da-nota-capa-1080x1920.png",
+          "versao": "6462e08da2012204e5ef89d794451a576fc6bdf0",
+          "aprovadoEm": "2026-10-11T23:20:52-03:00",
+          "evidencia": "aceite pelo autor no painel local"
+        }
+      },
+      "decisao": "Orquestrador Supremo, 14/10/2026: para os dois Reels já em aprovados, o aceite composto é derivado dos aceites datados do vídeo e da capa, sem novo aceite do autor. Reel novo exige aceite composto explícito.",
+      "indice": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/INDICE.md"
+    },
+    {
+      "id": "a4d997e49dfa98fa",
+      "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/grana-reels-notificacao-1.mp4",
+      "versao": "d2291cb48d01c6943cb7d758c70a661c0119149e",
+      "aprovadoEm": "2026-10-14T00:20:33-03:00",
+      "evidencia": "composto derivado de aceites separados",
+      "escopo": "vídeo, capa e legenda desta versão (aceite composto)",
+      "composicao": {
+        "video": [
+          "95eee60e2de891b8ac83043f16c7d275aef1b1b3"
+        ],
+        "capa": "bd951bdc05d69545bd4a5053b16d4279f7470bf7",
+        "capaPecaId": "2bfce6126048a86b",
+        "legenda": "sem-legenda"
+      },
+      "derivadoDe": {
+        "video": {
+          "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/grana-reels-notificacao-1.mp4",
+          "sha1": "95eee60e2de891b8ac83043f16c7d275aef1b1b3",
+          "data": "2026-10-13",
+          "evidencia": "INDICE da semana 42: aceite do autor de 13/10/2026, citação literal \"E a versao correta e ja foi publicada no perfil do instagram\""
+        },
+        "capa": {
+          "id": "2bfce6126048a86b",
+          "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/grana-reels-v8-pop-capa-1080x1920.png",
+          "versao": "19d81da7338b2f6c500ddda3447a07901f1b5548",
+          "aprovadoEm": "2026-10-11T23:20:41-03:00",
+          "evidencia": "aceite pelo autor no painel local"
+        }
+      },
+      "decisao": "Orquestrador Supremo, 14/10/2026: para os dois Reels já em aprovados, o aceite composto é derivado dos aceites datados do vídeo e da capa, sem novo aceite do autor. Reel novo exige aceite composto explícito.",
+      "indice": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/INDICE.md"
     }
   ],
   "ajustes": [
