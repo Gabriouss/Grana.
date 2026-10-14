@@ -43,7 +43,7 @@ const text = (n) => walk(n).map((x) => x.attrs.texto || '').join(' ');
 
 const S41 = 'docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11';
 const reelPath = `${S41}/para-aprovacao/pecas/reels/audit-reel.mp4`;
-const capaPath = `${S41}/para-aprovacao/pecas/reels/audit-capa.png`;
+let capaPath;
 const grava = (rel, c) => { const f = path.join(raiz, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, c); };
 
 async function tela() {
@@ -63,41 +63,47 @@ async function tela() {
 
 (async () => {
   try {
-    grava(`${S41}/INDICE.md`, '# AUDIT\n');
-    grava(reelPath, 'AUDIT-video-v1'); grava(capaPath, 'AUDIT-capa-v1');
-    grava('docs/marketing/painel/familias.json', JSON.stringify({ formato: 1,
-      familias: [{ id: 'AUDIT-F03', nome: 'Reel AUDIT F03', revisoes: [{ caminho: reelPath }], vigente: reelPath }],
-      capas: [{ capa: capaPath, reel: reelPath }] }));
+    // A capa física em para-aprovacao e em aprovados (F-03b do Watchtower): nos dois, só o Reel tem aceite.
+    for (const pasta of ['para-aprovacao', 'aprovados']) {
+      fs.rmSync(path.join(raiz, 'docs'), { recursive: true, force: true });
+      capaPath = `${S41}/${pasta}/pecas/reels/audit-capa.png`;
+      grava(`${S41}/INDICE.md`, '# AUDIT\n');
+      grava(reelPath, 'AUDIT-video-v1'); grava(capaPath, 'AUDIT-capa-v1');
+      grava('docs/marketing/painel/familias.json', JSON.stringify({ formato: 1,
+        familias: [{ id: 'AUDIT-F03', nome: 'Reel AUDIT F03', revisoes: [{ caminho: reelPath }], vigente: reelPath }],
+        capas: [{ capa: capaPath, reel: reelPath }] }));
 
-    // 1. Sem aceite: a capa pede aceite, e o texto diz que aprovar o Reel cobre os três.
-    let t = await tela();
-    assert.ok(t.reel.composicao && t.reel.capa, 'fixture: Reel com composição selada');
-    assert.ok(t.capa.includes('Capa ainda sem aceite. Aprovar este Reel aceita vídeo, capa e legenda juntos.'), t.capa);
-    assert.equal(t.botao.disabled, false); assert.ok(t.revisar);
+      // 1. Sem aceite: a capa pede aceite, e o texto diz que aprovar o Reel cobre os três.
+      let t = await tela();
+      assert.ok(t.reel.composicao && t.reel.capa, `${pasta}: Reel com composição selada`);
+      assert.ok(t.capa.includes('Capa ainda sem aceite. Aprovar este Reel aceita vídeo, capa e legenda juntos.'), `${pasta}: ${t.capa}`);
+      assert.equal(t.botao.disabled, false); assert.ok(t.revisar);
 
-    // 2. Aceite composto real do Reel, sem aceite próprio da capa.
-    await ap.aprovar(raiz, t.reel.id, { versao: t.reel.versao, confirmacao: true });
-    const aceites = cat.lerJson(cat.caminhoPainel(raiz, 'aprovacoes.json'), {}).aprovacoes;
-    assert.equal(aceites.length, 1, 'só o Reel recebeu aceite');
-    t = await tela();
-    assert.equal(t.reel.capa.aprovada, true, 'DTO: capa coberta pelo composto');
-    assert.ok(t.capa.includes('Capa aprovada junto com o Reel: o aceite desta versão cobre vídeo, capa e legenda.'), t.capa);
-    assert.ok(!t.capa.includes('exige aceite próprio') && !t.capa.includes('não vale para ela'), 'sem exigir aceite redundante');
-    assert.equal(t.botao.texto, 'Aprovada nesta versão'); assert.equal(t.botao.disabled, true);
+      // 2. Aceite composto real do Reel, sem aceite próprio da capa.
+      await ap.aprovar(raiz, t.reel.id, { versao: t.reel.versao, confirmacao: true });
+      const aceites = cat.lerJson(cat.caminhoPainel(raiz, 'aprovacoes.json'), {}).aprovacoes;
+      assert.equal(aceites.length, 1, `${pasta}: só o Reel recebeu aceite`);
+      t = await tela();
+      assert.equal(t.reel.capa.aprovada, true, `${pasta}: DTO, capa coberta pelo composto`);
+      assert.ok(t.capa.includes('Capa aprovada junto com o Reel: o aceite desta versão cobre vídeo, capa e legenda.'), `${pasta}: ${t.capa}`);
+      assert.ok(!t.capa.includes('aceite próprio') && !t.capa.includes('não vale para ela'), `${pasta}: nem exige nem inventa aceite próprio`);
+      assert.equal(t.botao.texto, 'Aprovada nesta versão'); assert.equal(t.botao.disabled, true);
 
-    // 3. Capa alterada: a versão do Reel muda e o aceite deixa de valer.
-    grava(capaPath, 'AUDIT-capa-v2');
-    t = await tela();
-    assert.equal(t.reel.aprovada, false); assert.equal(t.reel.capa.aprovada, false);
-    assert.ok(t.capa.includes('Capa ainda sem aceite.'), t.capa);
-    assert.equal(t.botao.disabled, false, 'composição nova pede aceite de novo');
+      // 3. Capa alterada: a versão do Reel muda e o aceite deixa de valer.
+      grava(capaPath, 'AUDIT-capa-v2');
+      t = await tela();
+      assert.equal(t.reel.aprovada, false); assert.equal(t.reel.capa.aprovada, false);
+      assert.ok(t.capa.includes('Capa ainda sem aceite.'), `${pasta}: ${t.capa}`);
+      assert.equal(t.botao.disabled, false, `${pasta}: composição nova pede aceite de novo`);
+    }
 
-    // 4. Os outros dois ramos do texto, direto na função exportada.
+    // 4. Os outros ramos, direto na função exportada: "aceite próprio" só com registro da capa (capa.aceite).
     const { textoCapa } = load('aprovacao.js');
-    assert.equal(textoCapa({ capa: { aprovada: true } }, { aprovada: true }), 'Capa aprovada nesta versão, com aceite próprio.');
+    assert.equal(textoCapa({ capa: { aprovada: true } }, { aprovada: true, aceite: { aprovadoEm: 'x' } }), 'Capa aprovada nesta versão, com aceite próprio.');
+    assert.equal(textoCapa({ capa: { aprovada: true } }, { aprovada: true, aceite: null }), 'Capa aprovada junto com o Reel: o aceite desta versão cobre vídeo, capa e legenda.');
     assert.equal(textoCapa({ capa: { aprovada: false } }, { aprovada: false }), 'A capa exige aceite próprio; o aceite do vídeo não vale para ela.');
 
-    console.log('admin-capa-composto-tela: módulos reais; sem aceite pede aceite do Reel, aceite composto cobre a capa sem pedir aceite próprio, capa alterada volta a pedir; zero rede e zero mutação pela tela: OK');
+    console.log('admin-capa-composto-tela: módulos reais, capa em para-aprovacao e em aprovados; sem aceite pede aceite do Reel, aceite composto cobre a capa sem pedir aceite próprio, capa alterada volta a pedir; zero rede e zero mutação pela tela: OK');
   } finally {
     fs.rmSync(base, { recursive: true, force: true });
   }

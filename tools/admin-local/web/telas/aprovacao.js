@@ -29,7 +29,8 @@ export function semIdTecnico(celula) {
 // Estado da capa dentro do Reel. Com composição selada, aprovar o Reel aceita vídeo, capa e legenda
 // juntos; sem ela, a capa precisa do aceite dela. Capa alterada muda a versão do Reel e volta a pedir aceite.
 export function textoCapa(reel, capa) {
-  if (capa?.aprovada) return 'Capa aprovada nesta versão, com aceite próprio.';
+  // "Aceite próprio" só com registro da capa (capa.aceite); capa.aprovada também vale pela pasta aprovados (F-03b).
+  if (capa?.aceite) return 'Capa aprovada nesta versão, com aceite próprio.';
   if (reel.capa?.aprovada) return 'Capa aprovada junto com o Reel: o aceite desta versão cobre vídeo, capa e legenda.';
   if (reel.composicao) return 'Capa ainda sem aceite. Aprovar este Reel aceita vídeo, capa e legenda juntos.';
   return 'A capa exige aceite próprio; o aceite do vídeo não vale para ela.';
