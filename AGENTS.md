@@ -931,3 +931,43 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     nem as regras 21, 23, 24 e 25: lê-se os dois, e o que está aqui de
     regra continua valendo. Se o guia mudar de caminho, atualize esta regra
     no mesmo commit.
+
+27. **A conta Claude PH trabalha só até 75% do limite, na janela de 5 h e na
+    semanal, e volta 15 minutos antes da redefinição.** Regra dada pelo autor
+    em 14/10/2026: "você vai trabalhar apenas até chegar nos 75% [...] Quando
+    faltar tipo uns 15 minutos pra redefinição, pode voltar ao trabalho [...] a
+    conta PH nunca pode ficar limitada totalmente por longos períodos de tempo.
+    Preciso que isso seja seguido à risca, incluindo o limite semanal."
+
+    O motivo: a conta esgotada fica horas sem servir a ninguém, e a de 13/10
+    deixou o time Claude parado de 11h30 às 15h10 sem nenhum commit. Parando em
+    75%, sobra margem para o autor usar a conta e para emergência, e o trabalho
+    recomeça sozinho perto da virada.
+
+    - **A trava é do gancho, não da memória de ninguém.** A linha de status
+      (`.claude/limite/statusline.cjs`) grava o uso que o próprio Claude Code
+      informa em `E:\Grana-temporarios\limite-claude\<conta>.json`. O gancho
+      `PreToolUse` (`.claude/limite/guarda.cjs pre`) nega TODA ferramenta
+      quando qualquer das duas janelas chega a 75%, até 15 min antes da
+      redefinição dela; a semanal pode prender por dias, e é para prender.
+      O `PostToolUse` avisa a partir de 70% para fechar o trabalho a tempo.
+      Vale para todo terminal Claude aberto em `E:\GranaPonto` e para os
+      subagentes deles.
+    - **Ao receber o aviso de 70%:** commitar o que estiver pronto (ou parcial,
+      dito na mensagem, regra 10), escrever em
+      `E:\Grana-temporarios\limite-claude\retomada-PH.md` onde parou e o
+      próximo passo, e avisar os agentes da conta PH. Ao bater a trava, encerrar
+      o turno sem insistir em ferramenta.
+    - **A volta é da rotina "Retomada-PH" do Maestri,** que a cada 5 min roda
+      `.claude/limite/retomar.cjs PH` e só manda o pedido de retomada ao
+      Orquestrador Supremo quando chega a hora. Ele religa os agentes da conta.
+    - **Cada conta tem o próprio estado.** O apelido vem de
+      `E:\Grana-temporarios\limite-claude\contas.json`, fora do repositório,
+      porque o e-mail não entra no git (regra 15). Conta sem apelido aparece
+      como `conta-<hash>`.
+    - **Não se contorna a trava.** Nada de apagar o arquivo de estado,
+      desligar o gancho ou trocar de conta para continuar. Só o autor, na
+      sessão, libera passar de 75%.
+    - **Configuração por máquina.** A linha de status e os ganchos vivem em
+      `.claude/settings.local.json` (ignorado pelo git); os scripts são
+      versionados. A M2 precisa registrar os mesmos ganchos e a mesma rotina.
