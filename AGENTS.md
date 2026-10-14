@@ -1000,5 +1000,10 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     - **O orquestrador troca o modelo sozinho** (`maestri ask "<agente>" --raw
       "/model <modelo>"` + Enter), lendo o cabeçalho antes e depois, e avisa o
       autor numa linha. Não precisa perguntar.
+    - **Vale também para o time Codex** (autor, na mesma hora: "isso aí inclui
+      os agentes codex? [...] tem que incluir"). Padrão de todos os Codex,
+      revisores inclusive, passa a Sol 6.1 medium; Luna 6 xhigh só em
+      julgamento difícil (`bash .maestri/codex-modelos.sh --luna <Agente>`).
+      Substitui a divisão Sol/Luna por cargo de 02/10/2026.
     - Convive com a regra 27 (teto da conta PH) e com a regra 16 (revisão do
       Codex só quando vale a pena).

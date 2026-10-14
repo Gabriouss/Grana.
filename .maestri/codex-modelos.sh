@@ -5,7 +5,9 @@
 # Excecao do Codex maestro autorizada em 11/10/2026: sempre GPT-6.1-Sol, effort medium.
 # Ela substitui a antiga linha Luna 6 xhigh somente para Codex.
 # Reiniciar sem --command cai no padrao do ~/.codex/config.toml; reaplique o modelo indicado.
-# Uso (so o autor, o classificador do Claude barra o bypass): bash .maestri/codex-modelos.sh [Agente ...]
+# 14/10/2026, regra 28 (skill economia-de-tokens): o modelo segue a ATIVIDADE. Padrao de todos = Sol 6.1 medium
+# (revisao e execucao); Luna 6 xhigh so para julgamento dificil, pedido com --luna antes dos nomes.
+# Uso (so o autor, o classificador do Claude barra o bypass): bash .maestri/codex-modelos.sh [--luna] [Agente ...]
 # Sem argumentos aplica aos nove. Cada --replace reinicia o processo do agente.
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -16,7 +18,8 @@ declare -A ROLE=( [Forge]="App Engineer" [Harbor]="Backend Engineer" [Watchtower
   [Compass]="Product Planner" [Prism]="UI and Design" [Sentinel]="QA"
   [Beacon]="Marketing and Growth" [Ledger]="Documentation and Vault" [Codex]="" )
 declare -A CMD=( [Forge]="$SOL" [Harbor]="$SOL" [Watchtower]="$SOL"
-  [Compass]="$LUNA" [Prism]="$LUNA" [Sentinel]="$LUNA" [Beacon]="$LUNA" [Ledger]="$LUNA" [Codex]="$SOL" )
+  [Compass]="$SOL" [Prism]="$SOL" [Sentinel]="$SOL" [Beacon]="$SOL" [Ledger]="$SOL" [Codex]="$SOL" )
+if [ "${1:-}" = "--luna" ]; then shift; for a in Forge Harbor Watchtower Compass Prism Sentinel Beacon Ledger; do CMD[$a]="$LUNA"; done; fi
 alvos=("$@"); [ ${#alvos[@]} -eq 0 ] && alvos=(Forge Harbor Watchtower Compass Prism Sentinel Beacon Ledger Codex)
 for a in "${alvos[@]}"; do
   [ -z "${CMD[$a]:-}" ] && { echo "agente desconhecido: $a" >&2; continue; }

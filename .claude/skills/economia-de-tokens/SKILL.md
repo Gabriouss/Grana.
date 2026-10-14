@@ -43,7 +43,13 @@ maestri check "<agente>"                       # confira "Set model to ..."
 
 - `/model` grava o padrão global de sessões novas. Depois de trocar, um terminal que reiniciar pode subir no último modelo
   escolhido: confira o cabeçalho de quem reiniciar.
-- Codex: `/model` + escolha da lista, como na memória `modelos-permitidos-nos-agentes`; só com o Codex sem limite.
+- **No Git Bash, `/model` vira caminho de arquivo** (conversão do MSYS) e chega ao agente como texto. Mande pelo
+  PowerShell ou com `MSYS_NO_PATHCONV=1 maestri ask ...`.
+- **Codex (vale igual):** padrão de todos, inclusive revisores, é Sol 6.1 medium; Luna 6 xhigh só para julgamento
+  difícil. Troca sem reiniciar: `/model` + Enter no terminal, escolher o modelo, escolher o esforço e tecla `s`
+  (só a sessão; Enter gravaria o padrão global). Troca reiniciando: `bash .maestri/codex-modelos.sh [--luna] <Agente>`,
+  que só o autor roda (o classificador barra o bypass); peça a ele com o comando pronto. Codex sem limite não aceita
+  troca: aplique na volta, antes da primeira tarefa.
 - Diga ao autor, numa linha, quais trocas fez.
 
 ## 4. Hábitos que cortam gasto
