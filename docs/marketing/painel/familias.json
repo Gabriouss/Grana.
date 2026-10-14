@@ -6,7 +6,7 @@
       "id": "R-P",
       "nome": "Reel da padaria (widget de voz)",
       "revisoes": [
-        { "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/reels/grana-reels-v8-pop.mp4", "nota": "v8-pop, 24,7 s. Aceite de 07/10/2026 10:31:32 dado por engano; publicado por erro em 12/10/2026 16:52 e arquivado pelo autor." },
+        { "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/reels/grana-reels-v8-pop.mp4", "nota": "v8-pop, 24,7 s. Aceite de 07/10/2026 10:31:32 dado por engano; publicado por erro em 12/10/2026 16:52 e arquivado pelo autor. Movido para historico/pecas/reels/ em 14/10/2026 (regra 25)." },
         { "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/grana-reels-notificacao-1.mp4", "nota": "Versão curta com a notificação na tela, 16,8 s, SHA-1 95eee60e. Cópia do vault. Publicada em 12/10/2026 ~17:01 (mídia 18132974281756527)." }
       ],
       "vigente": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/grana-reels-notificacao-1.mp4",
@@ -16,10 +16,10 @@
       "id": "R13",
       "nome": "R13, Reel",
       "revisoes": [
-        { "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/r13-v3/reel-r13-v3.mp4", "nota": "v3, 08/10/2026." },
-        { "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/historico/pecas/r13/reel-r13-final.mp4", "nota": "Final. Guardada em historico; vigente pelo registro. Ainda sem aceite do autor no painel." }
+        { "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/historico/pecas/r13-v3/reel-r13-v3.mp4", "nota": "v3, 08/10/2026. Movida para historico/pecas/r13-v3/ em 14/10/2026 (regra 25: substituída vai a historico)." },
+        { "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/r13/reel-r13-final.mp4", "nota": "Final. Movida de historico/pecas/r13/ para para-aprovacao/pecas/r13/ em 14/10/2026 (decisão do Supremo). Vigente; aguarda o aceite do autor no painel." }
       ],
-      "vigente": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/historico/pecas/r13/reel-r13-final.mp4",
+      "vigente": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/r13/reel-r13-final.mp4",
       "decisao": { "autor": "Gabriel", "data": "2026-10-13", "evidencia": "Autor em 13/10/2026 ~20h40: o Reel correto é o reel-r13-final.mp4, que substitui a v3; o pedido de ajuste de 07/10 fica atendido pela troca. As quatro final-com-aviso-* não foram escolhidas e ficam fora da família." }
     },
     {

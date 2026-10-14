@@ -214,7 +214,10 @@
       "versao": "178ec3794a8e337115654a2ae9d4f31d325487b7",
       "pedidoEm": "2026-10-07T10:24:10-03:00",
       "motivo": "R13 · reel-r13-final.mp4 < versão melhorada, trocar por ele",
-      "origem": "pedido do autor no painel local"
+      "origem": "pedido do autor no painel local",
+      "estado": "encerrado",
+      "encerradoEm": "2026-10-14",
+      "motivoEncerramento": "Atendido pela troca: o autor escolheu a reel-r13-final.mp4 como vigente da família R13 em 13/10/2026; a v3 foi para historico em 14/10/2026."
     },
     {
       "id": "8942b800bef825f0",
