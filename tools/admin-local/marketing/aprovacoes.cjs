@@ -26,6 +26,8 @@ const {
 const ARQUIVO = 'aprovacoes.json';
 const EVIDENCIA = 'aceite pelo autor no painel local';
 const TITULO_SECAO_INDICE = '## Aceites registrados no painel local';
+// Mesmo conjunto que o catálogo mostra como "Ajuste pedido".
+const AJUSTE_ABERTO = new Set(['novo', 'em-correcao', 'falha-de-envio', 'aguardando-aprovacao-de-custo', 'precisa-de-atencao']);
 
 function vazio() {
   return {
@@ -97,9 +99,18 @@ function aprovar(raiz, id, corpo = {}) {
     const peca = obterPeca(raiz, id);
     conferirVersao(peca, corpo.versao);
     exigirVigente(peca, 'O aceite');
-    // Ajuste aberto sobre ESTA versão: aprovar agora seria aceitar o que o autor mandou corrigir.
-    if (peca.ajuste) {
-      throw new ErroMarketing('ajuste-aberto', 'Há pedido de ajuste aberto para esta versão. Aprove a versão corrigida quando ela chegar.', 409);
+    // Pedido de ajuste aberto sobre a peça, em QUALQUER versão: aprovar agora seria aceitar o que
+    // o autor mandou corrigir. A versão não serve de filtro (legenda ou checkout mudam o hash sem
+    // que ninguém tenha corrigido nada). Pedido já corrigido, aguardando aceite, não bloqueia.
+    let pedidos;
+    try {
+      pedidos = require('./ajustes-fila.cjs').fila.listar();
+      if (!Array.isArray(pedidos)) throw new Error('fila-invalida');
+    } catch {
+      throw new ErroMarketing('fila-indisponivel', 'Não foi possível conferir a fila de ajustes. Nada foi aprovado; tente de novo.', 503);
+    }
+    if (peca.ajuste || pedidos.some((r) => r?.pecaId === peca.id && AJUSTE_ABERTO.has(r.estado))) {
+      throw new ErroMarketing('ajuste-aberto', 'Há pedido de ajuste aberto para esta peça. Aprove a versão corrigida quando ela chegar.', 409);
     }
     if (peca.estado === 'historico' && !peca.revisao?.vigente) {
       throw new ErroMarketing('peca-no-historico', 'Peça do histórico foi substituída ou rejeitada e não recebe aceite.', 409);

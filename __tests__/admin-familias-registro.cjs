@@ -151,6 +151,13 @@ async function recusaSemEscrita(acao, codigo, rotulo) {
     // Vigente com ajuste aberto não é aprovável; a vigente guardada em historico é.
     await fila.solicitar(v7, { versao: v7.versao, motivo: 'AUDIT Troca o (O Grana. te ajuda!) para (Arrasta pro lado!)' });
     await recusaSemEscrita(() => aprovacoes.aprovar(raiz, v7.id, { versao: v7.versao, confirmacao: true }), 'ajuste-aberto', 'aprovar v7 com ajuste aberto');
+    // K1 do Vigil: o pedido foi feito sobre outra versão (a página 2 mudou sem correção registrada).
+    // Ele continua aberto e continua bloqueando o aceite da versão nova.
+    grava(`${S40}/para-aprovacao/pecas/lumen-v7/carrossel-2.png`, 'AUDIT-v7-2-mudou');
+    const v7nova = cat.obterPeca(raiz, v7.id);
+    assert.notEqual(v7nova.versao, v7.versao); assert.equal(v7nova.ajuste, null, 'o DTO não acha ajuste para a versão nova');
+    await recusaSemEscrita(() => aprovacoes.aprovar(raiz, v7.id, { versao: v7nova.versao, confirmacao: true }), 'ajuste-aberto', 'aprovar v7 em outra versão com pedido aberto');
+    grava(`${S40}/para-aprovacao/pecas/lumen-v7/carrossel-2.png`, 'AUDIT-v7-2');
     const ok = await aprovacoes.aprovar(raiz, r13final.id, { versao: r13final.versao, confirmacao: true });
     assert.equal(ok.aprovacao.id, r13final.id);
     const r13f = cat.obterPeca(raiz, r13final.id);
