@@ -43,7 +43,9 @@ async function fixture(fn, padaria = false, nomes = ['E01.jpg']) {
   const semana = padaria ? 'docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27' : 'docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11';
   const rel = padaria ? semana + '/para-aprovacao/pecas/reels/grana-reels-v8-pop.mp4' : semana + '/para-aprovacao/pecas/' + nomes[0];
   const media = path.dirname(path.join(dir, rel)); fs.mkdirSync(media, { recursive: true });
-  if (padaria) fs.copyFileSync(path.join(repo, rel), path.join(dir, rel));
+  // O fixture recria o v8-pop em para-aprovacao (onde o aceite real de 07/10 foi dado);
+  // os bytes saem de historico, para onde ele foi em 14/10 (revisão superada, regra 25).
+  if (padaria) fs.copyFileSync(path.join(repo, rel.replace('/para-aprovacao/', '/historico/')), path.join(dir, rel));
   else for (const nome of nomes) fs.writeFileSync(path.join(media, nome), 'fixture ' + nome);
   const painel = path.join(dir, 'docs/marketing/painel'); fs.mkdirSync(painel, { recursive: true });
   if (padaria) {
