@@ -307,7 +307,8 @@ const server = http.createServer((req, res) => {
     .carousel-dot.active { background: #87f9cc; width: 14px; border-radius: 4px; }
 
     .info { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
-    .info .name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+    .info .name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; display: block; width: 100%; padding: 0; border: 0; background: none; color: inherit; font-family: inherit; text-align: left; }
+    .info .name:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; border-radius: 4px; }
     .info .name:hover { color: #87f9cc; }
     .info .meta { font-size: 11px; color: #9ca3af; display: flex; justify-content: space-between; }
     
@@ -494,9 +495,9 @@ const server = http.createServer((req, res) => {
             </div>
 
             <div class="info">
-              <div class="name" title="\${dadosPagina.nome}" onclick="abrirLightbox('\${dadosPagina.caminhoRelativo}', '\${dadosPagina.nome}', event)">
+              <button type="button" class="name" title="\${dadosPagina.nome}" onclick="abrirLightbox('\${dadosPagina.caminhoRelativo}', '\${dadosPagina.nome}', event)">
                 \${dadosPagina.nome}
-              </div>
+              </button>
               <div class="meta">
                 <span>\${dadosPagina.caminhoRelativo.split('/')[0] || 'geral'}</span>
                 <span>\${dadosPagina.tamanhoKb} KB</span>
@@ -529,7 +530,11 @@ const server = http.createServer((req, res) => {
 
     function abrirLightbox(caminho, nome, evt) {
       if (evt) evt.stopPropagation();
-      if (!lightboxAberto()) focoAntesDoLightbox = document.activeElement;
+      if (!lightboxAberto()) {
+        const ativo = document.activeElement;
+        const doCard = evt && evt.currentTarget && evt.currentTarget.closest ? evt.currentTarget.closest('.card') : null;
+        focoAntesDoLightbox = ativo && ativo !== document.body ? ativo : doCard ? doCard.querySelector('button.name') : null;
+      }
       arquivoAbertoNoLightbox = caminho;
       document.getElementById('lightboxTitle').textContent = nome + ' (' + caminho + ')';
       const ehVideo = /\\.(mp4|webm|mov)$/i.test(caminho);
