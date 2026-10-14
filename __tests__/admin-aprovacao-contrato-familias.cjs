@@ -40,7 +40,7 @@ const grava = (rel, c) => { const f = path.join(raiz, rel); fs.mkdirSync(path.di
 
 (async () => {
   try {
-    grava(`${S40}/INDICE.md`, '| Peça | Cronograma | Parecer |\n| [C14](para-aprovacao/pecas/lumen-v7/) | `AUDIT-manifesto#AUDIT-item@2` | revisor AUDIT ok 0123456789abcdef0123 |\n');
+    grava(`${S40}/INDICE.md`, '| Peça | Cronograma | Parecer |\n| [C14](para-aprovacao/pecas/lumen-v7/) | `AUDIT-manifesto#AUDIT-item@2` | revisor AUDIT ok 0123456789abcdef0123 | Aceite AUDIT em 11/10/2026 23:07:05, versão `386a6fec7528`; sha 56f9822 |\n');
     grava(`${S40}/para-aprovacao/pecas/lumen-v6/carrossel-1.png`, 'AUDIT-v6-1');
     grava(`${S40}/para-aprovacao/pecas/lumen-v6/carrossel-2.png`, 'AUDIT-v6-2');
     grava(`${S40}/para-aprovacao/pecas/lumen-v7/carrossel-1.png`, 'AUDIT-v7-1');
@@ -94,7 +94,8 @@ const grava = (rel, c) => { const f = path.join(raiz, rel); fs.mkdirSync(path.di
     const indice = walk(r).find((n) => n.attrs.class === 'aprovacao-mais peca-indice');
     assert.ok(indice, 'linha do índice presente no detalhe');
     assert.ok(text(indice).includes('vinculada ao cronograma') && text(indice).includes('revisor AUDIT ok'), 'vínculo e parecer em palavras');
-    assert.ok(!/#|@\d|AUDIT-manifesto|AUDIT-item|0123456789abcdef/.test(text(r)), 'F4-1: sem manifesto#item@versão e sem hash no texto, nem recolhido');
+    assert.ok(text(indice).includes('Aceite AUDIT em 11/10/2026 23:07:05; sha'), 'data do aceite fica; a "versão" com hash curto sai inteira');
+    assert.ok(!/#|@\d|AUDIT-manifesto|AUDIT-item|0123456789abcdef|386a6fec7528|56f9822/.test(text(r)), 'F4-1: sem manifesto#item@versão e sem hash longo ou curto (12 e 7 hex) no texto, nem recolhido');
 
     // 2. Vigente guardada em historico/ (R13 final): aprovar e pedir ajuste funcionam, e ela precisa de você.
     r = await abrir(r13);

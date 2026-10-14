@@ -14,13 +14,16 @@ const ESTADOS_AJUSTE = {
 };
 
 // F4-1 na linha do INDICE.md: a célula do cronograma (`manifesto#item@versão`, com ou sem crase)
-// vira "vinculada ao cronograma"; UUID e hash de 16+ hex somem. Célula que só tinha isso some.
+// vira "vinculada ao cronograma"; UUID e hash (7+ hex com letra e dígito, como a versão curta
+// `386a6fec7528` dos aceites) somem, junto com a palavra "versão" que os apresenta. Célula vazia some.
+const HEX = '(?=[0-9a-f]*\\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,}';
 export function semIdTecnico(celula) {
   return String(celula)
     .replace(/`?[^\s`|#]+#[^\s`|@]+@[^\s`|]+`?/g, 'vinculada ao cronograma')
     .replace(/`?\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b`?/gi, '')
-    .replace(/`?\b[0-9a-f]{16,}\b`?/gi, '')
-    .replace(/\s{2,}/g, ' ').trim();
+    .replace(new RegExp(`,?\\s*\\bvers[aã]o\\s+\`?\\b${HEX}\\b\`?`, 'gi'), '')
+    .replace(new RegExp(`\`?\\b${HEX}\\b\`?`, 'gi'), '')
+    .replace(/\s+([,;.])/g, '$1').replace(/\s{2,}/g, ' ').trim();
 }
 
 const FILTROS_DEMANDAS = 'grana-admin-demandas-filtros';
