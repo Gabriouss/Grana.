@@ -1030,6 +1030,13 @@ dialog.modal[open] { animation: modal-entra 220ms var(--ease-saida); }
   border: 1px solid var(--rule);
 }
 .peca-midia img, .peca-midia video { width: 100%; height: 100%; object-fit: cover; }
+/* A .previa tem altura mínima de tela cheia; dentro da moldura 4:5 do Acervo ela ocupa só a
+   moldura, e o carrossel divide a altura entre imagem e controles em vez de cortar os controles. */
+.peca-midia > .previa { height: 100%; min-height: 0; max-height: none; padding: var(--s-sm); border: 0; border-radius: 0; }
+.peca-midia > .previa-texto { align-content: center; gap: var(--s-sm); text-align: center; }
+.peca-midia .previa-palco { width: 100%; height: 100%; overflow: hidden; }
+.peca-midia > .previa > img, .peca-midia > .previa > video,
+.peca-midia .previa-palco img, .peca-midia .previa-palco video { width: 100%; height: 100%; max-height: none; object-fit: cover; border-radius: 0; }
 .peca:hover .peca-midia { border-color: var(--rule-strong); }
 .peca-info { display: flex; flex-direction: column; gap: var(--s-fio); font-size: var(--t-legenda); color: var(--ink-soft); }
 .peca-estado { align-self: flex-start; }
@@ -1047,7 +1054,7 @@ dialog.modal[open] { animation: modal-entra 220ms var(--ease-saida); }
 .documento h3 { font-size: var(--t-apoio); color: var(--ink); margin: var(--s-xl) 0 var(--s-xs); }
 .documento > :first-child { margin-top: 0; }
 .documento p, .documento ul, .documento ol, .documento blockquote { margin: 0 0 var(--s-md); }
-.documento ul, .documento ol { padding-left: 1.3em; }
+.documento ul, .documento ol { padding-left: var(--s-xl); }
 .documento li { margin-bottom: var(--s-xs); }
 .documento li::marker { color: var(--accent); }
 .documento code {
@@ -1366,6 +1373,7 @@ dialog.aprovacao-janela .feed-post-corpo { grid-template-columns: minmax(0, 1fr)
 .aprovacao-janela-conteudo .demanda-alternativas,
 .aprovacao-janela-conteudo .demanda-capa { padding: var(--s-md); }
 .demanda-capa-miniatura { width: 96px; aspect-ratio: 9 / 16; object-fit: cover; border-radius: var(--r-sm); background: var(--paper-deep); }
+.aprovacao-decisao .botao-fantasma { border-color: var(--rule); }
 .aprovacao-decisao {
   position: sticky;
   bottom: calc(-1 * var(--s-lg));
@@ -1743,7 +1751,7 @@ details.secao-recolhida > .secao { margin: 0; padding: 0; border: 0; background:
   display: flex;
   align-items: center;
   min-height: var(--alvo);
-  padding: 2px var(--s-sm);
+  padding: var(--s-fio) var(--s-sm);
   border-radius: var(--r-sm);
   color: var(--ink-faint);
   text-decoration: none;
@@ -1977,7 +1985,7 @@ body:has(.aviso-inatividade:not([hidden])) .avisos { bottom: 168px; }
   text-decoration: none;
 }
 .ds-indice a:hover { color: var(--ink); background: var(--hover); }
-.ds-corpo { min-width: 0; display: flex; flex-direction: column; gap: calc(var(--s-secao) * 1.5); }
+.ds-corpo { min-width: 0; display: flex; flex-direction: column; gap: var(--s-secao); }
 .ds-secao { scroll-margin-top: var(--s-xl); display: flex; flex-direction: column; gap: var(--s-xl); }
 .ds-secao > h2 { font-size: var(--t-cabecalho); line-height: var(--lh-titulo); }
 .ds-secao > h2 + p { margin-top: calc(-1 * var(--s-md)); max-width: var(--medida); color: var(--ink-faint); font-weight: 300; }
@@ -2352,9 +2360,9 @@ body:has(.aviso-inatividade:not([hidden])) .avisos { bottom: 168px; }
 .feed-perfil {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--s-xxl) clamp(var(--s-xl), 6vw, 72px);
+  gap: var(--s-xxl) var(--s-secao);
   align-items: center;
-  padding: var(--s-lg) clamp(0px, 4vw, 48px) var(--s-xxl);
+  padding: var(--s-lg) var(--s-secao) var(--s-xxl);
 }
 .feed-avatar {
   position: relative;
@@ -2404,7 +2412,7 @@ body:has(.aviso-inatividade:not([hidden])) .avisos { bottom: 168px; }
 .feed-abas {
   display: flex;
   justify-content: center;
-  gap: clamp(var(--s-xl), 6vw, 60px);
+  gap: var(--s-secao);
   border-top: 1px solid var(--rule);
 }
 .feed-aba {
