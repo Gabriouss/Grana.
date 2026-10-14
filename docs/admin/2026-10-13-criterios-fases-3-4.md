@@ -164,3 +164,61 @@ posterior a esses hashes:
 - o handoff final do Vigil ao Sentinel;
 - o gate integrado (`test:ci` e `tsc` em clone limpo, com manifesto) no HEAD final;
 - o "DE ACORDO" de cada revisor nas linhas 1 a 6.
+
+## Fechamento em 14/10/2026 noite: `7b654b3` e acabamento até `9bbb72d` (Meridian, conta Gabriel)
+
+Este adendo supera, para o estado atual, as listas de pendências acima, que ficam como
+histórico. O Meridian registra no lugar do Quill e do Ledger. O Lynx revisou no lugar dos
+revisores Codex, só lendo (`revisao-lynx-final-7b654b3.md`). Todos os caminhos são relativos a
+`E:/Grana-temporarios/2026-10-13-marketing-ph/`.
+
+**Freeze final: `9bbb72d5b019b7a2bdd9d28bc62bb3d3553893ee` (`lumen-freeze-6`). Gate do Vigil nesse
+SHA: PENDENTE, a preencher.** A tabela abaixo traz os recibos do `7b654b3`, o último SHA com gate
+fechado. Por cima dele, o acabamento do Lumen só mexeu em `tools/admin-local/web/estilo.css` e
+`app.js` (`daf3184`, `14f5721`, `058ab2b`, `9ca9e6f`, `7f0a398`, `c3d07d5`, `9bbb72d`). Por isso,
+F3/F4-4 e o gate global têm de ser refeitos no `9bbb72d`. Cadeia até o `7b654b3`: `890495e` (H-02c,
+backend) → `84e2eca` (F-03b, tela) → `7b654b3` (layout: a decisão da janela da Aprovação
+sai da área que rola, porque no `84e2eca` a prova de foco deu 10 de 320 focos encobertos em
+"Revisar capa"). Do `890495e` ao `7b654b3`, o backend, `docs/marketing`, `docs/admin`,
+`scripts/`, `lib/`, `supabase/` e os `package*.json` são iguais byte a byte (Lynx, item b).
+
+| Critério | Recibo no `7b654b3` (ou por identidade de bytes) | Estado |
+|---|---|---|
+| F3-1, fluxo e prova | `vigil/gate-7b654b3/pos/f3-1/f3-1-http.json`: 14 casos do F3-1 com fixture `AUDIT-F3F4`, incluindo "recusado sem escrita" (6a/6b) e "um único vínculo" (7b); `f3-1.exit=0` | **fechado** no Chromium/HTTP |
+| F3-2, codec e staging | W-C1/W-C2/W-C2b (Watchtower) e focais de `admin-cronograma`/`admin-meta-promocao` dentro do `test:ci` do gate | **fechado** por identidade e gate |
+| F3-3, data manual e estados | focais de tela, integração e helper dentro do `test:ci` do gate; F3-1 no servidor do SHA | **fechado** |
+| F4-1, timeline e dados públicos | F-01 do Forge e testes de ausência de id no `test:ci`; F3-1 7c (calendário com nome do arquivo, sem id) | **fechado** |
+| F4-2, contador e alertas | `admin-demandas-contador` e `admin-ajustes-vigia` no `test:ci` do gate | **fechado** pelos focais; sem navegação manual |
+| F4-3, remarcação e trilha | `admin-cronograma` no `test:ci` do gate; H-02c/R1–R11 por identidade | **fechado**, com o limite legado abaixo |
+| F3/F4-4, visual e teclado | No `7b654b3`: `lumen-freeze-5/` com foco P-05 1920/1920, geometria 12/12, F-02/P-03 48/48 e `medir-final` 14 telas × 4 larguras. Auditoria DEPOIS do Vigil (`auditoria-visual-vigil-depois.md`, 5 telas a 390/1440): S1, S2, S5 e S6 resolvidos. No `9bbb72d`: `lumen-freeze-6` (`test:admin`, `test:admin-estilo-final` e `tsc` com exit 0, prints `depois6-` nas 4 larguras) | **fechado no `7b654b3`; no `9bbb72d` falta o gate do Vigil** |
+| Gate global | `vigil/gate-7b654b3/recibos/`: `npm ci`, `tsc`, `test:ci` e export/segredos com exit 0; 5 manifestos com 2.270 arquivos, status vazio e SHA-256 `e26e7e66e0f1623bb6a84b9c35b424bddd3073ecf4e9c62c97f0ef92011dd105`; HTTP/CSRF/auth 7 de 7 | **fechado no `7b654b3`** (DE ACORDO do Lynx em a, b e d). **No `9bbb72d`: pendente** (gate, handoff e revisão única do Lynx) |
+
+**Limites que continuam valendo (decisões do Supremo, fim de `05-RETOMADA-14-10-1425.md`):**
+
+- **V2**, fora do painel: 1.972 `TypeError` engolidos no `test:ci`, todos de um dublê de voz
+  sem `reservarFalaEmAndamento` (`widget-voz-task.ts:150`), em 26 testes. O exit continua 0.
+  Não corrigido aqui, porque mudaria o freeze e exige paridade app/widget (regra 13). Dono:
+  Keel, na próxima rodada.
+- **Limite legado do H-02c:** três recusas antigas sem `origem.versao` (semana 39, E01, E02 e E06)
+  caem na comparação por bytes (`catalogo.cjs:272`). Keel, só lendo o acervo real (`keel-legado-h02c.md`):
+  nenhuma alcança item acionável, porque os PNGs de origem estão apagados da árvore. Se voltarem, o
+  SHA-1 bate (3 de 3) e a peça reaparece recusada. Nenhuma ação de backend.
+- **32 vulnerabilidades no `npm ci`** (1 crítica, 19 altas, 12 moderadas), fora do painel,
+  para decisão do autor.
+
+**Checklist de QA do que não foi testado:**
+
+- [ ] leitor de tela (NVDA, TalkBack);
+- [ ] Safari e Firefox;
+- [ ] navegador de celular real, com a barra dinâmica sobre o `100vh` do dialog estreito (O-3 do Lynx, hipótese);
+- [ ] Esc com o pedido de ajuste aberto devolvendo o foco ao botão "Pedir ajuste" (O-1 do Lynx);
+- [ ] as três recusas legadas sem `origem.versao` no servidor (conferidas só por leitura);
+- [ ] dado real com pedidos de ajuste na janela (a fixture não tem `details.pedidos-tecnico`);
+- [ ] S4, S7 e S8 da auditoria visual;
+- [ ] critério 10 do Compass, publicação real: fora do escopo da rodada.
+
+**Escopo do acabamento (decisão do autor):** só as telas de marketing, a 390, 768 e 1440.
+**Pendência, fora desta rodada:** Visão geral, Supabase, Vercel, EAS e builds, GitHub e Vendas
+(Cakto). Essas telas só foram vistas nos prints `antes6-`/`depois6-`, sem correção.
+
+Push da branch: Claude Code, depois do commit deste registro. Fusão com `main`: decisão do autor.

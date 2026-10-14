@@ -15385,3 +15385,152 @@ do K1 (`e788118`), vieram os commits de tela e acabamento `9127873`, `fb5aa93`, 
 (`lumen-freeze/`: `test:admin` e `tsc` exit 0), ainda não entregue ao Prism. A retomada desta
 manhã (`03-RETOMADA-14-10-MANHA.md`) manda o Keel fechar W-C1, W-C2 e H-01 a H-03, o Lumen
 congelar a tela para o Prism e o Vigil rodar o gate final depois disso.
+
+## 14/10/2026 noite (M1, Meridian, conta Gabriel): fechamento do painel admin, 7b654b3 e acabamento até 9bbb72d
+
+Registro pedido pelo Claude Code (orquestrador desta etapa) em
+`E:/Grana-temporarios/2026-10-13-marketing-ph/ordem-meridian-fechamento.md`, tarefa 3 de
+`07-FECHAMENTO-CONTA-GABRIEL.md`. O Meridian escreve no lugar do Quill e do Ledger, porque a
+conta PH parou no teto de 75% (regra 27) e o time Codex inteiro bateu o limite de uso. O
+Lynx revisou no lugar dos revisores Codex, só lendo. Todos os arquivos citados ficam em
+`E:/Grana-temporarios/2026-10-13-marketing-ph/`.
+
+**Freeze final: `9bbb72d5b019b7a2bdd9d28bc62bb3d3553893ee`** (`lumen-freeze-6`), branch
+`feature/admin-panel-continuation`. **Gate do Vigil nesse SHA: PENDENTE, a preencher.** Ele
+vem em duas etapas. A primeira é o `7b654b3` (abaixo), que passou no gate. A segunda é a fase
+de acabamento do Lumen por cima dele (mais abaixo). O `7b654b3` substitui o `84e2eca` (`06-FREEZE-VIGENTE.md`): a
+prova de foco do P-05 no `84e2eca` deu exit 1, porque em 10 de 320 focos o botão "Revisar
+capa" da janela do Reel ficava atrás do rodapé fixo. A correção entrou em commit próprio de
+layout (regra 14), e é o único commit depois do `84e2eca`:
+
+| Hash | O que é |
+|---|---|
+| `890495e` | H-02c do Harbor: a recusa prende a versão da origem; versão nova só por legenda ou capa pede decisão nova. Base do backend |
+| `84e2eca` | F-03b do Watchtower: "aceite próprio" da capa só com registro da capa |
+| `7b654b3` | layout: na janela da Aprovação, os botões de decisão ficam fora da área que rola (`estilo.css`, `telas/aprovacao.js` e `__tests__/admin-aprovacao-contrato-familias.cjs`) |
+
+**Recibos no `7b654b3`:**
+
+- **Gate do Vigil** (`vigil/gate-7b654b3/recibos/`, clone limpo igual ao da CI, sem `.env`):
+  `npm ci`, `tsc`, `test:ci` e export com varredura de segredos, todos com exit 0. Os cinco
+  manifestos (antes e depois de cada etapa) têm 2.270 arquivos, status vazio e o mesmo
+  SHA-256 `e26e7e66e0f1623bb6a84b9c35b424bddd3073ecf4e9c62c97f0ef92011dd105`. O
+  `veredito.txt` diz "GATE APROVADO". O `deno check` não se aplica (Deno ausente na M1); a
+  única Edge Function diferente de `origin/main` é `email-recebido`, que não é desta rodada.
+- **Pós-gate** (`vigil/gate-7b654b3/pos/`): o servidor rodou o código do SHA
+  (`tools-diff-vs-sha.txt` vazio). HTTP/CSRF/auth e F3-1 com a fixture `AUDIT-F3F4`: 21 de
+  21, exit 0.
+- **Visual nas quatro larguras:** o pós-gate deu `visual.exit=1`, por defeito do roteiro e não
+  do app: ele esperava `button.demanda-item`, da tela antiga. A refação do Anvil no `7b654b3`
+  (item c do Lynx) foi cancelada pelo Claude Code por economia de tokens. A conferência visual
+  e a revisão do Lynx ficam para uma passada só, no freeze final.
+- **Tela, pacote `lumen-freeze-5/`:** `test-admin`, `test-admin-estilo-final` e `tsc` com
+  exit 0; foco P-05 1920 de 1920 (4 larguras, 2 peças, topo/meio/fim, Tab e Shift+Tab);
+  geometria P-05 12 de 12; F-02/P-03 48 de 48; `medir-final` com 14 telas nas 4 larguras.
+- **Revisão do Lynx** (`revisao-lynx-final-7b654b3.md`): DE ACORDO no delta de layout, na
+  identidade de bytes do backend e do editorial com `890495e` e `84e2eca` e na matriz 1 a 9
+  do Compass. O item (c), o handoff, foi cancelado e passa ao freeze final. Nenhum achado numerado. O critério 10 (publicação real) ficou
+  fora de escopo, porque o publicador está fora do repositório e o token da Meta venceu em
+  12/10.
+
+**Aceites que valem por identidade de bytes.** O Lynx conferiu que `tools/admin-local` (fora
+de `web/`), `package.json`, `package-lock.json`, `scripts/`, `supabase/`, `lib/`,
+`docs/marketing` e `docs/admin` são iguais nos três commits. Por isso continuam valendo, com
+os limites de cada um: Harbor H-01, H-02b, H-02c e H-03 (R1 a R11); Watchtower W-C1, W-C2 e
+W-C2b; Beacon (editorial); Forge F-01, F-02, F-03 e F-03b. Esses aceites foram dados pelo
+time Codex sobre `890495e` e `84e2eca`, e a transferência para o `7b654b3` foi conferida
+pelo Lynx, não pelos revisores originais.
+
+**Fase de acabamento (`08-TIME-CLAUDE-COMPLETO-ACABAMENTO.md`).** O autor é designer e
+perguntou: "está incluido no trabalho os ajustes de margem, espaçamento e entre-linhas que
+critiquei recentemente?". A correção dele tinha sido feita em parte (`5631c68`, `02bee55`,
+`fa1aa93`, `0c7dd2f` e `7b654b3`), sobre a auditoria ANTES do Vigil
+(`auditoria-visual-vigil.md`), e a conferência DEPOIS nunca tinha sido feita.
+
+- **Vigil, DEPOIS no `7b654b3`** (`auditoria-visual-vigil-depois.md`, rodada reduzida:
+  Aprovação, janela de prévia, Calendário, Tráfego e Feed, a 390 e 1440). Resolvidos: S1
+  (as entrelinhas caíram de 12 razões para 3: 1.2, 1.35 e 1.5), S2, S5 (h1 da Aprovação
+  24/28.8, antes 34) e S6. O S3 (botão quebrando) não se confirmou contando linhas reais e
+  ficou "sem confiabilidade suficiente". S4, S7 e S8 não foram medidos nesta rodada. O achado
+  "summary × select" da Aprovação era falso positivo do medidor (filho de `details` fechado
+  tem retângulo, mas `checkVisibility()=false`). Line-clamp e elipse foram aceitos como
+  desenho. O padding de 1 px do botão de fechar da janela persistia no 7b654b3.
+- **Lumen, sete commits de estilo, um por tela ou família (regra 14):**
+
+| Hash | Na tela |
+|---|---|
+| `daf3184` | faixa de dados simulados em uma coluna só, com o ponto na primeira linha e o botão à direita |
+| `14f5721` | janela da Aprovação: cartões de Legenda, Alternativas e Capa com título e conteúdo no mesmo ritmo |
+| `058ab2b` | Tráfego: nota abaixo das campanhas e botão Editar com folga do cartão |
+| `9ca9e6f` | cabeçalho de Aprovação, Calendário e Feed: botões sem borda alinhados à coluna e subtítulo com folga do título |
+| `7f0a398` | botão de fechar da janela sem o padding padrão do navegador |
+| `c3d07d5` | Documento: a tabela da leitura abraça o conteúdo e a moldura deixa de sobrar |
+| `9bbb72d` | Acervo: ação Revisar no pé do card e na borda da coluna |
+
+  O delta de `7b654b3` a `9bbb72d` no painel é `tools/admin-local/web/estilo.css` e
+  `tools/admin-local/web/app.js` (+30/−3 e +4/−2 linhas). No meio entraram também `af701e5` e
+  `cb200a5` (regra 28 e skill `economia-de-tokens`), que não são do painel.
+- **Recibos do Lumen no `9bbb72d`** (`lumen-freeze-6/FREEZE.md`): `test:admin`,
+  `test:admin-estilo-final` e `tsc` com exit 0; manifesto `manifesto-ui.sha256`; capturas
+  `antes6-`/`depois6-` em 320, 390, 768 e 1440; medidas `depois6-medidas.json`. Design System
+  conferido, sem mudança. São recibos do dono, e não o gate integrado.
+- **Escopo, por decisão do autor:** só as telas de MARKETING, a 390, 768 e 1440. **Ficam
+  pendentes, fora desta rodada:** Visão geral, Supabase, Vercel, EAS e builds, GitHub e Vendas
+  (Cakto). Elas só foram vistas nos prints `antes6-`/`depois6-`, sem correção.
+- **O que ficou como está, de propósito:** tabelas dentro de `.tabela-rolagem` e line-clamp
+  (desenho); na janela a 1440, a miniatura da capa passa rolando sob a barra de decisão.
+- **Pendente para o freeze final:** o gate do Vigil no `9bbb72d` (`gate-final-v2.sh`,
+  `veredito-gate.sh`, F3-1/HTTP e capturas com o seletor da galeria) e o handoff dele; a
+  revisão única do Lynx sobre o delta (layout, comportamento do `app.js` e prints
+  antes/depois, no lugar de Forge e Prism) e sobre este registro; o aceite de produto do
+  Meridian (`revisao-meridian-aceite-produto.md`, no lugar do Compass); a linha 6/B6 e as
+  notas do canvas, com o Quill.
+
+**Decisões do Supremo para o registro (fim de `05-RETOMADA-14-10-1425.md`):**
+
+- **V2, gravidade baixa, anterior à rodada e fora do painel.** O `test:ci` passa com exit 0,
+  mas o log tem 1.972 `TypeError: reservarFalaEmAndamento is not a function`, todos da mesma
+  causa: o dublê de 26 testes de voz não tem `reservarFalaEmAndamento`
+  (`widget-voz-task.ts:150`), e o erro é engolido. A classificação está em
+  `vigil-classificacao-typeerror-e-127.md`. Não foi corrigido nesta rodada, porque mudaria o
+  freeze e exige paridade app/widget (regra 13). Pendência aberta, com o Keel como dono, para
+  a próxima rodada.
+- **Limite legado do H-02c.** Três recusas antigas sem `origem.versao` caem na comparação por
+  bytes (`catalogo.cjs:272`). O Keel contou no acervo real, só lendo, no `7b654b3`
+  (`keel-legado-h02c.md`). São três: semana 39, `funil/revisao-06`, E01, E02 e E06
+  (`*-feed-1080x1440.png`). **Nenhuma alcança item acionável hoje**, porque os três PNGs de
+  origem estão apagados da árvore de trabalho e nenhuma peça do catálogo tem o id ou o caminho
+  deles. Se os arquivos voltarem, o SHA-1 do blob no HEAD é igual ao gravado na recusa (3 de 3),
+  e a peça reaparece recusada: o limite protege. Sobra um efeito residual, que hoje não tem caso:
+  um reexport do mesmo arquivo com bytes diferentes não herdaria a recusa. Nenhuma ação de
+  backend. Gravar `origem.versao` nelas fica para a próxima limpeza, se o autor quiser.
+- **32 vulnerabilidades no `npm ci`** (1 crítica, 19 altas, 12 moderadas), fora do painel.
+  Ficam para decisão do autor; ninguém auditou nem corrigiu.
+
+**Checklist de QA do que NÃO foi testado (regra 9):**
+
+- [ ] leitor de tela: NVDA no navegador e TalkBack. Nenhuma prova desta rodada usa leitor de tela;
+- [ ] Safari e Firefox: todas as provas rodaram só no Chromium, com Playwright e a fixture AUDIT;
+- [ ] navegador de celular real: no estreito, o dialog usa `100vh` (`estilo.css:2731`), e a
+  decisão pode ficar sob a barra dinâmica do navegador (O-3 do Lynx, hipótese; o sticky
+  antigo tinha o mesmo risco);
+- [ ] Esc com o pedido de ajuste aberto devolvendo o foco ao botão "Pedir ajuste": o seletor
+  mudou no `7b654b3` e, pela leitura do código, o comportamento é o mesmo, mas nenhuma prova
+  do freeze confere `document.activeElement` (O-1 do Lynx);
+- [ ] as três recusas legadas sem `origem.versao` só foram conferidas lendo o acervo e o código (Keel); nenhuma foi exercitada no servidor;
+- [ ] dado real com pedidos de ajuste na janela (a fixture não tem `details.pedidos-tecnico`);
+- [ ] S4, S7 e S8 da auditoria visual, e 320/768 nas telas fora do marketing;
+- [ ] publicação real na Meta (critério 10), fora do escopo.
+
+**Árvore de trabalho, fora deste registro (O-4 do Lynx).** Há cerca de 40 PNG/SVG apagados sem
+commit em `docs/marketing/` (semanas 36, 37 e 39), `semana-39/INDICE.md` modificado e
+arquivos não rastreados (`assets/icon-meta-1024.*`, `scripts/gerar-*.py`,
+`docs/marketing/painel/historico.json`, `docs/marketing/solicitacoes-correcao/`,
+`.maestri/opencode-*`). Nada disso é desta rodada, e o dono é desconhecido. O commit deste
+registro leva só os seus dois arquivos. Painel rodado direto de `E:\GranaPonto` mostra um
+acervo diferente do testado no clone.
+
+**Push e fusão.** O push da branch fica com o Claude Code, depois deste commit. A fusão com
+`main` é decisão do autor.
+
+Nota de sessão do Meridian no vault: pendente, sai junto com o fechamento do gate.
