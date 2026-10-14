@@ -40,7 +40,7 @@ const grava = (rel, c) => { const f = path.join(raiz, rel); fs.mkdirSync(path.di
 
 (async () => {
   try {
-    grava(`${S40}/INDICE.md`, '# AUDIT\n');
+    grava(`${S40}/INDICE.md`, '| Peça | Cronograma | Parecer |\n| [C14](para-aprovacao/pecas/lumen-v7/) | `AUDIT-manifesto#AUDIT-item@2` | revisor AUDIT ok 0123456789abcdef0123 |\n');
     grava(`${S40}/para-aprovacao/pecas/lumen-v6/carrossel-1.png`, 'AUDIT-v6-1');
     grava(`${S40}/para-aprovacao/pecas/lumen-v6/carrossel-2.png`, 'AUDIT-v6-2');
     grava(`${S40}/para-aprovacao/pecas/lumen-v7/carrossel-1.png`, 'AUDIT-v7-1');
@@ -89,6 +89,12 @@ const grava = (rel, c) => { const f = path.join(raiz, rel); fs.mkdirSync(path.di
     assert.equal(walk(bloco).filter((n) => n.tag === 'button' || n.tag === 'a').length, 0, 'revisão anterior sem botão nem link de ação');
     assert.ok(!text(r).includes('Outra versão na fila'), 'família registrada não dispara o aviso de duplicata');
     assert.equal(botao(r, 'Aprovar esta versão').attrs.disabled, false);
+    // F-01 do Forge (F4-1): a linha do índice, mesmo recolhida, não mostra a chave do cronograma nem hash.
+    assert.ok(v7.indice && v7.indice.includes('AUDIT-manifesto#AUDIT-item@2'), 'fixture: o DTO traz a linha íntegra do INDICE');
+    const indice = walk(r).find((n) => n.attrs.class === 'aprovacao-mais peca-indice');
+    assert.ok(indice, 'linha do índice presente no detalhe');
+    assert.ok(text(indice).includes('vinculada ao cronograma') && text(indice).includes('revisor AUDIT ok'), 'vínculo e parecer em palavras');
+    assert.ok(!/#|@\d|AUDIT-manifesto|AUDIT-item|0123456789abcdef/.test(text(r)), 'F4-1: sem manifesto#item@versão e sem hash no texto, nem recolhido');
 
     // 2. Vigente guardada em historico/ (R13 final): aprovar e pedir ajuste funcionam, e ela precisa de você.
     r = await abrir(r13);
@@ -128,7 +134,7 @@ const grava = (rel, c) => { const f = path.join(raiz, rel); fs.mkdirSync(path.di
     assert.ok(text(rb).includes('Não foi possível ler as revisões substituídas: servidor fora.'));
     assert.ok(!text(rb).includes('Nenhuma revisão substituída'));
 
-    console.log('admin-aprovacao-contrato-familias: DTO real do catálogo; superada fora dos cards e sem ação, vigente em historico decidível, pendente bloqueia aprovar e libera ajuste, Acervo lê as substituídas uma vez e mostra a falha; zero POST: OK');
+    console.log('admin-aprovacao-contrato-familias: DTO real do catálogo; linha do índice sem chave do cronograma nem hash (F4-1); superada fora dos cards e sem ação, vigente em historico decidível, pendente bloqueia aprovar e libera ajuste, Acervo lê as substituídas uma vez e mostra a falha; zero POST: OK');
   } finally {
     fs.rmSync(base, { recursive: true, force: true });
   }

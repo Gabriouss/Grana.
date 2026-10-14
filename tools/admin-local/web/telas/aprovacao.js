@@ -13,6 +13,16 @@ const ESTADOS_AJUSTE = {
   desatualizado: 'Versão desatualizada', 'precisa-de-atencao': 'Precisa de atenção',
 };
 
+// F4-1 na linha do INDICE.md: a célula do cronograma (`manifesto#item@versão`, com ou sem crase)
+// vira "vinculada ao cronograma"; UUID e hash de 16+ hex somem. Célula que só tinha isso some.
+export function semIdTecnico(celula) {
+  return String(celula)
+    .replace(/`?[^\s`|#]+#[^\s`|@]+@[^\s`|]+`?/g, 'vinculada ao cronograma')
+    .replace(/`?\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b`?/gi, '')
+    .replace(/`?\b[0-9a-f]{16,}\b`?/gi, '')
+    .replace(/\s{2,}/g, ' ').trim();
+}
+
 const FILTROS_DEMANDAS = 'grana-admin-demandas-filtros';
 function lerFiltros() {
   try { return JSON.parse(localStorage.getItem(FILTROS_DEMANDAS)) || {}; } catch { return {}; }
@@ -416,7 +426,8 @@ export async function montar(raiz, ctx) {
       detalhe.appendChild(h('details', { class: 'aprovacao-mais peca-indice' },
         h('summary', { texto: 'Linha do índice da semana (pareceres e pendências)' }),
         h('p', { class: 'campo-ajuda', texto: 'Parecer de revisor não é aceite seu. Só o botão Aprovar registra aceite.' }),
-        ctx.markdown(p.indice.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map((x) => `- ${x.trim()}`).join('\n'))));
+        // F4-1: a chave manifesto#item@versão, UUID e hash ficam só no INDICE.md; na tela, o vínculo aparece em palavras.
+        ctx.markdown(p.indice.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map((x) => semIdTecnico(x.trim())).filter(Boolean).map((x) => `- ${x}`).join('\n'))));
     }
   };
 
