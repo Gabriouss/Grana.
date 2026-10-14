@@ -15346,3 +15346,42 @@ Inicializar foi removido.
 - nota de sessão em `00 - Sessões/2026-10-13 - M1 - Painel admin marketing (time PH)`;
 - perene `01 - Código/Cobertura de Testes` atualizada;
 - relatórios em `E:/Grana-temporarios/2026-10-13-marketing-ph/`.
+
+## Adendo 14/10/2026 manhã (M1, Quill): correções pedidas pelo Ledger na entrada acima
+
+Fonte: achados 1 e 2 de `E:/Grana-temporarios/2026-10-13-marketing-ph/revisao-ledger-documentacao.md`.
+A entrada de 13/10 fica como estava; este adendo corrige como ela deve ser lida.
+
+**1. "Incidente de 12/10, reconstituído pelo Flare": fato, vestígio e hipótese separados.** A
+frase "o agente externo publicou pelos próprios scripts, sem passar pelo painel" foi escrita
+como fato e não é. O que se sabe, por origem:
+- **relato do autor:** um Reel antigo foi publicado por engano em 12/10, e uma capa não foi
+  junto com o Reel;
+- **vestígios locais lidos pelo Flare:** o histórico do Antigravity de 12/10 (falas do autor,
+  ações e saídas de comando do agente). Esses registros mostram o agente subindo arquivos e
+  chamando a API por conta própria. É o registro que o próprio agente guardou, não uma
+  conferência do que aconteceu na Meta;
+- **fato no acervo:** o vídeo certo (`grana-reels-notificacao-1.mp4`) estava só no vault, e o
+  errado (`grana-reels-v8-pop.mp4`) tinha nome igual ao da capa aprovada e aceite válido por
+  hash;
+- **hipótese:** que a publicação tenha saído desses scripts e não do painel, e que a "capa
+  solta" descrita pelo autor seja o card do feed simulado do painel;
+- **não verificado:** nada foi conferido na Meta nem no publicador externo, que estão fora do
+  escopo desta rodada (o token do `.env` venceu em 12/10).
+
+**2. A galeria do Antigravity rodou contra a proibição da rodada.** A entrada de 13/10 diz só
+que o Vigil a viu "rodando dentro de um clone isolado". Falta dizer que a `00-COMUM.md`
+proibia rodar `scripts/galeria-midia.mjs`, sem exceção, e que a `02-RODADA-…` manteve essa
+regra. Não há autorização registrada para essa execução. O isolamento (clone `vigil/gate-5957a75/clone`,
+`MAESTRI_CLI` inexistente, nenhum clique de escrita) reduziu os efeitos observados, mas não
+torna a execução um teste autorizado. As salvaguardas estão na nota de sessão
+`2026-10-14 - M1 - Fechamento do painel admin (Claude coda, Codex revisa)`, e a confirmação
+cabe ao Supremo.
+
+**Estado às ~10h, para quem chega agora.** HEAD `97778c8`, branch
+`feature/admin-panel-continuation`, sem push. Nenhuma linha da rodada tem "DE ACORDO". Depois
+do K1 (`e788118`), vieram os commits de tela e acabamento `9127873`, `fb5aa93`, `5f579d7`,
+`5631c68`, `e74fc5c`, `02bee55` e `fa1aa93`. O Lumen tem recibo próprio no `fa1aa93`
+(`lumen-freeze/`: `test:admin` e `tsc` exit 0), ainda não entregue ao Prism. A retomada desta
+manhã (`03-RETOMADA-14-10-MANHA.md`) manda o Keel fechar W-C1, W-C2 e H-01 a H-03, o Lumen
+congelar a tela para o Prism e o Vigil rodar o gate final depois disso.

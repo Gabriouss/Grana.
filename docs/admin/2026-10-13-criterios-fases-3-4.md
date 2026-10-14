@@ -123,3 +123,31 @@ Lumen ser medida.
 **F3-1, F3-2, F3-3, F4-1, F4-2 e F4-3:** sem recibo novo nesta rodada. Os focais desses
 critérios estão dentro do `test:admin`, que roda no `test:ci` verde acima, mas o
 procedimento de browser de cada um continua pendente.
+
+## Estado em 14/10/2026, ~10h (adendo do Quill, achado 3 do Ledger)
+
+A seção acima, com o gate no `5957a75`, fica como histórico. Este adendo a supera para a
+rodada atual. Cada evidência leva o tipo dela, porque um verde de um tipo não vale por outro.
+
+| Evidência | Hash | Tipo | Fonte |
+|---|---|---|---|
+| K1: `aprovar` recusa com 409 `ajuste-aberto` qualquer pedido aberto da peça, lendo a fila privada; fila ilegível dá 503 | `e788118` | focal do dono (`test:admin` e `tsc` exit 0 no snapshot limpo `keel-snapshot-3`, manifesto `keel-manifesto-e788118.sha256`) | `relatorio-keel.md`, `keel3-*.exit` |
+| K1 reproduzido com cópia da fila real: 409 `ajuste-aberto`; C7c (capa fora do Feed) e contador (9) conferidos | `e788118` | medição independente do Vigil, volta 3 | `vigil-para-keel-freeze.md` |
+| Aprovação e Acervo consomem o contrato de famílias (vigente/superada, filtro "Substituídas") | `9127873` | focal do dono (`admin-aprovacao-contrato-familias.cjs`) | `recibos-lumen/contrato-*` |
+| F4-1: sem id, hash nem chave de recibo no texto das telas de marketing | `0a5bb5f` | focal do dono | `recibos-lumen/f41-*` |
+| Galeria local: Esc, foco, Host estranho e quebra de linha em 320/390 (G1 a G4 do Vigil) | `fb5aa93`, `5f579d7`, `e74fc5c` | correção do dono; G1 a G4 achados pelo Vigil, reconferência dele nos bytes finais pendente | `vigil-para-lumen-galeria.md` |
+| Acabamento visual: escala de ritmo em tokens e telas no ritmo da escala | `5631c68`, `02bee55`, `fa1aa93` | medição própria do Lumen (390 e 1440) e `test:admin`/`tsc` exit 0 no `fa1aa93` | `lumen-freeze/` |
+
+Todos os arquivos citados ficam em `E:/Grana-temporarios/2026-10-13-marketing-ph/`.
+
+**O verde do `e788118` e do `fa1aa93` é focal do dono e não fecha o gate global.** Nenhum
+dos dois é o `test:ci` com `tsc` num clone limpo do HEAD final.
+
+**Continua pendente:**
+- W-C1 e W-C2 do Watchtower e H-01 a H-03 do Harbor, com o Keel desde a retomada de 14/10;
+- o freeze da tela entregue ao Prism, e a revisão dele;
+- a medição "depois" do Vigil sobre o acabamento visual, em 320/390/768/1440;
+- HTTP/CSRF/auth e browser/E2E com fixture `AUDIT-F3F4` nos bytes finais;
+- o handoff final do Vigil ao Sentinel;
+- o gate integrado (`test:ci` e `tsc` em clone limpo, com manifesto) no HEAD final;
+- o "DE ACORDO" de cada revisor nas linhas 1 a 6.
