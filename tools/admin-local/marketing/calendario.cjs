@@ -67,7 +67,8 @@ function detalhesPlano(plano) {
 }
 function resumoPeca(p, plano = null) {
   const capa = p.arquivos[0] || null;
-  const aceite = require('./aceite-evidencia.cjs').aceiteValido(p.aceite, p) ? p.aceite : null;
+  // p.aceite já vem do catálogo filtrado pelo validador único (aceite-evidencia.cjs).
+  const aceite = p.aceite || null;
   return {
     id: p.id,
     versao: p.versao,

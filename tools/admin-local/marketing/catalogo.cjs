@@ -343,7 +343,8 @@ function lerCopys(raiz, semana, ler = fs.readFileSync) {
     const arq = path.join(raiz, semana.relativo, estado, 'pecas', 'COPYS-FINAIS.md');
     let texto;
     try {
-      texto = ler(arq, 'utf8');
+      // CRLF (checkout do Windows com autocrlf) não pode mudar a legenda nem, por ela, a versão.
+      texto = ler(arq, 'utf8').replace(/\r\n?/g, '\n');
     } catch {
       continue;
     }
@@ -681,21 +682,25 @@ function enriquecer(raiz, pecas) {
   const planejados = Array.isArray(cal.planejados) ? cal.planejados : [];
   // Capa só conta como aceita com evidência PRÓPRIA da versão dela (aprovacoes[]). Estar na pasta
   // aprovados porque o vídeo está lá não é aceite da capa (regra 25).
+  // Validador único de aceite (W-C1): o catálogo concorda com calendário, cronograma e ensaio.
+  const { aceiteValido } = require('./aceite-evidencia.cjs');
+  const agora = Date.now();
+  const valido = (a, p) => aceiteValido(a, p, agora, aprovacoes);
   // Capa de Reel superado é superada junto: ela não pode ser aprovada sozinha.
   const superadas = new Set(pecas.filter((p) => p.revisao?.superada).map((p) => p.id));
   // Aceite composto de um Reel vigente cobre a capa que está selada na versão dele.
   const capasEmComposto = new Set(pecas.filter((r) => r.composicao && !superadas.has(r.id)
-    && aprovacoes.some((a) => a.id === r.id && a.versao === r.versao)).map((r) => r.capa.pecaId));
+    && aprovacoes.some((a) => valido(a, r))).map((r) => r.capa.pecaId));
   const capaAprovada = (id) => {
     const cp = pecas.find((x) => x.id === id);
-    return !!cp && (capasEmComposto.has(cp.id) || aprovacoes.some((a) => a.id === cp.id && a.versao === cp.versao));
+    return !!cp && (capasEmComposto.has(cp.id) || aprovacoes.some((a) => valido(a, cp)));
   };
   return pecas.map((p) => {
     const superada = superadas.has(p.id) || (!!p.capaDe && superadas.has(p.capaDe));
     const pendente = !superada && !!p.revisao?.pendencia;
     // A vigente escolhida no registro decide pelo registro, mesmo guardada em historico.
     const estado = p.revisao?.vigente && p.estado === 'historico' ? 'para-aprovacao' : p.estado;
-    const aceiteDaVersao = aprovacoes.filter((a) => a.id === p.id && a.versao === p.versao).at(-1) || null;
+    const aceiteDaVersao = aprovacoes.filter((a) => valido(a, p)).at(-1) || null;
     // Aceite de revisão superada fica no histórico e não vale mais para publicar.
     const aceite = superada ? null : aceiteDaVersao;
     const aceiteAntigo = !aceiteDaVersao && aprovacoes.some((a) => a.id === p.id);

@@ -20,14 +20,15 @@ try {
   assert.ok(!cat.feed(raiz).pecas.some((p) => p.id === c.id), 'capa nao e publicacao propria');
   assert.strictEqual(c.capaDe, v.id, 'a capa aponta para o video e continua peca (o autor precisa aceita-la)');
   fs.mkdirSync(path.dirname(ap), { recursive: true });
-  fs.writeFileSync(ap, JSON.stringify({ aprovacoes: [{ id: c.id, versao: c.versao, aprovadoEm: '2026-10-09T12:00:00-03:00', evidencia: 'teste' }], ajustes: [] }));
+  const PAINEL = 'aceite pelo autor no painel local'; // validador único (W-C1): só evidência de autor conta
+  fs.writeFileSync(ap, JSON.stringify({ aprovacoes: [{ id: c.id, caminho: c.caminho, versao: c.versao, aprovadoEm: '2026-10-09T12:00:00-03:00', evidencia: PAINEL }], ajustes: [] }));
   const v2 = cat.listarPecas(raiz).pecas.find((p) => p.id === v.id);
   assert.strictEqual(v2.capa.aprovada, true, 'com aceite proprio da versao da capa, passa a aprovada');
   // Aceite composto (14/10): so a capa aceita nao basta; o Reel precisa do aceite da versao composta.
   assert.strictEqual(v2.aprovada, false, 'Reel em aprovados sem aceite composto nao conta como aprovado');
   assert.ok(!cat.feed(raiz).pecas.some((p) => p.id === v.id), 'sem aceite composto, o Reel fica fora do feed');
-  fs.writeFileSync(ap, JSON.stringify({ aprovacoes: [{ id: c.id, versao: c.versao, aprovadoEm: '2026-10-09T12:00:00-03:00', evidencia: 'teste' },
-    { id: v.id, versao: v2.versao, aprovadoEm: '2026-10-09T12:01:00-03:00', evidencia: 'teste composto' }], ajustes: [] }));
+  fs.writeFileSync(ap, JSON.stringify({ aprovacoes: [{ id: c.id, caminho: c.caminho, versao: c.versao, aprovadoEm: '2026-10-09T12:00:00-03:00', evidencia: PAINEL },
+    { id: v.id, caminho: v.caminho, versao: v2.versao, aprovadoEm: '2026-10-09T12:01:00-03:00', evidencia: PAINEL }], ajustes: [] }));
   const feedComCapa = cat.feed(raiz).pecas.map((p) => p.nome.split('/').pop());
   assert.ok(feedComCapa.includes('com-capa.mp4') && !feedComCapa.includes('com-capa-capa.png'), 'Reel com aceite composto entra no feed; a capa nao vira post solto');
   fs.rmSync(ap);

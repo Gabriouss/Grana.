@@ -71,7 +71,7 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
       const anterior = dados.aprovacoes.find((a) => a.origem?.id === id && a.versao === corpo.versao);
       if (anterior) {
         const p = pecas.find((v) => v.id === anterior.id);
-        if (!p || p.estado !== 'aprovados' || !aceiteValido(anterior, p)) throw new c.ErroMarketing('promocao-desatualizada', 'A peça promovida mudou; confira a versão.', 409);
+        if (!p || p.estado !== 'aprovados' || !aceiteValido(anterior, p, Date.now(), dados.aprovacoes)) throw new c.ErroMarketing('promocao-desatualizada', 'A peça promovida mudou; confira a versão.', 409);
         if (!PREFIXO.test(anterior.origem.caminho) || !Array.isArray(anterior.arquivosPromovidos) || anterior.arquivosPromovidos.length !== p.arquivos.length) throw new c.ErroMarketing('prova-invalida', 'Confira a prova da promoção antes de retomar.', 409);
         const arquivos = anterior.arquivosPromovidos.map((a, i) => {
           const origem = path.posix.join(path.posix.dirname(anterior.origem.caminho), p.arquivos[i].nome);
@@ -94,7 +94,7 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
       // A promoção move só o vídeo. Capa pareada pelo nome ficaria para trás e o aceite composto
       // deixaria de valer: o vínculo precisa estar no registro de famílias, que sobrevive à troca de pasta.
       if (p.composicao && !pecas.find((v) => v.id === p.capa.pecaId)?.vinculoCapa) throw new c.ErroMarketing('capa-sem-registro', 'Este Reel tem capa ligada só pelo nome do arquivo. Registre o vínculo da capa no registro de famílias antes de promover.', 409);
-      const aceite = dados.aprovacoes.find((a) => aceiteValido(a, p));
+      const aceite = dados.aprovacoes.find((a) => aceiteValido(a, p, Date.now(), dados.aprovacoes));
       if (!aceite) throw new c.ErroMarketing('sem-aceite', 'A versão precisa do aceite datado do autor antes da promoção.', 409);
       // A fila usa ID físico. Pedido aberto bloqueia a mudança de caminho: não o deixar órfão.
       let pedidos, estadoTerminal;
@@ -148,7 +148,7 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
         // Persistência da prova ANTES de remover qualquer arquivo original.
         c.gravarJsonAtomico(arq, dados); persistido = true;
         const relida = c.lerJson(arq, {}).aprovacoes?.find((a) => a.id === nova.id && a.versao === nova.versao);
-        if (!relida || !aceiteValido(relida, nova) || JSON.stringify(relida) !== JSON.stringify(registro)) throw new Error('prova-nao-confirmada');
+        if (!relida || !aceiteValido(relida, nova, Date.now(), dados.aprovacoes) || JSON.stringify(relida) !== JSON.stringify(registro)) throw new Error('prova-nao-confirmada');
         const avisos = [];
         indicePromocao(raiz, registro, dados, avisos);
         if (registro.indice) avisos.push(...limparOrigem(arquivos));

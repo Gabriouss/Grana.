@@ -218,7 +218,7 @@ function projetar(raiz, operacional = {}, pecas = c.montarCatalogo(raiz)) {
   const ligadas = ativos.map((p) => ({ p, v: vinculo(raiz, p) }));
   const planos = [], avisos = [], antigos = operacional.planejados || [];
   for (const { p, v } of ligadas) {
-    if (!aceites.some((a) => aceiteValido(a, p))) continue;
+    if (!aceites.some((a) => aceiteValido(a, p, Date.now(), aceites))) continue;
     if (!v) continue;
     let estado = null;
     const item = m.itens.find((i) => i.id === v.itemId);

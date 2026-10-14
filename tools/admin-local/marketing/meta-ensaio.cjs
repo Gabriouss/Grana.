@@ -49,7 +49,7 @@ function criarEnsaio(deps) {
       if (!p) negar('peca-ausente');
       if (!versao || !p || versao !== p.versao || r.caminho !== p.caminho) negar('versao-ou-caminho-mudou');
       if (!p || p.estado !== 'aprovados' || !/^docs\/marketing\/\d{4}-\d{2}\/semana-[^/]+\/aprovados\//.test(p.caminho)) negar('fora-de-aprovados');
-      const aceite = p && aceites.find((a) => aceiteValido(a, p, agora));
+      const aceite = p && aceites.find((a) => aceiteValido(a, p, agora, aceites));
       if (!aceite) negar('sem-evidencia-datada-desta-versao');
       if (!canal) negar('canal-invalido');
       if (r.estado && r.estado !== 'planejado') negar('cronograma-nao-resolvido');

@@ -127,11 +127,11 @@ async function recusaSemEscrita(acao, codigo, rotulo) {
     for (const s of [S39, S40, S41, S42]) grava(`${s}/INDICE.md`, '# AUDIT\n');
 
     // Aceite antigo da superada fica no histórico e não vale.
-    const aceiteV8 = { id: v8.id, caminho: v8.caminho, versao: v8.versao, aprovadoEm: '2026-10-07T10:31:32-03:00', evidencia: 'AUDIT aceite antigo' };
+    const aceiteV8 = { id: v8.id, caminho: v8.caminho, versao: v8.versao, aprovadoEm: '2026-10-07T10:31:32-03:00', evidencia: 'aceite pelo autor no painel local', nota: 'AUDIT aceite antigo' };
     grava('docs/marketing/painel/aprovacoes.json', JSON.stringify({ aprovacoes: [aceiteV8], ajustes: [] }));
     grava('docs/marketing/painel/calendario.json', JSON.stringify({ planejados: [{ id: v8.id, caminho: v8.caminho, versao: v8.versao, data: '2026-10-12', hora: '17:00', canal: 'reels' }] }));
     const v8b = cat.obterPeca(raiz, v8.id);
-    assert.equal(v8b.aprovada, false); assert.equal(v8b.aceite, null); assert.equal(v8b.aceiteSuperado.evidencia, 'AUDIT aceite antigo');
+    assert.equal(v8b.aprovada, false); assert.equal(v8b.aceite, null); assert.equal(v8b.aceiteSuperado.nota, 'AUDIT aceite antigo');
     assert.ok(!cat.feed(raiz).pecas.some((p) => p.id === v8.id), 'superada fora do feed mesmo com aceite antigo');
     const cal = calendario.obterCalendario(raiz, '2026-10');
     assert.equal(cal.desatualizados[0]?.id, v8.id); assert.match(cal.desatualizados[0].motivo, /superada/);
