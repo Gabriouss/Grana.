@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Poe cada terminal Codex do Maestri no modelo certo. Decisao do autor, 02/10/2026:
-#   Sol 6.1 medium nos agentes de codigo (Forge, Harbor, Watchtower);
-#   Luna 6 xhigh nos demais (Compass, Prism, Sentinel, Beacon, Ledger, Codex).
-# Reiniciar um terminal sem --command cai no padrao do ~/.codex/config.toml
-# (Sol medium) e erra o Luna. Rode este script apos qualquer reinicio.
+#   Sol 6.1 medium nos agentes especialistas de codigo (Forge, Harbor, Watchtower);
+#   Luna 6 xhigh nos demais especialistas (Compass, Prism, Sentinel, Beacon, Ledger).
+# Excecao do Codex maestro autorizada em 11/10/2026: sempre GPT-6.1-Sol, effort medium.
+# Ela substitui a antiga linha Luna 6 xhigh somente para Codex.
+# Reiniciar sem --command cai no padrao do ~/.codex/config.toml; reaplique o modelo indicado.
 # Uso (so o autor, o classificador do Claude barra o bypass): bash .maestri/codex-modelos.sh [Agente ...]
 # Sem argumentos aplica aos nove. Cada --replace reinicia o processo do agente.
 set -uo pipefail
@@ -15,7 +16,7 @@ declare -A ROLE=( [Forge]="App Engineer" [Harbor]="Backend Engineer" [Watchtower
   [Compass]="Product Planner" [Prism]="UI and Design" [Sentinel]="QA"
   [Beacon]="Marketing and Growth" [Ledger]="Documentation and Vault" [Codex]="" )
 declare -A CMD=( [Forge]="$SOL" [Harbor]="$SOL" [Watchtower]="$SOL"
-  [Compass]="$LUNA" [Prism]="$LUNA" [Sentinel]="$LUNA" [Beacon]="$LUNA" [Ledger]="$LUNA" [Codex]="$LUNA" )
+  [Compass]="$LUNA" [Prism]="$LUNA" [Sentinel]="$LUNA" [Beacon]="$LUNA" [Ledger]="$LUNA" [Codex]="$SOL" )
 alvos=("$@"); [ ${#alvos[@]} -eq 0 ] && alvos=(Forge Harbor Watchtower Compass Prism Sentinel Beacon Ledger Codex)
 for a in "${alvos[@]}"; do
   [ -z "${CMD[$a]:-}" ] && { echo "agente desconhecido: $a" >&2; continue; }
