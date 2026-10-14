@@ -26,6 +26,15 @@ export function semIdTecnico(celula) {
     .replace(/\s+([,;.])/g, '$1').replace(/\s{2,}/g, ' ').trim();
 }
 
+// Estado da capa dentro do Reel. Com composição selada, aprovar o Reel aceita vídeo, capa e legenda
+// juntos; sem ela, a capa precisa do aceite dela. Capa alterada muda a versão do Reel e volta a pedir aceite.
+export function textoCapa(reel, capa) {
+  if (capa?.aprovada) return 'Capa aprovada nesta versão, com aceite próprio.';
+  if (reel.capa?.aprovada) return 'Capa aprovada junto com o Reel: o aceite desta versão cobre vídeo, capa e legenda.';
+  if (reel.composicao) return 'Capa ainda sem aceite. Aprovar este Reel aceita vídeo, capa e legenda juntos.';
+  return 'A capa exige aceite próprio; o aceite do vídeo não vale para ela.';
+}
+
 const FILTROS_DEMANDAS = 'grana-admin-demandas-filtros';
 function lerFiltros() {
   try { return JSON.parse(localStorage.getItem(FILTROS_DEMANDAS)) || {}; } catch { return {}; }
@@ -314,7 +323,8 @@ export async function montar(raiz, ctx) {
       if (capa) detalhe.appendChild(h('section', { class: 'demanda-capa', 'aria-label': 'Capa do vídeo' },
         h('h3', { texto: 'Capa deste Reel' }),
         capa.arquivos?.[0]?.url ? h('img', { class: 'demanda-capa-miniatura', src: ctx.urlArquivo ? ctx.urlArquivo(capa.arquivos[0].url) : capa.arquivos[0].url, alt: `Capa de ${tituloPeca(p)}`, loading: 'lazy' }) : null,
-        h('p', { class: 'campo-ajuda', texto: capa.aprovada ? 'Capa aprovada nesta versão, com aceite próprio.' : 'A capa exige aceite próprio; o aceite do vídeo não vale para ela.' }),
+        // F-03: p.capa.aprovada já conta o aceite composto do Reel (catalogo.cjs); a capa isolada só o próprio.
+        h('p', { class: 'campo-ajuda', texto: textoCapa(p, capa) }),
         h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Revisar capa', onclick: () => escolher(capa) })));
     } else if (p.tipo === 'video') {
       detalhe.appendChild(ctx.alerta('atencao', 'Este Reel ainda não tem capa vinculada. Sem capa, a publicação usa o primeiro quadro do vídeo.'));
