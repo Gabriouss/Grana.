@@ -1747,6 +1747,9 @@ details.secao-recolhida > .secao { margin: 0; padding: 0; border: 0; background:
   background: var(--paper-raised);
 }
 .campanha .cartao-detalhe { overflow-wrap: anywhere; }
+.campanha-campos + .botao, .campanha > .botao { margin-top: var(--s-sm); }
+.grade-cartoes + .nota-explicativa, .estado-bloco + .nota-explicativa { margin-top: var(--s-md); }
+.campanha-campo dd { font-variant-numeric: tabular-nums; }
 .lista-portas { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
 .porta {
   display: flex;
