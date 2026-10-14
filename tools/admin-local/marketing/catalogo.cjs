@@ -681,12 +681,15 @@ function enriquecer(raiz, pecas) {
   const planejados = Array.isArray(cal.planejados) ? cal.planejados : [];
   // Capa só conta como aceita com evidência PRÓPRIA da versão dela (aprovacoes[]). Estar na pasta
   // aprovados porque o vídeo está lá não é aceite da capa (regra 25).
-  const capaAprovada = (id) => {
-    const cp = pecas.find((x) => x.id === id);
-    return !!cp && aprovacoes.some((a) => a.id === cp.id && a.versao === cp.versao);
-  };
   // Capa de Reel superado é superada junto: ela não pode ser aprovada sozinha.
   const superadas = new Set(pecas.filter((p) => p.revisao?.superada).map((p) => p.id));
+  // Aceite composto de um Reel vigente cobre a capa que está selada na versão dele.
+  const capasEmComposto = new Set(pecas.filter((r) => r.composicao && !superadas.has(r.id)
+    && aprovacoes.some((a) => a.id === r.id && a.versao === r.versao)).map((r) => r.capa.pecaId));
+  const capaAprovada = (id) => {
+    const cp = pecas.find((x) => x.id === id);
+    return !!cp && (capasEmComposto.has(cp.id) || aprovacoes.some((a) => a.id === cp.id && a.versao === cp.versao));
+  };
   return pecas.map((p) => {
     const superada = superadas.has(p.id) || (!!p.capaDe && superadas.has(p.capaDe));
     const pendente = !superada && !!p.revisao?.pendencia;
@@ -699,15 +702,16 @@ function enriquecer(raiz, pecas) {
     const ajuste = ajustes.filter((a) => a.id === p.id && a.versao === p.versao).at(-1) || null;
     const pedido = fila.filter((r) => r.pecaId === p.id).at(-1);
     const plano = planejados.find((c) => c.id === p.id && c.versao === p.versao) || null;
-    const capaSemAceite = !!p.capaDe && estado !== 'historico' && !aceite;
-    // Reel em aprovados sem aceite composto: a pasta cobre o vídeo; a capa precisa do aceite dela.
-    const capaDoReelPendente = !aceite && estado === 'aprovados' && !!p.composicao && !capaAprovada(p.capa.pecaId);
-    const aprovada = !superada && !pendente && !capaSemAceite && !capaDoReelPendente && (estado === 'aprovados' || !!aceite);
+    const capaSemAceite = !!p.capaDe && estado !== 'historico' && !aceite && !capasEmComposto.has(p.id);
+    // Reel com capa só é aprovado com aceite composto desta versão (vídeo + capa + legenda),
+    // mesmo na pasta aprovados: a pasta não sela a capa (decisão do Supremo, 14/10).
+    const reelSemComposto = !!p.composicao && !aceite;
+    const aprovada = !superada && !pendente && !capaSemAceite && !reelSemComposto && (estado === 'aprovados' || !!aceite);
     let estadoEfetivo = estado;
     if (superada) estadoEfetivo = 'superada';
     else if (capaSemAceite) estadoEfetivo = ajuste ? 'ajuste-pedido' : 'aguardando-aceite';
     else if (estado === 'para-aprovacao') estadoEfetivo = aceite ? 'aprovada' : ajuste ? 'ajuste-pedido' : 'aguardando-aceite';
-    else if (estado === 'aprovados') estadoEfetivo = pendente || capaDoReelPendente ? 'aguardando-aceite' : 'aprovada';
+    else if (estado === 'aprovados') estadoEfetivo = pendente || reelSemComposto ? 'aguardando-aceite' : 'aprovada';
     return {
       ...p,
       revisao: p.revisao ? { ...p.revisao, superada } : (superada ? { superada: true, vigente: false, vigenteCaminho: null, familia: null, nome: null, pendencia: null } : null),

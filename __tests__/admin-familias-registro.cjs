@@ -109,6 +109,23 @@ async function recusaSemEscrita(acao, codigo, rotulo) {
     assert.ok(notif.composicao && notif.versao !== notif.versaoArquivos);
     assert.equal(notif.versao, cat.versaoComposta([notif.arquivos[0].sha1], capa.arquivos[0].sha1, notif.legenda));
 
+    // Aceite composto explícito (14/10): Reel em aprovados com capa não é aprovado só pela pasta.
+    assert.equal(notif.aprovada, false); assert.equal(notif.estadoEfetivo, 'aguardando-aceite');
+    assert.equal(capa.aprovada, false, 'capa sem aceite próprio nem composto');
+    const composto = await aprovacoes.aprovar(raiz, notif.id, { versao: notif.versao, confirmacao: true });
+    assert.equal(composto.aprovacao.versao, notif.versao); assert.match(composto.aprovacao.escopo, /composto/);
+    assert.deepEqual(composto.aprovacao.composicao, notif.composicao);
+    const notifOk = cat.obterPeca(raiz, notif.id), capaOk = cat.obterPeca(raiz, capa.id);
+    assert.equal(notifOk.aprovada, true); assert.equal(capaOk.estadoEfetivo, 'aprovada', 'o composto cobre a capa selada nele');
+    assert.ok(cat.feed(raiz).pecas.some((p) => p.id === notif.id) && !cat.feed(raiz).pecas.some((p) => p.id === capa.id));
+    // Trocar só a capa muda a versão do Reel: o aceite composto antigo deixa de valer.
+    grava(`${S41}/aprovados/audit-reel-capa-1080x1920.png`, 'AUDIT-capa-trocada');
+    const notifTroca = cat.obterPeca(raiz, notif.id);
+    assert.notEqual(notifTroca.versao, notif.versao); assert.equal(notifTroca.aprovada, false);
+    grava(`${S41}/aprovados/audit-reel-capa-1080x1920.png`, 'AUDIT-capa');
+    fs.rmSync(path.join(PAINEL, 'aprovacoes.json')); fs.rmSync(path.join(PAINEL, 'calendario.json'), { force: true });
+    for (const s of [S39, S40, S41, S42]) grava(`${s}/INDICE.md`, '# AUDIT\n');
+
     // Aceite antigo da superada fica no histórico e não vale.
     const aceiteV8 = { id: v8.id, caminho: v8.caminho, versao: v8.versao, aprovadoEm: '2026-10-07T10:31:32-03:00', evidencia: 'AUDIT aceite antigo' };
     grava('docs/marketing/painel/aprovacoes.json', JSON.stringify({ aprovacoes: [aceiteV8], ajustes: [] }));

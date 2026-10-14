@@ -104,7 +104,8 @@ function aprovar(raiz, id, corpo = {}) {
     if (peca.estado === 'historico' && !peca.revisao?.vigente) {
       throw new ErroMarketing('peca-no-historico', 'Peça do histórico foi substituída ou rejeitada e não recebe aceite.', 409);
     }
-    if (peca.estado === 'aprovados') {
+    // Reel em aprovados ainda sem aceite composto pode recebê-lo; o resto da pasta já está aceito.
+    if (peca.estado === 'aprovados' && (peca.aprovada || !peca.composicao)) {
       throw new ErroMarketing('ja-aprovada', 'Esta peça já está na pasta de aprovados.', 409);
     }
     const dados = ler(raiz);
@@ -121,7 +122,8 @@ function aprovar(raiz, id, corpo = {}) {
       versao: peca.versao,
       aprovadoEm: agoraLocalIso(),
       evidencia: EVIDENCIA,
-      escopo: peca.legenda ? 'arquivos e legenda desta versão' : 'arquivos desta versão',
+      escopo: peca.composicao ? 'vídeo, capa e legenda desta versão (aceite composto)' : peca.legenda ? 'arquivos e legenda desta versão' : 'arquivos desta versão',
+      ...(peca.composicao ? { composicao: peca.composicao } : {}),
       indice: null,
     };
     dados.aprovacoes.push(registro);
