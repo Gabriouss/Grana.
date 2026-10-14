@@ -34,9 +34,11 @@ export async function montar(raiz, ctx) {
 
   const portas = d.portas || [];
   const fechadas = portas.filter((p) => p.estado !== 'aberta').length;
-  // A situação do servidor sobre portas diz o mesmo que o resumo de verba abaixo: um aviso por fato (T1).
-  if (d.situacao && !(fechadas && /porta/i.test(d.situacao))) corpo.appendChild(ctx.alerta('atencao', d.situacao));
-  for (const a of d.avisos || []) corpo.appendChild(ctx.alerta('info', a));
+  // A situação e os avisos do servidor sobre portas dizem o mesmo que o resumo de verba abaixo:
+  // um aviso por fato (T1). O servidor manda a frase em `avisos` (trafego.cjs) e pode mandar em `situacao`.
+  const repeteResumo = (t) => fechadas > 0 && /porta/i.test(String(t || ''));
+  if (d.situacao && !repeteResumo(d.situacao)) corpo.appendChild(ctx.alerta('atencao', d.situacao));
+  for (const a of d.avisos || []) if (!repeteResumo(a)) corpo.appendChild(ctx.alerta('info', a));
 
   // Campanhas primeiro. O bloqueio de verba fica resumido e visível logo acima delas; portas,
   // pré-requisitos, limites e ângulos ficam recolhidos abaixo, a um clique.

@@ -79,6 +79,8 @@ const base = (api) => ({
     angulosPorEtapa: { prospeccao: 'AUDIT', fonte: 'FUNIL.md' },
     campanhas: [{ id: 'c1', nome: 'AUDIT campanha', status: 'rascunho', orcamentoDiario: 10, periodo: { relativo: 'D+1 a D+7' }, pecasVinculadas: [] }],
     pecasAprovadasDisponiveis: [], fonte: ['FUNIL.md'],
+    // Como o servidor real manda hoje (trafego.cjs listarTrafego): a frase de portas vem em avisos (T1, Vigil 14/10).
+    avisos: ['Planejamento local. Nada aqui foi criado, pausado ou pago na Meta.', '1 porta(s) do plano ainda não abertas: a verba não abre.'],
   };
   const chamadas = [];
   const raiz = node('main');
@@ -92,6 +94,8 @@ const base = (api) => ({
   assert.ok(walk(raiz).filter((n) => n.tag === 'details').every((d) => !d.attrs.open));
   assert.ok(text(raiz).includes('AUDIT campanha'));
   assert.equal(walk(raiz).filter((n) => /porta/i.test(n.attrs.texto || '') && /verba/i.test(n.attrs.texto || '') && n.attrs.class?.startsWith('alerta')).length, 2, 'um aviso de portas no topo e o detalhe dentro do bloco recolhido, sem repetir a situação do servidor (T1)');
+  assert.ok(text(raiz).includes('Planejamento local. Nada aqui foi criado'), 'o aviso que não fala de portas continua');
+  assert.equal(text(raiz).includes('porta(s) do plano'), false, 'a frase de portas de avisos não repete o resumo (T1)');
   assert.deepEqual(chamadas, ['/api/marketing/trafego'], 'só leitura');
   console.log('admin-calendario-trafego-layout: mês e campanhas no topo, sem-data recolhido com contagem e atalho, contexto em details, bloqueio de verba visível: OK');
 })().catch((e) => { console.error(e); process.exitCode = 1; });
