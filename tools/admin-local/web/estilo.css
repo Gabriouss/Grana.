@@ -1347,7 +1347,17 @@ details.peca-indice[open] { padding-bottom: var(--s-lg); }
 .galeria-card .demanda-idade { align-self: flex-end; }
 
 /* Janela da Aprovação: corpo do post do Feed, coluna lateral mais larga porque carrega a decisão. */
-dialog.aprovacao-janela .feed-post-corpo { grid-template-columns: minmax(0, 1fr) 400px; }
+/* A decisão é irmã da área que rola (filha do dialog): no largo, a grade põe a mídia na coluna 1
+   e, na coluna 2, o conteúdo que rola em cima e a decisão embaixo, no fluxo, sem nada por baixo dela. */
+dialog.aprovacao-janela[open] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: min(86vh, 760px);
+}
+dialog.aprovacao-janela .feed-post-corpo { display: contents; }
+.aprovacao-janela-midia { grid-column: 1; grid-row: 1 / -1; }
+.aprovacao-janela-lado { grid-column: 2; grid-row: 1; min-height: 0; }
 .aprovacao-janela-midia {
   display: grid;
   place-items: center;
@@ -1368,6 +1378,8 @@ dialog.aprovacao-janela .feed-post-corpo { grid-template-columns: minmax(0, 1fr)
   min-height: 0;
   padding: var(--s-lg);
   overflow-y: auto;
+  /* O foco por teclado rola o alvo até a borda; a folga deixa o contorno (2px + 2px) inteiro à vista. */
+  scroll-padding-block: var(--s-sm);
 }
 .aprovacao-janela-titulo { margin: 0; font-size: var(--t-apoio); line-height: var(--lh-compacto); overflow-wrap: anywhere; }
 .aprovacao-janela-estado { display: flex; flex-direction: column; gap: var(--s-xs); margin: 0; color: var(--ink-soft); font-size: var(--t-legenda); }
@@ -1378,14 +1390,14 @@ dialog.aprovacao-janela .feed-post-corpo { grid-template-columns: minmax(0, 1fr)
 .demanda-capa-miniatura { width: 96px; aspect-ratio: 9 / 16; object-fit: cover; border-radius: var(--r-sm); background: var(--paper-deep); }
 .aprovacao-decisao .botao-fantasma { border-color: var(--rule); }
 .aprovacao-decisao {
-  position: sticky;
-  bottom: calc(-1 * var(--s-lg));
-  z-index: 1;
-  margin: 0 calc(-1 * var(--s-lg));
+  grid-column: 2;
+  grid-row: 2;
   padding: var(--s-md) var(--s-lg) var(--s-lg);
   border-top: 1px solid var(--rule);
+  border-left: 1px solid var(--rule);
   background: var(--paper);
 }
+.aprovacao-decisao[hidden] { display: none; }
 .aprovacao-ajuste {
   display: flex;
   flex-direction: column;
@@ -1433,14 +1445,16 @@ details.aprovacao-mais[open] > summary::before { content: '\2212'; }
 details.aprovacao-mais[open] { display: flex; flex-direction: column; gap: var(--s-md); padding-bottom: var(--s-md); }
 
 @media (max-width: 899px) {
-  dialog.aprovacao-janela .feed-post-corpo { display: flex; flex-direction: column; }
+  /* No estreito o corpo inteiro rola; a decisão fica embaixo dele, fora da rolagem. */
+  dialog.aprovacao-janela[open] { display: flex; flex-direction: column; height: 100vh; }
+  dialog.aprovacao-janela .feed-post-corpo { display: flex; flex-direction: column; flex: 1; min-height: 0; height: auto; scroll-padding-block: var(--s-sm); }
   .aprovacao-janela .feed-post-lado { display: contents; }
   .aprovacao-janela-cabeca { order: 1; flex: none; }
   .aprovacao-janela-midia { order: 2; flex: none; height: min(70vh, 125vw); }
   .aprovacao-janela-midia:has(> section),
   .aprovacao-janela-midia:has(> .previa) { height: auto; }
   .aprovacao-janela-conteudo { order: 3; flex: none; overflow: visible; }
-  .aprovacao-decisao { bottom: 0; margin: 0 calc(-1 * var(--s-lg)); }
+  .aprovacao-decisao { flex: none; border-left: 0; }
 }
 
 /* Acervo */

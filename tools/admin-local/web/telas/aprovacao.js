@@ -124,6 +124,9 @@ export async function montar(raiz, ctx) {
   const midiaSlot = h('div', { class: 'aprovacao-janela-midia' });
   const cabecaJanela = h('div', { class: 'aprovacao-janela-cabeca' });
   const detalhe = h('div', { class: 'aprovacao-janela-conteudo demanda-detalhe' });
+  // A decisão fica FORA da área que rola, como irmã dela: nada rola por baixo e um foco no fim
+  // do conteúdo nunca fica escondido atrás dela (P-05 por teclado).
+  const decisao = h('div', { class: 'bloco-acao aprovacao-decisao' });
   let devolverFoco = null;
   let midiaAtual = { chave: null, pausar: () => {}, limpar: () => {}, comparacao: null };
   const pausarMidia = () => { midiaAtual.pausar(); midiaSlot.querySelectorAll?.('video').forEach((v) => v.pause()); };
@@ -149,9 +152,9 @@ export async function montar(raiz, ctx) {
       e.preventDefault();
       rascunhoAberto = null;
       desenharDetalhe();
-      detalhe.querySelector?.('.aprovacao-decisao [aria-expanded]')?.focus();
+      decisao.querySelector?.('[aria-expanded]')?.focus();
     },
-  }, h('div', { class: 'feed-post-corpo' }, midiaSlot, h('div', { class: 'feed-post-lado aprovacao-janela-lado' }, cabecaJanela, detalhe)));
+  }, h('div', { class: 'feed-post-corpo' }, midiaSlot, h('div', { class: 'feed-post-lado aprovacao-janela-lado' }, cabecaJanela, detalhe)), decisao);
   corpo.appendChild(janela);
   const limparComparacao = () => { midiaAtual.limpar(); };
 
@@ -291,7 +294,9 @@ export async function montar(raiz, ctx) {
 
   const desenharDetalhe = () => {
     while (detalhe.firstChild) detalhe.removeChild(detalhe.firstChild);
+    while (decisao.firstChild) decisao.removeChild(decisao.firstChild);
     const p = selecionada;
+    decisao.hidden = !p;
     if (!p) { detalhe.appendChild(h('p', { class: 'campo-ajuda', texto: 'Selecione uma demanda para revisar.' })); return; }
     janela.setAttribute('aria-label', `Prévia de ${tituloPeca(p)}`);
     const corrigido = pedidos?.find((r) => r.pecaId === p.id && r.estado === 'corrigido-aguardando-aceite' && r.versaoCorrigida === p.versao);
@@ -414,9 +419,9 @@ export async function montar(raiz, ctx) {
       class: 'botao', type: 'button', texto: 'Mover para aprovados', disabled: filaIndisponivel || temPedidoAberto || !!pendencia,
       onclick: () => promoverPeca(ctx, p, botaoMover),
     }) : null;
-    detalhe.appendChild(h('div', { class: 'bloco-acao aprovacao-decisao' }, botaoAprovar, botaoAjuste, botaoRecusar,
-      botaoMover,
-      p.aprovada && p.estado === 'aprovados' ? h('a', { class: 'botao botao-fantasma', href: `#/marketing/calendario?secao=sem-data&peca=${encodeURIComponent(p.id)}`, texto: 'Marcar data no calendário' }) : null));
+    [botaoAprovar, botaoAjuste, botaoRecusar, botaoMover,
+      p.aprovada && p.estado === 'aprovados' ? h('a', { class: 'botao botao-fantasma', href: `#/marketing/calendario?secao=sem-data&peca=${encodeURIComponent(p.id)}`, texto: 'Marcar data no calendário' }) : null,
+    ].filter(Boolean).forEach((b) => decisao.appendChild(b));
 
     // 5. Evidência, recolhida: andamento, histórico, referência e dados técnicos.
     detalhe.appendChild(h('details', { class: 'aprovacao-mais' },
