@@ -1035,6 +1035,9 @@ dialog.modal[open] { animation: modal-entra 220ms var(--ease-saida); }
 .peca-midia > .previa { height: 100%; min-height: 0; max-height: none; padding: var(--s-sm); border: 0; border-radius: 0; }
 .peca-midia > .previa-texto { align-content: center; gap: var(--s-sm); text-align: center; }
 .peca-midia .previa-palco { width: 100%; height: 100%; overflow: hidden; }
+/* A trilha automática da grade crescia até a altura própria do vídeo (605 px numa moldura de 446
+   a 390 px), e o recorte escondia os controles do player. Trilha minmax(0, 1fr): a mídia cabe na moldura. */
+.peca-midia > .previa:not(.previa-texto), .peca-midia .previa-palco { grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); }
 .peca-midia > .previa > img, .peca-midia > .previa > video,
 .peca-midia .previa-palco img, .peca-midia .previa-palco video { width: 100%; height: 100%; max-height: none; object-fit: cover; border-radius: 0; }
 .peca:hover .peca-midia { border-color: var(--rule-strong); }
