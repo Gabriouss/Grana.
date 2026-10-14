@@ -20,6 +20,7 @@ const {
   serializar,
   textoCurto,
   obterPeca,
+  exigirVigente,
 } = require('./catalogo.cjs');
 
 const ARQUIVO = 'aprovacoes.json';
@@ -95,7 +96,12 @@ function aprovar(raiz, id, corpo = {}) {
     }
     const peca = obterPeca(raiz, id);
     conferirVersao(peca, corpo.versao);
-    if (peca.estado === 'historico') {
+    exigirVigente(peca, 'O aceite');
+    // Ajuste aberto sobre ESTA versão: aprovar agora seria aceitar o que o autor mandou corrigir.
+    if (peca.ajuste) {
+      throw new ErroMarketing('ajuste-aberto', 'Há pedido de ajuste aberto para esta versão. Aprove a versão corrigida quando ela chegar.', 409);
+    }
+    if (peca.estado === 'historico' && !peca.revisao?.vigente) {
       throw new ErroMarketing('peca-no-historico', 'Peça do histórico foi substituída ou rejeitada e não recebe aceite.', 409);
     }
     if (peca.estado === 'aprovados') {
@@ -138,6 +144,8 @@ function aprovar(raiz, id, corpo = {}) {
 async function pedirAjuste(raiz, id, corpo = {}) {
   const peca = obterPeca(raiz, id);
   conferirVersao(peca, corpo.versao);
+  // Pedido de ajuste vale para a vigente e para família pendente; nunca para revisão superada.
+  if (peca.estadoEfetivo === 'superada') exigirVigente(peca, 'O pedido de ajuste');
   const ajuste = await require('./ajustes-fila.cjs').fila.solicitar(peca, corpo);
   return { ajuste, avisos: ['Pedido recebido na fila privada. Ninguem pegou ainda; o vigia tenta entregar automaticamente. Nada foi aprovado, publicado ou agendado.'] };
 }

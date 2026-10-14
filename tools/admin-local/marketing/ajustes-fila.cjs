@@ -30,7 +30,8 @@ function criarFila(deps) {
   };
   const achar = (db, id) => { const r = db.pedidos.find((p) => p.id === id); if (!r) throw erro('pedido-inexistente', 'Pedido nao encontrado.', 404); return r; };
   async function solicitar(peca, corpo) {
-    if (peca.estado === 'historico') throw erro('peca-no-historico', 'Peca do historico nao recebe ajuste.');
+    if (peca.estadoEfetivo === 'superada' || peca.revisao?.superada) throw erro('revisao-superada', 'Esta revisao foi substituida. Peca o ajuste na revisao vigente da familia.');
+    if (peca.estado === 'historico' && !peca.revisao?.vigente) throw erro('peca-no-historico', 'Peca do historico nao recebe ajuste.');
     if (peca.versao !== corpo.versao) throw erro('versao-mudou', 'A peca mudou. Recarregue antes de pedir o ajuste.');
     if (typeof corpo.motivo !== 'string' || !corpo.motivo.trim() || caracteres(corpo.motivo.trim()) > 2000) throw erro('motivo-invalido', 'Descreva o ajuste em ate 2000 caracteres.', 400);
     return deps.transacao((db) => {

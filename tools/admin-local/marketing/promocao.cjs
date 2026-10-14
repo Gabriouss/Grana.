@@ -89,7 +89,11 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
       const p = pecas.find((v) => v.id === id);
       if (!p) throw new c.ErroMarketing('peca-inexistente', 'Peça não encontrada no acervo.', 404);
       if (p.versao !== corpo.versao) throw new c.ErroMarketing('versao-mudou', 'A peça mudou; revise e aprove a versão atual.', 409);
+      c.exigirVigente(c.obterPeca(raiz, p.id), 'A promoção');
       if (p.estado !== 'para-aprovacao' || !PREFIXO.test(p.caminho)) throw new c.ErroMarketing('pasta-invalida', 'Só peça de para-aprovacao pode ser promovida.', 409);
+      // A promoção move só o vídeo. Capa pareada pelo nome ficaria para trás e o aceite composto
+      // deixaria de valer: o vínculo precisa estar no registro de famílias, que sobrevive à troca de pasta.
+      if (p.composicao && !pecas.find((v) => v.id === p.capa.pecaId)?.vinculoCapa) throw new c.ErroMarketing('capa-sem-registro', 'Este Reel tem capa ligada só pelo nome do arquivo. Registre o vínculo da capa no registro de famílias antes de promover.', 409);
       const aceite = dados.aprovacoes.find((a) => aceiteValido(a, p));
       if (!aceite) throw new c.ErroMarketing('sem-aceite', 'A versão precisa do aceite datado do autor antes da promoção.', 409);
       // A fila usa ID físico. Pedido aberto bloqueia a mudança de caminho: não o deixar órfão.

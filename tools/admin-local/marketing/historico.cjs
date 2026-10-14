@@ -112,7 +112,8 @@ function criarHistorico(io = fs, log = (codigo) => console.error(JSON.stringify(
         }
         const caminho = p.caminho.replace(/\/(para-aprovacao|aprovados)\//, '/historico/');
         const nova = c.montarCatalogo(raiz).find((p) => p.caminho === caminho);
-        if (!nova || nova.versao !== p.versao) throw new Error('destino-divergente');
+        // Compara os arquivos movidos; a versão composta do Reel muda se a capa pareada por nome ficou para trás.
+        if (!nova || nova.versaoArquivos !== p.versaoArquivos) throw new Error('destino-divergente');
         const registro = { id: nova.id, caminho: nova.caminho, versao: nova.versao, motivo: corpo.motivo.trim(), sucessora,
           recusadoEm: c.agoraLocalIso(), evidencia: 'recusa pelo autor no painel local', origem: { id: p.id, caminho: p.caminho },
           arquivos: arquivos.map(({ origem, destino, sha1 }) => ({ origem, destino, sha1 })), indice: null };

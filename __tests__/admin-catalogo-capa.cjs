@@ -23,14 +23,18 @@ try {
   fs.writeFileSync(ap, JSON.stringify({ aprovacoes: [{ id: c.id, versao: c.versao, aprovadoEm: '2026-10-09T12:00:00-03:00', evidencia: 'teste' }], ajustes: [] }));
   const v2 = cat.listarPecas(raiz).pecas.find((p) => p.id === v.id);
   assert.strictEqual(v2.capa.aprovada, true, 'com aceite proprio da versao da capa, passa a aprovada');
+  const feedComCapa = cat.feed(raiz).pecas.map((p) => p.nome.split('/').pop());
+  assert.ok(feedComCapa.includes('com-capa.mp4') && !feedComCapa.includes('com-capa-capa.png'), 'Reel com capa aceita entra no feed; a capa nao vira post solto');
   fs.rmSync(ap);
+  // Aceite composto (14/10): Reel em aprovados com capa sem aceite nao vai ao feed.
+  assert.strictEqual(cat.listarPecas(raiz).pecas.find((p) => p.id === v.id).aprovada, false, 'Reel sem a capa aceita nao conta como aprovado');
   const n = por('capa-nova.mp4');
   assert.ok(n.capa && n.capa.aprovada === false, 'capa sem aceite aparece como nao aprovada');
   assert.strictEqual(por('sem-capa.mp4').capa, null);
   const o = por('orfa-capa.png');
   assert.strictEqual(o.capaDe, null); assert.strictEqual(o.capaOrfa, true);
   const feed = cat.feed(raiz).pecas.map((p) => p.nome.split('/').pop());
-  assert.ok(feed.includes('com-capa.mp4') && !feed.includes('com-capa-capa.png'), 'capa pareada nao vira post solto no feed');
+  assert.ok(!feed.includes('com-capa.mp4') && !feed.includes('com-capa-capa.png'), 'sem aceite da capa, nem o Reel nem a capa entram no feed');
   assert.ok(feed.includes('orfa-capa.png'), 'capa orfa continua visivel (nada some em silencio)');
   console.log('admin-catalogo-capa: ok');
 } finally { fs.rmSync(raiz, { recursive: true, force: true }); }

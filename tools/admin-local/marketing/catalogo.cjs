@@ -189,6 +189,7 @@ function familia(caminho) {
   do { anterior = nome; nome = nome.replace(/-(?:narrado|capa|v\d+)$/i, ''); } while (nome !== anterior);
   return `${m[1]}/${dir}/${nome.toLowerCase()}`;
 }
+// Revisão superada fica em `superadas`, nunca em alternativas: não é escolha, é passado.
 function agruparFamilias(pecas) {
   const grupos = new Map();
   for (const p of pecas) {
@@ -198,16 +199,79 @@ function agruparFamilias(pecas) {
   }
   return [...grupos].map(([chave, itens]) => {
     const versao = (p) => Number(/-v(\d+)(?:-(?:narrado|capa))*\.[^.]+$/i.exec(p.caminho)?.[1] || 0);
-    const ordem = (a, b) => Number(a.estado === 'historico') - Number(b.estado === 'historico')
+    const ordem = (a, b) => Number(!!b.revisao?.vigente) - Number(!!a.revisao?.vigente)
+      || Number(a.estado === 'historico') - Number(b.estado === 'historico')
       || versao(b) - versao(a) || (b.modificadoEm || '').localeCompare(a.modificadoEm || '') || a.caminho.localeCompare(b.caminho);
-    const capas = itens.filter((p) => p.capaDe || p.capaOrfa).sort(ordem);
-    const alternativas = itens.filter((p) => !p.capaDe && !p.capaOrfa).sort(ordem);
-    const principal = alternativas.shift() || capas.shift();
-    return { id: idDe(chave), chave, principal, alternativas, capas };
+    const superada = (p) => !!p.revisao?.superada || p.estadoEfetivo === 'superada';
+    const superadas = itens.filter(superada).sort((a, b) => (b.revisao?.ordem || 0) - (a.revisao?.ordem || 0));
+    const ativos = itens.filter((p) => !superada(p));
+    const capas = ativos.filter((p) => p.capaDe || p.capaOrfa).sort(ordem);
+    const alternativas = ativos.filter((p) => !p.capaDe && !p.capaOrfa).sort(ordem);
+    const principal = alternativas.shift() || capas.shift() || null;
+    const registro = itens.find((p) => p.revisao)?.revisao;
+    return { id: idDe(chave), chave, principal, alternativas, capas, superadas,
+      registro: registro ? { familia: registro.familia, nome: registro.nome, pendencia: registro.pendencia, vigente: registro.vigenteCaminho } : null };
   });
+}
+
+// ---------- registro explícito de famílias (docs/marketing/painel/familias.json) ----------
+//
+// O nome e a pasta não dizem que dois arquivos são revisões da mesma peça
+// (lumen-v6 -> lumen-v7 virava outra família). O registro diz, em ordem, e
+// aponta a vigente. Peça fora do registro mantém o agrupamento por caminho.
+const ARQUIVO_FAMILIAS = 'familias.json';
+function caminhoDoAcervo(c) {
+  return typeof c === 'string' && c.startsWith(`${PASTA_MARKETING}/`) && !c.includes('\\')
+    && !c.split('/').some((s) => !s || s === '.' || s === '..');
+}
+// A pasta de estado não faz parte da identidade: promover ou recusar a revisão
+// (para-aprovacao -> aprovados -> historico) não a tira da família.
+function chaveDoRegistro(c) {
+  return c.replace(/^(docs\/marketing\/\d{4}-\d{2}\/semana-[^/]+)\/(?:para-aprovacao|aprovados|historico)\//, '$1/*/');
+}
+function lerRegistroFamilias(raiz) {
+  const dados = lerJson(caminhoPainel(raiz, ARQUIVO_FAMILIAS), { familias: [], capas: [] });
+  const invalido = (msg) => { throw new ErroMarketing('familias-invalido', `familias.json: ${msg}. Corrija o registro antes de decidir peças.`, 500); };
+  const revisoes = new Map(), capas = new Map(), ids = new Set();
+  for (const f of Array.isArray(dados.familias) ? dados.familias : invalido('"familias" precisa ser lista')) {
+    if (!f || typeof f.id !== 'string' || !/^[A-Za-z0-9-]{1,40}$/.test(f.id) || ids.has(f.id)) invalido('família sem id único');
+    if (typeof f.nome !== 'string' || !f.nome.trim() || f.nome.length > 80) invalido(`${f.id} sem nome legível`);
+    ids.add(f.id);
+    const lista = Array.isArray(f.revisoes) ? f.revisoes.map((r) => r?.caminho) : [];
+    if (!lista.length || !lista.every(caminhoDoAcervo)) invalido(`revisões inválidas em ${f.id}`);
+    if (f.vigente !== null && !lista.includes(f.vigente)) invalido(`vigente de ${f.id} não está entre as revisões`);
+    if (f.vigente === null && (typeof f.pendencia !== 'string' || !f.pendencia.trim())) invalido(`${f.id} sem vigente precisa dizer a pendência`);
+    lista.forEach((caminho, i) => {
+      const chave = chaveDoRegistro(caminho);
+      if (revisoes.has(chave)) invalido(`${caminho} aparece duas vezes no registro`);
+      const vigente = f.vigente !== null && chaveDoRegistro(f.vigente) === chave;
+      revisoes.set(chave, { familia: f.id, nome: f.nome.trim(), ordem: i + 1, total: lista.length, vigenteCaminho: f.vigente,
+        vigente, superada: f.vigente !== null && !vigente,
+        pendencia: f.vigente === null ? f.pendencia.trim() : null });
+    });
+  }
+  for (const v of Array.isArray(dados.capas) ? dados.capas : invalido('"capas" precisa ser lista')) {
+    if (!caminhoDoAcervo(v?.capa) || !caminhoDoAcervo(v?.reel) || capas.has(chaveDoRegistro(v.capa)) || revisoes.has(chaveDoRegistro(v.capa))) invalido('vínculo de capa inválido ou repetido');
+    capas.set(chaveDoRegistro(v.capa), chaveDoRegistro(v.reel));
+  }
+  return { revisoes, capas };
+}
+
+// Recusa no servidor qualquer decisão sobre revisão que não é a vigente.
+function exigirVigente(peca, acao) {
+  if (peca?.revisao?.superada || peca?.estadoEfetivo === 'superada') {
+    const vigente = peca.revisao?.vigenteCaminho ? path.posix.basename(peca.revisao.vigenteCaminho) : 'a revisão vigente';
+    throw new ErroMarketing('revisao-superada', `Esta revisão foi substituída por ${vigente}. ${acao} só vale para a revisão vigente da família.`, 409);
+  }
+  if (peca?.revisao?.pendencia) {
+    throw new ErroMarketing('familia-pendente', `A família ${peca.revisao.nome || 'desta peça'} ainda não tem revisão vigente escolhida pelo autor (${peca.revisao.pendencia}). ${acao} fica bloqueado até a escolha.`, 409);
+  }
 }
 function versaoDeArquivos(shas, legenda) {
   return crypto.createHash('sha1').update(shas.join('\n') + '\nlegenda:' + (legenda || '')).digest('hex');
+}
+function versaoComposta(shasVideo, shaCapa, legenda) {
+  return versaoDeArquivos([...shasVideo, `capa:${shaCapa}`], legenda);
 }
 function caminhoSeguro(raiz, relativo, io = fs) {
   const ruim = (s) => !s || s.startsWith('.') || /[\\:\u0000-\u001f\u007f<>"|?*]/.test(s) || /[. ]$/.test(s)
@@ -446,6 +510,7 @@ function linhaDoIndice(linhas, relNaSemana) {
 
 function montarCatalogo(raiz) {
   const pecas = [];
+  const registro = lerRegistroFamilias(raiz);
   for (const semana of listarSemanas(raiz)) {
     const copys = lerCopys(raiz, semana);
     const indice = lerIndice(raiz, semana);
@@ -499,6 +564,7 @@ function montarCatalogo(raiz) {
           const editorialCapa = capaArq ? editorialDaPeca(capaArq.nome, relRepo(capaArq)) : null;
           const ehCapa = !ehCarrossel && capasPareadas.has(primeiro.nome);
           const videoDaCapa = ehCapa ? [...capaDoVideo].find(([, c]) => c.nome === primeiro.nome)[0] : null;
+          const revisao = registro.revisoes.get(chaveDoRegistro(relPeca)) || null;
           pecas.push({
             id: idDe(relPeca),
             capa: capaArq ? {
@@ -513,13 +579,14 @@ function montarCatalogo(raiz) {
             capaDe: videoDaCapa ? idDe(path.posix.dirname(relPeca) + '/' + videoDaCapa) : null,
             capaOrfa: !ehCarrossel && primeiro.tipo === 'imagem' && /-capa.png$/i.test(primeiro.nome) && !ehCapa,
             caminho: relPeca,
-            familia: familia(relPeca),
+            familia: revisao ? `registro/${revisao.familia}` : familia(relPeca),
+            revisao: revisao ? { ...revisao } : null,
             modificadoEm: new Date(Math.max(...grupo.map((a) => fs.statSync(a.abs).mtimeMs))).toISOString(),
             versao,
             semana: { numero: semana.numero, inicio: semana.inicio, fim: semana.fim, mes: semana.mes },
             estado,
             tipo: ehCarrossel ? 'carrossel' : primeiro.tipo,
-            titulo: copy && estado !== 'historico' ? `${copy.codigo} · ${limparTitulo(copy.titulo)}` : nomeCurto,
+            titulo: copy && (estado !== 'historico' || revisao?.vigente) ?`${copy.codigo} · ${limparTitulo(copy.titulo)}` : nomeCurto,
             nome: nomeCurto,
             codigo: codigo || null,
             legenda,
@@ -555,6 +622,27 @@ function montarCatalogo(raiz) {
           });
         }
       }
+    }
+  }
+  // Vínculo explícito capa -> Reel do registro (sufixo de tamanho ou outra semana
+  // quebram o pareamento por nome). A capa vinculada entra na família do Reel e
+  // nunca vira peça própria no Feed. Reel ausente do acervo: a capa fica como está.
+  for (const [capaCaminho, reelCaminho] of registro.capas) {
+    const capa = pecas.find((p) => chaveDoRegistro(p.caminho) === capaCaminho && p.tipo === 'imagem');
+    const reel = pecas.find((p) => chaveDoRegistro(p.caminho) === reelCaminho && p.tipo === 'video');
+    if (!capa || !reel) { console.error(JSON.stringify({ codigo: 'familias-capa-sem-par' })); continue; }
+    capa.capaDe = reel.id; capa.capaOrfa = false; capa.familia = reel.familia;
+    capa.vinculoCapa = 'registro';
+    reel.capa = { pecaId: capa.id, nome: capa.arquivos[0].nome, url: capa.arquivos[0].url, sha1: capa.arquivos[0].sha1 };
+  }
+  // Aceite composto do Reel (W-A2): a versão sela vídeo + capa + legenda. Trocar a
+  // capa, o vídeo ou a legenda gera versão nova, e o aceite anterior deixa de valer.
+  // `versaoArquivos` continua sendo só a dos arquivos da peça, para conferir cópias.
+  for (const p of pecas) {
+    p.versaoArquivos = p.versao;
+    if (p.tipo === 'video' && p.capa) {
+      p.versao = versaoComposta(p.arquivos.map((a) => a.sha1), p.capa.sha1, p.legenda);
+      p.composicao = { video: p.arquivos.map((a) => a.sha1), capa: p.capa.sha1, capaPecaId: p.capa.pecaId, legenda: p.legenda ? 'incluida' : 'sem-legenda' };
     }
   }
   // A base pode estar em aprovados e a variante em para-aprovacao. Ligamos
@@ -597,24 +685,37 @@ function enriquecer(raiz, pecas) {
     const cp = pecas.find((x) => x.id === id);
     return !!cp && aprovacoes.some((a) => a.id === cp.id && a.versao === cp.versao);
   };
+  // Capa de Reel superado é superada junto: ela não pode ser aprovada sozinha.
+  const superadas = new Set(pecas.filter((p) => p.revisao?.superada).map((p) => p.id));
   return pecas.map((p) => {
-    const aceite = aprovacoes.filter((a) => a.id === p.id && a.versao === p.versao).at(-1) || null;
-    const aceiteAntigo = !aceite && aprovacoes.some((a) => a.id === p.id);
+    const superada = superadas.has(p.id) || (!!p.capaDe && superadas.has(p.capaDe));
+    const pendente = !superada && !!p.revisao?.pendencia;
+    // A vigente escolhida no registro decide pelo registro, mesmo guardada em historico.
+    const estado = p.revisao?.vigente && p.estado === 'historico' ? 'para-aprovacao' : p.estado;
+    const aceiteDaVersao = aprovacoes.filter((a) => a.id === p.id && a.versao === p.versao).at(-1) || null;
+    // Aceite de revisão superada fica no histórico e não vale mais para publicar.
+    const aceite = superada ? null : aceiteDaVersao;
+    const aceiteAntigo = !aceiteDaVersao && aprovacoes.some((a) => a.id === p.id);
     const ajuste = ajustes.filter((a) => a.id === p.id && a.versao === p.versao).at(-1) || null;
     const pedido = fila.filter((r) => r.pecaId === p.id).at(-1);
     const plano = planejados.find((c) => c.id === p.id && c.versao === p.versao) || null;
-    const capaSemAceite = !!p.capaDe && p.estado !== 'historico' && !aceite;
-    const aprovada = !capaSemAceite && (p.estado === 'aprovados' || !!aceite);
-    let estadoEfetivo = p.estado;
-    if (capaSemAceite) estadoEfetivo = ajuste ? 'ajuste-pedido' : 'aguardando-aceite';
-    else if (p.estado === 'para-aprovacao') estadoEfetivo = aceite ? 'aprovada' : ajuste ? 'ajuste-pedido' : 'aguardando-aceite';
-    else if (p.estado === 'aprovados') estadoEfetivo = 'aprovada';
+    const capaSemAceite = !!p.capaDe && estado !== 'historico' && !aceite;
+    // Reel em aprovados sem aceite composto: a pasta cobre o vídeo; a capa precisa do aceite dela.
+    const capaDoReelPendente = !aceite && estado === 'aprovados' && !!p.composicao && !capaAprovada(p.capa.pecaId);
+    const aprovada = !superada && !pendente && !capaSemAceite && !capaDoReelPendente && (estado === 'aprovados' || !!aceite);
+    let estadoEfetivo = estado;
+    if (superada) estadoEfetivo = 'superada';
+    else if (capaSemAceite) estadoEfetivo = ajuste ? 'ajuste-pedido' : 'aguardando-aceite';
+    else if (estado === 'para-aprovacao') estadoEfetivo = aceite ? 'aprovada' : ajuste ? 'ajuste-pedido' : 'aguardando-aceite';
+    else if (estado === 'aprovados') estadoEfetivo = pendente || capaDoReelPendente ? 'aguardando-aceite' : 'aprovada';
     return {
       ...p,
+      revisao: p.revisao ? { ...p.revisao, superada } : (superada ? { superada: true, vigente: false, vigenteCaminho: null, familia: null, nome: null, pendencia: null } : null),
       capa: p.capa ? { ...p.capa, aprovada: capaAprovada(p.capa.pecaId) } : null,
       aprovada,
       estadoEfetivo,
       aceite,
+      aceiteSuperado: superada ? aceiteDaVersao : null,
       recusa: p.estado === 'historico' && Array.isArray(historico.recusas)
         ? historico.recusas.filter((r) => r.id === p.id && r.versao === p.versao).map((r) => ({ motivo: r.motivo, sucessora: r.sucessora, recusadoEm: r.recusadoEm, evidencia: r.evidencia })).at(-1) || null : null,
       // Aceite dado a uma versão anterior não vale para esta (Sentinel A07).
@@ -646,7 +747,10 @@ function listarPecas(raiz, filtros = {}) {
   if (filtros.semana) pecas = pecas.filter((p) => String(p.semana.numero) === String(filtros.semana));
   if (filtros.tipo) pecas = pecas.filter((p) => p.tipo === filtros.tipo);
   const semanas = listarSemanas(raiz).map((s) => ({ numero: s.numero, inicio: s.inicio, fim: s.fim, mes: s.mes }));
-  return { pecas, familias: agruparFamilias(pecas), semanas, total: pecas.length };
+  // Revisão superada não entra na fila nem no contador: só em familias[].superadas.
+  const familias = agruparFamilias(pecas);
+  const ativas = filtros.estado === 'superada' ? pecas : pecas.filter((p) => p.estadoEfetivo !== 'superada');
+  return { pecas: ativas, familias, semanas, total: ativas.length, totalSuperadas: pecas.length - ativas.length };
 }
 
 function obterPeca(raiz, id) {
@@ -743,7 +847,15 @@ function lerAnterior(raiz, pedido, peca, { resolver, executar, arquivo } = {}) {
   const copys = lerCopys(raiz, semana, ler);
   const legenda = codigo && copys[codigo] && grupo[0].nome !== 'COPYS-FINAIS.md' ? copys[codigo].legenda : null;
   const shas = grupo.map((a) => crypto.createHash('sha1').update(ler(path.join(raiz, a.rel))).digest('hex'));
-  if (versaoDeArquivos(shas, legenda) !== pedido.versaoAlvo) throw new ErroMarketing('anterior-divergente', 'O commit pai nao corresponde a versao pedida.', 409);
+  // Reel com capa: a versão pedida era composta; a capa é lida no mesmo commit.
+  let alvo = versaoDeArquivos(shas, legenda);
+  if (peca.composicao && peca.capa) {
+    const capaRel = decodeURIComponent(peca.capa.url.slice(1));
+    if (!caminhoDoAcervo(capaRel)) throw new ErroMarketing('anterior-indisponivel', 'Capa anterior nao comprovada.', 409);
+    const capa = Buffer.from(git(['show', `${ref}:${capaRel}`], 64 * 1024 * 1024));
+    alvo = versaoComposta(shas, crypto.createHash('sha1').update(capa).digest('hex'), legenda);
+  }
+  if (alvo !== pedido.versaoAlvo) throw new ErroMarketing('anterior-divergente', 'O commit pai nao corresponde a versao pedida.', 409);
   return { conteudo: ler(path.join(raiz, rel)), mime: protegido.mime, extras: protegido.extras || {} };
 }
 
@@ -770,7 +882,10 @@ module.exports = {
   documento,
   familia,
   agruparFamilias,
+  lerRegistroFamilias,
+  exigirVigente,
   versaoDeArquivos,
+  versaoComposta,
   lerAnterior,
   caminhoSeguro,
 };

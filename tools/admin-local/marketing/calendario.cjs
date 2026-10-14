@@ -101,7 +101,7 @@ function obterCalendario(raiz, mes) {
     const p = porId.get(plano.id);
     if (!p || p.versao !== plano.versao || !p.aprovada || plano.estado === 'desatualizado') {
       // Peça trocou de versão, saiu do acervo ou perdeu o aceite: o plano não vale mais.
-      desatualizados.push({ ...plano, estadoCronograma: 'desatualizado', proximoPasso: !p ? 'Confira o acervo e escolha outra peça.' : 'Atualize a lista e aceite a versão atual antes de planejar.', motivo: !p ? 'peça não está mais no acervo' : p.versao !== plano.versao ? 'peça mudou de versão depois do planejamento' : 'peça sem aceite para esta versão' });
+      desatualizados.push({ ...plano, estadoCronograma: 'desatualizado', proximoPasso: !p ? 'Confira o acervo e escolha outra peça.' : 'Atualize a lista e aceite a versão atual antes de planejar.', motivo: !p ? 'peça não está mais no acervo' : p.estadoEfetivo === 'superada' ? 'revisão superada por outra da mesma família' : p.versao !== plano.versao ? 'peça mudou de versão depois do planejamento' : 'peça sem aceite para esta versão' });
       continue;
     }
     const registro = { data: plano.data, hora: plano.hora || null, canal: plano.canal, observacao: plano.observacao || null, peca: resumoPeca(p),
@@ -159,6 +159,7 @@ function planejar(raiz, corpo = {}) {
     if (corpo.versao !== peca.versao) {
       throw new ErroMarketing('versao-mudou', 'A peça mudou depois que a tela foi aberta. Recarregue antes de planejar.', 409);
     }
+    require('./catalogo.cjs').exigirVigente(peca, 'O planejamento');
     if (!peca.aprovada) {
       throw new ErroMarketing('sem-aceite', 'Só peça aprovada nesta versão entra no calendário.', 409);
     }
