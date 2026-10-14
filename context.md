@@ -15127,3 +15127,194 @@ Pedido direto do autor: “Retomada 13/10 somente time Codex: autor quer termina
 
 **Erros e QA desta atualização.** A primeira leitura do context.md pelo PowerShell veio truncada e com encoding incorreto; foi refeita em UTF-8. A busca inicial não encontrou a pasta externa de 13/10, que apareceu enquanto Codex preparava os artefatos; o estado foi corrigido pela leitura posterior. Ledger só leu relatórios e hashes; não executou testes, Git, build, deploy, produção ou Meta. As sessões M2 de 07/10 e 02/10 e as convenções do vault foram lidas.
 
+
+
+## 13/10/2026 à noite (M1, Quill): apresentação do marketing no painel admin, pelo time PH
+
+**Pedido.** O autor achou a parte de marketing do painel confusa ("muita informação solta").
+A queixa completa está em `E:/Grana-temporarios/2026-10-13-marketing-ph/01-PEDIDO-DO-AUTOR.md`.
+Ela pede:
+- aprovação em galeria, com prévia e legenda;
+- ajuste por legenda, visual, design e copy dentro da prévia;
+- Reels separados dos estáticos, com a capa junto do Reel;
+- carrossel condensado;
+- `COPYS-FINAIS.md` fora da aprovação;
+- Calendário e Tráfego condensados;
+- vídeos na galeria do Antigravity.
+
+A nota relata dois incidentes de 12/10: um Reel antigo aprovado e publicado por engano, e uma
+capa que não foi junto com o Reel. O Orquestrador Supremo adotou a abordagem A do Compass (uma
+galeria por família, com apresentação por formato). A rodada ficou só com o time PH (Lumen,
+Vigil, Flare e Quill), e o backend ficou para o Harbor/Codex depois das 23h50.
+
+**Feito, com commit local e SEM push** (branch `feature/admin-panel-continuation`; 30 commits
+à frente de `origin/feature/admin-panel-continuation` no fim):
+
+| Entrega | Commits |
+| --- | --- |
+| Aprovação em galeria, janela "Prévia estimada do Instagram" com o Reel tocando dentro e o carrossel "1 de N"; a apresentação sai do Feed para `web/telas/_previa-publicacao.js` | `c5b46e3`, `ec345c3` |
+| Fichas Todos / Reels / Estáticos (Feed, Stories, Carrossel, Formato a conferir); capa dentro do Reel, também no contador do menu | `37bacfa`, `0d6422b` |
+| Pedido de ajuste por categoria dentro da janela, na mesma rota `POST /pecas/:id/ajuste`, com a categoria como prefixo do motivo | `eed04ac`, `f7046e1` |
+| `COPYS-FINAIS.md` fora da fila e do contador (`pecaDaFila`); no Acervo, selo "Referência editorial" | `18a0798` |
+| Correções de achados do Vigil (L1, L2, L5, L8, L9, C1, T1) e duas regressões do próprio Lumen, pegas por focais | `543e232`, `9ec3d7f`, `c2e0e79`, `e328b00`, `b7c1d65` |
+| Calendário com o mês no topo e o contexto em `<details>`; "Aprovados sem data (N)" recolhido; `?secao=sem-data` abre o bloco | `bd3b030`, `52b1532` |
+| Tráfego com as campanhas no topo e o bloqueio de verba resumido | `8359f43`, `52b1532` |
+| `scripts/galeria-midia.mjs` versionado sem alteração, depois com vídeos (scanner, MIME, Range, `<video>`) | `a78c069`, `0503ecc` |
+| S1: injeção de shell na ponte `maestri ask`, agora `execFile` sem shell; Origin/Host conferidos, com 403 | `5957a75` |
+| S2: `startsWith` trocado por `path.relative` | `5957a75` |
+| `.gitignore` com `docs/marketing/.lixeira/`, por decisão do autor de 13/10: os 52 arquivos são descarte | `45bbfb0` |
+
+**Testado:**
+- `npm run test:admin` e `npx tsc --noEmit` deram exit 0 no `0503ecc`, com quatro testes
+  novos no `test:admin`: `admin-galeria-aprovacao.cjs`, `admin-calendario-trafego-layout.cjs`,
+  `galeria-midia-videos.cjs` e `galeria-midia-seguranca.cjs`;
+- o focal de segurança deu exit 0 no `5957a75`;
+- os recibos estão em `E:/Grana-temporarios/2026-10-13-marketing-ph/recibos-lumen/`.
+
+O Vigil reconferiu no painel real (acervo real, porta 4327, conta fictícia `qa-vigil`
+recriada, `GRANA_ADMIN_SIMULAR=1`), em 320, 390, 768 e 1440 px:
+- galeria e janela sem rolagem horizontal;
+- Reel em 9:16 inteiro, com o `currentTime` andando;
+- Esc fecha e o vídeo pausa;
+- reduced-motion zera a animação;
+- L1, L2, L5, L8 e L9 passaram;
+- a grade do Calendário subiu de y=1295 para y=281 em 1440 px, e a página encolheu de 7061
+  para 1242 px;
+- as campanhas do Tráfego subiram de y=898 para y=477.
+
+**Gate F3/F4.** O exit 1 do snapshot do Sentinel vinha da cópia: ela excluía o
+`google-services.json` versionado e não tinha `.git`. Num clone que imita o checkout da CI, no
+`03f981d`, `test:ci` e `tsc` deram exit 0, e o manifesto não mudou
+(`E:/Grana-temporarios/2026-10-13-marketing-ph/vigil/gate/`). Esse gate **não** cobre os
+commits do Lumen.
+
+**NÃO verificado** (checklist):
+- [x] Corrigido por ele mesmo em 14/10 00h: o Vigil repetiu o gate num clone novo igual à CI, no `45bbfb0` e no HEAD final `5957a75`, e os dois deram `npm ci`, `test:ci` (9302 linhas, 0 FALHOU, `galeria-midia-seguranca` OK) e `tsc` com exit 0. O manifesto de 2250 arquivos não mudou e o status ficou vazio (`vigil/gate-5957a75/`). Continuam fora os jobs `deno check` e "segredos" da CI;
+- [ ] envio real de pedido de ajuste no acervo real; as categorias só foram vistas na fixture AUDIT;
+- [ ] a galeria do Antigravity num navegador; o script nunca foi executado;
+- [ ] revisão do Watchtower para S1/S2;
+- [x] C1 (`e328b00`) visto na tela pelo Vigil em 14/10 00h: a seção fica em y=72, abaixo do cabeçalho, que termina em 61 px, nas quatro larguras;
+- [ ] **T1 (`b7c1d65`) NÃO passou na tela** (Vigil, 14/10 00h, acervo real, `vigil-para-lumen-t1.md`). O commit filtra `d.situacao` (`web/telas/trafego.js:38`), mas a frase repetida vem de `d.avisos` (`marketing/trafego.cjs:51`, renderizada em `trafego.js:39`). O teste não pegou porque a fixture não tem portas. A segunda volta, `8bf85af`, filtra `d.avisos`, e o teste passou a usar o DTO real. O Vigil viu a correção na tela em 390, 768 e 1440 px; falta 320 px, e repetir tudo nos bytes congelados;
+- [ ] leitor de tela, Safari e Firefox.
+
+**Fica para o Harbor/Codex, depois das 23h50:**
+- modelo família/revisão (o C14 v6/v7 ainda aparece como duas famílias; a tela só avisa
+  "Outra versão na fila");
+- vínculo explícito capa→Reel (lista do Flare em `relatorio-flare.md`, seção 3; as capas
+  1080x1920 da semana 41 não pareiam);
+- aceite composto vídeo+capa;
+- `destino`/`papel` no DTO (a tela já lê os dois);
+- guarda do publicador real;
+- **o v8-pop tem aceite de 07/10, mas o autor disse em 12/10 que é a versão errada: é risco
+  de publicação enquanto o backend não registrar isso**;
+- decisão sobre os briefings `.md` em `historico/briefings/`;
+- a ponte da galeria devolve `ok:true` mesmo quando o `execFile` falha (sai só um `console.log`; regra 9);
+- **o Keel recebeu às 20:26 (`ordem-keel.md`, pedido explícito do autor) o backend das duplicatas; até 23:41 não havia relatório nem commit dele**;
+- integração da branch, push e commit deste `context.md`, que também tem WIP do Ledger;
+- as deleções em `docs/marketing` feitas pela galeria em 12/10.
+
+**Incidente de 12/10, reconstituído pelo Flare** a partir do histórico do Antigravity.
+O vídeo correto (`grana-reels-notificacao-1.mp4`) estava só na raiz do vault, fora do
+repositório. O errado (`grana-reels-v8-pop.mp4`) tinha o mesmo nome da capa aprovada e um
+aceite válido por hash. O agente externo publicou pelos próprios scripts, sem passar pelo
+painel. Não se achou post avulso de capa na Meta. A leitura provável (hipótese) é que o autor
+descreve o feed simulado do painel, onde a capa aparece como card.
+
+**Decisões do autor de 13/10 sobre o registro de famílias** (fonte:
+`E:/Grana-temporarios/2026-10-13-marketing-ph/PARA-O-CODEX-AO-VOLTAR.md`, consolidadas em
+`conferencia-flare-familias.md`):
+- **D1, Reel da padaria (~20h25):** o vigente é o `grana-reels-notificacao-1.mp4` (16,8 s,
+  publicado em 12/10). O `grana-reels-v8-pop.mp4` fica superado: não é aprovável, vai para o
+  histórico, e o `calendario.json` deixa de apontar para ele. A capa
+  `grana-reels-v8-pop-capa-1080x1920.png` pertence ao notificacao-1.
+- **D2, R13 (~20h40):** o vigente é o `reel-r13-final.mp4`. A v3 fica superada, o ajuste de
+  07/10 fica atendido, e as 4 variantes `final-com-aviso-*` não foram escolhidas.
+- **D3, C14 (~20h55):** o vigente é o `lumen-v7`, com ajuste pendente; o `lumen-v6` fica
+  superado. Essa decisão prevalece sobre a `ordem-keel.md` das 20h26.
+- **Meta:** o token do `.env` venceu em 12/10 às 19h, então não há leitura nem publicação.
+- **Lixeira:** as 52 remoções pendentes podem ser commitadas.
+
+Em 14/10 00h, o autor decidiu que o time Claude coda até o fim e o time Codex só revisa
+(`02-RODADA-14-10-CLAUDE-CODA-CODEX-REVISA.md`). O Keel aplica as decisões acima no backend,
+e o vault já foi corrigido: há aviso no registro do v8 e a perene "Estilos de Vídeo"
+foi revisada.
+
+**Rodada de 14/10: entregas registradas até ~00h50** (detalhe na nota de sessão
+`2026-10-14 - M1 - Fechamento do painel admin (Claude coda, Codex revisa)`):
+
+- **Keel (linhas 1 e 2), freeze `6b0d4c0`**, com os commits `634276f`, `6db036f`, `0a9af01`,
+  `43f09c7` e `6b0d4c0`:
+  - o registro `docs/marketing/painel/familias.json` define as famílias e a vigente, sem a
+    pasta de estado na identidade. Registro inválido ou sem `nome` falha fechado;
+  - revisão superada sai da fila e do contador. O servidor recusa com 409 `revisao-superada`
+    aprovar, pedir ajuste, planejar, vincular e promover, e recusa também nos casos
+    `familia-pendente`, `ajuste-aberto` e `capa-sem-registro`;
+  - a capa vem do registro e nunca vira post;
+  - o aceite composto do Reel cobre vídeo, capa e legenda;
+  - a galeria responde 410 no pedido de correção, e o único caminho de correção é a fila do
+    painel;
+  - as decisões D1 a D3 foram aplicadas, a semana 42 tem a cópia do notificacao-1 (SHA-1
+    `95eee60e…`) e o `calendario.json` foi reapontado.
+  - **Recibos** no `keel-snapshot/`, um `git archive 0a9af01`: `test:admin` exit 0, `tsc`
+    exit 0, e o manifesto `keel-manifesto-0a9af01.sha256` deu 14/14 OK no Flare.
+  - **Sem verificação:** nada visto no navegador e nada de HTTP real.
+  - **Depois do freeze:** o `a227da5`, por decisão do Supremo, moveu com `git mv` o v8-pop e a
+    r13-v3 para `historico` e a `reel-r13-final.mp4` para `para-aprovacao/pecas/r13/`, onde
+    ela espera o aceite do autor. O ajuste de 07/10 sobre a v3 foi encerrado como atendido.
+  - **Reels em `aprovados`:** por decisão do Supremo, `da2c4fb` exige o aceite composto
+    também ali. `1fac3dd` deu ao motion base e ao notificacao-1 um composto **derivado** dos
+    aceites datados existentes, sem aceite novo do autor. No focal do Keel nesses commits
+    (`keel-focais-da2c4fb.log`), 7 testes passaram e **`admin-cronograma` FALHOU**. A causa veio do
+    `a227da5`: o teste copiava os bytes do v8-pop do caminho antigo. O `df87158` (04:43) mudou
+    só a origem da cópia, sem afrouxar a asserção. O recibo verde veio no freeze `e788118`.
+  - **Vigil no `a227da5`, em clone descartável:** as superadas ficam fora das ativas e o servidor
+    recusa com 409 (6 de 6); POST sem CSRF dá 403. O `aprovar` na lumen-v7 deu 200, quando se
+    esperava 409 `ajuste-aberto`, provavelmente porque a fila do clone não tem os pedidos; não
+    está confirmado. O Feed (C7c) e o contador não foram conferidos.
+  - **K1, gravidade alta (Vigil, volta 2 no `da2c4fb`, com cópia da fila real):** a lumen-v7
+    continua **aprovável com três pedidos de ajuste abertos**. A guarda `ajuste-aberto`
+    (`aprovacoes.cjs:101`) só olha os ajustes de `aprovacoes.json`, e os pedidos da v7 vivem
+    só na fila privada. É o cenário do incidente de 12/10. **Corrigido no `e788118`:** o `aprovar` lê a fila privada
+    e recusa com 409 qualquer pedido aberto para a peça, em qualquer versão; fila ilegível dá
+    503. **Novo freeze da linha 1: `e788118`**, com `test:admin` e `tsc` exit 0 no snapshot limpo
+    `keel-snapshot-3` e manifesto `keel-manifesto-e788118.sha256`. **O Vigil reconferiu com a cópia da fila
+    real (volta 3): 409 `ajuste-aberto`. K1 passou.** Nessa
+    volta, o C7c passou (nenhuma capa como post no Feed) e o contador mostra 9.
+  - **Lumen `9127873`:** Aprovação e Acervo consomem o contrato (superadas só para consulta,
+    `estadoEfetivo`, filtro "Substituídas"), com o teste novo
+    `admin-aprovacao-contrato-familias.cjs`.
+  - **R5 e o motion "desistiu"** continuam com duas versões aprováveis, porque ficam fora das
+    decisões de 13/10.
+- **Lumen (linha 3):**
+  - `8bf85af`: o T1, já descrito acima;
+  - `0a5bb5f`: o F4-1, sem id, hash nem chave de recibo no texto das telas de marketing, nem
+    em bloco recolhido, com os testes exigindo a ausência.
+  - A tela que consome o contrato do Keel (`keel-contrato-dto.md`) e a frente de acabamento
+    visual de todo o painel (`03-ACABAMENTO-VISUAL-DO-PAINEL.md`) seguem em andamento.
+- **Flare (linha 5):** o registro `0a9af01` confere com D1 a D3 e com o mapa capa→Reel. Ficam
+  abertos o C7c (capa fora do Feed, a confirmar pelo Vigil) e a mudança física do v8.
+- **Vigil (linha 4):**
+  - a galeria do Antigravity foi vista na tela, rodando dentro de um clone isolado, com os
+    achados G1 a G4 para o Lumen;
+  - o T1 do `8bf85af` foi visto em 390, 768 e 1440 px;
+  - foi adotado o manifesto com dois hashes, o do disco (CRLF) e o do blob git.
+- **Quill (linha 6), vault:**
+  - o registro do v8 ganhou um aviso de contexto;
+  - registro novo: `03 - Marketing/Reels do Padeiro - Versão Vigente com Notificação`;
+  - a perene "Estilos de Vídeo" foi revisada em 14/10.
+- **Revisores do Codex** no limite até 04h53. Nenhum "DE ACORDO" ainda, e nada de push.
+
+**Alerta do Flare, para decisão do autor:** o histórico local do Antigravity, em
+`~/.gemini/antigravity-cli/brain/`, guarda em texto puro os tokens da Meta colados em 12/10
+(nenhum valor foi registrado aqui). O mesmo agente criou um bucket público `marketing` no
+Supabase com a service role.
+
+**Antes da rodada:** o commit `03f981d` fez o guardião das caixas retomar os orquestradores
+depois do limite de uso. Ele roda no terminal "Despertador" do canvas e recusa rodar sem
+`MAESTRI_PIPE`. As rotinas AutoWake ficaram pausadas, e o lançador `.vbs` da pasta
+Inicializar foi removido.
+
+**Registros:**
+- nota de sessão em `00 - Sessões/2026-10-13 - M1 - Painel admin marketing (time PH)`;
+- perene `01 - Código/Cobertura de Testes` atualizada;
+- relatórios em `E:/Grana-temporarios/2026-10-13-marketing-ph/`.
