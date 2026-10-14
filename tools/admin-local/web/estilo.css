@@ -402,9 +402,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .tela-acoes { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-wrap: wrap; gap: var(--s-sm); justify-content: flex-end; }
 
+/* Botão fantasma não tem borda: o texto dele, e não a caixa, é que alinha com a coluna. */
+.tela-acoes > .botao-fantasma:last-child { margin-right: calc(-1 * var(--s-md)); }
+.tela-subtitulo { margin-top: var(--s-xs); }
+
 @media (max-width: 640px) {
   .tela-cabecalho { grid-template-columns: minmax(0, 1fr); }
   .tela-acoes { grid-column: 1; grid-row: auto; justify-content: flex-start; }
+  .tela-acoes > .botao-fantasma:last-child { margin-right: 0; }
+  .tela-acoes > .botao-fantasma:first-child { margin-left: calc(-1 * var(--s-md)); }
 }
 
 .secao { margin-top: var(--s-secao); }
@@ -2775,7 +2781,7 @@ dialog.feed-post[open] { animation: modal-entra 240ms var(--ease-saida); }
 @media (max-width: 640px) {
   .faixa-simulado { flex-wrap: wrap; }
   .faixa-simulado > p { flex-basis: calc(100% - var(--s-lg)); }
-  .faixa-simulado > button { margin-left: var(--s-lg); }
+  .faixa-simulado > button { margin-left: calc(var(--s-lg) - var(--s-md)); }
   .faixa-simulado > button { white-space: normal; }
 }
 
