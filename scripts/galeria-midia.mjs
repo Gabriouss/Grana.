@@ -21,9 +21,12 @@ function dentroDaBase(relativo) {
 // Rotas que escrevem só aceitam pedido desta página: Host do próprio servidor e, quando o
 // navegador manda Origin, a mesma origem. Outro site aberto no navegador recebe 403.
 const ORIGENS = [`http://127.0.0.1:${PORT}`, `http://localhost:${PORT}`];
-function pedidoDaPropriaPagina(req) {
+function hostDoServidor(req) {
   const host = String((req.headers && req.headers.host) || '').toLowerCase();
-  if (!ORIGENS.some((o) => o.slice('http://'.length) === host)) return false;
+  return ORIGENS.some((o) => o.slice('http://'.length) === host);
+}
+function pedidoDaPropriaPagina(req) {
+  if (!hostDoServidor(req)) return false;
   const origem = req.headers && req.headers.origin;
   return origem === undefined || ORIGENS.includes(String(origem).toLowerCase());
 }
@@ -183,6 +186,11 @@ function agruparMidias(lista) {
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
+  // Leitura também: Host estranho é outro site resolvendo para 127.0.0.1 (achado G4 do Vigil).
+  if (!hostDoServidor(req)) {
+    res.writeHead(403);
+    return res.end('Host recusado.');
+  }
   if (req.method !== 'GET' && req.method !== 'HEAD' && !pedidoDaPropriaPagina(req)) {
     res.writeHead(403);
     return res.end('Origem recusada.');
@@ -367,10 +375,10 @@ const server = http.createServer((req, res) => {
   </div>
 
   <!-- Lightbox Expandido -->
-  <div class="lightbox-overlay" id="lightboxOverlay" onclick="fecharLightbox(event)">
+  <div class="lightbox-overlay" id="lightboxOverlay" role="dialog" aria-modal="true" aria-labelledby="lightboxTitle" onclick="fecharLightbox(event)">
     <div class="lightbox-header">
       <div class="lightbox-title" id="lightboxTitle">Nome do Arquivo</div>
-      <button class="lightbox-close" onclick="fecharLightbox(null)">✕</button>
+      <button class="lightbox-close" id="lightboxClose" aria-label="Fechar" onclick="fecharLightbox(null)">✕</button>
     </div>
     <div class="lightbox-content">
       <img class="lightbox-img" id="lightboxImg" src="" alt="Ampliado" />
@@ -513,8 +521,15 @@ const server = http.createServer((req, res) => {
     }
 
     /* Lightbox Expandido */
+    let focoAntesDoLightbox = null;
+    function lightboxAberto() { return document.getElementById('lightboxOverlay').style.display === 'flex'; }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && lightboxAberto()) { e.preventDefault(); fecharLightbox(null); }
+    });
+
     function abrirLightbox(caminho, nome, evt) {
       if (evt) evt.stopPropagation();
+      if (!lightboxAberto()) focoAntesDoLightbox = document.activeElement;
       arquivoAbertoNoLightbox = caminho;
       document.getElementById('lightboxTitle').textContent = nome + ' (' + caminho + ')';
       const ehVideo = /\\.(mp4|webm|mov)$/i.test(caminho);
@@ -525,6 +540,7 @@ const server = http.createServer((req, res) => {
       if (ehVideo) { img.removeAttribute('src'); video.src = '/midia/' + encodeURIComponent(caminho); }
       else { pararVideoDoLightbox(); img.src = '/midia/' + encodeURIComponent(caminho); }
       document.getElementById('lightboxOverlay').style.display = 'flex';
+      document.getElementById('lightboxClose').focus();
     }
 
     function pararVideoDoLightbox() {
@@ -539,6 +555,9 @@ const server = http.createServer((req, res) => {
         pararVideoDoLightbox();
         document.getElementById('lightboxOverlay').style.display = 'none';
         arquivoAbertoNoLightbox = null;
+        const volta = focoAntesDoLightbox;
+        focoAntesDoLightbox = null;
+        if (volta && volta.isConnected && typeof volta.focus === 'function') volta.focus();
       }
     }
 

@@ -98,6 +98,14 @@ const zerar = () => { for (const k of Object.keys(chamadas)) chamadas[k].length 
     assert.equal(g.pedidoDaPropriaPagina({ headers: { host: '127.0.0.1:3847', origin: 'http://127.0.0.1:3847' } }), true);
     // GET continua liberado (a página e as mídias), mesmo sem Origin.
     assert.equal((await pedir('/api/imagens', { metodo: 'GET', headers: { host: HOST } })).status, 200);
+    // G4 do Vigil: leitura com Host estranho (rebinding) ou sem Host também recebe 403, sem a lista.
+    for (const headers of [{ host: 'evil.example:3847' }, {}, { host: 'localhost:9999' }]) {
+      for (const rota of ['/api/imagens', '/', '/midia/' + encodeURIComponent('semana/pecas/card.png')]) {
+        const r = await pedir(rota, { metodo: 'GET', headers });
+        assert.equal(r.status, 403, `GET ${rota} com Host ${headers.host || 'ausente'}`);
+        assert.equal(r.corpo.includes('card.png'), false, 'nada do acervo vaza');
+      }
+    }
 
     // S2: dentroDaBase e a lixeira recusam '..', absoluto e a pasta irmã.
     assert.equal(g.dentroDaBase('semana/pecas/card.png'), path.join(mk, 'semana/pecas/card.png'));

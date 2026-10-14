@@ -60,7 +60,7 @@ const pedir = (url, { metodo = 'GET', range } = {}) => new Promise((resolve) => 
   const fimOriginal = res.end.bind(res);
   res.end = (...a) => { const r = fimOriginal(...a); return r; };
   res.on('finish', () => resolve(res));
-  handler({ url, method: metodo, headers: range ? { range } : {} }, res);
+  handler({ url, method: metodo, headers: range ? { host: 'localhost:3847', range } : { host: 'localhost:3847' } }, res);
 });
 
 (async () => {
@@ -129,6 +129,9 @@ const pedir = (url, { metodo = 'GET', range } = {}) => new Promise((resolve) => 
     assert.ok(html.includes("item.midia === 'video'") && html.includes('controls playsinline preload="metadata" onclick="event.stopPropagation()"'));
     assert.ok(html.includes('/\\.(mp4|webm|mov)$/i'), 'regex do cliente chega com a barra');
     assert.ok(html.includes('pararVideoDoLightbox();'), 'fechar o lightbox para o vídeo');
+    // G2/G3 do Vigil: Esc fecha (e o fechar para o vídeo), o foco entra no X e volta para quem abriu.
+    assert.ok(html.includes("e.key === 'Escape' && lightboxAberto()") && html.includes("document.getElementById('lightboxClose').focus();"));
+    assert.ok(html.includes('role="dialog" aria-modal="true" aria-labelledby="lightboxTitle"') && html.includes('volta.focus()'));
     const script = html.slice(html.indexOf('<script>') + 8, html.lastIndexOf('</script>'));
     assert.doesNotThrow(() => new vm.Script(script), 'o JavaScript gerado para o navegador compila');
 
