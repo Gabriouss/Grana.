@@ -3,11 +3,11 @@ import { supabase } from '@/lib/supabase';
 import { consultarAdmin, ErroAdmin, reciboLocal, type AcessoAdmin, type RespostaAdmin, type VisaoAdmin } from '@/lib/admin-web';
 import { criarPrazoAdmin, type PrazoAdmin } from '@/lib/admin-auth-web';
 import AdminVisual from './AdminVisual.web';
+import type { EtapaAdminVisual } from './AdminVisual.web';
 
-type Etapa = 'carregando' | 'sem-sessao' | 'nao-admin' | 'pedir-totp' | 'pronto' | 'erro' | 'limite';
 type Fator = { id: string };
 export default function PainelAdmin() {
-  const [etapa, setEtapa] = useState<Etapa>('carregando');
+  const [etapa, setEtapa] = useState<EtapaAdminVisual>('carregando');
   const [erro, setErro] = useState<ErroAdmin | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [email, setEmail] = useState('');
