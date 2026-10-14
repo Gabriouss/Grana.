@@ -976,3 +976,29 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     - **Configuração por máquina.** A linha de status e os ganchos vivem em
       `.claude/settings.local.json` (ignorado pelo git); os scripts são
       versionados. A M2 precisa registrar os mesmos ganchos e a mesma rotina.
+
+28. **Toda atividade começa pela skill `economia-de-tokens`
+    (`.claude/skills/economia-de-tokens/SKILL.md`), e os modelos dos agentes
+    são escolhidos pelo tipo de tarefa, configurados pelo próprio orquestrador.**
+    Regra dada pelo autor em 14/10/2026: "criar uma regra pra buscar sempre a
+    melhor otimização de tokens [...] sempre rodar a skill quando for iniciar
+    uma atividade, configurar automaticamente os modelos da forma correta para
+    executar cada atividade por conta própria".
+
+    O motivo: na rodada do painel admin de 14/10, o autor viu muito token gasto
+    e pouco progresso na tela. O gasto estava na cerimônia: nove revisores,
+    relatórios longos, recibos de recibos e conferência de terminais em laço.
+
+    - **Antes de distribuir trabalho:** definir a entrega visível, o número
+      mínimo de agentes (um dono por entrega, revisor uma vez no fim sobre o
+      delta) e o modelo de cada um.
+    - **Modelo pela atividade:** mecânica em Haiku 5.5; execução com
+      especificação clara em Sonnet 5.5 medium; julgamento difícil (orquestração,
+      auditoria final, segurança, dinheiro, voz, migration) em Opus 5.5 medium.
+      `high` só depois que `medium` falhou. Pedido explícito do autor sobre um
+      terminal vale acima da tabela da skill.
+    - **O orquestrador troca o modelo sozinho** (`maestri ask "<agente>" --raw
+      "/model <modelo>"` + Enter), lendo o cabeçalho antes e depois, e avisa o
+      autor numa linha. Não precisa perguntar.
+    - Convive com a regra 27 (teto da conta PH) e com a regra 16 (revisão do
+      Codex só quando vale a pena).
