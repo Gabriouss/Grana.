@@ -15399,7 +15399,7 @@ Lynx revisou no lugar dos revisores Codex, só lendo. Todos os arquivos citados 
 `feature/admin-panel-continuation` (o `lumen-freeze-6` declarou `9bbb72d`, e o Lumen somou
 depois `14a7120` e `6b44a96`, só em `estilo.css`). **Gate do Vigil nesse SHA: APROVADO**
 (`vigil-handoff-final.md`, `vigil/gate-6b44a96/recibos/`): `npm ci` 0, `tsc` 0, `test:ci` 0
-(1582/1582 guardas), export com varredura de segredos 0, manifesto de 2.271 arquivos com delta 0.
+(as guardas do design system deram 1582/1582), export com varredura de segredos 0, manifesto de 2.271 arquivos com delta 0.
 Capturas: 32 (8 telas × 320/390/768/1440). O gate do `7b654b3`
 vem em duas etapas. A primeira é o `7b654b3` (abaixo), que passou no gate. A segunda é a fase
 de acabamento do Lumen por cima dele (mais abaixo). O `7b654b3` substitui o `84e2eca` (`06-FREEZE-VIGENTE.md`): a
@@ -15485,8 +15485,8 @@ critiquei recentemente?". A correção dele tinha sido feita em parte (`5631c68`
 - **Recibos no `9bbb72d`:** o `lumen-freeze-6/FREEZE.md` declara `test:admin`,
   `test:admin-estilo-final` e `tsc` em 0, mas sem `.log` nem `.exit` (O-6 do Lynx). Os
   recibos com arquivo são os do Lynx: `lynx-test-admin-9bbb72d.*` e
-  `lynx-test-admin-estilo-final-9bbb72d.*`, exit 0. O `tsc` no `9bbb72d` vem do gate do Vigil
-  (correção R-3). Do Lumen ficam o manifesto `manifesto-ui.sha256`; capturas
+  `lynx-test-admin-estilo-final-9bbb72d.*`, exit 0. O `tsc` não rodou no `9bbb72d`; o gate do
+  Vigil no `6b44a96` (delta só CSS) deu exit 0 (correção R-3, ajustada por R-4). Do Lumen ficam o manifesto `manifesto-ui.sha256`; capturas
   `antes6-`/`depois6-` em 320, 390, 768 e 1440; medidas `depois6-medidas.json`. Design System
   conferido, sem mudança. São recibos do dono, e não o gate integrado.
 - **Escopo, por decisão do autor:** só as telas de MARKETING, a 390, 768 e 1440. **Ficam
@@ -15538,6 +15538,8 @@ critiquei recentemente?". A correção dele tinha sido feita em parte (`5631c68`
 - [ ] as três recusas legadas sem `origem.versao` só foram conferidas lendo o acervo e o código (Keel); nenhuma foi exercitada no servidor;
 - [ ] dado real com pedidos de ajuste na janela (a fixture não tem `details.pedidos-tecnico`);
 - [ ] S4, S7 e S8 da auditoria visual, e 320/768 nas telas fora do marketing;
+- [ ] foco e teclado depois do `7b654b3`: nenhuma prova de foco rodou nos bytes do `6b44a96` (O-7 do Lynx; o delta não toca a grade do dialog, a decisão nem as áreas que rolam);
+- [ ] O-5 do Lynx, acoplamento na `.faixa-simulado` (`--s-lg` = ponto de 8 px + `gap`): se o ponto ou o gap mudarem, o alinhamento quebra sem aviso; candidato à próxima passada;
 - [ ] publicação real na Meta (critério 10), fora do escopo.
 
 **Árvore de trabalho, fora deste registro (O-4 do Lynx).** Há cerca de 40 PNG/SVG apagados sem
