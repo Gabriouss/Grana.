@@ -12,7 +12,11 @@ async function currentUserId(): Promise<string> {
 }
 
 async function buscar_fetchGoals(): Promise<Goal[]> {
-  const { data, error } = await supabase.from('goals').select('*').order('created_at', { ascending: true });
+  // Metas criadas na mesma transação podem ter o mesmo created_at. Sem
+  // desempate, uma nova consulta (inclusive após login) pode inverter a lista.
+  const { data, error } = await supabase.from('goals').select('*')
+    .order('created_at', { ascending: true })
+    .order('id', { ascending: true });
   if (error) throw error;
   return data;
 }
