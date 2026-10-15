@@ -222,3 +222,21 @@ sai da área que rola, porque no `84e2eca` a prova de foco deu 10 de 320 focos e
 (Cakto). Essas telas só foram vistas nos prints `antes6-`/`depois6-`, sem correção.
 
 Push da branch: Claude Code, depois do commit deste registro. Fusão com `main`: decisão do autor.
+
+## Lote da noite de 15/10/2026 (Meridian; base `6b44a96`, HEAD `bd81026`)
+
+Revisão do Lynx: `revisao-lynx-fases34-noite.md` (delta `f54e868` + `bd81026` DE ACORDO). Arquivos em `E:/Grana-temporarios/2026-10-13-marketing-ph/`. Nada rodado por mim; as provas são as de quem as produziu.
+
+- **N-2, W-C2b e H-02b fechados** no `28edb0f`: `calendario.cjs:103` e `cronograma.cjs:220,254` mandam o plano de capa antigo para `desatualizado` (K-A); `__tests__/admin-familias-ciclos.cjs:120-129` recusa aprovar, planejar e promover a origem preservada (K-B). Isto supera as linhas "aberto" de W-C2b e H-02b nas tabelas acima, que ficam como histórico.
+- **K-C / O-8:** 30 de 30 rodadas em laço e 16 de 16 em paralelo (2×8), todas exit 0 (`keel-noite/loop-resumo.txt`, `par-resumo.txt`). Não reproduziu; causa NÃO encontrada. Continua pendência de teste, e uma corrida sob carga (a falha do Lynx teve 49 `node`) não está descartada.
+- **K-D / F4.3 já existia:** alerta `entrega-parada` com mais de 10 min e vigia inativo em `ajustes-dto.cjs:33-34`, `lease-vencendo` em `:36-39`; `ajustes.js:22,41,60` leva à seção "Precisa de você" e ao contador. Testes: `admin-marketing-trilha.cjs:50-55`, `admin-demandas-contador.cjs:22-34`.
+- **F3.4 já existia:** atalho em `aprovacao.js:51` e "Marcar data no calendário" em `:423`; alvo `calendario.js:132`.
+- **O-1:** `aprovacao.js:149-156` devolve o foco ao "Pedir ajuste" no Esc; provado no Chromium pelo roteiro do Vigil.
+- **O-5 fechada** no `f54e868` (tokens `--faixa-ponto`, `--faixa-gap`, `--faixa-recuo` em `estilo.css:100-102`).
+- **S4, S7, S8:** medidos em 7 telas × 390/768/1440 (`lumen-noite/s4s7s8.json`): nenhum selo quebrando, paddings na escala; nada a corrigir.
+- **L-E / L-F (copy):** `bd81026` troca "Parecer de revisor não é aceite seu..." por "Só o botão Aprovar registra o seu aceite." (`aprovacao.js:447`) e tira travessões em `catalogo.cjs:505,524`. Só texto.
+- **Roteiro do Vigil no navegador, fixture AUDIT-F3F4:** 19/19, 0 falhas, no `f54e868` e de novo no `bd81026` (`vigil/fases34-*/f34.log`): F3-1 (aprovar → mover → cronograma → dia D → vínculo → planejada), F3-3, F4-1 (histórico sem ids), F4-2 (contador 11 → 9), F3.4 (foco em `#aprovados-sem-data`), O-7 (foco do diálogo Aprovar) e passo 6 (`chamadasMeta: 0`).
+- **Gate no `bd81026`: PENDENTE.** Parciais com recibo: `npm ci` exit 0 (203 s) e `tsc` exit 0 (9 s); `test:ci` e export/segredos sem recibo ainda, e o handoff `vigil-handoff-fases34-final.md` não chegou. A preencher.
+- **K-E (N-1 do Lynx, "Aceite não é publicação." em `aprovacoes.cjs:81`): hash PENDENTE**, a preencher quando o Keel avisar.
+
+**Continua sem teste:** leitor de tela, Safari, Firefox, celular real, dado real com pedidos de ajuste, as três recusas legadas do H-02c. **Depende do Codex/autor:** DE ACORDO de Watchtower, Harbor, Sentinel e Compass; reconciliar a frase "Meta real desligada"; V2; 32 vulnerabilidades.
