@@ -78,7 +78,7 @@ function anotarNoIndice(raiz, peca, registro) {
   const abs = path.join(raiz, rel);
   const atual = fs.readFileSync(abs, 'utf8');
   const relNaSemana = peca.caminho.slice(pastaDaSemana(peca).length + 1);
-  const linha = `- ${dataHoraLegivel(registro.aprovadoEm)}: ${EVIDENCIA}. Peça \`${relNaSemana}\`, versão \`${registro.versao.slice(0, 12)}\`. Registro em \`docs/marketing/painel/aprovacoes.json\`. Aceite não é publicação.`;
+  const linha = `- ${dataHoraLegivel(registro.aprovadoEm)}: ${EVIDENCIA}. Peça \`${relNaSemana}\`, versão \`${registro.versao.slice(0, 12)}\`. Registro em \`docs/marketing/painel/aprovacoes.json\`. Publicação pede passo próprio.`;
   let novo = atual.replace(/\s*$/, '\n');
   if (!novo.includes(TITULO_SECAO_INDICE)) {
     novo += `\n${TITULO_SECAO_INDICE}\n\nCada linha registra o aceite explícito do autor dado no painel local, para a versão indicada. Versão diferente precisa de novo aceite.\n\n`;
