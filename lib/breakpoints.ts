@@ -283,10 +283,18 @@ export function geometriaDaConversa({
   margem,
   razao,
   larguraMaxima,
+  insetInferior = 0,
 }: {
   fundo: RetanguloNaJanela;
   janela: { largura: number; altura: number };
   teclado: number;
+  /** Barra de navegação do sistema que a janela desenha por baixo (Android de
+      ponta a ponta). O `endCoordinates.height` do React Native vem SEM ela
+      (`ime.bottom - systemBars.bottom`, ReactRootView.java), e a
+      `useWindowDimensions` às vezes a inclui: medido em 15/10/2026 no APK de
+      desenvolvimento, o painel descia exatamente os 24 dp da barra e entrava
+      por baixo do teclado (V3). Zero onde não há essa sobreposição. */
+  insetInferior?: number;
   reservaDaBarra: number;
   /** Quanto do topo da janela é área insegura. Zero no Android e na web,
       onde a origem do `measureInWindow` já fica abaixo da barra de status. */
@@ -307,11 +315,22 @@ export function geometriaDaConversa({
      janela de conversa não encolhe por um quadro ao fechar o teclado. */
   const baseDaTela = aberto ? baseDoFundo : Math.max(baseDoFundo, janela.altura);
 
+  /* Onde o teclado do React Native começa a ser contado: acima da barra de
+     navegação. `insetInferior` é o inset de área segura, que só passa de zero
+     quando a janela desenha por baixo da barra; na tela que encolhe com o
+     teclado ele é zero e nada muda. O `max` usa a maior medida da tela vista
+     agora, porque o fundo que encolheu não serve de régua; o `min` mantém a
+     janela que já vem sem a barra (sonda de setembro, 840 dp) como estava.
+     Medido em 15/10/2026 no APK de desenvolvimento: fundo y 0 e 914,29 dp,
+     janela 914,29, inset 24, teclado 312,4; topo real do teclado 577,9 dp. */
+  const barra = Math.max(insetInferior, 0);
+  const baseSemBarra = Math.min(janela.altura, Math.max(baseDoFundo, janela.altura) - barra);
+
   const cima = Math.max(fundo.y, topoSeguro) + margem;
   const baixo =
     Math.min(
       baseDaTela,
-      janela.altura - alturaTeclado,
+      baseSemBarra - alturaTeclado,
       /* Com o teclado aberto a barra de abas fica atrás dele ou sob o fundo
          escurecido; é o teclado que manda. */
       aberto ? Infinity : baseDaTela - Math.max(reservaDaBarra, 0)

@@ -234,6 +234,35 @@ for (const [nome, pedida, recebida, teclado] of casos) {
     verificacoes++;
   }
 
+  /* V3 (15/10/2026), medido no APK de desenvolvimento 1080x2400 @420 com uma
+     sonda no Granachat: fundo y 0 e 914,29 dp, janela 914,29 (a tela inteira),
+     inset de baixo 24, teclado 312,4 (o RN o mede sem a barra de navegação).
+     Topo real do teclado: 1517 px = 577,9 dp. Sem o inset o painel ia até
+     1549 px, 32 px por baixo do teclado. */
+  {
+    const comInset = (fundo, janela, teclado, inset) => naJanela(geometriaDaConversa({
+      fundo: ret(fundo), janela: { largura: janela[0], altura: janela[1] }, teclado, reservaDaBarra: 117,
+      topoSeguro: 0, margem: MARGEM, razao: RAZAO, larguraMaxima: LARGURA_MAXIMA, insetInferior: inset,
+    }), fundo);
+    const hoje = comInset([0, 0, 411.43, 914.29], [411.43, 914.29], 312.4, 24);
+    assert.ok(perto(hoje.base, 577.89 - MARGEM), `V3: base em ${hoje.base}, esperado ${577.89 - MARGEM}`);
+    /* Com a origem no topo da tela, a barra de status (50,29) é área insegura:
+       o Granachat passa `insets.top + fundo.y` como topoSeguro. */
+    const comTopo = naJanela(geometriaDaConversa({
+      fundo: ret([0, 0, 411.43, 914.29]), janela: { largura: 411.43, altura: 914.29 }, teclado: 312.4, reservaDaBarra: 117,
+      topoSeguro: 50.29, margem: MARGEM, razao: RAZAO, larguraMaxima: LARGURA_MAXIMA, insetInferior: 24,
+    }), [0, 0, 411.43, 914.29]);
+    assert.ok(comTopo.topo >= 50.29 + MARGEM - 0.01, `V3: topo sob a barra de status (${comTopo.topo})`);
+    assert.ok(perto(comTopo.base, 577.89 - MARGEM), 'V3: e a base continua uma margem acima do teclado');
+    const semInset = comInset([0, 0, 411.43, 914.29], [411.43, 914.29], 312.4, 0);
+    assert.ok(semInset.base > 577.89, `V3: sem o inset a base cai sob o teclado (${semInset.base}), é o defeito`);
+    const antiga = comInset([0, -50.3, 411.4, 914.3], [411.4, 840], 312.4, 24);
+    assert.ok(perto(antiga.base, 527.6 - MARGEM), 'janela que já vem sem a barra (sonda de setembro): o inset não muda nada');
+    const encolhe = comInset([0, 0, 411.4, 527.6], [411.4, 816], 288.4, 0);
+    assert.ok(perto(encolhe.base, 527.6 - MARGEM), 'tela que encolhe (inset de área segura zero): igual a antes');
+    verificacoes += 6;
+  }
+
   /* O laço de `90a3469`: com a conta antiga, a leitura seguinte dependia da
      anterior. Aqui, a mesma entrada dá sempre a mesma saída, e a saída não é
      entrada de nada — rodar mil vezes seguidas não pode mover a janela. */

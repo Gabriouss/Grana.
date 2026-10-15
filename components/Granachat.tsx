@@ -126,15 +126,24 @@ export default function Granachat({
     janela: { largura: larguraJanela, altura: alturaJanela },
     teclado: alturaTeclado,
     reservaDaBarra,
-    /* No Android e na web a origem do `measureInWindow` já fica abaixo da
-       barra de status. No iOS a janela começa no topo da tela, com o recorte
-       da câmera dentro dela. */
-    topoSeguro: Platform.OS === 'ios' ? initialWindowMetrics?.insets.top ?? 0 : 0,
+    /* No iOS a janela começa no topo da tela, com o recorte da câmera dentro
+       dela. No Android, a parte do topo coberta pela barra de status: zero
+       quando a origem do `measureInWindow` já fica abaixo dela (fundo em
+       -50,3), a barra inteira quando a janela começa no topo da tela (fundo em
+       0, medido em 15/10/2026; sem isso o painel subia 2 px sob a barra, V3).
+       Na web não há barra. */
+    topoSeguro: Platform.OS === 'ios'
+      ? initialWindowMetrics?.insets.top ?? 0
+      : Platform.OS === 'android'
+        ? Math.max(0, (initialWindowMetrics?.insets.top ?? 0) + (fundo?.y ?? 0))
+        : 0,
     margem: spacing.md,
     razao: RAZAO_JANELA,
     /* Teto de LEITURA, não de aparelho: cerca de trinta vezes o corpo de texto
        dá uma linha confortável, e cresce junto quando a letra aumenta. */
     larguraMaxima: type.corpo * escalaTexto * 30,
+    /* A altura do teclado do Android vem sem a barra de navegação (V3). */
+    insetInferior: Platform.OS === 'android' ? initialWindowMetrics?.insets.bottom ?? 0 : 0,
   });
   /* O teto do campo é uma fração do PAINEL, não da tela: sobram sempre dois
      terços de conversa, num painel de qualquer tamanho. */
