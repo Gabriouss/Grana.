@@ -2127,6 +2127,9 @@ body:has(.aviso-inatividade:not([hidden])) .avisos { bottom: 168px; }
   border: 1px solid var(--rule);
   font-size: var(--t-nota);
 }
+/* o selo da amostra não herda a cor da amostra: tem fundo e tinta próprios (AA sobre qualquer amostra) */
+.ds-contraste .selo { background: var(--paper); color: var(--ink); border-color: var(--rule-strong); }
+
 
 /* Tipografia */
 .ds-tipos { display: flex; flex-direction: column; border-top: 1px solid var(--rule); }
@@ -2831,6 +2834,9 @@ dialog.feed-post[open] { animation: modal-entra 240ms var(--ease-saida); }
   .pedidos-linha > .selo { grid-column: 1; justify-self: start; max-width: 100%; white-space: normal; }
   .pedidos-ver { grid-column: 2; justify-self: end; }
 }
+
+/* resumo de <details> do cartão: alvo de toque de 44px */
+details.cartao > summary { min-height: var(--alvo); cursor: pointer; }
 
 /* texto só para leitor de tela */
 .so-leitor {
