@@ -540,10 +540,11 @@ export default function ContasScreen() {
                     <PrivacyValue>
                       <Text style={styles.cardAmount}>{`R$ ${formatMoney(Number(item.amount))}`}</Text>
                     </PrivacyValue>
-                    <Text style={styles.cardDue}>
-                      {`Vence ${formatDateLabel(item.due_date)}`} · {item.status === 'paid' ? 'toque para reabrir' : 'toque para pagar'}
+                    <Text style={styles.cardDue} numberOfLines={1}>
+                      {`Vence ${formatDateLabel(item.due_date)}`}
                     </Text>
                   </View>
+                  <Text style={styles.cardAcao}>{item.status === 'paid' ? 'toque para reabrir' : 'toque para pagar'}</Text>
                 </AppPressable>
                 <BotaoOpcoesItem
                   accessibilityLabel={`Opções de ${item.description}`}
@@ -656,6 +657,7 @@ const styles = StyleSheet.create({
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', columnGap: spacing.sm },
   cardAmount: { color: theme.ink, fontSize: type.corpo,
   lineHeight: lh(type.corpo, 'valor'), fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
+  cardAcao: { color: theme.inkFaint, fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio'), fontFamily: fonts.light },
   cardDue: { color: theme.inkFaint, fontSize: type.legenda,
   lineHeight: lh(type.legenda, 'apoio'), fontFamily: fonts.light, flex: 1, minWidth: 0, textAlign: 'right' },
   pill: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.pill },
