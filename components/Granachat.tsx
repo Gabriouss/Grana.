@@ -288,17 +288,27 @@ export default function Granachat({
      horas com a janela fechada, e é também o que troca a conversa na troca de
      conta: a consulta vai com a sessão atual, nunca com o estado antigo. O
      banco não é tocado, só o que a janela mostra. Durante um envio o estado
-     local manda: substituí-lo apagaria a pergunta que acabou de ser feita. */
+     local manda: substituí-lo apagaria a pergunta que acabou de ser feita.
+     Isso vale também para o envio que COMEÇA com a leitura ainda no ar
+     (achado do Forge, 15/10/2026): cada envio soma 1 em `enviosRef`, e a
+     leitura que volta depois de um envio é descartada; a tela só perde o que
+     passou do prazo, sem trocar a pergunta nova pelo histórico antigo. */
   const primeiraCargaRef = useRef(true);
+  const enviosRef = useRef(0);
   useEffect(() => {
     const primeira = primeiraCargaRef.current;
     if (!primeira && (!visivel || enviando)) return;
     primeiraCargaRef.current = false;
     let cancelado = false;
+    const enviosNoInicio = enviosRef.current;
     (async () => {
       try {
         const dados = await fetchMensagens(50);
         if (cancelado) return;
+        if (enviosRef.current !== enviosNoInicio) {
+          setMensagens((atual) => atual.filter((m) => dentroDoPrazo(m.criado_em)));
+          return;
+        }
         setMensagens(
           dados.map((m: MensagemAssistente) => ({
             id: m.id,
@@ -386,6 +396,7 @@ export default function Granachat({
       carregando: true,
     };
 
+    enviosRef.current += 1;
     setMensagens((prev) => [...prev, novaPergunta, placeholderResposta]);
     setEnviando(true);
     const controller = new AbortController();
