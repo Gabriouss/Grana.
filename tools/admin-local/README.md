@@ -77,10 +77,15 @@ Ações disponíveis, todas com diálogo de confirmação (resumo da ação, Can
   produção pronto. Preview nunca vai para produção por aqui.
 - **Preparar build**. Roda o mesmo script do
   `npm run build:preparar` (regra 5), que valida a nota, respeita o teto de 3
-  builds por semana (regra 22) e sobe a versão do `app.json`. **O painel não
-  dispara o `eas build`** (regra 4): ele devolve o comando pronto para colar no
-  terminal. Se já houver um preparo não commitado (o `app.json` da pasta
-  diferente do último commit), o painel recusa preparar outro.
+  builds por semana (regra 22) e sobe a versão do `app.json`, commita e publica
+  o preparo. **Preparar não dispara nada.** O disparo é uma ação à parte,
+  **Disparar build** (`/api/eas/disparar-build`), com o próprio diálogo de
+  confirmação: só roda com o preparo publicado, `HEAD` igual a `origin/main`,
+  árvore limpa e pacote sem arquivo sensível, e grava o estado do disparo antes
+  de chamar o EAS para um reinício não reenviar. Se o resultado for incerto, a
+  tela manda conferir o EAS (**Conferi no EAS: não saiu**, **Conferir nota**,
+  **Regravar nota**) antes de qualquer nova tentativa. Se já houver um preparo
+  não commitado, o painel recusa preparar outro.
 - **Aprovar peça, pedir ajuste, planejar no calendário e editar campanha de
   tráfego.** Grava só arquivos em `docs/marketing/painel/`, que **vão para o
   GitHub público** no próximo commit. Por isso o painel recusa texto que
@@ -195,4 +200,6 @@ Todo pedido leva `X-Grana-Admin: 1`, menos `/api/saude`.
   `?atualizar=1` ignora o cache curto, no máximo 6 vezes por minuto.
 - Ações (`POST`, login completo + CSRF): `/api/marketing/pecas/:id/{aprovar,ajuste}`,
   `/api/marketing/calendario`, `/api/marketing/trafego`, `/api/vercel/redeploy`,
-  `/api/eas/preparar-build`.
+  `/api/eas/{preparar-build,publicar-preparo,disparar-build,resolver-disparo,verificar-nota,regravar-nota}`,
+  `/api/marketing/pecas/:id/{promover,recusar}`, `/api/marketing/ajustes/{aceitar,retry,reenviar,encerrar}`,
+  `/api/marketing/ajustes/:id/anterior`, `/api/marketing/cronograma` e `/api/marketing/cronograma/vinculo`.
