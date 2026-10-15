@@ -22,6 +22,23 @@ function carregar(path, imports) {
   return exports;
 }
 
+/* lib/heuristics.ts REAL (e os imports relativos dele): o filtro de categorias por tipo
+   mora lá desde 15/10/2026 (`categoriaServeAoTipo`, a mesma regra do Granabô). */
+const libCache = new Map();
+function carregarLib(arquivo) {
+  if (libCache.has(arquivo)) return libCache.get(arquivo);
+  const exports = {};
+  libCache.set(arquivo, exports);
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync(arquivo, 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
+  }).outputText, { exports, console, JSON, Date, String, Object, Array, Error, Promise, RegExp, Number, Math, Set, Map, Intl,
+    require: (id) => {
+      if (id.startsWith('./')) return carregarLib('lib/' + id.slice(2) + '.ts');
+      throw new Error(`import não simulado em ${arquivo}: ${id}`);
+    } });
+  return exports;
+}
+
 // Mini-runtime: estado e refs por ordem de chamada, efeitos só quando as
 // dependências mudam. Suficiente para um componente só.
 let slots = [];
@@ -73,6 +90,7 @@ const Modal = carregar('components/CategoryPickerModal.tsx', {
     theme: {}, radius: {}, spacing: { xl: 24, md: 16 }, PALETTE_30: ['#000000'], fonts: {}, type: { apoio: 14 }, hitSlopPara: () => 0,
   },
   '@/lib/types': { CATEGORIES: [] },
+  '@/lib/heuristics': carregarLib('lib/heuristics.ts'),
   '@/lib/data': {
     addCategory: async () => {}, deleteCategory: async () => {}, updateCategory: async () => {},
     fetchApelidosCategoria: async () => [], fetchCategories: async () => categorias, seedDefaultCategories: async () => {},
