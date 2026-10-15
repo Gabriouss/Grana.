@@ -83,7 +83,7 @@ export default function AdminVisual({
   onEmailChange, onSenhaChange, onCodigoChange, onEntrar, onVerificar, onSair, onAtualizar,
 }: AdminVisualProps) {
   const dados = resumo?.dados;
-  const emAcesso = etapa === 'sem-sessao' || etapa === 'pedir-totp';
+  const emAcesso = etapa !== 'pronto';
 
   return (
     <>

@@ -253,28 +253,38 @@
   flex-direction: column;
 }
 
-/* Etapas de acesso: titulo, aviso e cartao formam uma coluna so, centrada pelo
-   fluxo. As margens automaticas dividem o espaco livre entre cabecalho e rodape;
-   em tela baixa o espaco some e a rolagem segue normal. */
+/* Telas de entrada (tudo que nao e o painel pronto): marca, titulo, cartao e
+   rodape formam UMA coluna, centrada na horizontal e na vertical pelo fluxo. As
+   margens automaticas do primeiro e do ultimo filho dividem o espaco livre;
+   em tela baixa (teclado aberto, fonte 200%) o espaco some e a rolagem segue
+   normal a partir do topo, sem cortar. */
 .admin-visual--acesso .admin-visual__conteudo {
   display: flex;
   flex: 1 0 auto;
   flex-direction: column;
 }
 
+.admin-visual--acesso .admin-visual__topo,
 .admin-visual--acesso .admin-visual__abertura,
-.admin-visual--acesso .admin-visual__principal {
+.admin-visual--acesso .admin-visual__principal,
+.admin-visual--acesso .admin-visual__rodape {
   width: min(100%, 480px);
   margin-inline: auto;
 }
 
+.admin-visual--acesso .admin-visual__topo {
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-block-start: auto;
+}
+
 .admin-visual--acesso .admin-visual__abertura {
-  margin-block: auto 24px;
   text-align: center;
 }
 
-.admin-visual--acesso .admin-visual__principal {
+.admin-visual--acesso .admin-visual__rodape {
   margin-block-end: auto;
+  text-align: center;
 }
 
 .admin-visual--acesso .admin-visual__recibo,
