@@ -22,7 +22,7 @@ const TELAS: Tela[] = [
  * lado a lado, mas as 5 telas principais do app dentro do MESMO bezel,
  * trocando por controle da pessoa (setas, pílulas com nome, teclado).
  *
- * Vocabulário de controle emprestado de `BeneficiosHorizontais.tsx`
+ * Vocabulário de controle emprestado de `BeneficiosHorizontais.tsx` (removido em 15/10/2026)
  * (índice/`irParaIndice`/`podeVoltar`/`podeAvancar`, indicador com
  * `accessibilityLiveRegion`, teclado ArrowLeft/ArrowRight) — mas aqui cada
  * tela tem NOME próprio (é uma aba real do app), não é intercambiável como

@@ -1849,7 +1849,7 @@ function ConteudoWeb() {
 }
 
 // `sombraCard` mudou pra `lib/theme.ts` (03/09/2026) pra também ser
-// reaproveitada por `BeneficiosHorizontais.tsx`, que tinha um valor ad hoc
+// reaproveitada por `BeneficiosHorizontais.tsx` (removido em 15/10/2026, sem uso desde 13/09), que tinha um valor ad hoc
 // só um pouco diferente deste — ver o import no topo do arquivo.
 
 /* Fica FORA do `StyleSheet.create` de propósito — dentro dele, o validador
