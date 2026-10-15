@@ -502,7 +502,7 @@ function editorialDaPeca(nome, relativoRepo) {
       tipo: 'visual-candidata',
       variante: 'revisao-06',
       copyEmbutida: 'divergente',
-      fonteCopy: 'FUNIL 17.3 — decisão editorial do autor',
+      fonteCopy: 'FUNIL 17.3, decisão editorial do autor',
     };
   }
   for (const reel of REELS_EDITORIAIS) {
@@ -521,7 +521,7 @@ function editorialDaPeca(nome, relativoRepo) {
         ...(ehCapa ? {
           duplicataVisual: {
             sha1Confirmado: reel.sha1CapasConfirmado,
-            fonteConfirmacao: 'Autor — hash confirmado',
+            fonteConfirmacao: 'Autor, hash confirmado',
             arquivos: [`${reel.base}-capa.png`, `${reel.base}-narrado-capa.png`],
           },
         } : {}),

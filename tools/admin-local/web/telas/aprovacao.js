@@ -444,7 +444,7 @@ export async function montar(raiz, ctx) {
     if (p.indice) {
       detalhe.appendChild(h('details', { class: 'aprovacao-mais peca-indice' },
         h('summary', { texto: 'Linha do índice da semana (pareceres e pendências)' }),
-        h('p', { class: 'campo-ajuda', texto: 'Parecer de revisor não é aceite seu. Só o botão Aprovar registra aceite.' }),
+        h('p', { class: 'campo-ajuda', texto: 'Só o botão Aprovar registra o seu aceite.' }),
         // F4-1: a chave manifesto#item@versão, UUID e hash ficam só no INDICE.md; na tela, o vínculo aparece em palavras.
         ctx.markdown(p.indice.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map((x) => semIdTecnico(x.trim())).filter(Boolean).map((x) => `- ${x}`).join('\n'))));
     }
