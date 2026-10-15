@@ -172,6 +172,10 @@ for (const [url, tipo, params] of links) {
   conferir(`interpreta ${tipo}`, acao?.tipo === tipo, acao);
   conferir(`converte parâmetros de ${tipo}`, !!acao && JSON.stringify(acaoParaParams(acao)) === JSON.stringify(params), acao && acaoParaParams(acao));
 }
+/* scan-qr desativado (15/10/2026): nos dois schemes registrados vira link desconhecido. */
+for (const scheme of ['grana://', 'com.gabriouss.grana://', 'granaapp://', 'granaapp:///']) {
+  conferir(`scan-qr desativado em ${scheme}`, parseDeepLink(`${scheme}scan-qr`) === null);
+}
 conferir('rejeita depósito sem id', parseDeepLink('com.gabriouss.grana://deposit-goal') === null);
 
 /* ── A URL inicial que o Android entrega atrasado ─────────────────────────

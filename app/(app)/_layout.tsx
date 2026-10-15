@@ -326,8 +326,8 @@ function BotaoGranabo({
 }
 
 /**
- * Roteia os deep links de atalho (grana://add-tx, scan-qr, safe-to-spend) para
- * a Home, que é quem tem os modais de lançamento e de leitura de nota.
+ * Roteia os deep links de atalho (grana://add-tx, safe-to-spend) para
+ * a Home, que é quem tem os modais de lançamento.
  * Fica aqui, dentro da área logada, e não no layout raiz: um atalho só faz
  * sentido depois da sessão existir, e o layout raiz já usa o mesmo canal de
  * Linking para os links de confirmação de e-mail (parseDeepLink devolve null

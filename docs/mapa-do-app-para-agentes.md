@@ -51,8 +51,8 @@ cabeçalho da Início. Telas fora do grupo: `sign-in`, `sign-up`, `nova-senha`
 (só pelo link do e-mail), `assinar`, `ativar`, `termos`, `privacidade`,
 `exclusao-de-dados`, e a landing `app/index.tsx` (é página web, fora do
 emulador). Atalhos `grana://` existem em `lib/deep-links.ts` (`add-tx`,
-`scan-qr`, `safe-to-spend`, `add-credit`, `add-bill`, `bills`, `goals`,
-`deposit-goal`), mas foram tirados da tela do Perfil e servem só para teste.
+`safe-to-spend`, `add-credit`, `add-bill`, `bills`, `goals`,
+`deposit-goal`), mas foram tirados da tela do Perfil e servem só para teste. O `scan-qr` (leitor de QR da nota) foi desativado em 15/10/2026.
 
 ### Início (`app/(app)/index.tsx`)
 - Cabeçalho: avatar (abre Perfil), olho de **ocultar valores**, seletor de

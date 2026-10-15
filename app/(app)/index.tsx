@@ -63,7 +63,6 @@ import PasteReceiptModal from '@/components/PasteReceiptModal';
 import { referenciaDosParametros, referenciaParaParametros, type ReferenciaDaFala } from '@/lib/data-da-fala';
 import VoiceEntryButton from '@/components/VoiceEntryButton';
 import ImportarExtratoModal from '@/components/ImportarExtratoModal';
-import QrScannerModal from '@/components/QrScannerModal';
 import FotoNotaModal from '@/components/FotoNotaModal';
 import MonthlyWrappedModal from '@/components/MonthlyWrappedModal';
 import { carregarNotifPrefs, scheduleDailyHabitReminder, cancelDailyHabitReminder } from '@/lib/notifications';
@@ -162,7 +161,6 @@ export default function InicioScreen() {
   const [falaGuardadaDaRevisao, setFalaGuardadaDaRevisao] = useState<string | undefined>(undefined);
   const [widgetGoalId, setWidgetGoalId] = useState<string | null>(null);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
-  const [qrModalOpen, setQrModalOpen] = useState(false);
   const [fotoNotaOpen, setFotoNotaOpen] = useState(false);
   const [wrappedOpen, setWrappedOpen] = useState(false);
   const [wrapped, setWrapped] = useState<MonthlyWrapped | null>(null);
@@ -482,7 +480,7 @@ export default function InicioScreen() {
     }
   }, [isDemoMode]);
 
-  /* Atalhos por deep link (grana://add-tx, scan-qr, safe-to-spend). O
+  /* Atalhos por deep link (grana://add-tx, safe-to-spend). O
      roteamento acontece em app/(app)/_layout.tsx, que empurra a ação para cá
      como query param; aqui só executamos. Os params são limpos logo em
      seguida com replace — sem isso, voltar para a Home reabriria o mesmo
@@ -519,8 +517,6 @@ export default function InicioScreen() {
     } else if (params.acao === 'revisao') {
       // Toque na notificação "não foi salvo" da fila offline.
       setRevisaoAberta(true);
-    } else if (params.acao === 'scan-qr') {
-      setQrModalOpen(true);
     } else if (params.acao === 'deposit-goal' && params.goalId) {
       setWidgetGoalId(params.goalId);
     }
@@ -1955,16 +1951,6 @@ export default function InicioScreen() {
         transactions={transactions}
         bills={bills}
         carteira="Total"
-      />
-
-      {/* Leitor de QR Code de nota fiscal (NFC-e) */}
-      <QrScannerModal
-        visible={qrModalOpen}
-        onClose={() => setQrModalOpen(false)}
-        onSuccess={() => {
-          triggerToast('Nota fiscal lançada');
-          load();
-        }}
       />
 
       {/* Foto da nota: valor total lido no aparelho (OCR) */}

@@ -7,9 +7,12 @@
  * Ambos aceitam as mesmas ações; manter os dois evita quebrar links de
  * autenticação já enviados por e-mail.
  *
+ * `scan-qr` (leitor de QR Code da nota) foi DESATIVADO em 15/10/2026: não tinha
+ * mais botão no app, só abria por esta rota, e a Política de Privacidade deixou
+ * de descrevê-lo. Vale para QUALQUER scheme (o parser descarta o scheme), e
+ * a URL volta a ser tratada como link desconhecido (null). *
  * Ações:
  *   grana://add-tx?amount=50,00&desc=Almoco&type=out&category=Alimentacao
- *   grana://scan-qr
  *   grana://safe-to-spend
  *   grana://add-credit
  *   grana://add-bill
@@ -24,7 +27,6 @@
 
 export type AcaoDeepLink =
   | { tipo: 'add-tx'; amount: string | null; desc: string | null; txType: 'in' | 'out'; category: string | null }
-  | { tipo: 'scan-qr' }
   | { tipo: 'safe-to-spend' }
   | { tipo: 'add-credit' }
   | { tipo: 'add-bill' }
@@ -66,8 +68,6 @@ export function parseDeepLink(url: string): AcaoDeepLink | null {
         txType: normalizarTipo(ler('type')),
         category: ler('category'),
       };
-    case 'scan-qr':
-      return { tipo: 'scan-qr' };
     case 'safe-to-spend':
       return { tipo: 'safe-to-spend' };
     case 'add-credit':
