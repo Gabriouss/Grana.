@@ -61,8 +61,47 @@ function nucleoDaResposta(texto: string): string {
     .join(' ');
 }
 
+/** Começo do recibo que avisa que um lançamento à espera de resposta foi
+ *  abandonado (ver `lancamentoPendenteDescartado`). Como o recibo de gravação,
+ *  é fronteira: a busca do pedido anterior não passa dele. */
+export const RECIBO_DE_DESCARTE = 'Deixei de lado o lançamento';
+
+const ORDINAIS = ['primeira', 'segunda', 'terceira', 'quarta', 'quinta', 'sexta', 'setima', 'oitava', 'nona', 'decima'];
+
+/** "assinatura" responde "Assinaturas": só o "s" final de cada palavra cai. */
+const semPlural = (s: string) => s.split(' ').map((p) => (p.length > 3 ? p.replace(/s$/, '') : p)).join(' ');
+
+/** As opções de uma pergunta de lista do lançamento, ou null se não for uma. */
+function opcoesDaPergunta(pergunta: string): string[] | null {
+  const lista = pergunta.trim().match(/(?:Qual destas é a certa|Em qual cartão foi):\s*(.+)\?\s*Ainda não registrei nada\.$/);
+  return lista ? lista[1].split(/,\s*/).filter(Boolean) : null;
+}
+
+function mesmaOpcao(nucleo: string, opcao: string): boolean {
+  const alvo = nucleoDaResposta(opcao);
+  return alvo === nucleo || semPlural(alvo) === semPlural(nucleo);
+}
+
+/** A opção que a resposta escolhe: pelo nome, no singular ou no plural, pela
+ *  posição ("6", "opção 6") ou pelo ordinal ("a sexta", "o primeiro"). */
+function opcaoEscolhida(atual: string, opcoes: string[]): string | null {
+  const nucleo = nucleoDaResposta(atual);
+  if (!nucleo) return null;
+  const porNome = opcoes.find((opcao) => mesmaOpcao(nucleo, opcao));
+  if (porNome) return porNome;
+  const posicao = nucleo
+    .replace(/\b(?:opcao|numero)\b/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .map((palavra) => palavra.replace(/o$/, 'a'))
+    .join(' ');
+  const indice = /^\d{1,2}[aª]?$/.test(posicao) ? parseInt(posicao, 10) - 1 : ORDINAIS.indexOf(posicao);
+  return indice >= 0 && indice < opcoes.length ? opcoes[indice] : null;
+}
+
 /**
- * Se a mensagem atual responde à pergunta que o chat acabou de fazer.
+ * A resposta à pergunta que o chat acabou de fazer, já resolvida, ou null se a
+ * mensagem não responde a ela.
  *
  * Em 16/09/2026, "Coloca em Alimentação", respondendo à pergunta de categoria,
  * era lida como pedido NOVO por ter o verbo "coloca" — sem o valor da mensagem
@@ -72,42 +111,107 @@ function nucleoDaResposta(texto: string): string {
  * resposta, tirado o verbo, precisa ser SÓ o que foi perguntado — uma das
  * opções listadas, um valor, ou um dia. "lança uber 15 reais" depois da
  * pergunta continua sendo pedido novo.
+ *
+ * Opção escolhida volta com o nome da lista: "a sexta" e "6" viram
+ * "Assinaturas", porque o interpretador acha a categoria pelo nome, não pela
+ * posição (prints do autor, 13/10/2026).
  */
-function respondePerguntaPendente(atual: string, pergunta: string): boolean {
-  if (!pergunta.trim().endsWith(AINDA_NAO_REGISTREI)) return false;
+function respostaDaPergunta(atual: string, pergunta: string): string | null {
+  if (!pergunta.trim().endsWith(AINDA_NAO_REGISTREI)) return null;
   const nucleo = nucleoDaResposta(atual);
-  if (!nucleo) return false;
-  const lista = pergunta.match(/(?:Qual destas é a certa|Em qual cartão foi):\s*(.+)\?\s*Ainda não registrei nada\.\s*$/);
-  if (lista) {
-    return lista[1].split(/,\s*/).some((opcao) => nucleoDaResposta(opcao) === nucleo);
-  }
+  if (!nucleo) return null;
+  const opcoes = opcoesDaPergunta(pergunta);
+  if (opcoes) return opcaoEscolhida(atual, opcoes);
   if (/Não identifiquei o valor/.test(pergunta)) {
-    return /^(?:r\s+)?\d+(?:[.,]\d{1,2})?(?:\s+(?:reais?|real|contos?|pila|paus?|centavos?))?$/.test(nucleo);
+    return /^(?:r\s+)?\d+(?:[.,]\d{1,2})?(?:\s+(?:reais?|real|contos?|pila|paus?|centavos?))?$/.test(nucleo) ? atual : null;
   }
   if (/não achei o vencimento/.test(pergunta)) {
-    return /^(?:dia\s+)?\d{1,2}(?:\/\d{1,2}(?:\/\d{2,4})?)?$/.test(nucleo);
+    return /^(?:dia\s+)?\d{1,2}(?:\/\d{1,2}(?:\/\d{2,4})?)?$/.test(nucleo) ? atual : null;
   }
-  return false;
+  return null;
 }
+
+function ehPedidoNovo(texto: string): boolean {
+  return PEDIDO_DE_LANCAMENTO.test(texto) || (SINAL_DE_LANCAMENTO.test(texto) && FATO_NUMERICO.test(texto));
+}
+
+/**
+ * Depois de uma pergunta de lista (categoria, cartão), uma mensagem com número
+ * que traz outra coisa além do número e de uma das opções é outro lançamento:
+ * "uber 20", digitado com "Meli+ 113 reais" à espera da categoria, não pode
+ * virar "Meli+" gravado em Transporte. "Alimentação, foi 12,50 reais" continua
+ * sendo resposta com correção de valor.
+ */
+function trazOutroLancamento(atual: string, pergunta: string): boolean {
+  const opcoes = opcoesDaPergunta(pergunta);
+  if (!opcoes || !/\d/.test(atual)) return false;
+  const resto = nucleoDaResposta(atual)
+    .replace(/\br\s*(?=\d)/g, ' ')
+    .replace(/\d+(?:[.,]\d+)*/g, ' ')
+    .replace(/[.,/]+/g, ' ')
+    .replace(/\b(?:reais?|real|contos?|pila|paus?|mangos?|centavos?)\b/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+  return !!resto && !opcoes.some((opcao) => mesmaOpcao(resto, opcao));
+}
+
+const perguntaDoLancamento = (item: MensagemHistorico | undefined): string | null =>
+  item?.papel === 'assistente' && item.texto.trim().endsWith(AINDA_NAO_REGISTREI) ? item.texto : null;
+
+/** Se a mensagem, vinda logo depois da pergunta, continua o mesmo lançamento. */
+function continuaOPedido(texto: string, pergunta: string): boolean {
+  return respostaDaPergunta(texto, pergunta) !== null || (!ehPedidoNovo(texto) && !trazOutroLancamento(texto, pergunta));
+}
+
+/**
+ * O pedido que a última pergunta do lançamento deixou em aberto, e as
+ * respostas já dadas a perguntas anteriores do mesmo pedido.
+ *
+ * A pergunta terminada em "Ainda não registrei nada." é a prova de que a
+ * mensagem antes dela pediu um lançamento, com verbo ou sem. Até 15/10/2026 a
+ * busca exigia verbo ou "gastei/comprei" na frase original: "Meli+ 113 reais"
+ * não tem nenhum dos dois, a resposta "Assinaturas" seguia sozinha para o
+ * interpretador, e o Granabô dizia que não achou o valor, em laço (prints do
+ * autor, 13/10/2026).
+ */
+function pedidoPendente(historico: MensagemHistorico[]): { pedido: string; esclarecimentos: string[] } | null {
+  const esclarecimentos: string[] = [];
+  for (let i = historico.length - 1; i >= 1; i -= 2) {
+    const fala = historico[i - 1];
+    if (!perguntaDoLancamento(historico[i]) || fala.papel !== 'usuario' || !fala.texto.trim()) return null;
+    const perguntaAnterior = perguntaDoLancamento(historico[i - 2]);
+    if (!perguntaAnterior || !continuaOPedido(fala.texto, perguntaAnterior)) {
+      return { pedido: fala.texto.trim(), esclarecimentos: esclarecimentos.reverse() };
+    }
+    esclarecimentos.push((respostaDaPergunta(fala.texto, perguntaAnterior) ?? fala.texto).trim());
+  }
+  return null;
+}
+
+type Origem = { atual: string; anterior: string | null; esclarecimentos: string[] };
 
 /** A mensagem atual e, quando ela só esclarece um pedido anterior, a frase
  *  desse pedido. Um lugar só decide isso, para o texto financeiro e o nome do
  *  lançamento nunca discordarem sobre qual foi o pedido. */
-function origemDoLancamento(
-  mensagem: string,
-  historico: MensagemHistorico[]
-): { atual: string; anterior: string | null } {
+function origemDoLancamento(mensagem: string, historico: MensagemHistorico[]): Origem {
   const atual = mensagem.trim();
-  if (!atual) return { atual, anterior: null };
+  const sozinha: Origem = { atual, anterior: null, esclarecimentos: [] };
+  if (!atual) return sozinha;
 
-  const ultima = historico[historico.length - 1];
-  const respondePergunta = ultima?.papel === 'assistente' && respondePerguntaPendente(atual, ultima.texto);
+  const pergunta = perguntaDoLancamento(historico[historico.length - 1]);
+  const resposta = pergunta ? respostaDaPergunta(atual, pergunta) : null;
 
   /* Uma nova mensagem que pede o lançamento é a fonte inteira, sem misturar
      números de uma conversa anterior — a não ser que ela só responda à
      pergunta que o chat acabou de fazer. */
-  if (!respondePergunta && (PEDIDO_DE_LANCAMENTO.test(atual) ||
-      (SINAL_DE_LANCAMENTO.test(atual) && FATO_NUMERICO.test(atual)))) return { atual, anterior: null };
+  if (resposta === null && ehPedidoNovo(atual)) return sozinha;
+
+  /* Com uma pergunta do lançamento à espera, o pedido é o que ela perguntou. */
+  if (pergunta) {
+    if (resposta === null && trazOutroLancamento(atual, pergunta)) return sozinha;
+    const pendente = pedidoPendente(historico);
+    if (pendente) return { atual: resposta ?? atual, anterior: pendente.pedido, esclarecimentos: pendente.esclarecimentos };
+  }
 
   /* Um pedido que já virou lançamento não é mais pedido: o recibo de gravação
      é a fronteira, e a busca não passa dele. Até 19/09/2026 passava. Com
@@ -116,6 +220,8 @@ function origemDoLancamento(
      sem "reais" não conta como fato numérico), era juntada ao pedido do café,
      e o Granabô gravava OUTRO café de R$ 5,00 confirmando que tinha dado
      certo. Visto na conta de teste: três "Cafe gelado R$ 5,00" (achado W5).
+     O recibo de descarte é fronteira pelo mesmo motivo: o pedido abandonado
+     não volta a ser juntado a uma mensagem posterior.
 
      A junção continua valendo enquanto o pedido está em aberto, inclusive
      depois de uma pergunta livre do modelo ("Qual cartão você usou?"), que é
@@ -123,14 +229,15 @@ function origemDoLancamento(
   let fonteAnterior: MensagemHistorico | undefined;
   for (let i = historico.length - 1; i >= 0; i--) {
     const item = historico[i];
-    if (item.papel === 'assistente' && item.texto.trim().endsWith(RECIBO_DE_LANCAMENTO)) break;
+    if (item.papel === 'assistente' &&
+        (item.texto.trim().endsWith(RECIBO_DE_LANCAMENTO) || item.texto.trim().startsWith(RECIBO_DE_DESCARTE))) break;
     if (item.papel === 'usuario' && SINAL_DE_LANCAMENTO.test(item.texto) &&
         (FATO_NUMERICO.test(item.texto) || PEDIDO_DE_LANCAMENTO.test(item.texto))) {
       fonteAnterior = item;
       break;
     }
   }
-  return { atual, anterior: fonteAnterior ? fonteAnterior.texto : null };
+  return { atual: resposta ?? atual, anterior: fonteAnterior ? fonteAnterior.texto : null, esclarecimentos: [] };
 }
 
 /**
@@ -142,15 +249,41 @@ export function textoLancamentoConfiavel(
   mensagem: string,
   historico: MensagemHistorico[] = []
 ): string {
-  const { atual, anterior } = origemDoLancamento(mensagem, historico);
+  const { atual, anterior, esclarecimentos } = origemDoLancamento(mensagem, historico);
   if (anterior === null) return atual;
 
   /* Respostas de esclarecimento podem trazer o valor ou as parcelas (quando
-     a primeira mensagem só dizia o que foi comprado). Ponha a resposta
-     primeiro para uma correção explícita de valor vencer a antiga. */
-  return FATO_NUMERICO.test(atual)
-    ? `${atual} ${anterior}`.trim()
-    : `${anterior} ${atual}`.trim();
+     a primeira mensagem só dizia o que foi comprado). Ponha as que trazem
+     número primeiro, a mais recente antes, para uma correção explícita de
+     valor vencer a antiga. */
+  const respostas = [atual, ...[...esclarecimentos].reverse()];
+  const comValor = respostas.filter((texto) => FATO_NUMERICO.test(texto));
+  const semValor = respostas.filter((texto) => !FATO_NUMERICO.test(texto)).reverse();
+  return [...comValor, anterior, ...semValor].join(' ').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Recibo de que um lançamento à espera de resposta foi abandonado, ou null.
+ *
+ * O pedido pendente só vive enquanto a última mensagem do Granabô é a pergunta
+ * dele. Se a pessoa muda de assunto, ou pede outro lançamento, ele sai de cena,
+ * e isso precisa ser dito: o silêncio deixaria a pessoa achando que os
+ * R$ 113,00 da pergunta foram gravados. O recibo vai ANTES da resposta, para
+ * uma pergunta nova continuar terminando em "Ainda não registrei nada.".
+ */
+export function lancamentoPendenteDescartado(
+  mensagem: string,
+  historico: MensagemHistorico[],
+  registros: Registro[]
+): string | null {
+  const pergunta = perguntaDoLancamento(historico[historico.length - 1]);
+  if (!pergunta) return null;
+  const tentouLancar = registros.some((registro) => registro.nome === 'criarLancamento');
+  if (tentouLancar && origemDoLancamento(mensagem, historico).anterior !== null) return null;
+  const citado = pergunta.match(/de "([^"]+)" \(R\$ ([\d.,]+)\)/);
+  return citado
+    ? `${RECIBO_DE_DESCARTE} de "${citado[1]}" (R$ ${citado[2]}): ele ficou sem registro.`
+    : `${RECIBO_DE_DESCARTE} que esperava resposta: ele ficou sem registro.`;
 }
 
 /**

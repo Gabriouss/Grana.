@@ -262,12 +262,16 @@ async function comRelogio(instante, fn) {
     gravados = [];
     const [, novo] = await conversa(['lança energético 10,99 no crédito C6', 'lança uber 15 reais']);
     igual(gravados.map((g) => [g.p_payload.description, g.p_payload.amount]), [['Uber', 15]], 'pedido completo depois da pergunta é pedido novo, sem o valor antigo');
-    ok(!/Energ/.test(novo), 'e não confirma o energético');
+    /* Desde 15/10/2026 o pedido abandonado ganha recibo antes da resposta. */
+    const reciboDescarte = 'Deixei de lado o lançamento de "Energético" (R$ 10,99): ele ficou sem registro. ';
+    ok(novo.startsWith(reciboDescarte), 'o energético abandonado ganha recibo de descarte');
+    ok(!/Energ/.test(novo.slice(reciboDescarte.length)), 'e não confirma o energético');
 
     gravados = [];
     const [, semValor] = await conversa(['lança energético 10,99 no crédito C6', 'lança um café']);
     igual(gravados.length, 0, '"lança um café" depois da pergunta não herda os R$ 10,99');
-    ok(semValor.startsWith('Não identifiquei o valor'), 'e pede o valor do café');
+    ok(semValor.startsWith(reciboDescarte + 'Não identifiquei o valor'), 'e pede o valor do café, com o recibo do energético antes');
+    ok(semValor.endsWith('Ainda não registrei nada.'), 'a pergunta do café continua sendo a pergunta pendente');
 
     gravados = [];
     await conversa(['lança energético 10,99 no crédito C6', 'coloca em Viagens']);

@@ -690,7 +690,10 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     return false;
   }
   const tipo = heuristics.guessTypeFromText(textoFinanceiro);
-  const descricao = heuristics.descricaoDoLancamento(textoFinanceiro, tipo) || 'Lançamento por voz';
+  /* A palavra que só repete a categoria sai do nome ("Meli+ assinatura" em
+     Assinaturas vira "Meli+"), a mesma regra do Granabô. */
+  const semCategoria = (nome: string) => (nome ? heuristics.semNomeDaCategoria(nome, categoria.name) : nome);
+  const descricao = semCategoria(heuristics.descricaoDoLancamento(textoFinanceiro, tipo)) || 'Lançamento por voz';
 
   // Boleto antes de crédito: "boleto no cartão" é boleto. Mesma ordem do bot.
   if (heuristics.ehIntencaoBoleto(texto)) {
@@ -817,7 +820,8 @@ async function lancarNoCredito(args: {
   /* O nome sai de novo, agora que o cartão é conhecido: sem isso "crédito C6"
      ficava grudado no lançamento ("Almoço crédito C6"). Ver
      `descricaoDoLancamento`. */
-  const descricaoNoCartao = heuristics.descricaoDoLancamento(texto, 'out', cartao) || descricao;
+  const nomeNoCartao = heuristics.descricaoDoLancamento(texto, 'out', cartao);
+  const descricaoNoCartao = (nomeNoCartao && heuristics.semNomeDaCategoria(nomeNoCartao, categoria.name)) || descricao;
 
   /* No crédito a data decide a fatura (data na voz, regras 3.5 e 3.6): uma
      data em outra fatura pode cair numa fatura fechada ou já paga, e o

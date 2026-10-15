@@ -17,7 +17,7 @@ const deps = {
   /* O dublê acompanha o que a tarefa chama: sem `descricaoDoLancamento` (16/09/2026)
      a tarefa quebrava e toda fala caía em "Não consegui salvar". */
   './heuristics': { guessAmountFromText: () => 32, guessCategoryFromText: () => ({ name: 'Alimentação', color: '#fff' }),
-    guessTypeFromText: () => 'out', descricaoDoLancamento: () => 'mercado', ehIntencaoBoleto: () => false,
+    guessTypeFromText: () => 'out', descricaoDoLancamento: () => 'mercado', semNomeDaCategoria: (nome) => nome, ehIntencaoBoleto: () => false,
     ehIntencaoCredito: () => true, matchCardByText: () => matched, matchWalletByText: () => null,
     /* Tipo 'out' acima: compra, então não é entrada com intenção de crédito. */
     entradaComIntencaoDeCredito: () => false,

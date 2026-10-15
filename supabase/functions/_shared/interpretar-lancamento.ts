@@ -224,7 +224,15 @@ export function limparReferenciaCartao(text: string, card: CartaoBusca): string 
  * é intenção de crédito e continua entrada. Uma regra só para o Granabô; cópia de `lib/heuristics.ts` (voz no app e no widget), travada pelo `sync-parser`.
  */
 export function entradaComIntencaoDeCredito(text: string, cards: CartaoBusca[]): boolean {
-  if (!ehIntencaoCredito(text)) return false;
+  /* "Reembolso" tira a frase de `ehIntencaoCredito`, que serve para decidir
+     COMPRA no cartão. Aqui a pergunta é outra: a fala põe dinheiro entrando
+     no cartão? "reembolso de 40 da farmácia no crédito" põe, e era gravada
+     como entrada pelo Granabô e pelo widget (autor, 15/10/2026: "Os dois
+     fazem o mesmo: mandar para revisão."). "Recebi um crédito de 500" não
+     cita cartão e continua entrada. */
+  const citaCartao = !/\bd[eé]bito\b/i.test(text) &&
+    /\b(?:no|na|pelo|pela)\s+(?:cr[eé]dito|cart[aã]o)\b|\bcart[aã]o\s+de\s+cr[eé]dito\b/i.test(text);
+  if (!ehIntencaoCredito(text) && !citaCartao) return false;
   const cartao = matchCardByText(text, cards);
   return guessTypeFromText(cartao ? limparReferenciaCartao(text, cartao) : text) === 'in';
 }
@@ -865,4 +873,39 @@ export function descricaoDoLancamento(text: string, type: TxType, card?: CartaoB
   const HOJE = /(?:^|\s)(?:(?:de|para|pra)\s+)?hoje(?:\s+(?:cedo|de\s+manh[ãa]|[àa]\s+(?:tarde|noite)))?(?![\p{L}\d])/giu;
   const semCartao = card ? limparReferenciaCartao(text, card) : text;
   return guessDescFromText(semCartao.replace(HOJE, ' ').replace(FORMA_PAGAMENTO_INICIAL, ''), type);
+}
+
+/**
+ * Tira do nome do lançamento a palavra que só diz a categoria. "113 reais
+ * Meli+ assinatura" era gravado em Assinaturas com o nome "Meli+ assinatura"
+ * (prints do autor, 13/10/2026): o nome repetia a categoria. Vale no singular
+ * e no plural, com ou sem acento, em qualquer caixa. Precedida de preposição a
+ * palavra faz parte do nome e fica ("Plano de saúde"). Sobrou nada, o nome é a
+ * própria categoria. As constantes são locais pelo mesmo motivo de
+ * `descricaoDoLancamento`: o `sync-parser` compara o corpo entre as cópias.
+ */
+export function semNomeDaCategoria(descricao: string, categoria: string): string {
+  const PREPOSICAO = /^(?:de|do|da|dos|das|para|pra|pro|com|sem)$/i;
+  const chave = (texto: string) => texto
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/[.,;:!?]+$/g, '')
+    .split(/\s+/).filter(Boolean)
+    .map((palavra) => (palavra.length > 3 ? palavra.replace(/s$/, '') : palavra))
+    .join(' ');
+  const alvo = chave(categoria);
+  const palavras = descricao.trim().split(/\s+/).filter(Boolean);
+  if (!alvo || !palavras.length) return descricao.trim();
+  const tamanho = alvo.split(' ').length;
+  const restantes: string[] = [];
+  for (let i = 0; i < palavras.length; i++) {
+    const anterior = restantes[restantes.length - 1];
+    if (chave(palavras.slice(i, i + tamanho).join(' ')) === alvo && !(anterior && PREPOSICAO.test(anterior))) {
+      i += tamanho - 1;
+      continue;
+    }
+    restantes.push(palavras[i]);
+  }
+  if (restantes.length === palavras.length) return descricao.trim();
+  const resto = restantes.join(' ');
+  return resto ? resto.charAt(0).toUpperCase() + resto.slice(1) : categoria;
 }

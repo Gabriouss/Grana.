@@ -35,7 +35,11 @@ const FRASES = {
   'estorno de 40 da farmácia no crédito': null,
   'devolução de 80 no cartão C6': null,
   'devolução de 80 no cartão de crédito': null,
-  'reembolso de 40 da farmácia no crédito': ENTRADA(40),
+  /* Reembolso no cartão também não grava, em nenhuma entrada (autor,
+     15/10/2026: "Os dois fazem o mesmo: mandar para revisão."). Até então o
+     Granabô e o widget gravavam como ENTRADA de 40. */
+  'reembolso de 40 da farmácia no crédito': null,
+  'reembolso de 40 no cartão C6': null,
   'recebi um crédito de 500 do salário': ENTRADA(500),
   'mercado 32 no crédito do C6': { grava: true, type: 'out', amount: 32, card_id: 'c6', payment_method: 'credit' },
 };
@@ -51,6 +55,7 @@ const DESTINOS = {
   'devolução de 80 no cartão de crédito': 'revisao',
   'devolução de 80 cartão C6': 'revisao',
   'reembolso de 40 da farmácia no crédito': 'revisao',
+  'reembolso de 40 no cartão C6': 'revisao',
   'recebi um crédito de 500 do salário': 'revisao',
   'mercado 32 no crédito do C6': 'credito',
   'mercado 32 cartão C6': 'credito',

@@ -123,6 +123,8 @@ function carregar({ acesso, acessoError = null }) {
           return { resposta: 'resposta do teste', registros: [], recuperado: false };
         },
         respostaFinalSegura: (resposta) => resposta,
+        // Sem pergunta de lançamento pendente no histórico deste teste.
+        lancamentoPendenteDescartado: () => null,
         exemploElegivel: () => false,
         feedbackExplicito: () => null,
       };

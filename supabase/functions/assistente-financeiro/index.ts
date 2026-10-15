@@ -36,6 +36,7 @@ import {
   CATEGORIES,
   citaCarteira,
   descricaoDoLancamento,
+  semNomeDaCategoria,
   ehIntencaoBoleto,
   ehIntencaoCredito,
   entradaComIntencaoDeCredito,
@@ -72,6 +73,7 @@ import {
   exemploElegivel,
   feedbackExplicito,
   fontesDoNomeDoLancamento,
+  lancamentoPendenteDescartado,
   respostaFinalSegura,
   textoLancamentoConfiavel,
 } from '../_shared/assistant-learning.ts';
@@ -1051,10 +1053,16 @@ async function executarCriarLancamento(
      é, quando não tinha nome nenhum. */
   const fontesDoNome = fontesNome.length ? fontesNome : [frase];
   const nomeGenerico = descricaoDoLancamento('', tipo);
-  const nomeDoLancamento = (cartao?: Parameters<typeof descricaoDoLancamento>[2]): string => {
-    const nomes = fontesDoNome.map((fonte) => descricaoDoLancamento(
-      carteiraCitada ? limparReferenciaCarteira(fonte, carteira.name) : fonte, tipo, cartao
-    ));
+  /* Com a categoria já decidida, a palavra que só a repete sai do nome
+     (`semNomeDaCategoria`, a mesma da voz). Antes disso, na pergunta de
+     categoria, o nome sai inteiro. */
+  const nomeDoLancamento = (cartao?: Parameters<typeof descricaoDoLancamento>[2], categoriaDoNome?: string): string => {
+    const nomes = fontesDoNome.map((fonte) => {
+      const nome = descricaoDoLancamento(
+        carteiraCitada ? limparReferenciaCarteira(fonte, carteira.name) : fonte, tipo, cartao
+      );
+      return nome && categoriaDoNome ? semNomeDaCategoria(nome, categoriaDoNome) : nome;
+    });
     return nomes.find((nome) => nome && nome !== nomeGenerico) ?? nomes[0] ?? '';
   };
 
@@ -1081,7 +1089,7 @@ async function executarCriarLancamento(
       'Qual destas é a certa: ' + nomes.join(', ') + '? ' + AINDA_NAO_REGISTREI;
   }
 
-  let descricao = nomeDoLancamento() || 'Lançamento pelo Granabô';
+  let descricao = nomeDoLancamento(undefined, categoria.name) || 'Lançamento pelo Granabô';
   const ehBoleto = ehIntencaoBoleto(financeiro);
   let vencimento: string | null = null;
   if (ehBoleto) {
@@ -1113,7 +1121,7 @@ async function executarCriarLancamento(
     /* Limpar a descrição JÁ extraída deixava a palavra "crédito" que a própria
        limpeza põe no lugar do cartão ("Energético no crédito"). O nome sai de
        novo, a partir da frase, com o cartão conhecido. */
-    descricao = nomeDoLancamento(achado) || descricao;
+    descricao = nomeDoLancamento(achado, categoria.name) || descricao;
   } else if (!ehBoleto && (parcelas !== null || /\bparcel(?:as?|ado|ada|ei|ar)\b|\b\d+\s*(?:x|vezes)\b/i.test(financeiro))) {
     return 'Parcelamento só existe em compra no crédito. Foi no cartão? Se foi, me diz qual. ' + AINDA_NAO_REGISTREI;
   }
@@ -2492,6 +2500,11 @@ Deno.serve(async (req) => {
       },
     });
     const respostaFinal = respostaFinalSegura(conversa.resposta, conversa.registros);
+    /* Lançamento que esperava resposta e saiu de cena ganha recibo na tela e no
+       histórico. Fica fora de `respostaFinal`, que alimenta o aprendizado:
+       o recibo cita um valor que nenhuma consulta deste turno produziu. */
+    const descarte = lancamentoPendenteDescartado(mensagem, body.historico, conversa.registros);
+    const respostaVisivel = descarte ? descarte + ' ' + respostaFinal : respostaFinal;
     const consultas = conversa.registros.filter((r) => r.consulta && r.ok);
     const ferramentaUsada = consultas.at(-1)?.nome ?? conversa.registros.at(-1)?.nome ?? null;
 
@@ -2526,7 +2539,7 @@ Deno.serve(async (req) => {
     const instante = Date.now();
     const inserts = [
       { user_id: userId, papel: 'usuario', texto: mensagem, criado_em: new Date(instante).toISOString() },
-      { user_id: userId, papel: 'assistente', texto: respostaFinal, ferramenta_usada: ferramentaUsada, criado_em: new Date(instante + 1).toISOString() },
+      { user_id: userId, papel: 'assistente', texto: respostaVisivel, ferramenta_usada: ferramentaUsada, criado_em: new Date(instante + 1).toISOString() },
     ];
     const { error: insertError } = await supabase.from('assistant_messages').insert(inserts);
     if (insertError) {
@@ -2539,14 +2552,14 @@ Deno.serve(async (req) => {
     console.log('[assistente-financeiro]', {
       ferramenta: ferramentaUsada,
       perguntaLen: mensagem.length,
-      respostaLen: respostaFinal.length,
+      respostaLen: respostaVisivel.length,
       rodadasFerramentas: conversa.registros.length,
       recuperado: conversa.recuperado,
       exemploElegivel: elegivel,
     });
 
     return new Response(
-      JSON.stringify({ status: 'ok', resposta: respostaFinal, ferramenta: ferramentaUsada }),
+      JSON.stringify({ status: 'ok', resposta: respostaVisivel, ferramenta: ferramentaUsada }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
