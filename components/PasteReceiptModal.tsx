@@ -337,6 +337,7 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
     color: theme.ink,
     fontSize: type.apoio,
+    lineHeight: lh(type.apoio, 'corpo'),
     padding: spacing.md,
     minHeight: 110, fontFamily: fonts.regular,
     /* Sem isso o navegador desenha o próprio anel de foco azul padrão em
