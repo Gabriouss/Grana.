@@ -664,9 +664,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     await notificacoes.notificarRevisao('Não encontrei o valor', transcricao.transcript);
     return false;
   }
-  const cartaoDaCategoria = heuristics.ehIntencaoCredito(texto)
-    ? heuristics.matchCardByText(texto, cartoesDisponiveis.filter(c => !c.wallet_id || c.wallet_id === carteira.id)) : null;
-  const textoDaCategoria = cartaoDaCategoria ? heuristics.limparReferenciaCartao(texto, cartaoDaCategoria) : texto;
+  const textoDaCategoria = heuristics.textoDaCategoria(texto, cartoesDisponiveis, carteira.id);
   /* Entrada com intenção de crédito ia para `lancarNoCredito`, que grava
      `type: 'out'`: uma fala de dinheiro ENTRANDO virava compra no cartão.
      Entrada no cartão não existe no Grana. (autor, 26/09/2026): vai para a
@@ -680,13 +678,16 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
 
   /* Mesma regra de `categoriaReconhecida` (lib/heuristics.ts), que as outras
      entradas usam: palpite "Outros" é categoria não reconhecida e pergunta. */
-  /* Apelido ensinado no Granabô vence a palavra-chave, como no chat. */
-  const categoriaDoApelido = heuristics.categoriaPorApelido(textoDaCategoria, apelidos, extras);
-  const categoria = categoriaDoApelido ?? heuristics.guessCategoryFromText(textoDaCategoria, extras);
-  if (categoria.name === 'Outros' && !categoriaDoApelido) {
+  /* Apelido ensinado no Granabô vence a palavra-chave, como no chat. Leitura
+     dos apelidos que falhou (`apelidos === null`) só aceita a categoria dita
+     pelo nome; sem ela, a fala vai à mesma revisão. */
+  const decisao = heuristics.decidirCategoria(textoDaCategoria, apelidos, extras);
+  const categoriaDoApelido = decisao.doApelido;
+  if (!decisao.categoria || (decisao.categoria.name === 'Outros' && !categoriaDoApelido)) {
     await notificacoes.notificarRevisao('Qual categoria?', transcricao.transcript);
     return false;
   }
+  const categoria = decisao.categoria;
   if (/\bparcel(?:as?|ado|ada|ei|ar)\b|\b\d+\s*(?:x|vezes)\b/i.test(texto) && heuristics.parseParcelas(texto) === null) {
     await notificacoes.notificarRevisao('Confirme o parcelamento', transcricao.transcript);
     return false;
@@ -1017,15 +1018,17 @@ async function sincronizarResumoDepoisDaVoz() {
   }
 }
 
-/* Sem os apelidos a fala não grava errado: sem a palavra-chave, a categoria
-   cai em "Outros" e vai à revisão com recibo. Por isso a falha degrada, com
-   log, em vez de derrubar o lançamento. */
-async function apelidosDaPessoa(data: typeof import('./data')) {
+/* Leitura que falhou devolve null, não lista vazia: um apelido pode
+   sobrescrever a palavra-chave ("uber" = Lazer), e tratar a falha como "sem
+   apelido" gravava "Uber" em Transporte como se estivesse certo (achado 2 do
+   Forge, 15/10/2026). Com null, `decidirCategoria` só aceita a categoria dita
+   pelo nome e manda o resto à revisão "Qual categoria?". */
+async function apelidosDaPessoa(data: typeof import('./data')): Promise<{ chave: string; valor: string }[] | null> {
   try {
     return await data.fetchApelidosCategoria();
   } catch (erro) {
-    console.warn('[voz] apelidos do Granabô indisponíveis; segue só com as palavras-chave', erro);
-    return [];
+    console.warn('[voz] apelidos do Granabô indisponíveis; a categoria só vale se dita pelo nome', erro);
+    return null;
   }
 }
 

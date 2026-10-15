@@ -13,6 +13,7 @@ import { Alert } from '@/lib/alerta';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, PALETTE_30, fonts, type, hitSlopPara, touchTarget } from '@/lib/theme';
 import { CATEGORIES } from '@/lib/types';
+import { categoriaServeAoTipo } from '@/lib/heuristics';
 import type { Category, TxType } from '@/lib/types';
 import { addCategory, deleteCategory, fetchCategories, seedDefaultCategories, updateCategory } from '@/lib/data';
 import { isLikelyNetworkError } from '@/lib/cache-de-tela';
@@ -78,11 +79,7 @@ export default function CategoryPickerModal({
   const items: ListItem[] = custom.map((c) => ({ id: c.id, name: c.name, color: c.color, isDefault: c.is_default }));
   const itemsVisiveis = mode === 'manage' || !tipo
     ? items
-    : items.filter((item) => {
-        if (!item.isDefault) return true;
-        if (tipo === 'in') return ['Salário', 'Investimentos', 'Outros'].includes(item.name);
-        return item.name !== 'Salário';
-      });
+    : items.filter((item) => categoriaServeAoTipo(item.name, item.isDefault, tipo));
 
   function resetForms() {
     setCreatingNew(false);

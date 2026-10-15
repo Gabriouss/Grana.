@@ -140,7 +140,7 @@ async function comRelogio(instante, fn) {
     igual(
       pergunta,
       'Não identifiquei a categoria de "Energético" (R$ 10,99). Qual destas é a certa: ' +
-        interp.CATEGORIES.map((c) => c.name).join(', ') + '? Ainda não registrei nada.',
+        interp.CATEGORIES.filter((c) => interp.categoriaServeAoTipo(c.name, true, 'out')).map((c) => c.name).join(', ') /* saída: sem Salário (V1) */ + '? Ainda não registrei nada.',
       'a pergunta cita o nome sem "no crédito C6" e fala com a pessoa'
     );
     igual(gravados.length, 1, 'só a segunda mensagem grava');
@@ -234,7 +234,7 @@ async function comRelogio(instante, fn) {
   /* Visto em 16/09/2026: "Coloca em Alimentação" era lida como pedido novo e o
      Granabô dizia que não achou o valor. */
   {
-    const categorias = interp.CATEGORIES.map((c) => c.name).join(', ');
+    const categorias = interp.CATEGORIES.filter((c) => interp.categoriaServeAoTipo(c.name, true, 'out')).map((c) => c.name).join(', ') /* saída: sem Salário (V1) */;
     const casos = [
       [['lança energético 10,99 no crédito C6', 'Coloca em Alimentação'], [C6, NUBANK], ['Energético', 10.99, 'Alimentação', 'c6']],
       [['lança energético 10,99 no crédito C6', 'pode colocar como alimentação'], [C6, NUBANK], ['Energético', 10.99, 'Alimentação', 'c6']],

@@ -106,7 +106,7 @@ async function conversa(falas) {
 
 const resumo = (p) => [p.description, Number(p.amount), p.category];
 const PERGUNTA_MELI = 'Não identifiquei a categoria de "Meli+" (R$ 113,00). Qual destas é a certa: ' +
-  interp.CATEGORIES.map((c) => c.name).join(', ') + '? Ainda não registrei nada.';
+  interp.CATEGORIES.filter((c) => interp.categoriaServeAoTipo(c.name, true, 'out')).map((c) => c.name).join(', ') /* saída: sem Salário (V1) */ + '? Ainda não registrei nada.';
 const RECIBO_MELI = 'Deixei de lado o lançamento de "Meli+" (R$ 113,00): ele ficou sem registro. ';
 
 /* ── Voz: núcleo real (app e widget) ────────────────────────────────────── */

@@ -37,12 +37,13 @@ import {
   citaCarteira,
   descricaoDoLancamento,
   semNomeDaCategoria,
-  categoriaPorApelido,
+  categoriaServeAoTipo,
+  decidirCategoria,
+  textoDaCategoria,
   ehIntencaoBoleto,
   ehIntencaoCredito,
   entradaComIntencaoDeCredito,
   guessAmountFromText,
-  guessCategoryFromText,
   guessTypeFromText,
   limparReferenciaCarteira,
   limparReferenciaCartao,
@@ -1079,23 +1080,34 @@ async function executarCriarLancamento(
     return RESPOSTA_ENTRADA_NO_CREDITO + ' ' + AINDA_NAO_REGISTREI;
   }
 
-  /* Sem os apelidos nada grava errado: a categoria cai em "Outros" e a
-     pergunta aparece. Por isso a falha degrada, com log. */
+  /* Leitura dos apelidos que falhou é null, não lista vazia: um apelido pode
+     sobrescrever a palavra-chave ("uber" = Lazer), e a falha tratada como "sem
+     apelido" gravava "Uber" em Transporte (achado 2 do Forge, 15/10/2026). Com
+     null, só vale a categoria dita pelo nome; o resto vira a pergunta. */
   if (apelidosRes.error) console.error('[assistente-financeiro] apelidos indisponíveis:', apelidosRes.error);
-  const apelidos = (apelidosRes.error ? [] : apelidosRes.data ?? []) as Array<{ chave: string; valor: string }>;
-  /* Apelido ensinado vence a palavra-chave, igual na voz (app e widget). */
-  const categoriaDoApelido = categoriaPorApelido(financeiro, apelidos, categoriaExtras);
-  const categoria = categoriaDoApelido ?? guessCategoryFromText(financeiro, categoriaExtras);
+  const apelidos = apelidosRes.error ? null : (apelidosRes.data ?? []) as Array<{ chave: string; valor: string }>;
+  /* Apelido ensinado vence a palavra-chave, procurado no mesmo texto da voz
+     (app e widget): no crédito, sem o nome do cartão (achado 3 do Forge). */
+  const decisao = decidirCategoria(textoDaCategoria(financeiro, cartoes, carteira.id), apelidos, categoriaExtras);
+  const categoriaDoApelido = decisao.doApelido;
   /* 'Outros' é o que o interpretador devolve quando não reconheceu nada — o
      mesmo sinal que o widget usa para mandar à revisão. Só aceita 'Outros' se
-     a pessoa tiver dito "outros" com todas as letras. */
-  if (categoria.name === 'Outros' && !categoriaDoApelido && !/\boutros?\b/i.test(financeiro)) {
-    const nomes = categorias.length ? categorias.map((c) => c.name) : CATEGORIES.map((c) => c.name);
+     a pessoa tiver dito "outros" com todas as letras. A lista segue o tipo do
+     lançamento, com a regra do seletor do app (achado V1 do Vigil). */
+  if (!decisao.categoria || (decisao.categoria.name === 'Outros' && !categoriaDoApelido && !/\boutros?\b/i.test(financeiro))) {
+    const opcoes = categorias.length
+      ? categorias.map((c) => ({ name: c.name, padrao: c.is_default }))
+      : CATEGORIES.map((c) => ({ name: c.name, padrao: true }));
+    const nomes = opcoes.filter((c) => categoriaServeAoTipo(c.name, c.padrao, tipo)).map((c) => c.name);
     // O cartão só entra para tirar "no crédito C6" do nome citado na pergunta.
     const cartaoDaFrase = ehIntencaoCredito(financeiro) ? matchCardByText(financeiro, cartoes) : null;
-    return 'Não identifiquei a categoria de "' + nomeDoLancamento(cartaoDaFrase) + '" (R$ ' + formatarBRL(valor) + '). ' +
+    const abertura = decisao.categoria
+      ? 'Não identifiquei a categoria de "'
+      : 'Não consegui ler agora os apelidos que você me ensinou, então preciso confirmar a categoria de "';
+    return abertura + nomeDoLancamento(cartaoDaFrase) + '" (R$ ' + formatarBRL(valor) + '). ' +
       'Qual destas é a certa: ' + nomes.join(', ') + '? ' + AINDA_NAO_REGISTREI;
   }
+  const categoria = decisao.categoria;
 
   let descricao = nomeDoLancamento(undefined, categoria.name) || 'Lançamento pelo Granabô';
   const ehBoleto = ehIntencaoBoleto(financeiro);

@@ -23,6 +23,8 @@ const CARTEIRAS = [{ id: 'w', name: 'Pessoal', is_default: true }];
 let CARTOES = [];
 let APELIDOS = [];
 let apelidosFalham = false;
+const ferramenta = [];
+const revisoes = [];
 let passou = 0;
 const igual = (a, b, nome) => { assert.deepEqual(a, b, nome); passou++; };
 const ok = (cond, nome) => { assert.ok(cond, nome); passou++; };
@@ -65,7 +67,7 @@ function carregarDeno(file) {
     if (name.startsWith('npm:')) return { createClient: () => client };
     if (name.endsWith('/seguranca.ts')) return {
       criarRateLimiter: () => () => false,
-      fetchComTimeout: async () => Response.json({ choices: [{ message: completions.shift() ?? { content: 'Pronto.' } }] }),
+      fetchComTimeout: async (_url, init) => { try { for (const m of JSON.parse(init.body).messages ?? []) if (m.role === 'tool') ferramenta.push(String(m.content)); } catch {} return Response.json({ choices: [{ message: completions.shift() ?? { content: 'Pronto.' } }] }); },
     };
     return carregarDeno(path.resolve(path.dirname(file), name));
   };
@@ -140,7 +142,7 @@ carregarVm('lib/widget-voz-task.ts', {
   '@/modules/grana-voice-widget': { definirEstado: () => {} },
   './voz': { transcreverAudio: async () => ({ ok: true, transcript: transcricao }) },
   './widget-voz-notificacoes': {
-    podeNotificar: async () => true, notificarRevisao: async () => {}, notificarFalha: async () => {},
+    podeNotificar: async () => true, notificarRevisao: async (titulo) => { revisoes.push(titulo); }, notificarFalha: async () => {},
     notificarPendenteOffline: async () => {}, notificarSucesso: async () => {}, notificarSalvoLocal: async () => {},
   },
   './data': { fetchCreditCards: async () => CARTOES, fetchApelidosCategoria: async () => { if (apelidosFalham) throw new Error('falha simulada'); return APELIDOS.filter((a) => a.chave.startsWith('categoria:')); }, fetchCategories: async () => [] },
@@ -181,11 +183,13 @@ const APELIDOS_DA_PESSOA = [
 
 async function nasTres(frase) {
   gravados.length = 0;
-  await conversa([frase]);
+  revisoes.length = 0;
+  ferramenta.length = 0;
+  const [resposta] = await conversa([frase]);
   const granabo = gravados.map(resumo)[0] ?? null;
   const app = await pelaVoz(frase, 'app');
   const widget = await pelaVoz(frase, 'widget');
-  return { granabo, app, widget };
+  return { granabo, app, widget, resposta, ferramenta: ferramenta.join(' | '), revisoes: [...revisoes] };
 }
 
 (async () => {
@@ -231,11 +235,48 @@ async function nasTres(frase) {
     igual([granabo, app, widget], [null, null, null], 'apelidos indisponíveis: nenhuma entrada grava "gororoba"');
     ok(logs.some((l) => /apelidos indispon/.test(l) && /assistente-financeiro/.test(l)), 'o Granabô registra a falha no log');
     ok(logs.some((l) => /\[voz\] apelidos do Granabô indispon/.test(l)), 'a voz registra a falha no log');
-    const { granabo: g2, app: a2 } = await nasTres('mercado 50 reais');
-    igual([g2, a2], [['Mercado', 50, 'Alimentação'], ['Mercado', 50, 'Alimentação']], 'e a palavra-chave continua funcionando');
+    /* Achado 2 do Forge (15/10/2026): até aqui a palavra-chave seguia valendo
+       com a leitura falhada, e com "uber" = Lazer ensinado a fala gravava
+       "Uber" em Transporte. Agora, sem os apelidos, só vale a categoria dita
+       pelo nome; o resto vai à pergunta (chat) ou à revisão (app e widget). */
+    const uber = await nasTres('uber 20 reais');
+    igual([uber.granabo, uber.app, uber.widget], [null, null, null], 'apelidos indisponíveis: "uber" não grava em Transporte em nenhuma entrada');
+    ok(/Não consegui ler agora os apelidos/.test(uber.ferramenta) && /Qual destas é a certa: .*Lazer/.test(uber.ferramenta),
+      'o Granabô diz que não leu os apelidos e pergunta a categoria');
+    igual(uber.revisoes, ['Qual categoria?', 'Qual categoria?'], 'app e widget vão à revisão "Qual categoria?"');
+    const dita = await nasTres('mercado 50 reais alimentação');
+    igual([dita.granabo, dita.app, dita.widget], Array(3).fill(['Mercado', 50, 'Alimentação']),
+      'categoria dita pelo nome continua gravando, igual nas três');
   } finally {
     console.error = erroOriginal; console.warn = avisoOriginal; apelidosFalham = false;
   }
+
+  /* Achado 3 do Forge: no crédito, o apelido é procurado sem o nome do cartão, igual nas três.
+     Com o cartão "Nu" e "nu" = Lazer ensinado, "mercado 50 reais no crédito Nu" é Alimentação. */
+  CARTOES = [{ id: 'c-nu', name: 'Nu', bank: 'Nubank', wallet_id: 'w' }];
+  APELIDOS = [{ chave: 'categoria:nu', valor: 'Lazer' }];
+  {
+    const { granabo, app, widget } = await nasTres('mercado 50 reais no crédito Nu');
+    ok(granabo && granabo[2] === 'Alimentação', 'Granabô: cartão citado não vira apelido de categoria');
+    igual(app, granabo, 'voz app = Granabô no crédito');
+    igual(widget, granabo, 'voz widget = Granabô no crédito');
+  }
+  CARTOES = [];
+  APELIDOS = APELIDOS_DA_PESSOA;
+
+  /* Achado V1 do Vigil: a lista da pergunta segue o tipo, com a regra do seletor do app. */
+  APELIDOS = [];
+  {
+    ferramenta.length = 0;
+    await conversa(['paguei 35 pro ze']);
+    const pergunta = ferramenta.find((t) => /Qual destas é a certa/.test(t)) ?? '';
+    ok(pergunta && !/Salário/.test(pergunta) && /Investimentos/.test(pergunta) && /Alimentação/.test(pergunta),
+      'saída: a pergunta não oferece "Salário" (aporte em Investimentos continua)');
+    const { categoriaServeAoTipo } = interp;
+    igual(['Alimentação', 'Salário', 'Investimentos', 'Outros', 'Pets'].map((n) => categoriaServeAoTipo(n, n !== 'Pets', 'in')),
+      [false, true, true, true, true], 'entrada: das padrão só Salário, Investimentos e Outros; a criada pela pessoa vale');
+  }
+  APELIDOS = APELIDOS_DA_PESSOA;
 
   /* A função, direto. */
   const { categoriaPorApelido } = interp;

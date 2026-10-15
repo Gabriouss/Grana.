@@ -1285,6 +1285,68 @@ export function categoriaPorApelido(
   return melhor;
 }
 
+/**
+ * O texto em que a categoria (apelido e palavra-chave) é procurada: no
+ * crédito, sem a referência ao cartão citado. Até 15/10/2026 a voz tirava o
+ * cartão e o chat não, e com o cartão "Nu" e o apelido "nu" = Lazer,
+ * "mercado 50 reais no crédito Nu" ia para Lazer no chat e Alimentação na voz
+ * (achado 3 do Forge). Só os cartões da carteira da fala contam, igual nas
+ * três entradas.
+ */
+export function textoDaCategoria(text: string, cards: CartaoBusca[], walletId?: string | null): string {
+  if (!ehIntencaoCredito(text)) return text;
+  const daCarteira = walletId ? cards.filter((c) => !c.wallet_id || c.wallet_id === walletId) : cards;
+  const cartao = matchCardByText(text, daCarteira);
+  return cartao ? limparReferenciaCartao(text, cartao) : text;
+}
+
+/**
+ * A categoria do lançamento, com os apelidos ensinados no Granabô.
+ * `apelidos === null` quer dizer que a LEITURA falhou, e isso é diferente de
+ * não ter apelido: um apelido pode sobrescrever a palavra-chave ("uber" =
+ * Lazer), e sem lê-lo a palavra-chave gravaria "Uber" em Transporte como se
+ * estivesse certo (achado 2 do Forge, 15/10/2026). Com a leitura falhada, só
+ * vale a categoria que a pessoa disse pelo nome; fora isso devolve
+ * `categoria: null`, e quem chama pede a categoria (revisão na voz, pergunta
+ * no chat). Aceitar o nome dito é o que impede a resposta à pergunta de cair
+ * de novo na mesma pergunta.
+ */
+export function decidirCategoria(
+  text: string,
+  apelidos: { chave: string; valor: string }[] | null,
+  extras: { name: string; color: string }[] = []
+): { categoria: { name: string; color: string } | null; doApelido: boolean } {
+  if (apelidos === null) {
+    const chave = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+      .replace(/[^\p{L}\d]+/gu, ' ').trim();
+    const alvo = ` ${chave(text)} `;
+    let dita: { name: string; color: string } | null = null;
+    for (const c of [...extras, ...CATEGORIES]) {
+      const nome = chave(c.name);
+      if (nome && alvo.includes(` ${nome} `) && (!dita || nome.length > chave(dita.name).length)) {
+        dita = { name: c.name, color: c.color };
+      }
+    }
+    return { categoria: dita, doApelido: false };
+  }
+  const doApelido = categoriaPorApelido(text, apelidos, extras);
+  return { categoria: doApelido ?? guessCategoryFromText(text, extras), doApelido: !!doApelido };
+}
+
+/**
+ * Se a categoria serve ao tipo do lançamento: na saída, todas as padrão menos
+ * "Salário" (aporte em "Investimentos" é saída); na entrada, das padrão só
+ * "Salário", "Investimentos" e "Outros". Categoria criada pela pessoa serve
+ * aos dois. É a regra do seletor do app (`CategoryPickerModal`), e a pergunta
+ * de categoria do Granabô usa a mesma: até 15/10/2026 ela oferecia "Salário"
+ * para "paguei 35 pro ze" (achado V1 do Vigil).
+ */
+export function categoriaServeAoTipo(nome: string, padrao: boolean, tipo: 'in' | 'out'): boolean {
+  if (!padrao) return true;
+  if (tipo === 'in') return ['Salário', 'Investimentos', 'Outros'].includes(nome);
+  return nome !== 'Salário';
+}
+
 export type ParsedCsvTransaction = {
   type: TxType;
   description: string;
