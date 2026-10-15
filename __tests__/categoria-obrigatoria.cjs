@@ -63,7 +63,8 @@ ok('categoriaReconhecida e categoriaEscolhida: sem reconhecimento nem escolha, n
 
 /* ── 2. A voz usa a mesma regra ─────────────────────────────────────────── */
 const tarefa = fs.readFileSync(path.join(root, 'lib/widget-voz-task.ts'), 'utf8');
-assert.match(tarefa, /if \(categoria\.name === 'Outros'\) \{\s*await notificacoes\.notificarRevisao\('Qual categoria\?'/,
+/* Apelido ensinado que aponta para "Outros" é escolha da pessoa, como categoriaEscolhida('Outros'). */
+assert.match(tarefa, /if \(categoria\.name === 'Outros'(?: && !categoriaDoApelido)?\) \{\s*await notificacoes\.notificarRevisao\('Qual categoria\?'/,
   'a voz pergunta "Qual categoria?" no mesmo caso');
 ok('a voz continua perguntando no mesmo caso (mesmo critério)');
 
