@@ -187,19 +187,19 @@ function* nos(no) {
     };
     return render();
   };
-  const rotulo = (arvore) => [...nos(arvore)].find((n) => /^Data do lançamento:/.test(String(n.props?.accessibilityLabel)))?.props.accessibilityLabel;
+  const rotulo = (arvore) => [...nos(arvore)].find((n) => /^Data da compra:/.test(String(n.props?.accessibilityLabel)))?.props.accessibilityLabel;
   const salvar = () => [...nos(render())].find((n) => n.props?.onPress?.name === 'salvar').props.onPress();
   const seletor = () => [...nos(render())].find((n) => n.type === 'DatePickerModal');
   const erro = () => [...nos(render())].filter((n) => n.type === 'Text').map((n) => [].concat(n.props.children).join('')).find((t) => t === 'Escolha a data');
 
   let tela = abrir('', true);
-  assert.equal(rotulo(tela), 'Data do lançamento: Escolha a data', 'data vazia: o campo diz "Escolha a data"');
+  assert.equal(rotulo(tela), 'Data da compra: Escolha a data', 'data vazia: o campo diz "Escolha a data"');
   salvar();
   assert.equal(gravados.length, 0, 'sem data, o Salvar não grava');
   assert.equal(erro(), 'Escolha a data', 'e pede a data');
   assert.equal(seletor().props.currentISO, HOJE, 'o seletor abre em hoje, sem quebrar com a data vazia');
   seletor().props.onSelectDate('2026-10-03');
-  assert.equal(rotulo(render()), 'Data do lançamento: 30 set 2026', 'semDataFutura: a futura vira hoje');
+  assert.equal(rotulo(render()), 'Data da compra: 30 set 2026', 'semDataFutura: a futura vira hoje');
   seletor().props.onSelectDate('2026-09-20');
   salvar();
   assert.equal(gravados.at(-1)?.occurred_on, '2026-09-20', 'a data escolhida é a que chega ao onSalvar');
