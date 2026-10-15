@@ -113,7 +113,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
     {
       tipo: 'paragrafo',
       texto:
-        'Seus dados ficam armazenados enquanto sua conta existir. Você pode excluir a conta a qualquer momento diretamente no app (Perfil → Excluir conta, ou na tela de assinatura), o que apaga permanentemente seus lançamentos, contas, orçamentos e categorias, sem necessidade de contato prévio.',
+        'Seus dados ficam armazenados enquanto sua conta existir. Você pode excluir a conta a qualquer momento diretamente no app (Perfil → Excluir conta e dados, ou na tela de assinatura), o que apaga permanentemente seus lançamentos, contas, orçamentos e categorias, sem necessidade de contato prévio.',
     },
     {
       tipo: 'paragrafo',
@@ -186,7 +186,7 @@ export const TERMOS_DE_SERVICO: DocumentoLegal = {
         'Você precisa ter 18 anos ou mais para usar o Grana.',
         'Você é responsável por manter sua senha em sigilo e por tudo que acontecer na sua conta.',
         'As informações fornecidas (e-mail, nome) devem ser verdadeiras.',
-        'Você pode excluir sua conta a qualquer momento, direto no app (Perfil → Excluir conta). Isso apaga permanentemente seus dados, de forma irreversível.',
+        'Você pode excluir sua conta a qualquer momento, direto no app (Perfil → Excluir conta e dados). Isso apaga permanentemente seus dados, de forma irreversível.',
       ],
     },
     { tipo: 'subtitulo', texto: '3. Uso aceitável' },
@@ -247,7 +247,7 @@ export const EXCLUSAO_DE_DADOS: DocumentoLegal = {
       itens: [
         'Abra o Grana. e entre na sua conta;',
         'Vá em Perfil (ou, se sua assinatura estiver vencida, use a própria tela de assinatura);',
-        'Toque em Excluir conta;',
+        'Toque em Excluir conta e dados;',
         'Confirme sua senha quando solicitado.',
       ],
     },
