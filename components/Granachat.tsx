@@ -946,6 +946,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     fontFamily: fonts.light,
     fontSize: type.corpo,
+    /* Mesma entrelinha das bolhas: sem ela o campo usava a métrica crua da
+       fonte e, em 2 ou mais linhas, o texto digitado ficava colado. */
+    lineHeight: lh(type.corpo, 'corpo'),
     color: theme.ink,
   },
   /* 44 fixo aqui é proposital, ao contrário do campo ao lado: 44dp é o piso
