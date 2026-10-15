@@ -17,6 +17,7 @@ import DatePickerModal from './DatePickerModal';
 import GoalDepositModal from './GoalDepositModal';
 import ItemActionSheet from './ItemActionSheet';
 import PrivacyValue from './PrivacyValue';
+import { usePrivacy } from '@/lib/privacy-context';
 import Sheet from './Sheet';
 import { useFlags } from '@/lib/feature-flags';
 import { corVisivel } from '@/lib/cor-visivel';
@@ -58,6 +59,7 @@ export default function GoalsCarousel({
   onDeleteGoal: (goal: Goal) => Promise<void>;
 }) {
   const { ligado } = useFlags();
+  const { hidden } = usePrivacy();
   const level = calcularLevelState(lifetimeXp);
 
   const scrollRef = useRef<ScrollView>(null);
@@ -263,7 +265,9 @@ export default function GoalsCarousel({
                   <Text style={styles.cardTarget}>{`de R$ ${formatMoney(alvo)}`}</Text>
                 </PrivacyValue>
                 <View style={styles.track}>
-                  <View style={[styles.fill, { width: `${pct}%`, backgroundColor: corVisivel(g.color) }]} />
+                  {/* Oculto, o comprimento do preenchimento entregaria o percentual que o
+                      texto acima mascara (V7): a trilha fica vazia. */}
+                  {!hidden && <View style={[styles.fill, { width: `${pct}%`, backgroundColor: corVisivel(g.color) }]} />}
                 </View>
                 <View style={styles.cardBottomRow}>
                   <PrivacyValue style={styles.cardPctBox}><Text style={styles.cardPct} numberOfLines={1}>{pct}%</Text></PrivacyValue>
