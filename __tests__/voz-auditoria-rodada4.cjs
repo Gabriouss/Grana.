@@ -1,6 +1,7 @@
 /* Bateria 4, sem rede: referências, roteamento e prazos locais.
  * node __tests__/voz-auditoria-rodada4.cjs; regressões incluídas no CI.
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');

@@ -30,6 +30,7 @@
  * `desfechoDaOperacaoVoz` (por __tests__/desfecho-voz-real.cjs). Dublês:
  * disco, AsyncStorage, notificações e a gravação no servidor.
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');

@@ -15,6 +15,7 @@
  * 4 milissegundos e a bateria inteira roda instantânea, sem mexer em nenhuma
  * constante de produção.
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');

@@ -2,6 +2,7 @@
  * Integrado ao test:voz/test:ci após a correção das famílias auditadas.
  * Execute: node __tests__/voz-auditoria-diversa.cjs
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');

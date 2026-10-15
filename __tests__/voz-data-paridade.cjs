@@ -17,6 +17,7 @@
  * revisão recebe); a descrição sem a expressão de data; o valor.
  */
 process.env.TZ = 'America/Sao_Paulo';
+require('./helpers/falha-com-duble-incompleto.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');

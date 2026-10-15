@@ -10,6 +10,7 @@
 //      de ouvir fala, descarta o toque duplo sem transcrição e com o recibo
 //      curto "Não ouvi nada" (o mesmo do widget, V3 de 26/09/2026), e
 //      entrega ao núcleo sem prazo próprio.
+require('./helpers/falha-com-duble-incompleto.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');

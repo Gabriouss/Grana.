@@ -12,6 +12,7 @@
  * usa nenhum. `__tests__/voz-desfecho-paridade.cjs` confere que todo dublê
  * de `./voice-operations` tem a função.
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');

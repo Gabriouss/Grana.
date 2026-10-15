@@ -2,6 +2,7 @@
  * node __tests__/voz-auditoria-rodada2.cjs
  * Integrado ao test:voz/test:ci após as correções.
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');

@@ -10,6 +10,7 @@
  * em que estado o widget ficou, se o arquivo foi apagado, se a fila guardou o
  * item — e não apenas sobre o valor devolvido.
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
@@ -218,6 +219,12 @@ function montarWidget(opts) {
       adicionarVozPendente: async (item) => reg.fila.push(item),
       removerVozPendente: async (id) => reg.removidos.push(id),
       listarVozesPendentes: async () => (o.pendentes || []),
+      /* Reserva da fala (07/10/2026). Padrão false: estas baterias foram escritas para o caminho SEM reserva
+         (sem dono local ou reserva que falhou), em que a tarefa cuida do áudio sozinha. `o.reserva: true`
+         liga o caminho reservado; ele é coberto de verdade pelo widget-voz-segundo-plano.cjs. Antes de
+         15/10 o dublê não tinha a função, e o TypeError caía no catch da tarefa. */
+      reservarFalaEmAndamento: async (fala) => { reg.reservas = (reg.reservas || []).concat(fala.requestId); return o.reserva ?? false; },
+      liberarFalaEmAndamento: async (id) => { reg.liberadas = (reg.liberadas || []).concat(id); },
     },
     './creditLimitAlert': { checarLimiteCartao: async () => {} },
     'expo-file-system/legacy': { deleteAsync: async (uri) => reg.apagados.push(uri) },

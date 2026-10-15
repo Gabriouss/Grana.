@@ -16,6 +16,7 @@
  * cartão) com intenção de crédito não grava, em nenhuma entrada. Roda com um
  * e com dois cartões.
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -112,7 +113,7 @@ carregarVm('lib/widget-voz-task.ts', {
   './creditLimitAlert': { checarLimiteCartao: async () => {} },
   './supabase': { supabase: { auth: { getSession: async () => ({ data: { session: { user: { id: 'u-1' } } } }) } } },
   './sessao-offline': { idDoUsuarioLocal: async () => 'u-1', lerSessaoDoDisco: async () => null },
-  './widget-voz-pendentes': { adicionarVozPendente: async () => {}, listarVozesPendentes: async () => [], removerVozPendente: async () => {} },
+  './widget-voz-pendentes': { adicionarVozPendente: async () => {}, listarVozesPendentes: async () => [], removerVozPendente: async () => {}, reservarFalaEmAndamento: async () => true, liberarFalaEmAndamento: async () => {} },
   './widgets-home-sync': { sincronizarResumoDosWidgets: async () => {} },
   '@react-native-async-storage/async-storage': {},
   'expo-file-system/legacy': { deleteAsync: async () => {} },

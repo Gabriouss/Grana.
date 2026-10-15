@@ -2,6 +2,7 @@
  * node __tests__/voz-auditoria-rodada3.cjs
  * Corpus exploratório fora do CI; saída 1 identifica expectativas não atendidas.
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');

@@ -31,6 +31,7 @@
  * produção não mudam. Afirma QUAIS escritas aconteceram (regra 9), nas duas
  * entradas, botão do app e widget (regra 13).
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');

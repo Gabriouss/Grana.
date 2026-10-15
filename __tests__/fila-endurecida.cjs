@@ -13,6 +13,7 @@
  * lib/cache-de-tela.ts (fila de lançamentos) e lib/voice-operations.ts (voz,
  * núcleo único do app e do widget). As asserções contam QUAIS pedidos saíram.
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');

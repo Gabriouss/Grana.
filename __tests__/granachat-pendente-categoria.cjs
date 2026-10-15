@@ -16,6 +16,7 @@
  * O nome sem a categoria vale também para a voz (regra 13): as mesmas frases
  * passam pelo núcleo `lib/widget-voz-task.ts`, nas entradas app e widget.
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');

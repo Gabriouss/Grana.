@@ -22,6 +22,7 @@
  * idempotência por `request_id` do servidor. Afirma QUANTAS linhas o banco
  * recebeu (regra 9), nas duas entradas (regra 13).
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');

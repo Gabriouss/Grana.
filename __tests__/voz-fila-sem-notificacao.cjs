@@ -18,6 +18,7 @@
  * Afirma QUAIS escritas aconteceram (regra 9), nas duas entradas (regra 13):
  * uma fala do botão do app e uma do widget na mesma fila.
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');

@@ -19,6 +19,7 @@
  * em Deno e usa a cópia sincronizada do interpretador; a paridade com ele é
  * conferida contra essa cópia real, não contra uma reimplementação.
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');

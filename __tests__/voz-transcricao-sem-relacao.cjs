@@ -19,6 +19,7 @@
  * asserções contam QUAIS chamadas aconteceram. Contra o fonte antigo:
  *   VOZ_FONTE=<voz.ts> TAREFA_FONTE=<widget-voz-task.ts> CONF_FONTE=<voz-confiabilidade.ts> node ...
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');

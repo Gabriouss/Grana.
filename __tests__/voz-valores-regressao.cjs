@@ -1,3 +1,4 @@
+require('./helpers/falha-com-duble-incompleto.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');

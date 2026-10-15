@@ -1,6 +1,7 @@
 /* Bateria 5 extensa: composição de referências, valores e ciclo nativo.
  * node __tests__/voz-auditoria-rodada5.cjs.
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');

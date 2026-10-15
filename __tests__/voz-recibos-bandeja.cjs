@@ -22,6 +22,7 @@
  * bandeja), com a mesma frase, precisam terminar com a mesma decisão, o
  * mesmo lançamento e um recibo só na bandeja.
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');

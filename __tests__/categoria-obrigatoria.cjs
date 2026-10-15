@@ -17,6 +17,7 @@
  * gravador. Nos modais que só leem a tela (Colar, QR, foto, importação) a
  * guarda é conferida no código, na ordem: pergunta antes de gravar.
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');

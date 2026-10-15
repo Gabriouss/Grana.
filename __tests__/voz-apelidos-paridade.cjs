@@ -10,6 +10,7 @@
  * também na voz. Até então a voz não os lia: "lança 30 de gororoba", com
  * "gororoba" ensinado como Alimentação, ia à revisão na voz.
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');

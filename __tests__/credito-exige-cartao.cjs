@@ -17,6 +17,7 @@
  *     duas entradas (app e widget, regra 13): estorno citando cartão não grava
  *     (antes virava COMPRA no cartão); a recusa do servidor vira "Qual cartão?".
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -213,7 +214,7 @@ async function nucleoDaVoz() {
     './creditLimitAlert': { checarLimiteCartao: async () => {} },
     './supabase': { supabase: { auth: { getSession: async () => ({ data: { session: { user: { id: 'u-1' } } } }) } } },
     './sessao-offline': { idDoUsuarioLocal: async () => 'u-1', lerSessaoDoDisco: async () => null },
-    './widget-voz-pendentes': { adicionarVozPendente: async () => {}, listarVozesPendentes: async () => [], removerVozPendente: async () => {} },
+    './widget-voz-pendentes': { adicionarVozPendente: async () => {}, listarVozesPendentes: async () => [], removerVozPendente: async () => {}, reservarFalaEmAndamento: async () => true, liberarFalaEmAndamento: async () => {} },
     './widgets-home-sync': { sincronizarResumoDosWidgets: async () => {} },
     './limits': { LIMITS: { maxAmount: 1e9, maxInstallments: 36, minInstallments: 2, descricao: 120 } },
     '@react-native-async-storage/async-storage': {},

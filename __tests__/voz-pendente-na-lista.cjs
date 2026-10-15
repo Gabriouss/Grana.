@@ -19,6 +19,7 @@
  *  5. Áudio não transcrito só é contado (sem valor), por dono, nas duas
  *     entradas, e não entra na lista nem nos totais.
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');

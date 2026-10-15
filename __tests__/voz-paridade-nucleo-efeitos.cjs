@@ -37,6 +37,7 @@
  * Variaveis: VOZ_FONTE, TAREFA_FONTE, CONF_FONTE, OPS_FONTE, FILA_FONTE,
  * CACHE_FONTE.
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');

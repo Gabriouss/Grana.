@@ -1,3 +1,4 @@
+require('./helpers/falha-com-duble-incompleto.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
@@ -36,7 +37,9 @@ const deps = {
     idDoUsuarioLocal: async () => 'qa-user',
     lerSessaoDoDisco: async () => ({ access_token: 'jwt', refresh_token: 'r', user: { id: 'qa-user' } }),
   },
-  './widget-voz-pendentes': { adicionarVozPendente: async (item) => { pending.push(item); }, listarVozesPendentes: async () => pending, removerVozPendente: async () => {} },
+  './widget-voz-pendentes': { adicionarVozPendente: async (item) => { pending.push(item); }, listarVozesPendentes: async () => pending, removerVozPendente: async () => {}, reservarFalaEmAndamento: async () => false, liberarFalaEmAndamento: async () => {} },
+  /* A reserva devolve false de propósito: este teste trava o caminho SEM reserva (sem dono local ou reserva que falhou),
+     em que o áudio da captura fica preservado. O caminho com reserva é do widget-voz-segundo-plano.cjs. */
   './widgets-home-sync': {}, '@react-native-async-storage/async-storage': {},
   'expo-file-system/legacy': { deleteAsync: async () => { cleaned++; } },
 };

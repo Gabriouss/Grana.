@@ -1,5 +1,6 @@
 /* Bateria 7: módulo real compartilhado, duas origens, valores e efeitos.
  * Sem microfone, banco ou rede reais. Qualquer falha encerra com código 1. */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { carregar, montarWidget, montarOperacoes, memoriaLocal, heuristics: h } = require('./voz-auditoria-rodada6.cjs');

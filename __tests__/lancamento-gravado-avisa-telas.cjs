@@ -17,6 +17,7 @@
  * Afirma que o assinante foi chamado, que o dado atrasado foi descartado (a
  * busca seguinte vai à rede) e que o caminho sem rede continua igual.
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');

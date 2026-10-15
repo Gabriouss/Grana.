@@ -13,6 +13,7 @@
  *     com disco e AsyncStorage simulados). O Kotlin não roda aqui: o teste lê
  *     o ramo do `startService` e confere que ele não apaga o áudio.
  */
+require('./helpers/falha-com-duble-incompleto.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
