@@ -739,7 +739,7 @@ const PERGUNTAS_FAQ = [
   {
     pergunta: 'Preciso instalar alguma coisa?',
     resposta:
-      'Não pra começar: o Grana. roda direto no navegador, neste mesmo endereço. Pra ter os recursos do bolso, como os widgets da tela inicial, o lançamento por voz e a leitura do QR Code da nota fiscal, é só baixar o aplicativo de Android.',
+      'Não pra começar: o Grana. roda direto no navegador, neste mesmo endereço. Pra ter os recursos do bolso, como os widgets da tela inicial e o lançamento por voz, é só baixar o aplicativo de Android.',
   },
 ];
 
@@ -1110,7 +1110,7 @@ function ConteudoWeb() {
   // duas larguras muito diferentes deixa o wrap natural decidir; quebra
   // escolhida à mão só vale onde a largura é previsível (título de dobra).
   const BENEFICIOS_PRECO = [
-    'Voz ou QR Code da nota para lançar',
+    'Voz para lançar sem digitar',
     /* Não repete mais "calculado sozinho, considerando o que ainda vem" —
        mesma correção da seção de inteligência financeira: a conta usa o mês
        corrente, não parcelas futuras. */
