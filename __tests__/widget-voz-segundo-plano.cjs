@@ -122,7 +122,7 @@ function novoProcesso({ operacoesReais = false, sessaoReal = false, supabase: su
       transcreverAudio: async (uri) => { p.chamadasTranscricao.push(uri); return ctl.transcrever(uri); },
       mensagemDeErroVoz: (codigo) => ({ titulo: 'Erro ' + codigo, texto: 'Texto ' + codigo }),
     },
-    './data': { fetchCategories: async () => [], fetchCreditCards: async () => ctl.cartoes },
+    './data': { fetchApelidosCategoria: async () => [], fetchCategories: async () => [], fetchCreditCards: async () => ctl.cartoes },
     './wallets': { fetchWallets: async () => [{ id: 'pessoal', name: 'Pessoal', is_default: true }] },
     './creditLimitAlert': { checarLimiteCartao: async () => {} },
     './supabase': supabaseDuble ?? { supabase: { auth: { getUser: async () => ({ data: { user: null } }) } } },

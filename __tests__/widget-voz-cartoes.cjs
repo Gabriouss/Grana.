@@ -17,13 +17,13 @@ const deps = {
   /* O dublê acompanha o que a tarefa chama: sem `descricaoDoLancamento` (16/09/2026)
      a tarefa quebrava e toda fala caía em "Não consegui salvar". */
   './heuristics': { guessAmountFromText: () => 32, guessCategoryFromText: () => ({ name: 'Alimentação', color: '#fff' }),
-    guessTypeFromText: () => 'out', descricaoDoLancamento: () => 'mercado', semNomeDaCategoria: (nome) => nome, ehIntencaoBoleto: () => false,
+    guessTypeFromText: () => 'out', descricaoDoLancamento: () => 'mercado', semNomeDaCategoria: (nome) => nome, categoriaPorApelido: () => null, ehIntencaoBoleto: () => false,
     ehIntencaoCredito: () => true, matchCardByText: () => matched, matchWalletByText: () => null,
     /* Tipo 'out' acima: compra, então não é entrada com intenção de crédito. */
     entradaComIntencaoDeCredito: () => false,
     citaCarteira: () => false,
     limparReferenciaCarteira: (t) => t, limparReferenciaCartao: (t) => t, parseParcelas: () => 1, parseRecorrencia: () => false },
-  './data': { fetchCreditCards: async () => cards, fetchCategories: async () => [] },
+  './data': { fetchCreditCards: async () => cards, fetchApelidosCategoria: async () => [], fetchCategories: async () => [] },
   './wallets': { fetchWallets: async () => [{ id: 'wallet', name: 'Pessoal', is_default: true }] },
   './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'), registrarOperacaoVoz: async (_, __, input) => { saved.push(input); return { ids: ['tx'], operationId: 'op' }; } },
   './creditLimitAlert': { checarLimiteCartao: async () => {} },

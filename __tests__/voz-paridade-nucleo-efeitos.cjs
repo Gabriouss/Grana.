@@ -93,7 +93,7 @@ function montar() {
       notificarSalvoLocal: async () => { e.recibos.push('salvo-local'); },
     },
     './voz-recibos-da-fila': { guardarReciboDaFila: async (r) => { e.recibos.push(r); } },
-    './data': { fetchCreditCards: async () => cartoes, fetchCategories: async () => [] },
+    './data': { fetchCreditCards: async () => cartoes, fetchApelidosCategoria: async () => [], fetchCategories: async () => [] },
     './wallets': { fetchWallets: async () => [{ id: 'w', name: 'Pessoal', is_default: true }] },
     './creditLimitAlert': { checarLimiteCartao: async () => {} },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },

@@ -75,7 +75,7 @@ const Modal = carregar('components/CategoryPickerModal.tsx', {
   '@/lib/types': { CATEGORIES: [] },
   '@/lib/data': {
     addCategory: async () => {}, deleteCategory: async () => {}, updateCategory: async () => {},
-    fetchCategories: async () => categorias, seedDefaultCategories: async () => {},
+    fetchApelidosCategoria: async () => [], fetchCategories: async () => categorias, seedDefaultCategories: async () => {},
   },
   '@/lib/cache-de-tela': { isLikelyNetworkError: () => false },
   '@/lib/demo-context': { useDemo: () => ({ isDemoMode: false }) },

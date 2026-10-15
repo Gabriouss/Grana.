@@ -632,8 +632,8 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   }
   const { fetchWallets } = await import('./wallets');
   let prazoReferencias: ReturnType<typeof setTimeout> | undefined;
-  const [extras, carteiras, cartoesDisponiveis] = await Promise.race([
-    Promise.all([categoriasDaPessoa(data), fetchWallets(), heuristics.ehIntencaoCredito(texto) ? data.fetchCreditCards() : Promise.resolve([])]),
+  const [extras, carteiras, cartoesDisponiveis, apelidos] = await Promise.race([
+    Promise.all([categoriasDaPessoa(data), fetchWallets(), heuristics.ehIntencaoCredito(texto) ? data.fetchCreditCards() : Promise.resolve([]), apelidosDaPessoa(data)]),
     new Promise<never>((_, reject) => {
       prazoReferencias = setTimeout(() => reject(new VozPendenteOffline('timeout ao carregar referências', 'demorou')), 8_000);
     }),
@@ -680,8 +680,10 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
 
   /* Mesma regra de `categoriaReconhecida` (lib/heuristics.ts), que as outras
      entradas usam: palpite "Outros" é categoria não reconhecida e pergunta. */
-  const categoria = heuristics.guessCategoryFromText(textoDaCategoria, extras);
-  if (categoria.name === 'Outros') {
+  /* Apelido ensinado no Granabô vence a palavra-chave, como no chat. */
+  const categoriaDoApelido = heuristics.categoriaPorApelido(textoDaCategoria, apelidos, extras);
+  const categoria = categoriaDoApelido ?? heuristics.guessCategoryFromText(textoDaCategoria, extras);
+  if (categoria.name === 'Outros' && !categoriaDoApelido) {
     await notificacoes.notificarRevisao('Qual categoria?', transcricao.transcript);
     return false;
   }
@@ -1012,6 +1014,18 @@ async function sincronizarResumoDepoisDaVoz() {
   } catch {
     /* O lançamento e o recibo já deram certo. Snapshot é consequência
        best-effort e será atualizado na próxima abertura do app. */
+  }
+}
+
+/* Sem os apelidos a fala não grava errado: sem a palavra-chave, a categoria
+   cai em "Outros" e vai à revisão com recibo. Por isso a falha degrada, com
+   log, em vez de derrubar o lançamento. */
+async function apelidosDaPessoa(data: typeof import('./data')) {
+  try {
+    return await data.fetchApelidosCategoria();
+  } catch (erro) {
+    console.warn('[voz] apelidos do Granabô indisponíveis; segue só com as palavras-chave', erro);
+    return [];
   }
 }
 

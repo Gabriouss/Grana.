@@ -93,7 +93,7 @@ function carregar(arquivo) {
       },
       mensagemDeErroVoz: (codigo) => ({ titulo: 'Erro ' + codigo, texto: 'Texto ' + codigo }),
     },
-    './data': { fetchCategories: async () => [], fetchCreditCards: async () => [] },
+    './data': { fetchApelidosCategoria: async () => [], fetchCategories: async () => [], fetchCreditCards: async () => [] },
     './wallets': { fetchWallets: async () => [{ id: 'pessoal', name: 'Pessoal', is_default: true }] },
     './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'),
       registrarOperacaoVoz: async (requestId, source, payload) => {

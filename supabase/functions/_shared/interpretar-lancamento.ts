@@ -909,3 +909,36 @@ export function semNomeDaCategoria(descricao: string, categoria: string): string
   const resto = restantes.join(' ');
   return resto ? resto.charAt(0).toUpperCase() + resto.slice(1) : categoria;
 }
+
+/**
+ * A categoria que um apelido ensinado no Granabô aponta ("comida" para
+ * "Alimentação"), ou null. Os apelidos moram em `assistant_memory`
+ * (tipo `vocabulario`, chave `categoria:<apelido>`); até 15/10/2026 só o chat
+ * os conhecia e "lança 30 de comida" decidia diferente na voz (autor, 15/10:
+ * "Sobre os apelidos: sim"). Apelido vale como palavra inteira e vence a
+ * palavra-chave, porque foi a pessoa que ensinou. Apelido que aponta para
+ * categoria que não existe mais é ignorado. Mesma função na voz (app e widget)
+ * e no Granabô; cópia travada pelo `sync-parser`.
+ */
+export function categoriaPorApelido(
+  text: string,
+  apelidos: { chave: string; valor: string }[],
+  extras: { name: string; color: string }[] = []
+): { name: string; color: string } | null {
+  const chave = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/[^\p{L}\d]+/gu, ' ').trim();
+  const alvo = ` ${chave(text)} `;
+  const categorias = [...extras, ...CATEGORIES];
+  let melhor: { name: string; color: string } | null = null;
+  let tamanho = 0;
+  for (const { chave: chaveMemoria, valor } of apelidos) {
+    if (!chaveMemoria.startsWith('categoria:')) continue;
+    const apelido = chave(chaveMemoria.slice('categoria:'.length));
+    if (!apelido || apelido.length <= tamanho || !alvo.includes(` ${apelido} `)) continue;
+    const categoria = categorias.find((c) => chave(c.name) === chave(valor));
+    if (!categoria) continue;
+    melhor = { name: categoria.name, color: categoria.color };
+    tamanho = apelido.length;
+  }
+  return melhor;
+}

@@ -103,7 +103,7 @@ carregarVm('lib/widget-voz-task.ts', {
     podeNotificar: async () => true, notificarRevisao: async () => {}, notificarFalha: async () => {},
     notificarPendenteOffline: async () => {}, notificarSucesso: async () => {}, notificarSalvoLocal: async () => {},
   },
-  './data': { fetchCreditCards: async () => CARTOES, fetchCategories: async () => [] },
+  './data': { fetchCreditCards: async () => CARTOES, fetchApelidosCategoria: async () => [], fetchCategories: async () => [] },
   './wallets': { fetchWallets: async () => CARTEIRAS },
   './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'),
     ehRecusaCartaoObrigatorio: () => false,

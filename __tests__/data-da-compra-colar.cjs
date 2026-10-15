@@ -98,7 +98,7 @@ const imports = {
   '@/lib/nota-foto-parser': lib('nota-foto-parser'),
   '@/lib/voz-confiabilidade': lib('voz-confiabilidade'),
   '@/lib/limits': lib('limits'),
-  '@/lib/data': { fetchCategories: async () => [] },
+  '@/lib/data': { fetchApelidosCategoria: async () => [], fetchCategories: async () => [] },
   '@/lib/offline-cache': { salvarOuGuardarNoAparelho: async (input) => { registro.gravados.push(input); return { guardado: false }; } },
   '@/lib/lancamentos-alterados': { marcarLancamentosAlterados() {} },
   '@/lib/erros': { mensagemErro: (e) => String(e) },

@@ -37,6 +37,7 @@ import {
   citaCarteira,
   descricaoDoLancamento,
   semNomeDaCategoria,
+  categoriaPorApelido,
   ehIntencaoBoleto,
   ehIntencaoCredito,
   entradaComIntencaoDeCredito,
@@ -1006,10 +1007,11 @@ async function executarCriarLancamento(
   const frase = texto.trim();
   if (!frase) return 'Faltou a frase do lançamento. Peça ao usuário o que ele quer registrar e quanto foi.';
 
-  const [carteirasRes, categoriasRes, cartoesRes] = await Promise.all([
+  const [carteirasRes, categoriasRes, cartoesRes, apelidosRes] = await Promise.all([
     supabase.from('wallets').select('id, name, is_default').eq('user_id', userId),
     supabase.from('categories').select('name, color, is_default').eq('user_id', userId),
     supabase.from('credit_cards').select('id, name, bank, wallet_id').eq('user_id', userId),
+    supabase.from('assistant_memory').select('chave, valor').eq('user_id', userId).eq('tipo', 'vocabulario'),
   ]);
   if (carteirasRes.error) throw carteirasRes.error;
   if (categoriasRes.error) throw categoriasRes.error;
@@ -1077,11 +1079,17 @@ async function executarCriarLancamento(
     return RESPOSTA_ENTRADA_NO_CREDITO + ' ' + AINDA_NAO_REGISTREI;
   }
 
-  const categoria = guessCategoryFromText(financeiro, categoriaExtras);
+  /* Sem os apelidos nada grava errado: a categoria cai em "Outros" e a
+     pergunta aparece. Por isso a falha degrada, com log. */
+  if (apelidosRes.error) console.error('[assistente-financeiro] apelidos indisponíveis:', apelidosRes.error);
+  const apelidos = (apelidosRes.error ? [] : apelidosRes.data ?? []) as Array<{ chave: string; valor: string }>;
+  /* Apelido ensinado vence a palavra-chave, igual na voz (app e widget). */
+  const categoriaDoApelido = categoriaPorApelido(financeiro, apelidos, categoriaExtras);
+  const categoria = categoriaDoApelido ?? guessCategoryFromText(financeiro, categoriaExtras);
   /* 'Outros' é o que o interpretador devolve quando não reconheceu nada — o
      mesmo sinal que o widget usa para mandar à revisão. Só aceita 'Outros' se
      a pessoa tiver dito "outros" com todas as letras. */
-  if (categoria.name === 'Outros' && !/\boutros?\b/i.test(financeiro)) {
+  if (categoria.name === 'Outros' && !categoriaDoApelido && !/\boutros?\b/i.test(financeiro)) {
     const nomes = categorias.length ? categorias.map((c) => c.name) : CATEGORIES.map((c) => c.name);
     // O cartão só entra para tirar "no crédito C6" do nome citado na pergunta.
     const cartaoDaFrase = ehIntencaoCredito(financeiro) ? matchCardByText(financeiro, cartoes) : null;

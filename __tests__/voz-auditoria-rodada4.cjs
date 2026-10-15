@@ -49,7 +49,7 @@ load('lib/widget-voz-task.ts', {
   '@/modules/grana-voice-widget': { definirEstado() {} },
   './voz': { transcreverAudio: async () => { throw Error('Sem rede neste teste'); } },
   './heuristics': h, './voz-confiabilidade': { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz },
-  './data': { fetchCategories: async () => [], fetchCreditCards: async () => cards },
+  './data': { fetchApelidosCategoria: async () => [], fetchCategories: async () => [], fetchCreditCards: async () => cards },
   './wallets': { fetchWallets: async () => wallets },
   './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'), registrarOperacaoVoz: async (_id, _source, payload) => {
     writes.push(payload); return { status: 'committed', ids: ['fake'], operationId: 'fake' };

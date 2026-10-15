@@ -63,7 +63,7 @@ function revisao(extra) {
     '@/lib/theme': { theme: {}, radius: {}, spacing: {}, type: {}, fonts: {}, hitSlopPara: () => 0, lh: () => 0 },
     '@/lib/heuristics': h, '@/lib/format': fmt, '@/lib/data-da-fala': dates, '@/lib/nota-foto-parser': lib('nota-foto-parser'),
     '@/lib/voz-confiabilidade': lib('voz-confiabilidade'), '@/lib/limits': lib('limits'),
-    '@/lib/data': { fetchCategories: async () => [] }, '@/lib/demo-context': { useDemo: () => ({ isDemoMode: false }) },
+    '@/lib/data': { fetchApelidosCategoria: async () => [], fetchCategories: async () => [] }, '@/lib/demo-context': { useDemo: () => ({ isDemoMode: false }) },
     '@/lib/wallet-context': { useWallet: () => ({ wallets, activeWallet: wallets[0] }) },
     '@/lib/alerta': { Alert: { alert: (...v) => errors.push(v) } }, '@/lib/erros': { mensagemErro: () => 'falha simulada' },
     '@/lib/lancamentos-alterados': { marcarLancamentosAlterados() {} }, 'expo-crypto': { randomUUID: () => 'op' },

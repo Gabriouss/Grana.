@@ -197,7 +197,7 @@ async function nucleoDaVoz() {
       notificarRevisao: async (titulo, texto) => { revisoes.push([titulo, texto]); },
       notificarFalha: async () => {}, notificarPendenteOffline: async () => {}, notificarSucesso: async () => {}, notificarSalvoLocal: async () => {},
     },
-    './data': { fetchCreditCards: async () => cartoes, fetchCategories: async () => [] },
+    './data': { fetchCreditCards: async () => cartoes, fetchApelidosCategoria: async () => [], fetchCategories: async () => [] },
     './wallets': { fetchWallets: async () => [{ id: 'w', name: 'Pessoal', is_default: true }] },
     './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'),
       /* O 22023 lido pelo núcleo REAL (C3): sem ela, a checagem do `catch`

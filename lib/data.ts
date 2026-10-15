@@ -1214,3 +1214,13 @@ export async function fetchCreditTransactionsForMonth(year: number, month: numbe
 }
 export const fetchBudgets = comCacheOffline('orcamentos', buscar_fetchBudgets);
 export const fetchCategories = comCacheOffline('categorias', buscar_fetchCategories);
+
+/* Apelidos de categoria ensinados no Granabô ("comida" = Alimentação), para a
+   voz decidir igual ao chat (`categoriaPorApelido`, autor, 15/10/2026). A
+   leitura é do próprio dono, pela policy "assistant_memory: dono le sempre". */
+async function buscar_fetchApelidosCategoria(): Promise<{ chave: string; valor: string }[]> {
+  const { data, error } = await supabase.from('assistant_memory').select('chave, valor').eq('tipo', 'vocabulario');
+  if (error) throw error;
+  return (data ?? []).filter((linha) => linha.chave.startsWith('categoria:'));
+}
+export const fetchApelidosCategoria = comCacheOffline('apelidos-categoria', buscar_fetchApelidosCategoria);

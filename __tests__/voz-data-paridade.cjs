@@ -87,7 +87,7 @@ function carregar(arquivo) {
       transcreverAudio: async () => assert.fail('a transcrição vem pronta no payload'),
       mensagemDeErroVoz: (codigo) => ({ titulo: 'Erro ' + codigo, texto: 'Texto ' + codigo }),
     },
-    './data': { fetchCategories: async () => [], fetchCreditCards: async () => cartoes },
+    './data': { fetchApelidosCategoria: async () => [], fetchCategories: async () => [], fetchCreditCards: async () => cartoes },
     './wallets': { fetchWallets: async () => [{ id: 'pessoal', name: 'Pessoal', is_default: true }] },
     './creditLimitAlert': { checarLimiteCartao: async () => {} },
     './voice-operations': voiceOperations,

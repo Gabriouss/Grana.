@@ -127,7 +127,7 @@ function carregar(arquivo) {
       },
       mensagemDeErroVoz: (codigo) => ({ titulo: 'Erro ' + codigo, texto: 'Texto ' + codigo }),
     },
-    './data': { fetchCategories: async () => [], fetchCreditCards: async () => cartoes },
+    './data': { fetchApelidosCategoria: async () => [], fetchCategories: async () => [], fetchCreditCards: async () => cartoes },
     './wallets': { fetchWallets: async () => [{ id: 'pessoal', name: 'Pessoal', is_default: true }] },
     './creditLimitAlert': { checarLimiteCartao: async () => {} },
     './supabase': { supabase: { rpc, auth: { getUser: async () => ({ data: { user: null } }) } } },

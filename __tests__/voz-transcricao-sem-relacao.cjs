@@ -64,7 +64,7 @@ function montar(origem) {
     },
     './voz-recibos-da-fila': { guardarReciboDaFila: async (r) => { e.recibos.push(r); } },
     './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'), registrarOperacaoVoz: async (_, __, input) => { e.salvos.push(input); return { ids: ['tx'], operationId: 'op' }; }, desfechoDoErroVoz: () => null, ehRecusaCartaoObrigatorio: () => false },
-    './data': { fetchCreditCards: async () => cartoes, fetchCategories: async () => [] },
+    './data': { fetchCreditCards: async () => cartoes, fetchApelidosCategoria: async () => [], fetchCategories: async () => [] },
     './wallets': { fetchWallets: async () => [{ id: 'w', name: 'Pessoal', is_default: true }] },
     './creditLimitAlert': { checarLimiteCartao: async () => {} },
     './supabase': { supabase: { auth: { getUser: async () => ({ data: { user: null } }), getSession: async () => ({ data: { session: null } }) } } },
