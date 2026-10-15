@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, fonts, type, touchTarget } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, lh, touchTarget } from '@/lib/theme';
 import { formatMonthYear } from '@/lib/format';
 import AppPressable from './AppPressable';
 
@@ -66,7 +66,7 @@ export default function MonthSelector({ year, month, onChange, currentYear, curr
         onPress={handleResetCurrent}
         accessibilityLabel={`${periodoLabel}. Voltar para ${mode === 'invoice' ? 'a fatura atual' : 'o mês atual'}`}
       >
-        <Text style={styles.monthText}>{periodoLabel}</Text>
+        <Text style={[styles.monthText, { flexShrink: 1 }]}>{periodoLabel}</Text>
         {isCurrentMonth ? (
           <View style={styles.currentBadge}>
             <Text style={styles.currentBadgeText}>Atual</Text>
@@ -107,8 +107,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
+  /* Com a fonte do sistema grande o texto do período não cabe ao lado das duas
+     setas; a pílula cede (quebra o texto) em vez de empurrar a seta da direita
+     para fora do cartão. */
   centerPill: {
+    flexShrink: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.sm,
@@ -121,6 +127,7 @@ const styles = StyleSheet.create({
   monthText: {
     color: theme.ink,
     fontSize: type.corpo,
+    lineHeight: lh(type.corpo, 'corpo'),
     letterSpacing: 0.3, fontFamily: fonts.regular },
   currentBadge: {
     backgroundColor: theme.accent + '25',
