@@ -75,7 +75,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Permitir que o Grana. use a câmera para ler o QR Code de notas fiscais."
+          "cameraPermission": "Permitir que o Grana. use a câmera para fotografar notas fiscais."
         }
       ],
       [
