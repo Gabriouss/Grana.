@@ -142,7 +142,7 @@ export default function SignUp() {
           <Text style={styles.subtitle}>
             Enviamos um link de confirmação para{' '}
             <Text style={{ color: theme.ink }}>{confirmationSentTo}</Text>. Abra o e-mail e toque no link para
-            confirmar — o Grana abre sozinho, já conectado.
+            confirmar seu endereço. Depois, volte ao Grana. e entre com seu e-mail e senha.
           </Text>
           <AppPressable
             style={({ hovered }) => [styles.primaryBtn, hovered && styles.primaryBtnHover]}
