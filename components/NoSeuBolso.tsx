@@ -23,8 +23,9 @@ const ALTURA_CENA = 232;
  * - **WhatsApp saiu.** Era um dos três cards lá, e o canal está desligado
  *   desde 05/09/2026. No lugar, os widgets, que o bloco pede.
  * - **A nota fiscal parou de mentir.** Lá dizia "vira lançamento certo, sem
- *   digitar nada". O QR Code só traz o valor em nota emitida em contingência;
- *   na maioria das compras o app pede o valor. Aqui: "você confere o valor".
+ *   digitar nada". A leitura da foto nem sempre acerta o valor, então aqui
+ *   o texto diz que você confere antes de salvar (o leitor de QR Code saiu
+ *   do app em 15/10/2026).
  * - **O widget parece widget.** O autor reprovou o desenho anterior ("não dá
  *   nem pra entender que é algo para a tela do celular"). Este mostra a TELA
  *   INICIAL: barra de status, ícones de outros apps e os dois widgets com o
@@ -40,7 +41,7 @@ export default function NoSeuBolso() {
   const { ehCompacto } = useBreakpoint();
   const cards = [
     { chave: 'voz', rotulo: 'Voz', titulo: 'Fale o gasto', texto: 'Toque no microfone e diga o que gastou. O Grana. transcreve e sugere a categoria para você conferir.', cena: <CenaVoz /> },
-    { chave: 'nota', rotulo: 'Nota fiscal', titulo: 'Leia o QR da nota', texto: 'Aponte a câmera para o QR Code da nota fiscal. O Grana. identifica a loja e a data na hora. O valor vem junto quando a nota carrega, e nas outras você digita antes de salvar.', cena: <CenaNota /> },
+    { chave: 'nota', rotulo: 'Nota fiscal', titulo: 'Fotografe a nota', texto: 'Tire uma foto da nota fiscal. O Grana. lê o valor total no seu aparelho e sugere o lançamento para você conferir antes de salvar.', cena: <CenaNota /> },
     { chave: 'widgets', rotulo: 'Widgets', titulo: 'O essencial na tela inicial', texto: 'Fale um gasto ou veja quanto sobra no mês direto da tela inicial do Android, sem abrir o aplicativo.', cena: <CenaWidgets /> },
   ];
   return (
@@ -93,7 +94,7 @@ function CenaNota() {
         <View style={[styles.canto, styles.cantoSupDir]} />
         <View style={[styles.canto, styles.cantoInfEsq]} />
         <View style={[styles.canto, styles.cantoInfDir]} />
-        <Ionicons name="qr-code-outline" size={44} color={theme.inkFaint} />
+        <Ionicons name="camera-outline" size={44} color={theme.inkFaint} />
       </View>
       <View style={styles.notaAviso}>
         <Ionicons name="checkmark-circle" size={14} color={theme.up} />
