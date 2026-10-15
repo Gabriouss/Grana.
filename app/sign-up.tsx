@@ -68,7 +68,11 @@ export default function SignUp() {
         foco ficava no botão e a mensagem aparecia longe de onde a pessoa
         está, o que deixa quem navega por teclado sem saber o que corrigir. */
     if (!email.trim() || !password) {
-      setError('Preencha e-mail e senha.');
+      setError(
+        aceitouTermos
+          ? 'Preencha e-mail e senha.'
+          : 'Preencha e-mail e senha e aceite os Termos de Uso e a Política de Privacidade.',
+      );
       if (!email.trim()) campoEmail.current?.focus();
       else campoSenha.current?.focus();
       return;
