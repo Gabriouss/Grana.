@@ -325,7 +325,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .faixa-simulado {
   display: flex;
   align-items: flex-start;
-  gap: var(--s-sm);
+  --faixa-ponto: 8px;
+  --faixa-gap: var(--s-sm);
+  /* Onde o texto começa: depois do ponto e do espaço. No estreito, o botão e a largura do texto partem daqui. */
+  --faixa-recuo: calc(var(--faixa-ponto) + var(--faixa-gap));
+  gap: var(--faixa-gap);
   margin: 0 0 var(--s-xl);
   padding: var(--s-sm) var(--s-md);
   border: 1px dashed var(--rule-strong);
@@ -338,10 +342,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .faixa-simulado > button { margin-left: auto; align-self: center; }
 .faixa-simulado::before {
   content: '';
-  width: 8px; height: 8px; border-radius: 50%;
+  width: var(--faixa-ponto); height: var(--faixa-ponto); border-radius: 50%;
   background: var(--atencao);
   flex: none;
-  margin-top: calc((1lh - 8px) / 2);
+  margin-top: calc((1lh - var(--faixa-ponto)) / 2);
 }
 
 @media (max-width: 899px) {
@@ -2785,8 +2789,8 @@ dialog.feed-post[open] { animation: modal-entra 240ms var(--ease-saida); }
 
 @media (max-width: 640px) {
   .faixa-simulado { flex-wrap: wrap; }
-  .faixa-simulado > p { flex-basis: calc(100% - var(--s-lg)); }
-  .faixa-simulado > button { margin-left: calc(var(--s-lg) - var(--s-md)); }
+  .faixa-simulado > p { flex-basis: calc(100% - var(--faixa-recuo)); }
+  .faixa-simulado > button { margin-left: calc(var(--faixa-recuo) - var(--s-md)); }
   .faixa-simulado > button { white-space: normal; }
 }
 
