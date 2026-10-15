@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from './AppPressable';
-import { fonts, radius, spacing, theme, type } from '@/lib/theme';
+import { fonts, lh, radius, spacing, theme, type } from '@/lib/theme';
 import type { Badge } from '@/lib/gamification';
 
 type Props = {
@@ -84,7 +84,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    flexWrap: 'wrap',
     gap: spacing.xs,
     marginBottom: 2,
   },
@@ -101,7 +100,11 @@ const styles = StyleSheet.create({
   iconLocked: {
     backgroundColor: theme.superficieInativa,
   },
+  /* Sem `flexWrap` na fileira: o selo ficava ao lado do ícone ou caía para baixo
+     conforme a largura do texto ("0%" cabia, "86%" não), e cada cartão tinha uma
+     altura. Agora o selo encolhe e quebra o próprio texto, sempre ao lado. */
   badgeStatus: {
+    flexShrink: 1,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: radius.pill,
@@ -110,6 +113,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontFamily: fonts.regular,
     fontSize: type.micro,
+    lineHeight: lh(type.micro, 'apoio'),
   },
   statusUnlocked: {
     color: theme.accent2,
