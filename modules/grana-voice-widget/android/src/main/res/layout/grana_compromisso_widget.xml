@@ -23,11 +23,13 @@
         android:text="@string/grana_compromisso_titulo"
         android:textColor="@color/grana_widget_texto_suave"
         android:textSize="11sp"
-        android:maxLines="1" />
+        android:maxLines="1"
+        android:ellipsize="end" />
     <TextView
         android:id="@+id/grana_compromisso_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
         android:text="@string/grana_compromisso_proximo"
         android:textColor="@color/grana_widget_menta"
         android:textSize="8sp"
