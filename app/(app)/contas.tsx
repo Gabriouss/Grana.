@@ -653,11 +653,11 @@ const styles = StyleSheet.create({
      telas estreitas — sem isso os dois textos se sobrepunham em vez de a
      data quebrar pra linha de baixo. Achado num print da landing que mostrava
      o card real do app. */
-  cardBottom: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', rowGap: 2 },
+  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', columnGap: spacing.sm },
   cardAmount: { color: theme.ink, fontSize: type.corpo,
   lineHeight: lh(type.corpo, 'valor'), fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
   cardDue: { color: theme.inkFaint, fontSize: type.legenda,
-  lineHeight: lh(type.legenda, 'apoio'), fontFamily: fonts.light, flexShrink: 1, textAlign: 'right' },
+  lineHeight: lh(type.legenda, 'apoio'), fontFamily: fonts.light, flex: 1, minWidth: 0, textAlign: 'right' },
   pill: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.pill },
   pillOk: { backgroundColor: theme.rule },
   pillWarn: { borderWidth: 1, borderColor: theme.ruleStrong },
