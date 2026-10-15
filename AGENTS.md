@@ -997,6 +997,11 @@ Regras permanentes para qualquer sessão que abrir este repositório:
       auditoria final, segurança, dinheiro, voz, migration) em Opus 5.5 medium.
       `high` só depois que `medium` falhou. Pedido explícito do autor sobre um
       terminal vale acima da tabela da skill.
+    - **O "Orquestrador Supremo" roda SEMPRE em Opus 5.5 medium** (autor, 14/10/2026:
+      "trave um lembrete de que Orquestrador supremo sempre estará em opus 5.5
+      medium"). A tabela não o rebaixa, nem em tarefa mecânica. Como `/model` em
+      outro terminal grava o padrão global, confira o cabeçalho dele depois de
+      qualquer reinício.
     - **O orquestrador troca o modelo sozinho** (`maestri ask "<agente>" --raw
       "/model <modelo>"` + Enter), lendo o cabeçalho antes e depois, e avisa o
       autor numa linha. Não precisa perguntar.
