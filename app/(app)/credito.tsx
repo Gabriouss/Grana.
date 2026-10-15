@@ -938,7 +938,7 @@ export default function CreditoScreen() {
     const carteiraCasada = matchWalletByText(texto, wallets);
     const textoFinanceiro = carteiraCasada ? limparReferenciaCarteira(texto, carteiraCasada.name) : texto;
     if (/\bparcel(?:as?|ado|ada|ei|ar)\b|\b\d+\s*(?:x|vezes)\b/i.test(textoFinanceiro) && parseParcelas(textoFinanceiro) === null) {
-      Alert.alert('Confirme o parcelamento', 'Não reconheci uma quantidade válida de 2 a 36 parcelas. Repita o lançamento com a quantidade correta.');
+      Alert.alert('Confirme o parcelamento', 'Não reconheci uma quantidade válida de 2 a 36 parcelas. Repita a compra com a quantidade correta.');
       return;
     }
     const guessedAmount = valorSeguroParaRevisaoVoz(textoFinanceiro);
@@ -1150,7 +1150,7 @@ export default function CreditoScreen() {
   }
 
   function confirmDeleteCard(card: CreditCard) {
-    Alert.alert('Excluir cartão', `Remover "${card.name}"? Os lançamentos já feitos nele continuam no histórico, só perdem o vínculo com o cartão.`, [
+    Alert.alert('Excluir cartão', `Remover "${card.name}"? As compras já feitas nele continuam no histórico, só perdem o vínculo com o cartão.`, [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Excluir',
@@ -1462,7 +1462,7 @@ export default function CreditoScreen() {
                       setSelectedCardId((curr) => (curr === card.id ? 'all' : card.id));
                     }}
                     accessibilityState={{ selected: selectedCardId === card.id }}
-                    accessibilityHint="Filtra os lançamentos por este cartão. Toque de novo para ver todos."
+                    accessibilityHint="Filtra as compras por este cartão. Toque de novo para ver todas."
                     onLongPress={() => {
                       setSelectedCardForAction(card);
                       setCardActionSheetOpen(true);
@@ -1645,8 +1645,8 @@ export default function CreditoScreen() {
         {/* Lista de Compras no Crédito */}
         <Text style={styles.sectionLabel}>
           {selectedCardId === 'all'
-            ? 'Lançamentos por cartão · use as opções para editar ou excluir'
-            : 'Lançamentos da fatura · use as opções para editar ou excluir'}
+            ? 'Compras por cartão · use as opções para editar ou excluir'
+            : 'Compras da fatura · use as opções para editar ou excluir'}
         </Text>
         {creditTransactions.length === 0 ? (
           <Text style={styles.emptyText}>Nenhuma compra no crédito nesta fatura.</Text>
@@ -1798,7 +1798,7 @@ export default function CreditoScreen() {
 
       <ItemActionSheet
         visible={actionSheetOpen}
-        title={selectedTx ? `${selectedTx.description} · ${formatBRL(Number(selectedTx.amount))}` : 'Lançamento'}
+        title={selectedTx ? `${selectedTx.description} · ${formatBRL(Number(selectedTx.amount))}` : 'Compra'}
         onClose={() => setActionSheetOpen(false)}
         onEdit={() => {
           if (selectedTx) abrirEdicaoCompra(selectedTx);

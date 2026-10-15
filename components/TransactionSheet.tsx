@@ -324,7 +324,7 @@ export default function TransactionSheet({
           <View style={styles.amountRow}>
             <Text style={styles.amountPrefix}>R$</Text>
             <TextInput
-              accessibilityLabel={ehBoleto ? 'Valor da conta em reais' : 'Valor do lançamento em reais'}
+              accessibilityLabel={ehBoleto ? 'Valor da conta em reais' : ehCredito ? 'Valor da compra em reais' : 'Valor do lançamento em reais'}
               maxLength={LIMITS.amount}
               style={styles.amountInput}
               placeholder="0,00"
@@ -380,8 +380,8 @@ export default function TransactionSheet({
           </AppPressable>
 
           <View style={{ gap: 6 }}>
-            <AppPressable style={styles.fieldRow} onPress={() => setDatePickerOpen(true)} accessibilityRole="button" accessibilityLabel={`${ehBoleto ? 'Vencimento' : 'Data do lançamento'}: ${rotuloDaData}${selo ? `, ${selo}` : ''}`}>
-              <Text style={styles.fieldKey}>{ehBoleto ? 'Vencimento' : 'Data do lançamento'}</Text>
+            <AppPressable style={styles.fieldRow} onPress={() => setDatePickerOpen(true)} accessibilityRole="button" accessibilityLabel={`${ehBoleto ? 'Vencimento' : ehCredito ? 'Data da compra' : 'Data do lançamento'}: ${rotuloDaData}${selo ? `, ${selo}` : ''}`}>
+              <Text style={styles.fieldKey}>{ehBoleto ? 'Vencimento' : ehCredito ? 'Data da compra' : 'Data do lançamento'}</Text>
               <View style={styles.dateFieldVal}>
                 {!!selo && <Text style={styles.seloData}>{selo}</Text>}
                 <Text style={styles.dateFieldValText}>{rotuloDaData}</Text>
@@ -494,7 +494,7 @@ export default function TransactionSheet({
             {salvando ? (
               <ActivityIndicator color={theme.paper} />
             ) : (
-              <Text style={styles.saveBtnText}>{editando ? 'Salvar alterações' : ehBoleto ? 'Salvar conta' : 'Salvar lançamento'}</Text>
+              <Text style={styles.saveBtnText}>{editando ? 'Salvar alterações' : ehBoleto ? 'Salvar conta' : ehCredito ? 'Salvar compra' : 'Salvar lançamento'}</Text>
             )}
           </AppPressable>
           {formError && (
@@ -513,7 +513,7 @@ export default function TransactionSheet({
       <DatePickerModal
         visible={datePickerOpen}
         currentISO={occurredOn || todayISO()}
-        title={ehBoleto ? 'Vencimento' : 'Data do lançamento'}
+        title={ehBoleto ? 'Vencimento' : ehCredito ? 'Data da compra' : 'Data do lançamento'}
         onSelectDate={(iso) => escolherData(semDataFutura ? dataEscolhidaNoSeletor(iso, todayISO()) : iso)}
         onClose={() => setDatePickerOpen(false)}
       />
