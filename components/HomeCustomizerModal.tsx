@@ -1,7 +1,7 @@
 import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import AppModal from './AppModal';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, type, fonts, touchTarget, hitSlopPara } from '@/lib/theme';
+import { theme, radius, spacing, type, lh, fonts, touchTarget, hitSlopPara } from '@/lib/theme';
 import {
   HOME_BLOCK_DESCRIPTIONS,
   HOME_BLOCK_ICONS,
@@ -138,7 +138,7 @@ export default function HomeCustomizerModal({
                     {HOME_BLOCK_LABELS[bloco.key]}
                   </Text>
                   {desc ? (
-                    <Text style={styles.desc} numberOfLines={2}>
+                    <Text style={styles.desc}>
                       {desc}
                     </Text>
                   ) : null}
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
   desc: {
     color: theme.inkFaint,
     fontSize: type.legenda,
-    lineHeight: 15, fontFamily: fonts.light },
+    lineHeight: lh(type.legenda, 'apoio'), fontFamily: fonts.light },
   footer: {
     paddingTop: spacing.md,
     marginTop: spacing.xs,
