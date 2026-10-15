@@ -69,6 +69,7 @@ export default function GoalsCarousel({
 
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [color, setColor] = useState(PALETTE_30[0]);
@@ -99,6 +100,7 @@ export default function GoalsCarousel({
     setIcon(ICONES[0]);
     setDeadline(null);
     setEditingGoal(null);
+    setFormError(null);
   }
 
   function abrirEdicao(goal: Goal) {
@@ -119,11 +121,11 @@ export default function GoalsCarousel({
   async function handleCreate() {
     const parsed = parseAmount(targetAmount);
     if (!title.trim()) {
-      Alert.alert('Dê um nome para a meta');
+      setFormError('Dê um nome para a meta.');
       return;
     }
     if (!parsed || parsed <= 0) {
-      Alert.alert('Informe um valor alvo válido');
+      setFormError('Informe um valor alvo válido.');
       return;
     }
     setCreating(true);
@@ -303,7 +305,7 @@ export default function GoalsCarousel({
             placeholder="Nome da meta, ex.: Viagem"
             placeholderTextColor={theme.inkFaint}
             value={title}
-            onChangeText={setTitle}
+            onChangeText={(value) => { setTitle(value); if (formError) setFormError(null); }}
           />
 
           <View style={styles.amountRow}>
@@ -316,7 +318,7 @@ export default function GoalsCarousel({
               placeholderTextColor={theme.inkFaint}
               keyboardType="number-pad"
               value={targetAmount}
-              onChangeText={(t) => setTargetAmount(formatMoneyInput(t))}
+              onChangeText={(t) => { setTargetAmount(formatMoneyInput(t)); if (formError) setFormError(null); }}
             />
           </View>
 
@@ -363,6 +365,11 @@ export default function GoalsCarousel({
           >
             <Text style={styles.saveBtnText}>{creating ? 'Salvando...' : editingGoal ? 'Salvar alterações' : 'Criar meta'}</Text>
           </AppPressable>
+          {formError && (
+            <Text style={styles.formError} role="alert" accessibilityLiveRegion="assertive">
+              {formError}
+            </Text>
+          )}
         </Sheet>
       </AppModal>
 
@@ -446,6 +453,7 @@ const styles = StyleSheet.create({
   /* Oculto, o % vira a máscara "R$ 0.000,00", bem mais larga que "12%" e
      capaz de empurrar o prazo para fora do card. A caixa encolhe e recorta a
      máscara, e o prazo (flexShrink 0) mantém o lugar dele. */
+  formError: { color: theme.danger, fontSize: type.legenda, fontFamily: fonts.regular, marginTop: spacing.xs },
   cardPctBox: { flexShrink: 1, minWidth: 0, overflow: 'hidden' },
   cardPct: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
   cardDeadline: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, flexShrink: 0 },
