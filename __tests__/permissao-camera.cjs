@@ -78,8 +78,8 @@ const base = { motivo: 'Motivo.', onFechar: () => chamadas.push('fechar'), pedir
   assert.deepEqual(chamadas, ['openSettings', 'fechar']);
 }
 
-// Os dois leitores usam a mesma tela, sem cópia própria.
-for (const arquivo of ['components/QrScannerModal.tsx', 'components/FotoNotaModal.tsx']) {
+// A foto da nota usa a tela compartilhada, sem cópia própria.
+for (const arquivo of ['components/FotoNotaModal.tsx']) {
   const fonte = fs.readFileSync(arquivo, 'utf8');
   assert.ok(fonte.includes('<PermissaoCamera'), `${arquivo} usa PermissaoCamera`);
   assert.ok(!fonte.includes('Permitir câmera'), `${arquivo} não tem botão de permissão próprio`);

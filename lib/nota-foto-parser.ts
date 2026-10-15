@@ -6,7 +6,7 @@
  * módulo só decide qual número daquele texto é o total pago, e não sabe nada
  * de câmera nem de React Native, por isso roda em node puro nos testes.
  *
- * Regra de ouro, a mesma de `nfce-parser.ts`: prefiro devolver `null` a um
+ * Regra de ouro: prefiro devolver `null` a um
  * número errado num app de dinheiro. Sem rótulo de total reconhecível, ou com
  * dois totais diferentes no mesmo nível de confiança, o valor volta vazio e a
  * tela pede que a pessoa digite o que está impresso no cupom. Nunca se chuta

@@ -115,7 +115,7 @@ console.log('OK: AppModal mede a área segura na própria janela nativa, sem rec
 
 // As telas cheias precisam ler o recuo DENTRO do AppModal. Chamado fora, o
 // hook lê a janela de baixo, onde o topo vem zero no Android.
-for (const arquivo of ['components/OnboardingModal.tsx', 'components/QrScannerModal.tsx', 'components/MonthlyWrappedModal.tsx']) {
+for (const arquivo of ['components/OnboardingModal.tsx', 'components/MonthlyWrappedModal.tsx']) {
   const fonte = fs.readFileSync(arquivo, 'utf8');
   assert.ok(!/useSafeAreaInsets\(/.test(fonte), `${arquivo} lê o recuo fora da janela do modal`);
   assert.ok(fonte.includes('<InsetsDoModal>'), `${arquivo} precisa do recuo medido no modal`);

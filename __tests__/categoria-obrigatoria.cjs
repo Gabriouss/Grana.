@@ -230,7 +230,7 @@ ok('formulário comum (Início, Lançamentos, Contas, Crédito): sem categoria, 
         `${arquivo}: ${nome} não marca categoria padrão nem "Outros" de palpite`);
     }
   }
-  for (const arquivo of ['components/PasteReceiptModal.tsx', 'components/QrScannerModal.tsx', 'components/FotoNotaModal.tsx']) {
+  for (const arquivo of ['components/PasteReceiptModal.tsx', 'components/FotoNotaModal.tsx']) {
     const fonte = ler(arquivo);
     assert.doesNotMatch(fonte, /useState\('Alimentação'\)|setCategory\('Alimentação'\)/, `${arquivo}: não abre com "Alimentação"`);
     assert.doesNotMatch(fonte.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, ''), /guessCategoryFromText/, `${arquivo}: não usa o palpite cru (que cai em "Outros")`);
@@ -242,6 +242,6 @@ ok('formulário comum (Início, Lançamentos, Contas, Crédito): sem categoria, 
     assert.match(salvar.slice(0, iGrava), /categoriaEscolhida\(/, `${arquivo}: só grava a categoria escolhida`);
   }
 }
-ok('nenhuma tela de lançamento abre com categoria padrão; Colar, QR e foto perguntam antes de gravar');
+ok('nenhuma tela de lançamento abre com categoria padrão; Colar e foto perguntam antes de gravar');
 
 console.log(`\n${checagens} checagens da categoria obrigatória passaram — 0 falhas`);
