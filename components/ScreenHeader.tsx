@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import { fonts, spacing, theme, type, textStyles } from '@/lib/theme';
 import { colunaConteudo } from '@/lib/breakpoints';
 import { useFaixaTopoVisivel } from '@/lib/faixa-topo';
@@ -40,10 +40,15 @@ export default function ScreenHeader({
   coluna?: StyleProp<ViewStyle>;
 }) {
   const faixaTopoVisivel = useFaixaTopoVisivel();
+  /* Com a fonte do sistema bem acima do normal, título e ações não cabem lado
+     a lado: sem quebra, a coluna do título estreita até partir a palavra
+     ("Credit"/"o"). Nesse caso as ações descem para uma segunda linha. */
+  const { fontScale } = useWindowDimensions();
+  const quebraAcoes = fontScale >= FONTE_GRANDE;
   return (
     <View style={[styles.header, faixaTopoVisivel && styles.headerComFaixa]}>
       <View style={[styles.interno, coluna]}>
-        <View style={styles.row}>
+        <View style={[styles.row, quebraAcoes && styles.rowQuebra]}>
           <View style={styles.leftCol}>
             {left}
             <View style={styles.texts}>
@@ -75,13 +80,16 @@ export default function ScreenHeader({
               </Text>
             </View>
           </View>
-          {right ? <View style={styles.right}>{right}</View> : null}
+          {right ? <View style={[styles.right, quebraAcoes && styles.rightQuebra]}>{right}</View> : null}
         </View>
         {children}
       </View>
     </View>
   );
 }
+
+/** Escala de fonte do sistema a partir da qual o cabeçalho empilha as ações. */
+const FONTE_GRANDE = 1.25;
 
 const styles = StyleSheet.create({
   header: {
@@ -106,6 +114,8 @@ const styles = StyleSheet.create({
      texto do título por extenso) — `flexShrink: 1` sozinho não é suficiente,
      e é exatamente essa lacuna que fazia a pílula de carteira estourar a
      borda da tela em celular grande antes desta correção. */
+  rowQuebra: { flexWrap: 'wrap', rowGap: spacing.sm },
+  rightQuebra: { marginLeft: 'auto' },
   leftCol: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexShrink: 1, minWidth: 0 },
   texts: { flexShrink: 1, minWidth: 0 },
 
