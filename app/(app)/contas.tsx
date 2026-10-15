@@ -202,7 +202,7 @@ export default function ContasScreen() {
     const financeiro = carteira ? limparReferenciaCarteira(texto, carteira.name) : texto;
     const vencimento = parseDiaVencimento(financeiro);
     if (!vencimento) {
-      Alert.alert('Confirme o vencimento', 'Não reconheci uma data válida. Repita o lançamento com o vencimento correto.');
+      Alert.alert('Confirme o vencimento', 'Não reconheci uma data de vencimento válida. Repita o vencimento da conta.');
       return;
     }
     setVozWalletId(carteira?.id ?? (citaCarteira(texto) ? '' : null));

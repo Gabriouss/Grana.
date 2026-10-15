@@ -324,7 +324,7 @@ export default function TransactionSheet({
           <View style={styles.amountRow}>
             <Text style={styles.amountPrefix}>R$</Text>
             <TextInput
-              accessibilityLabel="Valor do lançamento em reais"
+              accessibilityLabel={ehBoleto ? 'Valor da conta em reais' : 'Valor do lançamento em reais'}
               maxLength={LIMITS.amount}
               style={styles.amountInput}
               placeholder="0,00"
