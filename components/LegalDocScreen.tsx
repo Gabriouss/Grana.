@@ -98,8 +98,10 @@ export default function LegalDocScreen({ doc }: Props) {
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
             hitSlop={hitSlopPara(22)}
             style={styles.voltar}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
           >
-            <Ionicons name="chevron-back" size={18} color={theme.inkSoft} />
+            <Ionicons importantForAccessibility="no" accessibilityElementsHidden name="chevron-back" size={18} color={theme.inkSoft} />
             <Text style={styles.voltarTexto}>Voltar</Text>
           </AppPressable>
           <BrandLogotype width={92} />
