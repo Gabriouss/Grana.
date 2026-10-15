@@ -519,7 +519,7 @@ export default function OnboardingModal({
 
               {isDemoMode && (
                 <Text style={styles.hint}>
-                  Indisponível no modo de exemplo — desative "Dados de exemplo" no Perfil.
+                  Indisponível no modo de exemplo. Desative "Dados de exemplo" no Perfil.
                 </Text>
               )}
             </View>
