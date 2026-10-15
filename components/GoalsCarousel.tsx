@@ -264,7 +264,7 @@ export default function GoalsCarousel({
                   <View style={[styles.fill, { width: `${pct}%`, backgroundColor: corVisivel(g.color) }]} />
                 </View>
                 <View style={styles.cardBottomRow}>
-                  <PrivacyValue><Text style={styles.cardPct}>{pct}%</Text></PrivacyValue>
+                  <PrivacyValue style={styles.cardPctBox}><Text style={styles.cardPct} numberOfLines={1}>{pct}%</Text></PrivacyValue>
                   {g.deadline && <Text style={styles.cardDeadline}>{formatDateLabel(g.deadline)}</Text>}
                 </View>
               </AppPressable>
@@ -442,9 +442,13 @@ const styles = StyleSheet.create({
   cardTarget: { color: theme.inkFaint, fontSize: type.legenda, fontVariant: ['tabular-nums'], fontFamily: fonts.light },
   track: { height: 5, borderRadius: 3, backgroundColor: theme.paper, overflow: 'hidden', marginTop: 2 },
   fill: { height: '100%', borderRadius: 3 },
-  cardBottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardBottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', columnGap: spacing.sm },
+  /* Oculto, o % vira a máscara "R$ 0.000,00", bem mais larga que "12%" e
+     capaz de empurrar o prazo para fora do card. A caixa encolhe e recorta a
+     máscara, e o prazo (flexShrink 0) mantém o lugar dele. */
+  cardPctBox: { flexShrink: 1, minWidth: 0, overflow: 'hidden' },
   cardPct: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
-  cardDeadline: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
+  cardDeadline: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, flexShrink: 0 },
   addCard: { alignItems: 'center', justifyContent: 'center', gap: 6 },
   addCardText: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
 
