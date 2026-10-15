@@ -205,8 +205,8 @@ export default function AssinarScreen() {
                 e-mail custa uma linha e evita um suporte. */}
             {emailDaConta && ligado('assinatura_checkout') ? (
               <Text style={styles.avisoEmail}>
-                A compra é liberada pelo e-mail da conta. Já vai preenchido com {emailDaConta} —
-                se mudar, o acesso não libera sozinho.
+                A compra é liberada pelo e-mail da conta. Já vai preenchido com {emailDaConta}.
+                Se mudar, o acesso não libera sozinho.
               </Text>
             ) : null}
           </View>
