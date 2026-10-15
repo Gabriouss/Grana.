@@ -84,7 +84,7 @@ const REESCRITAS = {
   'saudade-3': ['Bora recomeçar', 'Dá pra retomar de onde parou. Registre o que lembrar desses dias 🔄'],
   'saudade-4': ['Seu histórico está aqui', 'Quando quiser voltar a registrar, é só abrir o Grana. 📈'],
   'saudade-5': ['Sem julgamento', 'Pausa acontece. Quando quiser, dá uma olhada nos seus lançamentos 😌'],
-  'dica-5': ['Compra no mercado?', 'Na próxima compra, escaneie o QR da nota e o Grana. ajuda a preencher o lançamento 🛒'],
+  'dica-5': ['Compra no mercado?', 'Na próxima compra, fotografe a nota e o Grana. ajuda a preencher o lançamento 🛒'],
   'almoco-1': ['Pausa do meio-dia', 'Teve algo para registrar? Dá para fazer agora ou depois 🍴'],
   'almoco-2': ['Hora do almoço', 'Se o almoço tiver gasto, dá pra registrar quando quiser 🥡'],
   'almoco-3': ['Hora do intervalo', 'Se teve algum gasto de manhã, a pausa é um bom momento pra registrar 🕐'],

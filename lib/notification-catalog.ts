@@ -110,12 +110,12 @@ export const MENSAGENS: MensagemNotif[] = [
   { id: 'saudade-7', categoria: 'saudade', titulo: 'Um oi rapidinho', texto: 'Só passando pra lembrar que o Grana. tá aqui quando você quiser voltar 💚' },
   { id: 'saudade-8', categoria: 'saudade', titulo: 'Que tal um resumo?', texto: 'Já que faz uns dias, que tal abrir o app e dar uma geral no que ficou pra trás? 🗂️' },
 
-  // ---- dicas_atalhos: voz, QR de nota fiscal, cofrinhos ----
+  // ---- dicas_atalhos: voz, foto da nota fiscal, cofrinhos ----
   { id: 'dica-1', categoria: 'dicas_atalhos', titulo: 'Sabia que dá pra falar?', texto: 'Dá pra lançar um gasto só falando com o Grana. Experimente a voz 🎙️' },
-  { id: 'dica-2', categoria: 'dicas_atalhos', titulo: 'Nota fiscal em segundos', texto: 'Escaneie o QR Code da nota fiscal e o Grana. adianta o lançamento. Você confere e salva 📷' },
+  { id: 'dica-2', categoria: 'dicas_atalhos', titulo: 'Nota fiscal em segundos', texto: 'Fotografe a nota fiscal e o Grana. adianta o lançamento. Você confere e salva 📷' },
   { id: 'dica-3', categoria: 'dicas_atalhos', titulo: 'Já criou um cofrinho?', texto: 'Que tal criar um cofrinho pra aquele objetivo que você vem adiando? 🐷' },
   { id: 'dica-4', categoria: 'dicas_atalhos', titulo: 'Menos digitação, mais rapidez', texto: 'Falar é mais rápido que digitar. Experimenta o lançamento por voz hoje 🗣️' },
-  { id: 'dica-5', categoria: 'dicas_atalhos', titulo: 'Compra no mercado?', texto: 'Na próxima compra, escaneie o QR da nota e o Grana. ajuda a preencher o lançamento 🛒' },
+  { id: 'dica-5', categoria: 'dicas_atalhos', titulo: 'Compra no mercado?', texto: 'Na próxima compra, fotografe a nota e o Grana. ajuda a preencher o lançamento 🛒' },
   { id: 'dica-6', categoria: 'dicas_atalhos', titulo: 'Metas com cofrinho', texto: 'Cofrinhos ajudam a visualizar o quanto falta pra sua meta. Já deu uma olhada nos seus? 🎯' },
   /* `dica-7` ("Atalho pelo WhatsApp") saiu em 13/09/2026. O autor: "SEM
      WHATSAPP, NÃO IREMOS UTILIZAR WHATSAPP". O id não é reaproveitado, para
