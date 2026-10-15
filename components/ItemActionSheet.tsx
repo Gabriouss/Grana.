@@ -31,24 +31,28 @@ export default function ItemActionSheet({
           </View>
 
           <AppPressable
+            accessibilityRole="button"
+            accessibilityLabel="Editar"
             style={({ hovered }) => [styles.actionBtn, hovered && styles.actionBtnHover]}
             onPress={() => {
               onClose();
               onEdit();
             }}
           >
-            <Ionicons name="create-outline" size={20} color={theme.ink} />
+            <Ionicons importantForAccessibility="no" accessibilityElementsHidden name="create-outline" size={20} color={theme.ink} />
             <Text style={styles.actionText}>Editar</Text>
           </AppPressable>
 
           <AppPressable
+            accessibilityRole="button"
+            accessibilityLabel="Excluir"
             style={({ hovered }) => [styles.actionBtn, hovered && styles.actionBtnHover]}
             onPress={() => {
               onClose();
               onDelete();
             }}
           >
-            <Ionicons name="trash-outline" size={20} color={theme.danger} />
+            <Ionicons importantForAccessibility="no" accessibilityElementsHidden name="trash-outline" size={20} color={theme.danger} />
             {/* `theme.danger`, não o hex cru que estava aqui. `#bb6b60` é a cor
                 da categoria Alimentação e também o `saidaBorda` do seletor, e
                 dava 3,74:1 sobre esta superfície, abaixo do AA. O token de

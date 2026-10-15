@@ -102,49 +102,57 @@ export default function FabButton({
           ]}
         >
           <AppPressable
+            accessibilityRole="button"
+            accessibilityLabel="Entrada"
             style={({ hovered }) => [styles.menuItem, hovered && styles.menuItemHover]}
             onPress={() => {
               setOpen(false);
               onAddIncome();
             }}
           >
-            <Ionicons name="arrow-up-circle-outline" size={18} color={theme.up} />
+            <Ionicons importantForAccessibility="no" accessibilityElementsHidden name="arrow-up-circle-outline" size={18} color={theme.up} />
             <Text style={styles.menuText}>Entrada</Text>
           </AppPressable>
 
           <AppPressable
+            accessibilityRole="button"
+            accessibilityLabel="Saída"
             style={({ hovered }) => [styles.menuItem, hovered && styles.menuItemHover]}
             onPress={() => {
               setOpen(false);
               onAddExpense();
             }}
           >
-            <Ionicons name="arrow-down-circle-outline" size={18} color={theme.down} />
+            <Ionicons importantForAccessibility="no" accessibilityElementsHidden name="arrow-down-circle-outline" size={18} color={theme.down} />
             <Text style={styles.menuText}>Saída</Text>
           </AppPressable>
 
           {onAddBill && (
             <AppPressable
+              accessibilityRole="button"
+              accessibilityLabel="Boleto"
               style={({ hovered }) => [styles.menuItem, hovered && styles.menuItemHover]}
               onPress={() => {
                 setOpen(false);
                 onAddBill?.();
               }}
             >
-              <Ionicons name="receipt-outline" size={18} color={theme.ink} />
+              <Ionicons importantForAccessibility="no" accessibilityElementsHidden name="receipt-outline" size={18} color={theme.ink} />
               <Text style={styles.menuText}>Boleto</Text>
             </AppPressable>
           )}
 
           {onAddCredit && (
             <AppPressable
+              accessibilityRole="button"
+              accessibilityLabel="Crédito"
               style={({ hovered }) => [styles.menuItem, hovered && styles.menuItemHover]}
               onPress={() => {
                 setOpen(false);
                 onAddCredit();
               }}
             >
-              <Ionicons name="card" size={18} color={theme.accent2} />
+              <Ionicons importantForAccessibility="no" accessibilityElementsHidden name="card" size={18} color={theme.accent2} />
               <Text style={styles.menuText}>Crédito</Text>
             </AppPressable>
           )}
