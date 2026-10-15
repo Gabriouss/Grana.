@@ -12,3 +12,16 @@ Mês-pai 2026-10: a quinta-feira é 2026-10-15. Semana aberta em 13/10/2026 para
 
 - 13/10/2026: aceite do autor de `aprovados/pecas/reels/grana-reels-notificacao-1.mp4` (SHA-1 `95eee60e2de891b8ac83043f16c7d275aef1b1b3`), na frase literal: "É a versão correta e já foi publicada no perfil do instagram (verificar utilizando API da META)". A conferência pela API da Meta pedida na mesma frase não foi feita (token vencido em 12/10). Repassada pelo Orquestrador Supremo em 14/10/2026 (decisão C2 da conferência do Flare). É a evidência datada que sustenta o arquivo em `aprovados` (regra 25). Aceite não é publicação; a publicação de 12/10 aconteceu antes deste registro.
 - 14/10/2026: **aceite composto derivado de aceites separados** para este Reel com a capa `../semana-41-2026-10-05-a-2026-10-11/aprovados/grana-reels-v8-pop-capa-1080x1920.png` (versão composta `d2291cb48d01`): vídeo aceito em 13/10/2026 (citação acima) e capa aceita em 11/10/2026 23:20:41 (versão `19d81da7338b`). Decisão do Orquestrador Supremo, 14/10/2026; registro em `docs/marketing/painel/aprovacoes.json`. Reel novo exige aceite composto explícito.
+
+## Copys orgânico e pago
+
+Origem: pedido do autor em 13/10/2026 (`/copywriting`): pente fino nas copys, separação entre orgânico e pago, e novas copys para reels, carrosséis e estáticos.
+
+| Peça / arquivo | Fonte | Status | Responsável | Aceite do autor | QA | Publicação |
+|---|---|---|---|---|---|---|
+| `para-aprovacao/pecas/COPYS-ORGANICO-E-PAGO.md` (R-O1 a R-O4, CO-1, CO-2, EO-1 a EO-3, P-1 a P-3, P-R1) | Claude (Haiku 5.5), sessão de 13/10/2026 | para-aprovacao | não registrado | não registrado | pendente | não publicado |
+| Pente fino do pacote da semana 40 (seção 1 da peça acima) | mesma sessão | para-aprovacao | não registrado | não registrado | pendente | não publicado |
+
+Versões substituídas: as copys de `semana-40 / para-aprovacao / COPYS-FINAIS.md` ficam como estão. A substituição depende da aprovação do autor, que ainda não existe.
+
+Gates: teste dos 10 cupons da foto da nota (C10) **afirmado pelo autor em 13/10/2026, sem relatório anexo** (registro de afirmação, não de QA). App "100%": afirmado pelo autor em 13/10/2026; a última auditoria datada no repositório é a de 03/10 (`context.md`, commit `a83b5b1`). Peças Android pedem QA do APK e do widget; peças web pedem QA no Chrome; peças pagas pedem a legenda da seção 4 e a conferência do preço vigente na Cakto.
