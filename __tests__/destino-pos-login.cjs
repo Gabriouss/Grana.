@@ -149,4 +149,29 @@ const conferir = (...args) => {
   );
 }
 
+// ---- /admin: o login nele não pode ser desviado para a Início ----
+{
+  const { api, janela } = carregar();
+  conferir(api.ehRotaDeAdmin('/admin'), true, '/admin é o painel');
+  conferir(api.ehRotaDeAdmin('/admin/'), true, 'barra final continua sendo o painel');
+  conferir(api.ehRotaDeAdmin('/admin?x=1'), true, 'busca não muda a rota');
+  conferir(api.ehRotaDeAdmin('/'), false, 'login em / vai à Início, não é admin');
+  conferir(api.ehRotaDeAdmin('/administrador'), false, 'prefixo parecido não é admin');
+  conferir(api.ehRotaDeAdmin('//evil.com/admin'), false, 'destino externo (//host) é recusado');
+  conferir(api.ehRotaDeAdmin('https://evil.com/admin'), false, 'URL absoluta é recusada');
+  // /admin nunca vira destino restaurado: o login nele não navega para lugar nenhum.
+  janela.location.pathname = '/admin';
+  conferir(api.capturarDestinoProtegido(), null, '/admin não é guardado como destino pós-login');
+  conferir(
+    api.restaurarDestino({ areaLogadaAberta: true, caminhoAtual: '/admin', consumir: () => '/admin' }),
+    null,
+    'login em /admin fica em /admin'
+  );
+  conferir(
+    api.restaurarDestino({ areaLogadaAberta: true, caminhoAtual: '/', consumir: () => 'https://evil.com/perfil' }),
+    null,
+    'destino externo guardado é recusado'
+  );
+}
+
 console.log(`OK destino pós-login: ${verificacoes} verificações — área fechada não consome, mesmo caminho não navega, recarregar não remonta em laço, e o destino de quem estava deslogado sobrevive até a área abrir.`);

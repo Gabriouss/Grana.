@@ -15,7 +15,7 @@ import { FlagsProvider } from '@/lib/feature-flags';
 import { fonts, lh, radius, spacing, theme, type } from '@/lib/theme';
 import { instalarAnelDeFoco, instalarDocumentoWeb } from '@/lib/foco-web';
 import { acompanharFocoParaModais } from '@/lib/modal-accessibility';
-import { capturarDestinoProtegido, consumirDestinoPosLogin, restaurarDestino } from '@/lib/destino-pos-login';
+import { capturarDestinoProtegido, consumirDestinoPosLogin, ehRotaDeAdmin, restaurarDestino } from '@/lib/destino-pos-login';
 import { EntitlementProvider, useEntitlement } from '@/lib/entitlement-context';
 import { deveSegurarRotas } from '@/lib/entitlement-cache';
 import WebPhoneFrame from '@/components/WebPhoneFrame';
@@ -293,7 +293,11 @@ function RootNavigator() {
      vez e o roteador caía em `ativar`, a primeira tela sem guarda — visto em
      produção na web como "Ativando sua assinatura…" em `/graficos`. A decisão
      mora em `lib/entitlement-cache.ts`, testada. */
-  if (deveSegurarRotas({ carregandoSessao: isLoading, temSessao: !!session, estadoAcesso })) {
+  /* `/admin` tem sessão, TOTP e "sem acesso" próprios: segurar as rotas aqui
+     desmontava o painel no instante do Entrar e jogava a pessoa na Início. */
+  const noAdmin =
+    Platform.OS === 'web' && typeof window !== 'undefined' && ehRotaDeAdmin(window.location.pathname);
+  if (!noAdmin && deveSegurarRotas({ carregandoSessao: isLoading, temSessao: !!session, estadoAcesso })) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.paper, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={theme.ink} />

@@ -35,6 +35,19 @@ function armazenamento(): Storage | null {
   }
 }
 
+/**
+ * É o painel `/admin`? Ele tem login, TOTP e "sem acesso" próprios, dentro da
+ * própria tela. A raiz não pode trocá-lo pelo spinner de "carregando acesso"
+ * quando o Entrar abre a sessão: isso desmonta o navegador e o painel, e a
+ * pessoa reaparecia na Início em `/`. Só caminho interno do site: `//host/admin`
+ * e URL absoluta nunca contam (sem abrir redirecionamento para fora).
+ */
+export function ehRotaDeAdmin(caminho: string): boolean {
+  if (!caminho.startsWith('/') || caminho.startsWith('//')) return false;
+  const limpo = caminho.split(/[?#]/)[0].replace(/\/+$/, '');
+  return limpo === '/admin';
+}
+
 /** É uma rota interna que exige sessão? */
 export function ehRotaProtegida(caminho: string): boolean {
   const limpo = caminho.split('?')[0].replace(/\/+$/, '') || '/';
