@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     fontSize: type.corpo,
     color: theme.ink,
     backgroundColor: theme.paperRaised, fontFamily: fonts.regular },
-  erroBloco: { marginBottom: spacing.sm, gap: 2 },
+  erroBloco: { marginBottom: spacing.sm, gap: spacing.sm },
   errorText: { color: theme.danger, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.regular },
   erroAcao: { color: theme.accent2, fontSize: type.apoio, paddingVertical: 4, fontFamily: fonts.regular },
   esqueciBtn: { alignItems: 'center', paddingVertical: spacing.md },
