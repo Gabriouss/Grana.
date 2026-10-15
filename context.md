@@ -15532,13 +15532,13 @@ critiquei recentemente?". A correção dele tinha sido feita em parte (`5631c68`
 - [ ] navegador de celular real: no estreito, o dialog usa `100vh` (`estilo.css:2731`), e a
   decisão pode ficar sob a barra dinâmica do navegador (O-3 do Lynx, hipótese; o sticky
   antigo tinha o mesmo risco);
-- [ ] Esc com o pedido de ajuste aberto devolvendo o foco ao botão "Pedir ajuste": o seletor
-  mudou no `7b654b3` e, pela leitura do código, o comportamento é o mesmo, mas nenhuma prova
-  do freeze confere `document.activeElement` (O-1 do Lynx);
+- [x] Esc com o pedido de ajuste aberto devolvendo o foco ao botão "Pedir ajuste" (O-1 do Lynx):
+  fechado no Chromium pelo V-D no `ca271f5`, 43/43, 0 falhas
+  (`vigil/fases34-ca271f5/f34.log`, `vigil-handoff-fases34-final.md`, seção V-D);
 - [ ] as três recusas legadas sem `origem.versao` só foram conferidas lendo o acervo e o código (Keel); nenhuma foi exercitada no servidor;
 - [ ] dado real com pedidos de ajuste na janela (a fixture não tem `details.pedidos-tecnico`);
 - [ ] S4, S7 e S8 da auditoria visual, e 320/768 nas telas fora do marketing;
-- [x] foco e teclado depois do `7b654b3`: O-7 e O-1 provados no Chromium pelo roteiro do Vigil (19/19) no `f54e868` e no `bd81026`; o gate completo no `bd81026` segue pendente;
+- [x] foco e teclado depois do `7b654b3`: O-7 provado no Chromium pelos roteiros do Vigil (19/19) no `f54e868` e no `bd81026`; O-1 fechado pelo V-D no `ca271f5` (43/43); gate completo no `bd81026` APROVADO (`vigil/gate-bd81026/recibos/veredito.txt`);
 - [x] O-5 do Lynx, acoplamento na `.faixa-simulado`: fechada no `f54e868` com tokens próprios;
 - [ ] publicação real na Meta (critério 10), fora do escopo.
 
