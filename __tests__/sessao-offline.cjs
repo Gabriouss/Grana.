@@ -84,7 +84,7 @@ const sessaoOffline = {};
 vm.runInNewContext(compilar('lib/sessao-offline.ts'), {
   exports: sessaoOffline,
   console: consoleDuble,
-  JSON, Date, String, Object, Error, Promise,
+  JSON, Date, String, Object, Error, Promise, setTimeout, clearTimeout,
   require: (nome) => {
     if (nome === './supabase') {
       return { armazenamentoSessao, CHAVE_SESSAO, supabase: supabaseDuble, __esModule: true };
