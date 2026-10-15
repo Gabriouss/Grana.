@@ -325,7 +325,7 @@ export default function PasteReceiptModal({
       </View>
       <Text style={styles.hint}>Cole o texto copiado de um comprovante Pix, fatura ou recibo. Identificamos o valor, categoria e tipo automaticamente.</Text>
       <TextInput accessibilityLabel="Texto do comprovante" maxLength={LIMITS.pastedText}
-        style={styles.textArea} placeholder="Ex.: Você transferiu R$ 45,90 para Restaurante Sabor da Terra..."
+        style={styles.textArea} placeholder="Ex.: Você pagou R$ 45,90 ao Mercado"
         placeholderTextColor={theme.inkFaint} multiline numberOfLines={5} value={rawText}
         onChangeText={setRawText} textAlignVertical="top" autoFocus />
       <AppPressable style={({ hovered }) => [styles.saveBtn, hovered && styles.saveBtnHover]} onPress={handleProcessText}>
