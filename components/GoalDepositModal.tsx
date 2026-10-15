@@ -31,11 +31,13 @@ export default function GoalDepositModal({
 }) {
   const [modo, setModo] = useState<Modo>('guardar');
   const [valor, setValor] = useState('');
+  const [semValor, setSemValor] = useState(false);
 
   useEffect(() => {
     if (visible) {
       setModo('guardar');
       setValor('');
+      setSemValor(false);
     }
   }, [visible, goal?.id]);
 
@@ -47,7 +49,11 @@ export default function GoalDepositModal({
   const excedeResgate = modo === 'resgatar' && parsed > atual;
 
   function handleSubmit() {
-    if (!parsed || parsed <= 0 || excedeResgate) return;
+    if (excedeResgate) return;
+    if (!parsed || parsed <= 0) {
+      setSemValor(true);
+      return;
+    }
     onSubmit(modo === 'guardar' ? parsed : -parsed);
   }
 
@@ -91,16 +97,19 @@ export default function GoalDepositModal({
             placeholderTextColor={theme.inkFaint}
             keyboardType="number-pad"
             value={valor}
-            onChangeText={(t) => setValor(formatMoneyInput(t))}
+            onChangeText={(t) => { setValor(formatMoneyInput(t)); if (semValor) setSemValor(false); }}
             autoFocus
           />
         </View>
         {excedeResgate && <Text style={styles.errorText}>Valor maior que o guardado no cofrinho.</Text>}
+        {semValor && !excedeResgate && (
+          <Text style={styles.errorText} role="alert" accessibilityLiveRegion="assertive">Informe um valor maior que zero.</Text>
+        )}
 
         <AppPressable
           style={({ hovered }) => [styles.saveBtn, hovered && styles.saveBtnHover]}
           onPress={handleSubmit}
-          disabled={saving || !parsed || parsed <= 0 || excedeResgate}
+          disabled={saving || excedeResgate}
         >
           {saving ? (
             <View style={styles.savingRow}>
