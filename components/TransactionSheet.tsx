@@ -196,7 +196,7 @@ export default function TransactionSheet({
     const descricao = desc.trim() || descricaoPadrao?.trim() || '';
     const valor = parseAmount(amount);
     if (!descricao) {
-      setFormError('Informe uma descrição para o lançamento.');
+      setFormError(`Informe uma descrição para ${ehBoleto ? 'a conta' : ehCredito ? 'a compra' : 'o lançamento'}.`);
       return;
     }
     if (!valor || valor <= 0) {
