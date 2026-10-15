@@ -341,8 +341,7 @@ export default function ImportarExtratoModal({
               <View style={styles.avisoPrivacidade}>
                 <Ionicons name="lock-closed-outline" size={15} color={theme.accent2} aria-hidden />
                 <Text style={styles.avisoTexto}>
-                  O arquivo é lido no seu aparelho. O Grana. continua sem se conectar ao seu banco e sem pedir senha
-                  bancária.
+                  O arquivo é lido no seu aparelho.
                 </Text>
               </View>
 
