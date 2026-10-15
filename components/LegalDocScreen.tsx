@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
   voltar: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   voltarTexto: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.light },
 
-  abasDocs: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
+  abasDocs: { flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.lg, marginBottom: spacing.lg },
   abaDoc: { paddingVertical: 6, paddingHorizontal: spacing.md, borderRadius: radius.pill, borderWidth: 1, borderColor: theme.rule },
   abaDocAtiva: { borderColor: theme.ruleStrong, backgroundColor: theme.paperRaised },
   abaDocTexto: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light },
