@@ -29,6 +29,7 @@ import { theme, spacing, radius, fonts, type, lh, screenRhythm, sombras } from '
 import {
   fetchMensagens,
   enviarPergunta,
+  dentroDoPrazo,
   type MensagemAssistente,
   type MensagemLocal,
 } from '@/lib/assistente';
@@ -281,8 +282,18 @@ export default function Granachat({
     return () => no.removeEventListener('click', aoClicar);
   }, [montado, visivel, fechar]);
 
-  /* ── Carregar histórico ao abrir ──────────────────────────────────── */
+  /* ── Carregar histórico ao abrir ────────────────────────────────────
+     Carrega na montagem e DE NOVO a cada abertura. O recarregamento é o que
+     aplica o prazo de 12 h (PRAZO_CONVERSA_MS) a quem deixou o app aberto por
+     horas com a janela fechada, e é também o que troca a conversa na troca de
+     conta: a consulta vai com a sessão atual, nunca com o estado antigo. O
+     banco não é tocado, só o que a janela mostra. Durante um envio o estado
+     local manda: substituí-lo apagaria a pergunta que acabou de ser feita. */
+  const primeiraCargaRef = useRef(true);
   useEffect(() => {
+    const primeira = primeiraCargaRef.current;
+    if (!primeira && (!visivel || enviando)) return;
+    primeiraCargaRef.current = false;
     let cancelado = false;
     (async () => {
       try {
@@ -299,12 +310,16 @@ export default function Granachat({
         );
       } catch (err) {
         console.error('[Granachat] erro ao carregar histórico:', err);
+        // Sem rede ao reabrir: a tela não pode segurar o que já venceu.
+        if (!cancelado) setMensagens((atual) => atual.filter((m) => dentroDoPrazo(m.criado_em)));
       } finally {
         if (!cancelado) setCarregando(false);
       }
     })();
     return () => { cancelado = true; };
-  }, []);
+    // `enviando` fica de fora de propósito: o fim de um envio não deve recarregar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visivel]);
 
   /* ── Teclado sobe junto com a janela ──────────────────────────────
      Não há o que fazer aqui além de escrever (ou tocar numa sugestão), então
@@ -383,7 +398,7 @@ export default function Granachat({
     try {
       // Monta histórico recente para contexto
       const historicoParaEnviar = mensagens
-        .filter((m) => !m.carregando && !m.erro)
+        .filter((m) => !m.carregando && !m.erro && dentroDoPrazo(m.criado_em))
         .slice(-10)
         .map((m) => ({ papel: m.papel, texto: m.texto }));
 

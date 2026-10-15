@@ -7,6 +7,26 @@
 
 import { supabase } from './supabase';
 
+/* ── Prazo da conversa ────────────────────────────────────────────────────
+   Decisão do autor em 15/10/2026: a conversa com o Granabô não fica para
+   sempre na tela. Passadas 12 horas, a mensagem some do Granachat, porque
+   saldo e "Livre para gastar" citados numa resposta antiga viram informação
+   desatualizada. O autor citou de 5 a 12 horas e pode ajustar: é só mudar
+   esta constante.
+
+   É um corte do LADO DO APP. O banco guarda tudo como antes (decisão do autor:
+   "banco fica como está, só o front limpo"); nada aqui apaga linha. O mesmo
+   filtro vale para o que é exibido E para o histórico enviado ao Granabô, para
+   a resposta nova não se apoiar em conversa que a pessoa já não vê. */
+export const PRAZO_CONVERSA_MS = 12 * 60 * 60 * 1000;
+
+/** Verdadeiro se a mensagem ainda está dentro do prazo de 12 h. Data ilegível
+    conta como vencida: melhor sumir do que mostrar o que não se sabe datar. */
+export function dentroDoPrazo(criadoEm: string, agora: number = Date.now()): boolean {
+  const quando = Date.parse(criadoEm);
+  return Number.isFinite(quando) && agora - quando <= PRAZO_CONVERSA_MS;
+}
+
 /* ── Tipos ────────────────────────────────────────────────────────────────── */
 
 export type PapelMensagem = 'usuario' | 'assistente';
@@ -70,9 +90,11 @@ export async function fetchMensagens(limit = 50): Promise<MensagemAssistente[]> 
      Como 'assistente' < 'usuario', o desempate ascendente coloca a resposta
      antes na ordem decrescente e, depois do `reverse()`, a pergunta vem
      primeiro. Vale também para as linhas antigas, que continuam empatadas. */
+  const agora = Date.now();
   const { data, error } = await supabase
     .from('assistant_messages')
     .select('id, papel, texto, ferramenta_usada, criado_em')
+    .gte('criado_em', new Date(agora - PRAZO_CONVERSA_MS).toISOString())
     .order('criado_em', { ascending: false })
     .order('papel', { ascending: true })
     .limit(limit);
@@ -84,7 +106,9 @@ export async function fetchMensagens(limit = 50): Promise<MensagemAssistente[]> 
 
   // A query vem desc (mais recente primeiro) para o limit pegar as últimas.
   // Revertemos para asc para a exibição na tela.
-  return ((data ?? []).reverse() as MensagemAssistente[]).map((m) =>
+  return ((data ?? []).reverse() as MensagemAssistente[])
+    .filter((m) => dentroDoPrazo(m.criado_em, agora))
+    .map((m) =>
     m.papel === 'assistente' ? { ...m, texto: textoDoAssistente(m.texto) } : m
   );
 }

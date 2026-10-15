@@ -6,11 +6,11 @@ const fonte = fs.readFileSync('lib/assistente.ts', 'utf8');
 const codigo = ts.transpileModule(fonte, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
 const original = 'Seu saldo: **R$ 500,00**.\n**Disponivel**: R$ 20,00 * 2.\nSem par **fica.';
 const esperado = 'Seu saldo: R$ 500,00.\nDisponivel: R$ 20,00 * 2.\nSem par **fica.';
-const entrada = { id: 'u', papel: 'usuario', texto: '**minha mensagem**', ferramenta_usada: null, criado_em: '2026-10-02' };
+const entrada = { id: 'u', papel: 'usuario', texto: '**minha mensagem**', ferramenta_usada: null, criado_em: new Date().toISOString() };
 const resposta = { ...entrada, id: 'a', papel: 'assistente', texto: original };
 const dados = [resposta, entrada];
 let enviado;
-const query = { select() { return this; }, order() { return this; }, async limit() { return { data: dados, error: null }; } };
+const query = { select() { return this; }, gte() { return this; }, order() { return this; }, async limit() { return { data: dados, error: null }; } };
 const mod = { exports: {} };
 vm.runInNewContext(codigo, {
   exports: mod.exports, module: mod, console, process: { env: { EXPO_PUBLIC_SUPABASE_URL: 'https://teste.invalid' } },
