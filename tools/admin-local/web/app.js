@@ -819,7 +819,14 @@ let rotaMostrada = null;
 function contadorAprovacao(n) {
   const link = document.querySelector('[data-contador-aprovacao]');
   if (!link) return;
-  link.textContent = Number.isSafeInteger(n) && n >= 0 ? `Aprovação (${n})` : 'Aprovação';
+  const valido = Number.isSafeInteger(n) && n >= 0;
+  link.textContent = valido ? `Aprovação (${n})` : 'Aprovação';
+  // região viva: só anuncia quando o número muda (o polling repete o mesmo valor)
+  const aviso = document.getElementById('aviso-aprovacao');
+  if (aviso && valido && link.dataset.anunciado !== String(n)) {
+    if (link.dataset.anunciado !== undefined) aviso.textContent = n === 0 ? 'Nada pede você' : `${n} ${n === 1 ? 'pede' : 'pedem'} você`;
+    link.dataset.anunciado = String(n);
+  }
   link.title = n === null ? 'Não foi possível conferir as demandas. Abra a Aprovação para atualizar.' : '';
 }
 
