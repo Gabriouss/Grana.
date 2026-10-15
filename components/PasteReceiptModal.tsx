@@ -110,6 +110,10 @@ export default function PasteReceiptModal({
   /* Na revisão de voz, a dica do campo quando a data da fala precisa de
      escolha ("Você disse 01/10, que ainda não chegou."). */
   const [dicaDaVoz, setDicaDaVoz] = useState<string | null>(null);
+  /* Texto colado sem valor reconhecível abria a folha com R$ 0,00 calada
+     (achado V23 do Vigil, 15/10/2026). Sem valor, a folha diz que não achou,
+     como a Foto da nota faz com `sem_total`. */
+  const [valorAchado, setValorAchado] = useState(true);
 
   useEffect(() => {
     if (!visible) return;
@@ -132,6 +136,7 @@ export default function PasteReceiptModal({
     setDataRecusada(false);
     setDataLida(false);
     setDicaDaVoz(null);
+    setValorAchado(true);
     setFormaPagamento(null);
     setRecorrente(false);
     setWalletId('');
@@ -152,6 +157,7 @@ export default function PasteReceiptModal({
     setType(guessedType);
     setDesc(guessedDesc);
     setAmount(guessedAmount != null && guessedAmount > 0 ? formatMoney(guessedAmount) : '');
+    setValorAchado(guessedAmount != null && guessedAmount > 0);
     setCategory(guessedCat?.name ?? '');
     /* Forma de pagamento e recorrência ditas na frase eram simplesmente
        jogadas fora aqui: "mercado 120 no pix" salvava sem payment_method
@@ -298,6 +304,9 @@ export default function PasteReceiptModal({
       falaOuvida={origemVoz ? rawText : undefined}
       seloDaData={!origemVoz && dataLida ? 'lida do texto' : null}
       dicaDaData={origemVoz ? dicaDaVoz : dataRecusada ? 'A data do texto não foi usada. Escolha a data.' : null}
+      avisoDeOrigem={!origemVoz && !valorAchado
+        ? <Text style={styles.hint}>Não achei o valor no texto. Digite o valor do comprovante.</Text>
+        : null}
       acaoSecundaria={{ rotulo: origemVoz ? 'Gravar de novo' : 'Colar outro texto', onPress: () => {
         if (savingRef.current) return;
         if (origemVoz) fechar();

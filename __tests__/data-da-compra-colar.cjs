@@ -327,5 +327,13 @@ async function salvar() {
   await salvar();
   ok(registro.gravados.length === 0, 'Colar: sem categoria escolhida, continua sem gravar');
 
+  /* V23 (Vigil, 15/10/2026): texto colado sem valor abria R$ 0,00 calado. */
+  const AVISO_SEM_VALOR = 'Não achei o valor no texto. Digite o valor do comprovante.';
+  ok(textos(colar('AUDIT teste sem valor')).includes(AVISO_SEM_VALOR), 'Colar sem valor: a folha diz que não achou o valor');
+  ok(!textos(colar('AUDIT mercado R$ 45,90')).includes(AVISO_SEM_VALOR), 'Colar com valor: sem o aviso');
+  abrir({ initialText: 'bico de sábado', referenciaDaVoz: REF('2026-09-30') });
+  ok(!textos(render()).includes(AVISO_SEM_VALOR), 'revisão de voz: o aviso do Colar não aparece (a voz tem o próprio recibo)');
+  ok(!textos(colar('AUDIT mercado R$ 45,90')).includes(AVISO_SEM_VALOR), 'Colar de novo depois da voz: sem aviso velho');
+
   console.log(`\n${checagens} checagens da data da compra no Colar passaram — 0 falhas`);
 })().catch((e) => { console.error(e); process.exit(1); });
