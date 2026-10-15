@@ -172,11 +172,11 @@ histórico. O Meridian registra no lugar do Quill e do Ledger. O Lynx revisou no
 revisores Codex, só lendo (`revisao-lynx-final-7b654b3.md`). Todos os caminhos são relativos a
 `E:/Grana-temporarios/2026-10-13-marketing-ph/`.
 
-**Freeze final: `9bbb72d5b019b7a2bdd9d28bc62bb3d3553893ee` (`lumen-freeze-6`). Gate do Vigil nesse
-SHA: PENDENTE, a preencher.** A tabela abaixo traz os recibos do `7b654b3`, o último SHA com gate
+**Freeze final: `6b44a96f35debdb004e81440a66223dfc9192927` (`lumen-freeze-6` em `9bbb72d`, mais
+`14a7120` e `6b44a96`, só CSS). Gate do Vigil nesse SHA: APROVADO** (`vigil-handoff-final.md`). A tabela abaixo traz os recibos do `7b654b3`, o último SHA com gate
 fechado. Por cima dele, o acabamento do Lumen só mexeu em `tools/admin-local/web/estilo.css` e
-`app.js` (`daf3184`, `14f5721`, `058ab2b`, `9ca9e6f`, `7f0a398`, `c3d07d5`, `9bbb72d`). Por isso,
-F3/F4-4 e o gate global têm de ser refeitos no `9bbb72d`. Cadeia até o `7b654b3`: `890495e` (H-02c,
+`app.js` (`daf3184`, `14f5721`, `058ab2b`, `9ca9e6f`, `7f0a398`, `c3d07d5`, `9bbb72d`, `14a7120`,
+`6b44a96`). Por isso, F3/F4-4 e o gate global têm de ser refeitos no `6b44a96`. Cadeia até o `7b654b3`: `890495e` (H-02c,
 backend) → `84e2eca` (F-03b, tela) → `7b654b3` (layout: a decisão da janela da Aprovação
 sai da área que rola, porque no `84e2eca` a prova de foco deu 10 de 320 focos encobertos em
 "Revisar capa"). Do `890495e` ao `7b654b3`, o backend, `docs/marketing`, `docs/admin`,
@@ -190,8 +190,8 @@ sai da área que rola, porque no `84e2eca` a prova de foco deu 10 de 320 focos e
 | F4-1, timeline e dados públicos | F-01 do Forge e testes de ausência de id no `test:ci`; F3-1 7c (calendário com nome do arquivo, sem id) | **fechado** |
 | F4-2, contador e alertas | `admin-demandas-contador` e `admin-ajustes-vigia` no `test:ci` do gate | **fechado** pelos focais; sem navegação manual |
 | F4-3, remarcação e trilha | `admin-cronograma` no `test:ci` do gate; H-02c/R1–R11 por identidade | **fechado**, com o limite legado abaixo |
-| F3/F4-4, visual e teclado | No `7b654b3`: `lumen-freeze-5/` com foco P-05 1920/1920, geometria 12/12, F-02/P-03 48/48 e `medir-final` 14 telas × 4 larguras. Auditoria DEPOIS do Vigil (`auditoria-visual-vigil-depois.md`, 5 telas a 390/1440): S1, S2, S5 e S6 resolvidos. No `9bbb72d`: `lumen-freeze-6` (`test:admin`, `test:admin-estilo-final` e `tsc` com exit 0, prints `depois6-` nas 4 larguras) | **fechado no `7b654b3`; no `9bbb72d` falta o gate do Vigil** |
-| Gate global | `vigil/gate-7b654b3/recibos/`: `npm ci`, `tsc`, `test:ci` e export/segredos com exit 0; 5 manifestos com 2.270 arquivos, status vazio e SHA-256 `e26e7e66e0f1623bb6a84b9c35b424bddd3073ecf4e9c62c97f0ef92011dd105`; HTTP/CSRF/auth 7 de 7 | **fechado no `7b654b3`** (DE ACORDO do Lynx em a, b e d). **No `9bbb72d`: pendente** (gate, handoff e revisão única do Lynx) |
+| F3/F4-4, visual e teclado | No `7b654b3`: `lumen-freeze-5/` com foco P-05 1920/1920, geometria 12/12, F-02/P-03 48/48 e `medir-final` 14 telas × 4 larguras. Auditoria DEPOIS do Vigil (`auditoria-visual-vigil-depois.md`, 5 telas a 390/1440): S1, S2, S5 e S6 resolvidos. No `9bbb72d`: `test:admin` e `test:admin-estilo-final` exit 0 nos recibos do Lynx (`lynx-test-admin-9bbb72d.*`, `lynx-test-admin-estilo-final-9bbb72d.*`); prints `depois6-` do `lumen-freeze-6` nas 4 larguras; `tsc` fica com o gate | **fechado no `7b654b3` e no `6b44a96`**: 32 capturas (8 telas × 4 larguras) depois do commit; leitor de tela, Safari, Firefox e celular real não testados |
+| Gate global | `vigil/gate-7b654b3/recibos/`: `npm ci`, `tsc`, `test:ci` e export/segredos com exit 0; 5 manifestos com 2.270 arquivos, status vazio e SHA-256 `e26e7e66e0f1623bb6a84b9c35b424bddd3073ecf4e9c62c97f0ef92011dd105`; HTTP/CSRF/auth 7 de 7 | **fechado no `7b654b3`** (DE ACORDO do Lynx em a, b e d). **No `6b44a96`: fechado** pelo gate do Vigil (`npm ci`, `tsc`, `test:ci` 1582/1582, export/segredos, 2.271 arquivos, delta 0, todos exit 0). O-8 do Lynx: `test:ci` passou de primeira, mas a falha intermitente do `test:admin` (causa não encontrada) segue como pendência de teste do Keel. Falta só a conferência do Lynx |
 
 **Limites que continuam valendo (decisões do Supremo, fim de `05-RETOMADA-14-10-1425.md`):**
 

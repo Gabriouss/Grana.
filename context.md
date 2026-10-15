@@ -15395,8 +15395,12 @@ conta PH parou no teto de 75% (regra 27) e o time Codex inteiro bateu o limite d
 Lynx revisou no lugar dos revisores Codex, só lendo. Todos os arquivos citados ficam em
 `E:/Grana-temporarios/2026-10-13-marketing-ph/`.
 
-**Freeze final: `9bbb72d5b019b7a2bdd9d28bc62bb3d3553893ee`** (`lumen-freeze-6`), branch
-`feature/admin-panel-continuation`. **Gate do Vigil nesse SHA: PENDENTE, a preencher.** Ele
+**Freeze final: `6b44a96f35debdb004e81440a66223dfc9192927`**, branch
+`feature/admin-panel-continuation` (o `lumen-freeze-6` declarou `9bbb72d`, e o Lumen somou
+depois `14a7120` e `6b44a96`, só em `estilo.css`). **Gate do Vigil nesse SHA: APROVADO**
+(`vigil-handoff-final.md`, `vigil/gate-6b44a96/recibos/`): `npm ci` 0, `tsc` 0, `test:ci` 0
+(1582/1582 guardas), export com varredura de segredos 0, manifesto de 2.271 arquivos com delta 0.
+Capturas: 32 (8 telas × 320/390/768/1440). O gate do `7b654b3`
 vem em duas etapas. A primeira é o `7b654b3` (abaixo), que passou no gate. A segunda é a fase
 de acabamento do Lumen por cima dele (mais abaixo). O `7b654b3` substitui o `84e2eca` (`06-FREEZE-VIGENTE.md`): a
 prova de foco do P-05 no `84e2eca` deu exit 1, porque em 10 de 320 focos o botão "Revisar
@@ -15415,8 +15419,11 @@ layout (regra 14), e é o único commit depois do `84e2eca`:
   `npm ci`, `tsc`, `test:ci` e export com varredura de segredos, todos com exit 0. Os cinco
   manifestos (antes e depois de cada etapa) têm 2.270 arquivos, status vazio e o mesmo
   SHA-256 `e26e7e66e0f1623bb6a84b9c35b424bddd3073ecf4e9c62c97f0ef92011dd105`. O
-  `veredito.txt` diz "GATE APROVADO". O `deno check` não se aplica (Deno ausente na M1); a
-  única Edge Function diferente de `origin/main` é `email-recebido`, que não é desta rodada.
+  `veredito.txt` diz "GATE APROVADO". Nenhuma Edge Function muda nesta branch em
+  relação a `origin/main` (`git diff origin/main..HEAD -- supabase/` vazio); por isso o
+  `deno check` não se aplica. O recibo `5-deno-aplicabilidade.txt` do gate listou
+  `email-recebido` porque comparou com o `main` local, desatualizado (L-1 do Lynx). Correção
+  R-1 do Lynx ao registro `0aa8788`.
 - **Pós-gate** (`vigil/gate-7b654b3/pos/`): o servidor rodou o código do SHA
   (`tools-diff-vs-sha.txt` vazio). HTTP/CSRF/auth e F3-1 com a fixture `AUDIT-F3F4`: 21 de
   21, exit 0.
@@ -15437,9 +15444,12 @@ layout (regra 14), e é o único commit depois do `84e2eca`:
 de `web/`), `package.json`, `package-lock.json`, `scripts/`, `supabase/`, `lib/`,
 `docs/marketing` e `docs/admin` são iguais nos três commits. Por isso continuam valendo, com
 os limites de cada um: Harbor H-01, H-02b, H-02c e H-03 (R1 a R11); Watchtower W-C1, W-C2 e
-W-C2b; Beacon (editorial); Forge F-01, F-02, F-03 e F-03b. Esses aceites foram dados pelo
-time Codex sobre `890495e` e `84e2eca`, e a transferência para o `7b654b3` foi conferida
-pelo Lynx, não pelos revisores originais.
+W-C2b; Beacon (editorial). Esses aceites foram dados pelo time Codex sobre `890495e` e
+`84e2eca`, e a transferência para o `7b654b3` foi conferida pelo Lynx, não pelos revisores
+originais. Os aceites F-01, F-02, F-03 e F-03b do Forge **não** valem por identidade, porque
+`telas/aprovacao.js` e `estilo.css` mudaram no `7b654b3`: quem os reconferiu foi o Lynx, por
+leitura (`textoCapa` intocado), com a prova nova do Lumen (F-02/P-03 48/48, foco 1920/1920) e
+os testes de tela no `test:ci` (correção R-2 do Lynx).
 
 **Fase de acabamento (`08-TIME-CLAUDE-COMPLETO-ACABAMENTO.md`).** O autor é designer e
 perguntou: "está incluido no trabalho os ajustes de margem, espaçamento e entre-linhas que
@@ -15466,12 +15476,17 @@ critiquei recentemente?". A correção dele tinha sido feita em parte (`5631c68`
 | `7f0a398` | botão de fechar da janela sem o padding padrão do navegador |
 | `c3d07d5` | Documento: a tabela da leitura abraça o conteúdo e a moldura deixa de sobrar |
 | `9bbb72d` | Acervo: ação Revisar no pé do card e na borda da coluna |
+| `14a7120` | Documento: a tabela da leitura ocupa a moldura e rola dentro dela, também no estreito |
+| `6b44a96` | Acervo: o selo de estado quebra linha dentro do card em vez de invadir o vizinho |
 
   O delta de `7b654b3` a `9bbb72d` no painel é `tools/admin-local/web/estilo.css` e
   `tools/admin-local/web/app.js` (+30/−3 e +4/−2 linhas). No meio entraram também `af701e5` e
   `cb200a5` (regra 28 e skill `economia-de-tokens`), que não são do painel.
-- **Recibos do Lumen no `9bbb72d`** (`lumen-freeze-6/FREEZE.md`): `test:admin`,
-  `test:admin-estilo-final` e `tsc` com exit 0; manifesto `manifesto-ui.sha256`; capturas
+- **Recibos no `9bbb72d`:** o `lumen-freeze-6/FREEZE.md` declara `test:admin`,
+  `test:admin-estilo-final` e `tsc` em 0, mas sem `.log` nem `.exit` (O-6 do Lynx). Os
+  recibos com arquivo são os do Lynx: `lynx-test-admin-9bbb72d.*` e
+  `lynx-test-admin-estilo-final-9bbb72d.*`, exit 0. O `tsc` no `9bbb72d` vem do gate do Vigil
+  (correção R-3). Do Lumen ficam o manifesto `manifesto-ui.sha256`; capturas
   `antes6-`/`depois6-` em 320, 390, 768 e 1440; medidas `depois6-medidas.json`. Design System
   conferido, sem mudança. São recibos do dono, e não o gate integrado.
 - **Escopo, por decisão do autor:** só as telas de MARKETING, a 390, 768 e 1440. **Ficam
@@ -15479,10 +15494,13 @@ critiquei recentemente?". A correção dele tinha sido feita em parte (`5631c68`
   (Cakto). Elas só foram vistas nos prints `antes6-`/`depois6-`, sem correção.
 - **O que ficou como está, de propósito:** tabelas dentro de `.tabela-rolagem` e line-clamp
   (desenho); na janela a 1440, a miniatura da capa passa rolando sob a barra de decisão.
-- **Pendente para o freeze final:** o gate do Vigil no `9bbb72d` (`gate-final-v2.sh`,
-  `veredito-gate.sh`, F3-1/HTTP e capturas com o seletor da galeria) e o handoff dele; a
-  revisão única do Lynx sobre o delta (layout, comportamento do `app.js` e prints
-  antes/depois, no lugar de Forge e Prism) e sobre este registro; o aceite de produto do
+- **Fechamento no `6b44a96`:** gate e handoff do Vigil entregues (aprovado, ver acima). **O-8
+  do Lynx:** o `test:ci` do gate passou de primeira (exit 0, execução única) e o isolado deu
+  1582/1582, mas isso não descarta a falha intermitente do `test:admin` que o Lynx viu (1ª
+  execução exit 1, 2ª exit 0, causa NÃO encontrada); fica como pendência de teste, dono Keel.
+  O gate e as capturas são do `6b44a96`; o HEAD posterior (`37bf19a`) é só `AGENTS.md` e não
+  foi revalidado. Ainda abertos: a conferência do Lynx sobre o handoff;
+  a revisão única do Lynx sobre este registro; o aceite de produto do
   Meridian (`revisao-meridian-aceite-produto.md`, no lugar do Compass); a linha 6/B6 e as
   notas do canvas, com o Quill.
 
@@ -15533,4 +15551,4 @@ acervo diferente do testado no clone.
 **Push e fusão.** O push da branch fica com o Claude Code, depois deste commit. A fusão com
 `main` é decisão do autor.
 
-Nota de sessão do Meridian no vault: pendente, sai junto com o fechamento do gate.
+Nota de sessão do Meridian no vault: escrita no fechamento do gate (`6b44a96`).
