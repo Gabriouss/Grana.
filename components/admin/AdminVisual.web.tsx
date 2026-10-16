@@ -88,6 +88,11 @@ export default function AdminVisual({
 }: AdminVisualProps) {
   const dados = resumo?.dados;
   const emAcesso = etapa !== 'pronto';
+  const classes = [
+    'admin-visual',
+    emAcesso ? 'admin-visual--acesso' : '',
+    etapa === 'nao-admin' ? 'admin-visual--nao-admin' : '',
+  ].filter(Boolean).join(' ');
 
   return (
     <>
@@ -95,7 +100,7 @@ export default function AdminVisual({
         <title>Painel administrativo | Grana.</title>
         <meta name="robots" content="noindex, nofollow" />
       </Head>
-      <main className={emAcesso ? 'admin-visual admin-visual--acesso' : 'admin-visual'}>
+      <main className={classes}>
         <a className="admin-visual__pular" href="#admin-titulo">Pular para o conteúdo</a>
         <div className="admin-visual__conteudo">
           <header className="admin-visual__topo">
@@ -103,7 +108,7 @@ export default function AdminVisual({
               <img src="/admin-marca.svg" alt="Grana." width="120" height="31" />
               <span>Painel administrativo</span>
             </div>
-            {etapa !== 'sem-sessao' && (
+            {etapa !== 'sem-sessao' && etapa !== 'nao-admin' && (
               <div className="admin-visual__acoes-topo" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 {etapa === 'pronto' && <CentralNotificacoes />}
                 <button type="button" className="admin-visual__botao admin-visual__botao-secundario" disabled={ocupado} onClick={onSair}>

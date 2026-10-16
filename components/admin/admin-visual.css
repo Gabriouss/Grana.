@@ -292,6 +292,25 @@
   width: 100%;
 }
 
+.admin-visual--nao-admin .admin-visual__topo {
+  justify-content: center;
+}
+
+.admin-visual--nao-admin .admin-visual__marca {
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+
+.admin-visual--nao-admin .admin-visual__abertura,
+.admin-visual--nao-admin .admin-visual__acesso {
+  text-align: center;
+}
+
+.admin-visual--nao-admin .admin-visual__acesso {
+  margin-inline: auto;
+}
+
 .admin-visual__recibo {
   width: min(100%, 680px);
   margin-block-end: 20px;
