@@ -243,6 +243,20 @@ const pagina = (feedbacks, haMais = false) => ({ status: 200, body: { ok: true, 
     igual(a.texto().includes(aviso), true, `${nome}: aviso na tela`);
   }
 
+  /* E3-R1: recusa de regra do servidor vira aviso na tela, não sucesso nem erro genérico. */
+  {
+    const a = ambiente();
+    a.respostas.push(pagina([fb(1, { gestao: { ...fb(1).gestao, estado: 'resolvido', evidencia: 'Commit 02235ca', versaoResolucao: '1.11.0' } })]));
+    a.render(); await a.assentar(); gerir(a, 1);
+    a.mudar('admin-fbg-prioridade', 'baixa');
+    a.respostas.push({ status: 200, body: { ok: true, contrato: 1, geradoEm: '2026-10-16T13:30:00.000Z', dados: { id: fb(1).id, recusa: 'resolvido-exige-evidencia-e-versao' } } });
+    await salvar(a);
+    const t = a.texto();
+    igual([t.includes('precisa ter evidência e versão'), t.includes('Nada foi gravado'), t.includes('Gestão salva')], [true, true, false], 'recusa vira aviso, sem aparentar salvamento');
+    igual(a.porId('admin-fbg-estado') !== undefined, true, 'o formulário continua aberto com o digitado');
+    igual(a.logs, [], 'recusa de regra não é falha: nada no log');
+  }
+
   /* Arquivar pede um segundo toque. */
   {
     const a = ambiente();

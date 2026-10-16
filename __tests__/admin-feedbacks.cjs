@@ -50,7 +50,7 @@ function harness(opts = {}) {
       then: (ok, ko) => {
         if (opts.erro) return Promise.resolve({ data: null, error: { message: 'postgres ' + TEXTO } }).then(ok, ko);
         if (call.rpc) {
-          if (opts.rpcErro) return Promise.resolve({ data: null, error: { message: 'postgres ' + TEXTO } }).then(ok, ko);
+          if (opts.rpcErro) return Promise.resolve({ data: null, error: { message: 'postgres ' + TEXTO, code: opts.rpcErro === true ? 'XX000' : opts.rpcErro } }).then(ok, ko);
           return Promise.resolve({ data: opts.rpcDados ?? null, error: null }).then(ok, ko);
         }
         if (call.from === 'feedback_gestao') {
@@ -231,6 +231,25 @@ const igual = (a, b, nome) => { assert.deepEqual(plano(a), plano(b), nome); ok++
     igual([r.status, json.erro.codigo], [503, 'indisponivel'], 'erro do banco na escrita: 503 genérico');
     igual(JSON.stringify(json).includes('postgres'), false, 'sem o erro bruto');
   }
+  /* E3-R1: regra recusada pelo banco (Resolvido sem evidência e versão resultantes) volta como recusa, não como 503. */
+  {
+    const h = harness({ rpcErro: '23514' });
+    const { r, json } = await h.request({ recurso: 'feedbacks-gestao', id: linha(1).id, estado: 'resolvido', evidencia: 'Commit 02235ca' });
+    igual([r.status, json.dados], [200, { id: linha(1).id, recusa: 'resolvido-exige-evidencia-e-versao' }], 'sem versão gravada nem enviada: o banco recusa e o servidor devolve a recusa explícita');
+    igual(JSON.stringify(json).includes('postgres'), false, 'a recusa não vaza o erro bruto');
+    igual(h.logs.some((l) => l.includes('Commit 02235ca')), false, 'a evidência não vai ao log');
+  }
+  {
+    const h = harness({ rpcErro: '23505' });
+    const { r, json } = await h.request({ recurso: 'feedbacks-gestao', id: linha(1).id, prioridade: 'baixa' });
+    igual([r.status, json.erro.codigo], [503, 'indisponivel'], 'outro erro do banco continua sendo 503 genérico');
+  }
+  /* Patch parcial que conserva a versão já gravada chega ao banco sem tocar nos campos ausentes. */
+  {
+    const h = harness({ rpcDados: [{ feedback_id: linha(1).id, estado: 'resolvido', prioridade: 'baixa', responsavel: null, etiquetas: [], evidencia: 'Commit 02235ca', versao_resolucao: '1.11.0', atualizado_em: '2026-10-16T11:00:00.000Z' }] });
+    const { r, json } = await h.request({ recurso: 'feedbacks-gestao', id: linha(1).id, prioridade: 'baixa' });
+    igual([r.status, h.calls[0].args.p_patch, json.dados.gestao.versaoResolucao], [200, { prioridade: 'baixa' }, '1.11.0'], 'patch parcial só leva o campo enviado e devolve a versão conservada');
+  }
   for (const [nome, opts, body, headers, status] of [
     ['gestão: outro usuário', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, estado: 'arquivado' }, { Authorization: 'Bearer ' + token(OUTRO) }, 403],
     ['gestão: sem aal2', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, estado: 'arquivado' }, { Authorization: 'Bearer ' + token(ADMIN, 'aal1') }, 403],
@@ -244,7 +263,8 @@ const igual = (a, b, nome) => { assert.deepEqual(plano(a), plano(b), nome); ok++
     ['gestão: prioridade inventada', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, prioridade: 'urgente' }, {}, 400],
     ['gestão: tenta trocar o texto', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, mensagem: 'outro texto' }, {}, 400],
     ['gestão: tenta mexer no vínculo', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, user_id: DONO }, {}, 400],
-    ['gestão: resolvido sem evidência', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, estado: 'resolvido', evidencia: null }, {}, 400],
+    ['gestão: resolvido sem evidência', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, estado: 'resolvido', evidencia: null, versaoResolucao: '1.11.0' }, {}, 400],
+    ['gestão: resolvido com versão limpa', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, estado: 'resolvido', evidencia: 'Commit 02235ca', versaoResolucao: null }, {}, 400],
     ['gestão: nove etiquetas', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, etiquetas: Array.from({ length: 9 }, (_, i) => 'e' + i) }, {}, 400],
     ['gestão: etiqueta com pontuação livre', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, etiquetas: ['joao@exemplo.com'] }, {}, 400],
     ['gestão: etiqueta que não é texto', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, etiquetas: [1] }, {}, 400],

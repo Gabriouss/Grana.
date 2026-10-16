@@ -334,8 +334,14 @@ export default function FeedbacksAdmin() {
     setSalvando(true); setErroG(null); setAvisoG(null);
     try {
       const r = await atualizarGestaoFeedback(id, mudanca);
+      if ('recusa' in r.dados) {
+        // O banco recusou Resolvido sem evidência e versão no estado resultante: nada foi gravado.
+        setAvisoG('Para marcar como Resolvido, o item precisa ter evidência e versão da resolução. Preencha os dois e salve de novo. Nada foi gravado.');
+        return;
+      }
+      const gravada = r.dados.gestao;
       setEstado((atual) => atual.fase === 'pronto'
-        ? { ...atual, itens: atual.itens.map((i) => (i.id === id ? { ...i, gestao: r.dados.gestao } : i)) }
+        ? { ...atual, itens: atual.itens.map((i) => (i.id === id ? { ...i, gestao: gravada } : i)) }
         : atual);
       setSalvo({ id, em: r.geradoEm });
       fecharGestao(id);

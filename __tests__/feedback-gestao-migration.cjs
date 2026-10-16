@@ -55,6 +55,32 @@ const ADMIN = '11111111-1111-4111-8111-111111111111';
     const fim = (await atualizar({ prioridade: null })).rows[0];
     ok(fim.prioridade === null && fim.estado === 'resolvido' && fim.evidencia, 'patch parcial só mexe no que veio; null limpa o campo');
 
+    // E3-R1 (Watchtower, 16/10): Resolvido exige evidência E versão no estado resultante.
+    const F2 = '55555555-5555-4555-8555-000000000002';
+    await db.exec(`insert into public.feedbacks values ('${F2}', 'outro texto', null, null, 'pending')`);
+    ok(await recusa({ estado: 'resolvido', evidencia: 'Commit fictício auditado' }, F2), 'R1: primeira resolução sem versão é recusada');
+    ok(await recusa({ estado: 'resolvido', versao_resolucao: '1.11.0' }, F2), 'R1: primeira resolução sem evidência é recusada');
+    ok((await db.query(`select count(*)::int c from public.feedback_gestao_historico where feedback_id='${F2}'`)).rows[0].c === 0, 'R1: recusa não deixa histórico');
+    ok(await recusa({ estado: 'resolvido', evidencia: '', versao_resolucao: '1.11.0' }, F2), 'R1: evidência vazia não vale');
+    ok(await recusa({ versao_resolucao: null }), 'R1: limpar a versão de um item já resolvido é recusado');
+    ok(await recusa({ evidencia: null }), 'R1: limpar a evidência de um item já resolvido é recusado');
+    const conserva = (await atualizar({ prioridade: 'baixa', etiquetas: ['voz'] })).rows[0];
+    ok(conserva.estado === 'resolvido' && conserva.versao_resolucao === '1.11.0' && conserva.evidencia, 'R1: patch parcial de outro campo conserva evidência e versão gravadas');
+    const reabre = (await atualizar({ estado: 'planejado', versao_resolucao: null })).rows[0];
+    ok(reabre.estado === 'planejado' && reabre.versao_resolucao === null, 'R1: reabrir o item libera limpar a versão');
+    const reresolve = (await atualizar({ estado: 'resolvido', evidencia: 'Novo commit', versao_resolucao: '1.11.1' })).rows[0];
+    ok(reresolve.estado === 'resolvido' && reresolve.versao_resolucao === '1.11.1', 'R1: resolver de novo, agora com versão nova, é aceito');
+    const valida = (await atualizar({ estado: 'resolvido', evidencia: 'Commit 02235ca', versao_resolucao: '1.11.0' }, F2)).rows[0];
+    ok(valida.estado === 'resolvido' && valida.versao_resolucao === '1.11.0', 'R1: resolução válida, com evidência e versão, é aceita');
+    await atualizar({ estado: 'novo' }, F2); // devolve ao padrão para o resto do roteiro
+
+    // Concorrência da primeira triagem: duas primeiras alterações ao mesmo tempo não perdem nenhuma.
+    const F3 = '55555555-5555-4555-8555-000000000003';
+    await db.exec(`insert into public.feedbacks values ('${F3}', 'terceiro', null, null, 'pending')`);
+    await Promise.all([atualizar({ prioridade: 'alta' }, F3), atualizar({ responsavel: 'Gabriel' }, F3)]);
+    const dois = (await db.query(`select prioridade, responsavel from public.feedback_gestao where feedback_id='${F3}'`)).rows[0];
+    ok(dois.prioridade === 'alta' && dois.responsavel === 'Gabriel', 'R1: duas primeiras triagens simultâneas preservam as duas mudanças');
+
     ok(await recusa({ estado: 'inventado' }), 'estado fora da lista é recusado');
     ok(await recusa({ prioridade: 'urgentissima' }), 'prioridade fora da lista é recusada');
     ok(await recusa({ responsavel: 'x'.repeat(81) }), 'responsável acima de 80 é recusado');
@@ -76,8 +102,8 @@ const ADMIN = '11111111-1111-4111-8111-111111111111';
     ok(await pode('service_role', `select public.feedback_gestao_atualizar('${F}', '${ADMIN}', '{"estado":"arquivado"}')`), 'service_role executa');
 
     await db.exec(`delete from public.feedbacks where id='${F}'`);
-    ok((await db.query(`select count(*)::int c from public.feedback_gestao`)).rows[0].c === 0
-      && (await db.query(`select count(*)::int c from public.feedback_gestao_historico`)).rows[0].c === 0, 'apagar o feedback leva a gestão e o histórico junto');
+    ok((await db.query(`select count(*)::int c from public.feedback_gestao where feedback_id='${F}'`)).rows[0].c === 0
+      && (await db.query(`select count(*)::int c from public.feedback_gestao_historico where feedback_id='${F}'`)).rows[0].c === 0, 'apagar o feedback leva a gestão e o histórico junto');
 
     console.log(`feedback-gestao-migration: ${passou} checagens passaram — 0 falhas`);
   } finally { await db.close(); }

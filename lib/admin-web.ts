@@ -112,12 +112,16 @@ export async function listarFeedbacksAdmin(filtros: FiltrosFeedbacks, antesDe?: 
 
 // Escrita da gestão (Entrega 3). Mesmo prazo, mesmos recibos, nenhum retry: gravar de novo sem
 // o administrador saber é pior do que mostrar o erro. A resposta traz a gestão já gravada.
-export async function atualizarGestaoFeedback(id: string, mudanca: MudancaGestao): Promise<RespostaAdmin<{ id: string; gestao: GestaoFeedback }>> {
+export type ResultadoGestao = { id: string; gestao: GestaoFeedback } | { id: string; recusa: 'resolvido-exige-evidencia-e-versao' };
+export async function atualizarGestaoFeedback(id: string, mudanca: MudancaGestao): Promise<RespostaAdmin<ResultadoGestao>> {
   const corpo: Record<string, unknown> = { recurso: 'feedbacks-gestao', id };
   for (const [k, v] of Object.entries(mudanca)) if (v !== undefined) corpo[k] = v;
-  return chamarAdmin<{ id: string; gestao: GestaoFeedback }>('admin-feedbacks', corpo, (dados) =>
-    Boolean(dados && typeof dados === 'object' && Object.keys(dados).every((k) => k === 'id' || k === 'gestao') &&
-      dados.id === id && gestaoValida(dados.gestao)));
+  // A recusa de regra (Resolvido sem evidência e versão no estado resultante) volta como dado, não
+  // como falha: a tela explica o que falta em vez de convidar a repetir.
+  return chamarAdmin<ResultadoGestao>('admin-feedbacks', corpo, (dados) =>
+    Boolean(dados && typeof dados === 'object' && dados.id === id && (
+      (Object.keys(dados).every((k) => k === 'id' || k === 'gestao') && gestaoValida(dados.gestao)) ||
+      (Object.keys(dados).every((k) => k === 'id' || k === 'recusa') && dados.recusa === 'resolvido-exige-evidencia-e-versao'))));
 }
 
 // Correções de criativos (Entrega 3): a MESMA fila de ajustes que o painel local entrega ao agente

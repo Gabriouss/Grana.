@@ -28,9 +28,12 @@ create table if not exists public.feedback_gestao (
   criado_em timestamptz not null default now(),
   atualizado_em timestamptz not null default now(),
   atualizado_por uuid,
-  -- Resolvido sem evidência não existe: é o que o plano chama de conclusão validada.
-  constraint feedback_gestao_resolvido_com_evidencia
-    check (estado <> 'resolvido' or evidencia is not null)
+  -- Resolvido sem evidência E versão não existe: é o que o plano chama de conclusão validada.
+  -- Vale sobre o estado RESULTANTE, então um patch que só troca a prioridade de um item já
+  -- resolvido passa (a versão gravada continua lá), e um patch que limpa a versão dele não.
+  -- (E3-R1, Watchtower, 16/10/2026: antes só a evidência era exigida.)
+  constraint feedback_gestao_resolvido_com_evidencia_e_versao
+    check (estado <> 'resolvido' or (evidencia is not null and versao_resolucao is not null))
 );
 
 create table if not exists public.feedback_gestao_historico (
@@ -59,7 +62,6 @@ as $$
 declare
   atual public.feedback_gestao;
   novo public.feedback_gestao;
-  existia boolean;
   chave text;
   campos text[] := array['estado', 'prioridade', 'responsavel', 'etiquetas', 'evidencia', 'versao_resolucao'];
   velho text;
@@ -77,11 +79,10 @@ begin
     raise exception 'feedback-inexistente' using errcode = 'P0002';
   end if;
 
+  -- A linha nasce "novo" antes do bloqueio: duas primeiras triagens simultâneas serializam no
+  -- FOR UPDATE em vez de uma sobrescrever a outra (achado do Watchtower, 16/10/2026).
+  insert into public.feedback_gestao (feedback_id) values (p_id) on conflict (feedback_id) do nothing;
   select * into atual from public.feedback_gestao where feedback_id = p_id for update;
-  existia := found;
-  if not existia then
-    atual.feedback_id := p_id; atual.estado := 'novo'; atual.etiquetas := '{}';
-  end if;
   novo := atual;
 
   if p_patch ? 'estado' then novo.estado := p_patch->>'estado'; end if;

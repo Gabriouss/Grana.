@@ -105,8 +105,10 @@ export function validarPedidoGestao(p: Record<string, unknown>): PedidoGestao {
     saida.etiquetas = [...vistas];
   }
   if (Object.keys(saida).length === 2) throw new Error('pedido-invalido'); // nada a mudar
-  // Resolvido exige evidência, no pedido ou já gravada; o banco confere a segunda metade.
-  if (saida.estado === 'resolvido' && saida.evidencia === null) throw new Error('pedido-invalido');
+  // Resolvido exige evidência E versão. Aqui só o que se vê no pedido: limpar um dos dois ao mesmo
+  // tempo em que se resolve. Campo AUSENTE pode estar gravado, e quem confere o estado resultante é
+  // o banco (constraint), que o pedido não consegue contornar (E3-R1).
+  if (saida.estado === 'resolvido' && (saida.evidencia === null || saida.versaoResolucao === null)) throw new Error('pedido-invalido');
   return saida;
 }
 
@@ -231,6 +233,11 @@ async function atualizarGestao(cliente: SupabaseClient, pedido: PedidoGestao, us
   if (pedido.evidencia !== undefined) patch.evidencia = pedido.evidencia;
   if (pedido.versaoResolucao !== undefined) patch.versao_resolucao = pedido.versaoResolucao;
   const r = await consultaComPrazo((s) => cliente.rpc('feedback_gestao_atualizar', { p_id: pedido.id, p_por: userId, p_patch: patch }).abortSignal(s), signal);
+  // Regra de negócio recusada (Resolvido sem evidência e versão no estado resultante) não é falha
+  // do serviço: volta como recusa explícita, para a tela explicar em vez de convidar a repetir.
+  if (r.error && (r.error as { code?: string }).code === '23514') {
+    return { dados: { id: pedido.id, recusa: 'resolvido-exige-evidencia-e-versao' } };
+  }
   // Só o fato da falha: a mensagem do banco pode citar o valor digitado.
   if (r.error) throw new Error('consulta');
   const linha = (Array.isArray(r.data) ? r.data[0] : r.data) as Record<string, unknown> | null;
