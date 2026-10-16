@@ -54,16 +54,40 @@ export async function consultarAdmin<T>(recurso: 'acesso' | 'visao-geral'): Prom
 
 export type TipoFeedback = 'suggestion' | 'bug' | 'praise' | 'other';
 export type StatusFeedback = 'pending' | 'reviewed' | 'resolved';
+export type EstadoGestao = 'novo' | 'em_analise' | 'planejado' | 'em_execucao' | 'resolvido' | 'arquivado';
+export type PrioridadeGestao = 'baixa' | 'media' | 'alta';
+// Triagem administrativa (Entrega 3): vive em tabela separada e nunca altera o texto do feedback.
+export type GestaoFeedback = {
+  estado: EstadoGestao; prioridade: PrioridadeGestao | null; responsavel: string | null; etiquetas: string[];
+  evidencia: string | null; versaoResolucao: string | null; atualizadoEm: string | null;
+};
+export type MudancaGestao = {
+  estado?: EstadoGestao; prioridade?: PrioridadeGestao | null; responsavel?: string | null; etiquetas?: string[];
+  evidencia?: string | null; versaoResolucao?: string | null;
+};
 export type FeedbackAdmin = {
   id: string; tipo: TipoFeedback; nota: number | null; mensagem: string; status: StatusFeedback;
   versaoApp: string | null; plataforma: string | null; usoPublicoAutorizado: boolean; temConta: boolean; criadoEm: string;
+  gestao: GestaoFeedback;
 };
 export type PaginaFeedbacks = { feedbacks: FeedbackAdmin[]; haMais: boolean };
 export type FiltrosFeedbacks = { tipo?: TipoFeedback; nota?: number; versao?: string; desde?: string; ate?: string };
 
 const TIPOS_FEEDBACK = ['suggestion', 'bug', 'praise', 'other'];
 const STATUS_FEEDBACK = ['pending', 'reviewed', 'resolved'];
-const CAMPOS_FEEDBACK = ['id', 'tipo', 'nota', 'mensagem', 'status', 'versaoApp', 'plataforma', 'usoPublicoAutorizado', 'temConta', 'criadoEm'];
+const CAMPOS_FEEDBACK = ['id', 'tipo', 'nota', 'mensagem', 'status', 'versaoApp', 'plataforma', 'usoPublicoAutorizado', 'temConta', 'criadoEm', 'gestao'];
+const ESTADOS_GESTAO = ['novo', 'em_analise', 'planejado', 'em_execucao', 'resolvido', 'arquivado'];
+const PRIORIDADES_GESTAO = ['baixa', 'media', 'alta'];
+const CAMPOS_GESTAO = ['estado', 'prioridade', 'responsavel', 'etiquetas', 'evidencia', 'versaoResolucao', 'atualizadoEm'];
+
+function gestaoValida(g: any): boolean {
+  const texto = (v: unknown, max: number) => v === null || (typeof v === 'string' && v.length >= 1 && v.length <= max);
+  return Boolean(g && typeof g === 'object' && !Array.isArray(g) && Object.keys(g).every((k) => CAMPOS_GESTAO.includes(k)) &&
+    ESTADOS_GESTAO.includes(g.estado) && (g.prioridade === null || PRIORIDADES_GESTAO.includes(g.prioridade)) &&
+    texto(g.responsavel, 80) && texto(g.evidencia, 500) && texto(g.versaoResolucao, 40) &&
+    Array.isArray(g.etiquetas) && g.etiquetas.length <= 8 && g.etiquetas.every((e: unknown) => typeof e === 'string' && e.length >= 1 && e.length <= 30) &&
+    (g.atualizadoEm === null || (typeof g.atualizadoEm === 'string' && Number.isFinite(Date.parse(g.atualizadoEm)))));
+}
 
 function feedbackValido(f: any): boolean {
   const textoCurto = (v: unknown) => v === null || (typeof v === 'string' && v.length <= 40);
@@ -72,7 +96,7 @@ function feedbackValido(f: any): boolean {
     (f.nota === null || (Number.isInteger(f.nota) && f.nota >= 1 && f.nota <= 5)) &&
     typeof f.mensagem === 'string' && f.mensagem.length >= 1 && f.mensagem.length <= 2000 &&
     textoCurto(f.versaoApp) && textoCurto(f.plataforma) && typeof f.usoPublicoAutorizado === 'boolean' && typeof f.temConta === 'boolean' &&
-    typeof f.criadoEm === 'string' && Number.isFinite(Date.parse(f.criadoEm)));
+    typeof f.criadoEm === 'string' && Number.isFinite(Date.parse(f.criadoEm)) && gestaoValida(f.gestao));
 }
 
 // Leitura dos feedbacks (B3/B3b). Mesmo prazo, mesmos recibos e nenhum retry de consultarAdmin.
@@ -84,6 +108,16 @@ export async function listarFeedbacksAdmin(filtros: FiltrosFeedbacks, antesDe?: 
   return chamarAdmin<PaginaFeedbacks>('admin-feedbacks', corpo, (dados) =>
     Boolean(dados && typeof dados === 'object' && Object.keys(dados).every((k) => k === 'feedbacks' || k === 'haMais') &&
       Array.isArray(dados.feedbacks) && dados.feedbacks.length <= 50 && dados.feedbacks.every(feedbackValido) && typeof dados.haMais === 'boolean'));
+}
+
+// Escrita da gestão (Entrega 3). Mesmo prazo, mesmos recibos, nenhum retry: gravar de novo sem
+// o administrador saber é pior do que mostrar o erro. A resposta traz a gestão já gravada.
+export async function atualizarGestaoFeedback(id: string, mudanca: MudancaGestao): Promise<RespostaAdmin<{ id: string; gestao: GestaoFeedback }>> {
+  const corpo: Record<string, unknown> = { recurso: 'feedbacks-gestao', id };
+  for (const [k, v] of Object.entries(mudanca)) if (v !== undefined) corpo[k] = v;
+  return chamarAdmin<{ id: string; gestao: GestaoFeedback }>('admin-feedbacks', corpo, (dados) =>
+    Boolean(dados && typeof dados === 'object' && Object.keys(dados).every((k) => k === 'id' || k === 'gestao') &&
+      dados.id === id && gestaoValida(dados.gestao)));
 }
 
 async function chamarAdmin<T>(funcao: 'admin-consulta' | 'admin-feedbacks', corpo: Record<string, unknown>, validar: (dados: any) => boolean): Promise<RespostaAdmin<T>> {

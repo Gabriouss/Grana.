@@ -1,0 +1,103 @@
+/* Gestão dos feedbacks (Entrega 3). Mesmos tokens e controles da leitura em admin-visual.css. */
+
+.admin-feedbacks__gestao-resumo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  min-width: 0;
+  margin-block-start: 12px;
+  padding-block-start: 12px;
+  border-top: 1px solid var(--admin-borda);
+  color: var(--admin-apoio);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.admin-feedbacks__estado-gestao {
+  padding: 2px 10px;
+  border: 1px solid var(--admin-borda-forte);
+  border-radius: 999px;
+  color: var(--admin-tinta);
+  font-family: "NeueMachina-Regular";
+}
+
+/* Só o estado em andamento ganha destaque; o texto do rótulo continua sendo o sinal principal. */
+.admin-feedbacks__estado-gestao-em_execucao,
+.admin-feedbacks__estado-gestao-resolvido {
+  border-color: var(--admin-menta);
+  color: var(--admin-menta);
+}
+
+.admin-feedbacks__estado-gestao-arquivado {
+  color: var(--admin-suave);
+}
+
+.admin-feedbacks__evidencia {
+  flex-basis: 100%;
+  max-width: 70ch;
+}
+
+.admin-feedbacks__gestao-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-block-start: 12px;
+}
+
+.admin-feedbacks .admin-feedbacks__salvo {
+  margin: 0;
+  color: var(--admin-menta);
+  font-size: 13px;
+}
+
+.admin-feedbacks__gestao-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px 16px;
+  margin-block-start: 16px;
+  padding: 16px;
+  border: 1px solid var(--admin-borda-forte);
+  border-radius: 12px;
+}
+
+.admin-feedbacks__campo-largo {
+  grid-column: 1 / -1;
+}
+
+.admin-feedbacks__campo textarea {
+  width: 100%;
+  min-height: 88px;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-borda-forte);
+  border-radius: 8px;
+  background: var(--admin-fundo);
+  color: var(--admin-tinta);
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.admin-feedbacks__campo textarea:focus-visible {
+  outline: 2px solid var(--admin-menta);
+  outline-offset: 2px;
+}
+
+.admin-feedbacks .admin-feedbacks__dica {
+  margin: 6px 0 0;
+  color: var(--admin-suave);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.admin-feedbacks .admin-feedbacks__confirmar {
+  margin: 0;
+  color: var(--admin-apoio);
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  .admin-feedbacks__gestao-form {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
