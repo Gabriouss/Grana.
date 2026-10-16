@@ -12,7 +12,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const arquivo = path.join(__dirname, '..', 'supabase', 'migrations', '20261015200000_bucket_marketing_privado.sql');
+const arquivo = path.join(__dirname, '..', 'supabase', 'migrations', '20261015200100_bucket_marketing_privado.sql');
 const sql = fs.readFileSync(arquivo, 'utf8');
 const codigo = sql.replace(/--[^\n]*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
 let ok = 0;
