@@ -223,6 +223,7 @@ const styles = StyleSheet.create({
     ...({ boxShadow: sombras.menu } as any),
   },
   menuItem: {
+    minHeight: touchTarget,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
