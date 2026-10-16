@@ -121,9 +121,11 @@ Links externos só aparecem com URL de publicação válida do servidor; recibo 
 | 768 px | Navegação recolhida e barra móvel existente. | Painel lateral de 416 px com fundo escurecido; texto útil de 384 px. | Uma coluna para destinos detalhados; recibos perto do destino; ações compartilham linha quando couberem. |
 | 1440 px | Lateral de 248 px existente; sino na faixa global do conteúdo. | Painel direito de 416 px; não empurra nem redimensiona a tela por trás. | Área restante de 1192 px antes dos recuos; detalhe limitado a 960 px; destinos em duas colunas de mesma altura quando o conteúdo permitir. |
 
+A prancha adicional `M6-Prism-pranchas/estados-390.png` registra carregamento, vazio, filtro vazio, erro sem cache, cache desatualizado, item indisponível, Preparando, Preferências e o aviso temporário de desfazer.
+
 ## 6. Teclado e acessibilidade
 
-O painel é um diálogo modal nomeado “Notificações”; o fundo fica inerte. O foco inicial vai ao título focável, Tab permanece no diálogo, e Esc e Fechar retornam ao sino. Abrir a ação de um item fecha a central e move o foco para o título do destino; diálogos secundários devolvem o foco ao controle que os abriu.
+O painel é um diálogo modal nomeado “Notificações”, com `role="dialog"`, `aria-modal="true"` e título associado; o fundo fica inerte. O foco inicial vai ao título focável, Tab permanece no diálogo, e Esc e Fechar retornam ao sino. Abrir a ação de um item fecha a central e move o foco para o título do destino; diálogos secundários devolvem o foco ao controle que os abriu.
 
 Abas têm seleção programática e navegação por setas; filtros têm rótulos visíveis. Fechar tem nome próprio e o ícone fica fora da leitura. Alvos têm 44 px; foco de 2 px em `--accent-2`, com deslocamento de 2 px.
 
@@ -150,7 +152,7 @@ Pranchas estáticas não comprovam leitor de tela, foco, contraste calculado ou 
 
 - **R1–R3 (bloqueadores):** [concluído] texto e ícones reconstruídos em UTF-8; cabeçalho e Fechar visíveis sobre a barra móvel; oito capturas refeitas como viewports reais, incluindo 320 × 640.
 - **Importantes:** R3b–R7 — [concluído] recolher controles antes do primeiro item, diferenciar os estados, manter o contador dentro do botão, incluir ação de desfazer e respeitar a escala mínima de texto.
-- **Menores:** R8–R13 — quantidades nas abas, alvo e foco, preservar a grade aprovada, reutilizar token de aviso, mostrar estados alternativos e reforçar que HTML estático não prova acessibilidade funcional.
+- **Menores:** R8–R13 — [concluído] quantidades nas abas, alvo e foco, grade aprovada, token de aviso, estados alternativos e limite da evidência estática documentados.
 
 ## Registro para o documentador
 

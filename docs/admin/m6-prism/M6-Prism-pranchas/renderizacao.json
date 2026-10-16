@@ -3,6 +3,20 @@
   "modoCaptura": "viewport; captureBeyondViewport=false",
   "capturas": [
     {
+      "arquivo": "estados-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 1600
+      },
+      "png": {
+        "width": 390,
+        "height": 1600
+      },
+      "larguraDocumento": 390,
+      "rolagemHorizontal": false,
+      "fonteCarregada": true
+    },
+    {
       "arquivo": "publicacao-1440.png",
       "viewport": {
         "width": 1440,

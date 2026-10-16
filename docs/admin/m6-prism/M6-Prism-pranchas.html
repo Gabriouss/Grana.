@@ -25,9 +25,13 @@
       --rule: rgba(174, 255, 227, .14);
       --mint: #aeffe3;
       --amber: #d3b869;
+      --atencao: #d3b869;
+      --atencao-fundo: rgba(211, 184, 105, .12);
       --danger: #e08a7d;
       --up: #74e291;
       --scrim: rgba(0, 0, 0, .5);
+      --accent-2: #aeffe3;
+      --alvo: 44px;
     }
     * { box-sizing: border-box; }
     html { background: var(--paper); }
@@ -48,7 +52,7 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
-      min-height: 44px;
+      min-height: var(--alvo);
       padding: 8px 12px;
       border: 1px solid var(--rule);
       border-radius: 12px;
@@ -107,9 +111,9 @@
     .card { min-width: 0; margin-top: 20px; padding: 20px; border: 1px solid var(--rule); border-radius: 16px; background: var(--raised); }
     .card > p { margin-top: 8px; color: var(--soft); font-size: 15px; }
     .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-    .alert { margin: 20px 0; padding: 16px; border-radius: 12px; background: var(--atencao-fundo, rgba(165, 150, 74, .12)); color: var(--amber); }
+    .alert { margin: 20px 0; padding: 16px; border-radius: 12px; background: var(--atencao-fundo); color: var(--atencao); }
     .alert p { margin-top: 8px; color: var(--soft); font-size: 15px; }
-    .destinations { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .destinations { display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; gap: 12px; }
     .destinations .card { margin: 0; }
     .state-list { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
     .state {
@@ -188,6 +192,7 @@
     .notification .unread { color: var(--mint); font-size: 15px; }
     .notification .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
     .notification .actions button { font-size: 15px; }
+    .notification .actions button.ghost { min-height: var(--alvo); }
     .drawer-foot {
       display: flex;
       flex-direction: column;
@@ -200,6 +205,27 @@
     .drawer-foot button { padding: 8px 0; border: 0; font-size: 14px; }
     .drawer-foot .small { text-align: right; }
     .hidden { display: none !important; }
+    :focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+    .state-board { max-width: 620px; margin: 0 auto; padding: 24px 16px 40px; }
+    .state-board > p { margin-top: 8px; color: var(--soft); font-size: 15px; }
+    .sample { margin-top: 12px; padding: 14px; border: 1px solid var(--rule); border-radius: 14px; background: var(--raised); }
+    .sample-label { margin-bottom: 8px; color: var(--faint); font-size: 13px; letter-spacing: .04em; text-transform: uppercase; }
+    .sample p { color: var(--soft); font-size: 15px; line-height: 1.4; }
+    .sample h2 { margin-bottom: 6px; font-size: 18px; }
+    .sample .state { margin-bottom: 8px; }
+    .sample .button-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .sample .button-row button { min-height: var(--alvo); }
+    .sample .progress-track { height: 6px; margin-top: 10px; overflow: hidden; border-radius: 999px; background: rgba(174, 255, 227, .12); }
+    .sample .progress-track span { display: block; width: 62%; height: 100%; border-radius: inherit; background: var(--mint); }
+    .sample.warning-sample { border-color: rgba(211, 184, 105, .35); background: var(--atencao-fundo); }
+    .preference-option { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: var(--alvo); border-bottom: 1px solid var(--rule); }
+    .preference-option:last-child { border-bottom: 0; }
+    .preference-option p { font-size: 15px; }
+    .preference-switch { display: inline-flex; align-items: center; justify-content: flex-end; min-width: 48px; min-height: 28px; padding: 0 6px; border: 1px solid rgba(174, 255, 227, .35); border-radius: 999px; color: var(--mint); font-size: 12px; }
+    .undo-sample { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
     @media (max-width: 899px) {
       .sidebar { display: none; }
       .main { margin: 0; padding: 20px 16px 48px; }
@@ -309,15 +335,15 @@
 
   <div id="notification-layer">
     <div class="scrim" aria-hidden="true"></div>
-    <section class="drawer" aria-label="Notificações">
+    <section class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" tabindex="-1">
       <header class="drawer-head">
-        <div><h2>Notificações</h2><p class="small">3 não lidas</p></div>
+        <div><h2 id="drawer-title" tabindex="-1">Notificações</h2><p class="small">3 não lidas</p></div>
         <button type="button" class="icon" aria-label="Fechar notificações"><svg aria-hidden="true"><use href="#close"/></svg></button>
       </header>
       <div class="drawer-scroll">
         <div class="tabs" role="tablist" aria-label="Filtro de notificações">
           <button type="button" class="selected" role="tab" aria-selected="true">Não lidas (3)</button>
-          <button type="button" role="tab" aria-selected="false">Todas</button>
+          <button type="button" role="tab" aria-selected="false">Todas (8)</button>
         </div>
         <button type="button" class="filter-toggle" aria-expanded="false" aria-controls="notification-filters">
           <span>Filtros</span><span>0 ativos</span>
@@ -361,9 +387,79 @@
     </section>
   </div>
 
+  <main class="state-board hidden" id="state-board" aria-label="Estados alternativos da central de notificações">
+    <h1>Estados da central</h1>
+    <p>Variações de interface para a mesma gaveta de notificações.</p>
+
+    <section class="sample">
+      <p class="sample-label">Carregando</p>
+      <p>Carregando notificações…</p>
+      <div class="progress-track" role="progressbar" aria-label="Carregando notificações" aria-valuemin="0" aria-valuemax="100" aria-valuenow="62"><span></span></div>
+    </section>
+
+    <section class="sample">
+      <p class="sample-label">Vazia</p>
+      <h2>Você está em dia.</h2>
+      <p>Nenhuma notificação não lida. Você ainda pode ver todas as ocorrências.</p>
+    </section>
+
+    <section class="sample">
+      <p class="sample-label">Filtro vazio</p>
+      <h2>Nenhuma notificação com estes filtros.</h2>
+      <div class="button-row"><button type="button">Limpar filtros</button></div>
+    </section>
+
+    <section class="sample">
+      <p class="sample-label">Erro sem cache</p>
+      <h2>Não foi possível carregar as notificações.</h2>
+      <p>Tente de novo quando a conexão estiver disponível.</p>
+      <div class="button-row"><button type="button" class="primary">Tentar de novo</button></div>
+    </section>
+
+    <section class="sample warning-sample">
+      <p class="sample-label">Cache desatualizado</p>
+      <span class="state warn"><svg aria-hidden="true"><use href="#clock-alert"/></svg>Sem atualização desde 18:20</span>
+      <p>Mostrando a última lista salva. Última verificação local: 18:20.</p>
+    </section>
+
+    <section class="sample">
+      <p class="sample-label">Item indisponível</p>
+      <h2>Este item não está mais disponível.</h2>
+      <p>O destino foi removido ou sua conta perdeu acesso. Consulte o recibo seguro.</p>
+    </section>
+
+    <section class="sample">
+      <p class="sample-label">Preparando</p>
+      <span class="state neutral"><svg aria-hidden="true"><use href="#progress"/></svg>Preparando</span>
+      <p>Enviando mídia para o destino. Atualizado há 12 s.</p>
+      <div class="progress-track" role="progressbar" aria-label="Preparando publicação" aria-valuemin="0" aria-valuemax="100" aria-valuenow="62"><span></span></div>
+    </section>
+
+    <section class="sample" role="dialog" aria-modal="true" aria-labelledby="preferences-title" tabindex="-1">
+      <p class="sample-label">Preferências</p>
+      <h2 id="preferences-title" tabindex="-1">Notificações por tipo</h2>
+      <div class="preference-option"><p>Painel</p><span class="preference-switch">Ativo</span></div>
+      <div class="preference-option"><p>E-mail para falhas importantes</p><span class="preference-switch">Ativo</span></div>
+      <p style="margin-top: 10px">Preferências salvas.</p>
+    </section>
+
+    <section class="sample undo-sample" aria-live="polite">
+      <div><p class="sample-label">Ação desfeita em 5 s</p><p>3 notificações marcadas como lidas.</p></div>
+      <button type="button">Desfazer</button>
+    </section>
+  </main>
+
   <script>
-    if (new URLSearchParams(location.search).get('tela') === 'publicacao') {
+    const screen = new URLSearchParams(location.search).get('tela');
+    if (screen === 'publicacao') {
       document.getElementById('notification-layer').classList.add('hidden');
+    }
+    if (screen === 'estados') {
+      document.getElementById('notification-layer').classList.add('hidden');
+      document.querySelector('.sidebar').classList.add('hidden');
+      document.querySelector('.mobilebar').classList.add('hidden');
+      document.querySelector('.main').classList.add('hidden');
+      document.getElementById('state-board').classList.remove('hidden');
     }
     const filterToggle = document.querySelector('.filter-toggle');
     const filterPanel = document.querySelector('.filters');
