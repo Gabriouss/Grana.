@@ -97,6 +97,21 @@ export function sessaoNaoConfirmada(): boolean {
 }
 
 /**
+ * Prazo padrão de `idDoUsuarioLocal` (V19, 15/10/2026). Sem rede e com o token
+ * vencido, o `getSession()` do auth-js 2.112 refaz a renovação com espera
+ * crescente (200 ms, 400 ms… até 12,8 s) até perto de 30 s: medido 25,4 s com
+ * o supabase-js real (`__tests__/sessao-sem-rede-prazo.cjs`). Era esse o
+ * spinner de 15 a 20 s de Débito e Pix sem rede, porque a tela pergunta o dono
+ * da fila e do cache sem prazo. Com sessão válida o `getSession()` responde da
+ * memória e o prazo não pesa; renovando com rede, cair no disco devolve o
+ * mesmo id.
+ */
+export const PRAZO_DONO_PADRAO_MS = 2_000;
+
+/** A consulta que estourou o prazo e ainda não terminou, ou null. */
+let consultaPendurada: Promise<unknown> | null = null;
+
+/**
  * O id da conta deste aparelho, com ou sem internet.
  *
  * É a pergunta "de quem é este aparelho", e ela tem resposta offline — mas
@@ -124,21 +139,6 @@ export async function idDoUsuarioLocal(prazoMs: number = PRAZO_DONO_PADRAO_MS): 
   }
   return (await lerSessaoDoDisco())?.user?.id ?? null;
 }
-
-/**
- * Prazo padrão de `idDoUsuarioLocal` (V19, 15/10/2026). Sem rede e com o token
- * vencido, o `getSession()` do auth-js 2.112 refaz a renovação com espera
- * crescente (200 ms, 400 ms… até 12,8 s) até perto de 30 s: medido 25,4 s com
- * o supabase-js real (`__tests__/sessao-sem-rede-prazo.cjs`). Era esse o
- * spinner de 15 a 20 s de Débito e Pix sem rede, porque a tela pergunta o dono
- * da fila e do cache sem prazo. Com sessão válida o `getSession()` responde da
- * memória e o prazo não pesa; renovando com rede, cair no disco devolve o
- * mesmo id.
- */
-export const PRAZO_DONO_PADRAO_MS = 2_000;
-
-/** A consulta que estourou o prazo e ainda não terminou, ou null. */
-let consultaPendurada: Promise<unknown> | null = null;
 
 /**
  * A sessão está presa renovando (B5, 16/10/2026): uma consulta já estourou o

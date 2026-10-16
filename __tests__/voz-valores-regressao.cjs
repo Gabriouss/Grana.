@@ -121,7 +121,13 @@ for (const frase of ['Mercado R$ 1899', 'Mercado R$ 1899 no débito.', 'Mercado 
 
 // Fluxo REAL do widget + parser REAL: assere payload, recibo e ausência de RPC.
 let task, texto = '', writes = [], revisoes = [];
+// sessao-offline REAL sobre um supabase de dublê: sem isso o loader seguia o import até lib/supabase.ts, falhava em
+// módulo de pacote e deixava sessao-offline pela metade (ReferenceError engolido pela reserva de fala).
+const sessaoOffline = carregar('lib/sessao-offline.ts', {
+  './supabase': { armazenamentoSessao: { getItem: async () => null, removeItem: async () => {} }, CHAVE_SESSAO: 'sessao', supabase: { auth: { getSession: async () => ({ data: { session: null } }) } } },
+});
 carregar('lib/widget-voz-task.ts', {
+  './sessao-offline': sessaoOffline,
   'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (_, factory) => { task = factory(); } } },
   './offline-cache': { isLikelyNetworkError: () => false },
   '@/modules/grana-voice-widget': { definirEstado() {} },
