@@ -792,6 +792,7 @@ export default function LancamentosScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryChipsRow}>
             <AppPressable
               onPress={() => setCategoryFilter(null)}
+              hitSlop={{ top: 7, bottom: 7 }}
               style={[styles.categoryChip, !categoryFilter && styles.categoryChipActive]}
             >
               <Text style={[styles.categoryChipText, !categoryFilter && styles.categoryChipTextActive]}>Todas</Text>
@@ -802,6 +803,7 @@ export default function LancamentosScreen() {
                 <AppPressable
                   key={name}
                   onPress={() => setCategoryFilter(active ? null : name)}
+                  hitSlop={{ top: 7, bottom: 7 }}
                   style={[styles.categoryChip, active && styles.categoryChipActive]}
                 >
                   <View style={[styles.categoryChipDot, { backgroundColor: color }]} />
