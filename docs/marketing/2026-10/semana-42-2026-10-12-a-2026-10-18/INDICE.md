@@ -25,3 +25,9 @@ Origem: pedido do autor em 13/10/2026 (`/copywriting`): pente fino nas copys, se
 Versões substituídas: as copys de `semana-40 / para-aprovacao / COPYS-FINAIS.md` ficam como estão. A substituição depende da aprovação do autor, que ainda não existe.
 
 Gates: teste dos 10 cupons da foto da nota (C10) **afirmado pelo autor em 13/10/2026, sem relatório anexo** (registro de afirmação, não de QA). App "100%": afirmado pelo autor em 13/10/2026; a última auditoria datada no repositório é a de 03/10 (`context.md`, commit `a83b5b1`). Peças Android pedem QA do APK e do widget; peças web pedem QA no Chrome; peças pagas pedem a legenda da seção 4 e a conferência do preço vigente na Cakto.
+
+## Apoio
+
+| Material | Fonte e status | Responsável / evidência | QA / publicação |
+|---|---|---|---|
+| [relatorios/relatorio-Beacon-M4.md](apoio/relatorios/relatorio-Beacon-M4.md) | Proposta técnica de eventos Pixel/CAPI, reconciliada com o parecer M5; pendente de aprovação do autor; nada instalado | Beacon, 16/10/2026; ordem M4 de 16/10; revisão documental da Flare | Nenhum teste de compra, validação no Gerenciador de Eventos ou publicação |
