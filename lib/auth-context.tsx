@@ -12,6 +12,8 @@ import {
   esquecerSessaoDoDisco,
   lerSessaoDoDisco,
   marcarSessaoNaoConfirmada,
+  PRAZO_DONO_PADRAO_MS,
+  sessaoDoCliente,
 } from './sessao-offline';
 import { esquecerTelas } from './cache-de-tela';
 import { esquecerLancamentosLocais } from './offline-cache';
@@ -160,7 +162,18 @@ export function SessionProvider({ children }: PropsWithChildren) {
     let vivo = true;
 
     void (async () => {
-      const { data, error } = await supabase.auth.getSession();
+      /* Com prazo (V38, 16/10/2026). Sem rede e com o token de acesso vencido,
+         `getSession()` renova antes de responder e insiste por ~25 s; enquanto
+         isso `isLoading` segurava a árvore de rotas e a abertura a frio ficava
+         só no fundo por ~34 s (visto pelo Vigil no emulador). No prazo, a
+         ausência cai em `resolverAusenciaDeSessao`, que adota a sessão do disco
+         como não confirmada, a mesma saída de quando a renovação falha. A
+         renovação segue sozinha e, se der certo, o TOKEN_REFRESHED do ouvinte
+         abaixo confirma a sessão. O estouro também marca a sessão como travada
+         (`sessaoEstaTravada`), e as telas servem o disco sem esperar a rede. */
+      const { data, error } = await sessaoDoCliente(PRAZO_DONO_PADRAO_MS).catch(
+        (erro: unknown) => ({ data: { session: null }, error: erro })
+      );
       if (!vivo) return;
       if (data.session) {
         aplicarSessao(data.session, false);

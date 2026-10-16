@@ -161,7 +161,7 @@ export function sessaoEstaTravada(): boolean {
  * e cai para o registro do aparelho, que responde na hora. A renovação
  * continua por conta própria, e quem não passa prazo se comporta como antes.
  */
-function sessaoDoCliente(prazoMs?: number): ReturnType<typeof supabase.auth.getSession> {
+export function sessaoDoCliente(prazoMs?: number): ReturnType<typeof supabase.auth.getSession> {
   const consulta = supabase.auth.getSession();
   if (prazoMs === undefined) return consulta;
   let corte: ReturnType<typeof setTimeout> | undefined;
