@@ -58,22 +58,22 @@
     }
     button.primary { border-color: var(--ink); background: var(--ink); color: var(--paper); }
     button.ghost { border-color: transparent; color: var(--soft); }
-    button.icon { position: relative; width: 44px; height: 44px; padding: 10px; }
+    button.icon { width: 44px; height: 44px; padding: 0; gap: 0; }
     svg { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
     .count {
-      position: absolute;
-      top: 0;
-      right: -4px;
-      min-width: 19px;
-      height: 19px;
-      padding: 0 4px;
-      border: 2px solid var(--paper);
-      border-radius: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 18px;
+      padding: 0 2px;
+      border-radius: 999px;
       background: var(--mint);
       color: var(--paper);
-      font: 400 12px/15px Neue, sans-serif;
+      font: 400 10px/1 Neue, sans-serif;
       text-align: center;
     }
+    button.icon svg { width: 20px; height: 20px; }
     .sidebar {
       position: fixed;
       inset: 0 auto 0 0;
@@ -107,7 +107,7 @@
     .card { min-width: 0; margin-top: 20px; padding: 20px; border: 1px solid var(--rule); border-radius: 16px; background: var(--raised); }
     .card > p { margin-top: 8px; color: var(--soft); font-size: 15px; }
     .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-    .alert { margin: 20px 0; padding: 16px; border-radius: 12px; background: rgba(165, 150, 74, .12); color: var(--amber); }
+    .alert { margin: 20px 0; padding: 16px; border-radius: 12px; background: var(--atencao-fundo, rgba(165, 150, 74, .12)); color: var(--amber); }
     .alert p { margin-top: 8px; color: var(--soft); font-size: 15px; }
     .destinations { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .destinations .card { margin: 0; }
@@ -121,15 +121,17 @@
       border: 1px solid var(--rule);
       border-radius: 999px;
       color: var(--soft);
-      font-size: 14px;
+      font-size: 15px;
       line-height: 1.35;
       overflow-wrap: anywhere;
     }
     .state svg { width: 16px; height: 16px; }
+    .state.planned { border-style: dashed; color: var(--faint); }
+    .state.neutral { border-color: rgba(166, 217, 206, .3); background: rgba(166, 217, 206, .05); color: var(--soft); }
     .state.warn { border-color: rgba(211, 184, 105, .35); color: var(--amber); }
     .state.success { border-color: rgba(116, 226, 145, .3); color: var(--up); }
     .state.error { border-color: rgba(224, 138, 125, .35); color: var(--danger); }
-    .state.mint { color: var(--mint); }
+    .state.mint { border-color: rgba(174, 255, 227, .35); background: rgba(174, 255, 227, .08); color: var(--mint); }
     .detail-line { margin-top: 16px !important; }
     .section-title { margin-top: 28px; }
     .scrim { position: fixed; z-index: 2; inset: 0; background: var(--scrim); }
@@ -156,6 +158,7 @@
     .tabs { display: flex; gap: 16px; border-bottom: 1px solid var(--rule); }
     .tabs button { min-height: 40px; padding: 8px 0; border: 0; border-radius: 0; }
     .tabs .selected { border-bottom: 2px solid var(--mint); }
+    .filter-toggle { display: none; }
     .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
     .filters label { min-width: 0; color: var(--soft); font-size: 14px; }
     .filters select {
@@ -170,24 +173,30 @@
       background: var(--paper);
       font-size: 14px;
     }
-    .mark { margin-bottom: 24px; }
-    .mark button { padding: 8px 0; border: 0; color: var(--soft); font-size: 14px; }
-    .group { margin: 0 0 16px; color: var(--faint); font-size: 14px; }
-    .notification { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--rule); }
+    .mark { display: flex; align-items: center; gap: 8px; }
+    .mark button { min-height: 44px; padding: 8px 0; border: 0; color: var(--soft); font-size: 14px; }
+    .mark .undo { display: none; }
+    .mark.completed .mark-all { display: none; }
+    .mark.completed .undo { display: inline-flex; }
+    .mark-status { min-height: 0; }
+    .group { margin: 0 0 12px; color: var(--faint); font-size: 14px; }
+    .notification { margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid var(--rule); }
     .notification h3 { margin: 8px 0; font-size: 16px; line-height: 1.35; }
     .notification p { color: var(--soft); font-size: 15px; line-height: 1.5; font-weight: 300; }
-    .notification .meta { margin-top: 8px; color: var(--faint); font-size: 14px; line-height: 1.35; }
-    .notification .unread { color: var(--mint); font-size: 14px; }
+    .notification .meta { margin-top: 8px; color: var(--faint); font-size: 15px; line-height: 1.35; }
+    .notification > .small { font-size: 15px; }
+    .notification .unread { color: var(--mint); font-size: 15px; }
     .notification .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
     .notification .actions button { font-size: 15px; }
     .drawer-foot {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
+      flex-direction: column;
+      align-items: stretch;
       gap: 12px;
       padding: 8px 16px max(12px, env(safe-area-inset-bottom));
       border-top: 1px solid var(--rule);
     }
+    .drawer-foot-main { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .drawer-foot button { padding: 8px 0; border: 0; font-size: 14px; }
     .drawer-foot .small { text-align: right; }
     .hidden { display: none !important; }
@@ -201,13 +210,20 @@
     }
     @media (max-width: 640px) {
       .drawer { width: 100%; height: 100vh; height: 100dvh; border-radius: 0; }
-      .filters { grid-template-columns: 1fr; }
-      .notification .actions { flex-direction: column; align-items: stretch; }
-      .notification .actions button.ghost { align-self: flex-start; }
+      .filter-toggle { display: flex; width: 100%; justify-content: space-between; margin: 12px 0; }
+      .filters { display: none; grid-template-columns: 1fr; margin: 0 0 12px; }
+      .filters-open .filters { display: grid; }
+      .notification .actions { flex-direction: row; align-items: center; gap: 4px; }
+      .notification .actions button { min-width: 0; min-height: 44px; padding: 6px; font-size: 13px; }
+      .notification .actions button.ghost { align-self: auto; }
+      .notification { margin-bottom: 16px; padding-bottom: 16px; }
+      .group { margin-bottom: 8px; }
       .card { padding: 16px; }
       .destinations .row { align-items: flex-start; flex-direction: column; }
       .destinations .actions { flex-direction: column; align-items: stretch; }
-      .drawer-foot { align-items: flex-start; }
+      .drawer-foot { gap: 4px; }
+      .drawer-foot-main { align-items: flex-start; }
+      .drawer-foot .small { text-align: left; }
       .row { align-items: flex-start; }
     }
   </style>
@@ -278,13 +294,13 @@
       <h2 class="section-title">Estados de publicação</h2>
       <p class="intro">O rótulo acompanha o destino e o comprovante correspondente.</p>
       <div class="state-list" aria-label="Estados de publicação">
-        <span class="state"><svg aria-hidden="true"><use href="#calendar"/></svg>Planejado</span>
-        <span class="state"><svg aria-hidden="true"><use href="#clock"/></svg>Programado no painel</span>
+        <span class="state planned"><svg aria-hidden="true"><use href="#calendar"/></svg>Planejado</span>
+        <span class="state neutral"><svg aria-hidden="true"><use href="#clock"/></svg>Programado no painel</span>
         <span class="state mint"><svg aria-hidden="true"><use href="#clock-check"/></svg>Agendado na Meta</span>
-        <span class="state"><svg aria-hidden="true"><use href="#progress"/></svg>Preparando</span>
+        <span class="state neutral"><svg aria-hidden="true"><use href="#progress"/></svg>Preparando</span>
         <span class="state success"><svg aria-hidden="true"><use href="#check"/></svg>Publicado</span>
         <span class="state warn"><svg aria-hidden="true"><use href="#clock-alert"/></svg>Cancelamento pendente</span>
-        <span class="state"><svg aria-hidden="true"><use href="#cancel"/></svg>Cancelado</span>
+        <span class="state neutral"><svg aria-hidden="true"><use href="#cancel"/></svg>Cancelado</span>
         <span class="state error"><svg aria-hidden="true"><use href="#alert"/></svg>Falhou</span>
         <span class="state warn"><svg aria-hidden="true"><use href="#question"/></svg>Precisa conferir</span>
       </div>
@@ -303,11 +319,13 @@
           <button type="button" class="selected" role="tab" aria-selected="true">Não lidas (3)</button>
           <button type="button" role="tab" aria-selected="false">Todas</button>
         </div>
-        <div class="filters">
+        <button type="button" class="filter-toggle" aria-expanded="false" aria-controls="notification-filters">
+          <span>Filtros</span><span>0 ativos</span>
+        </button>
+        <div class="filters" id="notification-filters">
           <label>Fonte<select><option>Todas as fontes</option><option>Publicações</option><option>Criativos</option><option>Feedbacks</option><option>Sistema</option><option>Novidades</option></select></label>
           <label>Importância<select><option>Todas</option><option>Precisa agir</option><option>Informação</option></select></label>
         </div>
-        <div class="mark"><button type="button">Marcar todas como lidas</button><p class="small">Inclui as notificações de todos os filtros.</p></div>
         <p class="group">Hoje</p>
         <article class="notification">
           <span class="state warn"><svg aria-hidden="true"><use href="#question"/></svg>Precisa conferir</span>
@@ -332,7 +350,14 @@
           <div class="actions"><button type="button">Abrir feedback</button><button type="button" class="ghost">Marcar como lida</button></div>
         </article>
       </div>
-      <footer class="drawer-foot"><button type="button">Preferências</button><p class="small">Atualizado às 18:06</p></footer>
+      <footer class="drawer-foot">
+        <div class="mark" id="mark-all-control">
+          <button type="button" class="mark-all">Marcar 3 como lidas</button>
+          <button type="button" class="undo">Desfazer</button>
+          <p class="small mark-status" aria-live="polite">Inclui todos os filtros.</p>
+        </div>
+        <div class="drawer-foot-main"><button type="button">Preferências</button><p class="small">Atualizado às 18:06</p></div>
+      </footer>
     </section>
   </div>
 
@@ -340,6 +365,30 @@
     if (new URLSearchParams(location.search).get('tela') === 'publicacao') {
       document.getElementById('notification-layer').classList.add('hidden');
     }
+    const filterToggle = document.querySelector('.filter-toggle');
+    const filterPanel = document.querySelector('.filters');
+    filterToggle.addEventListener('click', () => {
+      const expanded = filterToggle.getAttribute('aria-expanded') === 'true';
+      filterToggle.setAttribute('aria-expanded', String(!expanded));
+      filterPanel.closest('.drawer-scroll').classList.toggle('filters-open', !expanded);
+    });
+    const markControl = document.getElementById('mark-all-control');
+    const markStatus = markControl.querySelector('.mark-status');
+    let undoTimer;
+    markControl.querySelector('.mark-all').addEventListener('click', () => {
+      markControl.classList.add('completed');
+      markStatus.textContent = '3 notificações marcadas como lidas.';
+      clearTimeout(undoTimer);
+      undoTimer = setTimeout(() => {
+        markControl.classList.remove('completed');
+        markStatus.textContent = 'Inclui todos os filtros.';
+      }, 5000);
+    });
+    markControl.querySelector('.undo').addEventListener('click', () => {
+      clearTimeout(undoTimer);
+      markControl.classList.remove('completed');
+      markStatus.textContent = 'Ação desfeita.';
+    });
   </script>
 </body>
 </html>

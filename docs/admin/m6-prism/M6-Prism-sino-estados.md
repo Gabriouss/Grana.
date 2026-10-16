@@ -47,11 +47,11 @@ Hierarquia:
 1. Cabeçalho: “Notificações” em 20/24 px, total de não lidas em 14/18,9 px e botão Fechar de 44 × 44 px.
 2. Abas “Não lidas” e “Todas”; a aba ativa tem texto e traço, além da cor. As quantidades devem acompanhar as duas abas.
 3. Filtros por fonte e importância, sem carrossel de chips. Fontes: “Todas as fontes”, “Publicações”, “Criativos”, “Feedbacks”, “Sistema” e “Novidades”. Importância: “Todas”, “Precisa agir” e “Informação”. São agrupamentos visuais, não estados de publicação.
-4. Ação “Marcar todas como lidas”, com ajuda explícita de que inclui notificações de todos os filtros. Opera sobre as existentes no instante da ação; as que chegarem depois continuam não lidas. Não exige confirmação. Em caso de falha, preservar contador e lista e oferecer nova tentativa.
+4. Ação “Marcar todas como lidas”, com ajuda explícita de que inclui notificações de todos os filtros. Opera sobre as existentes no instante da ação; as que chegarem depois continuam não lidas. Não exige confirmação. Em caso de falha, preservar contador e lista e oferecer nova tentativa. A ação mostra a quantidade (“Marcar 3 como lidas”) e, ao concluir, oferece “Desfazer” por alguns segundos.
 5. Lista agrupada por “Hoje” e “Anteriores”. Cada ocorrência apresenta importância com ícone e texto, título, resumo seguro, fonte, horário, ação específica e “Marcar como lida”. O texto tem largura flexível, `min-width: 0` e quebra natural.
 6. Rodapé com Preferências e data da última atualização.
 
-Em até 640 px, o cabeçalho precisa ficar acima da barra móvel e o painel ocupa a tela inteira. No primeiro acesso, manter o primeiro item útil visível sem rolagem; os filtros podem ficar recolhidos em “Filtros”, com quantidade de filtros ativos. A ação de marcar todas pode ficar no rodapé ou no menu da lista.
+Em até 640 px, o cabeçalho precisa ficar acima da barra móvel e o painel ocupa a tela inteira. No primeiro acesso, manter o primeiro item útil visível sem rolagem; os filtros ficam recolhidos em “Filtros”, com quantidade de filtros ativos. “Marcar todas” fica no rodapé ou no menu da lista para deixar a ocorrência prioritária aparecer primeiro.
 
 Cada item usa padding de 16 px; 8 px entre título e resumo e entre resumo e metadados; 12 px antes das ações; e 20–28 px entre ocorrências, com o traço existente. Título: 16/21,6 px regular. Resumo: 15/22,5 px light. Metadados e selos: pelo menos 15 px, acompanhando a escala do painel. Evitar metadados de 12 px para informação necessária à decisão.
 
@@ -79,6 +79,8 @@ Estados da central:
 O estado pertence ao envio por destino. Um item pode ter Facebook Publicado e Instagram Precisa conferir. O resumo agregado diz “1 de 2 destinos publicado; 1 precisa conferir”, sem selo global Publicado para execução parcial.
 
 Os selos reutilizam a anatomia de `.selo`: texto por extenso, símbolo distinto e cor semântica. Altura mínima de 26 px, padding horizontal de 8 px e fonte mínima de 15 px nesta superfície. Podem crescer para duas linhas, especialmente “Cancelamento pendente” e “Programado no painel”; nunca cortar os nomes. Alvos clicáveis continuam com 44 px.
+
+Mapeamento visual proposto: Planejado usa `.selo-ausente` (tracejado); Programado no painel, Preparando e Cancelado usam a nova regra completa `.selo-neutro`, com ícones próprios; Agendado na Meta usa `.selo-menta` (nova); Publicado usa `.selo-ok`; Cancelamento pendente e Precisa conferir usam `.selo-alerta` com relógio e interrogação distintos; Falhou usa `.selo-erro`. Hoje `estilo.css` define apenas `.selo-neutro::before`, sem texto/borda próprios; a classe completa precisa ser acrescentada. Não existe `.selo-menta`.
 
 | Estado | Significado e evidência necessária | Apresentação e próximo passo |
 |---|---|---|
@@ -147,7 +149,7 @@ Pranchas estáticas não comprovam leitor de tela, foco, contraste calculado ou 
 ## D2 — fechamento por etapas
 
 - **R1–R3 (bloqueadores):** [concluído] texto e ícones reconstruídos em UTF-8; cabeçalho e Fechar visíveis sobre a barra móvel; oito capturas refeitas como viewports reais, incluindo 320 × 640.
-- **Importantes:** R3b–R7 — reduzir controles antes do primeiro item, diferenciar estados, manter o contador no botão, incluir desfazer e respeitar a escala mínima de texto.
+- **Importantes:** R3b–R7 — [concluído] recolher controles antes do primeiro item, diferenciar os estados, manter o contador dentro do botão, incluir ação de desfazer e respeitar a escala mínima de texto.
 - **Menores:** R8–R13 — quantidades nas abas, alvo e foco, preservar a grade aprovada, reutilizar token de aviso, mostrar estados alternativos e reforçar que HTML estático não prova acessibilidade funcional.
 
 ## Registro para o documentador
