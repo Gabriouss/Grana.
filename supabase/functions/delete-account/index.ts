@@ -1,9 +1,9 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.112.3';
+import { sessaoReautenticouRecentemente } from '../_shared/reautenticacao.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const AVATAR_BUCKET = 'avatars';
-const REAUTH_WINDOW_MS = 10 * 60 * 1000;
 
 const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -54,8 +54,10 @@ Deno.serve(async (req: Request) => {
   const user = userData.user;
   if (authError || !user) return json({ error: 'unauthorized' }, 401);
 
-  const ultimoLogin = user.last_sign_in_at ? Date.parse(user.last_sign_in_at) : NaN;
-  if (!Number.isFinite(ultimoLogin) || Date.now() - ultimoLogin > REAUTH_WINDOW_MS || ultimoLogin > Date.now() + 30_000) {
+  /* A janela é medida na SESSÃO deste token (claim `amr` do JWT), não em
+     `user.last_sign_in_at`, que é global: login novo em outro aparelho não pode
+     autorizar a exclusão por um token antigo da mesma conta (V4-5). */
+  if (!sessaoReautenticouRecentemente(token)) {
     return json({ error: 'reauthentication_required' }, 428);
   }
 
