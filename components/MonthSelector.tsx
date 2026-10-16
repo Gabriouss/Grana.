@@ -113,6 +113,7 @@ const styles = StyleSheet.create({
      setas; a pílula cede (quebra o texto) em vez de empurrar a seta da direita
      para fora do cartão. */
   centerPill: {
+    minHeight: touchTarget,
     flexShrink: 1,
     minWidth: 0,
     flexDirection: 'row',
