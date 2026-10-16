@@ -7,7 +7,7 @@ não foram gravadas: aparecem como tela marcada "CENA A GRAVAR NA M1".
 Uso: python gerar_sprites.py && python montar.py
 Saída: granabo-reels-previa.mp4
 """
-import os, math, subprocess
+import os, math, subprocess, glob
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
@@ -83,6 +83,12 @@ def desenha_texto(fr, texto, tam, entra, passo, dur_p, sobe, x0, y0, centro=Fals
 
 # ---------- mascote ----------
 BLENDER = os.path.join(AQUI, 'blender')
+
+def garantir_quadros():
+    """Se a pasta blender/ não tem os quadros, extrai dos WebP versionados em quadros/."""
+    if not glob.glob(os.path.join(BLENDER, 'A_*.png')):
+        from extrair_quadros import extrair
+        print('quadros do Blender extraídos:', extrair(BLENDER))
 def quadro_blender(t):
     """Quadro do Granabô renderizado no Blender para o instante t (trechos A e B)."""
     f = round(t * FPS)
@@ -293,6 +299,7 @@ def quadro(t):
     return fr
 
 if __name__ == '__main__':
+    garantir_quadros()
     saida = os.path.join(AQUI, 'granabo-reels-previa.mp4')
     plim = os.path.join(AQUI, '..', 'identidade-sonora', 'plim-sucesso.wav')
     cmd = ['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', str(FPS), '-i', '-',
