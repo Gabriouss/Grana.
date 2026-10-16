@@ -15,6 +15,17 @@
 --   idempotência e à conciliação com o provedor, e saem por
 --   `anonimizar_cobranca_eventos` na exclusão da conta (delete-account) ou a
 --   pedido, deixando só valores e datas (`anonimizado_em` registra quando).
+--   O `event_id` também embute o código do pedido e sai junto: vira
+--   `anonimizado:<id da linha>`, sem hash nem outra forma do código original.
+--   Linha anonimizada não serve mais para conciliar com o provedor.
+-- - Reenvio e evento tardio: o webhook só grava evento que a assinatura
+--   aceitou como NOVO (`processar_evento_assinatura` devolve 'duplicate' para
+--   o já visto, pela `webhook_events`, que guarda 30 dias). Reenvio do mesmo
+--   evento não recria a linha. Evento novo depois da exclusão (reembolso,
+--   contestação) é um tratamento novo: o webhook recria a assinatura com o
+--   e-mail da compra, e o livro grava a linha dele com vínculo, como qualquer
+--   venda. Passados os 30 dias, o reenvio do mesmo evento também é tratado
+--   como novo pelo sistema inteiro, não só pelo livro.
 -- - Atribuição de marketing (cupom, UTM, sck): NÃO é guardada. São campos de
 --   texto livre que podem conter dado pessoal; voltam só com um contrato de
 --   minimização aprovado (códigos de campanha controlados pelo servidor).
@@ -60,8 +71,10 @@ revoke all on public.cobranca_eventos from anon, authenticated;
 grant select, insert on public.cobranca_eventos to service_role;
 
 -- Só inserção: nem o servidor altera ou apaga uma linha do livro. A única
--- alteração aceita é a anonimização: os três IDs viram nulo, `anonimizado_em`
--- é preenchido uma vez, e todo o resto (valores, datas) fica idêntico.
+-- alteração aceita é a anonimização: os três IDs viram nulo, o `event_id`
+-- (que embute o código do pedido, ex. `purchase_approved:<pedido>`) vira
+-- `anonimizado:<id da linha>`, `anonimizado_em` é preenchido uma vez, e todo o
+-- resto (valores, tipo, datas) fica idêntico.
 create or replace function public.cobranca_eventos_imutavel()
 returns trigger
 language plpgsql
@@ -71,8 +84,9 @@ begin
   if tg_op = 'UPDATE'
      and old.anonimizado_em is null and new.anonimizado_em is not null
      and new.order_id is null and new.parent_order_id is null and new.subscription_id is null
-     and (to_jsonb(new) - array['order_id', 'parent_order_id', 'subscription_id', 'anonimizado_em'])
-       = (to_jsonb(old) - array['order_id', 'parent_order_id', 'subscription_id', 'anonimizado_em']) then
+     and new.event_id = 'anonimizado:' || old.id::text
+     and (to_jsonb(new) - array['order_id', 'parent_order_id', 'subscription_id', 'event_id', 'anonimizado_em'])
+       = (to_jsonb(old) - array['order_id', 'parent_order_id', 'subscription_id', 'event_id', 'anonimizado_em']) then
     return new;
   end if;
   raise exception 'cobranca_eventos é só inserção' using errcode = '42501';
@@ -100,7 +114,8 @@ declare
   n integer;
 begin
   update public.cobranca_eventos
-     set order_id = null, parent_order_id = null, subscription_id = null, anonimizado_em = now()
+     set order_id = null, parent_order_id = null, subscription_id = null,
+         event_id = 'anonimizado:' || id::text, anonimizado_em = now()
    where anonimizado_em is null
      and (subscription_id = any(coalesce(p_subscription_ids, '{}'::text[]))
           or order_id = any(coalesce(p_order_ids, '{}'::text[]))

@@ -268,9 +268,10 @@ checar('livro: valor absurdo vira nulo', cakto.linhaCobrancaCakto(clone({}, { am
 const fonteWebhook = fs.readFileSync('supabase/functions/cakto-webhook/index.ts', 'utf8');
 const posLivro = fonteWebhook.indexOf(".from('cobranca_eventos')");
 const posAssinatura = fonteWebhook.indexOf("rpc('processar_evento_assinatura'");
-checar('webhook: grava o livro antes da assinatura', posLivro > 0 && posLivro < posAssinatura, true);
+checar('webhook: grava o livro DEPOIS da assinatura aceitar o evento', posLivro > posAssinatura && posAssinatura > 0, true);
+checar('webhook: só grava o livro para evento novo (reenvio duplicate não recria a linha)', /if \(data !== 'duplicate'\) \{[\s\S]{0,200}from\('cobranca_eventos'\)/.test(fonteWebhook), true);
 checar('webhook: livro idempotente pelo id do evento', /onConflict: 'provider,event_id', ignoreDuplicates: true/.test(fonteWebhook), true);
-const trechoLivro = fonteWebhook.slice(posLivro - 200, posAssinatura);
+const trechoLivro = fonteWebhook.slice(posLivro - 200, fonteWebhook.indexOf("if (data === 'subscription_not_found')"));
 checar('webhook: falha do livro não devolve resposta (não bloqueia o acesso)', /return resposta/.test(trechoLivro), false);
 checar('webhook: falha do livro deixa log', (trechoLivro.match(/livro-razão NÃO gravado/g) || []).length, 2);
 checar('webhook: o corpo nunca vai para o log do livro', /console\.error\([^)]*(rawBody|body\b)/.test(trechoLivro), false);
