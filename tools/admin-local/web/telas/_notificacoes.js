@@ -1,8 +1,8 @@
 // Sino global e central de notificações do painel local (M6, docs/admin/m6-prism). Dono: Lumen.
 //
 // Vive na casca, fora dos módulos de rota: fica no topo de toda tela depois do login. Lê pelo
-// servidor local (GET /api/marketing/notificacoes) e marca leitura por POST. Sem fundação remota
-// o servidor devolve um dublê marcado "dados de teste", e a central repete essa marca.
+// servidor local (GET /api/marketing/notificacoes) e marca leitura por POST. Sem configuração,
+// a contagem fica desconhecida. Dados de teste só existem quando o servidor os escolhe explicitamente.
 //
 // A parte pura (contador, filtros, agrupamento, marcar todas) não toca no DOM e tem teste de
 // paridade com lib/admin-notificacoes.ts (__tests__/admin-sino-local.cjs).
@@ -148,16 +148,22 @@ export function montarSino({ h, api, acao }) {
       const r = await api('/api/marketing/notificacoes');
       if (!vivo) return;
       const d = r.dados || {};
-      const itens = Array.isArray(d.notificacoes) ? d.notificacoes : [];
       const antes = totalConhecido(leitura);
-      leitura = { situacao: 'ok', lista: itens, atualizadoEm: d.atualizadoEm || new Date().toISOString(), fonte: d.fonte, aviso: d.aviso };
+      if (d.status === 'indisponivel' || d.fonte === 'indisponivel' || d.naoLidas === null) {
+        leitura = { situacao: 'indisponivel', fonte: d.fonte, motivo: d.motivo || d.aviso || 'A fonte de notificações não está configurada.' };
+      } else {
+        if (!Array.isArray(d.notificacoes)) throw Object.assign(new Error('contrato'), { codigo: 'notificacoes-formato', status: 502 });
+        leitura = { situacao: 'ok', lista: d.notificacoes, atualizadoEm: d.atualizadoEm || new Date().toISOString(), fonte: d.fonte, aviso: d.aviso };
+      }
       const depois = totalConhecido(leitura);
-      if (antes !== null && depois !== antes && !dialogo) anuncio.textContent = textoNaoLidas(depois);
+      if (antes !== null && depois !== antes && !dialogo) anuncio.textContent = depois === null ? 'Contagem indisponível' : textoNaoLidas(depois);
     } catch (err) {
       if (!vivo) return;
-      console.warn('[sino] leitura falhou');
+      const codigo = /^[a-z0-9-]{1,64}$/.test(err?.codigo || '') ? err.codigo : 'leitura-falhou';
+      const status = Number.isInteger(err?.status) && err.status > 0 ? err.status : null;
+      console.warn('[sino] GET /api/marketing/notificacoes', status || 'sem-resposta-http', codigo);
       const ultima = lista() && atualizadoEm() ? { lista: lista(), atualizadoEm: atualizadoEm() } : undefined;
-      leitura = { situacao: 'erro', ultima, fonte: leitura.fonte, aviso: leitura.aviso };
+      leitura = { situacao: 'erro', ultima, fonte: leitura.fonte, aviso: leitura.aviso, codigo, status };
     }
     pintarBotao();
     if (dialogo) desenharTudo();
@@ -227,9 +233,9 @@ export function montarSino({ h, api, acao }) {
   function desenharLista() {
     if (!refs) return;
     const itens = lista();
-    const naoLidas = itens ? contarNaoLidas(itens) : 0;
+    const naoLidas = itens ? contarNaoLidas(itens) : '—';
     const ativos = filtrosAtivos(filtro);
-    for (const [b, valor, texto] of [[refs.abaNao, 'nao-lidas', `Não lidas (${naoLidas})`], [refs.abaTodas, 'todas', `Todas (${itens ? itens.length : 0})`]]) {
+    for (const [b, valor, texto] of [[refs.abaNao, 'nao-lidas', `Não lidas (${naoLidas})`], [refs.abaTodas, 'todas', `Todas (${itens ? itens.length : '—'})`]]) {
       b.textContent = texto;
       b.setAttribute('aria-selected', String(filtro.aba === valor));
       b.tabIndex = filtro.aba === valor ? 0 : -1;
@@ -242,11 +248,15 @@ export function montarSino({ h, api, acao }) {
     const agora = new Date();
     const partes = [];
     if (leitura.situacao === 'carregando') partes.push(h('p', { class: 'central-bloco', role: 'status', texto: 'Carregando notificações…' }));
+    if (leitura.situacao === 'indisponivel') partes.push(h('div', { class: 'central-bloco central-bloco-atencao', role: 'status' },
+      h('h3', { texto: 'Fonte de notificações indisponível' }), h('p', { texto: leitura.motivo }),
+      h('p', { texto: 'A contagem é desconhecida. Nenhum zero foi presumido.' })));
     if (leitura.situacao === 'erro') {
       const em = atualizadoEm();
       partes.push(h('div', { class: 'central-bloco central-bloco-atencao', role: 'alert' },
         h('h3', { texto: em ? `Sem atualização desde ${hhmm(em)}` : 'Não foi possível carregar as notificações.' }),
-        h('p', { texto: em ? 'Mostrando a última lista salva. O contador mostra o último número conhecido.' : 'Tente de novo quando o servidor local responder.' }),
+        h('p', { texto: em ? 'Mostrando a última lista salva. O contador mostra o último número conhecido.' : 'A leitura falhou. Tente de novo. Se o código do painel foi atualizado, reinicie-o pelo atalho.' }),
+        h('p', { class: 'central-apoio', texto: `GET /api/marketing/notificacoes · ${leitura.status ? `HTTP ${leitura.status}` : 'sem resposta HTTP'} · ${leitura.codigo}` }),
         h('button', { class: 'botao botao-primario', type: 'button', texto: 'Tentar de novo', onclick: () => { leitura = { situacao: 'carregando' }; desenharLista(); void carregar(); } })));
     }
     if (falha) partes.push(h('p', { class: 'central-bloco central-bloco-atencao', role: 'alert', texto: falha }));
@@ -275,15 +285,15 @@ export function montarSino({ h, api, acao }) {
     refs.corpo.replaceChildren(...partes);
 
     const marcar1 = itens ? idsParaMarcarTodas(itens, Date.now()) : [];
-    refs.rodape.replaceChildren(
+    refs.rodape.replaceChildren(...[
       itens ? h('div', { class: 'central-rodape-marcar' },
-        desfazer
+        desfazer && leitura.fonte !== 'remota'
           ? h('button', { class: 'botao', type: 'button', texto: 'Desfazer', onclick: desfazerTudo })
           : h('button', { class: 'botao', type: 'button', texto: rotuloMarcarTodas(marcar1.length), disabled: marcar1.length === 0, onclick: marcarTudo }),
         h('p', { class: 'central-apoio', role: 'status', 'aria-live': 'polite', texto: aviso || 'Inclui todos os filtros.' })) : null,
       h('div', { class: 'central-rodape-linha' },
         h('button', { class: 'botao', type: 'button', id: 'central-prefs', 'aria-haspopup': 'dialog', texto: 'Preferências', onclick: abrirPrefs }),
-        h('p', { class: 'central-apoio', texto: atualizadoEm() ? `Atualizado às ${hhmm(atualizadoEm())}` : 'Sem atualização' })));
+        h('p', { class: 'central-apoio', texto: atualizadoEm() ? `Atualizado às ${hhmm(atualizadoEm())}` : 'Sem atualização' }))].filter(Boolean));
   }
 
   function irPara(destino) {
@@ -322,7 +332,7 @@ export function montarSino({ h, api, acao }) {
       const nova = marcarIds(lista() || [], ids, new Date().toISOString());
       leitura = leitura.situacao === 'ok' ? { ...leitura, lista: nova } : { ...leitura, ultima: { ...leitura.ultima, lista: nova } };
       if (desfazer) clearTimeout(desfazer.timer);
-      desfazer = { ids, timer: setTimeout(() => { desfazer = null; aviso = ''; if (dialogo) desenharLista(); }, DESFAZER_MS) };
+      desfazer = leitura.fonte === 'remota' ? null : { ids, timer: setTimeout(() => { desfazer = null; aviso = ''; if (dialogo) desenharLista(); }, DESFAZER_MS) };
       aviso = `${ids.length === 1 ? '1 notificação marcada como lida' : `${ids.length} notificações marcadas como lidas`}.`;
     } catch {
       console.warn('[sino] marcar-todas-falhou');
@@ -333,6 +343,7 @@ export function montarSino({ h, api, acao }) {
   }
 
   async function desfazerTudo() {
+    if (leitura.fonte === 'remota') return;
     const d = desfazer;
     if (!d) return;
     clearTimeout(d.timer); desfazer = null; aviso = ''; falha = '';
