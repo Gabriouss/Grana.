@@ -22,6 +22,7 @@ function assinar(id, carimbo, corpo) {
 
 function carregar({ env = {}, rotas }) {
   const chamadas = [];
+  const logs = [];
   let handler;
   const fetch = async (url, init = {}) => {
     const chamada = { url, method: init.method ?? 'GET', headers: init.headers ?? {}, body: init.body ? JSON.parse(init.body) : null };
@@ -44,10 +45,10 @@ function carregar({ env = {}, rotas }) {
     },
     Deno: { env: { get: (k) => ambiente[k] }, serve: (fn) => { handler = fn; } },
     fetch, crypto: globalThis.crypto, atob, btoa, TextEncoder, Uint8Array, AbortController,
-    setTimeout, clearTimeout, Response, JSON, String, Number, Math, Array, Error, console: { error: () => {} },
+    setTimeout, clearTimeout, Response, JSON, String, Number, Math, Array, Error, console: { error: (...args) => logs.push(args) },
     Date: { now: () => AGORA },
   });
-  return { chamadas, chamar: (req) => handler(req) };
+  return { chamadas, logs, chamar: (req) => handler(req) };
 }
 
 function pedido(evento, { carimbo = String(AGORA / 1000), assinatura } = {}) {
@@ -83,6 +84,16 @@ function rotasOk(extra = {}) {
 }
 
 (async () => {
+  // Conte?do externo e exce??es nunca entram em logs nem no motivo do aviso.
+  const sentinela = 'SENTINELA_privada_email_segredo_transcricao';
+  for (const falha of [{ status: 400, bytes: sentinela }, { status: 503, bytes: sentinela }, new Error(sentinela)]) {
+    const f = carregar({ rotas: (c) => c.method === 'POST' ? { json: {} } : falha });
+    await f.chamar(pedido(RECEBIDO));
+    assert.equal(JSON.stringify(f.logs).includes(sentinela), false);
+    assert.equal(JSON.stringify(f.chamadas.filter(c => c.method === 'POST')).includes(sentinela), false);
+    if (falha.status === 400) assert.equal(f.chamadas.filter(c => c.method === 'POST').length, 1);
+    else assert.equal(f.chamadas.filter(c => c.method === 'POST').length, 0);
+  }
   // 1. Assinatura errada, carimbo velho e configuração ausente: nenhuma chamada.
   for (const [nome, req, env, status] of [
     ['assinatura errada', pedido(RECEBIDO, { assinatura: 'v1,AAAA' }), {}, 401],

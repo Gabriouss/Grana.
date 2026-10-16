@@ -107,7 +107,8 @@ async function chamarProvedor(
       body: formData,
     });
     if (!res.ok) {
-      console.error(`[transcrever] ${provedor.nome} respondeu ${res.status}:`, await res.text());
+      console.error(`[transcrever] ${provedor.nome} respondeu ${res.status}`);
+      void res.body?.cancel().catch(() => {});
       return null;
     }
     const bruto = (await res.json())?.text;
@@ -126,8 +127,8 @@ async function chamarProvedor(
     // veio texto e de qual provedor.
     console.log(`[transcrever] ${provedor.nome} devolveu ${normalizado.length} caracteres`);
     return { texto: normalizado, provedor: provedor.nome };
-  } catch (err) {
-    console.error(`[transcrever] ${provedor.nome} lançou exceção:`, err);
+  } catch {
+    console.error(`[transcrever] ${provedor.nome} falhou: transporte_ou_resposta`);
     return null;
   }
 }

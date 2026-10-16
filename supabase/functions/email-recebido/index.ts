@@ -53,7 +53,8 @@ type Anexo = {
   download_url?: string;
 };
 
-class FalhaTemporaria extends Error {}
+class FalhaHttp extends Error {}
+class FalhaTemporaria extends FalhaHttp {}
 
 function lista(e: Endereco): string[] {
   if (!e) return [];
@@ -116,25 +117,28 @@ async function chamar<T>(
   const timer = setTimeout(() => controle.abort(), restante);
   try {
     const r = await fetch(url, { ...init, signal: controle.signal });
-    if (!r.ok) return { status: r.status, corpo: (await r.text()).slice(0, 300) };
+    if (!r.ok) {
+      void r.body?.cancel().catch(() => {});
+      return { status: r.status, corpo: '' };
+    }
     return { status: r.status, corpo: await ler(r) };
-  } catch (e) {
-    throw new FalhaTemporaria(e instanceof Error ? e.message : String(e));
+  } catch {
+    throw new FalhaTemporaria('resend: transporte_ou_resposta');
   } finally {
     clearTimeout(timer);
   }
 }
 
-function falhaHttp(onde: string, status: number, corpo: unknown): Error {
-  const msg = `${onde} respondeu ${status}: ${String(corpo).slice(0, 200)}`;
-  return status === 429 || status >= 500 ? new FalhaTemporaria(msg) : new Error(msg);
+function falhaHttp(onde: string, status: number): Error {
+  const msg = `resend: ${onde} respondeu ${status}`;
+  return status === 429 || status >= 500 ? new FalhaTemporaria(msg) : new FalhaHttp(msg);
 }
 
 const auth = () => ({ Authorization: `Bearer ${RESEND_API_KEY}` });
 
 async function buscarAnexos(id: string, prazo: number): Promise<{ anexos: unknown[]; aviso: string | null }> {
   const r = await chamar(`${API}/emails/receiving/${id}/attachments?limit=100`, { headers: auth() }, prazo, (x) => x.json());
-  if (r.status !== 200) throw falhaHttp('lista de anexos', r.status, r.corpo);
+  if (r.status !== 200) throw falhaHttp('lista de anexos', r.status);
   // Imagem inline já vem dentro do html (html_format=data_uri, o padrão).
   const itens = ((r.corpo as { data?: Anexo[] }).data ?? []).filter(
     (a) => !(a.content_disposition === 'inline' && a.content_id),
@@ -147,7 +151,7 @@ async function buscarAnexos(id: string, prazo: number): Promise<{ anexos: unknow
   for (const a of itens) {
     if (!a.download_url) continue;
     const d = await chamar(a.download_url, {}, prazo, async (x) => new Uint8Array(await x.arrayBuffer()));
-    if (d.status !== 200) throw falhaHttp('download de anexo', d.status, d.corpo);
+    if (d.status !== 200) throw falhaHttp('download de anexo', d.status);
     anexos.push({ filename: a.filename ?? 'anexo', content: base64(d.corpo as Uint8Array), content_type: a.content_type });
   }
   return { anexos, aviso: null };
@@ -159,12 +163,12 @@ async function enviar(corpo: Record<string, unknown>, chaveIdem: string, prazo: 
     headers: { ...auth(), 'Content-Type': 'application/json', 'Idempotency-Key': chaveIdem },
     body: JSON.stringify(corpo),
   }, prazo, (x) => x.json());
-  if (r.status !== 200) throw falhaHttp('envio', r.status, r.corpo);
+  if (r.status !== 200) throw falhaHttp('envio', r.status);
 }
 
 async function encaminhar(id: string, prazo: number): Promise<boolean> {
   const r = await chamar(`${API}/emails/receiving/${id}`, { headers: auth() }, prazo, (x) => x.json());
-  if (r.status !== 200) throw falhaHttp('e-mail recebido', r.status, r.corpo);
+  if (r.status !== 200) throw falhaHttp('e-mail recebido', r.status);
   const e = r.corpo as Recebido;
 
   const caixa = caixaDestino(e);
@@ -246,15 +250,15 @@ Deno.serve(async (req: Request) => {
     const encaminhado = await encaminhar(id, Date.now() + PRAZO_TOTAL_MS);
     return new Response(encaminhado ? 'ok' : 'ignored: send-only mailbox', { status: 200 });
   } catch (erro) {
-    const motivo = erro instanceof Error ? erro.message : String(erro);
+    const motivo = erro instanceof FalhaHttp ? erro.message : 'resend: resposta_invalida';
     console.error(JSON.stringify({ codigo: 'email-recebido-falha', id, temporaria: erro instanceof FalhaTemporaria, motivo }));
     // Temporária: 500 faz a Resend tentar de novo, e a chave de idempotência
     // impede duplicar se a primeira tentativa tiver chegado a enviar.
     if (erro instanceof FalhaTemporaria) return new Response('retry', { status: 500 });
     try {
       await avisarFalha(id, evento.data ?? {}, motivo);
-    } catch (e) {
-      console.error(JSON.stringify({ codigo: 'email-recebido-aviso-falhou', id, motivo: String(e) }));
+    } catch {
+      console.error(JSON.stringify({ codigo: 'email-recebido-aviso-falhou', id }));
       return new Response('retry', { status: 500 });
     }
     return new Response('failed, notified', { status: 200 });
