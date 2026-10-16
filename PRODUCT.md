@@ -18,8 +18,8 @@ gastar, sem que isso vire uma segunda tarefa administrativa no dia a dia.
 Grana. é um registrador de finanças pessoais que elimina a fricção de
 anotar gasto: em vez de formulário/planilha, a pessoa fala (pelo botão de
 microfone do app ou pelo widget de voz do Android, com o app fechado) ou
-aponta a câmera pro QR Code de uma nota fiscal — o lançamento é reconhecido
-e categorizado sozinho.
+fotografa uma nota fiscal para ler seus dados localmente e conferir a sugestão
+antes de salvar.
 Sucesso é a pessoa manter uma noção real do próprio dinheiro sem tratar o
 registro como tarefa chata, e saber quanto tem livre pra gastar sem
 precisar calcular.
@@ -27,10 +27,9 @@ precisar calcular.
 ## Positioning
 
 O Grana. é um registro que a própria pessoa alimenta, e por isso oferece jeitos
-rápidos de entrada (voz no app, voz no widget e QR de nota até o dia D; foto da
-nota depois do dia D) sem pedir credencial nenhuma. O mecanismo que um
-concorrente não copia casualmente: entrada por voz/QR alimentando um
-categorizador automático até o dia D e por foto de nota depois do dia D, mais um
+rápidos de entrada: voz no app, voz no widget e foto da nota com leitura local
+e revisão antes de salvar. O conjunto une categorização compartilhada da voz e
+leitura da foto a um
 cálculo de "Livre para Gastar" do mês vigente, que desconta o que já está
 guardado em cofrinhos e divide pelos dias restantes (regra 20 do
 `AGENTS.md`). Regra de comunicação: publicidade, landing e telas não usam a
@@ -43,8 +42,8 @@ no aparelho.
 
 Produto em português do Brasil. Pontos de entrada de um lançamento: dentro
 do app (botão de microfone), pelo widget de voz do Android (com o app
-fechado, tarefa headless), ou fotografando o QR Code (NFC-e) de uma nota
-fiscal. Roda em Expo (iOS e Android) e web
+fechado, tarefa headless), ou fotografando uma nota fiscal para leitura local
+e revisão antes de salvar. Roda em Expo (iOS e Android) e web
 (react-native-web) a partir do mesmo código e do mesmo design system — mais
 uma landing page pública separada (`app/index.tsx`, só web), voltada a
 quem ainda não conhece o produto, distinta da tela de entrada de quem já
@@ -81,8 +80,8 @@ desconectado.
 - Nunca se conecta a banco ou Open Finance: é sempre autodeclarado. É uma
   restrição de produto e de privacidade, e não entra em publicidade como
   vantagem.
-- Os mecanismos de entrada (voz no app, voz no widget do Android, QR de
-  nota) caem na mesma heurística de categorização (`lib/heuristics.ts`). O
+- Voz no app e no widget compartilha a heurística de categorização
+  (`lib/heuristics.ts`); foto da nota usa OCR local e revisão antes de salvar. O
   webhook do WhatsApp espelha essa heurística e continua recebendo correção
   por higiene de código, para as cópias não divergirem, mas o canal está
   desligado e a função não é republicada.
@@ -180,7 +179,7 @@ Duas decisões da mesma noite completam esta:
 1. Nunca pedir credencial bancária — privacidade acima de conveniência por
    agregação é uma troca permanente, não um atalho de fase 1.
 2. Registrar um lançamento tem que levar segundos e não exigir navegação —
-   voz e QR existem porque até uma tela de "adicionar rápido" ainda é
+   voz e foto da nota existem porque até uma tela de "adicionar rápido" ainda é
    fricção demais pro usuário-alvo, e o widget de voz existe porque abrir o
    app já é navegação.
 3. Mostrar quanto é seguro gastar, não só o que já foi gasto — o
@@ -207,8 +206,8 @@ Duas decisões da mesma noite completam esta:
   tangível e situacional ("gastar no escuro", "não saber para onde o dinheiro
   foi", "o saldo que sumiu antes do fim do mês").
 - **Diferencial central permanente:** A **praticidade** de uso (voz, colar
-  o Pix, QR de nota fiscal e saber quanto pode gastar hoje em 2 a 5
-  segundos, sem planilhas). Ausência de conexão bancária não entra como
+  o Pix, fotografar a nota com revisão e consultar quanto pode gastar hoje,
+  sem planilhas). Ausência de conexão bancária não entra como
   argumento de venda, conforme a regra de comunicação na seção Positioning.
 - **Criativos sem rosto do autor nesta fase (decisão de 25/09/2026):** nenhum
   criativo usa o rosto, a imagem ou a voz do autor. O conceito de fundador
@@ -223,3 +222,11 @@ Duas decisões da mesma noite completam esta:
   Pessoa fictícia demonstra o uso, mas nunca se apresenta como cliente real ou
   dá depoimento de resultado, conforme CDC/CONAR; seguir a política de conteúdo
   gerado por IA da plataforma.
+
+## Estado da retirada do QR em 15/10/2026
+
+O leitor QR foi desativado em b2c3eaa e seus arquivos órfãos removidos em
+1def588. A copy foi conciliada até 5944921, aprovado por Watchtower e pelo
+gate final do Forge. Esse código e cameraPermission exigem build nova para
+alcançar o APK instalado; o push não atualiza binários antigos. O dia D continua
+condicionado à build e ao QA previstos acima.

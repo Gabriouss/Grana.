@@ -3,11 +3,12 @@
 ## Visão do produto
 
 O Grana. é um app de organização financeira pessoal. A pessoa registra
-lançamentos, contas, cartões, metas e categorias; pode usar voz, widget Android,
-QR Code e o Granabô. O WhatsApp está desligado por decisão do autor
-(05/09/2026) e não recebe evolução. O acesso comercial é uma assinatura
-processada pela Cakto (mensal ou anual); o Grana. não movimenta dinheiro nem
-conecta contas bancárias.
+lançamentos, contas, cartões, metas e categorias; pode lançar por voz no app,
+pelo widget Android, fotografar uma nota fiscal para ler seus dados localmente
+e revisar a sugestão antes de salvar, ou usar o Granabô. O WhatsApp está
+desligado por decisão do autor (05/09/2026) e não recebe evolução. O acesso
+comercial é uma assinatura processada pela Cakto (mensal ou anual); o Grana.
+não movimenta dinheiro nem conecta contas bancárias.
 
 ## Stack e fronteiras
 
@@ -58,3 +59,11 @@ identifica o usuário; Edge Functions usam o JWT para RLS e RPCs protegidas.
 - seo.md — rotas públicas e metadados.
 - automation.md — IA, voz, webhooks e automações.
 - operations.md — sinais, recibos e resposta a incidentes.
+
+## Retirada do QR em 15/10/2026
+
+O parser de deep links deixou de aceitar scan-qr em b2c3eaa. O componente
+QrScannerModal e o parser nfce-parser foram removidos em 1def588; câmera e
+ML Kit continuam usados pela foto da nota. A copy até 5944921 foi aprovada,
+com gate final publicado. O APK antigo conserva o código e a justificativa
+de câmera anteriores até receber uma build nova.
