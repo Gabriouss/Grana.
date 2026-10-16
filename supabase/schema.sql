@@ -4826,16 +4826,21 @@ drop policy if exists "assistant_messages: dono com acesso escreve" on public.as
 create policy "assistant_messages: dono le sempre"
   on public.assistant_messages for select to authenticated
   using ((select auth.uid()) = user_id);
-create policy "assistant_messages: dono com acesso escreve"
-  on public.assistant_messages for all to authenticated
-  using (
-    (select auth.uid()) = user_id
-    and (select public.tem_direito_acesso())
-  )
-  with check (
-    (select auth.uid()) = user_id
-    and (select public.tem_direito_acesso())
-  );
+-- B4 (16/10/2026): a FOR ALL virou três políticas, para o SELECT ter uma só
+-- (20261016000000_performance_indices_e_politicas.sql). Mesmo resultado.
+drop policy if exists "assistant_messages: dono com acesso insere" on public.assistant_messages;
+drop policy if exists "assistant_messages: dono com acesso altera" on public.assistant_messages;
+drop policy if exists "assistant_messages: dono com acesso apaga" on public.assistant_messages;
+create policy "assistant_messages: dono com acesso insere"
+  on public.assistant_messages for insert to authenticated
+  with check ((select auth.uid()) = user_id and (select public.tem_direito_acesso()));
+create policy "assistant_messages: dono com acesso altera"
+  on public.assistant_messages for update to authenticated
+  using ((select auth.uid()) = user_id and (select public.tem_direito_acesso()))
+  with check ((select auth.uid()) = user_id and (select public.tem_direito_acesso()));
+create policy "assistant_messages: dono com acesso apaga"
+  on public.assistant_messages for delete to authenticated
+  using ((select auth.uid()) = user_id and (select public.tem_direito_acesso()));
 
 drop policy if exists "usuario acessa propria memoria" on public.assistant_memory;
 drop policy if exists "assistant_memory: dono le sempre" on public.assistant_memory;
@@ -4843,16 +4848,21 @@ drop policy if exists "assistant_memory: dono com acesso escreve" on public.assi
 create policy "assistant_memory: dono le sempre"
   on public.assistant_memory for select to authenticated
   using ((select auth.uid()) = user_id);
-create policy "assistant_memory: dono com acesso escreve"
-  on public.assistant_memory for all to authenticated
-  using (
-    (select auth.uid()) = user_id
-    and (select public.tem_direito_acesso())
-  )
-  with check (
-    (select auth.uid()) = user_id
-    and (select public.tem_direito_acesso())
-  );
+-- B4 (16/10/2026): a FOR ALL virou três políticas, para o SELECT ter uma só
+-- (20261016000000_performance_indices_e_politicas.sql). Mesmo resultado.
+drop policy if exists "assistant_memory: dono com acesso insere" on public.assistant_memory;
+drop policy if exists "assistant_memory: dono com acesso altera" on public.assistant_memory;
+drop policy if exists "assistant_memory: dono com acesso apaga" on public.assistant_memory;
+create policy "assistant_memory: dono com acesso insere"
+  on public.assistant_memory for insert to authenticated
+  with check ((select auth.uid()) = user_id and (select public.tem_direito_acesso()));
+create policy "assistant_memory: dono com acesso altera"
+  on public.assistant_memory for update to authenticated
+  using ((select auth.uid()) = user_id and (select public.tem_direito_acesso()))
+  with check ((select auth.uid()) = user_id and (select public.tem_direito_acesso()));
+create policy "assistant_memory: dono com acesso apaga"
+  on public.assistant_memory for delete to authenticated
+  using ((select auth.uid()) = user_id and (select public.tem_direito_acesso()));
 
 -- Entrada no cartão não existe (decisão do autor, 26/09/2026). Migration
 -- 20260926130000; ver o cabeçalho dela sobre a ordem de aplicação.

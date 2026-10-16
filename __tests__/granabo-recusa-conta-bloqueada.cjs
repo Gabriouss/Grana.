@@ -241,9 +241,19 @@ function pedido() {
   {
     const schema = fs.readFileSync('supabase/schema.sql', 'utf8');
     for (const tabela of ['assistant_messages', 'assistant_memory']) {
+      /* Desde a B4 (16/10/2026) a escrita são três políticas, uma por comando,
+         para o SELECT ter uma só. Cada uma tem de exigir o direito de acesso. */
+      for (const [cmd, nome] of [['insert', 'insere'], ['update', 'altera'], ['delete', 'apaga']]) {
+        const inicio = schema.indexOf(`create policy "${tabela}: dono com acesso ${nome}"`);
+        const bloco = inicio < 0 ? '' : schema.slice(inicio, schema.indexOf(';', inicio));
+        conferir(
+          `${tabela}: ${cmd} exige dono e direito de acesso`,
+          bloco.includes(`for ${cmd} to authenticated`) && bloco.includes('(select auth.uid()) = user_id') && bloco.includes('(select public.tem_direito_acesso())')
+        );
+      }
       conferir(
-        `${tabela}: escrita exige direito de acesso`,
-        schema.includes(`create policy "${tabela}: dono com acesso escreve"`)
+        `${tabela}: a politica FOR ALL nao volta (duplicaria o SELECT)`,
+        !schema.includes(`create policy "${tabela}: dono com acesso escreve"`)
       );
       conferir(
         `${tabela}: leitura continua livre para o dono (export da LGPD)`,
