@@ -88,6 +88,13 @@ export const PRAZO_TRANSCRICAO_MS = 15_000;
 /** Quanto a transcrição espera o cliente devolver o token antes de usar o
     do aparelho. Faz parte dos 15 s, não se soma a eles. */
 const PRAZO_TOKEN_MS = 3_000;
+/** Parte dos 15 s que o reconhecimento no aparelho não pode usar: é do
+    servidor (token, envio e resposta). Sem fala, o reconhecedor do aparelho
+    só desiste no fim do prazo que recebe; com os 15 s inteiros, o servidor
+    ficava sem tempo, a tentativa nem saía e virava "demorou", e o app dizia
+    "Áudio guardado... com conexão" estando online (smoke do Vigil, 16/10/2026).
+    Não soma prazo: só divide os mesmos 15 s. */
+const RESERVA_SERVIDOR_MS = 8_000;
 
 function urlDaFuncao(): string | null {
   const base = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -220,7 +227,7 @@ export async function transcreverAudio(
      prazo de 15s, um teto local de 30s estouraria o prazo inteiro antes de
      a rede ser tentada, e um valor ausente pulava o reconhecimento no aparelho
      sem dizer nada, trocando trabalho de graça por chamada paga. */
-  const local = await transcreverNoAparelho(uri, Math.max(0, deadline - Date.now()));
+  const local = await transcreverNoAparelho(uri, Math.max(0, deadline - Date.now() - RESERVA_SERVIDOR_MS));
   /* Texto sem cara de lançamento NÃO encerra a busca. Uma frase fluente e sem
      relação com a fala já chegou ao autor ("Acompanhe o processo de produção de
      um produto de qualidade", widget, 02/10/2026, no lugar de "Uber ... crédito

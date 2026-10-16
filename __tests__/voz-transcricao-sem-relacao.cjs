@@ -35,11 +35,11 @@ const FALA = 'Uber 825 credito C6';
 
 function montar(origem) {
   /* Bordas controladas pelo cenário. */
-  const e = { local: null, localChamadas: 0, servidor: null, envios: 0, token: 't', fila: [], salvos: [], recibos: [], falhas: [], revisoes: [], apagados: 0 };
+  const e = { local: null, localConsome: false, desvio: 0, prazosLocais: [], localChamadas: 0, servidor: null, envios: 0, token: 't', fila: [], salvos: [], recibos: [], falhas: [], revisoes: [], apagados: 0 };
   const cartoes = [{ id: 'c6', name: 'C6 Bank', bank: 'C6', wallet_id: 'w' }, { id: 'nu', name: 'Nubank', bank: 'Nubank', wallet_id: 'w' }];
   const cache = new Map();
   const substitutos = {
-    './voz-local': { transcreverNoAparelho: async () => { e.localChamadas++; return e.local; } },
+    './voz-local': { transcreverNoAparelho: async (_uri, prazoMs) => { e.localChamadas++; e.prazosLocais.push(prazoMs); if (e.localConsome) e.desvio += prazoMs; return e.local; } },
     'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask() {} } },
     'expo-file-system': { File: class { get exists() { return true; } get size() { return 4; } async bytes() { return new Uint8Array(4); } } },
     'expo/fetch': { fetch: async () => { e.envios++; const r = e.servidor; if (r instanceof Error) throw r; return r; } },
@@ -81,7 +81,7 @@ function montar(origem) {
     vm.runInNewContext(ts.transpileModule(fs.readFileSync(fonte, 'utf8'), {
       compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
     }).outputText, {
-      exports, console: { ...console, warn() {}, error() {} }, JSON, Date, String, Object, Array, Error, TypeError, Promise, RegExp, Number, Math, Set, Map, Intl, Uint8Array,
+      exports, console: { ...console, warn() {}, error() {} }, JSON, Date: class extends Date { static now() { return Date.now() + e.desvio; } }, String, Object, Array, Error, TypeError, Promise, RegExp, Number, Math, Set, Map, Intl, Uint8Array,
       FormData: class { append() {} }, AbortController, setTimeout, clearTimeout, __DEV__: false,
       process: { env: { EXPO_PUBLIC_SUPABASE_URL: 'https://example.invalid' } },
       require: (id) => {
@@ -162,6 +162,17 @@ const resumo = (m) => JSON.stringify({
     /* 8. Servidor recusa de vez (nao_entendi) com lixo do aparelho: não mostra o lixo. */
     m = await rodar(origem, (x) => ({ local: LIXO, servidor: x.servidorFalha('nao_entendi', 422) }), { daFila: true });
     ok(!vazou(m) && m.e.fila.some((i) => i.revisao), `${origem}: servidor também não entendeu: revisão sem o lixo e áudio guardado`);
+
+    /* 9. Smoke de 16/10 (Vigil): com rede, silêncio no microfone do emulador.
+       O reconhecedor do aparelho, sem fala, só desiste no fim do prazo que
+       recebe; recebia os 15 s inteiros e o servidor ficava sem tempo: a
+       tentativa nem saía, virava "demorou" e o app dizia "Áudio guardado...
+       com conexão" estando online. O servidor tem de ser tentado, dentro do
+       mesmo prazo total. */
+    m = await rodar(origem, (x) => ({ local: null, localConsome: true, servidor: x.servidorDiz('...') }));
+    ok(m.e.envios === 1, `${origem}: reconhecedor do aparelho que esgota o próprio prazo não impede o servidor (1 envio)`);
+    ok(m.e.falhas.join() === 'nao_entendi' && !m.e.recibos.includes('offline') && m.e.fila.length === 0, `${origem}: silêncio com rede vira "não entendi", não "Áudio guardado"`);
+    ok(m.e.prazosLocais[0] <= 15_000 - 8_000, `${origem}: o aparelho recebe no máximo o prazo menos a reserva do servidor (${m.e.prazosLocais[0]} ms)`);
   }
 
   /* Paridade: mesma fala, mesma decisão e mesmos efeitos nas duas entradas. */
@@ -171,6 +182,7 @@ const resumo = (m) => JSON.stringify({
     lixoSemRede: () => ({ local: LIXO, servidor: new TypeError('Network request failed') }),
     lixoDoServidor: (x) => ({ local: null, servidor: x.servidorDiz(LIXO) }),
     valorSolto: (x) => ({ local: LIXO, servidor: x.servidorDiz(FALA) }),
+    aparelhoEsgotaPrazo: (x) => ({ local: null, localConsome: true, servidor: x.servidorDiz('...') }),
   };
   for (const [nome, c] of Object.entries(cenarios)) {
     for (const daFila of [false, true]) {

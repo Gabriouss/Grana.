@@ -295,9 +295,14 @@ async function vozAgendaRapido() {
   //    precisam se comportar exatamente iguais. Em tudo"). Nem um prazo
   //    passado por fora estica o do widget de volta para 60s.
   {
+    /* O passo local recebe o prazo unico MENOS a reserva do servidor (16/10/2026,
+       smoke do Vigil): a comparacao e com a mesma chamada sem prazo de fora. */
+    const base = montarVoz();
+    await comLimite(base.mod.transcreverAudio('file:///a.m4a'), 'prazo do botao');
     const { mod, reg } = montarVoz();
     await comLimite(mod.transcreverAudio('file:///a.m4a', { orcamentoMs: 60000 }), 'prazo do widget');
-    assert.equal(reg.prazoLocalRecebido, mod.PRAZO_TRANSCRICAO_MS, 'prazo de fora nao pode mudar o prazo da voz');
+    assert.equal(reg.prazoLocalRecebido, base.reg.prazoLocalRecebido, 'prazo de fora nao pode mudar o prazo da voz');
+    assert.ok(reg.prazoLocalRecebido > 0 && reg.prazoLocalRecebido < mod.PRAZO_TRANSCRICAO_MS, 'o passo local deixa parte do prazo unico para o servidor');
     assert.equal(mod.PRAZO_TRANSCRICAO_MS, 15000, 'o prazo unico e o de quem espera na tela');
     assert.equal(mod.ORCAMENTO_SEM_NINGUEM_ESPERANDO_MS, undefined, 'nao pode voltar a existir um prazo so do widget');
     ok('um prazo so para o botao e para o widget');
