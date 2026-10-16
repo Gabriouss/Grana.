@@ -41,6 +41,7 @@ function harness(opts = {}) {
       select: (f) => { call.select = f; return q; },
       eq: (k, v) => { call.eq.push([k, v]); return q; },
       lt: (k, v) => { call.lt = [k, v]; return q; },
+      in: (k, v) => { call.in = [k, v]; return q; },
       gte: (k, v) => { call.gte = [k, v]; return q; },
       lte: (k, v) => { call.lte = [k, v]; return q; },
       order: (k, o) => { call.order = [k, o]; return q; },
@@ -48,6 +49,14 @@ function harness(opts = {}) {
       abortSignal: () => q,
       then: (ok, ko) => {
         if (opts.erro) return Promise.resolve({ data: null, error: { message: 'postgres ' + TEXTO } }).then(ok, ko);
+        if (call.rpc) {
+          if (opts.rpcErro) return Promise.resolve({ data: null, error: { message: 'postgres ' + TEXTO } }).then(ok, ko);
+          return Promise.resolve({ data: opts.rpcDados ?? null, error: null }).then(ok, ko);
+        }
+        if (call.from === 'feedback_gestao') {
+          if (opts.gestaoErro) return Promise.resolve({ data: null, error: { message: 'x' } }).then(ok, ko);
+          return Promise.resolve({ data: opts.gestao ?? [], error: null }).then(ok, ko);
+        }
         return Promise.resolve({ data: opts.linhas ?? [linha(1)], error: null }).then(ok, ko);
       },
     };
@@ -61,7 +70,7 @@ function harness(opts = {}) {
       return { error: null, data: { user: { id: c.sub, factors: opts.semTotp ? [] : [{ factor_type: 'totp', status: 'verified' }] } } };
     } },
     from: (t) => { const call = { from: t }; calls.push(call); return builder(call); },
-    rpc: (n) => { const call = { rpc: n }; calls.push(call); return builder(call); },
+    rpc: (n, args) => { const call = { rpc: n, args }; calls.push(call); return builder(call); },
   };
   function load(rel) {
     const abs = path.resolve(ROOT, rel);
@@ -101,13 +110,15 @@ const igual = (a, b, nome) => { assert.deepEqual(plano(a), plano(b), nome); ok++
     const h = harness();
     const { r, json } = await h.request({ recurso: 'feedbacks-listar' });
     igual(r.status, 200, 'admin lê');
-    igual(h.calls.map((c) => c.from ?? c.rpc), ['feedbacks'], 'uma consulta só, em feedbacks');
-    igual(h.calls[0].metodos, [], 'nenhuma escrita');
+    igual(h.calls.map((c) => c.from ?? c.rpc), ['feedbacks', 'feedback_gestao'], 'duas leituras: feedbacks e a gestão separada');
+    igual([h.calls[0].metodos, h.calls[1].metodos], [[], []], 'nenhuma escrita na listagem');
+    igual(h.calls[1].in, ['feedback_id', [linha(1).id]], 'a gestão é lida só dos ids da página');
     igual(h.calls[0].order, ['created_at', { ascending: false }], 'mais novos primeiro');
     igual(h.calls[0].limit, 51, 'uma página de 50, mais uma linha para saber se há próxima');
     igual(h.chaves, ['anon', 'service'], 'service_role só depois do portão');
     igual(json.dados.feedbacks, [{ id: linha(1).id, tipo: 'bug', nota: 4, mensagem: TEXTO, status: 'pending', versaoApp: '1.10.5',
-      plataforma: 'android', usoPublicoAutorizado: false, temConta: true, criadoEm: linha(1).created_at }], 'DTO fechado');
+      plataforma: 'android', usoPublicoAutorizado: false, temConta: true, criadoEm: linha(1).created_at,
+      gestao: { estado: 'novo', prioridade: null, responsavel: null, etiquetas: [], evidencia: null, versaoResolucao: null, atualizadoEm: null } }], 'DTO fechado, "novo" por padrão');
     const corpo = JSON.stringify(json);
     igual([DONO, 'Pixel 8', 'print.png'].filter((s) => corpo.includes(s)), [], 'sem user_id, aparelho nem print na resposta');
     igual(h.logs.some((l) => l.includes(TEXTO)), false, 'texto do feedback nunca vai ao log');
@@ -176,6 +187,75 @@ const igual = (a, b, nome) => { assert.deepEqual(plano(a), plano(b), nome); ok++
     const h = harness({ linhas: [linha(1, { type: 'xss<script>' })] });
     const { r } = await h.request({ recurso: 'feedbacks-listar' });
     igual(r.status, 503, 'tipo desconhecido no banco: 503');
+  }
+
+  /* Entrega 3: a gestão aparece na lista e nunca vaza id de admin. */
+  {
+    const g = { feedback_id: linha(1).id, estado: 'em_analise', prioridade: 'alta', responsavel: 'Gabriel', etiquetas: ['voz'],
+      evidencia: null, versao_resolucao: null, atualizado_em: '2026-10-16T10:00:00.000Z', atualizado_por: ADMIN };
+    const h = harness({ gestao: [g] });
+    const { json } = await h.request({ recurso: 'feedbacks-listar' });
+    igual(json.dados.feedbacks[0].gestao, { estado: 'em_analise', prioridade: 'alta', responsavel: 'Gabriel', etiquetas: ['voz'],
+      evidencia: null, versaoResolucao: null, atualizadoEm: '2026-10-16T10:00:00.000Z' }, 'gestão gravada aparece na lista');
+    igual(JSON.stringify(json).includes(ADMIN), false, 'id do admin que triou não sai');
+  }
+  {
+    const h = harness({ gestaoErro: true });
+    const { r } = await h.request({ recurso: 'feedbacks-listar' });
+    igual(r.status, 503, 'falha ao ler a gestão derruba a lista com recibo, sem mostrar tudo como "novo"');
+  }
+  {
+    const h = harness({ gestao: [{ feedback_id: linha(1).id, estado: 'inventado', etiquetas: [] }] });
+    const { r } = await h.request({ recurso: 'feedbacks-listar' });
+    igual(r.status, 503, 'estado fora da lista no banco: 503');
+  }
+
+  /* Escrita da gestão: uma RPC, só com o pedido validado, quem mudou vem do portão. */
+  {
+    const retorno = [{ feedback_id: linha(1).id, estado: 'resolvido', prioridade: null, responsavel: null, etiquetas: ['voz', 'android'],
+      evidencia: 'Corrigido no commit 02235ca', versao_resolucao: '1.11.0', atualizado_em: '2026-10-16T11:00:00.000Z', atualizado_por: ADMIN }];
+    const h = harness({ rpcDados: retorno });
+    const { r, json } = await h.request({ recurso: 'feedbacks-gestao', id: linha(1).id, estado: 'resolvido', etiquetas: [' Voz ', 'android', 'VOZ'],
+      evidencia: ' Corrigido no commit 02235ca ', versaoResolucao: '1.11.0' });
+    igual(r.status, 200, 'admin atualiza a gestão');
+    igual(h.calls.map((c) => c.rpc ?? c.from), ['feedback_gestao_atualizar'], 'uma chamada só, na RPC transacional');
+    igual(h.calls[0].args, { p_id: linha(1).id, p_por: ADMIN, p_patch: { estado: 'resolvido', etiquetas: ['voz', 'android'],
+      evidencia: 'Corrigido no commit 02235ca', versao_resolucao: '1.11.0' } }, 'patch normalizado, e quem mudou é o admin do portão');
+    igual(json.dados.gestao.estado, 'resolvido', 'devolve a gestão atualizada');
+    igual(JSON.stringify(json).includes(ADMIN), false, 'sem id de admin na resposta');
+    igual(h.logs.some((l) => l.includes('Corrigido no commit')), false, 'evidência não vai ao log');
+  }
+  {
+    const h = harness({ rpcErro: true });
+    const { r, json } = await h.request({ recurso: 'feedbacks-gestao', id: linha(1).id, prioridade: 'baixa' });
+    igual([r.status, json.erro.codigo], [503, 'indisponivel'], 'erro do banco na escrita: 503 genérico');
+    igual(JSON.stringify(json).includes('postgres'), false, 'sem o erro bruto');
+  }
+  for (const [nome, opts, body, headers, status] of [
+    ['gestão: outro usuário', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, estado: 'arquivado' }, { Authorization: 'Bearer ' + token(OUTRO) }, 403],
+    ['gestão: sem aal2', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, estado: 'arquivado' }, { Authorization: 'Bearer ' + token(ADMIN, 'aal1') }, 403],
+    ['gestão: sem TOTP', { semTotp: true }, { recurso: 'feedbacks-gestao', id: linha(1).id, estado: 'arquivado' }, {}, 403],
+    ['gestão: sem login', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, estado: 'arquivado' }, { Authorization: undefined }, 401],
+    ['gestão: origem de fora', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, estado: 'arquivado' }, { Origin: 'https://malicioso.example' }, 403],
+    ['gestão: sem id', {}, { recurso: 'feedbacks-gestao', estado: 'arquivado' }, {}, 400],
+    ['gestão: id que não é uuid', {}, { recurso: 'feedbacks-gestao', id: "1'; drop table feedbacks;--", estado: 'arquivado' }, {}, 400],
+    ['gestão: nada a mudar', {}, { recurso: 'feedbacks-gestao', id: linha(1).id }, {}, 400],
+    ['gestão: estado inventado', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, estado: 'apagado' }, {}, 400],
+    ['gestão: prioridade inventada', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, prioridade: 'urgente' }, {}, 400],
+    ['gestão: tenta trocar o texto', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, mensagem: 'outro texto' }, {}, 400],
+    ['gestão: tenta mexer no vínculo', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, user_id: DONO }, {}, 400],
+    ['gestão: resolvido sem evidência', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, estado: 'resolvido', evidencia: null }, {}, 400],
+    ['gestão: nove etiquetas', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, etiquetas: Array.from({ length: 9 }, (_, i) => 'e' + i) }, {}, 400],
+    ['gestão: etiqueta com pontuação livre', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, etiquetas: ['joao@exemplo.com'] }, {}, 400],
+    ['gestão: etiqueta que não é texto', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, etiquetas: [1] }, {}, 400],
+    ['gestão: responsável vazio', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, responsavel: '   ' }, {}, 400],
+    ['gestão: evidência longa demais', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, evidencia: 'x'.repeat(501) }, {}, 400],
+    ['gestão: versão com curinga', {}, { recurso: 'feedbacks-gestao', id: linha(1).id, versaoResolucao: '1.%' }, {}, 400],
+  ]) {
+    const h = harness(opts);
+    const { r } = await h.request(body, headers);
+    igual(r.status, status, `${nome}: ${status}`);
+    igual(h.calls.length, 0, `${nome}: nenhuma chamada ao banco`);
   }
 
   console.log(`admin-feedbacks: ${ok} checagens passaram — 0 falhas`);
