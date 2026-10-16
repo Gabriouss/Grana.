@@ -44,7 +44,7 @@ Em 641 px ou mais, abrir um painel modal ancorado à borda direita, com 416 px d
 
 Hierarquia:
 
-1. Cabeçalho: “Notificações” em 20/24 px, total de não lidas em 14/18,9 px e botão Fechar de 44 × 44 px.
+1. Cabeçalho: “Notificações” em 20/24 px, total de não lidas em 15/20,25 px e botão Fechar de 44 × 44 px.
 2. Abas “Não lidas” e “Todas”; a aba ativa tem texto e traço, além da cor. As quantidades devem acompanhar as duas abas.
 3. Filtros por fonte e importância, sem carrossel de chips. Fontes: “Todas as fontes”, “Publicações”, “Criativos”, “Feedbacks”, “Sistema” e “Novidades”. Importância: “Todas”, “Precisa agir” e “Informação”. São agrupamentos visuais, não estados de publicação.
 4. Ação “Marcar todas como lidas”, com ajuda explícita de que inclui notificações de todos os filtros. Opera sobre as existentes no instante da ação; as que chegarem depois continuam não lidas. Não exige confirmação. Em caso de falha, preservar contador e lista e oferecer nova tentativa. A ação mostra a quantidade (“Marcar 3 como lidas”) e, ao concluir, oferece “Desfazer” por alguns segundos.

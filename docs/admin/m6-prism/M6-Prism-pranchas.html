@@ -74,7 +74,7 @@
       border-radius: 999px;
       background: var(--mint);
       color: var(--paper);
-      font: 400 10px/1 Neue, sans-serif;
+      font: 400 11px/1 Neue, sans-serif;
       text-align: center;
     }
     button.icon svg { width: 20px; height: 20px; }
@@ -86,7 +86,7 @@
       border-right: 1px solid var(--rule);
     }
     .brand { display: block; width: 120px; height: auto; margin-bottom: 8px; }
-    .small { color: var(--faint); font-size: 14px; line-height: 1.35; font-weight: 300; }
+    .small { color: var(--faint); font-size: 15px; line-height: 1.35; font-weight: 300; }
     .sidebar nav { display: grid; gap: 4px; margin-top: 40px; }
     .sidebar nav span { padding: 12px; border-radius: 8px; color: var(--soft); }
     .sidebar nav span.active { background: var(--raised); color: var(--ink); }
@@ -164,7 +164,7 @@
     .tabs .selected { border-bottom: 2px solid var(--mint); }
     .filter-toggle { display: none; }
     .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
-    .filters label { min-width: 0; color: var(--soft); font-size: 14px; }
+    .filters label { min-width: 0; color: var(--soft); font-size: 15px; }
     .filters select {
       display: block;
       width: 100%;
@@ -175,15 +175,15 @@
       border: 1px solid var(--rule);
       border-radius: 8px;
       background: var(--paper);
-      font-size: 14px;
+      font-size: 15px;
     }
     .mark { display: flex; align-items: center; gap: 8px; }
-    .mark button { min-height: 44px; padding: 8px 0; border: 0; color: var(--soft); font-size: 14px; }
+    .mark button { min-height: var(--alvo); padding: 8px 0; border: 0; color: var(--soft); font-size: 15px; white-space: nowrap; }
     .mark .undo { display: none; }
     .mark.completed .mark-all { display: none; }
     .mark.completed .undo { display: inline-flex; }
     .mark-status { min-height: 0; }
-    .group { margin: 0 0 12px; color: var(--faint); font-size: 14px; }
+    .group { margin: 0 0 12px; color: var(--faint); font-size: 15px; line-height: 1.2; }
     .notification { margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid var(--rule); }
     .notification h3 { margin: 8px 0; font-size: 16px; line-height: 1.35; }
     .notification p { color: var(--soft); font-size: 15px; line-height: 1.5; font-weight: 300; }
@@ -202,14 +202,14 @@
       border-top: 1px solid var(--rule);
     }
     .drawer-foot-main { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .drawer-foot button { padding: 8px 0; border: 0; font-size: 14px; }
+    .drawer-foot button { padding: 8px 0; border: 0; font-size: 15px; }
     .drawer-foot .small { text-align: right; }
     .hidden { display: none !important; }
     :focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
     .state-board { max-width: 620px; margin: 0 auto; padding: 24px 16px 40px; }
     .state-board > p { margin-top: 8px; color: var(--soft); font-size: 15px; }
     .sample { margin-top: 12px; padding: 14px; border: 1px solid var(--rule); border-radius: 14px; background: var(--raised); }
-    .sample-label { margin-bottom: 8px; color: var(--faint); font-size: 13px; letter-spacing: .04em; text-transform: uppercase; }
+    .sample-label { margin-bottom: 8px; color: var(--faint); font-size: 15px; letter-spacing: .04em; text-transform: uppercase; }
     .sample p { color: var(--soft); font-size: 15px; line-height: 1.4; }
     .sample h2 { margin-bottom: 6px; font-size: 18px; }
     .sample .state { margin-bottom: 8px; }
@@ -221,7 +221,7 @@
     .preference-option { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: var(--alvo); border-bottom: 1px solid var(--rule); }
     .preference-option:last-child { border-bottom: 0; }
     .preference-option p { font-size: 15px; }
-    .preference-switch { display: inline-flex; align-items: center; justify-content: flex-end; min-width: 48px; min-height: 28px; padding: 0 6px; border: 1px solid rgba(174, 255, 227, .35); border-radius: 999px; color: var(--mint); font-size: 12px; }
+    .preference-switch { display: inline-flex; align-items: center; justify-content: flex-end; min-width: 48px; min-height: 28px; padding: 0 6px; border: 1px solid rgba(174, 255, 227, .35); border-radius: 999px; color: var(--mint); font-size: 15px; }
     .undo-sample { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
@@ -232,23 +232,25 @@
       .global { display: none; }
       .mobilebar { display: flex; }
       .destinations { grid-template-columns: 1fr; }
-      .mobilebar button { font-size: 14px; }
+      .mobilebar button { font-size: 15px; }
     }
     @media (max-width: 640px) {
       .drawer { width: 100%; height: 100vh; height: 100dvh; border-radius: 0; }
+      .drawer-scroll { padding-top: 12px; }
       .filter-toggle { display: flex; width: 100%; justify-content: space-between; margin: 12px 0; }
       .filters { display: none; grid-template-columns: 1fr; margin: 0 0 12px; }
       .filters-open .filters { display: grid; }
       .notification .actions { flex-direction: row; align-items: center; gap: 4px; }
-      .notification .actions button { min-width: 0; min-height: 44px; padding: 6px; font-size: 13px; }
+      .notification .actions button { min-width: 0; min-height: var(--alvo); padding: 2px; font-size: 15px; }
       .notification .actions button.ghost { align-self: auto; }
-      .notification { margin-bottom: 16px; padding-bottom: 16px; }
-      .group { margin-bottom: 8px; }
+      .notification { margin-bottom: 8px; padding-bottom: 8px; }
+      .group { margin-bottom: 0; }
       .card { padding: 16px; }
       .destinations .row { align-items: flex-start; flex-direction: column; }
       .destinations .actions { flex-direction: column; align-items: stretch; }
-      .drawer-foot { gap: 4px; }
-      .drawer-foot-main { align-items: flex-start; }
+      .drawer-foot { gap: 0; padding-top: 4px; }
+      .mark { align-items: flex-start; flex-direction: column; gap: 0; }
+      .drawer-foot-main { align-items: center; }
       .drawer-foot .small { text-align: left; }
       .row { align-items: flex-start; }
     }
@@ -356,7 +358,7 @@
         <article class="notification">
           <span class="state warn"><svg aria-hidden="true"><use href="#question"/></svg>Precisa conferir</span>
           <h3>Confira o resultado no Instagram</h3>
-          <p>A Meta ainda não confirmou o resultado. Confira antes de repetir o envio.</p>
+          <p>A Meta não confirmou o resultado. Confira antes de repetir.</p>
           <p class="meta">Publicações · Instagram · há 4 min</p>
           <p class="unread">Não lida</p>
           <div class="actions"><button type="button" class="primary">Conferir resultado</button><button type="button" class="ghost">Marcar como lida</button></div>
