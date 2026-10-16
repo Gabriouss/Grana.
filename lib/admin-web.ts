@@ -163,7 +163,48 @@ export async function pedirNovoAjusteCriativo(c: { pecaId: string; caminho: stri
       typeof dados.pedido.id === 'string' && /^[0-9a-f-]{36}$/i.test(dados.pedido.id) && ESTADOS_CORRECAO.includes(dados.pedido.estado)));
 }
 
-async function chamarAdmin<T>(funcao: 'admin-consulta' | 'admin-feedbacks' | 'admin-ajustes', corpo: Record<string, unknown>, validar: (dados: any) => boolean): Promise<RespostaAdmin<T>> {
+// Notificações do sino (fundação de marketing, função admin-marketing). Só o que o contrato do
+// servidor entrega: código, importância, vínculo, datas. Título e texto são do cliente
+// (lib/admin-notificacoes.ts), porque o servidor nunca guarda texto livre nem conteúdo de feedback.
+export type NotificacaoServidor = {
+  id: string; codigo: string; importancia: 'informacao' | 'atencao' | 'critica'; agendamentoId: string | null;
+  criadoEm: string; lidaEm: string | null; resolvidaEm: string | null;
+};
+export type PaginaNotificacoes = {
+  notificacoes: NotificacaoServidor[]; naoLidas: number; proximaPagina: { criadoEm: string; id: string } | null;
+};
+const UUID_ADMIN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function notificacaoValida(n: any): boolean {
+  const data = (v: unknown) => typeof v === 'string' && Number.isFinite(Date.parse(v));
+  return Boolean(n && typeof n === 'object' && !Array.isArray(n) &&
+    Object.keys(n).every((k) => ['id', 'codigo', 'importancia', 'agendamentoId', 'criadoEm', 'lidaEm', 'resolvidaEm'].includes(k)) &&
+    typeof n.id === 'string' && UUID_ADMIN.test(n.id) && typeof n.codigo === 'string' && /^[a-z0-9-]{1,80}$/.test(n.codigo) &&
+    ['informacao', 'atencao', 'critica'].includes(n.importancia) &&
+    (n.agendamentoId === null || (typeof n.agendamentoId === 'string' && UUID_ADMIN.test(n.agendamentoId))) &&
+    data(n.criadoEm) && (n.lidaEm === null || data(n.lidaEm)) && (n.resolvidaEm === null || data(n.resolvidaEm)));
+}
+
+export async function listarNotificacoesMarketing(antesDe?: { criadoEm: string; id: string }): Promise<RespostaAdmin<PaginaNotificacoes>> {
+  const corpo: Record<string, unknown> = { recurso: 'marketing-notificacoes', filtro: 'todas' };
+  if (antesDe) corpo.antesDe = antesDe;
+  return chamarAdmin<PaginaNotificacoes>('admin-marketing', corpo, (dados) =>
+    Boolean(dados && typeof dados === 'object' && Object.keys(dados).every((k) => ['notificacoes', 'naoLidas', 'proximaPagina'].includes(k)) &&
+      Array.isArray(dados.notificacoes) && dados.notificacoes.length <= 50 && dados.notificacoes.every(notificacaoValida) &&
+      Number.isSafeInteger(dados.naoLidas) && dados.naoLidas >= 0 &&
+      (dados.proximaPagina === null || (dados.proximaPagina && typeof dados.proximaPagina.id === 'string' && UUID_ADMIN.test(dados.proximaPagina.id) &&
+        typeof dados.proximaPagina.criadoEm === 'string' && Number.isFinite(Date.parse(dados.proximaPagina.criadoEm))))));
+}
+
+// Marcar como lida é independente de resolver. O servidor aceita de 1 a 50 ids por pedido e só
+// grava o que ainda não estava lido; repetir é inofensivo.
+export async function marcarNotificacoesLidas(ids: string[]): Promise<RespostaAdmin<{ atualizados: number }>> {
+  return chamarAdmin<{ atualizados: number }>('admin-marketing', { recurso: 'marketing-ler', ids }, (dados) =>
+    Boolean(dados && typeof dados === 'object' && Object.keys(dados).every((k) => k === 'atualizados') &&
+      Number.isSafeInteger(dados.atualizados) && dados.atualizados >= 0 && dados.atualizados <= ids.length));
+}
+
+async function chamarAdmin<T>(funcao: 'admin-consulta' | 'admin-feedbacks' | 'admin-ajustes' | 'admin-marketing', corpo: Record<string, unknown>, validar: (dados: any) => boolean): Promise<RespostaAdmin<T>> {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const trabalho = async () => {

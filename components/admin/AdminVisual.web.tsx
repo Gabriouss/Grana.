@@ -3,7 +3,7 @@ import type { FormEvent, ReactNode } from 'react';
 import type { ErroAdmin, RespostaAdmin, VisaoAdmin } from '@/lib/admin-web';
 import FeedbacksAdmin from './FeedbacksAdmin.web';
 import CorrecoesCriativos from './CorrecoesCriativos.web';
-import CentralNotificacoes from './CentralNotificacoes.web';
+import CentralNotificacoes from './CentralNotificacoesReal.web';
 import PublicacoesEstados from './PublicacoesEstados.web';
 import './admin-visual.css';
 

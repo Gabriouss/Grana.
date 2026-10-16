@@ -242,3 +242,37 @@ export function marcarIds(lista: readonly Notificacao[], ids: readonly string[])
   const alvo = new Set(ids);
   return lista.map((n) => (alvo.has(n.id) ? { ...n, lida: true } : n));
 }
+
+// ---------- Leitura real (admin-marketing) ----------
+
+// Catálogo código -> texto. O servidor guarda só o código (nunca texto livre nem feedback), então
+// título, resumo e ação moram aqui. Código que o catálogo não conhece aparece como "Aviso do
+// sistema": nunca some e nunca inventa um significado. Provisório: o executor da fundação ainda
+// não grava notificações, então a lista de códigos cresce quando ele existir.
+type EntradaCatalogo = { fonte: FonteNotificacao; titulo: string; resumo: string; acao?: string };
+export const CATALOGO_CODIGOS: Record<string, EntradaCatalogo> = {
+  'horario-vencido': { fonte: 'publicacoes', titulo: 'Horário de publicação vencido', resumo: 'O horário passou sem confirmação. Confira o resultado antes de repetir o envio.', acao: 'Conferir resultado' },
+  'lease-vencida': { fonte: 'publicacoes', titulo: 'Envio precisa de conferência', resumo: 'Uma tentativa ficou sem resposta confirmada. Confira antes de repetir o envio.', acao: 'Conferir resultado' },
+  'recuperacao-pendente': { fonte: 'publicacoes', titulo: 'Envio precisa de conferência', resumo: 'Uma tentativa ficou sem resposta confirmada. Confira antes de repetir o envio.', acao: 'Conferir resultado' },
+  'criativo-corrigido': { fonte: 'criativos', titulo: 'Criativo corrigido, pronto para sua revisão', resumo: 'Abra a correção para comparar as versões e decidir.', acao: 'Revisar criativo' },
+  'novo-feedback': { fonte: 'feedbacks', titulo: 'Novo feedback', resumo: 'Um novo relato aguarda sua análise.', acao: 'Abrir feedbacks' },
+};
+const ENTRADA_DESCONHECIDA: EntradaCatalogo = { fonte: 'sistema', titulo: 'Aviso do sistema', resumo: 'Há uma ocorrência registrada. Abra o painel para ver os detalhes.' };
+
+export type NotificacaoDoServidor = {
+  id: string; codigo: string; importancia: 'informacao' | 'atencao' | 'critica';
+  criadoEm: string; lidaEm: string | null; resolvidaEm: string | null;
+};
+
+// Atenção e crítica pedem ação; informação só informa. Resolvida continua na lista.
+export function notificacaoDoServidor(n: NotificacaoDoServidor): Notificacao {
+  const e = CATALOGO_CODIGOS[n.codigo] ?? ENTRADA_DESCONHECIDA;
+  return {
+    id: n.id, fonte: e.fonte, importancia: n.importancia === 'informacao' ? 'informacao' : 'agir', titulo: e.titulo, resumo: e.resumo,
+    criadoEm: n.criadoEm, lida: n.lidaEm !== null, resolvida: n.resolvidaEm !== null, ...(e.acao ? { acao: e.acao } : {}),
+  };
+}
+
+// A função admin-marketing ainda não está publicada: o gateway responde 404. Só nesse caso a
+// central cai no dublê (marcado "dados de teste"). Qualquer outra falha é falha, com recibo.
+export const fundacaoNaoPublicada = (codigo: string) => codigo === 'http-404';

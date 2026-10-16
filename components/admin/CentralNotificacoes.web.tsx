@@ -14,6 +14,8 @@ type Props = {
   persistir?: (ids: string[], lida: boolean) => Promise<void>;
   /** Recarrega a lista. Rejeitar cai em cache antigo, nunca em zero. */
   recarregar?: () => Promise<Notificacao[]>;
+  /** Dados do servidor. Some o aviso de "dados de teste", o desfazer e as preferências, que o servidor ainda não grava. */
+  real?: boolean;
 };
 
 const hhmm = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -36,7 +38,7 @@ const PREFS_INICIAIS = [
   { id: 'novidades', rotulo: 'Novidades', painel: true },
 ];
 
-export default function CentralNotificacoes({ leituraInicial, persistir, recarregar }: Props) {
+export default function CentralNotificacoes({ leituraInicial, persistir, recarregar, real = false }: Props) {
   const [leitura, setLeitura] = useState<LeituraCentral>(() =>
     leituraInicial ?? { situacao: 'ok', lista: notificacoesDuble(new Date()), atualizadoEm: new Date().toISOString() });
   const [aberto, setAberto] = useState(false);
@@ -148,7 +150,7 @@ export default function CentralNotificacoes({ leituraInicial, persistir, recarre
       await gravar(ids, true);
       // Aplica por id sobre a lista de agora: o que chegou durante a gravação continua não lido.
       trocarLista((l) => marcarIds(l, ids));
-      setDesfazer(ids);
+      if (!real) setDesfazer(ids);
       setAviso(`${ids.length === 1 ? '1 notificação marcada' : `${ids.length} notificações marcadas`} como ${ids.length === 1 ? 'lida' : 'lidas'}.`);
       if (temporizador.current) clearTimeout(temporizador.current);
       temporizador.current = setTimeout(() => { setDesfazer(null); setAviso(''); }, 8000);
@@ -235,7 +237,7 @@ export default function CentralNotificacoes({ leituraInicial, persistir, recarre
             <header className="cn-cabecalho">
               <div>
                 <h2 id="cn-titulo" ref={titulo} tabIndex={-1}>Notificações</h2>
-                <p className="cn-apoio">{cabecalhoTotal} · dados de teste</p>
+                <p className="cn-apoio">{cabecalhoTotal}{real ? '' : ' · dados de teste'}</p>
               </div>
               <button type="button" className="cn-botao cn-botao-icone" aria-label="Fechar notificações" onClick={fechar}>
                 <Icone nome="fechar" />
@@ -321,7 +323,7 @@ export default function CentralNotificacoes({ leituraInicial, persistir, recarre
                   {desfazer
                     ? <button type="button" className="cn-botao" onClick={() => void desfazerTudo()}>Desfazer</button>
                     : <button type="button" className="cn-botao" disabled={naoLidas === 0} onClick={() => void marcarTudo()}>{rotuloMarcarTodas(naoLidas)}</button>}
-                  <p className="cn-apoio" aria-live="polite">{aviso || 'Inclui todos os filtros. Dados de teste, nada é enviado.'}</p>
+                  <p className="cn-apoio" aria-live="polite">{aviso || (real ? 'Inclui todos os filtros.' : 'Inclui todos os filtros. Dados de teste, nada é enviado.')}</p>
                 </div>
               )}
               <div className="cn-rodape-linha">
@@ -338,15 +340,15 @@ export default function CentralNotificacoes({ leituraInicial, persistir, recarre
                   {prefs.map((p) => (
                     <label key={p.id} className="cn-pref">
                       <span>{p.rotulo} no painel</span>
-                      <input type="checkbox" checked={p.painel} onChange={(e) => void salvarPref(p.id, e.currentTarget.checked)} />
+                      <input type="checkbox" checked={p.painel} disabled={real} onChange={(e) => void salvarPref(p.id, e.currentTarget.checked)} />
                     </label>
                   ))}
                   <label className="cn-pref">
                     <span>E-mail só para falhas importantes</span>
-                    <input type="checkbox" checked={emailFalhas} onChange={(e) => { setEmailFalhas(e.currentTarget.checked); setPrefsEstado('salvo'); }} />
+                    <input type="checkbox" checked={emailFalhas} disabled={real} onChange={(e) => { setEmailFalhas(e.currentTarget.checked); setPrefsEstado('salvo'); }} />
                   </label>
                   <p className="cn-apoio" role="status" style={{ margin: '12px 0' }}>
-                    {prefsEstado === 'salvando' ? 'Salvando…' : prefsEstado === 'salvo' ? 'Preferências salvas (dados de teste).' : prefsEstado === 'falha' ? 'Não foi possível salvar. Tente de novo.' : ''}
+                    {real ? 'O servidor ainda não grava estas preferências, por isso elas não podem ser alteradas aqui.' : prefsEstado === 'salvando' ? 'Salvando…' : prefsEstado === 'salvo' ? 'Preferências salvas (dados de teste).' : prefsEstado === 'falha' ? 'Não foi possível salvar. Tente de novo.' : ''}
                   </p>
                   <button type="button" className="cn-botao cn-botao-primario" onClick={() => setPrefsAbertas(false)}>Fechar</button>
                 </div>
