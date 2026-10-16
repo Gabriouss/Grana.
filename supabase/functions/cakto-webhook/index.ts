@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.112.3';
-import { normalizarEventoCakto, segredoCaktoValido } from '../_shared/cakto.ts';
+import { linhaCobrancaCakto, normalizarEventoCakto, segredoCaktoValido } from '../_shared/cakto.ts';
 import { timingSafeEqual } from '../_shared/seguranca.ts';
 
 /* Webhook de assinatura da Cakto.
@@ -92,6 +92,21 @@ Deno.serve(async (req: Request) => {
 
   const payloadHash = await sha256Hex(rawBody);
   const eventId = (evento.eventId ?? payloadHash).slice(0, 255);
+
+  /* Livro-razão de cobrança (B2): valor e origem, sem dado pessoal. Grava
+     antes da assinatura e nunca a bloqueia: falha aqui perde só o registro
+     financeiro, e o acesso de quem pagou vale mais. Mas não cala: a Cakto não
+     reenvia, então o log leva o que basta para reconciliar pela API dela. */
+  try {
+    const { error: erroLivro } = await supabase
+      .from('cobranca_eventos')
+      .upsert(linhaCobrancaCakto(body, evento, eventId), { onConflict: 'provider,event_id', ignoreDuplicates: true });
+    if (erroLivro) {
+      console.error('[cakto-webhook] livro-razão NÃO gravado', { code: erroLivro.code, eventType: evento.type, orderId: evento.orderId });
+    }
+  } catch (e) {
+    console.error('[cakto-webhook] livro-razão NÃO gravado', { erro: String(e), eventType: evento.type, orderId: evento.orderId });
+  }
   const { data, error } = await supabase.rpc('processar_evento_assinatura', {
     p_provider: 'cakto',
     p_event_id: eventId,

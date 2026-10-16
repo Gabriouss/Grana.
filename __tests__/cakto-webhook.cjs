@@ -217,5 +217,77 @@ checar('segredo vazio no payload', cakto.segredoCaktoValido(clone({ secret: '' }
    variável aceitaria qualquer requisição da internet como venda aprovada. */
 checar('sem segredo configurado, recusa tudo', cakto.segredoCaktoValido(BASE, '', comparar), false);
 
+// ---- livro-razão de cobrança (B2, 15/10/2026) ----
+/* Valor e origem de cada evento, para contar receita por período. Nomes de
+   campo do pedido na API pública da Cakto; ainda não vistos num webhook real. */
+const pedidoCompleto = clone({}, {
+  baseAmount: 29.9, discount: '5.00', fees: 2.49, amount: 24.9, installments: 1,
+  couponCode: 'BEMVINDO', utm_source: 'instagram', utm_medium: 'reels', utm_campaign: 'r13',
+  utm_term: null, utm_content: '', sck: 'bio',
+});
+const evAprov = cakto.normalizarEventoCakto(pedidoCompleto);
+const linha = cakto.linhaCobrancaCakto(pedidoCompleto, evAprov, evAprov.eventId);
+checar('livro: provedor', linha.provider, 'cakto');
+checar('livro: id do evento igual ao da assinatura', linha.event_id, 'purchase_approved:1f1c81d2-088a-412d-8bb7-3d5269d64f58');
+checar('livro: tipo', linha.event_type, 'approved');
+checar('livro: data do evento em UTC', linha.event_at, '2025-04-08T17:43:43.575Z');
+checar('livro: valores', [linha.valor_bruto, linha.desconto, linha.taxas, linha.valor], [29.9, 5, 2.49, 24.9]);
+checar('livro: moeda', linha.moeda, 'BRL');
+checar('livro: pedido pai e assinatura', [linha.parent_order_id, linha.subscription_id], ['PEtfqq3', 'd464132a-fcfa-4693-a6aa-a99483f06740']);
+checar('livro: compra aprovada é primeira compra', linha.primeira_compra, true);
+checar('livro: utm', [linha.utm_source, linha.utm_medium, linha.utm_campaign, linha.utm_term, linha.utm_content, linha.sck],
+  ['instagram', 'reels', 'r13', null, null, 'bio']);
+checar('livro: oferta, produto, cupom, método, parcelas',
+  [linha.oferta_id, linha.produto_id, linha.cupom, linha.metodo_pagamento, linha.parcelas],
+  ['jbwjmis', 'f947c21c-d8f0-41a1-a0a6-fede9f27b3b7', 'BEMVINDO', 'credit_card', 1]);
+/* Nenhum dado pessoal entra no livro: nome, e-mail, telefone e documento do
+   comprador estão no payload e não podem aparecer em campo nenhum. */
+const textoDaLinha = JSON.stringify(linha).toLowerCase();
+for (const pessoal of ['tulio', 'tokipi8246', '5534991462388', '59089477098']) {
+  checar(`livro: sem dado pessoal (${pessoal.slice(0, 4)}…)`, textoDaLinha.includes(pessoal), false);
+}
+checar('livro: nenhuma chave de dado pessoal', Object.keys(linha).filter((k) => /mail|nome|name|phone|telefone|doc|cpf|endereco|address/.test(k)), []);
+
+const renov = cakto.normalizarEventoCakto(clone({ event: 'subscription_renewed' }));
+checar('livro: renovação não é primeira compra', cakto.linhaCobrancaCakto(clone({ event: 'subscription_renewed' }), renov, renov.eventId).primeira_compra, false);
+
+/* Valor ausente ou lixo vira nulo, nunca erro: a Cakto não reenvia. */
+const semValor = clone({}, { amount: 'abc', baseAmount: undefined, fees: { x: 1 }, discount: true, installments: 99 });
+const evSem = cakto.normalizarEventoCakto(semValor);
+const linhaSem = cakto.linhaCobrancaCakto(semValor, evSem, evSem.eventId);
+checar('livro: valor inválido vira nulo, sem inventar a partir de outro campo', [linhaSem.valor_bruto, linhaSem.desconto, linhaSem.taxas, linhaSem.valor], [null, null, null, null]);
+const soAssinatura = clone({}, { amount: undefined });
+const evSo = cakto.normalizarEventoCakto(soAssinatura);
+checar('livro: sem amount no pedido usa o da assinatura', cakto.linhaCobrancaCakto(soAssinatura, evSo, evSo.eventId).valor, 5);
+checar('livro: parcelas fora da faixa vira nulo', linhaSem.parcelas, null);
+checar('livro: valor absurdo vira nulo', cakto.linhaCobrancaCakto(clone({}, { amount: 1e9 }), evAprov, 'x').valor, null);
+
+/* O webhook grava o livro sem bloquear a assinatura, e a migration deixa a
+   tabela só para o servidor e só para inserção. Checagem de texto. */
+const fonteWebhook = fs.readFileSync('supabase/functions/cakto-webhook/index.ts', 'utf8');
+const posLivro = fonteWebhook.indexOf(".from('cobranca_eventos')");
+const posAssinatura = fonteWebhook.indexOf("rpc('processar_evento_assinatura'");
+checar('webhook: grava o livro antes da assinatura', posLivro > 0 && posLivro < posAssinatura, true);
+checar('webhook: livro idempotente pelo id do evento', /onConflict: 'provider,event_id', ignoreDuplicates: true/.test(fonteWebhook), true);
+const trechoLivro = fonteWebhook.slice(posLivro - 200, posAssinatura);
+checar('webhook: falha do livro não devolve resposta (não bloqueia o acesso)', /return resposta/.test(trechoLivro), false);
+checar('webhook: falha do livro deixa log', (trechoLivro.match(/livro-razão NÃO gravado/g) || []).length, 2);
+checar('webhook: o corpo nunca vai para o log do livro', /console\.error\([^)]*(rawBody|body\b)/.test(trechoLivro), false);
+
+const migLivro = fs.readdirSync('supabase/migrations').find((f) => /_cobranca_eventos\.sql$/.test(f));
+const sqlLivro = migLivro ? fs.readFileSync(`supabase/migrations/${migLivro}`, 'utf8').replace(/--.*$/gm, '').replace(/\s+/g, ' ').toLowerCase() : '';
+checar('migration do livro existe', Boolean(migLivro), true);
+checar('migration: chave única provider + event_id', sqlLivro.includes('unique (provider, event_id)'), true);
+checar('migration: RLS ligada', sqlLivro.includes('alter table public.cobranca_eventos enable row level security'), true);
+checar('migration: nada para anon e authenticated', sqlLivro.includes('revoke all on public.cobranca_eventos from anon, authenticated'), true);
+checar('migration: nenhuma política aberta', /create policy/.test(sqlLivro), false);
+checar('migration: só inserção (gatilho barra update e delete)', /before update or delete on public\.cobranca_eventos/.test(sqlLivro), true);
+checar('migration: sem coluna de dado pessoal', /\b(email|e_mail|nome|telefone|phone|documento|cpf|endereco)\b/.test(sqlLivro.replace(/comment on table[^;]*;/, '')), false);
+/* Toda coluna gravada pelo webhook existe na tabela, senão o insert falha
+   em produção e só o log percebe. */
+for (const chave of Object.keys(linha)) {
+  checar(`migration tem a coluna gravada "${chave}"`, new RegExp(`\\b${chave} `).test(sqlLivro), true);
+}
+
 console.log(`\n${total - falhas}/${total} checagens do webhook da Cakto passaram — ${falhas} falhas`);
 if (falhas > 0) process.exit(1);

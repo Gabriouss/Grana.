@@ -1,5 +1,6 @@
 import {
   dataIso,
+  pegar,
   texto,
   type EventoAssinatura,
   type TipoEventoAssinatura,
@@ -149,4 +150,89 @@ export function segredoCaktoValido(
   if (!esperado) return false;
   const recebido = texto(body, ['secret'], 500);
   return !!recebido && comparar(recebido, esperado);
+}
+
+/* Linha do livro-razão de cobrança (`cobranca_eventos`), B2 de 15/10/2026.
+ *
+ * `subscriptions` guarda só o estado atual e `webhook_events` some em 30 dias:
+ * sem isto não há como contar receita nem origem de venda por período. Aqui
+ * entra o que é dinheiro e origem, e NADA que identifique a pessoa (sem nome,
+ * e-mail, telefone, documento ou endereço): quem precisar ligar a venda à
+ * conta usa `subscription_id`, que já liga em `subscriptions`.
+ *
+ * Os nomes de valor e de UTM (`baseAmount`, `discount`, `fees`, `amount`,
+ * `utm_*`, `sck`) são os do pedido na API pública da Cakto
+ * (docs.cakto.com.br/api-reference/orders/list); o webhook manda o pedido em
+ * `data`. Ainda não foram vistos num webhook real: campo ausente vira nulo,
+ * nunca erro, porque a Cakto não reenvia. */
+export type LinhaCobranca = {
+  provider: 'cakto';
+  event_id: string;
+  event_type: TipoEventoAssinatura;
+  event_at: string;
+  order_id: string | null;
+  parent_order_id: string | null;
+  subscription_id: string | null;
+  primeira_compra: boolean;
+  valor_bruto: number | null;
+  desconto: number | null;
+  taxas: number | null;
+  valor: number | null;
+  moeda: string;
+  metodo_pagamento: string | null;
+  parcelas: number | null;
+  oferta_id: string | null;
+  produto_id: string | null;
+  cupom: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_term: string | null;
+  utm_content: string | null;
+  sck: string | null;
+};
+
+/** Valor em reais com 2 casas, ou nulo. Aceita número ou texto "5.00". */
+function dinheiro(body: Record<string, unknown>, caminhos: string[]): number | null {
+  const bruto = pegar(body, caminhos);
+  if (bruto === undefined || typeof bruto === 'boolean' || typeof bruto === 'object') return null;
+  const n = Number(String(bruto).trim());
+  if (!Number.isFinite(n) || Math.abs(n) >= 10_000_000) return null;
+  return Math.round(n * 100) / 100;
+}
+
+export function linhaCobrancaCakto(
+  body: Record<string, unknown>,
+  evento: EventoAssinatura,
+  eventId: string,
+): LinhaCobranca {
+  const parcelas = Number(texto(body, ['data.installments'], 4));
+  return {
+    provider: 'cakto',
+    event_id: eventId.slice(0, 255),
+    event_type: evento.type,
+    event_at: evento.eventAt,
+    order_id: evento.orderId,
+    parent_order_id: texto(body, ['data.parent_order'], 100),
+    subscription_id: evento.subscriptionId,
+    /* Renovação chega como `subscription_renewed`; `purchase_approved` é a
+       primeira compra. Hipótese pela documentação, não conferida em venda real. */
+    primeira_compra: evento.type === 'approved',
+    valor_bruto: dinheiro(body, ['data.baseAmount']),
+    desconto: dinheiro(body, ['data.discount']),
+    taxas: dinheiro(body, ['data.fees']),
+    valor: dinheiro(body, ['data.amount', 'data.subscription.amount']),
+    moeda: 'BRL',
+    metodo_pagamento: texto(body, ['data.paymentMethod', 'data.subscription.paymentMethod'], 40),
+    parcelas: Number.isInteger(parcelas) && parcelas > 0 && parcelas <= 24 ? parcelas : null,
+    oferta_id: texto(body, ['data.offer.id'], 100),
+    produto_id: texto(body, ['data.product.id'], 100),
+    cupom: texto(body, ['data.couponCode'], 100),
+    utm_source: texto(body, ['data.utm_source'], 200),
+    utm_medium: texto(body, ['data.utm_medium'], 200),
+    utm_campaign: texto(body, ['data.utm_campaign'], 200),
+    utm_term: texto(body, ['data.utm_term'], 200),
+    utm_content: texto(body, ['data.utm_content'], 200),
+    sck: texto(body, ['data.sck'], 200),
+  };
 }
