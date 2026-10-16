@@ -1,3 +1,4 @@
+import { lerCorpoLimitado } from '../_shared/request-body.ts';
 // Encaminha o que chega em contato@, suporte@ e admin@granaponto.com.br para a
 // caixa do autor (EMAIL_ENCAMINHAR_PARA). marketing@ só envia: o que chega só para
 // ele é descartado (decisão do autor, 12/10/2026). Endereço desconhecido do
@@ -87,7 +88,7 @@ function base64(bytes: Uint8Array): string {
 }
 
 export async function assinaturaValida(
-  segredo: string, id: string, carimbo: string, assinaturas: string, corpo: string, agoraMs: number,
+  segredo: string, id: string, carimbo: string, assinaturas: string, corpo: string | Uint8Array<ArrayBuffer>, agoraMs: number,
 ): Promise<boolean> {
   if (!segredo || !id || !carimbo || !assinaturas) return false;
   const t = Number(carimbo);
@@ -99,7 +100,12 @@ export async function assinaturaValida(
     return false;
   }
   const k = await crypto.subtle.importKey('raw', chave, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const sig = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(`${id}.${carimbo}.${corpo}`));
+  const prefixo = new TextEncoder().encode(`${id}.${carimbo}.`);
+  const bytes = typeof corpo === 'string' ? new TextEncoder().encode(corpo) : corpo;
+  const assinado = new Uint8Array(prefixo.length + bytes.length);
+  assinado.set(prefixo);
+  assinado.set(bytes, prefixo.length);
+  const sig = await crypto.subtle.sign('HMAC', k, assinado);
   const esperada = base64(new Uint8Array(sig));
   return assinaturas.split(' ').some((parte) => {
     const [versao, valor] = parte.split(',');
@@ -222,16 +228,16 @@ Deno.serve(async (req: Request) => {
     console.error('[email-recebido] configuração obrigatória ausente');
     return new Response('Not configured', { status: 500 });
   }
-  if (Number(req.headers.get('content-length') ?? 0) > MAX_BODY_BYTES) return new Response('Payload too large', { status: 413 });
-  const corpo = await req.text();
-  if (new TextEncoder().encode(corpo).byteLength > MAX_BODY_BYTES) return new Response('Payload too large', { status: 413 });
+  const lido = await lerCorpoLimitado(req, MAX_BODY_BYTES);
+  if (!lido.ok) return Response.json({ error: 'request_body_rejected' }, { status: lido.status });
+  const corpo = new TextDecoder().decode(lido.bytes);
 
   const ok = await assinaturaValida(
     RESEND_WEBHOOK_SECRET,
     req.headers.get('svix-id') ?? '',
     req.headers.get('svix-timestamp') ?? '',
     req.headers.get('svix-signature') ?? '',
-    corpo,
+    lido.bytes,
     Date.now(),
   );
   if (!ok) return new Response('Invalid signature', { status: 401 });

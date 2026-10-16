@@ -1,3 +1,4 @@
+import { lerCorpoLimitado } from '../_shared/request-body.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.112.3';
 import { timingSafeEqual } from '../_shared/seguranca.ts';
 
@@ -10,7 +11,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-async function hmacSha1Hex(secret: string, body: string): Promise<string> {
+async function hmacSha1Hex(secret: string, body: string | Uint8Array<ArrayBuffer>): Promise<string> {
   const key = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(secret),
@@ -18,7 +19,7 @@ async function hmacSha1Hex(secret: string, body: string): Promise<string> {
     false,
     ['sign']
   );
-  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body));
+  const signature = await crypto.subtle.sign('HMAC', key, typeof body === 'string' ? new TextEncoder().encode(body) : body);
   return Array.from(new Uint8Array(signature), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
@@ -176,15 +177,12 @@ Deno.serve(async (req: Request) => {
     return new Response('Not configured', { status: 500 });
   }
 
-  const contentLength = Number(req.headers.get('content-length') ?? 0);
-  if (contentLength > MAX_BODY_BYTES) return new Response('Payload too large', { status: 413 });
-  const rawBody = await req.text();
-  if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) {
-    return new Response('Payload too large', { status: 413 });
-  }
+  const lido = await lerCorpoLimitado(req, MAX_BODY_BYTES);
+  if (!lido.ok) return Response.json({ error: 'request_body_rejected' }, { status: lido.status });
+  const rawBody = new TextDecoder().decode(lido.bytes);
 
   const signature = req.headers.get('expo-signature') ?? '';
-  const expected = `sha1=${await hmacSha1Hex(EAS_WEBHOOK_SECRET, rawBody)}`;
+  const expected = `sha1=${await hmacSha1Hex(EAS_WEBHOOK_SECRET, lido.bytes)}`;
   if (!timingSafeEqual(signature, expected)) return new Response('Invalid signature', { status: 401 });
 
   let payload: {

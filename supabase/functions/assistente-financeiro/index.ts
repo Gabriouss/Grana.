@@ -1,3 +1,4 @@
+import { lerCorpoLimitado } from '../_shared/request-body.ts';
 // Grana. — Granabô, assistente financeiro com IA
 //
 // Edge Function que recebe a pergunta do usuário, chama o LLM com tool
@@ -2432,9 +2433,12 @@ Deno.serve(async (req) => {
     }
 
     /* ── Validação do corpo ───────────────────────────────────────────── */
+    // Comporta mensagem + 20 entradas de 12000 caracteres, inclusive escapes JSON.
+    const lido = await lerCorpoLimitado(req, 1536 * 1024);
+    if (!lido.ok) return erro('corpo_invalido', lido.status);
     let body: { mensagem: string; historico?: { papel: string; texto: string }[] };
     try {
-      body = await req.json();
+      body = JSON.parse(new TextDecoder().decode(lido.bytes));
     } catch {
       return erro('corpo_invalido', 400);
     }

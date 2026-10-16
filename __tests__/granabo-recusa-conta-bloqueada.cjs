@@ -106,6 +106,7 @@ function carregar({ acesso, acessoError = null }) {
   };
 
   const requireStub = (nome) => {
+    if (nome.includes('request-body')) return require('./helpers/request-body-real.cjs')();
     if (nome.includes('supabase-js/cors')) return { corsHeaders: {} };
     if (nome.includes('supabase-js')) return { createClient: () => clienteFake };
     if (nome.includes('ai-quota')) {

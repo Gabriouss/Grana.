@@ -140,6 +140,7 @@ async function main() {
 
   let handler, autenticacoes = 0;
   carregar('supabase/functions/processar-lancamento-voz/index.ts', {
+    '../_shared/request-body.ts': require('./helpers/request-body-real.cjs')(),
     'npm:@supabase/supabase-js@2.112.3': { createClient: () => ({
       auth: { getUser: async () => {
         autenticacoes++;

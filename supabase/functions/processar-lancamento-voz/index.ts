@@ -1,3 +1,4 @@
+import { lerCorpoLimitado } from '../_shared/request-body.ts';
 // Grana. — transcrição de lançamento por voz (app e widget Android)
 //
 // Existe por um motivo só: a chave do Whisper não pode morar no APK. O
@@ -103,7 +104,10 @@ Deno.serve(async (req) => {
       return erro('sem_provedor', 503);
     }
 
-    const form = await req.formData();
+    // 2 MiB de audio + 64 KiB para campos e envelope multipart.
+    const lido = await lerCorpoLimitado(req, MAX_AUDIO_BYTES + 64 * 1024);
+    if (!lido.ok) return erro(lido.status === 413 ? 'audio_grande' : 'audio_ausente', lido.status);
+    const form = await new Response(lido.bytes, { headers: { 'Content-Type': req.headers.get('content-type') ?? '' } }).formData();
     const audio = form.get('audio');
     if (!(audio instanceof File)) return erro('audio_ausente', 400);
     if (audio.size === 0) return erro('audio_ausente', 400);

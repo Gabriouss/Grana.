@@ -1,3 +1,4 @@
+import { lerCorpoLimitado } from '../_shared/request-body.ts';
 // Grana. — webhook do WhatsApp (Meta Cloud API)
 //
 // Roda como Supabase Edge Function (Deno), fora do bundle do app — por isso
@@ -552,7 +553,7 @@ function todayISO(): string {
 
 /* ---- assinatura da Meta (X-Hub-Signature-256) ---- */
 
-async function hmacSha256Hex(secret: string, body: string): Promise<string> {
+async function hmacSha256Hex(secret: string, body: string | Uint8Array<ArrayBuffer>): Promise<string> {
   const key = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(secret),
@@ -560,14 +561,14 @@ async function hmacSha256Hex(secret: string, body: string): Promise<string> {
     false,
     ['sign']
   );
-  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body));
+  const signature = await crypto.subtle.sign('HMAC', key, typeof body === 'string' ? new TextEncoder().encode(body) : body);
   return Array.from(new Uint8Array(signature))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
 }
 
 /** true = pode processar. Sem WHATSAPP_APP_SECRET configurado, deixa passar (com aviso) em vez de derrubar o webhook. */
-async function assinaturaValida(rawBody: string, header: string | null): Promise<boolean> {
+async function assinaturaValida(rawBody: string | Uint8Array<ArrayBuffer>, header: string | null): Promise<boolean> {
   if (!WHATSAPP_APP_SECRET) {
     // Falha FECHADA. Antes esta função devolvia true com um aviso no log
     // quando o secret não estava configurado, para não derrubar o webhook
@@ -1924,14 +1925,11 @@ Deno.serve(async (req: Request) => {
   }
 
   if (req.method === 'POST') {
-    const contentLength = Number(req.headers.get('content-length') ?? 0);
-    if (contentLength > MAX_BODY_BYTES) return new Response('Payload too large', { status: 413 });
-    const rawBody = await req.text();
-    if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) {
-      return new Response('Payload too large', { status: 413 });
-    }
+    const lido = await lerCorpoLimitado(req, MAX_BODY_BYTES);
+    if (!lido.ok) return Response.json({ error: 'request_body_rejected' }, { status: lido.status });
+    const rawBody = new TextDecoder().decode(lido.bytes);
 
-    if (!(await assinaturaValida(rawBody, req.headers.get('x-hub-signature-256')))) {
+    if (!(await assinaturaValida(lido.bytes, req.headers.get('x-hub-signature-256')))) {
       return new Response('Invalid signature', { status: 401 });
     }
 

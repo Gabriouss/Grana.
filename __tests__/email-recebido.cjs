@@ -40,11 +40,12 @@ function carregar({ env = {}, rotas }) {
   vm.runInNewContext(codigo, {
     exports: {},
     require: (nome) => {
+      if (nome === '../_shared/request-body.ts') return require('./helpers/request-body-real.cjs')();
       if (nome !== '../_shared/seguranca.ts') throw new Error('import inesperado: ' + nome);
       return { timingSafeEqual: (a, b) => a.length === b.length && nodeCrypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)) };
     },
     Deno: { env: { get: (k) => ambiente[k] }, serve: (fn) => { handler = fn; } },
-    fetch, crypto: globalThis.crypto, atob, btoa, TextEncoder, Uint8Array, AbortController,
+    fetch, crypto: globalThis.crypto, atob, btoa, TextEncoder, TextDecoder, Uint8Array, AbortController,
     setTimeout, clearTimeout, Response, JSON, String, Number, Math, Array, Error, console: { error: (...args) => logs.push(args) },
     Date: { now: () => AGORA },
   });
@@ -93,6 +94,12 @@ function rotasOk(extra = {}) {
     assert.equal(JSON.stringify(f.chamadas.filter(c => c.method === 'POST')).includes(sentinela), false);
     if (falha.status === 400) assert.equal(f.chamadas.filter(c => c.method === 'POST').length, 1);
     else assert.equal(f.chamadas.filter(c => c.method === 'POST').length, 0);
+  }
+  {
+    const f = carregar({ rotas: c => c.method === 'POST' ? new Error(sentinela) : { status: 400, bytes: sentinela } });
+    assert.equal((await f.chamar(pedido(RECEBIDO))).status, 500);
+    assert.equal(JSON.stringify(f.logs).includes(sentinela), false);
+    assert.equal(f.chamadas.filter(c => c.method === 'POST').length, 1);
   }
   // 1. Assinatura errada, carimbo velho e configuração ausente: nenhuma chamada.
   for (const [nome, req, env, status] of [

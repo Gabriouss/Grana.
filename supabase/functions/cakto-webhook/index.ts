@@ -1,3 +1,4 @@
+import { lerCorpoLimitado } from '../_shared/request-body.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.112.3';
 import { linhaCobrancaCakto, normalizarEventoCakto, segredoCaktoValido } from '../_shared/cakto.ts';
 import { timingSafeEqual } from '../_shared/seguranca.ts';
@@ -55,13 +56,9 @@ Deno.serve(async (req: Request) => {
     return resposta({ error: 'unsupported_media_type' }, 415);
   }
 
-  const contentLength = Number(req.headers.get('content-length') ?? 0);
-  if (contentLength > MAX_BODY_BYTES) return resposta({ error: 'payload_too_large' }, 413);
-
-  const rawBody = await req.text();
-  if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) {
-    return resposta({ error: 'payload_too_large' }, 413);
-  }
+  const lido = await lerCorpoLimitado(req, MAX_BODY_BYTES);
+  if (!lido.ok) return Response.json({ error: 'request_body_rejected' }, { status: lido.status });
+  const rawBody = new TextDecoder().decode(lido.bytes);
 
   let body: Record<string, unknown>;
   try {
