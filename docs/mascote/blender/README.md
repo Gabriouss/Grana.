@@ -58,7 +58,7 @@ A montagem leva uns 70 s. Se os quadros do Blender não existirem, ela cai para 
 
 ## Resultados prontos
 
-Para não gastar uma hora de render, os quadros finais estão versionados em `docs/marketing/reels-granabo/quadros/`, comprimidos sem perda: `A.webp` e `B.webp` (WebP animado com alfa). O `montar.py` os extrai sozinho para `blender/` se a pasta estiver vazia. Para extrair à mão:
+Para não gastar uma hora de render, os quadros finais estão versionados em `docs/marketing/reels-granabo/quadros/`, comprimidos sem perda: `A_0117-0252.webp` e `B_0558-0657.webp` (WebP animado com alfa; os números são o primeiro e o último quadro). O `montar.py` os extrai sozinho para `blender/` se a pasta estiver vazia. Para extrair à mão:
 
     python ../../marketing/reels-granabo/extrair_quadros.py
 
