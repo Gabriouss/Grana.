@@ -120,7 +120,50 @@ export async function atualizarGestaoFeedback(id: string, mudanca: MudancaGestao
       dados.id === id && gestaoValida(dados.gestao)));
 }
 
-async function chamarAdmin<T>(funcao: 'admin-consulta' | 'admin-feedbacks', corpo: Record<string, unknown>, validar: (dados: any) => boolean): Promise<RespostaAdmin<T>> {
+// Correções de criativos (Entrega 3): a MESMA fila de ajustes que o painel local entrega ao agente
+// (tabela admin_ajuste_pedidos, função admin-ajustes). Aqui só se lê o andamento dos pedidos do
+// próprio administrador e se cria pedido novo. Aceite NÃO existe pelo navegador: ele grava a
+// evidência datada no acervo versionado, que só o painel local alcança. O texto do pedido nunca
+// volta do servidor (decisão do desenho da função).
+export type EstadoCorrecao =
+  | 'novo' | 'em-correcao' | 'corrigido-aguardando-aceite' | 'aceito' | 'falha-de-envio' | 'desatualizado'
+  | 'aguardando-aprovacao-de-custo' | 'precisa-de-atencao' | 'encerrado' | 'recusado-pelo-autor';
+export type CorrecaoCriativo = {
+  id: string; pecaId: string; caminho: string; versaoAlvo: string | null; estado: EstadoCorrecao; tentativas: number;
+  versaoCorrigida: string | null; commit: string | null; aceiteEm: string | null; criadoEm: string | null;
+  atualizadoEm: string | null; importadoEm: string | null;
+};
+const ESTADOS_CORRECAO = ['novo', 'em-correcao', 'corrigido-aguardando-aceite', 'aceito', 'falha-de-envio', 'desatualizado',
+  'aguardando-aprovacao-de-custo', 'precisa-de-atencao', 'encerrado', 'recusado-pelo-autor'];
+const CAMPOS_CORRECAO = ['id', 'pecaId', 'caminho', 'versaoAlvo', 'estado', 'tentativas', 'versaoCorrigida', 'commit', 'aceiteEm', 'criadoEm', 'atualizadoEm', 'importadoEm'];
+
+function correcaoValida(c: any): boolean {
+  const sha = (v: unknown) => v === null || (typeof v === 'string' && /^[0-9a-f]{40}$/.test(v));
+  const data = (v: unknown) => v === null || (typeof v === 'string' && Number.isFinite(Date.parse(v)));
+  return Boolean(c && typeof c === 'object' && !Array.isArray(c) && Object.keys(c).every((k) => CAMPOS_CORRECAO.includes(k)) &&
+    typeof c.id === 'string' && /^[0-9a-f-]{36}$/i.test(c.id) && typeof c.pecaId === 'string' && /^[0-9a-f]{16}$/.test(c.pecaId) &&
+    typeof c.caminho === 'string' && c.caminho.length <= 400 && c.caminho.startsWith('docs/marketing/') &&
+    ESTADOS_CORRECAO.includes(c.estado) && Number.isInteger(c.tentativas) && c.tentativas >= 0 &&
+    sha(c.versaoAlvo) && sha(c.versaoCorrigida) && sha(c.commit) && data(c.aceiteEm) && data(c.criadoEm) && data(c.atualizadoEm) && data(c.importadoEm));
+}
+
+export async function listarCorrecoesCriativos(): Promise<RespostaAdmin<{ pedidos: CorrecaoCriativo[] }>> {
+  return chamarAdmin<{ pedidos: CorrecaoCriativo[] }>('admin-ajustes', { recurso: 'ajustes-listar' }, (dados) =>
+    Boolean(dados && typeof dados === 'object' && Object.keys(dados).every((k) => k === 'pedidos') &&
+      Array.isArray(dados.pedidos) && dados.pedidos.length <= 50 && dados.pedidos.every(correcaoValida)));
+}
+
+// Novo ajuste sobre uma versão corrigida: o alvo é a versão que o administrador viu, e o banco
+// encadeia o pedido ao anterior da mesma peça. Repetir o mesmo texto em 2 minutos devolve o
+// pedido que já existe, então o duplo clique não duplica.
+export async function pedirNovoAjusteCriativo(c: { pecaId: string; caminho: string; versaoAlvo: string; texto: string }): Promise<RespostaAdmin<{ pedido: { id: string; estado: EstadoCorrecao; criadoEm: string | null } }>> {
+  return chamarAdmin<{ pedido: { id: string; estado: EstadoCorrecao; criadoEm: string | null } }>('admin-ajustes',
+    { recurso: 'ajustes-criar', pecaId: c.pecaId, caminho: c.caminho, versaoAlvo: c.versaoAlvo, texto: c.texto },
+    (dados) => Boolean(dados && typeof dados === 'object' && Object.keys(dados).every((k) => k === 'pedido') && dados.pedido &&
+      typeof dados.pedido.id === 'string' && /^[0-9a-f-]{36}$/i.test(dados.pedido.id) && ESTADOS_CORRECAO.includes(dados.pedido.estado)));
+}
+
+async function chamarAdmin<T>(funcao: 'admin-consulta' | 'admin-feedbacks' | 'admin-ajustes', corpo: Record<string, unknown>, validar: (dados: any) => boolean): Promise<RespostaAdmin<T>> {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const trabalho = async () => {

@@ -1,0 +1,196 @@
+/* Correções de criativos (Entrega 3). Mesmos tokens e controles da leitura de feedbacks. */
+
+.admin-correcoes {
+  min-width: 0;
+  margin-block-start: 48px;
+  padding-block-start: 32px;
+  border-top: 1px solid var(--admin-borda);
+}
+
+.admin-correcoes__cabecalho p {
+  color: var(--admin-apoio);
+}
+
+.admin-correcoes__resultado {
+  margin-block-start: 20px;
+}
+
+.admin-correcoes .admin-correcoes__estado-lista {
+  margin-block: 0 16px;
+  color: var(--admin-apoio);
+  font-size: 15px;
+}
+
+.admin-correcoes .admin-correcoes__salvo {
+  margin-block: 0 16px;
+  color: var(--admin-menta);
+  font-size: 15px;
+}
+
+.admin-correcoes__lista {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-correcoes__item {
+  min-width: 0;
+  padding: 16px 20px;
+  border: 1px solid var(--admin-borda);
+  border-radius: 12px;
+  background: var(--admin-superficie);
+}
+
+.admin-correcoes__topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  min-width: 0;
+}
+
+.admin-correcoes .admin-correcoes__peca {
+  margin: 0;
+  font-family: "NeueMachina-Regular";
+  font-size: 16px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.admin-correcoes__estado {
+  padding: 2px 10px;
+  border: 1px solid var(--admin-borda-forte);
+  border-radius: 999px;
+  color: var(--admin-tinta);
+  font-family: "NeueMachina-Regular";
+  font-size: 15px;
+}
+
+/* Só o que pede ação sua ganha cor; o rótulo continua sendo o sinal principal. */
+.admin-correcoes__estado-corrigido-aguardando-aceite {
+  border-color: var(--admin-menta);
+  color: var(--admin-menta);
+}
+
+.admin-correcoes__estado-falha-de-envio,
+.admin-correcoes__estado-precisa-de-atencao {
+  border-color: var(--admin-perigo);
+  color: var(--admin-perigo);
+}
+
+.admin-correcoes__quando {
+  margin-inline-start: auto;
+  color: var(--admin-suave);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-correcoes .admin-correcoes__proximo {
+  margin-block: 10px 0;
+  color: var(--admin-apoio);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.admin-correcoes__comparacao {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px 16px;
+  margin-block-start: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--admin-borda-forte);
+  border-radius: 12px;
+}
+
+.admin-correcoes .admin-correcoes__comparacao h4 {
+  margin: 0 0 4px;
+  color: var(--admin-apoio);
+  font-family: "NeueMachina-Regular";
+  font-size: 15px;
+}
+
+.admin-correcoes .admin-correcoes__sha,
+.admin-correcoes .admin-correcoes__commit {
+  margin: 0;
+  color: var(--admin-tinta);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.admin-correcoes .admin-correcoes__commit {
+  color: var(--admin-suave);
+}
+
+.admin-correcoes .admin-correcoes__previa {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--admin-suave);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.admin-correcoes .admin-correcoes__rodape {
+  margin-block: 12px 0;
+  color: var(--admin-suave);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.admin-correcoes__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-block-start: 12px;
+}
+
+.admin-correcoes .admin-correcoes__aceite {
+  flex: 1 1 260px;
+  margin: 0;
+  color: var(--admin-suave);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.admin-correcoes__form {
+  display: grid;
+  gap: 12px;
+  margin-block-start: 16px;
+  padding: 16px;
+  border: 1px solid var(--admin-borda-forte);
+  border-radius: 12px;
+}
+
+.admin-correcoes__form textarea {
+  width: 100%;
+  min-height: 96px;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-borda-forte);
+  border-radius: 8px;
+  background: var(--admin-fundo);
+  color: var(--admin-tinta);
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.admin-correcoes__form textarea:focus-visible {
+  outline: 2px solid var(--admin-menta);
+  outline-offset: 2px;
+}
+
+.admin-correcoes .admin-correcoes__dica {
+  margin: 6px 0 0;
+  color: var(--admin-suave);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+@media (min-width: 768px) {
+  .admin-correcoes__comparacao {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
