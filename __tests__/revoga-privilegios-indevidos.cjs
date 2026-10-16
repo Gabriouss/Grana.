@@ -50,6 +50,10 @@ for (const fn of ['buscar_exemplos_similares', 'registrar_memoria_assistente']) 
   checar(`${fn} continua executável por authenticated (assistente usa o JWT do usuário)`,
     !new RegExp(`revoke execute on function public\\.${fn}\\([^)]*\\) from [a-z, ]*authenticated`).test(sql));
 }
+for (const fn of ['buscar_exemplos_similares', 'registrar_memoria_assistente', 'validar_wallet_do_usuario']) {
+  checar(`${fn} perde EXECUTE de PUBLIC e anon (sem heranca que reabra anon)`,
+    new RegExp(`revoke execute on function public\\.${fn}\\([^)]*\\) from public, anon`).test(sql));
+}
 
 if (falhou) { console.error(`FALHOU revoga-privilegios-indevidos: ${falhou}`); process.exitCode = 1; }
 else console.log('OK revoga-privilegios-indevidos.');

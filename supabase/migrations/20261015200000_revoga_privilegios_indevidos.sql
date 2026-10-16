@@ -28,9 +28,11 @@ revoke select, insert, update, delete on public.whatsapp_pending from authentica
 -- 4. Funções que anon não tem por que chamar. As duas primeiras são SECURITY
 --    INVOKER e a assistente-financeiro as chama com o JWT do usuário, então
 --    authenticated continua com EXECUTE. A terceira é função de gatilho.
-revoke execute on function public.buscar_exemplos_similares(uuid, text, integer) from anon;
-revoke execute on function public.registrar_memoria_assistente(uuid, text, text, text) from anon;
-revoke execute on function public.validar_wallet_do_usuario() from anon;
+--    PUBLIC também tinha EXECUTE (ACL =X); revogar só anon deixava o acesso
+--    herdado aberto. Os grants explícitos de authenticated/service_role ficam.
+revoke execute on function public.buscar_exemplos_similares(uuid, text, integer) from public, anon;
+revoke execute on function public.registrar_memoria_assistente(uuid, text, text, text) from public, anon;
+revoke execute on function public.validar_wallet_do_usuario() from public, anon;
 
 -- 5. Tabelas futuras criadas pelo postgres (o dono das migrations) nascem sem
 --    esses privilégios. O default de supabase_admin não é alterável por postgres.
