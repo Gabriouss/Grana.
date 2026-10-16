@@ -1,12 +1,22 @@
 # Contrato visual: resultados de marketing e Meta
 
-**Entrega:** E4, leitura administrativa no `/admin` web.
+**Entrega:** E4, leitura administrativa no painel local `tools/admin-local`.
 
 **Estado do contrato:** proposta visual alinhada ao dicionário do Beacon; fórmulas de novas assinaturas e receita seguem bloqueadas para leitura real enquanto a origem Cakto não comprovar completude. A semântica de estorno de assinatura ainda depende do autor.
 
 **Protótipo:** [metricas-meta.html](./metricas-meta.html). Todas as capturas usam fixtures fictícias.
 
-**Entradas:** [relatório de métricas do Beacon](../../marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/apoio/relatorios/relatorio-Beacon-metricas-meta.md), contrato de agregação E4, decisões da ordem META-PAINEL-16-10 e tokens de `components/admin/admin-visual.css`.
+**Entradas:** [relatório de métricas do Beacon](../../marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/apoio/relatorios/relatorio-Beacon-metricas-meta.md), contrato de agregação E4, decisões da ordem META-PAINEL-16-10 e tokens de `tools/admin-local/web/estilo.css`.
+
+## Encaixe no painel local
+
+- A tela pertence ao grupo **Marketing**, depois de **Tráfego pago** e antes de **Acervo**, com o rótulo **Resultados de marketing**. Rota sugerida para o porte: `#/marketing/resultados`.
+- O protótipo mostra a navegação lateral do painel em telas largas. Em 768 px ou menos, segue a casca real: barra superior fixa e navegação recolhida pelo controle **Menu**; o conteúdo continua dentro de `#tela`.
+- Reutilizar `tela-cabecalho`, `secao`, `grade-cartoes`, `cartao`, `selo`, `campo`, `tabela-rolagem` e os estados `estado-ausente`/`estado-erro`. Para comparação temporal, manter tabela acessível junto ao gráfico; não criar um componente de gráfico global.
+- Mapear a apresentação para os tokens locais: `--paper`, `--paper-raised`, `--ink`, `--ink-soft`, `--ink-faint`, `--rule`, `--rule-strong`, `--accent-2`, `--atencao`, escala `--t-*`, espaços `--s-*`, raios `--r-*` e alvo `--alvo`. Preservar Neue Machina sem peso sintético, fundos chapados e sem glassmorphism.
+- A tela consome a rota local pelo servidor Node. O navegador não chama Meta, Cakto nem Supabase diretamente. A rota e a composição do menu ficam para o porte de Lumen; esta especificação não altera `tools/admin-local`.
+
+As capturas anteriores de `/admin` foram substituídas por pranchas enquadradas na casca local; o contrato de dados e as fixtures não mudaram.
 
 ## Propósito e limites
 
@@ -16,14 +26,14 @@ Esta superfície é de leitura. Não cria campanhas, muda orçamento, publica ou
 
 ## Ordem da página
 
-1. Shell atual do `/admin`, título **Resultados de marketing** e aviso persistente de demonstração quando os dados forem fixtures.
+1. Casca do painel local, título **Resultados de marketing** e aviso persistente de demonstração quando os dados forem fixtures.
 2. Período, comparação, fuso e intervalos exatos.
 3. Estado da conexão Meta, separado de cobertura Cakto e atribuição.
 4. Indicadores de investimento em anúncios, novas assinaturas pagas, receita bruta confirmada e reembolsos/chargebacks. Ações pendentes ficam no painel de confiabilidade, não substituem uma medida financeira.
 5. Uma série por vez, período atual e comparação com traços e rótulos distintos, resumo textual e tabela de valores.
 6. Confiabilidade por fonte: estado, cobertura, atualização, páginas, duplicados/rejeitados e origens desconhecidas.
 
-Seguir o shell existente: fundo `#052229`, superfície `#0b2d35`, texto `#effffa`, apoio `#a6d9ce`, acento `#aeffe3`, largura máxima 1120 px e Neue Machina. Manter o contraste e a hierarquia do `/admin`; sem glassmorphism.
+Seguir `tools/admin-local/web/estilo.css`: fundo `#052229`, superfície `#0b2d35`, texto `#effffa`, apoio `#a6d9ce`, acento `#aeffe3`, Neue Machina e largura útil da casca local. Manter contraste, hierarquia e estados textuais do painel; sem glassmorphism.
 
 ## Períodos
 
