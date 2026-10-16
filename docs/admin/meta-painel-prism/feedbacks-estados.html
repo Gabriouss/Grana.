@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>Gestão de feedbacks | Painel administrativo</title>
+<style>
+@font-face{font-family:NeueMachina;src:url("../../../assets/fonts/NeueMachina-Light.otf") format("opentype");font-weight:300;font-display:swap}
+@font-face{font-family:NeueMachina;src:url("../../../assets/fonts/NeueMachina-Regular.otf") format("opentype");font-weight:400 700;font-display:swap}
+:root{--bg:#052229;--surface:#0b2d35;--surface2:#103942;--ink:#effffa;--muted:#a6d9ce;--quiet:#7fa9a0;--mint:#aeffe3;--line:rgba(175,255,227,.14);--strong:rgba(175,255,227,.26);--warning:#f2c879;--warning-bg:#3b321c;--focus:#c7ffe9;--danger:#f0a097}
+*{box-sizing:border-box}html{background:var(--bg);color-scheme:dark}body{margin:0;background:var(--bg);color:var(--ink);font:300 15px/1.5 NeueMachina,"Segoe UI",Arial,sans-serif}button,select,input,textarea{font:inherit;color:inherit}button,select,input{min-height:44px}a{color:var(--mint)}:focus-visible{outline:2px solid var(--focus);outline-offset:3px}
+.wrap{width:min(100%,1120px);margin:auto;padding:28px clamp(16px,4vw,40px) 44px}.skip{position:absolute;left:12px;top:-70px;background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:8px;z-index:5}.skip:focus{top:12px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:20px;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:16px;min-width:0}.brand img{width:120px;height:auto;display:block}.brand span{color:var(--muted);font-size:14px}.exit{border:1px solid var(--strong);background:transparent;border-radius:9px;padding:9px 16px}
+.crumb{margin:28px 0 10px;color:var(--muted);font-size:13px}.heading{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px}.heading h1{font-size:clamp(27px,4vw,36px);font-weight:500;letter-spacing:-.025em;line-height:1.18;margin:0 0 8px}.heading p{color:var(--muted);margin:0}.private{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--strong);border-radius:999px;color:var(--muted);font-size:12px;white-space:nowrap}.private:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--mint)}
+.demo{margin:0 0 16px;padding:11px 14px;border:1px solid rgba(242,200,121,.34);border-left:3px solid var(--warning);border-radius:10px;background:rgba(59,50,28,.42);color:#ffe8b4;font-size:13px}
+.mobile-switch{display:none;gap:8px;margin:0 0 14px}.mobile-switch button{flex:1;border:1px solid var(--strong);border-radius:9px;background:transparent;min-height:44px}.mobile-switch button[aria-pressed="true"]{background:var(--mint);color:var(--bg);border-color:var(--mint);font-weight:600}
+.filters{padding:15px;border:1px solid var(--line);border-radius:12px;background:var(--surface);margin-bottom:14px}.filters-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}.filters-head h2{font-size:15px;margin:0;font-weight:500}.filters-head p{margin:0;color:var(--quiet);font-size:12px}
+.filter-grid{display:grid;grid-template-columns:1.2fr repeat(3,minmax(105px,1fr)) 1.1fr 1.25fr;gap:10px}.field{min-width:0}.field label{display:block;margin:0 0 5px;color:var(--muted);font-size:12px}.field select,.field input,.field textarea{width:100%;padding:8px 10px;border:1px solid var(--strong);border-radius:8px;background:#08272e}.filter-actions{display:flex;gap:8px;align-items:flex-end}.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:8px 13px;border:1px solid var(--strong);border-radius:9px;background:transparent;text-decoration:none;cursor:pointer}.btn.primary{background:var(--mint);border-color:var(--mint);color:var(--bg);font-weight:600}.btn.subtle{color:var(--muted)}.btn.small{min-height:40px;padding:6px 10px;font-size:13px}
+.status-counts{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}.count{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px}.count strong{color:var(--ink);font-weight:500}
+.queue{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:14px;align-items:start}.panel{min-width:0;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}.panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px}.panel-head h2{font-size:18px;font-weight:500;margin:0 0 3px}.panel-head p{color:var(--muted);font-size:12px;margin:0}
+.list{list-style:none;margin:0;padding:0;display:grid;gap:9px}.item{width:100%;padding:13px;text-align:left;border:1px solid var(--line);border-radius:10px;background:#08272e;cursor:pointer}.item.selected{border-color:var(--mint);box-shadow:inset 3px 0 0 var(--mint)}.item-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.item h3{font-size:15px;line-height:1.35;font-weight:500;margin:0}.type{color:var(--muted);font-size:12px}.item-excerpt{margin:7px 0 8px;color:var(--ink);font-size:14px}.item-meta{display:flex;gap:6px 10px;flex-wrap:wrap;color:var(--quiet);font-size:12px}.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.chip{display:inline-flex;align-items:center;min-height:25px;padding:3px 8px;border:1px solid var(--strong);border-radius:999px;color:var(--muted);font-size:11px}.chip.state{border-color:rgba(242,200,121,.5);color:#ffe2a5}.chip.priority{border-color:rgba(240,160,151,.55);color:#ffc1b7}.chip.consent{border-color:rgba(175,255,227,.24);color:var(--quiet)}
+.pager{margin-top:12px;color:var(--muted);font-size:12px}
+.detail{padding:16px;border:1px solid var(--line);border-radius:12px;background:linear-gradient(155deg,#0d333b,#0b2d35)}.detail-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:14px}.detail-top h2{font-size:17px;font-weight:500;margin:4px 0 5px}.detail-top p{margin:0;color:var(--muted);font-size:12px}.id{color:var(--quiet);font-size:11px;letter-spacing:.06em;text-transform:uppercase}.message{padding:12px;border-radius:8px;background:rgba(5,34,41,.56);margin:0 0 10px;font-size:14px}.meta-line{color:var(--muted);font-size:12px;margin:0 0 14px}.orig-consent{margin:0 0 14px;padding:9px 10px;border-left:2px solid var(--quiet);color:var(--muted);font-size:12px;background:rgba(5,34,41,.34)}
+.detail-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}.detail-form .wide{grid-column:1/-1}.detail .field label{font-size:12px}.detail .field input,.detail .field select,.detail .field textarea{font-size:13px}.detail textarea{min-height:72px;resize:vertical}.tags{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:44px;padding:6px;border:1px solid var(--strong);border-radius:8px;background:#08272e}.tags .chip{border-color:var(--strong)}
+.contract{padding:10px;border:1px dashed rgba(242,200,121,.55);border-radius:8px;background:rgba(59,50,28,.3);color:#ffe8b4;font-size:12px}.contract strong{display:block;margin-bottom:3px;color:#ffe2a5;font-weight:600}.form-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px}.form-foot p{margin:0;color:var(--quiet);font-size:11px}
+.availability{margin-top:14px;padding-top:13px;border-top:1px solid var(--line)}.availability h3,.resolution h3,.creative h3{margin:0 0 9px;font-size:14px;font-weight:500}.availability-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.availability-item{padding:10px;border:1px solid var(--line);border-radius:8px;background:rgba(5,34,41,.35)}.availability-item span{display:block;color:var(--quiet);font-size:11px}.availability-item strong{display:block;margin-top:4px;font-size:13px;font-weight:500}.availability p{margin:8px 0 0;color:var(--quiet);font-size:11px}
+.creative,.resolution{margin-top:14px;padding-top:13px;border-top:1px solid var(--line)}.creative-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}.creative p,.resolution p{font-size:12px;color:var(--muted);margin:0 0 9px}.creative-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.resolution .detail-form{margin-top:8px}.resolve-help{margin:6px 0 0!important;color:var(--quiet)!important;font-size:11px!important}
+.footer{margin-top:28px;padding-top:16px;border-top:1px solid var(--line);color:var(--quiet);font-size:12px}
+@media(max-width:1000px){.filter-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.queue{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+@media(max-width:700px){.wrap{padding-block-start:20px}.top{flex-wrap:wrap;gap:12px}.brand{flex:1 1 200px;gap:12px}.brand img{width:88px}.brand span{font-size:13px}.heading{display:block}.private{margin-top:12px}.mobile-switch{display:flex}.filters{padding:12px}.filters-head p{display:none}.filter-grid{grid-template-columns:1fr}.filter-actions .btn{flex:1}.queue{grid-template-columns:1fr}.panel,.detail{padding:13px}.detail-form{grid-template-columns:1fr}.detail-form .wide{grid-column:auto}.availability-grid{grid-template-columns:1fr 1fr}.form-foot{align-items:stretch;flex-direction:column-reverse}.form-foot .btn{width:100%}.creative-actions .btn{flex:1}.footer{margin-top:22px}body[data-vista="lista"] .detail{display:none}body[data-vista="detalhe"] .queue-list{display:none}}
+@media(max-width:360px){.wrap{padding-inline:16px}.brand{flex-basis:170px;gap:10px}.brand img{width:78px}.brand span{font-size:12px}.heading h1{font-size:27px}.status-counts{gap:6px}.count{padding:5px 8px;font-size:11px}.item{padding:11px}.detail-top{display:block}.detail-top .btn{margin-top:8px;width:100%}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body data-vista="lista">
+<a class="skip" href="#conteudo">Pular para o conteúdo</a>
+<div class="wrap">
+<header class="top"><div class="brand"><img src="../../../public/admin-marca.svg" width="120" height="31" alt="Grana."><span>Painel administrativo</span></div><button class="exit" type="button" aria-label="Demonstração do botão Sair">Sair</button></header>
+<p class="crumb">Painel administrativo / Marketing / Feedbacks</p>
+<main id="conteudo">
+<div class="heading"><div><h1>Gestão de feedbacks</h1><p>Triagem interna, acompanhamento e decisão sobre correções.</p></div><span class="private">Área administrativa restrita</span></div>
+<p class="demo"><strong>Dados fictícios para demonstração.</strong> As mensagens abaixo foram criadas para a prancha e não pertencem a pessoas usuárias.</p>
+<div class="mobile-switch" role="group" aria-label="Prévia responsiva da caixa de feedbacks">
+<button type="button" data-vista="lista" aria-pressed="true">Lista</button><button type="button" data-vista="detalhe" aria-pressed="false">Detalhe selecionado</button>
+</div>
+<form class="filters" aria-labelledby="filtros-titulo">
+<div class="filters-head"><h2 id="filtros-titulo">Filtrar feedbacks</h2><p>Os filtros combinam; limpe para recomeçar.</p></div>
+<div class="filter-grid">
+<div class="field"><label for="f-estado">Andamento</label><select id="f-estado"><option>Todos os estados</option><option>Novo</option><option>Em análise</option><option>Planejado</option><option>Em execução</option><option>Resolvido</option><option>Arquivado</option></select></div>
+<div class="field"><label for="f-tipo">Tipo</label><select id="f-tipo"><option>Todos</option><option>Sugestão</option><option>Problema</option><option>Elogio</option><option>Outro</option></select></div>
+<div class="field"><label for="f-nota">Nota</label><select id="f-nota"><option>Todas</option><option>5 estrelas</option><option>4 estrelas</option><option>3 estrelas</option><option>2 estrelas</option><option>1 estrela</option></select></div>
+<div class="field"><label for="f-versao">Versão do app</label><input id="f-versao" type="text" placeholder="Ex.: 1.10.5"></div>
+<div class="field"><label for="f-plataforma">Plataforma</label><select id="f-plataforma"><option>Todas</option><option>Android</option><option>iOS</option><option>Web</option></select></div>
+<div class="field"><label for="f-consentimento">Uso público</label><select id="f-consentimento"><option>Qualquer escolha</option><option>Autorizado</option><option>Não autorizado</option></select></div>
+<div class="field"><label for="f-data">Recebido desde</label><input id="f-data" type="date" value="2026-10-01"></div>
+<div class="filter-actions"><button class="btn primary" type="button">Aplicar filtros</button><button class="btn subtle" type="reset">Limpar</button></div>
+</div>
+</form>
+<div class="status-counts" aria-label="Contagem fictícia por andamento"><span class="count"><strong>7</strong> Novos</span><span class="count"><strong>4</strong> Em análise</span><span class="count"><strong>3</strong> Planejados</span><span class="count"><strong>2</strong> Em execução</span><span class="count"><strong>8</strong> Resolvidos</span><span class="count"><strong>1</strong> Arquivado</span></div>
+<div class="queue">
+<section class="panel queue-list" aria-labelledby="lista-titulo"><div class="panel-head"><div><h2 id="lista-titulo">Fila de feedbacks</h2><p>Mais recentes primeiro · 4 de 25 itens fictícios</p></div><button class="btn subtle small" type="button">Atualizar</button></div>
+<ol class="list">
+<li><button type="button" class="item selected" aria-current="true" data-selecionar="detalhe"><div class="item-top"><h3>A capa perde leitura no celular</h3><span class="type">Sugestão</span></div><p class="item-excerpt">O título fica pequeno quando vejo a peça numa tela menor.</p><div class="item-meta"><span>4 de 5 estrelas</span><span>1.10.5</span><span>Android</span><span>02 out. 2026</span></div><div class="chips"><span class="chip state">Em análise</span><span class="chip priority">Prioridade alta</span><span class="chip consent">Uso público: não autorizado</span></div></button></li>
+<li><button type="button" class="item" data-selecionar="detalhe"><div class="item-top"><h3>Filtro de período mais rápido</h3><span class="type">Sugestão</span></div><p class="item-excerpt">Uma escolha para os últimos meses ajudaria a encontrar lançamentos.</p><div class="item-meta"><span>5 de 5 estrelas</span><span>1.10.6</span><span>Web</span><span>01 out. 2026</span></div><div class="chips"><span class="chip">Novo</span><span class="chip">Prioridade não definida</span><span class="chip consent">Uso público: autorizado</span></div></button></li>
+<li><button type="button" class="item" data-selecionar="detalhe"><div class="item-top"><h3>Botão difícil de encontrar</h3><span class="type">Problema</span></div><p class="item-excerpt">Na tela de contas, demorei para achar como filtrar os itens.</p><div class="item-meta"><span>3 de 5 estrelas</span><span>1.10.4</span><span>Android</span><span>29 set. 2026</span></div><div class="chips"><span class="chip">Planejado</span><span class="chip">Prioridade média</span><span class="chip consent">Uso público: não autorizado</span></div></button></li>
+<li><button type="button" class="item" data-selecionar="detalhe"><div class="item-top"><h3>Relatório de tela congelou</h3><span class="type">Problema</span></div><p class="item-excerpt">A tela de resumo demorou para atualizar depois de trocar o mês.</p><div class="item-meta"><span>2 de 5 estrelas</span><span>1.10.3</span><span>iOS</span><span>27 set. 2026</span></div><div class="chips"><span class="chip">Em execução</span><span class="chip">Prioridade média</span><span class="chip consent">Uso público: não autorizado</span></div></button></li>
+</ol><p class="pager">Carregar mais 50 feedbacks</p></section>
+<aside class="detail" aria-labelledby="detalhe-titulo">
+<div class="detail-top"><div><span class="id">Registro fictício F-048</span><h2 id="detalhe-titulo">A capa perde leitura no celular</h2><p>Sugestão · Recebido em 02 out. 2026</p></div><button class="btn subtle small back" type="button" data-vista="lista">Voltar à lista</button></div>
+<p class="message">“O título fica pequeno quando vejo a peça numa tela menor. Seria bom revisar o contraste e o tamanho antes de publicar.”</p>
+<p class="meta-line">4 de 5 estrelas · App 1.10.5 · Android · Leitura original: ainda não revisado</p>
+<p class="orig-consent"><strong>Consentimento separado:</strong> não autorizou uso público. A triagem interna não altera essa escolha.</p>
+<div class="detail-form">
+<div class="field"><label for="d-estado">Andamento</label><select id="d-estado"><option>Novo</option><option selected>Em análise</option><option>Planejado</option><option>Em execução</option><option>Resolvido</option><option>Arquivado</option></select></div>
+<div class="field"><label for="d-prioridade">Prioridade</label><select id="d-prioridade"><option>Baixa</option><option>Média</option><option selected>Alta</option></select></div>
+<div class="field"><label for="d-responsavel">Responsável</label><input id="d-responsavel" value="Time de design"></div>
+<div class="field"><label>Etiquetas</label><div class="tags"><span class="chip">mobile</span><span class="chip">criativo</span></div></div>
+<div class="wide contract"><strong>Observação interna e tarefa vinculada aguardam contrato</strong>O critério M7 inclui esses campos. A versão atual do DTO e da tabela ainda não os oferece. Não salvar esse conteúdo em outro campo.</div>
+</div>
+<div class="form-foot"><p>As mudanças administrativas preservam o texto original e ficam em histórico separado.</p><button class="btn primary" type="button">Salvar gestão</button></div>
+<section class="availability" aria-labelledby="disponibilidade-titulo"><h3 id="disponibilidade-titulo">Disponibilidade da correção</h3><div class="availability-grid">
+<div class="availability-item"><span>No código</span><strong>Correção pronta para revisão</strong></div><div class="availability-item"><span>No app instalado</span><strong>Ainda não disponível</strong></div>
+</div><p>Estados independentes. “Resolvido” não confirma, sozinho, que a correção chegou ao app instalado.</p></section>
+<section class="creative" aria-labelledby="criativo-titulo"><div class="creative-head"><h3 id="criativo-titulo">Correção de criativo vinculada</h3><span class="chip state">Pronta para sua revisão</span></div><p>Peça 06 · versão 4 → 5 · commit de demonstração 3f12a9c</p><p>A prévia e a comparação devem corresponder exatamente à versão que será aceita. Aceitar não publica automaticamente.</p><div class="creative-actions"><button class="btn subtle" type="button">Pedir outro ajuste</button><button class="btn primary" type="button">Aceitar esta versão</button></div></section>
+<section class="resolution" aria-labelledby="resolucao-titulo"><h3 id="resolucao-titulo">Evidência da resolução</h3><p>Obrigatória antes de marcar como Resolvido. Evite colar dados pessoais.</p><div class="detail-form">
+<div class="field"><label for="d-versao">Versão da resolução</label><input id="d-versao" placeholder="Ex.: 1.11.0"></div>
+<div class="field"><label for="d-evidencia">Evidência</label><input id="d-evidencia" placeholder="Link, referência ou commit"></div>
+</div><p class="resolve-help">A evidência fica na gestão interna, separada do feedback original.</p></section>
+</aside>
+</div>
+</main><footer class="footer">Grana. · Painel administrativo · Exemplo visual com conteúdo fictício</footer>
+</div>
+<script>
+(function(){
+ const body=document.body;
+ const switches=document.querySelectorAll("[data-vista]");
+ function setView(view){
+  body.dataset.vista=view;
+  document.querySelectorAll(".mobile-switch [data-vista]").forEach(function(button){button.setAttribute("aria-pressed",String(button.dataset.vista===view));});
+ }
+ switches.forEach(function(button){button.addEventListener("click",function(){setView(button.dataset.vista);});});
+ document.querySelectorAll("[data-selecionar]").forEach(function(button){button.addEventListener("click",function(){document.querySelectorAll(".item").forEach(function(item){item.classList.remove("selected");});button.classList.add("selected");setView("detalhe");});});
+ const view=new URLSearchParams(location.search).get("vista");
+ if(view==="detalhe"||view==="lista")setView(view);
+})();
+</script>
+</body></html>
