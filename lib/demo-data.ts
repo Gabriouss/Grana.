@@ -34,16 +34,6 @@ function mesesAFrente(n: number, dia: number): string {
   return dataISO(HOJE.getFullYear(), HOJE.getMonth() + n, dia);
 }
 
-export const CAT_COLORS = [
-  /* paleta harmoniosa "Refreshing Aqua Tones" */
-  '#0b4f6c', '#12a8de', '#b0f7d4', '#339989', '#7fdc8a',
-  '#b3564f', '#bb6b60', '#a8534c', '#c98a5e', '#c1804e', '#d19a72',
-  '#d3b869', '#d8c384', '#c1a24c', '#93aa7e', '#74a17c', '#5f9468',
-  '#4f9483', '#5aa79b', '#6ba398', '#6f9a97', '#4f8f8f', '#4f9bab',
-  '#6b9dc2', '#5687ab', '#7086c4', '#6070a8', '#7c8aa0', '#8391c9',
-  '#a480ad', '#93739e', '#8f6bb0', '#ab8bc2', '#c66f8e', '#d087a0',
-  '#cf7d8f', '#a3566a', '#93715f', '#83614f', '#78899a', '#8b9198',
-];
 
 /* wallet_id fixo em 'demo-wallet-1' via .map() no fim do array (ver abaixo),
    em vez de repetir o campo em cada objeto — todas as transações demo caem

@@ -497,7 +497,6 @@ async function publicarReciboDeRevisao(itens: PendingItem[]): Promise<void> {
    15 min, com sorteio (`proximaEspera`). Um agendamento por vez; para
    sozinho quando a fila esvazia. Com o app em segundo plano o React Native
    não roda o timer, então não gasta nada. */
-export const INTERVALO_NOVA_TENTATIVA_MS = ESPERA_BASE_MS;
 let novaTentativa: ReturnType<typeof setTimeout> | null = null;
 let falhasSeguidas = 0;
 

@@ -228,11 +228,6 @@ export function calcularOrcamento(r: Respostas, arquetipo: Arquetipo): Orcamento
   return { linhas, poupancaMensal, despesaTotal };
 }
 
-/** Frase de abertura do laudo, usando o nome quando existe. */
-export function saudacaoLaudo(nome: string, arquetipo: Arquetipo): string {
-  const quem = nome ? `${nome}, você` : 'Você';
-  return `${quem} é ${arquetipo.nome}`;
-}
 
 /* ── Persistência ────────────────────────────────────────────────────────
  *

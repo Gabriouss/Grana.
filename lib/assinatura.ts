@@ -104,9 +104,3 @@ export async function vincularAssinaturasPendentes(): Promise<ResultadoVinculoAs
   }
 }
 
-/** Consulta direta: usar quando a UI precisa saber AGORA (tela de ativação, paywall). */
-export async function temAssinaturaAtiva(): Promise<boolean> {
-  const { data, error } = await supabase.rpc('tem_assinatura_ativa');
-  if (error) return false;
-  return !!data;
-}
