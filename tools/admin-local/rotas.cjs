@@ -197,6 +197,16 @@ async function rotaMarketingPost(res, nomeModulo, nomesFuncao, args) {
   } catch (e) { erroDeMarketing(res, e); }
 }
 
+// Só os filtros conhecidos saem da query; o módulo valida o formato de cada um.
+function filtrosDeFeedbacks(url) {
+  const f = {};
+  for (const k of ['status', 'tipo', 'nota', 'versao', 'desde', 'ate', 'antesDe']) {
+    const v = url.searchParams.get(k);
+    if (v !== null) f[k] = k === 'nota' ? Number(v) : v;
+  }
+  return f;
+}
+
 const GET = {
   '/api/visao-geral': async (req, res, url) => responderOk(res, await adaptador('visao-geral').resumo(comCache, forcar(url))),
   '/api/supabase/resumo': async (req, res, url) => responderOk(res, await comCache('sb-resumo', 30_000, () => adaptador('supabase').resumo(), forcar(url))),
@@ -228,6 +238,7 @@ const GET = {
   '/api/marketing/calendario/ensaio': (req, res) => rotaMarketingGet(res, 'meta-ensaio', ['ensaiar'], [], { modo: 'ensaio', realHabilitado: false, itens: [] }),
   '/api/marketing/cronograma': (req, res) => rotaMarketingGet(res, 'cronograma', ['ler'], [], null),
   '/api/marketing/notificacoes': (req, res) => rotaMarketingGet(res, 'notificacoes', ['listarNotificacoes'], [], { notificacoes: [], naoLidas: 0 }),
+  '/api/marketing/feedbacks': (req, res, url) => rotaMarketingGet(res, 'feedbacks', ['listarFeedbacks'], [filtrosDeFeedbacks(url)], { feedbacks: [], haMais: false, gestaoDisponivel: false }),
   '/api/marketing/trafego': (req, res) => rotaMarketingGet(res, 'trafego', ['listarCampanhas', 'listarTrafego', 'listar', 'trafego'], [], { campanhas: [] }),
 };
 
@@ -249,7 +260,7 @@ function pedidosComTitulo(lista) {
 }
 const ID_PECA = /^\/api\/marketing\/pecas\/([0-9a-f]{16})\/(aprovar|ajuste|promover|recusar)$/;
 const ANTERIOR = /^\/api\/marketing\/ajustes\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/anterior$/i;
-const MARKETING_POST = new Set(['/api/marketing/calendario', '/api/marketing/trafego', '/api/marketing/ajustes/aceitar', '/api/marketing/ajustes/retry', '/api/marketing/ajustes/reenviar', '/api/marketing/ajustes/encerrar', '/api/marketing/cronograma', '/api/marketing/cronograma/vinculo', '/api/marketing/notificacoes/ler']);
+const MARKETING_POST = new Set(['/api/marketing/calendario', '/api/marketing/trafego', '/api/marketing/ajustes/aceitar', '/api/marketing/ajustes/retry', '/api/marketing/ajustes/reenviar', '/api/marketing/ajustes/encerrar', '/api/marketing/cronograma', '/api/marketing/cronograma/vinculo', '/api/marketing/notificacoes/ler', '/api/marketing/feedbacks/gestao']);
 const ACOES_BUILD = {
   '/api/eas/preparar-build': ['PREPARAR BUILD', 'prepararBuild'],
   '/api/eas/disparar-build': ['DISPARAR BUILD', 'dispararBuild'],
@@ -303,7 +314,8 @@ async function tratarAcao(req, res, url, corpo, sessao) {
       registrar('acao', { rota: p, resultado: res.statusCode, sessao: sessao.id });
       return undefined;
     }
-    if (p === '/api/marketing/notificacoes/ler') r = rotaMarketingPost(res, 'notificacoes', ['marcarNotificacoes'], [corpo]);
+    if (p === '/api/marketing/feedbacks/gestao') r = rotaMarketingPost(res, 'feedbacks', ['atualizarGestaoFeedback'], [corpo]);
+    else if (p === '/api/marketing/notificacoes/ler') r = rotaMarketingPost(res, 'notificacoes', ['marcarNotificacoes'], [corpo]);
     else if (p === '/api/marketing/cronograma') r = rotaMarketingPost(res, 'cronograma', ['salvarManifesto'], [corpo]);
     else if (p === '/api/marketing/cronograma/vinculo') r = rotaMarketingPost(res, 'cronograma', ['registrarVinculo'], [corpo.pecaId, corpo]);
     else if (m && m[2] === 'promover') r = rotaMarketingPost(res, 'promocao', ['promover'], [m[1], corpo]);

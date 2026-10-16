@@ -23,6 +23,7 @@ const ROTAS = {
   vendas: { modulo: 'vendas', titulo: 'Vendas (Cakto)' },
   'marketing/documento': { modulo: 'documento', titulo: 'Documento de marketing' },
   'marketing/aprovacao': { modulo: 'aprovacao', titulo: 'Aprovação' },
+  'marketing/feedbacks': { modulo: 'feedbacks', titulo: 'Feedbacks' },
   'marketing/feed': { modulo: 'feed', titulo: 'Feed' },
   'marketing/calendario': { modulo: 'calendario', titulo: 'Calendário' },
   'marketing/trafego': { modulo: 'trafego', titulo: 'Tráfego pago' },
