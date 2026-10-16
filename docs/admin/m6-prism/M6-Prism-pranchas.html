@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>M6 — Pranchas Prism</title>
+  <style>
+    @font-face {
+      font-family: Neue;
+      src: url(file:///E:/GranaPonto/assets/fonts/NeueMachina-Regular.otf);
+      font-weight: 400;
+    }
+    @font-face {
+      font-family: Neue;
+      src: url(file:///E:/GranaPonto/assets/fonts/NeueMachina-Light.otf);
+      font-weight: 300;
+    }
+    :root {
+      color-scheme: dark;
+      --paper: #052229;
+      --raised: #0b2d35;
+      --ink: #effffa;
+      --soft: #a6d9ce;
+      --faint: #7fa9a0;
+      --rule: rgba(174, 255, 227, .14);
+      --mint: #aeffe3;
+      --amber: #d3b869;
+      --danger: #e08a7d;
+      --up: #74e291;
+      --scrim: rgba(0, 0, 0, .5);
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--paper); }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 400 16px/1.5 Neue, sans-serif;
+      font-synthesis: none;
+    }
+    h1, h2, h3, p { margin: 0; font-weight: 400; }
+    h1 { font-size: 24px; line-height: 1.2; }
+    h2 { font-size: 20px; line-height: 1.2; }
+    h3 { font-size: 18px; line-height: 1.35; }
+    button, select { color: inherit; font: inherit; }
+    button, a.button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 8px 12px;
+      border: 1px solid var(--rule);
+      border-radius: 12px;
+      background: transparent;
+      color: inherit;
+      text-decoration: none;
+    }
+    button.primary { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+    button.ghost { border-color: transparent; color: var(--soft); }
+    button.icon { position: relative; width: 44px; height: 44px; padding: 10px; }
+    svg { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .count {
+      position: absolute;
+      top: 0;
+      right: -4px;
+      min-width: 19px;
+      height: 19px;
+      padding: 0 4px;
+      border: 2px solid var(--paper);
+      border-radius: 20px;
+      background: var(--mint);
+      color: var(--paper);
+      font: 400 12px/15px Neue, sans-serif;
+      text-align: center;
+    }
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: 248px;
+      padding: 28px 24px;
+      border-right: 1px solid var(--rule);
+    }
+    .brand { display: block; width: 120px; height: auto; margin-bottom: 8px; }
+    .small { color: var(--faint); font-size: 14px; line-height: 1.35; font-weight: 300; }
+    .sidebar nav { display: grid; gap: 4px; margin-top: 40px; }
+    .sidebar nav span { padding: 12px; border-radius: 8px; color: var(--soft); }
+    .sidebar nav span.active { background: var(--raised); color: var(--ink); }
+    .mobilebar {
+      position: sticky;
+      z-index: 1;
+      top: 0;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 60px;
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--rule);
+      background: var(--paper);
+    }
+    .mobilebar .brand { width: 96px; margin: 0; }
+    .main { min-width: 0; margin-left: 248px; padding: 28px 40px 48px; }
+    .global { display: flex; justify-content: flex-end; height: 44px; margin-bottom: 16px; }
+    .page { max-width: 960px; }
+    .intro { max-width: 54ch; margin: 12px 0 28px; color: var(--soft); }
+    .card { min-width: 0; margin-top: 20px; padding: 20px; border: 1px solid var(--rule); border-radius: 16px; background: var(--raised); }
+    .card > p { margin-top: 8px; color: var(--soft); font-size: 15px; }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .alert { margin: 20px 0; padding: 16px; border-radius: 12px; background: rgba(165, 150, 74, .12); color: var(--amber); }
+    .alert p { margin-top: 8px; color: var(--soft); font-size: 15px; }
+    .destinations { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .destinations .card { margin: 0; }
+    .state-list { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+    .state {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      max-width: 100%;
+      padding: 3px 8px;
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      color: var(--soft);
+      font-size: 14px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+    .state svg { width: 16px; height: 16px; }
+    .state.warn { border-color: rgba(211, 184, 105, .35); color: var(--amber); }
+    .state.success { border-color: rgba(116, 226, 145, .3); color: var(--up); }
+    .state.error { border-color: rgba(224, 138, 125, .35); color: var(--danger); }
+    .state.mint { color: var(--mint); }
+    .detail-line { margin-top: 16px !important; }
+    .section-title { margin-top: 28px; }
+    .scrim { position: fixed; z-index: 2; inset: 0; background: var(--scrim); }
+    .drawer {
+      position: fixed;
+      z-index: 3;
+      inset: 0 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      width: 416px;
+      background: var(--raised);
+      box-shadow: 0 18px 44px -14px rgba(0, 0, 0, .65);
+    }
+    .drawer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--rule);
+    }
+    .drawer-head p { margin-top: 4px; }
+    .drawer-scroll { min-height: 0; flex: 1; overflow: auto; padding: 16px; }
+    .tabs { display: flex; gap: 16px; border-bottom: 1px solid var(--rule); }
+    .tabs button { min-height: 40px; padding: 8px 0; border: 0; border-radius: 0; }
+    .tabs .selected { border-bottom: 2px solid var(--mint); }
+    .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+    .filters label { min-width: 0; color: var(--soft); font-size: 14px; }
+    .filters select {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      height: 44px;
+      margin-top: 4px;
+      padding: 8px;
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      background: var(--paper);
+      font-size: 14px;
+    }
+    .mark { margin-bottom: 24px; }
+    .mark button { padding: 8px 0; border: 0; color: var(--soft); font-size: 14px; }
+    .group { margin: 0 0 16px; color: var(--faint); font-size: 14px; }
+    .notification { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--rule); }
+    .notification h3 { margin: 8px 0; font-size: 16px; line-height: 1.35; }
+    .notification p { color: var(--soft); font-size: 15px; line-height: 1.5; font-weight: 300; }
+    .notification .meta { margin-top: 8px; color: var(--faint); font-size: 14px; line-height: 1.35; }
+    .notification .unread { color: var(--mint); font-size: 14px; }
+    .notification .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .notification .actions button { font-size: 15px; }
+    .drawer-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 16px max(12px, env(safe-area-inset-bottom));
+      border-top: 1px solid var(--rule);
+    }
+    .drawer-foot button { padding: 8px 0; border: 0; font-size: 14px; }
+    .drawer-foot .small { text-align: right; }
+    .hidden { display: none !important; }
+    @media (max-width: 899px) {
+      .sidebar { display: none; }
+      .main { margin: 0; padding: 20px 16px 48px; }
+      .global { display: none; }
+      .mobilebar { display: flex; }
+      .destinations { grid-template-columns: 1fr; }
+      .mobilebar button { font-size: 14px; }
+    }
+    @media (max-width: 640px) {
+      .drawer { width: 100%; height: 100vh; height: 100dvh; border-radius: 0; }
+      .filters { grid-template-columns: 1fr; }
+      .notification .actions { flex-direction: column; align-items: stretch; }
+      .notification .actions button.ghost { align-self: flex-start; }
+      .card { padding: 16px; }
+      .destinations .row { align-items: flex-start; flex-direction: column; }
+      .destinations .actions { flex-direction: column; align-items: stretch; }
+      .drawer-foot { align-items: flex-start; }
+      .row { align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <svg aria-hidden="true" class="icon-definitions" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></symbol>
+    <symbol id="close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h3"/></symbol>
+    <symbol id="clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="clock-check" viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 1.5M15 17l2.2 2.2L22 14"/></symbol>
+    <symbol id="progress" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/><path d="M12 8v4l2.5 1.5"/></symbol>
+    <symbol id="check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></symbol>
+    <symbol id="clock-alert" viewBox="0 0 24 24"><circle cx="10" cy="11" r="7"/><path d="M10 7v4l2.5 1.5M19 8v5M19 17h.01"/></symbol>
+    <symbol id="cancel" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/></symbol>
+    <symbol id="alert" viewBox="0 0 24 24"><path d="m12 3 10 18H2L12 3Z"/><path d="M12 9v5M12 17h.01"/></symbol>
+    <symbol id="question" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.5 2.5 0 1 1 4.6 1.4c-.8 1.1-2.2 1.4-2.2 3M12 17h.01"/></symbol>
+  </svg>
+
+  <aside class="sidebar">
+    <img class="brand" src="file:///E:/GranaPonto/design-system/marca/logotipo-gradiente.svg" alt="Grana.">
+    <p class="small">Administração local</p>
+    <nav aria-label="Navegação principal">
+      <span>Visão geral</span><span>Documento</span><span>Aprovação</span><span class="active">Calendário</span><span>Tráfego pago</span><span>Acervo</span>
+    </nav>
+  </aside>
+
+  <header class="mobilebar">
+    <button type="button">Menu</button>
+    <img class="brand" src="file:///E:/GranaPonto/design-system/marca/logotipo-gradiente.svg" alt="Grana.">
+    <button type="button" class="icon" aria-label="Notificações, 3 não lidas">
+      <svg aria-hidden="true"><use href="#bell"/></svg><span class="count" aria-hidden="true">3</span>
+    </button>
+  </header>
+
+  <main class="main">
+    <div class="global">
+      <button type="button" class="icon" aria-label="Notificações, 3 não lidas">
+        <svg aria-hidden="true"><use href="#bell"/></svg><span class="count" aria-hidden="true">3</span>
+      </button>
+    </div>
+    <div class="page">
+      <h1>Calendário</h1>
+      <p class="intro">Acompanhe a programação e confira o resultado em cada destino.</p>
+      <section class="card">
+        <p class="small">PUBLICAÇÃO · REEL</p>
+        <h2 style="margin-top: 8px">Organizar as contas do mês</h2>
+        <p>Versão 7 · 19/10/2026 às 18:00 · Brasília (UTC−03)</p>
+        <div class="alert">
+          <h3>Um destino precisa conferir</h3>
+          <p>O Facebook confirmou a publicação. Confira o resultado do Instagram antes de repetir o envio.</p>
+        </div>
+        <div class="destinations">
+          <article class="card">
+            <div class="row"><h3>Facebook</h3><span class="state success"><svg aria-hidden="true"><use href="#check"/></svg>Publicado</span></div>
+            <p class="detail-line">Confirmado às 18:01</p><p class="small">Comprovante disponível</p>
+            <div class="actions"><button type="button">Abrir publicação</button></div>
+          </article>
+          <article class="card">
+            <div class="row"><h3>Instagram</h3><span class="state warn"><svg aria-hidden="true"><use href="#question"/></svg>Precisa conferir</span></div>
+            <p class="detail-line">Resultado ainda não confirmado.</p><p class="small">Última consulta às 18:02</p>
+            <div class="actions"><button type="button" class="primary">Conferir resultado</button></div>
+          </article>
+        </div>
+        <p class="small" style="margin-top: 20px">1 de 2 destinos publicado · 1 precisa conferir</p>
+      </section>
+
+      <h2 class="section-title">Estados de publicação</h2>
+      <p class="intro">O rótulo acompanha o destino e o comprovante correspondente.</p>
+      <div class="state-list" aria-label="Estados de publicação">
+        <span class="state"><svg aria-hidden="true"><use href="#calendar"/></svg>Planejado</span>
+        <span class="state"><svg aria-hidden="true"><use href="#clock"/></svg>Programado no painel</span>
+        <span class="state mint"><svg aria-hidden="true"><use href="#clock-check"/></svg>Agendado na Meta</span>
+        <span class="state"><svg aria-hidden="true"><use href="#progress"/></svg>Preparando</span>
+        <span class="state success"><svg aria-hidden="true"><use href="#check"/></svg>Publicado</span>
+        <span class="state warn"><svg aria-hidden="true"><use href="#clock-alert"/></svg>Cancelamento pendente</span>
+        <span class="state"><svg aria-hidden="true"><use href="#cancel"/></svg>Cancelado</span>
+        <span class="state error"><svg aria-hidden="true"><use href="#alert"/></svg>Falhou</span>
+        <span class="state warn"><svg aria-hidden="true"><use href="#question"/></svg>Precisa conferir</span>
+      </div>
+    </div>
+  </main>
+
+  <div id="notification-layer">
+    <div class="scrim" aria-hidden="true"></div>
+    <section class="drawer" aria-label="Notificações">
+      <header class="drawer-head">
+        <div><h2>Notificações</h2><p class="small">3 não lidas</p></div>
+        <button type="button" class="icon" aria-label="Fechar notificações"><svg aria-hidden="true"><use href="#close"/></svg></button>
+      </header>
+      <div class="drawer-scroll">
+        <div class="tabs" role="tablist" aria-label="Filtro de notificações">
+          <button type="button" class="selected" role="tab" aria-selected="true">Não lidas (3)</button>
+          <button type="button" role="tab" aria-selected="false">Todas</button>
+        </div>
+        <div class="filters">
+          <label>Fonte<select><option>Todas as fontes</option><option>Publicações</option><option>Criativos</option><option>Feedbacks</option><option>Sistema</option><option>Novidades</option></select></label>
+          <label>Importância<select><option>Todas</option><option>Precisa agir</option><option>Informação</option></select></label>
+        </div>
+        <div class="mark"><button type="button">Marcar todas como lidas</button><p class="small">Inclui as notificações de todos os filtros.</p></div>
+        <p class="group">Hoje</p>
+        <article class="notification">
+          <span class="state warn"><svg aria-hidden="true"><use href="#question"/></svg>Precisa conferir</span>
+          <h3>Confira o resultado no Instagram</h3>
+          <p>A Meta ainda não confirmou o resultado. Confira antes de repetir o envio.</p>
+          <p class="meta">Publicações · Instagram · há 4 min</p>
+          <p class="unread">Não lida</p>
+          <div class="actions"><button type="button" class="primary">Conferir resultado</button><button type="button" class="ghost">Marcar como lida</button></div>
+        </article>
+        <article class="notification">
+          <span class="small">Criativos · há 18 min</span>
+          <h3>Criativo pronto para sua revisão</h3>
+          <p>Reel · Versão 7. Confira as alterações e compare com a versão anterior.</p>
+          <p class="unread">Não lida</p>
+          <div class="actions"><button type="button">Revisar criativo</button><button type="button" class="ghost">Marcar como lida</button></div>
+        </article>
+        <article class="notification">
+          <span class="small">Feedbacks · há 32 min</span>
+          <h3>Novo feedback</h3>
+          <p>Um novo relato aguarda sua análise.</p>
+          <p class="unread">Não lida</p>
+          <div class="actions"><button type="button">Abrir feedback</button><button type="button" class="ghost">Marcar como lida</button></div>
+        </article>
+      </div>
+      <footer class="drawer-foot"><button type="button">Preferências</button><p class="small">Atualizado às 18:06</p></footer>
+    </section>
+  </div>
+
+  <script>
+    if (new URLSearchParams(location.search).get('tela') === 'publicacao') {
+      document.getElementById('notification-layer').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>

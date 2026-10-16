@@ -1,0 +1,118 @@
+{
+  "renderer": "Chrome/156.0.8078.35",
+  "modoCaptura": "viewport; captureBeyondViewport=false",
+  "capturas": [
+    {
+      "arquivo": "publicacao-1440.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "png": {
+        "width": 1440,
+        "height": 900
+      },
+      "larguraDocumento": 1425,
+      "rolagemHorizontal": false,
+      "fonteCarregada": true
+    },
+    {
+      "arquivo": "publicacao-320.png",
+      "viewport": {
+        "width": 320,
+        "height": 900
+      },
+      "png": {
+        "width": 320,
+        "height": 900
+      },
+      "larguraDocumento": 320,
+      "rolagemHorizontal": false,
+      "fonteCarregada": true
+    },
+    {
+      "arquivo": "publicacao-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 900
+      },
+      "png": {
+        "width": 390,
+        "height": 900
+      },
+      "larguraDocumento": 390,
+      "rolagemHorizontal": false,
+      "fonteCarregada": true
+    },
+    {
+      "arquivo": "publicacao-768.png",
+      "viewport": {
+        "width": 768,
+        "height": 960
+      },
+      "png": {
+        "width": 768,
+        "height": 960
+      },
+      "larguraDocumento": 753,
+      "rolagemHorizontal": false,
+      "fonteCarregada": true
+    },
+    {
+      "arquivo": "sino-1440.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "png": {
+        "width": 1440,
+        "height": 900
+      },
+      "larguraDocumento": 1425,
+      "rolagemHorizontal": false,
+      "fonteCarregada": true
+    },
+    {
+      "arquivo": "sino-320.png",
+      "viewport": {
+        "width": 320,
+        "height": 640
+      },
+      "png": {
+        "width": 320,
+        "height": 640
+      },
+      "larguraDocumento": 320,
+      "rolagemHorizontal": false,
+      "fonteCarregada": true
+    },
+    {
+      "arquivo": "sino-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844
+      },
+      "larguraDocumento": 390,
+      "rolagemHorizontal": false,
+      "fonteCarregada": true
+    },
+    {
+      "arquivo": "sino-768.png",
+      "viewport": {
+        "width": 768,
+        "height": 960
+      },
+      "png": {
+        "width": 768,
+        "height": 960
+      },
+      "larguraDocumento": 753,
+      "rolagemHorizontal": false,
+      "fonteCarregada": true
+    }
+  ]
+}
