@@ -329,8 +329,17 @@ export default function Granachat({
         );
       } catch (err) {
         console.error('[Granachat] erro ao carregar histórico:', err);
-        // Sem rede ao reabrir: a tela não pode segurar o que já venceu.
-        if (!cancelado) setMensagens((atual) => atual.filter((m) => dentroDoPrazo(m.criado_em)));
+        /* Sem rede ao reabrir (V20): preserva o que a tela já mostra, só tira
+           o que já venceu, e deixa um recibo visível de que o histórico não
+           carregou, em vez de parecer uma conversa nova. Fechar e abrir o
+           Granabô com rede volta a ler e o aviso some com a troca da lista. */
+        if (!cancelado) {
+          const aviso = 'Não consegui carregar o histórico agora. Confira a conexão e abra o Granabô de novo.';
+          setMensagens((atual) => [
+            ...atual.filter((m) => m.id !== 'falha-historico' && dentroDoPrazo(m.criado_em)),
+            { id: 'falha-historico', papel: 'assistente', texto: aviso, ferramenta_usada: null, criado_em: new Date().toISOString(), erro: aviso },
+          ]);
+        }
       } finally {
         if (!cancelado) setCarregando(false);
       }

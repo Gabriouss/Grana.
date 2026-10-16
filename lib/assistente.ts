@@ -77,6 +77,10 @@ export function textoDoAssistente(texto: string): string {
  * antigo para o mais recente (a FlatList invertida cuida de exibir na ordem
  * certa de chat). `limit` é 50 por padrão — suficiente para scroll sem ser
  * pesado.
+ *
+ * Se a leitura falhar, LANÇA `historico_indisponivel`: devolver `[]` aqui faria
+ * a tela de chat esvaziar a conversa que já mostra. Único chamador:
+ * `components/Granachat.tsx`.
  */
 export async function fetchMensagens(limit = 50): Promise<MensagemAssistente[]> {
   /* `papel` é desempate obrigatório, não refinamento: até 07/09/2026 a Edge
@@ -100,8 +104,12 @@ export async function fetchMensagens(limit = 50): Promise<MensagemAssistente[]> 
     .limit(limit);
 
   if (error) {
-    console.error('[assistente] erro ao buscar mensagens:', error);
-    return [];
+    /* Falha NÃO vira lista vazia: `[]` é "a conversa está vazia", e a tela
+       trocaria o que já mostra por nada (V20, 16/10/2026). O erro sobe para
+       quem chama decidir o que preservar. O log leva só código e mensagem do
+       erro de transporte, nunca texto de conversa. */
+    console.error('[assistente] erro ao buscar mensagens:', { codigo: error.code, mensagem: error.message });
+    throw Object.assign(new Error('historico_indisponivel'), { cause: error });
   }
 
   // A query vem desc (mais recente primeiro) para o limit pegar as últimas.
