@@ -17,7 +17,7 @@ const deps = {
      devolve vazio, e a lista de carteiras — de que o lançamento por voz
      offline depende — ficava inalcançável. O dublê espelha o mesmo `userId`
      que o dublê do Supabase logo abaixo usa. */
-  './sessao-offline': { idDoUsuarioLocal: async () => userId ?? null },
+  './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => userId ?? null },
   './format': { isCreditTx: () => false },
   '@react-native-async-storage/async-storage': { __esModule: true, default: {
     getItem: async k => storage.get(k) ?? null, setItem: async (k, v) => storage.set(k, v),

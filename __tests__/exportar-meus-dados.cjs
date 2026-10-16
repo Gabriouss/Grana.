@@ -31,7 +31,7 @@ function carregar() {
     require: (nome) => {
       if (nome === 'react-native') return { Platform: { OS: 'android' } };
       if (nome === './supabase') return { supabase: { from: () => { throw new Error('não deveria ser usado: o teste injeta o leitor'); } } };
-      if (nome === './sessao-offline') return { idDoUsuarioLocal: async () => 'usuario-1' };
+      if (nome === './sessao-offline') return { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'usuario-1' };
       throw new Error(`import inesperado: ${nome}`);
     },
   });

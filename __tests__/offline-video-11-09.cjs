@@ -80,7 +80,7 @@ function carregar(caminho, deps, globais = {}) {
   const data = carregar('lib/data.ts', {
     './supabase': { supabase: supabaseDuble },
     './cache-de-tela': { comCacheOffline: (_n, buscar) => buscar, estaServindoDoCache: () => false },
-    './sessao-offline': { idDoUsuarioLocal: async () => idNoDisco },
+    './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => idNoDisco },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
     './lancamentos-alterados': { marcarLancamentosAlterados() {} },
     './fila-pendente': { juntarPendentes: async (lista) => lista },
@@ -121,7 +121,7 @@ function carregar(caminho, deps, globais = {}) {
     /* O ponto todo: a falha precisa ser reconhecivel como "sem rede", porque e
        assim que a tela decide enfileirar em vez de descartar o lancamento. */
     const cacheDeTela = carregar('lib/cache-de-tela.ts', {
-      './sessao-offline': { idDoUsuarioLocal: async () => idNoDisco },
+      './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => idNoDisco },
       '@react-native-async-storage/async-storage': {
         __esModule: true,
         default: { getItem: async () => null, setItem: async () => {}, getAllKeys: async () => [], multiRemove: async () => {} },

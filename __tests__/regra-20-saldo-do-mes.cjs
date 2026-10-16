@@ -152,7 +152,7 @@ const contas = [
     const { calcularSaldosWallets, calcularSaldosComAgregado } = carregar('lib/wallets.ts', {
       './supabase': { supabase: {} },
       './cache-de-tela': { atualizarTelaGuardada: async () => {}, comCacheOffline: (_n, f) => f },
-      './sessao-offline': { idDoUsuarioLocal: async () => null },
+      './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => null },
       './format': { isCreditTx: (t) => t.payment_method === 'credit' || !!t.card_id },
     });
     const carteiras = (inicial) => [

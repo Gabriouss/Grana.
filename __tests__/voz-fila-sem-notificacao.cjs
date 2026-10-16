@@ -78,7 +78,7 @@ function carregar(arquivo) {
     '@/modules/grana-voice-widget': { definirEstado() {} },
     './offline-cache': { isLikelyNetworkError: () => false },
     './widget-voz-notificacoes': notificacaoDoSistema,
-    './sessao-offline': { idDoUsuarioLocal: async () => 'u-1', lerSessaoDoDisco: async () => ({}) },
+    './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u-1', lerSessaoDoDisco: async () => ({}) },
     './voz': {
       transcreverAudio: async (uri) => {
         chamadasTranscricao.push(uri);

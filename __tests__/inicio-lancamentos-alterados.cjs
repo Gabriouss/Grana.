@@ -69,7 +69,7 @@ async function camadaDeDados() {
     './supabase': { supabase },
     './lancamentos-alterados': alterados,
     './cache-de-tela': { comCacheOffline: (_n, buscar) => buscar, invalidarRespostasAtrasadas() {} },
-    './sessao-offline': { idDoUsuarioLocal: async () => 'u-1' },
+    './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u-1' },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
     './creditLimitAlert': { checarLimiteCartao: async () => {} },
     './paginacao': { buscarTodasAsPaginas: async () => [] },
@@ -134,7 +134,7 @@ async function filaOffline() {
     },
     './goals': { createGoal: async () => {} },
     './cache-de-tela': { guardarTela: async () => {}, lerTela: async () => null, avisarDadoNovo() {}, isLikelyNetworkError: (e) => /network/i.test(String(e?.message)) },
-    './sessao-offline': { idDoUsuarioLocal: async () => 'u-1' },
+    './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u-1' },
   });
 
   const item = { type: 'out', description: 'AUDIT offline', amount: 7.77, category: 'Alimentação', color: '#fff', occurred_on: '2026-09-23' };

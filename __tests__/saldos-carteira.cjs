@@ -45,7 +45,7 @@ const { calcularSaldosComAgregado } = carregar('lib/wallets.ts', {
   './cache-de-tela': { comCacheOffline: (_nome, buscar) => buscar },
   './supabase': { supabase: {} },
   // Este corpus só exercita a aritmética; a identificação local tem corpus próprio.
-  './sessao-offline': { idDoUsuarioLocal: async () => null },
+  './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => null },
   '@react-native-async-storage/async-storage': { __esModule: true, default: {} },
   './demo-data': { DEMO_WALLETS: [] },
   './format': { isCreditTx: (t) => t.payment_method === 'credit' },

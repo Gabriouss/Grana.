@@ -59,7 +59,7 @@ function montar(usuarioInicial) {
       clearTimeout,
       require: (id) => {
         if (id === '@react-native-async-storage/async-storage') return { __esModule: true, default: AsyncStorage };
-        if (id === './sessao-offline') return { idDoUsuarioLocal: () => {
+        if (id === './sessao-offline') return { sessaoEstaTravada: () => false, idDoUsuarioLocal: () => {
           if (!sessao.segurar) return Promise.resolve(usuario ?? null);
           sessao.perguntas++;
           return new Promise((r) => { sessao.liberar = () => r(usuario ?? null); });

@@ -54,7 +54,7 @@ function montar({ falhaBackup, falhaLeitura = false }) {
       crypto: globalThis.crypto, setTimeout, clearTimeout,
       require: (id) => {
         if (id === '@react-native-async-storage/async-storage') return { __esModule: true, default: AsyncStorage };
-        if (id === './sessao-offline') return { idDoUsuarioLocal: async () => 'u-1' };
+        if (id === './sessao-offline') return { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u-1' };
         if (id === './fila-pendente') return carregar('lib/fila-pendente.ts', process.env.FILA_FONTE);
         if (id === './cache-de-tela') return { avisarDadoNovo() {}, guardarTela: async () => {}, isLikelyNetworkError: () => true, lancamentoGravado() {}, lerTela: async () => null };
         if (id === './data') return { addBill: async () => {}, addInstallmentPurchase: async () => {}, addTransaction: async () => { throw new Error('nao deveria enviar'); } };

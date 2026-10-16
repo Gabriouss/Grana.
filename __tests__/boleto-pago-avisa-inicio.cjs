@@ -24,7 +24,7 @@ function carregar(erro) {
   const deps = {
     './supabase': { supabase: { from: () => q, rpc: () => Promise.resolve(resposta) } },
     './cache-de-tela': { comCacheOffline: (_n, f) => f, invalidarRespostasAtrasadas() {}, atualizarTelaGuardada: async () => {} },
-    './sessao-offline': { idDoUsuarioLocal: async () => 'u-1' },
+    './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u-1' },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
     './lancamentos-alterados': { marcarLancamentosAlterados() { marcas.n++; } },
     './fila-pendente': { juntarPendentes: async (l) => l },

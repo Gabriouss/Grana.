@@ -90,7 +90,7 @@ function montarOperacoes(opts) {
     /* Limites e classificação de erro da fila (24/09/2026): módulo real. */
     './fila-pendente': carregar('lib/fila-pendente.ts', {
       '@react-native-async-storage/async-storage': { __esModule: true, default: store },
-      './sessao-offline': { idDoUsuarioLocal: async () => 'u1' },
+      './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u1' },
     }),
     './supabase': { supabase: {
       auth: { getSession: async () => ({ data: { session: { user: { id: 'u1' } } } }) },
@@ -106,7 +106,7 @@ function montarOperacoes(opts) {
        token vencido sem rede fazia `registrarOperacaoVoz` RECUSAR guardar a
        fala, que é o único trabalho que ela tem offline. Mesmo `u1` do dublê
        do Supabase acima. */
-    './sessao-offline': { idDoUsuarioLocal: async () => 'u1' },
+    './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u1' },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
     './cache-de-tela': { lancamentoGravado() {} },
     '@react-native-async-storage/async-storage': { __esModule: true, default: store },

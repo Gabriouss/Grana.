@@ -83,7 +83,7 @@ function montar() {
     'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask() {} } },
     'expo-file-system': { File: class { get exists() { return true; } get size() { return 4; } async bytes() { return new Uint8Array(4); } } },
     'expo/fetch': { fetch: async () => { e.envios++; const r = e.servidor; if (r instanceof Error) throw r; return r; } },
-    './sessao-offline': { tokenDeAcessoLocal: async () => 't', idDoUsuarioLocal: async () => 'u1', lerSessaoDoDisco: async () => ({ access_token: 't' }) },
+    './sessao-offline': { tokenDeAcessoLocal: async () => 't', sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u1', lerSessaoDoDisco: async () => ({ access_token: 't' }) },
     '@/modules/grana-voice-widget': { definirEstado(s) { e.estados.push(s); } },
     './widget-voz-notificacoes': {
       podeNotificar: async () => true,

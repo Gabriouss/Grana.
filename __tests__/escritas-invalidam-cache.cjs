@@ -46,7 +46,7 @@ function carregarModulos(erro) {
   const comum = {
     './supabase': { supabase },
     './cache-de-tela': { comCacheOffline: (_n, buscar) => buscar, invalidarRespostasAtrasadas() { contagem.n++; } },
-    './sessao-offline': { idDoUsuarioLocal: async () => 'u-1' },
+    './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u-1' },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
   };
   const data = carregar('lib/data.ts', {

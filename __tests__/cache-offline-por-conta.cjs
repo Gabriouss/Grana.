@@ -68,7 +68,7 @@ function montar() {
     module: fila, exports: fila.exports, console, Date, JSON, Math, Object, Array, Promise, Error, String, Number, Set,
     require: (nome) => {
       if (nome.includes('async-storage')) return { __esModule: true, default: AsyncStorage };
-      if (nome === './sessao-offline') return { idDoUsuarioLocal: async () => estado.usuario };
+      if (nome === './sessao-offline') return { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => estado.usuario };
       throw new Error(`import inesperado na fila: ${nome}`);
     },
   });
@@ -82,7 +82,7 @@ function montar() {
     setTimeout,
     require: (nome) => {
       if (nome.includes('async-storage')) return { __esModule: true, default: AsyncStorage };
-      if (nome === './sessao-offline') return { idDoUsuarioLocal: async () => estado.usuario };
+      if (nome === './sessao-offline') return { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => estado.usuario };
       if (nome === './data') {
         return {
           addTransaction: async (input) => { enviados.push({ como: estado.usuario, input }); },

@@ -79,7 +79,7 @@ function montar(usuarioInicial) {
            de responder e devolve vazio quando a renovação não tem rede — num
            módulo cujo propósito é servir offline, isso deixava o cache de
            todas as telas ilegível justamente por falta de internet. */
-        if (id === './sessao-offline') return { idDoUsuarioLocal: async () => usuario ?? null };
+        if (id === './sessao-offline') return { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => usuario ?? null };
         throw Error(id);
       },
     }

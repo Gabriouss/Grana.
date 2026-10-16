@@ -53,7 +53,7 @@ const notificacoes = [];
 const dubles = {
   '@react-native-async-storage/async-storage': { __esModule: true, default: AsyncStorage },
   './supabase': { supabase: { from: () => consulta(), rpc: async () => ({ data: [], error: null }) } },
-  './sessao-offline': { idDoUsuarioLocal: async () => 'u-1' },
+  './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u-1' },
   './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
   './creditLimitAlert': { checarLimiteCartao: async () => {} },
   './goals': { createGoal: async () => {} },

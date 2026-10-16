@@ -40,7 +40,7 @@ function carregarData(supabase, userId, eventos) {
   const deps = {
     './supabase': { supabase },
     './cache-de-tela': { comCacheOffline: (_n, buscar) => buscar, invalidarRespostasAtrasadas() { ordem.push('invalida'); } },
-    './sessao-offline': { idDoUsuarioLocal: async () => userId },
+    './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => userId },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() { eventos.push('widgets'); } },
     './lancamentos-alterados': { marcarLancamentosAlterados() { eventos.push('alterados'); } },
     './fila-pendente': { juntarPendentes: async (l) => l },

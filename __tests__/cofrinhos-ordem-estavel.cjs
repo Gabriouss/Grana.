@@ -34,7 +34,7 @@ function carregar(linhas, erro = null) {
       comCacheOffline(chave, buscar) { return buscar; },
       invalidarRespostasAtrasadas() {},
     },
-    './sessao-offline': { idDoUsuarioLocal: async () => 'usuario' },
+    './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'usuario' },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
   };
   const exports = {};

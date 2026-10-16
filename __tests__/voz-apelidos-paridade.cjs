@@ -153,7 +153,7 @@ carregarVm('lib/widget-voz-task.ts', {
   },
   './creditLimitAlert': { checarLimiteCartao: async () => {} },
   './supabase': { supabase: { auth: { getSession: async () => ({ data: { session: { user: { id: 'u-1' } } } }) } } },
-  './sessao-offline': { idDoUsuarioLocal: async () => 'u-1', lerSessaoDoDisco: async () => null },
+  './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u-1', lerSessaoDoDisco: async () => null },
   './widget-voz-pendentes': {
     adicionarVozPendente: async () => {}, listarVozesPendentes: async () => [], removerVozPendente: async () => {},
     reservarFalaEmAndamento: async (fala) => { reservas.push(fala.requestId); return true; },

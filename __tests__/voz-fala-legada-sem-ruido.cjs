@@ -104,7 +104,7 @@ function carregar(arquivo) {
       notificarSalvoLocal: async () => assert.fail('sem permissão, nada de notificação'),
       notificarPendenteOffline: async () => assert.fail('sem permissão, nada de notificação'),
     },
-    './sessao-offline': { idDoUsuarioLocal: async () => 'u-1', lerSessaoDoDisco: async () => ({}) },
+    './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u-1', lerSessaoDoDisco: async () => ({}) },
     './voz': {
       transcreverAudio: async (uri) => {
         const r = transcricoes[uri];

@@ -95,7 +95,7 @@ function carregar(arquivo) {
     '@/modules/grana-voice-widget': { definirEstado() {} },
     './offline-cache': { isLikelyNetworkError: () => false },
     './widget-voz-notificacoes': {},
-    './sessao-offline': { idDoUsuarioLocal: async () => 'u-1', lerSessaoDoDisco: async () => ({}) },
+    './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u-1', lerSessaoDoDisco: async () => ({}) },
     './voz': {
       transcreverAudio: async () => assert.fail('a transcrição vem pronta no payload'),
       mensagemDeErroVoz: (codigo) => ({ titulo: 'Erro ' + codigo, texto: 'Texto ' + codigo }),

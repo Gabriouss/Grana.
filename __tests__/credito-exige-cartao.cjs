@@ -69,7 +69,7 @@ async function camadaDeDados() {
   const data = carregar('lib/data.ts', {
     './supabase': { supabase },
     './cache-de-tela': { comCacheOffline: (_n, buscar) => buscar, invalidarRespostasAtrasadas() {} },
-    './sessao-offline': { idDoUsuarioLocal: async () => 'u-1' },
+    './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u-1' },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
     './creditLimitAlert': { checarLimiteCartao: async () => {} },
     './paginacao': { buscarTodasAsPaginas: async () => [] },
@@ -134,7 +134,7 @@ async function recusaNaVoz() {
       multiGet: async (keys) => keys.map((k) => [k, storage.get(k)]),
     } },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
-    './sessao-offline': { idDoUsuarioLocal: async () => 'u-1' },
+    './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u-1' },
     './widget-voz-notificacoes': { notificarRevisao: async (titulo, texto) => {
       if (revisaoFalha) throw new Error('canal indisponivel');
       revisoes.push([titulo, texto]);
@@ -213,7 +213,7 @@ async function nucleoDaVoz() {
     },
     './creditLimitAlert': { checarLimiteCartao: async () => {} },
     './supabase': { supabase: { auth: { getSession: async () => ({ data: { session: { user: { id: 'u-1' } } } }) } } },
-    './sessao-offline': { idDoUsuarioLocal: async () => 'u-1', lerSessaoDoDisco: async () => null },
+    './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u-1', lerSessaoDoDisco: async () => null },
     './widget-voz-pendentes': { adicionarVozPendente: async () => {}, listarVozesPendentes: async () => [], removerVozPendente: async () => {}, reservarFalaEmAndamento: async () => true, liberarFalaEmAndamento: async () => {} },
     './widgets-home-sync': { sincronizarResumoDosWidgets: async () => {} },
     './limits': { LIMITS: { maxAmount: 1e9, maxInstallments: 36, minInstallments: 2, descricao: 120 } },
