@@ -112,7 +112,7 @@ const csvDireto = (() => {
     ok(x.includes('05 de out. de 2026') || /05\s+de\s+out/.test(x) || /5\s+de\s+out/.test(x), 'período em português');
     const recs = walk(t.raiz).filter((n) => n.tag === 'article');
     ok(recs.length === 3 && recs.length <= 3, 'no máximo três recomendações, aqui três');
-    ok(x.includes('Inconclusiva, ação suspensa') && x.includes('Informativa'), 'estado de cada recomendação em texto');
+    ok(recs.every(r => texto(r).includes('Inconclusiva, ação suspensa')), 'fonte parcial e amostra insuficiente mantêm cada recomendação inconclusiva');
     ok(x.includes('Amostra pequena') && x.includes('6 observados') && x.includes('política aprovada'), 'amostra com tamanho e política');
     ok(x.includes('Origem desconhecida nunca é tratada como orgânica') && x.includes('Hipótese') && x.includes('Ação sugerida'), 'origem desconhecida e hipótese/ação presentes');
     ok(x.includes('1 candidata ficou de fora'), 'candidata omitida é contada, sem segunda lista');
@@ -125,7 +125,10 @@ const csvDireto = (() => {
     const assin = linhas.find((l) => l.includes('Novas assinaturas pagas'));
     ok(assin.includes('12') && assin.includes('Parcial'), 'valor parcial aparece com o selo Parcial');
     const rev = linhas.find((l) => l.includes('Reembolsos e chargebacks'));
-    ok(/\b0\b/.test(rev) && rev.includes('Observado'), 'zero só quando observado');
+    ok(rev.includes('Sem valor') && rev.includes('Parcial') && !rev.includes('Observado'), 'Beacon: reversões sem prova de completude não viram zero observado');
+    const refunds = RELATORIO_DE_TESTE.metrics.find(m => m.metricId === 'cakto_refunds_chargebacks');
+    ok(refunds.value === null && refunds.state === 'partial' && refunds.noteCodes.includes('ledger_completeness_unproven'), 'fixture conserva ausência e motivo da cobertura parcial');
+    igual(sandbox.valorDaMetrica({ value: 0, unit: 'BRL', state: 'observed' }), '0 BRL', 'zero efetivamente observado continua sendo exibido');
     ok(x.includes('não é lucro'), 'receita bruta não é chamada de lucro');
   }
   { // exportar CSV: manda o MESMO relatório; sucesso
