@@ -109,15 +109,17 @@ export async function montar(raiz, ctx) {
     if (!visiveis.length) partes.push(h('p', { texto: 'Nenhum dos itens carregados está nesse andamento.' }));
     else {
       partes.push(ctx.tabela([
-        { titulo: 'Mensagem', valor: (i) => h('span', { class: 'feedback-mensagem', texto: resumo(i.mensagem) }) },
+        // Andamento e ação moram na primeira coluna: em tela estreita a tabela rola de lado as colunas do fim ficam escondidas.
+        { titulo: 'Mensagem', valor: (i) => h('div', { class: 'feedback-mensagem', style: 'min-width: min(26ch, 70vw)' },
+          h('p', { texto: resumo(i.mensagem) }),
+          h('p', {}, ctx.selo(NIVEL_ESTADO[i.gestao.estado] || 'neutro', NOME_ESTADO[i.gestao.estado] || i.gestao.estado)),
+          h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Gerir', 'aria-label': `Gerir feedback: ${resumo(i.mensagem).slice(0, 40)}`, disabled: !gestaoDisponivel, onclick: (e) => gerir(i, e.currentTarget) })) },
         { titulo: 'Tipo e nota', valor: (i) => `${NOME_TIPO[i.tipo] || i.tipo}${i.nota ? ` · nota ${i.nota}` : ''}` },
         { titulo: 'Versão do app', valor: (i) => i.versaoApp || 'não informada' },
         { titulo: 'No app', valor: (i) => STATUS_APP[i.status] || i.status },
         { titulo: 'Uso público', valor: (i) => (i.usoPublicoAutorizado ? 'Autorizado' : 'Não autorizado') },
-        { titulo: 'Andamento', valor: (i) => ctx.selo(NIVEL_ESTADO[i.gestao.estado] || 'neutro', NOME_ESTADO[i.gestao.estado] || i.gestao.estado) },
         { titulo: 'Prioridade', valor: (i) => NOME_PRIORIDADE[i.gestao.prioridade] || 'Sem prioridade' },
         { titulo: 'Recebido', valor: (i) => ctx.formatar.dataHora(i.criadoEm) },
-        { titulo: 'Ação', valor: (i) => h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Gerir', disabled: !gestaoDisponivel, onclick: (e) => gerir(i, e.currentTarget) }) },
       ], visiveis, { legenda: 'Feedbacks recebidos, do mais novo ao mais antigo' }));
     }
     if (haMais) partes.push(h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Carregar mais', onclick: () => carregar(false) }));
@@ -129,26 +131,37 @@ export async function montar(raiz, ctx) {
     botao.disabled = true;
     const g = item.gestao;
     try {
-      const v = await ctx.formulario({
-        titulo: 'Gerir feedback',
-        texto: 'Não cole dado pessoal nos campos abaixo. Resolvido exige evidência e versão da resolução.',
-        campos: [
-          { nome: 'estado', rotulo: 'Andamento', tipo: 'select', opcoes: ESTADOS.map(([valor, rotulo]) => ({ valor, rotulo })), valor: g.estado },
-          { nome: 'prioridade', rotulo: 'Prioridade', tipo: 'select', opcoes: PRIORIDADES.map(([valor, rotulo]) => ({ valor, rotulo })), valor: g.prioridade || '' },
-          { nome: 'responsavel', rotulo: 'Responsável', tipo: 'text', valor: g.responsavel || '', ajuda: 'Até 80 caracteres.' },
-          { nome: 'etiquetas', rotulo: 'Etiquetas', tipo: 'text', valor: g.etiquetas.join(', '), ajuda: 'Separe por vírgula. Até 8, de até 30 caracteres.' },
-          { nome: 'versaoResolucao', rotulo: 'Versão da resolução', tipo: 'text', valor: g.versaoResolucao || '', ajuda: 'Ex.: 1.11.0' },
-          { nome: 'evidencia', rotulo: 'Evidência da resolução', tipo: 'textarea', linhas: 3, valor: g.evidencia || '', ajuda: 'Até 500 caracteres. Resolvido sozinho não prova que a correção chegou ao app instalado.' },
-        ],
-        rotuloBotao: 'Salvar gestão',
-      });
-      if (!v || ctx.obsoleta()) return;
-      const mudanca = corpoDaGestao(item, v);
-      if (Object.keys(mudanca).length === 1) { ctx.aviso('Nada mudou.', 'info'); return; }
-      if (mudanca.estado === 'resolvido' && !((mudanca.evidencia ?? g.evidencia) && (mudanca.versaoResolucao ?? g.versaoResolucao))) {
-        ctx.aviso('Para marcar como Resolvido, preencha a evidência e a versão da resolução. Nada foi gravado.', 'erro');
-        return;
+      // O formulário reabre com o que foi digitado e a explicação no topo quando Resolvido falta evidência ou versão:
+      // fechar e mostrar só um aviso faria a pessoa redigitar tudo.
+      let inicial = { estado: g.estado, prioridade: g.prioridade || '', responsavel: g.responsavel || '', etiquetas: g.etiquetas.join(', '), versaoResolucao: g.versaoResolucao || '', evidencia: g.evidencia || '' };
+      let correcao = '';
+      let mudanca = null;
+      for (let tentativa = 0; tentativa < 5 && !mudanca; tentativa += 1) {
+        const v = await ctx.formulario({
+          titulo: 'Gerir feedback',
+          texto: correcao || 'Não cole dado pessoal nos campos abaixo. Resolvido exige evidência e versão da resolução.',
+          campos: [
+            { nome: 'estado', rotulo: 'Andamento', tipo: 'select', opcoes: ESTADOS.map(([valor, rotulo]) => ({ valor, rotulo })), valor: inicial.estado },
+            { nome: 'prioridade', rotulo: 'Prioridade', tipo: 'select', opcoes: PRIORIDADES.map(([valor, rotulo]) => ({ valor, rotulo })), valor: inicial.prioridade },
+            { nome: 'responsavel', rotulo: 'Responsável', tipo: 'text', valor: inicial.responsavel, ajuda: 'Até 80 caracteres.' },
+            { nome: 'etiquetas', rotulo: 'Etiquetas', tipo: 'text', valor: inicial.etiquetas, ajuda: 'Separe por vírgula. Até 8, de até 30 caracteres.' },
+            { nome: 'versaoResolucao', rotulo: 'Versão da resolução', tipo: 'text', valor: inicial.versaoResolucao, ajuda: 'Ex.: 1.11.0' },
+            { nome: 'evidencia', rotulo: 'Evidência da resolução', tipo: 'textarea', linhas: 3, valor: inicial.evidencia, ajuda: 'Até 500 caracteres. Resolvido sozinho não prova que a correção chegou ao app instalado.' },
+          ],
+          rotuloBotao: 'Salvar gestão',
+        });
+        if (!v || ctx.obsoleta()) return;
+        const candidata = corpoDaGestao(item, v);
+        if (Object.keys(candidata).length === 1) { ctx.aviso('Nada mudou.', 'info'); return; }
+        if (candidata.estado === 'resolvido' && !((candidata.evidencia ?? g.evidencia) && (candidata.versaoResolucao ?? g.versaoResolucao))) {
+          inicial = v;
+          correcao = 'Para marcar como Resolvido, preencha a evidência e a versão da resolução. Nada foi gravado.';
+          ctx.aviso(correcao, 'erro');
+          continue;
+        }
+        mudanca = candidata;
       }
+      if (!mudanca) return;
       if (mudanca.estado === 'arquivado') {
         const ok = await ctx.confirmar({ titulo: 'Arquivar este feedback?', texto: 'Ele sai da triagem. Dá para reabrir mudando o andamento depois.', detalhes: [resumo(item.mensagem).slice(0, 80)], rotuloBotao: 'Arquivar', perigo: true });
         if (ok !== true || ctx.obsoleta()) return;

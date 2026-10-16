@@ -246,6 +246,7 @@ function modulo(rotas, config = fakeConfig()) {
     const t = await tela({ dados: base(), formulario: valores({ estado: 'resolvido', evidencia: 'Commit 02235ca' }) });
     await botao(t.raiz, 'Gerir').attrs.onclick({ currentTarget: botao(t.raiz, 'Gerir') });
     ok(!t.chamadas.some((c) => c[0] === 'POST') && t.avisos.some((a) => /Resolvido/.test(a[0]) && a[1] === 'erro'), 'Resolvido sem versão não grava e explica');
+    ok(t.chamadas.filter((c) => c[0] === 'FORM').length > 1, 'o formulário reabre em vez de descartar o que foi digitado');
   }
   { // recusa do banco vira aviso, não sucesso
     const t = await tela({ dados: base(), formulario: valores({ prioridade: 'baixa' }), acao: { id: ID1, recusa: 'resolvido-exige-evidencia-e-versao' } });
