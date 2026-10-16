@@ -96,6 +96,8 @@ async function test(nome, fn) { await fn(); n++; console.log('OK ' + nome); }
     assert.equal(r.status, 200); assert.equal(h.calls.length, 1);
     assert.deepEqual(plain(h.calls[0].eq), ['criado_por', ADMIN]); assert.equal(h.calls[0].limit, 50);
     assert.equal(h.calls[0].select.includes('texto'), false); assert.equal(h.calls[0].select.includes('criado_por'), false);
+    assert.equal(h.calls[0].select.includes('commit_correcao'), true);
+    assert.equal(json.dados.pedidos[0].commit, null);
     assert.equal(json.dados.pedidos[0].estado, 'em-correcao'); assert.equal('textoOriginal' in json.dados.pedidos[0], false); semSegredo(json);
   });
   await test('nao admin, sem aal2, sem token: zero chamada ao banco e cliente privilegiado nunca nasce', async () => {

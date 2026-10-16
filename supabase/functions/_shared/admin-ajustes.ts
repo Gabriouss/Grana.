@@ -63,7 +63,7 @@ function pedidoDto(r: Record<string, unknown>) {
   }
   return {
     id: r.id, pecaId: r.peca_id, caminho: r.caminho, versaoAlvo: sha(r.versao_alvo), estado: r.estado,
-    tentativas: r.tentativas, versaoCorrigida: sha(r.versao_corrigida), aceiteEm: data(r.aceite_em),
+    tentativas: r.tentativas, versaoCorrigida: sha(r.versao_corrigida), commit: sha(r.commit_correcao), aceiteEm: data(r.aceite_em),
     criadoEm: data(r.criado_em), atualizadoEm: data(r.atualizado_em), importadoEm: data(r.importado_em),
   };
 }
@@ -75,7 +75,7 @@ export const operacaoAjustes: OperacaoAdmin<PedidoAjustes> = {
   executar: async (cliente: SupabaseClient, pedido, { userId, signal }) => {
     if (pedido.recurso === 'ajustes-listar') {
       const r = await consultaComPrazo((s) => cliente.from('admin_ajuste_pedidos')
-        .select('id,peca_id,caminho,versao_alvo,estado,tentativas,versao_corrigida,aceite_em,criado_em,atualizado_em,importado_em')
+        .select('id,peca_id,caminho,versao_alvo,estado,tentativas,versao_corrigida,commit_correcao,aceite_em,criado_em,atualizado_em,importado_em')
         .eq('criado_por', userId).order('criado_em', { ascending: false }).limit(50).abortSignal(s), signal);
       if (r.error || !Array.isArray(r.data)) throw new Error('consulta');
       return { dados: { pedidos: r.data.map((x) => pedidoDto(x as Record<string, unknown>)) } };
