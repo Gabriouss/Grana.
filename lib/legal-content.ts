@@ -34,7 +34,7 @@ const EMAIL_CONTATO = '[contato@granaponto.com.br](mailto:contato@granaponto.com
 
 export const POLITICA_PRIVACIDADE: DocumentoLegal = {
   titulo: 'Política de Privacidade',
-  atualizadoEm: '12 de outubro de 2026',
+  atualizadoEm: '16 de outubro de 2026',
   blocos: [
     {
       tipo: 'paragrafo',
@@ -117,12 +117,17 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
     {
       tipo: 'paragrafo',
       texto:
-        `Há duas exceções, e elas ficam registradas aqui por inteiro. A primeira: os feedbacks que você enviar pelo app continuam guardados depois da exclusão, com os campos de vínculo anonimizados. Apagamos o vínculo com a sua conta, a identificação do aparelho e qualquer imagem anexada; ficam o tipo, a nota, o texto e a data, que é o que nos ajuda a corrigir e melhorar o app. O texto que você escreveu é mantido como está. Se ele contiver dado pessoal, peça a remoção por ${EMAIL_CONTATO} e apagamos o comentário.`,
+        `Há três exceções, e elas ficam registradas aqui por inteiro. A primeira: os feedbacks que você enviar pelo app continuam guardados depois da exclusão, com os campos de vínculo anonimizados. Apagamos o vínculo com a sua conta, a identificação do aparelho e qualquer imagem anexada; ficam o tipo, a nota, o texto e a data, que é o que nos ajuda a corrigir e melhorar o app. O texto que você escreveu é mantido como está. Se ele contiver dado pessoal, peça a remoção por ${EMAIL_CONTATO} e apagamos o comentário.`,
     },
     {
       tipo: 'paragrafo',
       texto:
         `A segunda: os e-mails trocados com o nosso atendimento ficam na caixa de e-mail do atendimento, fora do banco de dados do app, e por isso a exclusão da conta não os apaga. Guardamos essas mensagens para acompanhar a sua solicitação e eventuais pedidos seguintes sobre o mesmo assunto. Para apagá-las, peça por ${EMAIL_CONTATO} e excluímos as mensagens trocadas com você.`,
+    },
+    {
+      tipo: 'paragrafo',
+      texto:
+        'A terceira: os registros de pagamento da assinatura (valor, desconto, taxas, forma de pagamento, parcelas, plano e data) continuam guardados depois da exclusão, porque precisamos deles para cumprir obrigações fiscais e contábeis. Na exclusão, apagamos dessas linhas o código do pedido e o da assinatura, que são o que as liga a você; ficam só os valores e as datas.',
     },
     {
       tipo: 'paragrafo',

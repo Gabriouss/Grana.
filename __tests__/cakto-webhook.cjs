@@ -235,11 +235,12 @@ checar('livro: valores', [linha.valor_bruto, linha.desconto, linha.taxas, linha.
 checar('livro: moeda', linha.moeda, 'BRL');
 checar('livro: pedido pai e assinatura', [linha.parent_order_id, linha.subscription_id], ['PEtfqq3', 'd464132a-fcfa-4693-a6aa-a99483f06740']);
 checar('livro: compra aprovada é primeira compra', linha.primeira_compra, true);
-checar('livro: utm', [linha.utm_source, linha.utm_medium, linha.utm_campaign, linha.utm_term, linha.utm_content, linha.sck],
-  ['instagram', 'reels', 'r13', null, null, 'bio']);
-checar('livro: oferta, produto, cupom, método, parcelas',
-  [linha.oferta_id, linha.produto_id, linha.cupom, linha.metodo_pagamento, linha.parcelas],
-  ['jbwjmis', 'f947c21c-d8f0-41a1-a0a6-fede9f27b3b7', 'BEMVINDO', 'credit_card', 1]);
+/* Cupom, UTM e sck ficam fora do livro (revisão do Watchtower, 16/10/2026):
+   texto livre que pode conter dado pessoal. Ver cobranca-eventos-lgpd.cjs. */
+checar('livro: sem cupom, UTM nem sck', Object.keys(linha).filter((k) => /utm|cupom|sck/.test(k)), []);
+checar('livro: oferta, produto, método, parcelas',
+  [linha.oferta_id, linha.produto_id, linha.metodo_pagamento, linha.parcelas],
+  ['jbwjmis', 'f947c21c-d8f0-41a1-a0a6-fede9f27b3b7', 'credit_card', 1]);
 /* Nenhum dado pessoal entra no livro: nome, e-mail, telefone e documento do
    comprador estão no payload e não podem aparecer em campo nenhum. */
 const textoDaLinha = JSON.stringify(linha).toLowerCase();

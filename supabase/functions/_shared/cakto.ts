@@ -183,13 +183,6 @@ export type LinhaCobranca = {
   parcelas: number | null;
   oferta_id: string | null;
   produto_id: string | null;
-  cupom: string | null;
-  utm_source: string | null;
-  utm_medium: string | null;
-  utm_campaign: string | null;
-  utm_term: string | null;
-  utm_content: string | null;
-  sck: string | null;
 };
 
 /** Valor em reais com 2 casas, ou nulo. Aceita número ou texto "5.00". */
@@ -227,12 +220,8 @@ export function linhaCobrancaCakto(
     parcelas: Number.isInteger(parcelas) && parcelas > 0 && parcelas <= 24 ? parcelas : null,
     oferta_id: texto(body, ['data.offer.id'], 100),
     produto_id: texto(body, ['data.product.id'], 100),
-    cupom: texto(body, ['data.couponCode'], 100),
-    utm_source: texto(body, ['data.utm_source'], 200),
-    utm_medium: texto(body, ['data.utm_medium'], 200),
-    utm_campaign: texto(body, ['data.utm_campaign'], 200),
-    utm_term: texto(body, ['data.utm_term'], 200),
-    utm_content: texto(body, ['data.utm_content'], 200),
-    sck: texto(body, ['data.sck'], 200),
+    /* Cupom, UTM e sck ficam FORA (revisão do Watchtower, 16/10/2026): são
+       texto livre e podem conter dado pessoal. Voltam só com códigos de
+       campanha controlados pelo servidor e contrato de minimização aprovado. */
   };
 }

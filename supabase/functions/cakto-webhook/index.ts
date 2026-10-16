@@ -90,7 +90,7 @@ Deno.serve(async (req: Request) => {
   const payloadHash = await sha256Hex(rawBody);
   const eventId = (evento.eventId ?? payloadHash).slice(0, 255);
 
-  /* Livro-razão de cobrança (B2): valor e origem, sem dado pessoal. Grava
+  /* Livro-razão de cobrança (B2): valores do pagamento, sem atribuição de marketing. Grava
      antes da assinatura e nunca a bloqueia: falha aqui perde só o registro
      financeiro, e o acesso de quem pagou vale mais. Mas não cala: a Cakto não
      reenvia, então o log leva o que basta para reconciliar pela API dela. */
@@ -102,7 +102,7 @@ Deno.serve(async (req: Request) => {
       console.error('[cakto-webhook] livro-razão NÃO gravado', { code: erroLivro.code, eventType: evento.type, orderId: evento.orderId });
     }
   } catch (e) {
-    console.error('[cakto-webhook] livro-razão NÃO gravado', { erro: String(e), eventType: evento.type, orderId: evento.orderId });
+    console.error('[cakto-webhook] livro-razão NÃO gravado', { erro: e instanceof Error ? e.name : 'desconhecido', eventType: evento.type, orderId: evento.orderId });
   }
   const { data, error } = await supabase.rpc('processar_evento_assinatura', {
     p_provider: 'cakto',
