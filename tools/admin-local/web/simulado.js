@@ -171,6 +171,7 @@ const leituras = {
   },
   '/api/marketing/trafego': () => ({ campanhas: campanhas.map((c) => ({ ...c })) }),
   '/api/marketing/notificacoes': () => notificacoesSim(),
+  '/api/marketing/publicacoes-simulacao': () => ({ modo: 'simulacao', status: 'indisponivel', motivo: 'Modo de demonstração sem servidor local: simulação de publicações indisponível.', faltantes: [] }),
   '/api/marketing/resultados': () => resultadosDemo(),
   '/api/marketing/documento': () => ({ texto: DOC, caminho: 'docs/marketing/painel/DOCUMENTO-DE-MARKETING.md' }),
 };

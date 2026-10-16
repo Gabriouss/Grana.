@@ -26,6 +26,7 @@ const ROTAS = {
   'marketing/feedbacks': { modulo: 'feedbacks', titulo: 'Feedbacks' },
   'marketing/feed': { modulo: 'feed', titulo: 'Feed' },
   'marketing/calendario': { modulo: 'calendario', titulo: 'Calendário' },
+  'marketing/publicacoes': { modulo: 'publicacoes', titulo: 'Publicação e pausa' },
   'marketing/trafego': { modulo: 'trafego', titulo: 'Tráfego pago' },
   'marketing/resultados': { modulo: 'resultados', titulo: 'Resultados de marketing' },
   'marketing/aprendizado': { modulo: 'aprendizado', titulo: 'Aprendizado e relatórios' },

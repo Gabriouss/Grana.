@@ -1830,6 +1830,13 @@ details.secao-recolhida > .secao { margin: 0; padding: 0; border: 0; background:
 /* Gaveta fechada no estreito: o app.js põe inert; o clique também não atravessa */
 .lateral[inert] { pointer-events: none; }
 
+.publicacoes-pausas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: var(--s-lg); }
+.publicacoes-lista { display: grid; gap: var(--s-lg); }
+.publicacoes .cartao { display: flex; flex-direction: column; gap: var(--s-md); min-width: 0; }
+.publicacoes-chave, .publicacoes-recibo, .publicacoes-detalhe p { overflow-wrap: anywhere; }
+.publicacoes-manifesto { white-space: pre-wrap; overflow-wrap: anywhere; padding: var(--s-lg); border: 1px solid var(--rule); border-radius: var(--r-md); font-size: var(--t-legenda); }
+.publicacoes-recibo:empty { display: none; }
+
 /* ── Adendo 2 do Anvil: acesso, bloqueio, inatividade, sair ───────────── */
 /* Ficam direto no body, fora da .casca (escondida sem sessão). Tom calmo: a
    tela explica o que houve e o próximo passo; danger só no erro de fato. */
