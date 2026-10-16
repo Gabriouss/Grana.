@@ -1,6 +1,7 @@
 import Head from 'expo-router/head';
 import type { FormEvent, ReactNode } from 'react';
 import type { ErroAdmin, RespostaAdmin, VisaoAdmin } from '@/lib/admin-web';
+import FeedbacksAdmin from './FeedbacksAdmin.web';
 import './admin-visual.css';
 
 export type EtapaAdminVisual =
@@ -109,7 +110,7 @@ export default function AdminVisual({
           <div className="admin-visual__abertura">
             <p className="admin-visual__sobretitulo">Grana. por dentro</p>
             <h1 id="admin-titulo" tabIndex={-1}>{etapa === 'pronto' ? 'Visão geral' : 'Seu acesso ao painel'}</h1>
-            <p>Consulta dos números agregados do Grana.</p>
+            <p>{etapa === 'pronto' ? 'Números agregados do Grana. e o que as pessoas mandam pelo app.' : 'Consulta dos números agregados do Grana.'}</p>
           </div>
 
           <div className="admin-visual__principal">
@@ -256,11 +257,12 @@ export default function AdminVisual({
                     <p className="admin-visual__texto-secundario">Versão do contrato: {resumo.contrato}</p>
                   </CartaoMetrica>
                 </div>
+                <FeedbacksAdmin />
               </>
             )}
           </div>
 
-          <footer className="admin-visual__rodape">Grana. · Painel de consulta · Dados agregados</footer>
+          <footer className="admin-visual__rodape">Grana. · Painel de consulta · Só leitura</footer>
         </div>
       </main>
     </>

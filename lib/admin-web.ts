@@ -40,20 +40,67 @@ function validarDados(recurso: 'acesso' | 'visao-geral', dados: any): boolean {
 
 // Um único prazo inclui sessão, cabeçalhos E corpo. Nenhum retry automático.
 export async function consultarAdmin<T>(recurso: 'acesso' | 'visao-geral'): Promise<RespostaAdmin<T>> {
+  return chamarAdmin<T>('admin-consulta', { recurso }, (dados) => {
+    if (!validarDados(recurso, dados)) return false;
+    if (recurso === 'visao-geral') {
+      // Um bloco indisponível não transporta conteúdo residual do servidor.
+      for (const nome of Object.keys(dados)) {
+        if (dados[nome].indisponivel === true) dados[nome] = { indisponivel: true };
+      }
+    }
+    return true;
+  });
+}
+
+export type TipoFeedback = 'suggestion' | 'bug' | 'praise' | 'other';
+export type StatusFeedback = 'pending' | 'reviewed' | 'resolved';
+export type FeedbackAdmin = {
+  id: string; tipo: TipoFeedback; nota: number | null; mensagem: string; status: StatusFeedback;
+  versaoApp: string | null; plataforma: string | null; usoPublicoAutorizado: boolean; temConta: boolean; criadoEm: string;
+};
+export type PaginaFeedbacks = { feedbacks: FeedbackAdmin[]; haMais: boolean };
+export type FiltrosFeedbacks = { tipo?: TipoFeedback; nota?: number; versao?: string; desde?: string; ate?: string };
+
+const TIPOS_FEEDBACK = ['suggestion', 'bug', 'praise', 'other'];
+const STATUS_FEEDBACK = ['pending', 'reviewed', 'resolved'];
+const CAMPOS_FEEDBACK = ['id', 'tipo', 'nota', 'mensagem', 'status', 'versaoApp', 'plataforma', 'usoPublicoAutorizado', 'temConta', 'criadoEm'];
+
+function feedbackValido(f: any): boolean {
+  const textoCurto = (v: unknown) => v === null || (typeof v === 'string' && v.length <= 40);
+  return Boolean(f && typeof f === 'object' && !Array.isArray(f) && Object.keys(f).every((k) => CAMPOS_FEEDBACK.includes(k)) &&
+    typeof f.id === 'string' && /^[0-9a-f-]{36}$/i.test(f.id) && TIPOS_FEEDBACK.includes(f.tipo) && STATUS_FEEDBACK.includes(f.status) &&
+    (f.nota === null || (Number.isInteger(f.nota) && f.nota >= 1 && f.nota <= 5)) &&
+    typeof f.mensagem === 'string' && f.mensagem.length >= 1 && f.mensagem.length <= 2000 &&
+    textoCurto(f.versaoApp) && textoCurto(f.plataforma) && typeof f.usoPublicoAutorizado === 'boolean' && typeof f.temConta === 'boolean' &&
+    typeof f.criadoEm === 'string' && Number.isFinite(Date.parse(f.criadoEm)));
+}
+
+// Leitura dos feedbacks (B3/B3b). Mesmo prazo, mesmos recibos e nenhum retry de consultarAdmin.
+// `antesDe` é o cursor: o criadoEm do último item já mostrado.
+export async function listarFeedbacksAdmin(filtros: FiltrosFeedbacks, antesDe?: string): Promise<RespostaAdmin<PaginaFeedbacks>> {
+  const corpo: Record<string, unknown> = { recurso: 'feedbacks-listar' };
+  for (const [k, v] of Object.entries(filtros)) if (v !== undefined && v !== '') corpo[k] = v;
+  if (antesDe) corpo.antesDe = antesDe;
+  return chamarAdmin<PaginaFeedbacks>('admin-feedbacks', corpo, (dados) =>
+    Boolean(dados && typeof dados === 'object' && Object.keys(dados).every((k) => k === 'feedbacks' || k === 'haMais') &&
+      Array.isArray(dados.feedbacks) && dados.feedbacks.length <= 50 && dados.feedbacks.every(feedbackValido) && typeof dados.haMais === 'boolean'));
+}
+
+async function chamarAdmin<T>(funcao: 'admin-consulta' | 'admin-feedbacks', corpo: Record<string, unknown>, validar: (dados: any) => boolean): Promise<RespostaAdmin<T>> {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const trabalho = async () => {
     const { data, error } = await supabase.auth.getSession();
     if (error || !data.session) throw reciboLocal('nao-autenticado', 'Sua sessão terminou. Entre novamente.');
     if (controller.signal.aborted) throw reciboLocal('prazo', 'A consulta demorou demais. Tente de novo.');
-    const response = await fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/admin-consulta`, {
+    const response = await fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/${funcao}`, {
       method: 'POST', cache: 'no-store', signal: controller.signal,
       headers: { Authorization: `Bearer ${data.session.access_token}`, apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recurso }),
+      body: JSON.stringify(corpo),
     });
     const body = await response.json();
     if (!response.ok || body?.ok !== true) {
-      const codigos = ['limite', 'nao-autenticado', 'nao-autorizado', 'mfa-necessario', 'nao-configurado', 'prazo', 'origem-recusada', 'metodo-invalido', 'corpo-grande', 'pedido-invalido'];
+      const codigos = ['limite', 'nao-autenticado', 'nao-autorizado', 'mfa-necessario', 'nao-configurado', 'prazo', 'origem-recusada', 'metodo-invalido', 'corpo-grande', 'pedido-invalido', 'indisponivel'];
       const codigo = response.status === 429 ? 'limite' : codigos.includes(body?.erro?.codigo) ? body.erro.codigo : `http-${response.status}`;
       const mensagens: Record<string, string> = {
         limite: 'Muitas consultas. Tente de novo em um minuto.',
@@ -65,14 +112,8 @@ export async function consultarAdmin<T>(recurso: 'acesso' | 'visao-geral'): Prom
       throw new ErroAdmin(codigo, mensagens[codigo] ?? 'O servidor não concluiu a consulta. Tente de novo.',
         typeof body?.ocorrencia === 'string' && /^[a-zA-Z0-9-]{1,100}$/.test(body.ocorrencia) ? body.ocorrencia : `web-${globalThis.crypto.randomUUID()}`);
     }
-    if (body.contrato !== 1 || typeof body.geradoEm !== 'string' || !Number.isFinite(Date.parse(body.geradoEm)) || !validarDados(recurso, body.dados)) {
+    if (body.contrato !== 1 || typeof body.geradoEm !== 'string' || !Number.isFinite(Date.parse(body.geradoEm)) || !validar(body.dados)) {
       throw reciboLocal('resposta-invalida', 'O servidor devolveu uma resposta incompatível. Tente de novo.');
-    }
-    if (recurso === 'visao-geral') {
-      // Um bloco indisponível não transporta conteúdo residual do servidor.
-      for (const nome of Object.keys(body.dados)) {
-        if (body.dados[nome].indisponivel === true) body.dados[nome] = { indisponivel: true };
-      }
     }
     return { ok: true, contrato: body.contrato, geradoEm: body.geradoEm, dados: body.dados } as RespostaAdmin<T>;
   };

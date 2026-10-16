@@ -471,6 +471,239 @@
   font-size: 12px;
 }
 
+/* Feedbacks do app (B3b): leitura, não painel de números. A mensagem é o foco; tipo,
+   nota e data ficam numa linha de apoio acima, e o resto no rodapé do item. A largura
+   do texto para em ~70 caracteres para a leitura não virar varredura de olho. */
+.admin-feedbacks {
+  min-width: 0;
+  margin-block-start: 48px;
+  padding-block-start: 32px;
+  border-top: 1px solid var(--admin-borda);
+}
+
+.admin-feedbacks__cabecalho p {
+  color: var(--admin-apoio);
+}
+
+.admin-feedbacks h3 {
+  margin: 0 0 8px;
+  font-family: "NeueMachina-Regular";
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.admin-feedbacks__filtros {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px 16px;
+  margin-block: 20px 24px;
+  padding: 16px;
+  border: 1px solid var(--admin-borda);
+  border-radius: 16px;
+  background: var(--admin-superficie);
+}
+
+.admin-feedbacks__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.admin-feedbacks__campo label {
+  color: var(--admin-apoio);
+  font-size: 13px;
+}
+
+.admin-feedbacks__campo select,
+.admin-feedbacks__campo input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-borda-forte);
+  border-radius: 8px;
+  background: var(--admin-fundo);
+  color: var(--admin-tinta);
+  font-family: "NeueMachina-Regular";
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.admin-feedbacks__campo input::placeholder {
+  color: var(--admin-suave);
+  opacity: 1;
+}
+
+.admin-feedbacks__campo select option {
+  background: var(--admin-fundo);
+  color: var(--admin-tinta);
+}
+
+.admin-feedbacks__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-feedbacks__acoes > .admin-visual__botao {
+  flex: 1 1 120px;
+}
+
+.admin-feedbacks .admin-feedbacks__aviso {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--admin-perigo);
+  font-size: 14px;
+}
+
+.admin-feedbacks__resultado {
+  min-width: 0;
+}
+
+.admin-feedbacks__estado {
+  color: var(--admin-apoio);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.admin-feedbacks__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-feedbacks__item {
+  min-width: 0;
+  padding: 16px 20px;
+  border: 1px solid var(--admin-borda);
+  border-radius: 12px;
+  background: var(--admin-superficie);
+}
+
+.admin-feedbacks__item:focus-visible {
+  outline: 2px solid var(--admin-menta);
+  outline-offset: 3px;
+}
+
+.admin-feedbacks__item-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.admin-feedbacks__tipo {
+  padding: 2px 10px;
+  border: 1px solid var(--admin-borda-forte);
+  border-radius: 999px;
+  color: var(--admin-tinta);
+  font-family: "NeueMachina-Regular";
+}
+
+/* Só o problema ganha cor: é o que pede ação. Os outros tipos ficam neutros. */
+.admin-feedbacks__tipo-bug {
+  border-color: var(--admin-perigo);
+  color: var(--admin-perigo);
+}
+
+.admin-feedbacks__nota {
+  position: relative;
+  color: var(--admin-menta);
+  letter-spacing: 0.1em;
+}
+
+.admin-feedbacks__estrela-apagada {
+  color: var(--admin-borda-forte);
+}
+
+.admin-feedbacks__nota-vazia {
+  color: var(--admin-suave);
+  letter-spacing: 0;
+}
+
+.admin-feedbacks__quando {
+  margin-inline-start: auto;
+  color: var(--admin-suave);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.admin-feedbacks .admin-feedbacks__mensagem {
+  max-width: 70ch;
+  margin-block: 12px;
+  color: var(--admin-tinta);
+  font-size: 16px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+.admin-feedbacks__item-rodape {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  color: var(--admin-suave);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.admin-feedbacks__publico {
+  color: var(--admin-apoio);
+}
+
+.admin-feedbacks__so-leitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.admin-feedbacks__mais {
+  width: 100%;
+}
+
+@media (min-width: 560px) {
+  .admin-feedbacks__filtros {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-feedbacks__acoes {
+    grid-column: 1 / -1;
+  }
+
+  .admin-feedbacks__mais {
+    width: auto;
+  }
+}
+
+@media (min-width: 1080px) {
+  .admin-feedbacks__filtros {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+    align-items: end;
+  }
+
+  .admin-feedbacks__acoes {
+    grid-column: auto;
+    flex-wrap: nowrap;
+  }
+
+  .admin-feedbacks__acoes > .admin-visual__botao {
+    flex: 0 0 auto;
+  }
+}
+
 @media (min-width: 680px) {
   .admin-visual__grade {
     grid-template-columns: repeat(2, minmax(0, 1fr));
