@@ -44,7 +44,12 @@ function check(group, text, got, expected) {
 let task, writes = [], reviews = [];
 let wallets = [{ id: 'p', name: 'Pessoal', is_default: true }];
 let cards = [{ id: 'c6', name: 'C6', bank: 'C6', wallet_id: 'p' }];
+// sessao-offline REAL sobre supabase de duble (ver voz-valores-regressao.cjs): sem isso o loader falha no import de lib/supabase.ts.
+const sessaoOffline = load('lib/sessao-offline.ts', {
+  './supabase': { armazenamentoSessao: { getItem: async () => null, removeItem: async () => {} }, CHAVE_SESSAO: 'sessao', supabase: { auth: { getSession: async () => ({ data: { session: null } }) } } },
+});
 load('lib/widget-voz-task.ts', {
+  './sessao-offline': sessaoOffline,
   'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (_, factory) => { task = factory(); } } },
   './offline-cache': { isLikelyNetworkError: () => false },
   '@/modules/grana-voice-widget': { definirEstado() {} },
