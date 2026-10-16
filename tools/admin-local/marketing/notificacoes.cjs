@@ -6,11 +6,13 @@
 // livre nem usuário. O texto que a pessoa lê sai da tabela CODIGOS abaixo, escrita aqui: nenhum
 // texto vindo de fora chega à tela.
 //
-// A fundação remota (migration 20261015190000) ainda NÃO está aplicada, então esta fonte é um
-// dublê em memória marcado "dados de teste". Ele some a cada reinício do painel e não escreve em
-// lugar nenhum. Quando a fundação existir, só o corpo de `ler()` muda: a rota e a tela continuam.
+// A fonte remota usa o contrato E2 no servidor Node. Configuração/fundação ausentes
+// deixam a fonte indisponível e contador null. GRANA_ADMIN_SIMULAR=1 escolhe o dublê
+// em memória marcado como dados de teste; ele nunca substitui uma falha remota silenciosamente.
 
 const { ErroMarketing } = require('./catalogo.cjs');
+const config = require('../config.cjs');
+const { backend } = require('../adaptadores/marketing-backend.cjs');
 
 const CODIGOS = {
   'publicacao-precisa-conferir': { fonte: 'publicacoes', titulo: 'Confira o resultado no Instagram', resumo: 'A Meta não confirmou o resultado. Confira antes de repetir o envio.', acao: 'Conferir resultado', destino: '#/marketing/calendario' },
@@ -48,7 +50,7 @@ function publico(n) {
 }
 
 // GET /api/marketing/notificacoes
-function listarNotificacoes() {
+function listarTeste() {
   const notificacoes = estado.map(publico);
   return {
     fonte: 'dados-de-teste',
@@ -62,7 +64,7 @@ function listarNotificacoes() {
 
 // POST /api/marketing/notificacoes/ler  { ids: [...], desfazer?: true }
 // Leitura é reversível e não resolve nada: só mexe em lidaEm, e só de ids que existem.
-function marcarNotificacoes(raiz, corpo) {
+function marcarTeste(raiz, corpo) {
   const ids = corpo && corpo.ids;
   if (!Array.isArray(ids) || ids.length < 1 || ids.length > MAX_IDS || !ids.every((i) => typeof i === 'string' && ID.test(i))) {
     throw new ErroMarketing('ids-invalidos', `Mande de 1 a ${MAX_IDS} identificadores de notificação.`, 400);
@@ -76,7 +78,30 @@ function marcarNotificacoes(raiz, corpo) {
     if (!n.lidaEm) { atualizados++; return { ...n, lidaEm: agora }; }
     return n;
   });
-  return { atualizados, ...listarNotificacoes() };
+  return { atualizados, ...listarTeste() };
 }
 
-module.exports = { listarNotificacoes, marcarNotificacoes, CODIGOS, _reiniciar: () => { estado = sementes(); } };
+function listarNotificacoes() {
+  if (config.SIMULAR) return listarTeste();
+  return listarRemotas();
+}
+async function listarRemotas() {
+  const dados = await backend().notificacoes({ recurso: 'marketing-notificacoes' });
+  if (dados.status === 'indisponivel') return { ...dados, fonte: 'indisponivel', aviso: 'A fonte de notificações está indisponível. Nenhum contador foi presumido.', notificacoes: [], naoLidas: null, proximaPagina: null };
+  return { ...dados, fonte: 'remota', atualizadoEm: new Date().toISOString(),
+    notificacoes: dados.notificacoes.map(n => ({ ...publico(n), importancia: n.importancia === 'informacao' ? 'informacao' : 'agir' })) };
+}
+function marcarNotificacoes(raiz, corpo) {
+  if (config.SIMULAR) return marcarTeste(raiz, corpo);
+  return marcarRemotas(corpo);
+}
+async function marcarRemotas(corpo) {
+  // O contrato remoto preserva a primeira leitura; desfazer não tem RPC aprovada.
+  if (!corpo || Object.keys(corpo).some(k => !['ids', 'desfazer'].includes(k)) || (corpo.desfazer !== undefined && corpo.desfazer !== false)) {
+    throw new ErroMarketing('pedido-invalido', 'Desfazer leitura não está disponível na fonte remota.', 400);
+  }
+  const r = await backend().notificacoes({ recurso: 'marketing-ler', ids: corpo.ids });
+  if (r.status === 'indisponivel') return r;
+  return { ...await listarNotificacoes(), atualizados: r.atualizados };
+}
+module.exports = { listarNotificacoes, marcarNotificacoes, CODIGOS, _reiniciar: () => { estado = sementes(); }, _listarTeste: listarTeste, _marcarTeste: marcarTeste };

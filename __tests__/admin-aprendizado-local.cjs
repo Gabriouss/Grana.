@@ -22,6 +22,7 @@ const igual = (a, b, nome) => { assert.deepEqual(JSON.parse(JSON.stringify(a)), 
 const lerTela = (arq) => fs.readFileSync(path.join(ROOT, 'tools/admin-local/web/telas', arq), 'utf8');
 
 const mod = require(path.join(ROOT, 'tools/admin-local/marketing/relatorio-semanal.cjs'));
+mod._definirFonte(async () => null); // Sem consultar o .env ou a rede real no teste.
 const { RELATORIO_DE_TESTE } = (() => {
   const sb = {};
   vm.runInNewContext(lerTela('_relatorio-fixture.js').replace(/^export /gm, '') + '\n;globalThis.RELATORIO_DE_TESTE = RELATORIO_DE_TESTE;', sb);
@@ -96,7 +97,7 @@ const csvDireto = (() => {
   { // indisponível
     const t = await tela({ resposta: { status: 'indisponivel', motivo: mod.MOTIVO_SEM_FONTE, relatorio: null } });
     const x = texto(t.raiz);
-    ok(x.includes('Relatório semanal indisponível') && x.includes('Indisponível não é zero') && x.includes('ainda não está ligado'), 'sem fonte: a tela diz indisponível e por quê');
+    ok(x.includes('Relatório semanal indisponível') && x.includes('Indisponível não é zero') && x.includes('fontes não forneceram métricas'), 'sem fonte: a tela diz indisponível e por quê');
     ok(!x.includes('Exportar CSV') && botao(t.raiz, 'Ver com dados de teste'), 'sem relatório não há exportação; dados de teste só por botão explícito');
   }
   { // erro de leitura não vira vazio

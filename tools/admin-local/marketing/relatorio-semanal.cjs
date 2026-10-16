@@ -4,8 +4,8 @@
 // objeto; nada aqui recalcula métrica. O CSV vem de lib/admin-relatorio-csv.ts (Argon), transpilado em memória,
 // para não haver uma segunda implementação do exportador.
 //
-// Fonte: ainda não existe agregador (Harbor) que emita o WeeklyReport. Sem fonte, o estado é "indisponível",
-// com o motivo dito; nunca um relatório zerado. Quando o agregador existir, ele entra em `fonte`.
+// Fonte: agregador compartilhado E7 (Harbor). Sem métrica observada, estado indisponível;
+// com cobertura parcial, o mesmo objeto conserva todas as limitações por fonte.
 
 const fs = require('fs');
 const path = require('path');
@@ -14,7 +14,7 @@ const { ErroMarketing } = require('./catalogo.cjs');
 const RAIZ = path.resolve(__dirname, '..', '..', '..');
 const LIMITE_RECOMENDACOES = 3;
 const LIMITE_LINHAS = 2000;
-const MOTIVO_SEM_FONTE = 'O agregador do relatório semanal (contrato e7.v1) ainda não está ligado a este painel. Nenhum número foi calculado; nada aqui é zero.';
+const MOTIVO_SEM_FONTE = 'As fontes não forneceram métricas observadas para esta semana. Confira a configuração e a cobertura por fonte. Nenhum número foi calculado; nada aqui é zero.';
 
 let csv = null;
 function carregarCsv() {
@@ -30,7 +30,10 @@ function carregarCsv() {
 }
 
 // A fonte real entra aqui. Devolve um WeeklyReport ou null.
-let fonte = () => null;
+let fonte = async () => {
+  const dados = await require('../adaptadores/marketing-backend.cjs').backend().analytics('semana-anterior');
+  return dados.weeklyReport?.metrics.some(m => m.state === 'observed') ? dados.weeklyReport : null;
+};
 
 function validarRelatorio(r) {
   const ruim = (msg) => new ErroMarketing('relatorio-invalido', msg || 'O relatório não está no formato e7.v1.', 400);
@@ -46,7 +49,7 @@ function validarRelatorio(r) {
 }
 
 async function lerRelatorio() {
-  const r = fonte();
+  const r = await fonte();
   if (!r) return { status: 'indisponivel', motivo: MOTIVO_SEM_FONTE, relatorio: null };
   return { status: 'ok', relatorio: validarRelatorio(r) };
 }

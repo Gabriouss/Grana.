@@ -1,6 +1,6 @@
 'use strict';
 // Resultados de marketing do painel local (E4, Lumen): módulos reais. null nunca vira zero; sem credencial
-// da Meta é "Não configurado" (só os NOMES do que falta); o adaptador não chama Meta nem Cakto.
+// da Meta é "Não configurado" (só os NOMES do que falta); rede falsa nos testes.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -52,32 +52,22 @@ assert.match(cheio[0].variacao, /\+25,9%/);
 assert.equal(cheio[1].valor, '18');
 assert.match(cheio[2].nota, /Não é lucro/, 'receita bruta não se passa por lucro');
 
-// ---- adaptador do servidor: sem credencial, sem chamada externa
-const cfgPath = require.resolve('../tools/admin-local/config.cjs');
-const real = require(cfgPath);
-const chamadas = [];
-const original = { tem: real.tem };
-for (const [presentes, esperado] of [[[], 'nao-configurado'], [['META_READ_ACCESS_TOKEN', 'META_AD_ACCOUNT_ID', 'META_GRAPH_API_VERSION'], 'indisponivel']]) {
-  real.tem = (k) => { chamadas.push(k); return presentes.includes(k); };
-  delete require.cache[require.resolve('../tools/admin-local/adaptadores/meta-leitura.cjs')];
-  const ad = require('../tools/admin-local/adaptadores/meta-leitura.cjs');
-  const agora = new Date('2026-10-16T15:00:00Z');
-  const r = ad.ler({ agora });
-  assert.equal(r.meta.estado, esperado);
-  assert.equal(r.meta.investimentoCentavos, null, 'sem leitura real, investimento é null');
-  assert.equal(r.cakto.novasAssinaturas, null);
-  assert.equal(r.demonstracao, false);
-  assert.equal(r.periodos.hoje, null, 'hoje só com incluirHoje');
-  assert.equal(r.periodos.fuso, 'America/Sao_Paulo');
-  assert.deepEqual(copia(r.periodos.atual), { desde: '2026-09-16', ateExclusivo: '2026-10-16', ateInclusivo: '2026-10-15', parcial: false });
-  assert.deepEqual(copia(r.periodos.anterior), { desde: '2026-08-17', ateExclusivo: '2026-09-16', ateInclusivo: '2026-09-15', parcial: false });
-  assert.equal(ad.ler({ agora, incluirHoje: true }).periodos.hoje.parcial, true);
-  if (esperado === 'nao-configurado') assert.deepEqual(copia(r.meta.faltantes), ['META_READ_ACCESS_TOKEN', 'META_AD_ACCOUNT_ID', 'META_GRAPH_API_VERSION'], 'só nomes de variável, nunca valor');
-  else assert.equal(r.meta.motivo, 'leitura-nao-ligada-ao-painel-local');
-}
-real.tem = original.tem;
-const adSrc = fs.readFileSync('tools/admin-local/adaptadores/meta-leitura.cjs', 'utf8');
-assert.ok(!/fetch\(|https?\.request|require\(['"](node:)?https?['"]\)|process\.env/.test(adSrc), 'o adaptador não fala com a rede nem lê valor de segredo');
+// ---- adaptador Node real, sem .env/rede real no teste
+(async () => {
+const { criarBackend } = require('../tools/admin-local/adaptadores/marketing-backend.cjs');
+const agora = new Date('2026-10-16T15:00:00Z');
+const ad = criarBackend({ configuracao: { ler: () => null }, relogio: () => agora,
+  rede: () => { throw new Error('rede proibida'); } });
+const r = await ad.meta();
+assert.equal(r.meta.estado, 'nao-configurado');
+assert.equal(r.meta.investimentoCentavos, null);
+assert.equal(r.cakto.novasAssinaturas, null);
+assert.equal(r.periodos.hoje.parcial, true); // E4 mantém definição; meta.hoje é consulta opcional.
+assert.equal(r.periodos.fuso, 'America/Sao_Paulo');
+assert.deepEqual(copia(r.periodos.atual), { desde: '2026-09-16', ateExclusivo: '2026-10-16', ateInclusivo: '2026-10-15', parcial: false });
+assert.deepEqual(copia(r.periodos.anterior), { desde: '2026-08-17', ateExclusivo: '2026-09-16', ateInclusivo: '2026-09-15', parcial: false });
+assert.equal((await ad.meta({ incluirHoje: true })).periodos.hoje.parcial, true);
+assert.deepEqual(copia(r.meta.faltantes), ['META_READ_ACCESS_TOKEN', 'META_AD_ACCOUNT_ID', 'META_GRAPH_API_VERSION']);
 
 // ---- fiação e segurança do texto
 const rotas = fs.readFileSync('tools/admin-local/rotas.cjs', 'utf8');
@@ -97,3 +87,5 @@ for (const [, px] of bloco.matchAll(/font-size:\s*(\d+)px/g)) assert.ok(Number(p
 assert.ok(!/animation|transition/.test(bloco), 'sem movimento a desligar');
 
 console.log('admin-resultados-local: medidas sem zero inventado, adaptador sem credencial, fiação e texto seguro OK');
+
+})().catch(e => { console.error(e); process.exitCode = 1; });

@@ -54,6 +54,9 @@ igual(web.totalConhecido({ situacao: 'erro' }), null);
 igual(web.totalConhecido({ situacao: 'carregando' }), null);
 
 // ---- servidor local: dublê em memória
+const config = require('../tools/admin-local/config.cjs');
+const simulacaoAnterior = config.SIMULAR;
+config.SIMULAR = true; // Dados de teste somente por escolha explícita.
 const srv = require('../tools/admin-local/marketing/notificacoes.cjs');
 srv._reiniciar();
 const l0 = srv.listarNotificacoes();
@@ -79,6 +82,7 @@ assert.equal(r2.atualizados, 0, 'ler duas vezes não conta de novo');
 const r3 = srv.marcarNotificacoes('.', { ids: ['d1'], desfazer: true });
 assert.equal(r3.naoLidas, 3);
 srv._reiniciar();
+config.SIMULAR = simulacaoAnterior;
 
 // ---- fiação: rotas, casca e segurança do texto
 const rotas = fs.readFileSync('tools/admin-local/rotas.cjs', 'utf8');

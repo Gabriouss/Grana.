@@ -237,7 +237,8 @@ const GET = {
   },
   '/api/marketing/calendario/ensaio': (req, res) => rotaMarketingGet(res, 'meta-ensaio', ['ensaiar'], [], { modo: 'ensaio', realHabilitado: false, itens: [] }),
   '/api/marketing/cronograma': (req, res) => rotaMarketingGet(res, 'cronograma', ['ler'], [], null),
-  '/api/marketing/resultados': (req, res, url) => responderOk(res, adaptador('meta-leitura').ler({ incluirHoje: url.searchParams.get('incluirHoje') === '1' })),
+  '/api/marketing/resultados': async (req, res, url) => responderOk(res, await adaptador('meta-leitura').ler({ incluirHoje: url.searchParams.get('incluirHoje') === '1' })),
+  '/api/marketing/publicacoes-simulacao': (req, res) => rotaMarketingGet(res, 'publicacoes-simulacao', ['listar'], [], { status: 'indisponivel', modo: 'simulacao' }),
   '/api/marketing/notificacoes': (req, res) => rotaMarketingGet(res, 'notificacoes', ['listarNotificacoes'], [], { notificacoes: [], naoLidas: 0 }),
   '/api/marketing/aprendizado': (req, res) => rotaMarketingGet(res, 'relatorio-semanal', ['lerRelatorio'], [], { relatorio: null }),
   '/api/marketing/feedbacks': (req, res, url) => rotaMarketingGet(res, 'feedbacks', ['listarFeedbacks'], [filtrosDeFeedbacks(url)], { feedbacks: [], haMais: false, gestaoDisponivel: false }),
@@ -262,7 +263,7 @@ function pedidosComTitulo(lista) {
 }
 const ID_PECA = /^\/api\/marketing\/pecas\/([0-9a-f]{16})\/(aprovar|ajuste|promover|recusar)$/;
 const ANTERIOR = /^\/api\/marketing\/ajustes\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/anterior$/i;
-const MARKETING_POST = new Set(['/api/marketing/calendario', '/api/marketing/trafego', '/api/marketing/ajustes/aceitar', '/api/marketing/ajustes/retry', '/api/marketing/ajustes/reenviar', '/api/marketing/ajustes/encerrar', '/api/marketing/cronograma', '/api/marketing/cronograma/vinculo', '/api/marketing/notificacoes/ler', '/api/marketing/feedbacks/gestao', '/api/marketing/aprendizado/csv']);
+const MARKETING_POST = new Set(['/api/marketing/publicacoes-simulacao', '/api/marketing/calendario', '/api/marketing/trafego', '/api/marketing/ajustes/aceitar', '/api/marketing/ajustes/retry', '/api/marketing/ajustes/reenviar', '/api/marketing/ajustes/encerrar', '/api/marketing/cronograma', '/api/marketing/cronograma/vinculo', '/api/marketing/notificacoes/ler', '/api/marketing/feedbacks/gestao', '/api/marketing/aprendizado/csv']);
 const ACOES_BUILD = {
   '/api/eas/preparar-build': ['PREPARAR BUILD', 'prepararBuild'],
   '/api/eas/disparar-build': ['DISPARAR BUILD', 'dispararBuild'],
@@ -279,7 +280,10 @@ async function tratarAcao(req, res, url, corpo, sessao) {
 
   if (ehMarketing) {
     if (!seg.dentroDoLimite('marketing', 30, 60_000)) return responderErro(res, 429, 'limite', 'Muitas gravações seguidas. Espere um minuto.', null, { tentarEmSeg: 60 });
-    if (contemSegredoDoEnv(corpo) || pareceCredencial(corpo)) {
+    // E5 usa SHA-256 obrigatório como chave de idempotência, validado pelo contrato.
+    // Somente nesse endpoint ele não é confundido com texto para o repositório.
+    const inspecao = p === '/api/marketing/publicacoes-simulacao' ? { ...corpo, chave: undefined } : corpo;
+    if (contemSegredoDoEnv(corpo) || pareceCredencial(inspecao)) {
       registrar('recusa', { rota: p, motivo: 'parece-credencial', sessao: sessao.id });
       return responderErro(res, 422, 'parece-credencial', 'Esse texto parece uma senha, token ou chave. Ele seria gravado no repositório do GitHub, que é público. Tire o trecho e tente de novo.');
     }
@@ -316,7 +320,8 @@ async function tratarAcao(req, res, url, corpo, sessao) {
       registrar('acao', { rota: p, resultado: res.statusCode, sessao: sessao.id });
       return undefined;
     }
-    if (p === '/api/marketing/aprendizado/csv') r = rotaMarketingPost(res, 'relatorio-semanal', ['exportarCsv'], [corpo]);
+    if (p === '/api/marketing/publicacoes-simulacao') r = rotaMarketingPost(res, 'publicacoes-simulacao', ['executar'], [corpo]);
+    else if (p === '/api/marketing/aprendizado/csv') r = rotaMarketingPost(res, 'relatorio-semanal', ['exportarCsv'], [corpo]);
     else if (p === '/api/marketing/feedbacks/gestao') r = rotaMarketingPost(res, 'feedbacks', ['atualizarGestaoFeedback'], [corpo]);
     else if (p === '/api/marketing/notificacoes/ler') r = rotaMarketingPost(res, 'notificacoes', ['marcarNotificacoes'], [corpo]);
     else if (p === '/api/marketing/cronograma') r = rotaMarketingPost(res, 'cronograma', ['salvarManifesto'], [corpo]);

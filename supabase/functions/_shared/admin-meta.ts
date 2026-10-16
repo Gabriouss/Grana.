@@ -1,6 +1,7 @@
 import type { OperacaoAdmin } from './admin-autorizacao.ts';
 import { consultaComPrazo } from './admin-agregados.ts';
 import { lerCorpoLimitado } from './request-body.ts';
+import { semanaAnalitica } from '../../../lib/admin-analytics.ts';
 
 type PedidoMeta = { recurso: 'meta-leitura'; incluirHoje?: boolean };
 type Linha = Record<string, unknown>;
@@ -17,10 +18,20 @@ const validar = (p: unknown): PedidoMeta => {
   return { recurso: 'meta-leitura', incluirHoje: v.incluirHoje === true };
 };
 
-export function periodosMeta(agora: Date) {
+export type JanelaMeta='30dias'|'semana-anterior'|'semana-atual';
+export function periodosMeta(agora: Date,janela:JanelaMeta='30dias') {
   const hoje = new Intl.DateTimeFormat('sv-SE', { timeZone: FUSO, year: 'numeric', month:'2-digit', day:'2-digit' }).format(agora);
   const base = Date.parse(hoje+'T00:00:00Z');
   const dia = (n: number) => new Date(base+n*DIA).toISOString().slice(0,10);
+  if(janela!=='30dias'){
+    const week=semanaAnalitica(agora,janela==='semana-atual');
+    const fmt=new Intl.DateTimeFormat('sv-SE',{timeZone:FUSO,year:'numeric',month:'2-digit',day:'2-digit'});
+    const inicio=fmt.format(new Date(week.startInclusive)),fim=fmt.format(new Date(week.endExclusive));
+    const deslocar=(d:string,n:number)=>new Date(Date.parse(d+'T00:00:00Z')+n*DIA).toISOString().slice(0,10);
+    return {fuso:FUSO,atual:{desde:inicio,ateExclusivo:fim,ateInclusivo:deslocar(fim,-1),parcial:janela==='semana-atual'},
+      anterior:{desde:deslocar(inicio,-7),ateExclusivo:inicio,ateInclusivo:deslocar(inicio,-1),parcial:false},
+      hoje:{desde:hoje,ateExclusivo:dia(1),ateInclusivo:hoje,parcial:true}};
+  }
   return { fuso: FUSO,
     atual: { desde: dia(-30), ateExclusivo: hoje, ateInclusivo: dia(-1), parcial: false },
     anterior: { desde: dia(-60), ateExclusivo: dia(-30), ateInclusivo: dia(-31), parcial: false },
@@ -48,11 +59,12 @@ function centavos(v: unknown): number {
 export function criarOperacaoMeta(
   env: (nome: string) => string | undefined,
   rede: typeof fetch = fetch,
+  janela:JanelaMeta='30dias',
 ): OperacaoAdmin<PedidoMeta> {
   let cache: { chave: string; token: string; ate: number; dados: unknown } | null = null;
   let voo: { chave: string; token: string; promessa: Promise<unknown> } | null = null;
   return { limiteCorpo: 256, validar, executar: async (_cliente, pedido, { agora, signal }) => {
-    const periodos = periodosMeta(agora);
+    const periodos = periodosMeta(agora,janela);
     const faltantes = CONFIG.filter(k => !env(k)?.trim());
     const base = { periodos, cakto: { estado:'indisponivel', motivo:'cobertura-nao-comprovada',
       novasAssinaturas:null, receitaConfirmadaCentavos:null, reembolsosCentavos:null },
@@ -62,7 +74,7 @@ export function criarOperacaoMeta(
     const token = env(CONFIG[0])!.trim(), conta = env(CONFIG[1])!.trim(), versao = env(CONFIG[2])!.trim();
     if (!/^\d{1,40}$/.test(conta) || !/^v\d{2}\.0$/.test(versao)) return { dados: { ...base,
       meta: { estado:'indisponivel', motivo:'configuracao-invalida', investimentoCentavos:null, campanhas:null } } };
-    const chave = JSON.stringify([conta,versao,periodos.atual.desde,pedido.incluirHoje]);
+    const chave = JSON.stringify([conta,versao,janela,periodos.atual.desde,pedido.incluirHoje]);
     if (cache?.chave === chave && cache.token === token && cache.ate > agora.getTime()) return { dados:cache.dados };
     if (voo?.chave === chave && voo.token === token) {
       const existente = voo.promessa;
