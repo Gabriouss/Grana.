@@ -72,7 +72,7 @@ function montarCache({ disco = new Map(), buscar } = {}) {
       getSession: async () => ({ data: { session: { user: { id: 'u1' } } } }),
     } } },
     // O dono do cache passou a ser lido pelo aparelho (11/09/2026).
-    './sessao-offline': { idDoUsuarioLocal: async () => 'u1' },
+    './sessao-offline': { idDoUsuarioLocal: async () => 'u1', sessaoEstaTravada: () => false },
   }, { setTimeout: rapido });
   return { mod, disco, gravados, buscar };
 }

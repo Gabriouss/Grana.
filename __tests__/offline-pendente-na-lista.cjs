@@ -83,7 +83,7 @@ const setTimeoutControlado = (fn, ms, ...a) => {
 const dubles = {
   '@react-native-async-storage/async-storage': { __esModule: true, default: AsyncStorage },
   './supabase': { supabase },
-  './sessao-offline': { idDoUsuarioLocal: async () => estado.usuario },
+  './sessao-offline': { idDoUsuarioLocal: async () => estado.usuario, sessaoEstaTravada: () => false },
   './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
   './creditLimitAlert': { checarLimiteCartao: async () => {} },
   './goals': { createGoal: async () => {} },

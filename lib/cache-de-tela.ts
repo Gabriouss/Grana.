@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { idDoUsuarioLocal } from './sessao-offline';
+import { idDoUsuarioLocal, sessaoEstaTravada } from './sessao-offline';
 
 /**
  * Cache de leitura por tela, para o app inteiro continuar servindo enquanto
@@ -316,10 +316,23 @@ export function comCacheOffline<A extends unknown[], T>(
     const prazo = new Promise<'prazo'>((resolve) => {
       cortar = setTimeout(() => resolve('prazo'), PRAZO_ATE_SERVIR_DO_CACHE_MS);
     });
-    const primeiro = await Promise.race([pedido, prazo]).finally(() => clearTimeout(cortar));
+    /* Sessão travada (B5, 16/10/2026). Sem rede e com o token vencido, a
+       consulta do supabase-js não falha rápido: ela espera a renovação da
+       sessão, que insiste por até ~25 s. A tela esperava os 4 s do prazo e
+       depois mais 2 s para saber o dono, ~6 s no spinner (medido em
+       `__tests__/cache-de-tela-sessao-travada.cjs`; o Vigil viu 8 a 9 s no
+       emulador). Perguntar o dono JUNTO com o pedido não atrasa o caso comum
+       (sessão válida responde da memória) e, quando a pergunta cai no prazo
+       curto dela, revela que a renovação travou: o pedido também está preso
+       atrás dela, então o disco é servido na hora, e a resposta segue o
+       caminho de resposta atrasada abaixo. */
+    const donoDoPedidoP = idDoUsuario().catch(() => null);
+    const sessaoTravada = donoDoPedidoP.then(() =>
+      sessaoEstaTravada() ? ('prazo' as const) : new Promise<never>(() => {}));
+    const primeiro = await Promise.race([pedido, prazo, sessaoTravada]).finally(() => clearTimeout(cortar));
 
     if (primeiro !== 'prazo') return concluir(primeiro);
-    const donoDoPedido = await idDoUsuario();
+    const donoDoPedido = await donoDoPedidoP;
 
     /* Estourou o prazo. Servir o disco só vale se houver disco: sem nada
        guardado, esperar a resposta de verdade continua sendo melhor que

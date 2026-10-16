@@ -141,6 +141,16 @@ export const PRAZO_DONO_PADRAO_MS = 2_000;
 let consultaPendurada: Promise<unknown> | null = null;
 
 /**
+ * A sessão está presa renovando (B5, 16/10/2026): uma consulta já estourou o
+ * prazo e ainda não terminou. Enquanto isso, toda consulta do supabase-js
+ * também espera essa renovação antes de sair, então quem tem dado no disco
+ * não deve esperar a rede.
+ */
+export function sessaoEstaTravada(): boolean {
+  return consultaPendurada !== null;
+}
+
+/**
  * `getSession()` com prazo (07/10/2026).
  *
  * Com o token vencido, `getSession()` RENOVA antes de responder. Sem rede

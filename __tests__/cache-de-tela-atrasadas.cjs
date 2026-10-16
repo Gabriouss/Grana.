@@ -63,7 +63,7 @@ function montar(usuarioInicial) {
           if (!sessao.segurar) return Promise.resolve(usuario ?? null);
           sessao.perguntas++;
           return new Promise((r) => { sessao.liberar = () => r(usuario ?? null); });
-        } };
+        }, sessaoEstaTravada: () => false };
         throw Error(id);
       },
     }

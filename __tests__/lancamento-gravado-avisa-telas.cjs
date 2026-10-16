@@ -87,7 +87,7 @@ const clearTimeoutControlado = (t) => { if (!t?.parado) clearTimeout(t); };
 const dubles = {
   '@react-native-async-storage/async-storage': { __esModule: true, default: AsyncStorage },
   './supabase': { supabase },
-  './sessao-offline': { idDoUsuarioLocal: async () => 'u-1' },
+  './sessao-offline': { idDoUsuarioLocal: async () => 'u-1', sessaoEstaTravada: () => false },
   './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
   './creditLimitAlert': { checarLimiteCartao: async () => {} },
   './goals': { createGoal: async () => {} },
