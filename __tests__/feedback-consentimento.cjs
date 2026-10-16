@@ -15,7 +15,8 @@
  *    promessa falsa na política;
  * 3. a Política de Privacidade não volta a afirmar que nada fica retido.
  *
- * O item 1 roda o módulo real num sandbox. Os itens 2 e 3 leem o fonte: a
+ * O item 1 roda o módulo real num sandbox. O item 3 também exercita o núcleo
+ * real de consentimento e as funções reais da landing. O item 2 lê o fonte: a
  * Edge Function é Deno e a política é texto, então aqui a checagem é
  * estrutural de propósito — ela pega a regressão de alguém apagar um campo da
  * limpeza ou a frase voltar, que é o que já aconteceu.
@@ -110,21 +111,47 @@ function carregar() {
     conferir('a frase "nada fica retido" não voltou', !/[Nn]ada fica retido/.test(politica));
     conferir('a retenção anonimizada do feedback está declarada', /anonimizad/i.test(politica) && /feedback/i.test(politica));
 
-    /* A4 da auditoria de segurança: a política dizia "Não usamos seus dados
-       para publicidade" enquanto a landing repassava gclid/fbclid/utm ao
-       checkout, com finalidade declarada de Meta CAPI e Google Ads. A frase
-       absoluta não pode voltar enquanto o repasse existir. */
-    const landing = fs.readFileSync('app/index.tsx', 'utf8');
-    const repassaIdentificador = landing.includes("'gclid'") && landing.includes('comAtribuicao(');
-    conferir('a landing ainda repassa identificador de anúncio (contexto do próximo item)', repassaIdentificador, repassaIdentificador);
-    if (repassaIdentificador) {
-      conferir(
-        'e a política não volta a negar publicidade de forma absoluta',
-        !/Não usamos seus dados para publicidade/.test(politica)
-      );
-      conferir('ela declara o identificador de clique pelo nome', /gclid/.test(politica) && /fbclid/.test(politica));
-      conferir('e diz quem recebe', /Google Ads e Meta/.test(politica));
-    }
+    /* A4: a exceção de publicidade continua declarada mesmo que o repasse
+       esteja condicionado ao consentimento. Não tornar a guarda da política
+       dependente de encontrar uma string num arquivo ou de um teste positivo.
+       A E6 moveu a allowlist para o núcleo e limpou os hrefs copiáveis. */
+    conferir('a política não volta a negar publicidade de forma absoluta', !/Não usamos seus dados para publicidade/.test(politica));
+    conferir('ela declara os identificadores de clique pelo nome', /gclid/.test(politica) && /fbclid/.test(politica));
+    conferir('e diz quem recebe', /Google Ads e Meta/.test(politica));
+
+    const valores = new Map();
+    const destinos = [];
+    const janela = {
+      localStorage: { getItem: k => valores.get(k) ?? null, setItem: (k,v) => valores.set(k,v) },
+      location: { search: '?gclid=cliqueGoogle&fbclid=cliqueMeta', assign: url => destinos.push(new URL(url)) },
+    };
+    const consent = { exports: {} };
+    vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/consentimento-marketing.ts', 'utf8'), {
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    }).outputText, { module: consent, exports: consent.exports, window: janela, URL, URLSearchParams, Date });
+
+    // Recorte por AST das funções reais, sem importar UI nem reescrever a regra.
+    const fonteLanding = ts.createSourceFile('app/index.tsx', fs.readFileSync('app/index.tsx','utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const funcoes = fonteLanding.statements.filter(n => ts.isFunctionDeclaration(n) && ['comAtribuicao','abrirCompraMarketing'].includes(n.name?.text));
+    conferir('as duas funções reais da landing estão cobertas', funcoes.length === 2, funcoes.length);
+    const ligacao = { exports: {} };
+    const codigoLanding = funcoes.map(n => n.getText(fonteLanding)).join('\n') + '\nexports.href = comAtribuicao; exports.abrir = abrirCompraMarketing;';
+    vm.runInNewContext(ts.transpileModule(codigoLanding, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, {
+      module: ligacao, exports: ligacao.exports, window: janela,
+      atribuirCampanha: consent.exports.atribuirCampanha,
+      consentimentoMarketingAtual: consent.exports.consentimentoMarketingAtual,
+      hrefCompra: () => 'https://pay.cakto.com.br/oferta', hrefCompraAnual: () => 'https://pay.cakto.com.br/anual',
+      registrarCheckoutMarketing: () => {}, // Adaptador local, sem Pixel/rede.
+    });
+    ligacao.exports.abrir(false);
+    conferir('sem escolha, o clique real não repassa identificadores', destinos.at(-1).search === '');
+    consent.exports.salvarConsentimento(janela.localStorage, true);
+    conferir('o href copiável continua limpo mesmo após aceitar', ligacao.exports.href('https://pay.cakto.com.br/oferta?gclid=antigo') === 'https://pay.cakto.com.br/oferta');
+    ligacao.exports.abrir(true);
+    conferir('com aceite, o clique real preserva os identificadores permitidos', destinos.at(-1).searchParams.get('gclid') === 'cliqueGoogle' && destinos.at(-1).searchParams.get('fbclid') === 'cliqueMeta');
+    consent.exports.salvarConsentimento(janela.localStorage, false);
+    ligacao.exports.abrir(false);
+    conferir('após recusar, a navegação continua sem repasse', destinos.at(-1).pathname === '/oferta' && destinos.at(-1).search === '');
   }
 
   console.log(`\n${total - falhas}/${total} checagens do consentimento de feedback passaram — ${falhas} falhas`);
