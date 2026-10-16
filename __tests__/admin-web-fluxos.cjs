@@ -64,7 +64,7 @@ function ambiente(opcoes = {}) {
   const jsx = (type, props) => ({ type, props });
   const visual = carregar('components/admin/AdminVisual.web.tsx', {
     'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'fragment' },
-    'expo-router/head': { default: () => null }, './admin-visual.css': {}, './FeedbacksAdmin.web': { default: () => null },
+    'expo-router/head': { default: () => null }, './admin-visual.css': {}, './FeedbacksAdmin.web': { default: () => null }, './CentralNotificacoes.web': { default: () => null }, './PublicacoesEstados.web': { default: () => null },
   });
   const page = carregar('components/admin/PainelAdmin.web.tsx', {
     react: React, 'react/jsx-runtime': { jsx, jsxs: jsx }, '@/lib/supabase': { supabase },

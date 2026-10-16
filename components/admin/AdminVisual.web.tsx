@@ -2,6 +2,8 @@ import Head from 'expo-router/head';
 import type { FormEvent, ReactNode } from 'react';
 import type { ErroAdmin, RespostaAdmin, VisaoAdmin } from '@/lib/admin-web';
 import FeedbacksAdmin from './FeedbacksAdmin.web';
+import CentralNotificacoes from './CentralNotificacoes.web';
+import PublicacoesEstados from './PublicacoesEstados.web';
 import './admin-visual.css';
 
 export type EtapaAdminVisual =
@@ -101,9 +103,12 @@ export default function AdminVisual({
               <span>Painel administrativo</span>
             </div>
             {etapa !== 'sem-sessao' && (
-              <button type="button" className="admin-visual__botao admin-visual__botao-secundario" disabled={ocupado} onClick={onSair}>
-                Sair
-              </button>
+              <div className="admin-visual__acoes-topo" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {etapa === 'pronto' && <CentralNotificacoes />}
+                <button type="button" className="admin-visual__botao admin-visual__botao-secundario" disabled={ocupado} onClick={onSair}>
+                  Sair
+                </button>
+              </div>
             )}
           </header>
 
@@ -258,6 +263,7 @@ export default function AdminVisual({
                   </CartaoMetrica>
                 </div>
                 <FeedbacksAdmin />
+                <PublicacoesEstados />
               </>
             )}
           </div>
