@@ -3,7 +3,7 @@ import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-nat
 import { useKeyboardHeight } from '@/lib/teclado';
 import { useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, fonts, type, sombras } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, sombras, touchTarget } from '@/lib/theme';
 import { FAB_TAMANHO, useTabBarInset } from '@/lib/tab-bar';
 import AppPressable from './AppPressable';
 import { useReducedMotion } from '@/lib/motion';
@@ -191,8 +191,8 @@ export default function FabButton({
      (`Pressable` com `onPress` vazio) quando está dentro do Modal. */
   return open || mounted ? (
     <AppModal visible transparent animationType="none" onRequestClose={() => setOpen(false)}>
-      <Pressable style={StyleSheet.absoluteFill} onPress={() => setOpen(false)}>
-        <Pressable ref={painelRef} style={posicaoStyle} onPress={() => {}} accessibilityViewIsModal role="dialog" focusable>
+      <Pressable style={StyleSheet.absoluteFill} onPress={() => setOpen(false)} accessible={false}>
+        <Pressable ref={painelRef} style={posicaoStyle} onPress={() => {}} accessibilityViewIsModal accessibilityLabel="Opções de novo lançamento" role="dialog" focusable>
           {conteudo}
         </Pressable>
       </Pressable>

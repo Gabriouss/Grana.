@@ -602,6 +602,7 @@ export default function Granachat({
         ref={painelRef}
         style={styles.painel}
         accessibilityViewIsModal
+        accessibilityLabel="Granabô, assistente de finanças"
         role="dialog"
         focusable
       >
