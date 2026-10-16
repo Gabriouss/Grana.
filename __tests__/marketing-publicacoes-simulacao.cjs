@@ -28,6 +28,7 @@ async function main() {
   try {
     await db.exec('create role anon;create role authenticated;create role service_role bypassrls;grant usage on schema public to anon,authenticated,service_role;alter default privileges grant all on tables to anon,authenticated,service_role;');
     await db.exec(fs.readFileSync('supabase/migrations/20261016160000_admin_marketing_simulacao.sql','utf8'));
+    await db.exec(fs.readFileSync('supabase/migrations/20261016170000_admin_marketing_sim_executor.sql','utf8'));
     for(const role of ['anon','authenticated']) {
       await db.exec('set role '+role);
       for(const table of ['catalogo','controles','outbox']){
@@ -65,6 +66,7 @@ async function main() {
     eq((await db.query('select count(*)::int as n from public.admin_marketing_sim_outbox')).rows[0].n,1,'confirmacao deduplicada');
     const calls=[];await Promise.all([run(key,'executar','sucesso',DUE,calls),run(key,'executar','sucesso',DUE,calls)]);
     eq(calls,['publicar'],'duas reservas, um adaptador');eq((await store.ler(key)).dados.estado,'publicado');
+    eq((await db.query('select isfinite(proxima_verificacao_em) as fin from public.admin_marketing_sim_outbox where chave=$1',[key])).rows[0].fin,false,'terminal sai da fila');
     await run(key,'executar','sucesso',DUE,calls);eq(calls,['publicar'],'destino concluido nunca repete');
     const target={...A,rede:'facebook',conta:'456'},fb=await confirmed(target);
     await run(fb,'executar','falha',DUE,calls);eq((await store.ler(fb)).dados.estado,'falhou');
