@@ -25,6 +25,8 @@ import ConversaGranachat from '@/components/ConversaGranachat';
 import NoSeuBolso from '@/components/NoSeuBolso';
 import BentoFerramentas from '@/components/BentoFerramentas';
 import landingMeta from '@/landing-meta.json';
+import ConsentimentoMarketing, { registrarCheckoutMarketing } from '@/components/ConsentimentoMarketing';
+import { abrirPreferenciasMarketing, atribuirCampanha, consentimentoMarketingAtual } from '@/lib/consentimento-marketing';
 
 // A landing é uma superfície de marca. O produto logado usa a família do
 // sistema; aqui a Neue Machina continua sendo a voz editorial do Grana.
@@ -66,7 +68,6 @@ export default function LandingPage() {
  */
 /* Cadastro e compra têm destinos distintos. Os CTAs de preço/fechamento
    usam o checkout configurado; os demais preservam a criação de conta. */
-const PARAMETROS_ATRIBUICAO = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid'];
 
 /* Em compacto/médio, a navegação abre pelo botão do cabeçalho; no amplo, o
    mesmo menu permanece flutuante. Cada ícone é mnemônico da seção, não
@@ -92,25 +93,19 @@ const LARGURA_MINIMA_HERO_LARGO = 960;
 const ALTURA_MINIMA_HERO_LARGO = 600;
 
 function comAtribuicao(urlDestino: string): string {
-  if (typeof window === 'undefined') return urlDestino;
-  const origem = new URLSearchParams(window.location.search);
-  const params: [string, string][] = [];
-  for (const chave of PARAMETROS_ATRIBUICAO) {
-    const valor = origem.get(chave);
-    if (valor) params.push([chave, valor]);
-  }
-  if (params.length === 0) return urlDestino;
-  try {
-    const parsed = new URL(urlDestino, window.location.origin);
-    for (const [k, v] of params) {
-      parsed.searchParams.set(k, v);
-    }
-    return urlDestino.startsWith('http') ? parsed.toString() : `${parsed.pathname}${parsed.search}${parsed.hash}`;
-  } catch {
-    const sep = urlDestino.includes('?') ? '&' : '?';
-    const qs = params.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
-    return `${urlDestino}${sep}${qs}`;
-  }
+  if (typeof window === 'undefined') return atribuirCampanha(urlDestino, '', false);
+  // O href copiável nunca guarda uma autorização que pode ser revogada depois.
+  return atribuirCampanha(urlDestino, window.location.search, false);
+}
+
+function abrirCompraMarketing(anual: boolean, evento?: { preventDefault?: () => void }) {
+  const gesto = (evento as unknown as { nativeEvent?: { ctrlKey?: boolean; metaKey?: boolean; shiftKey?: boolean; altKey?: boolean; button?: number } })?.nativeEvent;
+  // Modificadores usam o href limpo, preservando abrir em outra aba/janela.
+  if (gesto?.ctrlKey || gesto?.metaKey || gesto?.shiftKey || gesto?.altKey || (gesto?.button != null && gesto.button !== 0)) return;
+  const destino = atribuirCampanha(anual ? hrefCompraAnual() : hrefCompra(), window.location.search, consentimentoMarketingAtual());
+  registrarCheckoutMarketing(destino, anual ? 'anual' : 'mensal');
+  evento?.preventDefault?.();
+  window.location.assign(destino);
 }
 
 function hrefCadastroComAtribuicao(): string {
@@ -305,7 +300,7 @@ function BotaoCTA({
         {...(onPress
           ? { onPress }
           : compra
-            ? { href: anual ? hrefCompraAnual() : hrefCompra() }
+            ? { href: anual ? hrefCompraAnual() : hrefCompra(), onPress: (evento?: { preventDefault?: () => void }) => abrirCompraMarketing(anual === true, evento) }
             : { href: '#precos', onPress: (evento?: { preventDefault?: () => void }) => irParaSecao('#precos', evento) })}
         onHoverIn={() => !reduzirMovimento && setPonteiroAtivo(true)}
         onHoverOut={() => setPonteiroAtivo(false)}
@@ -1829,6 +1824,7 @@ function ConteudoWeb() {
                 <Text style={styles.rodapeTitulo}>Transparência</Text>
                 <AppPressable href="/termos" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Termos de Uso</Text></AppPressable>
                 <AppPressable href="/privacidade" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Privacidade</Text></AppPressable>
+                <AppPressable nativeID="preferencias-privacidade" onPress={abrirPreferenciasMarketing} style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Preferências de privacidade</Text></AppPressable>
                 <AppPressable href="/exclusao-de-dados" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Excluir dados</Text></AppPressable>
               </View>
             </View>
@@ -1836,6 +1832,7 @@ function ConteudoWeb() {
         </View>
       </View>
     </ScrollView>
+    <ConsentimentoMarketing />
 
     {/* Fora do ScrollView de propósito: o botão se ancora na janela, e um
         elemento fixo dentro do contêiner que rola fica sujeito ao recorte
