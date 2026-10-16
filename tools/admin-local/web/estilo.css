@@ -1639,14 +1639,23 @@ details.aprovacao-mais[open] { display: flex; flex-direction: column; gap: var(-
   color: var(--ink-soft);
 }
 
-/* Calendário: mês | coluna sem data. O JS desenha grade e agenda; o CSS escolhe pela largura. */
+/* Calendário: mês | coluna sem data. O JS desenha grade e agenda; o CSS escolhe pela largura.
+   O título do mês ocupa a 1ª linha da coluna do mês; grade (ou agenda) e a coluna sem data
+   começam juntas na 2ª linha, então o topo da caixa alinha com o topo da grade pelo fluxo da
+   grid, sem margem copiada. O .calendario-mes vira display: contents só para os filhos
+   participarem desta grid. */
 .calendario-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
-  gap: var(--s-xl);
+  column-gap: var(--s-xl);
+  row-gap: var(--s-md);
   align-items: start;
 }
-.calendario-mes { display: flex; flex-direction: column; gap: var(--s-md); min-width: 0; }
+.calendario-mes { display: contents; }
+.calendario-mes > .secao-titulo { grid-column: 1; grid-row: 1; min-width: 0; }
+.calendario-mes > .calendario,
+.calendario-mes > .agenda { grid-column: 1; grid-row: 2; min-width: 0; }
+.calendario-layout > .cal-sem-data { grid-column: 2; grid-row: 2; }
 .cal-cabecalho, .cal-semana { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .cal-cabecalho { background: var(--paper-raised); border-bottom: 1px solid var(--rule); }
 .cal-dia-semana { padding: var(--s-sm) var(--s-md); font-size: var(--t-micro); font-weight: 300; color: var(--ink-faint); }
@@ -1702,6 +1711,7 @@ button.cal-item { cursor: pointer; }
 .agenda-vazia { padding: var(--s-lg); border: 1px dashed var(--rule-strong); border-radius: var(--r-md); color: var(--ink-faint); font-size: var(--t-nota); }
 @media (max-width: 899px) {
   .calendario-layout { grid-template-columns: minmax(0, 1fr); }
+  .calendario-layout > .cal-sem-data { grid-column: 1; grid-row: auto; margin-top: var(--s-sm); }
   .cal-sem-data { position: static; }
 }
 
