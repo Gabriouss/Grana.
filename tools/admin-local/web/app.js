@@ -27,6 +27,7 @@ const ROTAS = {
   'marketing/feed': { modulo: 'feed', titulo: 'Feed' },
   'marketing/calendario': { modulo: 'calendario', titulo: 'Calendário' },
   'marketing/trafego': { modulo: 'trafego', titulo: 'Tráfego pago' },
+  'marketing/resultados': { modulo: 'resultados', titulo: 'Resultados de marketing' },
   'marketing/acervo': { modulo: 'acervo', titulo: 'Acervo' },
   'design-system': { modulo: 'design-system', titulo: 'Design System' },
 };
@@ -410,7 +411,10 @@ export function aviso(texto, tipo = 'info', { mesmoSemPainel = false } = {}) {
 function abrirDialogo(conteudo, aoFechar) {
   const dlg = h('dialog', { class: 'modal', 'aria-modal': 'true' }, conteudo);
   document.body.appendChild(dlg);
-  dlg.addEventListener('close', () => { aoFechar(); dlg.remove(); });
+  // o foco volta a quem abriu o diálogo (se ainda estiver na página; senão fica onde a tela o deixar)
+  const origem = document.activeElement;
+  const devolverFoco = () => { if (origem && origem !== document.body && origem.isConnected && document.activeElement === document.body) origem.focus(); };
+  dlg.addEventListener('close', () => { aoFechar(); dlg.remove(); devolverFoco(); setTimeout(devolverFoco, 0); });
   dlg.addEventListener('cancel', () => { /* Esc fecha com resultado nulo */ });
   dlg.showModal();
   return dlg;

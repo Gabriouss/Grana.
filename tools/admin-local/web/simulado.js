@@ -75,6 +75,25 @@ const notificacoesBase = [
 ];
 const notificacoesSim = () => ({ fonte: 'dados-de-teste', aviso: 'Dados de teste.', atualizadoEm: new Date().toISOString(), notificacoes: notificacoesBase.map((n) => ({ ...n })), naoLidas: notificacoesBase.filter((n) => !n.lidaEm).length, proximaPagina: null });
 
+// Resultados de marketing (E4): exemplo FICTÍCIO, marcado demonstracao. Nada aqui é dado real.
+const resultadosDemo = () => {
+  const iso = (n) => { const d = new Date(Date.now() + n * 86400000); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
+  return {
+    fonte: 'demonstracao', demonstracao: true, incluirHoje: false,
+    periodos: { fuso: 'America/Sao_Paulo', hoje: null,
+      atual: { desde: iso(-30), ateExclusivo: iso(0), ateInclusivo: iso(-1), parcial: false },
+      anterior: { desde: iso(-60), ateExclusivo: iso(-30), ateInclusivo: iso(-31), parcial: false } },
+    meta: { estado: 'nao-configurado', rotulo: 'Não configurado', faltantes: [], atualizadoEm: null, campanhas: null,
+      investimentoCentavos: 64280, atual: { estado: 'completo' }, anterior: { estado: 'completo', investimentoCentavos: 51040 }, variacaoPercentual: 25.9 },
+    cakto: { estado: 'parcial', motivo: 'cobertura-nao-comprovada', atualizadoEm: new Date().toISOString(),
+      novasAssinaturas: 18, receitaConfirmadaCentavos: 176400, reembolsosCentavos: 10000,
+      anterior: { novasAssinaturas: 13, receitaConfirmadaCentavos: 129000, reembolsosCentavos: 0 } },
+    medicaoPropria: { estado: 'nao-configurado', coberturaAtribuicao: null },
+    serie: { titulo: 'Novas assinaturas pagas ao longo do período', descricao: 'Blocos completos de cinco dias, numerados do mais antigo ao mais recente. Exemplo ilustrativo.',
+      rotulos: ['1', '2', '3', '4', '5', '6'], atual: [3, 2, 4, 3, 2, 4], anterior: [2, 1, 2, 1, 3, 3] },
+  };
+};
+
 const leituras = {
   '/api/saude': () => ({ painel: 'grana-admin', versao: 1 }),
   '/api/visao-geral': () => ({
@@ -152,6 +171,7 @@ const leituras = {
   },
   '/api/marketing/trafego': () => ({ campanhas: campanhas.map((c) => ({ ...c })) }),
   '/api/marketing/notificacoes': () => notificacoesSim(),
+  '/api/marketing/resultados': () => resultadosDemo(),
   '/api/marketing/documento': () => ({ texto: DOC, caminho: 'docs/marketing/painel/DOCUMENTO-DE-MARKETING.md' }),
 };
 

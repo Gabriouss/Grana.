@@ -18,13 +18,14 @@ function el(tag) {
     addEventListener(t, f) { (this.listeners[t] ||= []).push(f); },
     remove() { if (this.parent) this.parent.children = this.parent.children.filter((c) => c !== this); },
     focus() { el.focado = this; }, click() { (this.listeners.click || []).forEach((f) => f({})); },
-    showModal() {}, close() { (this.listeners.close || []).forEach((f) => f({})); } });
+    showModal() {}, close() { el.focado = el.corpo; (this.listeners.close || []).forEach((f) => f({})); } });
   return n;
 }
 const todos = (n) => [n, ...n.children.flatMap(todos)];
 function rodar(clicar) {
-  const corpo = el('body'); const document = { createElement: el, body: corpo, createTextNode: (t) => Object.assign(el('#texto'), { textContent: String(t) }) };
-  const ctx = vm.createContext({ document, Node: No, Math, Promise, String, Object, Array, console });
+  const corpo = el('body'); el.corpo = corpo; const origem = Object.assign(el('button'), { isConnected: true }); el.focado = origem;
+  const document = { createElement: el, body: corpo, get activeElement() { return el.focado; }, createTextNode: (t) => Object.assign(el('#texto'), { textContent: String(t) }) };
+  const ctx = vm.createContext({ document, Node: No, Math, Promise, setTimeout, String, Object, Array, console });
   vm.runInContext(trecho + '\nthis.confirmar = confirmar;', ctx);
   const p = ctx.confirmar({ titulo: 'Refazer o deploy', texto: 'Resumo', detalhes: ['a'], rotuloBotao: 'Refazer deploy', perigo: true });
   const dlg = corpo.children[0]; const nos = todos(dlg);
@@ -34,7 +35,7 @@ function rodar(clicar) {
   const ok = botoes.find((b) => b.textContent === 'Refazer deploy'), cancelar = botoes.find((b) => b.textContent === 'Cancelar');
   assert.ok(ok && cancelar); assert.equal(ok.disabled, false, 'Confirmar nasce habilitado'); assert.equal(el.focado, ok);
   (clicar === 'ok' ? ok : clicar === 'cancelar' ? cancelar : { click() { dlg.close(); } }).click();
-  return p.then((r) => ({ r, restantes: corpo.children.length }));
+  return p.then((r) => { assert.equal(el.focado, origem, 'o foco volta a quem abriu o diálogo'); return { r, restantes: corpo.children.length }; });
 }
 (async () => {
   assert.deepEqual(await rodar('ok'), { r: true, restantes: 0 });

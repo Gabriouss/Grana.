@@ -97,7 +97,9 @@ assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML|eval\(|new Function/.test(tel
 for (const trecho of ["showModal()", "role: 'tablist'", "'ArrowLeft'", "'aria-haspopup': 'dialog'", "aria-label': 'Fechar notificações'", "nomeAcessivelSino"]) assert.ok(tela.includes(trecho), `tela sem ${trecho}`);
 assert.ok(!/fetch\(|XMLHttpRequest/.test(tela), 'a tela só fala com o servidor local pelo api/acao do app');
 const css = fs.readFileSync('tools/admin-local/web/estilo.css', 'utf8');
-const bloco = css.slice(css.indexOf('Sino global e central de notificações'));
+const ini = css.indexOf('Sino global e central de notificações');
+const fim = css.indexOf('Resultados de marketing (E4', ini);
+const bloco = css.slice(ini, fim > 0 ? fim : undefined);
 for (const [, px] of bloco.matchAll(/font-size:\s*(\d+)px/g)) assert.ok(Number(px) >= 15 || px === '11', `texto de ${px}px na central`);
 assert.ok(!/animation|transition/.test(bloco), 'a central não anima: nada a desligar em movimento reduzido');
 

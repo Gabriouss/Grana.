@@ -2932,3 +2932,37 @@ dialog.central::backdrop { background: var(--scrim); }
   .central-filtros { display: none; grid-template-columns: 1fr; margin: 0 0 var(--s-md); }
   .central-filtros-abertos .central-filtros { display: grid; }
 }
+
+/* ── Resultados de marketing (E4, docs/admin/meta-painel-prism/metricas-meta.md) ─────────
+   Reaproveita .grade-cartoes, .cartao, .selo, .tabela-rolagem e os alertas. Valor nulo nunca vira zero. */
+.resultados-periodo { display: flex; flex-wrap: wrap; align-items: end; gap: var(--s-md) var(--s-xl); margin-bottom: var(--s-lg); }
+.resultados-periodo-lista { display: flex; flex-wrap: wrap; gap: var(--s-md) var(--s-xl); margin: 0; }
+.resultados-periodo-lista > div { min-width: 0; }
+.resultados-periodo dt { color: var(--ink-faint); font-size: var(--t-legenda); }
+.resultados-periodo dd { margin: var(--s-xs) 0 0; color: var(--ink); font-size: var(--t-nota); overflow-wrap: anywhere; }
+.resultados-hoje { display: inline-flex; align-items: center; gap: var(--s-sm); min-height: var(--alvo); color: var(--ink-soft); font-size: var(--t-nota); }
+.resultados-hoje input { width: 24px; height: 24px; accent-color: var(--accent-2); }
+.resultados-conta { margin-bottom: var(--s-lg); padding: var(--s-lg); border: 1px solid var(--rule); border-radius: var(--r-lg); background: var(--paper-raised); }
+.resultados-conta-atencao { border-color: rgba(211, 184, 105, 0.35); background: var(--atencao-fundo); }
+.resultados-conta-topo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-sm) var(--s-md); margin-bottom: var(--s-sm); }
+.resultados-conta-topo .secao-titulo { margin: 0; }
+.resultados-conta p { margin: 0 0 var(--s-md); color: var(--ink-soft); font-size: var(--t-nota); max-width: var(--medida); }
+.resultados-conta .botao { text-decoration: none; }
+.resultados-medidas { margin-bottom: var(--s-lg); }
+.resultados-fonte { color: var(--ink-faint); font-size: var(--t-legenda); text-transform: uppercase; letter-spacing: var(--tr-rotulo); text-align: right; }
+.resultados-sem-valor { color: var(--ink-faint); font-size: var(--t-destaque); }
+.resultados-serie { margin-bottom: var(--s-lg); }
+.resultados-grafico { display: block; width: 100%; height: auto; margin: var(--s-md) 0; }
+.resultados-grade { stroke: var(--rule); stroke-width: 1; }
+.resultados-eixo { fill: var(--ink-soft); font-size: 12px; font-family: inherit; }
+.resultados-linha-atual { stroke: var(--accent-2); stroke-width: 3; stroke-linejoin: round; }
+.resultados-linha-anterior { stroke: var(--ink-faint); stroke-width: 2; stroke-dasharray: 6 5; }
+.resultados-ponto { fill: var(--paper-raised); stroke: var(--accent-2); stroke-width: 2; }
+.resultados-legenda { display: flex; flex-wrap: wrap; gap: var(--s-sm) var(--s-xl); margin: 0; color: var(--ink-soft); font-size: var(--t-nota); }
+.resultados-legenda span::before { content: ''; display: inline-block; width: 28px; margin-right: var(--s-sm); vertical-align: middle; border-top: 3px solid var(--accent-2); }
+.resultados-legenda .resultados-legenda-anterior::before { border-top: 2px dashed var(--ink-faint); }
+.resultados-passos { display: grid; gap: var(--s-md); margin: var(--s-lg) 0 0; padding: 0; list-style: none; }
+.resultados-passos li { display: grid; gap: var(--s-xs); font-size: var(--t-nota); }
+.resultados-passos strong { font-weight: 400; color: var(--ink); }
+.resultados-passos span { color: var(--ink-soft); }
+#resultados-confiabilidade:focus { outline: none; }

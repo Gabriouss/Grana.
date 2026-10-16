@@ -237,6 +237,7 @@ const GET = {
   },
   '/api/marketing/calendario/ensaio': (req, res) => rotaMarketingGet(res, 'meta-ensaio', ['ensaiar'], [], { modo: 'ensaio', realHabilitado: false, itens: [] }),
   '/api/marketing/cronograma': (req, res) => rotaMarketingGet(res, 'cronograma', ['ler'], [], null),
+  '/api/marketing/resultados': (req, res, url) => responderOk(res, adaptador('meta-leitura').ler({ incluirHoje: url.searchParams.get('incluirHoje') === '1' })),
   '/api/marketing/notificacoes': (req, res) => rotaMarketingGet(res, 'notificacoes', ['listarNotificacoes'], [], { notificacoes: [], naoLidas: 0 }),
   '/api/marketing/feedbacks': (req, res, url) => rotaMarketingGet(res, 'feedbacks', ['listarFeedbacks'], [filtrosDeFeedbacks(url)], { feedbacks: [], haMais: false, gestaoDisponivel: false }),
   '/api/marketing/trafego': (req, res) => rotaMarketingGet(res, 'trafego', ['listarCampanhas', 'listarTrafego', 'listar', 'trafego'], [], { campanhas: [] }),
