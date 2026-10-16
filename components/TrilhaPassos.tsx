@@ -97,7 +97,7 @@ function CenaColar({ ativo, instantaneo, compacto }: Cena) {
         ]}
       >
         <Animated.View style={[styles.pontoCategoria, { backgroundColor: COR_ALIMENTACAO, transform: [{ scale: ponto }] }]} />
-        <View style={{ flex: 1, minWidth: 0 }}>
+        <View style={styles.lancamentoTextos}>
           <Text style={styles.lancamentoTitulo}>Mercado Bom Preço</Text>
           <Text style={styles.lancamentoMeta}>Alimentação</Text>
         </View>
@@ -236,6 +236,7 @@ const styles = StyleSheet.create({
   setaCena: { alignSelf: 'center' },
   lancamentoCena: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: spacing.sm,
     paddingVertical: 6,
@@ -245,10 +246,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.rule,
   },
+  // Em tela estreita o valor desce para baixo do nome em vez de espremer o nome em uma letra por linha.
+  lancamentoTextos: { flexGrow: 1, flexShrink: 1, flexBasis: 96, minWidth: 0 },
   pontoCategoria: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
   lancamentoTitulo: { color: theme.ink, fontSize: type.legenda, fontFamily: fonts.regular },
   lancamentoMeta: { color: theme.inkFaint, fontSize: type.micro, fontFamily: fonts.light },
-  lancamentoValor: { color: theme.ink, fontSize: type.legenda, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
+  lancamentoValor: { color: theme.ink, fontSize: type.legenda, fontFamily: fonts.regular, fontVariant: ['tabular-nums'], flexShrink: 0 },
   tituloPasso: { color: theme.ink, fontSize: type.corpo, lineHeight: type.corpo * 1.3, fontFamily: fonts.regular },
   textoPasso: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: type.apoio * 1.5, fontFamily: fonts.light },
 });
