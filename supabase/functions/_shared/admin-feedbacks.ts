@@ -21,6 +21,10 @@ export type PedidoFeedbacks = {
   recurso: 'feedbacks-listar';
   status?: 'pending' | 'reviewed' | 'resolved';
   tipo?: 'suggestion' | 'bug' | 'praise' | 'other';
+  nota?: number;
+  versao?: string;
+  desde?: string;
+  ate?: string;
   antesDe?: string;
 };
 
@@ -28,8 +32,15 @@ const STATUS = new Set(['pending', 'reviewed', 'resolved']);
 const TIPOS = new Set(['suggestion', 'bug', 'praise', 'other']);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/;
-const CAMPOS = new Set(['recurso', 'status', 'tipo', 'antesDe']);
+// Versão do app como o aparelho manda (1.10.5, 1.10.5-preview). Nada de curinga: o filtro é igualdade.
+const VERSAO = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,39}$/;
+const CAMPOS = new Set(['recurso', 'status', 'tipo', 'nota', 'versao', 'desde', 'ate', 'antesDe']);
 export const POR_PAGINA = 50;
+
+function data(v: unknown): string {
+  if (typeof v !== 'string' || !ISO.test(v) || !Number.isFinite(Date.parse(v))) throw new Error('pedido-invalido');
+  return new Date(v).toISOString();
+}
 
 export function validarPedidoFeedbacks(pedido: unknown): PedidoFeedbacks {
   const p = pedido as Record<string, unknown> | null;
@@ -44,10 +55,18 @@ export function validarPedidoFeedbacks(pedido: unknown): PedidoFeedbacks {
     if (typeof p.tipo !== 'string' || !TIPOS.has(p.tipo)) throw new Error('pedido-invalido');
     saida.tipo = p.tipo as PedidoFeedbacks['tipo'];
   }
-  if (p.antesDe !== undefined) {
-    if (typeof p.antesDe !== 'string' || !ISO.test(p.antesDe) || !Number.isFinite(Date.parse(p.antesDe))) throw new Error('pedido-invalido');
-    saida.antesDe = new Date(p.antesDe).toISOString();
+  if (p.nota !== undefined) {
+    if (typeof p.nota !== 'number' || !Number.isInteger(p.nota) || p.nota < 1 || p.nota > 5) throw new Error('pedido-invalido');
+    saida.nota = p.nota;
   }
+  if (p.versao !== undefined) {
+    if (typeof p.versao !== 'string' || !VERSAO.test(p.versao)) throw new Error('pedido-invalido');
+    saida.versao = p.versao;
+  }
+  if (p.desde !== undefined) saida.desde = data(p.desde);
+  if (p.ate !== undefined) saida.ate = data(p.ate);
+  if (saida.desde && saida.ate && saida.desde > saida.ate) throw new Error('pedido-invalido');
+  if (p.antesDe !== undefined) saida.antesDe = data(p.antesDe);
   return saida;
 }
 
@@ -85,6 +104,10 @@ export const operacaoFeedbacks: OperacaoAdmin<PedidoFeedbacks> = {
         .select('id,type,rating,message,status,app_version,platform,public_use_consent,user_id,created_at');
       if (pedido.status) q = q.eq('status', pedido.status);
       if (pedido.tipo) q = q.eq('type', pedido.tipo);
+      if (pedido.nota) q = q.eq('rating', pedido.nota);
+      if (pedido.versao) q = q.eq('app_version', pedido.versao);
+      if (pedido.desde) q = q.gte('created_at', pedido.desde);
+      if (pedido.ate) q = q.lte('created_at', pedido.ate);
       if (pedido.antesDe) q = q.lt('created_at', pedido.antesDe);
       // Uma linha a mais só para saber se há próxima página.
       return q.order('created_at', { ascending: false }).limit(POR_PAGINA + 1).abortSignal(s);

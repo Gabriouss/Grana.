@@ -41,6 +41,8 @@ function harness(opts = {}) {
       select: (f) => { call.select = f; return q; },
       eq: (k, v) => { call.eq.push([k, v]); return q; },
       lt: (k, v) => { call.lt = [k, v]; return q; },
+      gte: (k, v) => { call.gte = [k, v]; return q; },
+      lte: (k, v) => { call.lte = [k, v]; return q; },
       order: (k, o) => { call.order = [k, o]; return q; },
       limit: (n) => { call.limit = n; return q; },
       abortSignal: () => q,
@@ -121,6 +123,20 @@ const igual = (a, b, nome) => { assert.deepEqual(plano(a), plano(b), nome); ok++
     igual([json.dados.feedbacks.length, json.dados.haMais], [50, true], 'página cheia avisa que há mais');
   }
 
+  /* B3b: nota, versão e intervalo de data também viram cláusulas, e só elas. */
+  {
+    const h = harness();
+    await h.request({ recurso: 'feedbacks-listar', nota: 2, versao: '1.10.5', desde: '2026-10-01T03:00:00.000Z', ate: '2026-10-16T02:59:59.999Z' });
+    igual(h.calls[0].eq, [['rating', 2], ['app_version', '1.10.5']], 'filtros de nota e versão');
+    igual([h.calls[0].gte, h.calls[0].lte], [['created_at', '2026-10-01T03:00:00.000Z'], ['created_at', '2026-10-16T02:59:59.999Z']], 'intervalo de data');
+    igual('lt' in h.calls[0], false, 'sem cursor, sem lt');
+  }
+  {
+    const h = harness();
+    await h.request({ recurso: 'feedbacks-listar' });
+    igual([h.calls[0].eq, 'gte' in h.calls[0], 'lte' in h.calls[0]], [[], false, false], 'sem filtro, sem cláusula');
+  }
+
   /* Portão: quem não é admin, sem TOTP, sem login ou com pedido estranho não chega ao banco. */
   for (const [nome, opts, body, headers, status] of [
     ['outro usuário', {}, { recurso: 'feedbacks-listar' }, { Authorization: 'Bearer ' + token(OUTRO) }, 403],
@@ -132,6 +148,14 @@ const igual = (a, b, nome) => { assert.deepEqual(plano(a), plano(b), nome); ok++
     ['campo a mais', {}, { recurso: 'feedbacks-listar', user_id: DONO }, {}, 400],
     ['status inventado', {}, { recurso: 'feedbacks-listar', status: 'apagado' }, {}, 400],
     ['cursor que não é data', {}, { recurso: 'feedbacks-listar', antesDe: "2026'; drop table feedbacks;--" }, {}, 400],
+    ['nota zero', {}, { recurso: 'feedbacks-listar', nota: 0 }, {}, 400],
+    ['nota seis', {}, { recurso: 'feedbacks-listar', nota: 6 }, {}, 400],
+    ['nota quebrada', {}, { recurso: 'feedbacks-listar', nota: 3.5 }, {}, 400],
+    ['nota em texto', {}, { recurso: 'feedbacks-listar', nota: '5' }, {}, 400],
+    ['versão com curinga', {}, { recurso: 'feedbacks-listar', versao: '1.%' }, {}, 400],
+    ['versão longa demais', {}, { recurso: 'feedbacks-listar', versao: '1'.repeat(41) }, {}, 400],
+    ['desde que não é data', {}, { recurso: 'feedbacks-listar', desde: 'ontem' }, {}, 400],
+    ['intervalo invertido', {}, { recurso: 'feedbacks-listar', desde: '2026-10-16T00:00:00.000Z', ate: '2026-10-01T00:00:00.000Z' }, {}, 400],
   ]) {
     const h = harness(opts);
     const { r } = await h.request(body, headers);
