@@ -1730,7 +1730,7 @@ details.secao-recolhida > summary {
 }
 details.secao-recolhida > summary::-webkit-details-marker { display: none; }
 details.secao-recolhida > summary::before { content: '+'; width: 20px; flex: none; color: var(--accent); }
-details.secao-recolhida[open] > summary::before { content: '2'; }
+details.secao-recolhida[open] > summary::before { content: '\2212'; }
 details.secao-recolhida[open] { padding-bottom: var(--s-lg); }
 details.secao-recolhida > .secao { margin: 0; padding: 0; border: 0; background: transparent; }
 /* "Aprovados sem data (N)": recolhido; aberto, a lista rola dentro do bloco em vez de esticar a página. */
@@ -1738,7 +1738,7 @@ details.secao-recolhida > .secao { margin: 0; padding: 0; border: 0; background:
 .cal-sem-data-resumo { display: flex; align-items: center; min-height: var(--alvo); margin: 0; cursor: pointer; list-style: none; font-variant-numeric: tabular-nums; }
 .cal-sem-data-resumo::-webkit-details-marker { display: none; }
 .cal-sem-data-resumo::after { content: '+'; margin-left: auto; padding-left: var(--s-md); color: var(--accent-2); }
-.cal-sem-data-bloco[open] > .cal-sem-data-resumo::after { content: '2'; }
+.cal-sem-data-bloco[open] > .cal-sem-data-resumo::after { content: '\2212'; }
 .cal-sem-data-bloco[open] .lista-sem-data { max-height: min(60vh, 560px); overflow-y: auto; padding-right: var(--s-xs); }
 
 /* Tráfego pago */
