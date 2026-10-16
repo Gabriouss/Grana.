@@ -111,7 +111,11 @@ function carregar() {
     conferir('a frase "nada fica retido" não voltou', !/[Nn]ada fica retido/.test(politica));
     conferir('a retenção anonimizada do feedback está declarada', /anonimizad/i.test(politica) && /feedback/i.test(politica));
 
-    /* A4: a exceção de publicidade continua declarada mesmo que o repasse
+    /* Contrato M5 do Watchtower (15/10/2026), seção "Barreira de consentimento",
+       item 3: relatorio-Watchtower-M5-LGPD-Pixel-CAPI.md (pasta da rodada).
+       Não propagar gclid/fbclid sem consentimento compatível; UTMs exigem
+       allowlist/sanitização. A mudança da E6 é intencional, não uma regressão.
+       A4: a exceção de publicidade continua declarada mesmo que o repasse
        esteja condicionado ao consentimento. Não tornar a guarda da política
        dependente de encontrar uma string num arquivo ou de um teste positivo.
        A E6 moveu a allowlist para o núcleo e limpou os hrefs copiáveis. */
