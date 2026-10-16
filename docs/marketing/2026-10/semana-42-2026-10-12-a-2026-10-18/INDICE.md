@@ -31,3 +31,4 @@ Gates: teste dos 10 cupons da foto da nota (C10) **afirmado pelo autor em 13/10/
 | Material | Fonte e status | Responsável / evidência | QA / publicação |
 |---|---|---|---|
 | [relatorios/relatorio-Beacon-M4.md](apoio/relatorios/relatorio-Beacon-M4.md) | Proposta técnica de eventos Pixel/CAPI, reconciliada com o parecer M5; pendente de aprovação do autor; nada instalado | Beacon, 16/10/2026; ordem M4 de 16/10; revisão documental da Flare | Nenhum teste de compra, validação no Gerenciador de Eventos ou publicação |
+| [relatorios/relatorio-Beacon-metricas-meta.md](apoio/relatorios/relatorio-Beacon-metricas-meta.md) | Definições propostas para investimento Meta, novas assinaturas pagas, receita confirmada, reversões, períodos e cobertura; sem dados de produção | Beacon, 16/10/2026; Entrega 4 da ordem META; para Harbor | Fixture proposta; nenhuma consulta real; política de estorno e completude Cakto ainda bloqueadas |
