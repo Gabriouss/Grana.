@@ -30,77 +30,96 @@
 @media(max-width:360px){.wrap{padding-inline:16px}.brand{flex-basis:170px;gap:10px}.brand img{width:78px}.brand span{font-size:12px}.heading h1{font-size:27px}.status-counts{gap:6px}.count{padding:5px 8px;font-size:11px}.item{padding:11px}.detail-top{display:block}.detail-top .btn{margin-top:8px;width:100%}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
-</head>
-<body data-vista="lista">
+<style>
+:root{--bg:#052229;--surface:#0b2d35;--ink:#effffa;--muted:#a6d9ce;--quiet:#7fa9a0;--mint:#aeffe3;--line:rgba(174,255,227,.14);--strong:rgba(174,255,227,.26);--warning:#d3b869;--warning-bg:rgba(211,184,105,.12);--focus:#aeffe3}
+body{font-synthesis:none}h1,h2,h3,strong,b,th{font-weight:400}.top{display:none!important}
+.app-shell{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh}.local-nav{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:16px;padding:24px 12px 16px;border-right:1px solid var(--line);background:var(--bg)}.local-brand{padding:0 12px;color:var(--ink);font-size:22px;line-height:1.2;text-decoration:none}.local-brand span{display:block;margin-top:4px;color:var(--quiet);font-size:12px}.local-nav-title{padding:8px 12px 0;color:var(--quiet);font-size:12px;letter-spacing:.04em;text-transform:uppercase}.local-nav-list{display:flex;flex-direction:column;gap:2px;margin:0;padding:0 8px;list-style:none}.local-nav-list a{display:flex;align-items:center;min-height:44px;padding:0 12px;border-radius:12px;color:var(--muted);font-size:14px;text-decoration:none}.local-nav-list a[aria-current=page]{background:#0c353e;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}.local-nav-foot{margin:auto 12px 0;color:var(--quiet);font-size:12px;line-height:1.5}.main-pane{min-width:0}.mobile-bar{display:none}.wrap{width:min(100%,1260px);max-width:1260px;margin:0 auto;padding:28px clamp(16px,3vw,40px) 44px}
+@media(max-width:899px){.app-shell{grid-template-columns:minmax(0,1fr)}.local-nav{display:none}.mobile-bar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:14px;min-height:48px;padding:8px 16px;border-bottom:1px solid var(--line);background:var(--bg)}.menu-chip{padding:5px 10px;border:1px solid var(--strong);border-radius:8px;color:var(--muted);font-size:13px}.mobile-brand{font-size:17px;color:var(--ink)}.mobile-brand small{margin-left:8px;color:var(--quiet);font-size:12px}.wrap{width:100%;padding:20px 16px 44px}}
+</style>
+<style>
+.feedbacks-contract .filter-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.feedbacks-contract .filter-grid .field{min-width:0}
+.feedbacks-counts{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0;color:var(--muted);font-size:13px}
+.feedbacks-counts span{padding:6px 10px;border:1px solid var(--line);border-radius:999px}
+.feedbacks-summary{margin:0 0 10px;color:var(--quiet);font-size:13px}
+.feedbacks-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.feedbacks-table{width:100%;min-width:1120px;border-collapse:collapse;font-size:13px}
+.feedbacks-table th{position:sticky;top:0;padding:12px;text-align:left;color:var(--muted);font-weight:400;background:var(--surface);border-bottom:1px solid var(--line);white-space:nowrap}
+.feedbacks-table td{padding:12px;border-bottom:1px solid var(--line);vertical-align:top}
+.feedbacks-table tr:last-child td{border-bottom:0}
+.feedback-title,.feedback-excerpt{display:block;max-width:250px}
+.feedback-title{color:var(--ink)}
+.feedback-excerpt{margin-top:4px;color:var(--muted)}
+.feedback-status{display:inline-flex;align-items:center;min-height:26px;padding:0 8px;border:1px solid var(--strong);border-radius:999px;color:var(--muted);white-space:nowrap}
+.feedback-status.warn{color:var(--warning);border-color:rgba(211,184,105,.35)}
+.feedback-status.ok{color:#74e291;border-color:rgba(116,226,145,.3)}
+.feedbacks-more{margin-top:12px}
+.manage-dialog{position:fixed;inset:0;margin:auto;width:min(560px,calc(100vw - 24px));max-height:calc(100vh - 32px);overflow:auto;padding:20px;border:1px solid var(--strong);border-radius:16px;background:var(--surface);color:var(--ink);box-shadow:0 18px 44px -14px rgba(0,0,0,.65)}
+.manage-dialog::backdrop{background:rgba(0,0,0,.58)}
+.manage-dialog h2{margin:0 0 6px;font-size:22px}
+.manage-dialog>p{margin:0 0 16px;color:var(--muted);font-size:14px}
+.manage-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.manage-fields .field{display:flex;flex-direction:column;gap:5px}
+.manage-fields label{color:var(--muted);font-size:13px}
+.manage-fields input,.manage-fields select,.manage-fields textarea{width:100%;min-height:44px;padding:8px 10px;border:1px solid var(--strong);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+.manage-fields textarea{min-height:88px;resize:vertical}
+.manage-fields .wide{grid-column:1/-1}
+.manage-help{margin:12px 0;color:var(--quiet);font-size:12px}
+.manage-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+@media(max-width:700px){.feedbacks-contract .filter-grid{grid-template-columns:1fr}.manage-fields{grid-template-columns:1fr}.manage-fields .wide{grid-column:auto}.manage-dialog{padding:16px}}
+ .sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}</style></head>
+<body>
 <a class="skip" href="#conteudo">Pular para o conteúdo</a>
+<div class="app-shell">
+<aside class="local-nav" aria-label="Seções do painel"><a class="local-brand" href="#/visao-geral">Grana.<span>Administração local</span></a><span class="local-nav-title">Marketing</span><ul class="local-nav-list"><li><a href="#/marketing/documento">Documento</a></li><li><a href="#/marketing/aprovacao">Aprovação</a></li><li><a href="#/marketing/feedbacks" aria-current="page">Feedbacks</a></li><li><a href="#/marketing/feed">Feed</a></li><li><a href="#/marketing/calendario">Calendário</a></li><li><a href="#/marketing/trafego">Tráfego pago</a></li><li><a href="#/marketing/resultados">Resultados de marketing</a></li><li><a href="#/marketing/aprendizado">Aprendizado e relatórios</a></li><li><a href="#/marketing/acervo">Acervo</a></li></ul><p class="local-nav-foot">Só neste computador. Nenhuma chave sai do servidor local.</p></aside>
+<div class="main-pane"><header class="mobile-bar"><span class="menu-chip">Menu</span><span class="mobile-brand">Grana.<small>Administração local</small></span></header>
 <div class="wrap">
 <header class="top"><div class="brand"><img src="../../../public/admin-marca.svg" width="120" height="31" alt="Grana."><span>Painel administrativo</span></div><button class="exit" type="button" aria-label="Demonstração do botão Sair">Sair</button></header>
-<p class="crumb">Painel administrativo / Marketing / Feedbacks</p>
-<main id="conteudo">
-<div class="heading"><div><h1>Gestão de feedbacks</h1><p>Triagem interna, acompanhamento e decisão sobre correções.</p></div><span class="private">Área administrativa restrita</span></div>
-<p class="demo"><strong>Dados fictícios para demonstração.</strong> As mensagens abaixo foram criadas para a prancha e não pertencem a pessoas usuárias.</p>
-<div class="mobile-switch" role="group" aria-label="Prévia responsiva da caixa de feedbacks">
-<button type="button" data-vista="lista" aria-pressed="true">Lista</button><button type="button" data-vista="detalhe" aria-pressed="false">Detalhe selecionado</button>
-</div>
+<p class="crumb">Marketing / Feedbacks</p>
+<main id="conteudo" class="feedbacks-contract">
+<div class="heading"><div><h1>Feedbacks</h1><p>Triagem dos feedbacks do app. A mensagem original e o consentimento de uso público nunca mudam aqui.</p></div></div>
+<p class="demo"><strong>Dados fictícios para demonstração.</strong> Nenhuma mensagem abaixo pertence a uma pessoa usuária.</p>
 <form class="filters" aria-labelledby="filtros-titulo">
-<div class="filters-head"><h2 id="filtros-titulo">Filtrar feedbacks</h2><p>Os filtros combinam; limpe para recomeçar.</p></div>
+<div class="filters-head"><h2 id="filtros-titulo">Filtrar itens carregados</h2><p>Tipo e nota consultam o servidor; andamento filtra o lote atual.</p></div>
 <div class="filter-grid">
-<div class="field"><label for="f-estado">Andamento</label><select id="f-estado"><option>Todos os estados</option><option>Novo</option><option>Em análise</option><option>Planejado</option><option>Em execução</option><option>Resolvido</option><option>Arquivado</option></select></div>
-<div class="field"><label for="f-tipo">Tipo</label><select id="f-tipo"><option>Todos</option><option>Sugestão</option><option>Problema</option><option>Elogio</option><option>Outro</option></select></div>
-<div class="field"><label for="f-nota">Nota</label><select id="f-nota"><option>Todas</option><option>5 estrelas</option><option>4 estrelas</option><option>3 estrelas</option><option>2 estrelas</option><option>1 estrela</option></select></div>
-<div class="field"><label for="f-versao">Versão do app</label><input id="f-versao" type="text" placeholder="Ex.: 1.10.5"></div>
-<div class="field"><label for="f-plataforma">Plataforma</label><select id="f-plataforma"><option>Todas</option><option>Android</option><option>iOS</option><option>Web</option></select></div>
-<div class="field"><label for="f-consentimento">Uso público</label><select id="f-consentimento"><option>Qualquer escolha</option><option>Autorizado</option><option>Não autorizado</option></select></div>
-<div class="field"><label for="f-data">Recebido desde</label><input id="f-data" type="date" value="2026-10-01"></div>
-<div class="filter-actions"><button class="btn primary" type="button">Aplicar filtros</button><button class="btn subtle" type="reset">Limpar</button></div>
-</div>
-</form>
-<div class="status-counts" aria-label="Contagem fictícia por andamento"><span class="count"><strong>7</strong> Novos</span><span class="count"><strong>4</strong> Em análise</span><span class="count"><strong>3</strong> Planejados</span><span class="count"><strong>2</strong> Em execução</span><span class="count"><strong>8</strong> Resolvidos</span><span class="count"><strong>1</strong> Arquivado</span></div>
-<div class="queue">
-<section class="panel queue-list" aria-labelledby="lista-titulo"><div class="panel-head"><div><h2 id="lista-titulo">Fila de feedbacks</h2><p>Mais recentes primeiro · 4 de 25 itens fictícios</p></div><button class="btn subtle small" type="button">Atualizar</button></div>
-<ol class="list">
-<li><button type="button" class="item selected" aria-current="true" data-selecionar="detalhe"><div class="item-top"><h3>A capa perde leitura no celular</h3><span class="type">Sugestão</span></div><p class="item-excerpt">O título fica pequeno quando vejo a peça numa tela menor.</p><div class="item-meta"><span>4 de 5 estrelas</span><span>1.10.5</span><span>Android</span><span>02 out. 2026</span></div><div class="chips"><span class="chip state">Em análise</span><span class="chip priority">Prioridade alta</span><span class="chip consent">Uso público: não autorizado</span></div></button></li>
-<li><button type="button" class="item" data-selecionar="detalhe"><div class="item-top"><h3>Filtro de período mais rápido</h3><span class="type">Sugestão</span></div><p class="item-excerpt">Uma escolha para os últimos meses ajudaria a encontrar lançamentos.</p><div class="item-meta"><span>5 de 5 estrelas</span><span>1.10.6</span><span>Web</span><span>01 out. 2026</span></div><div class="chips"><span class="chip">Novo</span><span class="chip">Prioridade não definida</span><span class="chip consent">Uso público: autorizado</span></div></button></li>
-<li><button type="button" class="item" data-selecionar="detalhe"><div class="item-top"><h3>Botão difícil de encontrar</h3><span class="type">Problema</span></div><p class="item-excerpt">Na tela de contas, demorei para achar como filtrar os itens.</p><div class="item-meta"><span>3 de 5 estrelas</span><span>1.10.4</span><span>Android</span><span>29 set. 2026</span></div><div class="chips"><span class="chip">Planejado</span><span class="chip">Prioridade média</span><span class="chip consent">Uso público: não autorizado</span></div></button></li>
-<li><button type="button" class="item" data-selecionar="detalhe"><div class="item-top"><h3>Relatório de tela congelou</h3><span class="type">Problema</span></div><p class="item-excerpt">A tela de resumo demorou para atualizar depois de trocar o mês.</p><div class="item-meta"><span>2 de 5 estrelas</span><span>1.10.3</span><span>iOS</span><span>27 set. 2026</span></div><div class="chips"><span class="chip">Em execução</span><span class="chip">Prioridade média</span><span class="chip consent">Uso público: não autorizado</span></div></button></li>
-</ol><p class="pager">Carregar mais 50 feedbacks</p></section>
-<aside class="detail" aria-labelledby="detalhe-titulo">
-<div class="detail-top"><div><span class="id">Registro fictício F-048</span><h2 id="detalhe-titulo">A capa perde leitura no celular</h2><p>Sugestão · Recebido em 02 out. 2026</p></div><button class="btn subtle small back" type="button" data-vista="lista">Voltar à lista</button></div>
-<p class="message">“O título fica pequeno quando vejo a peça numa tela menor. Seria bom revisar o contraste e o tamanho antes de publicar.”</p>
-<p class="meta-line">4 de 5 estrelas · App 1.10.5 · Android · Leitura original: ainda não revisado</p>
-<p class="orig-consent"><strong>Consentimento separado:</strong> não autorizou uso público. A triagem interna não altera essa escolha.</p>
-<div class="detail-form">
+<div class="field"><label for="f-estado">Andamento da gestão</label><select id="f-estado"><option>Todos</option><option>Novo</option><option>Em análise</option><option>Planejado</option><option>Em execução</option><option>Resolvido</option><option>Arquivado</option></select></div>
+<div class="field"><label for="f-tipo">Tipo</label><select id="f-tipo"><option>Todos os tipos</option><option>Sugestão</option><option>Problema</option><option>Elogio</option><option>Outro</option></select></div>
+<div class="field"><label for="f-nota">Nota</label><select id="f-nota"><option>Todas</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+</div></form>
+<p class="feedbacks-summary">Tipo e nota filtram no servidor. Andamento e contagem usam apenas os itens já carregados.</p>
+<div class="feedbacks-counts" aria-label="Contagem fictícia dos itens carregados"><span>1 Novo</span><span>1 Em análise</span><span>1 Planejado</span><span>1 Em execução</span><span>0 Resolvidos</span><span>0 Arquivados</span></div>
+<section class="panel" aria-labelledby="lista-titulo"><div class="panel-head"><div><h2 id="lista-titulo">Feedbacks recebidos</h2><p>Mais recentes primeiro · 4 de 25 itens fictícios carregados</p></div><button class="btn subtle small" type="button">Atualizar</button></div>
+<div class="feedbacks-table-wrap" role="region" aria-label="Tabela de feedbacks; em telas estreitas, deslize horizontalmente para ver as colunas" tabindex="0">
+<table class="feedbacks-table"><caption class="sr-only">Feedbacks recebidos do mais novo ao mais antigo; a mensagem é resumida em até 160 caracteres.</caption><thead><tr><th scope="col">Mensagem</th><th scope="col">Tipo e nota</th><th scope="col">Versão do app</th><th scope="col">No app</th><th scope="col">Uso público</th><th scope="col">Prioridade</th><th scope="col">Recebido</th></tr></thead><tbody>
+<tr><td><span class="feedback-title">A capa perde leitura no celular</span><span class="feedback-excerpt">O título fica pequeno quando vejo a peça numa tela menor.</span><span class="feedback-status warn">Em análise</span><button class="btn subtle small" type="button" data-gerir aria-label="Gerir feedback: A capa perde leitura no celular">Gerir</button></td><td>Sugestão · 4</td><td>1.10.5</td><td>Pendente no app</td><td>Não autorizado</td><td>Alta</td><td>02 out. 2026</td></tr>
+<tr><td><span class="feedback-title">Filtro de período mais rápido</span><span class="feedback-excerpt">Uma escolha para os últimos meses ajudaria a encontrar lançamentos.</span><span class="feedback-status">Novo</span><button class="btn subtle small" type="button" data-gerir aria-label="Gerir feedback: Filtro de período mais rápido">Gerir</button></td><td>Sugestão · 5</td><td>1.10.6</td><td>Revisado no app</td><td>Autorizado</td><td>Sem prioridade</td><td>01 out. 2026</td></tr>
+<tr><td><span class="feedback-title">Botão difícil de encontrar</span><span class="feedback-excerpt">Na tela de contas, demorei para achar como filtrar os itens.</span><span class="feedback-status">Planejado</span><button class="btn subtle small" type="button" data-gerir aria-label="Gerir feedback: Botão difícil de encontrar">Gerir</button></td><td>Problema · 3</td><td>1.10.4</td><td>Pendente no app</td><td>Não autorizado</td><td>Média</td><td>29 set. 2026</td></tr>
+<tr><td><span class="feedback-title">Relatório de tela congelou</span><span class="feedback-excerpt">A tela de resumo demorou para atualizar depois de trocar o mês.</span><span class="feedback-status">Em execução</span><button class="btn subtle small" type="button" data-gerir aria-label="Gerir feedback: Relatório de tela congelou">Gerir</button></td><td>Problema · 2</td><td>1.10.3</td><td>Resolvido no app</td><td>Não autorizado</td><td>Média</td><td>27 set. 2026</td></tr>
+</tbody></table></div>
+<button class="btn subtle feedbacks-more" type="button">Carregar mais</button></section>
+<p class="receipt" id="recibo" role="status" aria-live="polite">Amostra visual; nenhuma alteração foi gravada.</p>
+<dialog class="manage-dialog" id="manage-dialog" aria-labelledby="manage-title">
+<h2 id="manage-title">Gerir feedback</h2><p>Não cole dado pessoal nos campos. Resolvido exige evidência e versão da resolução.</p>
+<div class="manage-fields">
 <div class="field"><label for="d-estado">Andamento</label><select id="d-estado"><option>Novo</option><option selected>Em análise</option><option>Planejado</option><option>Em execução</option><option>Resolvido</option><option>Arquivado</option></select></div>
 <div class="field"><label for="d-prioridade">Prioridade</label><select id="d-prioridade"><option>Baixa</option><option>Média</option><option selected>Alta</option></select></div>
-<div class="field"><label for="d-responsavel">Responsável</label><input id="d-responsavel" value="Time de design"></div>
-<div class="field"><label>Etiquetas</label><div class="tags"><span class="chip">mobile</span><span class="chip">criativo</span></div></div>
-<div class="wide contract"><strong>Observação interna e tarefa vinculada aguardam contrato</strong>O critério M7 inclui esses campos. A versão atual do DTO e da tabela ainda não os oferece. Não salvar esse conteúdo em outro campo.</div>
-</div>
-<div class="form-foot"><p>As mudanças administrativas preservam o texto original e ficam em histórico separado.</p><button class="btn primary" type="button">Salvar gestão</button></div>
-<section class="availability" aria-labelledby="disponibilidade-titulo"><h3 id="disponibilidade-titulo">Disponibilidade da correção</h3><div class="availability-grid">
-<div class="availability-item"><span>No código</span><strong>Correção pronta para revisão</strong></div><div class="availability-item"><span>No app instalado</span><strong>Ainda não disponível</strong></div>
-</div><p>Estados independentes. “Resolvido” não confirma, sozinho, que a correção chegou ao app instalado.</p></section>
-<section class="creative" aria-labelledby="criativo-titulo"><div class="creative-head"><h3 id="criativo-titulo">Correção de criativo vinculada</h3><span class="chip state">Pronta para sua revisão</span></div><p>Peça 06 · versão 4 → 5 · commit de demonstração 3f12a9c</p><p>A prévia e a comparação devem corresponder exatamente à versão que será aceita. Aceitar não publica automaticamente.</p><div class="creative-actions"><button class="btn subtle" type="button">Pedir outro ajuste</button><button class="btn primary" type="button">Aceitar esta versão</button></div></section>
-<section class="resolution" aria-labelledby="resolucao-titulo"><h3 id="resolucao-titulo">Evidência da resolução</h3><p>Obrigatória antes de marcar como Resolvido. Evite colar dados pessoais.</p><div class="detail-form">
+<div class="field"><label for="d-responsavel">Responsável</label><input id="d-responsavel" value="Time de design" maxlength="80"></div>
+<div class="field"><label for="d-etiquetas">Etiquetas</label><input id="d-etiquetas" value="mobile, criativo" aria-describedby="etiquetas-ajuda"><span class="sr-only" id="etiquetas-ajuda">Até oito etiquetas de até trinta caracteres, separadas por vírgula.</span></div>
 <div class="field"><label for="d-versao">Versão da resolução</label><input id="d-versao" placeholder="Ex.: 1.11.0"></div>
-<div class="field"><label for="d-evidencia">Evidência</label><input id="d-evidencia" placeholder="Link, referência ou commit"></div>
-</div><p class="resolve-help">A evidência fica na gestão interna, separada do feedback original.</p></section>
-</aside>
-</div>
-</main><footer class="footer">Grana. · Painel administrativo · Exemplo visual com conteúdo fictício</footer>
-</div>
+<div class="field wide"><label for="d-evidencia">Evidência da resolução</label><textarea id="d-evidencia" maxlength="500" placeholder="Referência, link ou commit"></textarea></div>
+</div><p class="manage-help">A evidência fica na gestão interna, separada do feedback original. “Resolvido no app” continua sendo um estado distinto.</p>
+<div class="manage-actions"><button class="btn subtle" type="button" data-fechar>Cancelar</button><button class="btn primary" type="button" data-salvar>Salvar gestão</button></div>
+</dialog>
+</main><footer class="footer">Grana. · Administração local · Exemplo visual com conteúdo fictício</footer>
+</div></div></div>
 <script>
 (function(){
- const body=document.body;
- const switches=document.querySelectorAll("[data-vista]");
- function setView(view){
-  body.dataset.vista=view;
-  document.querySelectorAll(".mobile-switch [data-vista]").forEach(function(button){button.setAttribute("aria-pressed",String(button.dataset.vista===view));});
- }
- switches.forEach(function(button){button.addEventListener("click",function(){setView(button.dataset.vista);});});
- document.querySelectorAll("[data-selecionar]").forEach(function(button){button.addEventListener("click",function(){document.querySelectorAll(".item").forEach(function(item){item.classList.remove("selected");});button.classList.add("selected");setView("detalhe");});});
- const view=new URLSearchParams(location.search).get("vista");
- if(view==="detalhe"||view==="lista")setView(view);
+ const dialog=document.getElementById('manage-dialog'), receipt=document.getElementById('recibo');
+ let trigger=null;
+ document.querySelectorAll('[data-gerir]').forEach(button=>button.addEventListener('click',()=>{trigger=button;dialog.showModal();}));
+ document.querySelector('[data-fechar]').addEventListener('click',()=>dialog.close());
+ document.querySelector('[data-salvar]').addEventListener('click',()=>{dialog.close();receipt.textContent='Demonstração: nenhuma alteração foi gravada.';});
+ dialog.addEventListener('close',()=>{if(trigger)trigger.focus();});
+ if(new URLSearchParams(location.search).get('vista')==='detalhe')dialog.showModal();
 })();
-</script>
-</body></html>
+</script></body></html>

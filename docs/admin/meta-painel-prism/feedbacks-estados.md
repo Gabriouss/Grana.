@@ -1,84 +1,41 @@
-# Especificação visual: gestão de feedbacks
+# Contrato visual: gestão de feedbacks (E3)
 
-**Estado:** proposta visual para a Entrega 3.
+**Destino:** painel local tools/admin-local. Handoff visual para Forge; Harbor mantém backend e DTO.
 
-**Superfície:** /admin web, após autenticação administrativa.
+**Estado:** a tela integrada já existe em tools/admin-local/web/telas/feedbacks.js. Esta revisão alinha o contrato ao código local e aos campos aceitos pelo servidor. M7 permanece parcial nas lacunas listadas abaixo.
 
-**Base de produto:** critérios M7 3.1 a 3.7; leitura existente em components/admin/FeedbacksAdmin.web.tsx.
+**Prancha:** [feedbacks-estados.html](./feedbacks-estados.html). Conteúdo fictício, sem gravação.
 
-**Contrato consultado:** migration 20261016020000_feedback_gestao.sql e supabase/functions/_shared/admin-feedbacks.ts.
+## Encaixe no painel local
 
-**Protótipo:** [feedbacks-estados.html](./feedbacks-estados.html). Mensagens e identificadores das capturas são fictícios.
+- Rota existente: #/marketing/feedbacks; item Feedbacks no grupo Marketing, depois de Aprovação. API local: GET /api/marketing/feedbacks e POST /api/marketing/feedbacks/gestao.
+- Manter casca de index.html, roteador de app.js e padrões de estilo.css. Reutilizar tela-cabecalho, barra-filtros, campo, tabela-rolagem, tabela, selo, estado-ausente, estado-erro, botao e ctx.formulario. Não criar outra casca ou página web /admin.
+- A tela é uma tabela e um modal comum de gestão. Não existe painel de detalhe nem mudança de vista móvel.
+- Reutilizar tokens existentes: --paper, --paper-raised, --paper-selected, --ink, --ink-soft, --ink-faint, --rule, --rule-strong, --up, --atencao, --danger, --t-*, --s-*, --r-* e --alvo. Tipografia do painel usa Neue Machina 300/400; não sintetizar negrito.
+- Em 320/390 px, tabela rola dentro de região nomeada e focável. Preservar caption e Gerir junto da mensagem na primeira coluna para manter a ação acessível.
+- O navegador fala apenas com o servidor Node local. Indisponibilidade da gestão mantém leitura somente; falha de leitura não vira lista vazia.
 
-## Objetivo e limite
+## Dados e fluxo
 
-Permitir que o administrador triage feedbacks sem modificar o texto original, seu consentimento de uso público ou os dados preservados pela exclusão de conta. Os metadados da triagem ficam separados em feedback_gestao e no histórico administrativo.
+- Lista paginada do mais recente para o mais antigo. Contagem e filtro de andamento descrevem somente os itens carregados.
+- Filtros existentes: tipo e nota consultam o servidor; andamento da gestão filtra o lote carregado. Não anunciar filtro global por andamento.
+- Colunas: mensagem resumida (até 160 caracteres), tipo/nota, versão do app, status no app, uso público autorizado, andamento, prioridade, recebimento e ação.
+- Modal existente aceita andamento, prioridade, responsável, etiquetas, versão da resolução e evidência. Enviar somente propriedades alteradas. Erro de validação preserva o que foi digitado.
+- Resolvido exige versão da resolução e evidência no estado final gravado. Arquivar exige confirmação. Triagem não altera mensagem original, status no app ou consentimento.
+- Estados de gestão: novo, em_analise, planejado, em_execucao, resolvido e arquivado. Diferenciar visualmente estado de gestão do status original no app.
+- Mensagem é conteúdo não confiável: renderizar como texto; não copiar para log, aviso ou notificação. Não mostrar user_id, e-mail, telefone ou identificador de conta.
 
-A tela mantém uma lista filtrável e um painel de detalhe. O fluxo de correção pode apontar para uma solicitação existente e abrir a prévia/comparação exata. A decisão do autor sobre a versão fica separada da publicação. O feedback original é conteúdo não confiável e pode conter dado pessoal; a tela só aparece atrás do portão administrativo existente.
+## Estados, acessibilidade e limites
 
-## Estrutura visual
+Carregando indica leitura em andamento. Vazio inicial diz "Ainda não chegaram feedbacks"; vazio filtrado diz que não há correspondências. Erro explica que a leitura falhou e não significa ausência de registros, com nova tentativa. Gestão indisponível aparece como somente leitura. Falha ao salvar preserva valores digitados; sucesso e erro deixam recibo textual visível.
 
-- Cabeçalho do /admin, trilha “Marketing / Feedbacks” e título “Gestão de feedbacks”.
-- Aviso de demonstração persistente na prancha.
-- Filtros combináveis para andamento de gestão, tipo, nota, versão do app, plataforma, consentimento de uso público e data.
-- Contagem por estado em rótulos textuais, sem depender de cor.
-- Desktop: fila à esquerda, detalhe selecionado à direita.
-- 768 px: duas colunas compactas, com lista e detalhe em sequência de foco previsível.
-- 390 px e 320 px: uma vista por vez. Selecionar um feedback abre o detalhe; “Voltar à lista” devolve o foco ao item selecionado. Os controles de prévia no HTML alternam a composição.
-- Detalhe: mensagem original somente leitura, tipo, nota, versão, plataforma, data e consentimento explícito.
-- Gestão: andamento, prioridade, responsável e até oito etiquetas.
-- Resolução: versão e evidência associadas à conclusão, com instrução para não colar dado pessoal. A evidência é obrigatória ao marcar Resolvido.
-- Correção de criativo: solicitação associada, versão anterior/atual, prévia e comparação. “Pedir outro ajuste” preserva a cadeia. “Aceitar esta versão” refere-se somente à versão exibida; não autoriza publicação.
-- Separar “No código” de “No app instalado”. O estado Resolvido, sozinho, não prova disponibilidade na build instalada.
-- Feedback novo pode gerar aviso operacional sem texto de usuário; importação de feedback antigo não gera e-mail retroativo. Nenhuma notificação externa é enviada por esta prancha.
+Usar foco visível, alvos de pelo menos --alvo (44 px), nome acessível para ações e regiões roláveis, e região role=status para recibos. Estado não depende só de cor.
 
-## Estados de gestão
+O DTO atual não oferece filtro de plataforma, consentimento, versão ou data; observação interna; tarefa vinculada; histórico visível; nem prova de que uma correção está no app instalado. Não desenhar esses controles ou inferir disponibilidade a partir de Resolvido. Consentimento é somente leitura. M7 3.1-3.7 segue parcial nos itens que dependem desses dados. Não duplicar aceite de criativo dos fluxos Aprovação e Ajustes.
 
-| Valor persistido | Rótulo da interface |
-|---|---|
-| novo | Novo |
-| em_analise | Em análise |
-| planejado | Planejado |
-| em_execucao | Em execução |
-| resolvido | Resolvido |
-| arquivado | Arquivado |
+## Handoff e QA conhecido
 
-O andamento de gestão é independente do status original do feedback no app. A tela deve nomear ambos quando os dois forem exibidos. A triagem nunca modifica consentimento de uso público; essa permissão aparece como dado separado e explícito.
-
-## Interações e segurança
-
-- Filtrar atualiza a contagem e a lista sem apagar os filtros aplicados; Limpar restaura a consulta inicial.
-- Selecionar item atualiza o detalhe. Em 320/390, abrir o detalhe é uma mudança de vista com botão de retorno.
-- Salvar alterações mostra estado carregando e recibo de sucesso/erro. Uma falha não some com a mensagem original nem aparenta salvamento.
-- Resolver exige evidência e versão de resolução; validação aparece junto dos campos.
-- Arquivar é ação secundária e pede confirmação antes da gravação.
-- Sem identidade, e-mail, telefone, screenshot ou user_id na lista. Não copiar mensagem para console, notificação, e-mail ou histórico de auditoria.
-- Etiquetas, responsável, observação e evidência são campos administrativos. Não inserir conteúdo pessoal nelas.
-- Teclado, foco visível, rótulos persistentes, alvos de 44 × 44 px e mensagens anunciadas por uma região de status contextual. Respeitar prefers-reduced-motion.
-
-## Lacunas do contrato atual para Anvil e Harbor
-
-A tela de leitura existente filtra status legado, tipo, nota, versão e datas. O pedido de listagem em admin-feedbacks.ts não inclui plataforma, public_use_consent nem estado de gestão. Os critérios M7 3.1 e 3.2 requerem esses filtros e mudanças de estado. O endpoint precisa aceitar filtros de gestão, plataforma e consentimento no servidor antes que a UI anuncie que combinou esses filtros. Filtrar só a página carregada, de até 50 linhas, daria resultados incompletos.
-
-A migration e o DTO atuais suportam estado, prioridade, responsável, etiquetas, evidência e versão da resolução. Os critérios M7 também nomeiam observação e tarefa vinculada, mas esses campos não estão no contrato lido. O protótipo mantém esse espaço desativado e identificado como pendente. Não salvar observação dentro de evidência, etiqueta ou responsável. Harbor/Anvil precisam confirmar o vínculo à fila de pedidos existente e a política de retenção antes de ativar o campo.
-
-O critério de disponibilidade exige distinguir correção pronta no código de correção disponível no app instalado. O DTO de gestão só carrega versaoResolucao; a tela não deve inferir publicação a partir de Resolvido. É necessária uma fonte explícita para disponibilidade no app, versão publicada e evidência do código antes de mostrar os dois estados como fatos.
-
-A prancha inclui uma correção de criativo fictícia para mostrar a revisão, comparação e aceite de uma versão exata. A implementação deve reutilizar a cadeia de pedidos e versões existente. Peça, versão, commit, prévia e comparação precisam ser conferidos no servidor. Repetição de conclusão não duplica notificação nem aceite. Aceite não faz publicação nem muda orçamento.
-
-## Responsividade e estados de borda
-
-- 1440 px: filtros em uma faixa, lista/detalhe em grade e conteúdo limitado a 1120 px.
-- 768 px: três colunas de filtros; lista/detalhe em duas colunas.
-- 390 px e 320 px: filtros empilhados, sem overflow horizontal, lista e detalhe em vistas separadas.
-- Carregando: preservar dimensões de lista/detalhe com skeleton e aria-busy.
-- Vazio sem filtro: orientar que ainda não chegaram feedbacks.
-- Vazio com filtro: informar que nenhum item corresponde aos filtros e oferecer Limpar.
-- Erro ao listar/editar: recibo seguro, referência e tentar novamente. Não transformar falha permanente em fila vazia.
-- Lista paginada: nova página não duplica itens; foco vai ao primeiro item novo quando ação é feita pelo teclado.
-- Resolvido sem evidência/versão: manter gravação bloqueada e explicar como corrigir.
-- Correção atualizada após revisão: invalidar aceite anterior e exigir decisão sobre a nova versão.
-
-## Limites desta entrega
-
-Este protótipo é estático e não grava metadados, consulta feedbacks nem envia mensagens. O usuário demonstrativo, as datas, as versões e o commit são fictícios. A migration e a Edge Function continuam dependentes da aprovação/aplicação posterior. Nenhum dado real foi acessado ou incluído nas capturas.
+- **Forge/UI:** preservar a tabela e o modal existentes; ajustar apenas ao contrato local e manter mensagens originais/consentimento imutáveis.
+- **Harbor/backend:** validar o estado resultante, não somente o patch, para impedir Resolvido sem versão e evidência.
+- **Teclado:** risco no modal de gestão. feedbacks.js desabilita o botão Gerir enquanto aguarda ctx.formulario. app.js tenta devolver o foco antes de esse botão ser reabilitado; o foco pode cair no body ao fechar. Confirmar no navegador e devolver foco a um controle utilizável.
+- QA em 16/10: o atalho oficial terminou com exit 0, mas a superfície de browser continuou indisponível no CUA. Playwright headless em 320/390/768/1440 viu somente o shell “Painel não pareado” (raiz HTTP 200; /api/health 403), sem dados de feedback. O Escape e retorno do foco passaram no protótipo estático; modal e teclado integrados continuam sem validação. Leitor de tela não usado.
