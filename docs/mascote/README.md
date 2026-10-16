@@ -23,6 +23,10 @@ barra do G). Quatro vistas: 0°, 45°, 90° e 180°, câmera ortográfica.
 | `granabo-sorrisos-w3.png` | Sorrisos S1 a S4 |
 | `granabo-sorrisos-largos.png` | Sorrisos L1 a L4 (L3 escolhido) |
 
+## Granabô animado em Blender
+
+O modelo 3D, os keyframes e o passo a passo para renderizar e montar o Reels estão em `docs/mascote/blender/README.md`. Os quadros já renderizados estão versionados em `docs/marketing/reels-granabo/quadros/`.
+
 ## Como gerar de novo
 
 Precisa de Python 3 com `numpy` e `Pillow`. Roda de qualquer pasta:
