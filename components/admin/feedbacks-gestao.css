@@ -9,7 +9,7 @@
   padding-block-start: 12px;
   border-top: 1px solid var(--admin-borda);
   color: var(--admin-apoio);
-  font-size: 13px;
+  font-size: 15px;
   overflow-wrap: anywhere;
 }
 
@@ -48,7 +48,7 @@
 .admin-feedbacks .admin-feedbacks__salvo {
   margin: 0;
   color: var(--admin-menta);
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .admin-feedbacks__gestao-form {
@@ -86,14 +86,14 @@
 .admin-feedbacks .admin-feedbacks__dica {
   margin: 6px 0 0;
   color: var(--admin-suave);
-  font-size: 12px;
+  font-size: 15px;
   line-height: 1.5;
 }
 
 .admin-feedbacks .admin-feedbacks__confirmar {
   margin: 0;
   color: var(--admin-apoio);
-  font-size: 14px;
+  font-size: 15px;
 }
 
 @media (min-width: 768px) {

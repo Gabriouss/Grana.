@@ -512,7 +512,7 @@
 
 .admin-feedbacks__campo label {
   color: var(--admin-apoio);
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .admin-feedbacks__campo select,
@@ -556,7 +556,7 @@
   grid-column: 1 / -1;
   margin: 0;
   color: var(--admin-perigo);
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .admin-feedbacks__resultado {
@@ -565,7 +565,7 @@
 
 .admin-feedbacks__estado {
   color: var(--admin-apoio);
-  font-size: 14px;
+  font-size: 15px;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
@@ -598,7 +598,7 @@
   align-items: baseline;
   gap: 6px 12px;
   min-width: 0;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .admin-feedbacks__tipo {
@@ -653,7 +653,7 @@
   flex-wrap: wrap;
   gap: 4px 16px;
   color: var(--admin-suave);
-  font-size: 12px;
+  font-size: 15px;
   overflow-wrap: anywhere;
 }
 
