@@ -39,7 +39,7 @@ let falha = false, obsoleta = false;
 const timers = new Map(); let timerId = 0;
 const s = { epoca: 0, geracao: 1, bloqueado: null, acesso: null,
   document: { querySelector: (q) => q === '[data-contador-aprovacao]' ? link : null, querySelectorAll: () => [], getElementById: () => null, body: { appendChild() {} } }, console: { warn: (...a) => logs.push(a) },
-  h: () => ({ querySelector: () => ({ focus() {} }) }), faixa: () => null, limpar() {}, limpezaAtual: null,
+  h: () => ({ querySelector: () => ({ focus() {} }) }), faixa: () => null, limpar() {}, limpezaAtual: null, desligarSino() {},
   MOTIVOS_COM_CAUSA: ['saiu'], TEXTO_BLOQUEIO: { 'servidor-fora': { titulo: 'Servidor fora', texto: 'Fixture' }, saiu: { titulo: 'Saiu', texto: 'Fixture' } },
   setTimeout: (f, ms) => { assert.equal(ms,15000); timers.set(++timerId,f); return timerId; }, clearTimeout: (id) => timers.delete(id),
   agruparFamilias: pecas.agruparFamilias, juntarCapasAoReel: pecas.juntarCapasAoReel, pecaDaFila: pecas.pecaDaFila, contarPrecisaDeVoce: ajustes.contarPrecisaDeVoce,

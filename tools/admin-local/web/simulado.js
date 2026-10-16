@@ -6,6 +6,7 @@ const hoje = new Date();
 const p = (n) => String(n).padStart(2, '0');
 const isoDia = (d) => `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 const diasAtras = (n, h = 10) => { const d = new Date(hoje); d.setDate(d.getDate() - n); d.setHours(h, 12, 0, 0); return d.toISOString(); };
+const minutosAtras = (n) => new Date(Date.now() - n * 60000).toISOString();
 const diaDoMes = (n) => isoDia(new Date(hoje.getFullYear(), hoje.getMonth(), n));
 const MARCA = 'design-system/marca/';
 const proximaSegunda = new Date(hoje);
@@ -64,6 +65,15 @@ Este texto aparece porque o servidor local ainda não entregou o DOCUMENTO-DE-MA
 
 function ok(dados) { return { ok: true, dados, atualizadoEm: new Date().toISOString(), simulado: true }; }
 function falha(codigo, mensagem, status = 400) { const e = new Error(mensagem); e.codigo = codigo; e.status = status; throw e; }
+
+// Sino (M6): mesmo dublê do servidor local, para o painel aberto sem servidor. Só na memória desta aba.
+const notificacoesBase = [
+  { id: 'd1', codigo: 'publicacao-precisa-conferir', importancia: 'agir', fonte: 'publicacoes', titulo: 'Confira o resultado no Instagram', resumo: 'A Meta não confirmou o resultado. Confira antes de repetir o envio.', acao: 'Conferir resultado', destino: '#/marketing/calendario', criadoEm: minutosAtras(4), lidaEm: null, resolvidaEm: null },
+  { id: 'd2', codigo: 'criativo-para-revisao', importancia: 'agir', fonte: 'criativos', titulo: 'Criativo pronto para sua revisão', resumo: 'Reel, versão 7. Confira as alterações e compare com a versão anterior.', acao: 'Revisar criativo', destino: '#/marketing/aprovacao', criadoEm: minutosAtras(18), lidaEm: null, resolvidaEm: null },
+  { id: 'd3', codigo: 'feedback-novo', importancia: 'informacao', fonte: 'feedbacks', titulo: 'Novo feedback', resumo: 'Um novo relato aguarda sua análise.', acao: null, destino: null, criadoEm: minutosAtras(32), lidaEm: null, resolvidaEm: null },
+  { id: 'd4', codigo: 'falha-reconciliada', importancia: 'informacao', fonte: 'sistema', titulo: 'Falha de entrega resolvida', resumo: 'O envio que falhou foi reconciliado.', acao: null, destino: null, criadoEm: diasAtras(1, 15), lidaEm: diasAtras(1, 15), resolvidaEm: diasAtras(1, 15) },
+];
+const notificacoesSim = () => ({ fonte: 'dados-de-teste', aviso: 'Dados de teste.', atualizadoEm: new Date().toISOString(), notificacoes: notificacoesBase.map((n) => ({ ...n })), naoLidas: notificacoesBase.filter((n) => !n.lidaEm).length, proximaPagina: null });
 
 const leituras = {
   '/api/saude': () => ({ painel: 'grana-admin', versao: 1 }),
@@ -141,6 +151,7 @@ const leituras = {
     };
   },
   '/api/marketing/trafego': () => ({ campanhas: campanhas.map((c) => ({ ...c })) }),
+  '/api/marketing/notificacoes': () => notificacoesSim(),
   '/api/marketing/documento': () => ({ texto: DOC, caminho: 'docs/marketing/painel/DOCUMENTO-DE-MARKETING.md' }),
 };
 
@@ -167,6 +178,11 @@ const acoes = [
     if (!(peca.estado === 'aprovados' || peca.aceite)) falha('nao-aprovada', 'Só peça aprovada vai para o calendário.', 409);
     peca.publicacao = corpo.data ? { data: corpo.data, hora: corpo.hora || '', canal: corpo.canal || peca.canal } : null;
     return { id: peca.id, publicacao: peca.publicacao };
+  }],
+  [/^\/api\/marketing\/notificacoes\/ler$/, (m, corpo) => {
+    const ids = new Set(Array.isArray(corpo.ids) ? corpo.ids : []);
+    for (const n of notificacoesBase) if (ids.has(n.id)) n.lidaEm = corpo.desfazer === true ? null : (n.lidaEm || new Date().toISOString());
+    return notificacoesSim();
   }],
   [/^\/api\/marketing\/trafego$/, (m, corpo) => {
     const c = { ...corpo, id: corpo.id || `camp-sim-${Date.now()}` };

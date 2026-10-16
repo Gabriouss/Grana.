@@ -10,6 +10,7 @@ import { SIMULADO } from './simulado.js';
 import { criarAcesso, CODIGOS_LOGIN, ROTAS_SESSAO } from './telas/_acesso.js';
 import { agruparFamilias, juntarCapasAoReel, pecaDaFila } from './telas/_pecas.js';
 import { contarPrecisaDeVoce } from './telas/ajustes.js';
+import { montarSino } from './telas/_notificacoes.js';
 
 const ROTAS_SEM_EFEITO = new Set(Object.values(ROTAS_SESSAO));
 
@@ -974,6 +975,27 @@ function ligarMenu() {
 }
 
 // ---------------------------------------------------------------------------
+// Sino global (M6): um só elemento, no topo do conteúdo no largo e na barra móvel no estreito.
+
+let sino = null;
+function colocarSino() {
+  if (!sino) return;
+  const destino = document.getElementById(estreito.matches ? 'sino-barra' : 'sino-faixa');
+  if (destino && sino.elemento.parentElement !== destino) destino.appendChild(sino.elemento);
+}
+function ligarSino() {
+  if (sino) return;
+  sino = montarSino({ h, api, acao });
+  colocarSino();
+}
+function desligarSino() {
+  if (!sino) return;
+  sino.destruir();
+  sino = null;
+}
+estreito.addEventListener('change', colocarSino);
+
+// ---------------------------------------------------------------------------
 // Partida
 
 async function checarServidor() {
@@ -996,6 +1018,7 @@ const podeDesenhar = () => acesso && (acesso.legado || acesso.entrou);
 
 function esconderPainel() {
   epoca++;
+  desligarSino();
   cancelarContadorAprovacao();
   const casca = document.querySelector('.casca');
   if (casca) { casca.inert = true; casca.hidden = true; }
@@ -1012,6 +1035,7 @@ function esconderPainel() {
 function mostrarPainel() {
   const casca = document.querySelector('.casca');
   if (casca) { casca.hidden = false; casca.inert = false; }
+  ligarSino();
 }
 
 async function iniciar() {
@@ -1050,6 +1074,7 @@ async function iniciar() {
     acesso = null;
     if (!bloqueado) marcarSimulado(location.protocol === 'file:' ? 'O painel foi aberto como arquivo, sem o servidor local.' : 'O servidor local não respondeu em /api/saude.');
     if (!location.hash) location.replace(`#/${ROTA_PADRAO}`);
+    ligarSino();
     renderizar();
     return;
   }

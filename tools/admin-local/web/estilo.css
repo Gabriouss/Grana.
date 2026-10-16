@@ -2853,3 +2853,82 @@ details.cartao > summary { min-height: var(--alvo); cursor: pointer; }
   position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
   overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
 }
+
+/* ── Sino global e central de notificações (M6, docs/admin/m6-prism) ───────
+   O sino vive na casca: faixa de 44 px no topo do conteúdo no largo, barra móvel no estreito.
+   A central é um <dialog> modal (foco preso, fundo inerte, Esc e retorno do foco nativos).
+   Texto da central nunca abaixo de 15 px (--t-nota). */
+.faixa-global { display: flex; justify-content: flex-end; min-height: var(--alvo); margin: 0 0 var(--s-lg); }
+.barra-topo-acoes { display: flex; align-items: center; gap: var(--s-sm); }
+@media (max-width: 899px) { .faixa-global { display: none; } }
+@media (min-width: 900px) { .barra-topo-acoes { display: none; } }
+.sino { position: relative; display: inline-flex; }
+.sino-botao {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s-xs);
+  min-width: var(--alvo); height: var(--alvo); padding: 0 var(--s-sm);
+  border: 1px solid var(--rule); border-radius: var(--r-md);
+  background: transparent; color: var(--ink); cursor: pointer; font: inherit;
+}
+.sino-botao:hover { border-color: var(--accent-2); }
+.sino-icone { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+/* O contador fica dentro da área do botão: não cobre o desenho nem sai da caixa de 44 px. */
+.sino-contador {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 var(--s-xs); border-radius: var(--r-pill);
+  background: var(--accent-2); color: var(--paper); font-size: 11px; line-height: var(--lh-unica);
+}
+.sino-indisponivel { color: var(--atencao); }
+
+dialog.central {
+  position: fixed; inset: 0 0 0 auto; margin: 0;
+  width: 416px; max-width: 100%; height: 100vh; height: 100dvh; max-height: none;
+  padding: 0; border: 0; border-radius: 0;
+  background: var(--paper-raised); color: var(--ink);
+  box-shadow: var(--sombra-painel);
+}
+dialog.central[open] { display: flex; flex-direction: column; }
+dialog.central::backdrop { background: var(--scrim); }
+.central-cabecalho { display: flex; align-items: center; justify-content: space-between; gap: var(--s-md); padding: var(--s-lg); border-bottom: 1px solid var(--rule); }
+.central-titulo { margin: 0; font-size: var(--t-titulo); line-height: var(--lh-titulo); font-weight: 400; }
+.central-titulo:focus { outline: none; }
+.central-sub, .central-apoio { margin: var(--s-xs) 0 0; color: var(--ink-faint); font-size: var(--t-nota); line-height: var(--lh-compacto); }
+.central-rolagem { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 0 var(--s-lg) var(--s-lg); }
+.central-abas { display: flex; gap: var(--s-lg); border-bottom: 1px solid var(--rule); }
+.central-aba {
+  min-height: var(--alvo); padding: var(--s-sm) 0; border: 0; border-bottom: 2px solid transparent; border-radius: 0;
+  background: transparent; color: var(--ink-soft); cursor: pointer; font: inherit; font-size: var(--t-nota);
+}
+.central-aba[aria-selected="true"] { border-bottom-color: var(--accent-2); color: var(--ink); }
+.central-filtros-alternar { display: none; width: 100%; justify-content: space-between; margin: var(--s-md) 0; }
+.central-filtros { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-md); margin: var(--s-lg) 0; }
+.central-filtros label { min-width: 0; color: var(--ink-soft); font-size: var(--t-nota); }
+.central-filtros select {
+  display: block; width: 100%; min-width: 0; height: var(--alvo); margin-top: var(--s-xs); padding: var(--s-sm);
+  border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); color: var(--ink); font: inherit; font-size: var(--t-nota);
+}
+.central-corpo:focus { outline: none; }
+.central-grupo { margin: var(--s-lg) 0 var(--s-md); color: var(--ink-faint); font-size: var(--t-nota); line-height: var(--lh-titulo); }
+.central-item { min-width: 0; margin-bottom: var(--s-xl); padding-bottom: var(--s-xl); border-bottom: 1px solid var(--rule); overflow-wrap: anywhere; }
+.central-item h3 { margin: var(--s-sm) 0; font-size: var(--t-apoio); line-height: var(--lh-compacto); font-weight: 400; }
+.central-meta { margin: 0; color: var(--ink-faint); font-size: var(--t-nota); line-height: var(--lh-compacto); }
+.central-resumo { margin: 0; color: var(--ink-soft); font-size: var(--t-nota); line-height: var(--lh-corpo); }
+.central-nao-lida { margin: var(--s-sm) 0 0; color: var(--accent-2); font-size: var(--t-nota); }
+.central-acoes { display: flex; flex-wrap: wrap; gap: var(--s-sm); margin-top: var(--s-md); }
+.central-bloco { margin: var(--s-md) 0; padding: var(--s-md); border: 1px solid var(--rule); border-radius: var(--r-md); background: var(--paper); font-size: var(--t-nota); }
+.central-bloco h3 { margin: 0 0 var(--s-xs); font-size: var(--t-apoio); font-weight: 400; }
+.central-bloco p { margin: 0; color: var(--ink-soft); }
+.central-bloco .botao { margin-top: var(--s-md); }
+.central-bloco-atencao { border-color: rgba(211, 184, 105, 0.35); background: var(--atencao-fundo); }
+.central-rodape { display: flex; flex-direction: column; gap: var(--s-xs); padding: var(--s-sm) var(--s-lg) max(var(--s-md), env(safe-area-inset-bottom)); border-top: 1px solid var(--rule); }
+.central-rodape-marcar { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--s-md); }
+.central-rodape-linha { display: flex; align-items: center; justify-content: space-between; gap: var(--s-md); }
+.central-rodape .botao { border: 0; padding-inline: 0; }
+.pref-lista { margin: var(--s-md) 0; }
+.pref-linha { display: flex; align-items: center; justify-content: space-between; gap: var(--s-md); min-height: var(--alvo); border-bottom: 1px solid var(--rule); font-size: var(--t-nota); }
+.pref-linha input { width: 24px; height: 24px; accent-color: var(--accent-2); }
+@media (max-width: 640px) {
+  dialog.central { width: 100%; }
+  .central-filtros-alternar { display: flex; }
+  .central-filtros { display: none; grid-template-columns: 1fr; margin: 0 0 var(--s-md); }
+  .central-filtros-abertos .central-filtros { display: grid; }
+}
