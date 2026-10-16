@@ -179,7 +179,22 @@ function modulo(rotas, config = fakeConfig()) {
   }
 
   // ---------- tela ----------
-  const node = (tag, attrs = {}, ...filhos) => ({ tag, attrs, children: filhos.flat(Infinity).filter((x) => x != null && x !== false), appendChild(n) { this.children.push(n); }, replaceChildren(...n) { this.children = n.flat(Infinity); }, get textContent() { return this.attrs.texto || ''; }, set textContent(v) { this.attrs.texto = v; } });
+  let ultimoFoco = null;
+  let focoComBotaoDesabilitado = false;
+  const node = (tag, attrs = {}, ...filhos) => ({
+    tag,
+    attrs,
+    disabled: Boolean(attrs.disabled),
+    children: filhos.flat(Infinity).filter((x) => x != null && x !== false),
+    appendChild(n) { this.children.push(n); },
+    replaceChildren(...n) { this.children = n.flat(Infinity); },
+    focus() {
+      if (this.disabled) focoComBotaoDesabilitado = true;
+      ultimoFoco = this;
+    },
+    get textContent() { return this.attrs.texto || ''; },
+    set textContent(v) { this.attrs.texto = v; },
+  });
   const texto = (n) => (n == null ? '' : typeof n === 'object' ? [n.attrs?.texto || '', ...(n.children || []).map(texto)].join(' ') : String(n));
   const walk = (n) => [n, ...(n.children || []).flatMap(walk)];
   const fonte = fs.readFileSync(path.join(ROOT, 'tools/admin-local/web/telas/feedbacks.js'), 'utf8');
@@ -230,17 +245,43 @@ function modulo(rotas, config = fakeConfig()) {
   }
   const base = () => ({ status: 'ok', feedbacks: [item(ID1)], haMais: false, gestaoDisponivel: true });
   const valores = (extra) => ({ estado: 'novo', prioridade: '', responsavel: '', etiquetas: '', versaoResolucao: '', evidencia: '', ...extra });
-  { // salvar: só o que mudou
+  { // salvar: só o que mudou e foco volta ao novo botão Gerir renderizado
+    ultimoFoco = null;
+    focoComBotaoDesabilitado = false;
     const t = await tela({ dados: base(), formulario: valores({ estado: 'em_analise', prioridade: 'alta', etiquetas: 'voz, android' }), acao: { id: ID1, gestao: { ...gestaoPadrao, estado: 'em_analise', prioridade: 'alta', etiquetas: ['voz', 'android'] } } });
-    await botao(t.raiz, 'Gerir').attrs.onclick({ currentTarget: botao(t.raiz, 'Gerir') });
+    const btnAntes = botao(t.raiz, 'Gerir');
+    await btnAntes.attrs.onclick({ currentTarget: btnAntes });
     const post = t.chamadas.find((c) => c[0] === 'POST');
     igual(post, ['POST', '/api/marketing/feedbacks/gestao', { id: ID1, estado: 'em_analise', prioridade: 'alta', etiquetas: ['voz', 'android'] }], 'patch parcial só com o que mudou');
     ok(texto(t.raiz).includes('Em análise') && t.avisos.some((a) => a[0] === 'Gestão salva.'), 'lista atualiza e há recibo');
+    const btnDepois = botao(t.raiz, 'Gerir');
+    ok(ultimoFoco === btnDepois && !focoComBotaoDesabilitado && btnDepois.disabled === false, 'após salvar e redesenhar, o foco volta ao botão Gerir ativo da linha');
   }
-  { // nada mudou: não grava
+  { // cancelar diálogo ou fechar sem mudança: reabilita botão antes de devolver o foco
+    ultimoFoco = null;
+    focoComBotaoDesabilitado = false;
+    const tCancel = await tela({ dados: base(), formulario: null });
+    const btnCancel = botao(tCancel.raiz, 'Gerir');
+    await btnCancel.attrs.onclick({ currentTarget: btnCancel });
+    ok(ultimoFoco === btnCancel && !focoComBotaoDesabilitado && btnCancel.disabled === false, 'cancelar o modal devolve o foco ao botão Gerir já reabilitado');
+
+    ultimoFoco = null;
+    focoComBotaoDesabilitado = false;
     const t = await tela({ dados: base(), formulario: valores({}) });
-    await botao(t.raiz, 'Gerir').attrs.onclick({ currentTarget: botao(t.raiz, 'Gerir') });
+    const btnNada = botao(t.raiz, 'Gerir');
+    await btnNada.attrs.onclick({ currentTarget: btnNada });
     ok(!t.chamadas.some((c) => c[0] === 'POST') && t.avisos.some((a) => a[0] === 'Nada mudou.'), 'sem mudança: nada gravado');
+    ok(ultimoFoco === btnNada && !focoComBotaoDesabilitado && btnNada.disabled === false, 'fechar sem mudança devolve o foco ao botão Gerir ativo');
+  }
+  { // quando o item salvo sai do filtro de andamento ativo, o foco cai no seletor de andamento
+    ultimoFoco = null;
+    focoComBotaoDesabilitado = false;
+    const t = await tela({ dados: base(), formulario: valores({ estado: 'em_analise' }), acao: { id: ID1, gestao: { ...gestaoPadrao, estado: 'em_analise' } } });
+    const selAndamento = walk(t.raiz).find((n) => n.tag === 'select' && n.attrs.id === 'feedbacks-andamento');
+    selAndamento.attrs.onchange({ target: { value: 'novo' } });
+    const btn = botao(t.raiz, 'Gerir');
+    await btn.attrs.onclick({ currentTarget: btn });
+    ok(ultimoFoco === selAndamento, 'se o item sai da lista filtrada após salvar, o foco vai para o filtro de andamento');
   }
   { // Resolvido sem evidência e versão: bloqueado antes de gravar
     const t = await tela({ dados: base(), formulario: valores({ estado: 'resolvido', evidencia: 'Commit 02235ca' }) });

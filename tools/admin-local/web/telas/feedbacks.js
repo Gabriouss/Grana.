@@ -53,8 +53,13 @@ export async function montar(raiz, ctx) {
     h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Atualizar', onclick: () => carregar(true) }),
   ]);
 
-  const seletor = (id, rotulo, opcoes, aoMudar) => h('div', { class: 'campo' }, h('label', { for: id, texto: rotulo }),
-    h('select', { id, onchange: (e) => aoMudar(e.target.value) }, opcoes.map(([value, texto]) => h('option', { value, texto }))));
+  const seletores = {};
+  const botoesGerir = new Map();
+  const seletor = (id, rotulo, opcoes, aoMudar) => {
+    const campoSelect = h('select', { id, onchange: (e) => aoMudar(e.target.value) }, opcoes.map(([value, texto]) => h('option', { value, texto })));
+    seletores[id] = campoSelect;
+    return h('div', { class: 'campo' }, h('label', { for: id, texto: rotulo }), campoSelect);
+  };
   raiz.appendChild(h('div', { class: 'barra-filtros' },
     seletor('feedbacks-andamento', 'Andamento da gestão', [['', 'Todos'], ...ESTADOS], (v) => { estadoGestao = v; desenhar(); }),
     seletor('feedbacks-tipo', 'Tipo', TIPOS, (v) => { if (v) filtros.tipo = v; else delete filtros.tipo; carregar(true); }),
@@ -94,6 +99,7 @@ export async function montar(raiz, ctx) {
   }
 
   function desenhar() {
+    botoesGerir.clear();
     const visiveis = estadoGestao ? itens.filter((i) => i.gestao.estado === estadoGestao) : itens;
     const contagem = ESTADOS.map(([v, t]) => `${t}: ${itens.filter((i) => i.gestao.estado === v).length}`).join(' · ');
     const partes = [];
@@ -110,10 +116,14 @@ export async function montar(raiz, ctx) {
     else {
       partes.push(ctx.tabela([
         // Andamento e ação moram na primeira coluna: em tela estreita a tabela rola de lado as colunas do fim ficam escondidas.
-        { titulo: 'Mensagem', valor: (i) => h('div', { class: 'feedback-mensagem', style: 'min-width: min(26ch, 70vw)' },
-          h('p', { texto: resumo(i.mensagem) }),
-          h('p', {}, ctx.selo(NIVEL_ESTADO[i.gestao.estado] || 'neutro', NOME_ESTADO[i.gestao.estado] || i.gestao.estado)),
-          h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Gerir', 'aria-label': `Gerir feedback: ${resumo(i.mensagem).slice(0, 40)}`, disabled: !gestaoDisponivel, onclick: (e) => gerir(i, e.currentTarget) })) },
+        { titulo: 'Mensagem', valor: (i) => {
+          const botaoGerir = h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Gerir', 'aria-label': `Gerir feedback: ${resumo(i.mensagem).slice(0, 40)}`, disabled: !gestaoDisponivel, dados: { feedbackId: i.id }, onclick: (e) => gerir(i, e.currentTarget) });
+          botoesGerir.set(i.id, botaoGerir);
+          return h('div', { class: 'feedback-mensagem', style: 'min-width: min(26ch, 70vw)' },
+            h('p', { texto: resumo(i.mensagem) }),
+            h('p', {}, ctx.selo(NIVEL_ESTADO[i.gestao.estado] || 'neutro', NOME_ESTADO[i.gestao.estado] || i.gestao.estado)),
+            botaoGerir);
+        } },
         { titulo: 'Tipo e nota', valor: (i) => `${NOME_TIPO[i.tipo] || i.tipo}${i.nota ? ` · nota ${i.nota}` : ''}` },
         { titulo: 'Versão do app', valor: (i) => i.versaoApp || 'não informada' },
         { titulo: 'No app', valor: (i) => STATUS_APP[i.status] || i.status },
@@ -183,7 +193,14 @@ export async function montar(raiz, ctx) {
     } catch (err) {
       console.warn('[feedbacks-gestao]', err.codigo || 'falha');
       if (!ctx.obsoleta()) ctx.aviso(MOTIVOS_ERRO[err.codigo] || 'Não foi possível salvar a gestão. Atualize a lista antes de repetir.', 'erro');
-    } finally { if (!ctx.obsoleta()) botao.disabled = !gestaoDisponivel; }
+    } finally {
+      if (!ctx.obsoleta()) {
+        botao.disabled = !gestaoDisponivel;
+        const destinoFoco = botoesGerir.get(item.id) || seletores['feedbacks-andamento'];
+        if (destinoFoco && destinoFoco !== seletores['feedbacks-andamento']) destinoFoco.disabled = !gestaoDisponivel;
+        if (gestaoDisponivel && typeof destinoFoco?.focus === 'function') destinoFoco.focus();
+      }
+    }
   }
 
   await carregar(true);
