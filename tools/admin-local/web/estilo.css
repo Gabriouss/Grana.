@@ -2966,3 +2966,28 @@ dialog.central::backdrop { background: var(--scrim); }
 .resultados-passos strong { font-weight: 400; color: var(--ink); }
 .resultados-passos span { color: var(--ink-soft); }
 #resultados-confiabilidade:focus { outline: none; }
+
+/* Aprendizado e relatórios (E7): recomendações em cartões, fatos em lista de definição, impressão para PDF. */
+.aprendizado { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-lg); }
+.aprendizado-cabecalho { display: grid; gap: var(--s-sm); }
+.aprendizado-cabecalho p { margin: 0; overflow-wrap: anywhere; }
+.aprendizado-acoes { display: flex; flex-wrap: wrap; gap: var(--s-sm); }
+.aprendizado-recomendacoes { display: grid; gap: var(--s-lg); }
+.aprendizado-recomendacao { display: grid; gap: var(--s-md); }
+.aprendizado-linha { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-sm) var(--s-md); }
+.aprendizado-fatos { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: var(--s-xs) var(--s-lg); margin: 0; font-size: var(--t-nota); }
+.aprendizado-fatos dt { color: var(--ink-faint); }
+.aprendizado-fatos dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+.aprendizado-limites { margin: 0; padding-left: var(--s-lg); color: var(--ink-soft); font-size: var(--t-nota); }
+@media (max-width: 640px) {
+  .aprendizado-fatos { grid-template-columns: minmax(0, 1fr); }
+  .aprendizado-fatos dd { margin-bottom: var(--s-sm); }
+}
+@media print {
+  body.imprimindo-relatorio .lateral, body.imprimindo-relatorio .barra-topo, body.imprimindo-relatorio .faixa-global,
+  body.imprimindo-relatorio .faixa-simulado, body.imprimindo-relatorio .avisos, body.imprimindo-relatorio .aprendizado-acoes,
+  body.imprimindo-relatorio .tela-cabecalho .botao, body.imprimindo-relatorio .pular-para-conteudo { display: none !important; }
+  body.imprimindo-relatorio, body.imprimindo-relatorio .casca, body.imprimindo-relatorio .conteudo { background: #fff; color: #111; display: block; }
+  body.imprimindo-relatorio * { color: #111 !important; background: transparent !important; border-color: #888 !important; box-shadow: none !important; }
+  body.imprimindo-relatorio .aprendizado-recomendacao, body.imprimindo-relatorio .secao { break-inside: avoid; }
+}

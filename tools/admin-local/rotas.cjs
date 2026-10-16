@@ -239,6 +239,7 @@ const GET = {
   '/api/marketing/cronograma': (req, res) => rotaMarketingGet(res, 'cronograma', ['ler'], [], null),
   '/api/marketing/resultados': (req, res, url) => responderOk(res, adaptador('meta-leitura').ler({ incluirHoje: url.searchParams.get('incluirHoje') === '1' })),
   '/api/marketing/notificacoes': (req, res) => rotaMarketingGet(res, 'notificacoes', ['listarNotificacoes'], [], { notificacoes: [], naoLidas: 0 }),
+  '/api/marketing/aprendizado': (req, res) => rotaMarketingGet(res, 'relatorio-semanal', ['lerRelatorio'], [], { relatorio: null }),
   '/api/marketing/feedbacks': (req, res, url) => rotaMarketingGet(res, 'feedbacks', ['listarFeedbacks'], [filtrosDeFeedbacks(url)], { feedbacks: [], haMais: false, gestaoDisponivel: false }),
   '/api/marketing/trafego': (req, res) => rotaMarketingGet(res, 'trafego', ['listarCampanhas', 'listarTrafego', 'listar', 'trafego'], [], { campanhas: [] }),
 };
@@ -261,7 +262,7 @@ function pedidosComTitulo(lista) {
 }
 const ID_PECA = /^\/api\/marketing\/pecas\/([0-9a-f]{16})\/(aprovar|ajuste|promover|recusar)$/;
 const ANTERIOR = /^\/api\/marketing\/ajustes\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/anterior$/i;
-const MARKETING_POST = new Set(['/api/marketing/calendario', '/api/marketing/trafego', '/api/marketing/ajustes/aceitar', '/api/marketing/ajustes/retry', '/api/marketing/ajustes/reenviar', '/api/marketing/ajustes/encerrar', '/api/marketing/cronograma', '/api/marketing/cronograma/vinculo', '/api/marketing/notificacoes/ler', '/api/marketing/feedbacks/gestao']);
+const MARKETING_POST = new Set(['/api/marketing/calendario', '/api/marketing/trafego', '/api/marketing/ajustes/aceitar', '/api/marketing/ajustes/retry', '/api/marketing/ajustes/reenviar', '/api/marketing/ajustes/encerrar', '/api/marketing/cronograma', '/api/marketing/cronograma/vinculo', '/api/marketing/notificacoes/ler', '/api/marketing/feedbacks/gestao', '/api/marketing/aprendizado/csv']);
 const ACOES_BUILD = {
   '/api/eas/preparar-build': ['PREPARAR BUILD', 'prepararBuild'],
   '/api/eas/disparar-build': ['DISPARAR BUILD', 'dispararBuild'],
@@ -315,7 +316,8 @@ async function tratarAcao(req, res, url, corpo, sessao) {
       registrar('acao', { rota: p, resultado: res.statusCode, sessao: sessao.id });
       return undefined;
     }
-    if (p === '/api/marketing/feedbacks/gestao') r = rotaMarketingPost(res, 'feedbacks', ['atualizarGestaoFeedback'], [corpo]);
+    if (p === '/api/marketing/aprendizado/csv') r = rotaMarketingPost(res, 'relatorio-semanal', ['exportarCsv'], [corpo]);
+    else if (p === '/api/marketing/feedbacks/gestao') r = rotaMarketingPost(res, 'feedbacks', ['atualizarGestaoFeedback'], [corpo]);
     else if (p === '/api/marketing/notificacoes/ler') r = rotaMarketingPost(res, 'notificacoes', ['marcarNotificacoes'], [corpo]);
     else if (p === '/api/marketing/cronograma') r = rotaMarketingPost(res, 'cronograma', ['salvarManifesto'], [corpo]);
     else if (p === '/api/marketing/cronograma/vinculo') r = rotaMarketingPost(res, 'cronograma', ['registrarVinculo'], [corpo.pecaId, corpo]);

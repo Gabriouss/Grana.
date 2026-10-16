@@ -28,6 +28,7 @@ const ROTAS = {
   'marketing/calendario': { modulo: 'calendario', titulo: 'Calendário' },
   'marketing/trafego': { modulo: 'trafego', titulo: 'Tráfego pago' },
   'marketing/resultados': { modulo: 'resultados', titulo: 'Resultados de marketing' },
+  'marketing/aprendizado': { modulo: 'aprendizado', titulo: 'Aprendizado e relatórios' },
   'marketing/acervo': { modulo: 'acervo', titulo: 'Acervo' },
   'design-system': { modulo: 'design-system', titulo: 'Design System' },
 };
