@@ -104,6 +104,17 @@ const csvDireto = (() => {
     const t = await tela({ resposta: null, falha: true });
     ok(texto(t.raiz).includes('Falha ao ler') && !texto(t.raiz).includes('indisponível'), 'falha de leitura mostra erro, não "indisponível" nem zero');
   }
+  { // contrato incompatível ou incompleto deixa recibo visível e não exporta
+    const semSuporte = { ...RELATORIO_DE_TESTE, contractVersion: 'e7.v2' };
+    const periodoRuim = { ...RELATORIO_DE_TESTE, period: { ...RELATORIO_DE_TESTE.period, endExclusive: 'data-invalida' } };
+    for (const relatorio of [semSuporte, periodoRuim]) {
+      const t = await tela({ resposta: { status: 'ok', relatorio } });
+      const x = texto(t.raiz);
+      ok(x.includes('Relatório semanal indisponível') && x.includes('contrato e7.v1') && x.includes('Indisponível não é zero'), 'contrato incompatível/incompleto gera estado visível, sem inferência');
+      ok(!x.includes('Exportar CSV'), 'contrato incompatível/incompleto não oferece exportação');
+    }
+    igual(sandbox.rotuloPeriodo({ startInclusive: 'data-invalida', endExclusive: 'data-invalida', timezone: 'America/Sao_Paulo' }), 'período indisponível', 'período inválido não lança ao formatar');
+  }
   { // dados de teste
     const t = await tela({ resposta: { status: 'ok', relatorio: RELATORIO_DE_TESTE } });
     const x = texto(t.raiz);

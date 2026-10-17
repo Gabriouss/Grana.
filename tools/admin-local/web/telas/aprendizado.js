@@ -36,6 +36,7 @@ const CODIGOS = {
   sample_below_fixture_policy: 'Amostra abaixo da política de teste.',
   sample_policy_pending: 'A política de amostra está pendente.',
 };
+const CONTRATO_RELATORIO = 'e7.v1';
 const texto = (codigo) => CODIGOS[codigo] || `Código sem tradução: ${codigo}`;
 const par = (tabela, k, padrao) => tabela[k] || padrao;
 const nomeFonte = (id) => FONTES[id] || id;
@@ -44,10 +45,30 @@ const num = (n) => (typeof n === 'number' && Number.isFinite(n) ? n.toLocaleStri
 
 const dataHora = (iso) => { const d = new Date(iso); return Number.isFinite(d.getTime()) ? d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'data indisponível'; };
 const dia = (iso) => { const d = new Date(iso); return Number.isFinite(d.getTime()) ? d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: 'short', year: 'numeric' }) : 'data indisponível'; };
+function relatorioCompativel(r) {
+  if (!r || typeof r !== 'object' || r.contractVersion !== CONTRATO_RELATORIO
+    || typeof r.reportId !== 'string' || !r.reportId.trim()
+    || !Number.isInteger(r.revision) || r.revision < 1
+    || typeof r.snapshotId !== 'string' || !r.snapshotId.trim()
+    || !Number.isFinite(Date.parse(r.generatedAt))
+    || r.metricContractRef !== 'Beacon-E4'
+    || !['complete', 'partial'].includes(r.periodState)
+    || !r.attribution || typeof r.attribution !== 'object'
+    || !r.sample || typeof r.sample !== 'object'
+    || !Array.isArray(r.sources) || !Array.isArray(r.metrics)
+    || !Array.isArray(r.recommendations) || r.recommendations.length > 3
+    || !Array.isArray(r.experiments) || !Array.isArray(r.qualityNotes) || !Array.isArray(r.nextActions)) return false;
+  const inicio = Date.parse(r.period?.startInclusive);
+  const fim = Date.parse(r.period?.endExclusive);
+  return Number.isFinite(inicio) && Number.isFinite(fim) && fim > inicio
+    && r.period?.timezone === 'America/Sao_Paulo';
+}
 // Fim exclusivo vira "até o dia anterior" para a pessoa; o contrato guarda o instante exato.
 export function rotuloPeriodo(p) {
-  if (!p) return 'período indisponível';
-  const fim = new Date(new Date(p.endExclusive).getTime() - 1);
+  const inicio = Date.parse(p?.startInclusive);
+  const fimExclusivo = Date.parse(p?.endExclusive);
+  if (!Number.isFinite(inicio) || !Number.isFinite(fimExclusivo) || fimExclusivo <= inicio || !p.timezone) return 'período indisponível';
+  const fim = new Date(fimExclusivo - 1);
   return `${dia(p.startInclusive)} a ${dia(fim.toISOString())} (${p.timezone})`;
 }
 
@@ -82,7 +103,7 @@ export async function montar(raiz, ctx) {
   raiz.appendChild(recibo);
 
   async function carregar() {
-    if (teste) { relatorio = RELATORIO_DE_TESTE; desenhar(); return; }
+    if (teste) { relatorio = RELATORIO_DE_TESTE; apresentarRelatorio(); return; }
     ctx.estado.carregando(corpo, 'Lendo o relatório semanal…');
     let d;
     try { d = (await ctx.api('/api/marketing/aprendizado')).dados; }
@@ -90,7 +111,22 @@ export async function montar(raiz, ctx) {
     if (ctx.obsoleta()) return;
     relatorio = d && d.relatorio ? d.relatorio : null;
     if (!relatorio) { indisponivel((d && d.motivo) || 'O relatório semanal não está disponível.'); return; }
-    desenhar();
+    apresentarRelatorio();
+  }
+
+  function apresentarRelatorio() {
+    if (!relatorioCompativel(relatorio)) {
+      console.warn('[aprendizado] contrato-incompativel');
+      relatorio = null;
+      indisponivel(`O relatório não corresponde ao contrato ${CONTRATO_RELATORIO} ou está incompleto. Atualize para tentar novamente.`);
+      return;
+    }
+    try { desenhar(); }
+    catch {
+      console.warn('[aprendizado] renderizacao-falhou', 'contrato-incompativel');
+      relatorio = null;
+      indisponivel(`O relatório não pôde ser exibido no contrato ${CONTRATO_RELATORIO}. Atualize para tentar novamente.`);
+    }
   }
 
   function indisponivel(motivo) {
