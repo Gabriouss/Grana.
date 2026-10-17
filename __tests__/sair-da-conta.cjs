@@ -139,5 +139,19 @@ function etapasQueAnotam(sobrescrever = {}) {
     ok('o signOut do app passa pelo módulo com prazo (o código anterior esperava o push direto)');
   }
 
+  // ── Sair numa tela não derruba as outras (17/10/2026) ─────────────────
+  /* Sem escopo o supabase-js usa 'global' e revoga todas as sessões da conta:
+     o autor saiu na web às 22h52 UTC de 16/10 e o celular caiu em
+     refresh_token_not_found. Todo `auth.signOut(` do app e do painel é local. */
+  {
+    for (const arquivo of ['lib/auth-context.tsx', 'lib/data.ts', 'components/admin/PainelAdmin.web.tsx']) {
+      const fonte = fs.readFileSync(path.join(root, arquivo), 'utf8');
+      const chamadas = fonte.match(/auth\.signOut\([^)]*\)/g) ?? [];
+      assert.ok(chamadas.length > 0, `${arquivo} ainda chama auth.signOut`);
+      for (const c of chamadas) assert.match(c, /scope:\s*'local'/, `${arquivo}: ${c} sem escopo local`);
+    }
+    ok('todo auth.signOut do app e do painel usa scope local');
+  }
+
   console.log(`\n${aprovadas} checagens de sair da conta passaram`);
 })().catch((e) => { console.error(e); process.exit(1); });
