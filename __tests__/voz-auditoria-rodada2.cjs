@@ -27,7 +27,7 @@ function load(file, deps = {}) {
 }
 const h = load('lib/heuristics.ts');
 const { porExtenso } = load('__tests__/extenso.ts');
-const { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz, valorSeguroParaRevisaoVoz } = load('lib/voz-confiabilidade.ts');
+const { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz, valorSeguroParaRevisaoVoz, valorDaFalaVoz } = load('lib/voz-confiabilidade.ts');
 let total = 0, failed = 0;
 const groups = new Map();
 function check(group, text, got, expected) {
@@ -99,7 +99,7 @@ load('lib/widget-voz-task.ts', {
   './offline-cache': { isLikelyNetworkError: () => false },
   '@/modules/grana-voice-widget': { definirEstado() {} },
   './voz': { transcreverAudio: async () => { throw Error('rede não permitida neste teste'); } },
-  './heuristics': h, './voz-confiabilidade': { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz },
+  './heuristics': h, './voz-confiabilidade': { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz, valorDaFalaVoz },
   './data': { fetchApelidosCategoria: async () => [], fetchCategories: async () => [], fetchCreditCards: async () => cards },
   './wallets': { fetchWallets: async () => wallets },
   './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'), registrarOperacaoVoz: async (_id, _source, payload) => {

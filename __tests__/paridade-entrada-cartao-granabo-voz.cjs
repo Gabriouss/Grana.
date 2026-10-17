@@ -95,7 +95,9 @@ let transcricao = '';
 let tarefa;
 const gravadosVoz = [];
 carregarVm('lib/widget-voz-task.ts', {
-  './voz-confiabilidade': { precisaRevisarValorVoz: () => false, transcricaoPareceLancamentoVoz: () => true },
+  './voz-confiabilidade': { precisaRevisarValorVoz: () => false, transcricaoPareceLancamentoVoz: () => true,
+    // A revisão de valor está desligada neste dublê; o valor segue a heurística pura.
+    valorDaFalaVoz: (t) => carregarVm('lib/heuristics.ts').guessAmountFromText(t) },
   'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (_, factory) => { tarefa = factory(); } } },
   './offline-cache': { isLikelyNetworkError: () => false },
   '@/modules/grana-voice-widget': { definirEstado: () => {} },

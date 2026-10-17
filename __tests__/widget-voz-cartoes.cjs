@@ -8,6 +8,7 @@ const deps = {
   './voz-confiabilidade': {
     precisaRevisarValorVoz: () => false,
     transcricaoPareceLancamentoVoz: () => true,
+    valorDaFalaVoz: () => 32,
   },
   'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (_, factory) => { task = factory(); } } },
   './offline-cache': { isLikelyNetworkError: () => false },

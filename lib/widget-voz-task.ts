@@ -659,7 +659,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     await notificacoes.notificarRevisao('Confirme o valor que ouvi', transcricao.transcript);
     return false;
   }
-  const valor = heuristics.guessAmountFromText(texto);
+  const valor = confiabilidade.valorDaFalaVoz(texto);
   if (!Number.isFinite(valor) || valor <= 0) {
     await notificacoes.notificarRevisao('Não encontrei o valor', transcricao.transcript);
     return false;

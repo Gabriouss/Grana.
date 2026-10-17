@@ -192,6 +192,10 @@ const CENARIOS = {
   servidorNaoEntendeu: (x) => ({ local: LIXO, servidor: x.falha('nao_entendi', 422) }),
   receita: (x) => ({ local: null, servidor: x.ok('recebi 1500 reais de salario') }),
   parcelado: (x) => ({ local: null, servidor: x.ok('comprei uma tv de 1200 reais em 4 vezes no credito C6') }),
+  /* Falas da build 1.10.7 no aparelho do autor (17/10/2026). */
+  centavosColados: () => ({ local: 'Mercado 2997, crédito C6.', servidor: new Error('nao deveria enviar') }),
+  claudioComCifrao: () => ({ local: 'Cláudio, R$ 26,58, crédito C6', servidor: new Error('nao deveria enviar') }),
+  padariaPix: () => ({ local: 'padaria 21,64 no pix', servidor: new Error('nao deveria enviar') }),
 };
 
 (async () => {
@@ -221,6 +225,22 @@ const CENARIOS = {
 
     m = await rodar(origem, CENARIOS.localBom);
     ok(m.e.envios === 0 && m.e.rpc.length === 1, `${origem}: texto bom do aparelho nao gasta o servidor`);
+
+    /* 17/10/2026: "vinte e nove e noventa e sete" escrito "2997" grava 29,97
+       direto, no C6, com o nome "Mercado". Antes ia a revisao com R$ 0,00. */
+    m = await rodar(origem, CENARIOS.centavosColados);
+    let p = m.e.rpc.find((r) => r.nome === 'registrar_operacao_voz')?.args.p_payload;
+    ok(p && p.amount === 29.97 && p.card_id === 'c6' && p.description === 'Mercado' && m.e.revisoes.length === 0,
+      `${origem}: "Mercado 2997, credito C6" grava 29,97 no C6 como "Mercado", sem revisao`);
+    m = await rodar(origem, CENARIOS.padariaPix);
+    p = m.e.rpc.find((r) => r.nome === 'registrar_operacao_voz')?.args.p_payload;
+    ok(p && p.amount === 21.64 && p.payment_method === 'pix' && p.description === 'Padaria' && !p.card_id,
+      `${origem}: "padaria 21,64 no pix" grava 21,64 no pix como "Padaria"`);
+    /* "Claudio" nao diz categoria: o nucleo pergunta, igual nas duas entradas,
+       e nada vai a RPC. O valor e o cartao nao sao o motivo. */
+    m = await rodar(origem, CENARIOS.claudioComCifrao);
+    ok(m.e.rpc.length === 0 && m.e.revisoes.map((r) => r.titulo).join() === 'Qual categoria?',
+      `${origem}: "Claudio, R$ 26,58, credito C6" pergunta a categoria e nao grava`);
   }
 
   console.log('1b653b7: gravacao que falha nao avisa as telas, igual nas duas entradas');

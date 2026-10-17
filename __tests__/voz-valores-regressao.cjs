@@ -20,7 +20,7 @@ function carregar(file, deps = {}) {
 }
 const h = carregar('lib/heuristics.ts');
 const server = carregar('supabase/functions/_shared/finance-command.ts');
-const { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz, valorSeguroParaRevisaoVoz } = carregar('lib/voz-confiabilidade.ts');
+const { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz, valorSeguroParaRevisaoVoz, valorDaFalaVoz } = carregar('lib/voz-confiabilidade.ts');
 let checks = 0;
 for (const frase of ['', 'Obrigado por assistir', 'Acesse o site www.exemplo.com', 'Todos os direitos reservados 2026']) {
   assert.equal(transcricaoPareceLancamentoVoz(frase), false, 'ruído não vira lançamento: ' + frase);
@@ -53,7 +53,30 @@ for (const frase of ['Energético 18 e 99', 'Energético dezoito e noventa e nov
   assert.equal(h.guessAmountFromText(frase), 18.99);
 }
 assert.equal(h.guessAmountFromText('Mercado 18,9'), 18.9);
-for (const frase of ['Mercado 1899', 'Mercado 50', 'Mercado 1.899', 'Mercado 99999999', 'Mercado 57quenta e sete reais', 'Mercado 18,999', 'Mercado 12,50 e farmácia 24,90']) {
+/* Reais e centavos colados (autor, 17/10/2026, build 1.10.7): número nu de 4
+   dígitos é reais e centavos e lança sozinho; de 3 dígitos é sugerido assim,
+   mas vai à revisão ("590" também é "quinhentos e noventa"). Com "reais",
+   "R$" ou "mil" nada muda. Substitui o "Mercado 1899" em revisão de 14/09. */
+for (const [frase, valor, revisa, sugerido] of [
+  ['Mercado 2997, crédito C6.', 29.97, false, 29.97],
+  ['Mercado 1899', 18.99, false, 18.99],
+  ['padaria 2164 no pix', 21.64, false, 21.64],
+  ['padaria 21 com 64 no pix', 21.64, false, 21.64],
+  ['padaria 590 no pix', 590, true, null],
+  ['mercado 2997 reais', 2997, true, null],
+  ['mercado R$ 2997', 2997, true, null],
+  ['mercado 2 mil', 2000, true, null],
+  ['IPVA 2026 1500 reais', 1500, true, null],
+  ['cartão final 1234 mercado 50 reais', 50, false, 50],
+  ['Gasolina 100', 100, true, null],
+  ['Notebook 2500', 25, false, 25],
+]) {
+  assert.equal(valorDaFalaVoz(frase), valor, 'valor da fala: ' + frase);
+  assert.equal(precisaRevisarValorVoz(frase), revisa, 'revisão: ' + frase);
+  assert.equal(valorSeguroParaRevisaoVoz(frase), sugerido, 'sugerido: ' + frase);
+  checks += 3;
+}
+for (const frase of ['Mercado 50', 'Mercado 1.899', 'Mercado 99999999', 'Mercado 57quenta e sete reais', 'Mercado 18,999', 'Mercado 12,50 e farmácia 24,90']) {
   assert.equal(precisaRevisarValorVoz(frase), true, 'não salva automaticamente: ' + frase);
 }
 
@@ -81,7 +104,8 @@ for (const [frase, esperado] of [
   checks += 2;
 }
 for (const frase of [
-  'Almoço 20', 'Gasolina 100', 'Mercado 1899', 'Notebook 2500',
+  // 3 e 4 dígitos nus saíram daqui em 17/10/2026: ver "Reais e centavos colados".
+  'Almoço 20',
   // Multiplicador falado: quem expande é a normalização, e "45 mil" já virou
   // R$ 1.000 neste repositório. A palavra "reais" não redime a família.
   'Carro 45 mil reais', 'Aluguel mil e quinhentos reais',
@@ -133,7 +157,7 @@ carregar('lib/widget-voz-task.ts', {
   '@/modules/grana-voice-widget': { definirEstado() {} },
   './voz': { transcreverAudio: async () => ({ ok: true, transcript: texto }) },
   './heuristics': h,
-  './voz-confiabilidade': { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz },
+  './voz-confiabilidade': { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz, valorDaFalaVoz },
   './data': { fetchApelidosCategoria: async () => [], fetchCategories: async () => [], fetchCreditCards: async () => [{ id: 'c6', name: 'C6', bank: 'C6', wallet_id: 'pessoal' }] },
   './wallets': { fetchWallets: async () => [{ id: 'pessoal', name: 'Pessoal', is_default: true }] },
   './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'), registrarOperacaoVoz: async (_id, _source, payload) => { writes.push(payload); return { status: 'committed', ids: ['tx'], operationId: 'op' }; } },
@@ -156,10 +180,17 @@ carregar('lib/widget-voz-task.ts', {
   assert.equal(writes[1].card_id, 'c6');
   assert.equal(writes[2].kind, 'bill');
   assert.equal(writes[2].recurring, true);
-  texto = 'Mercado 1899';
+  /* 17/10/2026 (autor): 4 dígitos nus são reais e centavos e gravam; 3 dígitos
+     ("590" ou "quinhentos e noventa"?) continuam fora da RPC, em revisão. */
+  texto = 'Mercado 590';
   await task({ caminho: '/teste.m4a', requestId: 'ambiguo' });
-  assert.equal(writes.length, 3, 'dígitos colados não alcançam a RPC');
+  assert.equal(writes.length, 3, 'três dígitos nus não alcançam a RPC');
   assert.equal(revisoes.at(-1), 'Confirme o valor que ouvi');
+  texto = 'Mercado 1899';
+  await task({ caminho: '/teste.m4a', requestId: 'colado' });
+  assert.equal(writes.length, 4, 'quatro dígitos nus gravam como reais e centavos');
+  assert.equal(writes[3].amount, 18.99);
+  writes.pop();
   texto = 'Mercado 18,99';
   await task({ caminho: '/teste.m4a', requestId: 'app-pendente', source: 'app' });
   assert.equal(writes.length, 4, 'áudio confiável do app usa a mesma decisão do widget (regra 13)');

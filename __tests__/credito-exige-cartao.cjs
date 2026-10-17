@@ -188,7 +188,9 @@ async function nucleoDaVoz() {
   let tarefa;
   const recusa = { code: '23514', message: 'Lancamento no credito exige cartao', hint: 'cartao_obrigatorio' };
   const dubles = {
-    './voz-confiabilidade': { precisaRevisarValorVoz: () => false, transcricaoPareceLancamentoVoz: () => true },
+    './voz-confiabilidade': { precisaRevisarValorVoz: () => false, transcricaoPareceLancamentoVoz: () => true,
+    // A revisão de valor está desligada neste dublê; o valor segue a heurística pura.
+    valorDaFalaVoz: (t) => carregar('lib/heuristics.ts').guessAmountFromText(t) },
     'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (_, factory) => { tarefa = factory(); } } },
     './offline-cache': { isLikelyNetworkError: () => false },
     '@/modules/grana-voice-widget': { definirEstado: () => {} },

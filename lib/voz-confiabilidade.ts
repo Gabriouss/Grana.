@@ -36,14 +36,52 @@ export function transcricaoForaDeContexto(texto: string): boolean {
     .test(t.normalize('NFD').replace(/[̀-ͯ]/g, ''));
 }
 
+/**
+ * Reais e centavos colados pelo reconhecedor: "vinte e nove e noventa e sete"
+ * chega como "Mercado 2997" (print do autor, build 1.10.7, 17/10/2026), e a
+ * revisão abria com R$ 0,00. Decisão do autor na mesma data: número "nu" de 4
+ * dígitos, sem "reais", "R$", "mil" nem separador, é reais e centavos
+ * (2997 -> 29,97). "21 com 64" é a mesma fala com outra ligação.
+ *
+ * Três dígitos NÃO entram, embora a ordem de 17/10 pedisse "590 -> 5,90":
+ * "590" é tanto "cinco e noventa" quanto "quinhentos e noventa", e "Cinema
+ * 124" ou "Uber 150" virariam R$ 1,24 e R$ 1,50 (trava de
+ * __tests__/voz-auditoria-rodada7.cjs). Continuam na revisão sem valor
+ * sugerido, como antes; a escolha volta ao autor.
+ *
+ * Só reescreve o número que já seria o valor da fala: "IPVA 2026 1500 reais"
+ * fica como está. Com "reais", "R$" ou "mil" vale a regra de sempre, inclusive
+ * a revisão de "1899 reais" (14/09 e 26/09/2026).
+ */
+export function lerCentavosColadosVoz(texto: string): string {
+  if (/\b(?:mil|milh(?:ão|ao|ões|oes))\b/i.test(texto)) return texto;
+  // Normalizado antes: "100 e 0" já é 100,0, e não um número nu.
+  const saida = normalizarTexto(texto.replace(/(?<![\p{L}\d.,])(\d{1,3})\s+com\s+(\d{2})(?![\p{L}\d]|[.,]\d)/giu, '$1,$2'));
+  // Outro número solto na fala ("Cinema 1254 00") deixa a leitura ambígua.
+  if ((saida.match(/(?<![\p{L}\d.,])\d+(?:[.,]\d+)*(?![\p{L}\d])/gu) ?? []).length !== 1) return saida;
+  const valor = guessAmountFromText(saida);
+  const nus = [...saida.matchAll(/(?<![\p{L}\d.,$]|final\s{1,3}|R\$\s{0,3})([1-9]\d{3})(?![\p{L}\d]|[.,]\d|\s*(?:reais|real|mil)\b)/giu)]
+    .filter((m) => Number(m[1]) === valor);
+  if (nus.length !== 1) return saida;
+  const n = nus[0][1];
+  const indice = nus[0].index ?? 0;
+  return `${saida.slice(0, indice)}${n.slice(0, 2)},${n.slice(2)}${saida.slice(indice + n.length)}`;
+}
+
+/** Valor da fala, com a leitura de centavos colados. Mesma conta no widget e no app. */
+export function valorDaFalaVoz(texto: string): number {
+  return guessAmountFromText(lerCentavosColadosVoz(texto));
+}
+
 /** Único valor que as telas de revisão podem sugerir a partir de uma fala. */
 export function valorSeguroParaRevisaoVoz(texto: string): number | null {
-  return precisaRevisarValorVoz(texto) ? null : guessAmountFromText(texto);
+  return precisaRevisarValorVoz(texto) ? null : valorDaFalaVoz(texto);
 }
 
 /** Não repara dígitos por palpite: separador perdido exige confirmação. */
 export function precisaRevisarValorVoz(texto: string): boolean {
   if (/\bn[ãa]o\s+(?:(?:quero|deve|[ée]|para|pra|que|seja)\s+)*(?:lan[cç](?:ar|a|e)|registr(?:ar|a|e)|salv(?:ar|a|e))\b/i.test(texto)) return true;
+  texto = lerCentavosColadosVoz(texto);
   const t = normalizarTexto(texto);
   const valor = guessAmountFromText(t);
   if (!Number.isFinite(valor) || valor <= 0) return true;
