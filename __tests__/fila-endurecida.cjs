@@ -47,7 +47,7 @@ const AsyncStorage = {
 const gravadasPorChave = new Map();
 function consulta() {
   const q = { insercao: null, upsert: false, unico: false, chaveLida: null };
-  for (const m of ['select', 'order', 'gte', 'lte', 'range']) q[m] = () => q;
+  for (const m of ['select', 'order', 'gte', 'lte', 'range', 'setHeader']) q[m] = () => q;
   q.eq = (c, v) => { if (c === 'client_request_id') q.chaveLida = v; return q; };
   q.insert = (linha) => { q.insercao = linha; return q; };
   q.upsert = (linha) => { q.insercao = linha; q.upsert = true; return q; };
@@ -82,7 +82,7 @@ MathControlado.random = () => estado.sorteio;
 const dubles = {
   '@react-native-async-storage/async-storage': { __esModule: true, default: AsyncStorage },
   './supabase': { supabase },
-  './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => estado.usuario },
+  './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => estado.usuario, lerSessaoDoDisco: async () => ({user:{id:estado.usuario},access_token:'AUDIT-local'}) },
   './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
   './creditLimitAlert': { checarLimiteCartao: async () => {} },
   './goals': { createGoal: async (i) => { metasCriadas.push(i.title); }, metaJaGravada: async () => estado.metaNoBanco },

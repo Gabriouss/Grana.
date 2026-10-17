@@ -44,7 +44,7 @@ const semRede = () => ({ data: null, error: { message: 'TypeError: Network reque
 
 function consulta() {
   const q = { filtros: [], insercao: null, faixa: null, upsert: false, unico: false };
-  for (const m of ['select', 'order']) q[m] = () => q;
+  for (const m of ['select', 'order', 'setHeader']) q[m] = () => q;
   q.eq = (c, v) => { q.filtros.push((t) => t[c] === v); return q; };
   q.gte = (c, v) => { q.filtros.push((t) => t[c] >= v); return q; };
   q.lte = (c, v) => { q.filtros.push((t) => t[c] <= v); return q; };
@@ -83,7 +83,7 @@ const setTimeoutControlado = (fn, ms, ...a) => {
 const dubles = {
   '@react-native-async-storage/async-storage': { __esModule: true, default: AsyncStorage },
   './supabase': { supabase },
-  './sessao-offline': { idDoUsuarioLocal: async () => estado.usuario, sessaoEstaTravada: () => false },
+  './sessao-offline': { idDoUsuarioLocal: async () => estado.usuario, lerSessaoDoDisco: async () => ({user:{id:estado.usuario},access_token:'AUDIT-local'}), sessaoEstaTravada: () => false },
   './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
   './creditLimitAlert': { checarLimiteCartao: async () => {} },
   './goals': { createGoal: async () => {} },

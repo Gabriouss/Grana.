@@ -54,8 +54,8 @@ function montar() {
   const enviados = [];
 
   const AsyncStorage = {
-    getItem: async (k) => (disco.has(k) ? disco.get(k) : null),
-    setItem: async (k, v) => { disco.set(k, v); },
+    getItem: async (k) => { const valor = disco.has(k) ? disco.get(k) : null; estado.aoLer?.(k); return valor; },
+    setItem: async (k, v) => { disco.set(k, v); estado.aoGravar?.(k); },
     removeItem: async (k) => { disco.delete(k); },
     getAllKeys: async () => [...disco.keys()],
     multiRemove: async (ks) => { ks.forEach((k) => disco.delete(k)); },
@@ -85,11 +85,12 @@ function montar() {
       if (nome === './sessao-offline') return { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => estado.usuario };
       if (nome === './data') {
         return {
-          addTransaction: async (input) => { enviados.push({ como: estado.usuario, input }); },
-          addBill: async (input) => { enviados.push({ como: estado.usuario, input }); },
+          addTransaction: async (input) => { enviados.push({ como: estado.usuario, input }); estado.aposEnvio?.(); },
+          addBill: async (input) => { enviados.push({ como: estado.usuario, input }); estado.aposEnvio?.(); },
         };
       }
-      if (nome === './goals') return { createGoal: async (input) => { enviados.push({ como: estado.usuario, input }); } };
+      if (nome === './notifications') return { getNotifications: () => ({scheduleNotificationAsync: async () => {}}) };
+      if (nome === './goals') return { createGoal: async (input) => { enviados.push({ como: estado.usuario, input }); estado.aposEnvio?.(); } };
       if (nome === './lancamentos-alterados') return { marcarLancamentosAlterados() {} };
       if (nome === './fila-pendente') return fila.exports;
       if (nome === './cache-de-tela') {
@@ -157,7 +158,7 @@ const LANCAMENTO = (descricao) => ({
       (await api.getPendingCount()) === 1,
       await api.getPendingCount()
     );
-    conferir('a chave do cache some do disco', !disco.has('grana:cache:transactions'), [...disco.keys()]);
+    conferir('a chave do cache some do disco', ![...disco.keys()].some(k => k.startsWith('grana:cache:transactions')), [...disco.keys()]);
   }
 
   /* -- 6. Compatibilidade com o que ja esta gravado --------------------- */
@@ -169,14 +170,56 @@ const LANCAMENTO = (descricao) => ({
     disco.set('grana:queue:transactions-pendentes', JSON.stringify([
       { localId: 'local-antigo', tipo: 'transacao', input: LANCAMENTO('AUDIT da versao antiga') },
     ]));
-    conferir('item sem dono conta para quem esta logado', (await api.getPendingCount()) === 1, await api.getPendingCount());
+    conferir('item sem dono nao e adotado pela sessao atual', (await api.getPendingCount()) === 0, await api.getPendingCount());
     const r = await api.flushPendingQueue();
-    conferir('e sobe, em vez de ser descartado', r.synced === 1 && enviados.length === 1, { r, enviados: enviados.length });
+    conferir('item sem dono nao e enviado', r.synced === 0 && enviados.length === 0, { r, enviados: enviados.length });
+
+    conferir('item sem dono preservado para recuperacao', JSON.parse(disco.get('grana:queue:transactions-pendentes')).length === 1);
 
     /* Cache gravado pela versão anterior: lista crua, sem dono. Aqui o
        descarte é de graça — é cache de leitura, volta na primeira carga. */
     disco.set('grana:cache:transactions', JSON.stringify([{ id: 'formato-antigo' }]));
     conferir('cache no formato antigo e descartado', (await api.getCachedTransactions()) === null);
+  }
+
+  // A1, 17/10: troca de conta durante a leitura e durante a rodada.
+  {
+    const {api,estado,disco,enviados}=montar();
+    await api.setCachedTransactions([{id:'cache-A',user_id:'conta-A'}]);
+    estado.aoLer=k=>{if(k.startsWith('grana:cache:transactions'))estado.usuario='conta-B'};
+    conferir('troca durante getItem nao devolve cache de A a B',await api.getCachedTransactions()===null);
+    estado.aoLer=null;
+    await api.setCachedTransactions([{id:'resposta-atrasada-A',user_id:'conta-A'}]);
+    conferir('resposta tardia de A nao vira cache de B',await api.getCachedTransactions()===null);
+    estado.usuario='conta-A';
+    await api.queuePendingTransaction(LANCAMENTO('AUDIT primeiro A'));
+    await api.queuePendingTransaction(LANCAMENTO('AUDIT segundo A'));
+    estado.aposEnvio=()=>{estado.usuario='conta-B'};
+    await api.flushPendingQueue();
+    conferir('troca durante a rodada impede segundo envio',enviados.length===1&&enviados[0].como==='conta-A');
+    conferir('segundo item continua guardado com dono A',JSON.parse(disco.get('grana:queue:transactions-pendentes')).length===1);
+    estado.aposEnvio=null;
+    await api.flushPendingQueue();
+    conferir('rodada de B nao envia o restante de A',enviados.length===1);
+    estado.usuario=null;
+    let recusou=false;try{await api.queuePendingTransaction(LANCAMENTO('AUDIT sem conta'))}catch{recusou=true}
+    conferir('sem conta nao cria item sem dono',recusou&&JSON.parse(disco.get('grana:queue:transactions-pendentes')).length===1);
+    estado.usuario='conta-A';await api.flushPendingQueue();
+    conferir('A recupera o proprio restante',enviados.length===2&&enviados.every(x=>x.como==='conta-A'));
+  }
+
+  {
+    const {api,estado,disco}=montar();
+    estado.aoGravar=k=>{if(k==='grana:queue:transactions-pendentes'){estado.usuario='conta-B';estado.aoGravar=null}};
+    let aviso=false;try{await api.queuePendingTransaction(LANCAMENTO('AUDIT troca enquanto guarda'))}catch{aviso=true}
+    conferir('troca depois da gravacao deixa recibo em vez de devolver dado a B',aviso);
+    conferir('otimista de A nao vira cache de B',await api.getCachedTransactions()===null);
+    conferir('registro continua na fila de A',JSON.parse(disco.get('grana:queue:transactions-pendentes'))[0].userId==='conta-A');
+    disco.set('grana:queue:precisa-de-revisao',JSON.stringify([
+      {localId:'A',userId:'conta-A'},{localId:'B',userId:'conta-B'},{localId:'sem-dono'}]));
+    conferir('revisao mostra apenas dono B',(await api.listarEmRevisao()).map(x=>x.localId).join(',')==='B');
+    conferir('B nao pode retirar revisao de A',await api.tirarDaRevisao('A')===null);
+    conferir('B nao adota revisao sem dono',await api.tirarDaRevisao('sem-dono')===null);
   }
 
   console.log(`\n${total - falhas}/${total} checagens do cache offline por conta passaram — ${falhas} falhas`);

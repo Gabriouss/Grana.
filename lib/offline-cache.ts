@@ -34,13 +34,22 @@ export { FilaCheiaError, listarEmRevisao, resumoDaRevisao, tirarDaRevisao } from
 /** Acrescenta à fila, dentro da mesma escrita em série que confere o teto:
     acima dele recusa com a mensagem, e nada é descartado. */
 function guardarNaFila(item: PendingItem, userId: string | null): Promise<PendingItem[]> {
-  return atualizarFila((fila) => {
+  return atualizarFila(async (fila) => {
+    if (!userId || item.userId !== userId || await idDoUsuarioLocal() !== userId) {
+      throw new Error('Entre na conta original para guardar este registro.');
+    }
     if (separarPorDono(fila, userId).minhas.length >= TETO_DA_FILA) throw new FilaCheiaError();
     return [...fila, item];
   });
 }
 
 const CACHE_KEY = 'grana:cache:transactions';
+
+async function conferirDonoAtual(dono: string | null): Promise<void> {
+  if (!dono || await idDoUsuarioLocal() !== dono) {
+    throw new Error('A conta mudou. O registro continua guardado para a conta original.');
+  }
+}
 
 /* ── De quem é este dado ────────────────────────────────────────────────────
 
@@ -72,7 +81,7 @@ export async function getCachedTransactions(): Promise<Transaction[] | null> {
   try {
     const userId = await idDoUsuarioLocal();
     if (!userId) return null;
-    const raw = await AsyncStorage.getItem(CACHE_KEY);
+    const raw = await AsyncStorage.getItem(`${CACHE_KEY}:${userId}`) ?? await AsyncStorage.getItem(CACHE_KEY);
     if (!raw) return null;
     const guardado = JSON.parse(raw) as Registro<Transaction[]> | Transaction[] | null;
     /* Formato antigo (lista crua, sem dono): descartado. É cache de leitura,
@@ -80,6 +89,7 @@ export async function getCachedTransactions(): Promise<Transaction[] | null> {
        adivinhar o dono custaria mostrar o dinheiro de outra pessoa. */
     if (!guardado || Array.isArray(guardado)) return null;
     if (guardado.userId !== userId) return null;
+    if (await idDoUsuarioLocal() !== userId) return null;
     return guardado.dados;
   } catch {
     return null;
@@ -90,8 +100,9 @@ export async function setCachedTransactions(list: Transaction[]): Promise<void> 
   try {
     const userId = await idDoUsuarioLocal();
     if (!userId) return;
+    if (list.some(t => t.user_id && t.user_id !== 'local' && t.user_id !== userId)) return;
     const registro: Registro<Transaction[]> = { userId, dados: list };
-    await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(registro));
+    await AsyncStorage.setItem(`${CACHE_KEY}:${userId}`, JSON.stringify(registro));
   } catch {
     // Cache é best-effort — se o dispositivo estiver sem espaço, seguimos sem ela.
   }
@@ -100,7 +111,8 @@ export async function setCachedTransactions(list: Transaction[]): Promise<void> 
 /** Some com o cache de leitura — usar ao sair da conta, como `esquecerTelas`. */
 export async function esquecerLancamentosLocais(): Promise<void> {
   try {
-    await AsyncStorage.removeItem(CACHE_KEY);
+    const chaves = await AsyncStorage.getAllKeys();
+    await AsyncStorage.multiRemove(chaves.filter(chave => chave === CACHE_KEY || chave.startsWith(`${CACHE_KEY}:`)));
   } catch {
     /* idem. E a fila NÃO é apagada aqui de propósito: ela agora é por dono,
        então não vaza para a próxima conta, e é lançamento que a pessoa fez e
@@ -122,7 +134,7 @@ export async function esquecerLancamentosLocais(): Promise<void> {
 
 /** `input.amount`/`installments` (fila) → `totalAmount`/`installments`
     (`addInstallmentPurchase`); só troca o nome do campo, mesmo dado. */
-function enviarParcelaPendente(input: PendingInput & { client_request_id?: string }): Promise<Transaction[]> {
+function enviarParcelaPendente(input: PendingInput & { client_request_id?: string }, dono?: string): Promise<Transaction[]> {
   return addInstallmentPurchase({
     description: input.description,
     totalAmount: input.amount,
@@ -135,11 +147,11 @@ function enviarParcelaPendente(input: PendingInput & { client_request_id?: strin
     card_id: input.card_id,
     wallet_id: input.wallet_id,
     client_request_id: input.client_request_id,
-  });
+  }, dono);
 }
 
 /** Para onde cada tipo vai quando a rede volta. */
-const ENVIAR: Record<TipoPendente, (input: any) => Promise<unknown>> = {
+const ENVIAR: Record<TipoPendente, (input: any, dono?: string) => Promise<unknown>> = {
   transacao: addTransaction,
   boleto: addBill,
   meta: createGoal,
@@ -181,8 +193,10 @@ export async function enfileirarPendente<T extends { id: string }>(
   const chave = CACHE_DA_TELA[tipo];
   if (chave) {
     const guardado = await lerTela<T[]>(chave);
-    await guardarTela(chave, [otimista, ...(guardado?.dados ?? [])]);
+    await conferirDonoAtual(userId);
+    await guardarTela(chave, [{ ...otimista, user_id: userId }, ...(guardado?.dados ?? [])], userId ?? undefined);
   }
+  await conferirDonoAtual(userId);
   return otimista;
 }
 
@@ -214,6 +228,7 @@ export async function queuePendingTransaction(input: PendingInput, clientRequest
   const optimistic = otimistaDoItem(item);
   const cached = (await getCachedTransactions()) ?? [];
   await setCachedTransactions([optimistic, ...cached]);
+  await conferirDonoAtual(userId);
   agendarNovaTentativa();
 
   return optimistic;
@@ -243,6 +258,7 @@ export async function queuePendingInstallmentPurchase(
   const optimistic = otimistasDaParcela(item);
   const cached = (await getCachedTransactions()) ?? [];
   await setCachedTransactions([...optimistic, ...cached]);
+  await conferirDonoAtual(userId);
   agendarNovaTentativa();
 
   return optimistic;
@@ -280,7 +296,9 @@ export function flushPendingQueue(): Promise<ResultadoRodada> {
 
 async function executarRodada(): Promise<ResultadoRodada> {
   const userId = await idDoUsuarioLocal();
-  const { minhas: lidas } = separarPorDono(await getQueue(), userId);
+  const filaLida = await getQueue();
+  if (userId && filaLida.some(item => !item.userId)) await avisarItensSemDono();
+  const { minhas: lidas } = separarPorDono(filaLida, userId);
   if (lidas.length === 0) {
     /* Sem nada para enviar, não há falha em curso: a próxima começa da base,
        e não da espera longa de uma fila que esvaziou por outro caminho. */
@@ -315,6 +333,7 @@ async function executarRodada(): Promise<ResultadoRodada> {
   while (remaining.length > 0 && tentados < ITENS_POR_RODADA) {
     /* Item sem `tipo` é de uma versão anterior do app, quando só transação
        entrava na fila. Ver o comentário em `TipoPendente`. */
+    if (await idDoUsuarioLocal() !== userId) break;
     const tipo = remaining[0].tipo ?? 'transacao';
     const enviar = ENVIAR[tipo];
     if (!enviar) {
@@ -336,13 +355,14 @@ async function executarRodada(): Promise<ResultadoRodada> {
           const tentadoEm = new Date().toISOString();
           await atualizarFila((fila) => fila.map((i) => (i.localId === item.localId ? { ...i, tentadoEm } : i)));
           item.tentadoEm = tentadoEm;
-        } else if (await metaJaGravada(item.input as unknown as Parameters<typeof metaJaGravada>[0], item.tentadoEm)) {
+        } else if (await metaJaGravada(item.input as unknown as Parameters<typeof metaJaGravada>[0], item.tentadoEm, userId ?? undefined)) {
           saiu.add(remaining.shift()!.localId);
           synced++;
           continue;
         }
       }
-      await enviar(item.clientRequestId ? { ...item.input, client_request_id: item.clientRequestId } : item.input);
+      if (await idDoUsuarioLocal() !== userId) break;
+      await enviar(item.clientRequestId ? { ...item.input, client_request_id: item.clientRequestId } : item.input, userId ?? undefined);
       saiu.add(remaining.shift()!.localId);
       synced++;
     } catch (erro) {
@@ -395,6 +415,28 @@ async function executarRodada(): Promise<ResultadoRodada> {
   falhasSeguidas = falhouTemporario ? falhasSeguidas + 1 : 0;
   if (restantes > 0) agendarNovaTentativa(falhouTemporario ? proximaEspera(falhasSeguidas) : ESPERA_BASE_MS);
   return { synced, remaining: restantes, emRevisao: paraRevisao.length };
+}
+
+/** Recibo genérico: não mostra descrição, valor nem presume o dono antigo. */
+async function avisarItensSemDono(): Promise<void> {
+  const chave = 'grana:queue:sem-dono:avisado';
+  try {
+    if (await AsyncStorage.getItem(chave)) return;
+    console.warn('[offline] registros antigos sem dono preservados; envio automatico bloqueado');
+    const { getNotifications } = await import('./notifications');
+    const notificacoes = getNotifications();
+    if (!notificacoes) return;
+    await notificacoes.scheduleNotificationAsync({
+      content: {
+        title: 'Registros antigos precisam de conferência',
+        body: 'Há registros locais sem identificação de conta. Por segurança, eles não são exibidos nem enviados. Contate o suporte para recuperação.',
+        data: { origem: 'fila', resultado: 'sem-dono' },
+      }, trigger: null,
+    });
+    await AsyncStorage.setItem(chave, '1');
+  } catch (erro) {
+    console.error('[offline] aviso dos registros sem dono indisponivel; registros preservados', erro);
+  }
 }
 
 /** No que deu "Tentar de novo" na tela de revisão. */

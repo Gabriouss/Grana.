@@ -29,8 +29,9 @@ export async function createGoal(input: {
   icon: string;
   deadline?: string | null;
   wallet_id?: string | null;
-}): Promise<Goal> {
-  const { data, error } = await supabase.rpc('criar_meta', {
+}, donoEsperado?: string): Promise<Goal> {
+  const conta = donoEsperado ? await (await import('./escrita-da-conta')).escritaDaConta(donoEsperado) : null;
+  const pedido = supabase.rpc('criar_meta', {
     p_title: input.title,
     p_target_amount: input.target_amount,
     p_color: input.color,
@@ -38,6 +39,7 @@ export async function createGoal(input: {
     p_deadline: input.deadline ?? null,
     p_wallet_id: input.wallet_id ?? null,
   });
+  const { data, error } = await (conta ? conta.autorizar(pedido) : pedido);
   if (error) throw error;
   invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
@@ -60,7 +62,8 @@ export async function metaJaGravada(input: {
   icon: string;
   deadline?: string | null;
   wallet_id?: string | null;
-}, desde: string): Promise<boolean> {
+}, desde: string, donoEsperado?: string): Promise<boolean> {
+  const conta = donoEsperado ? await (await import('./escrita-da-conta')).escritaDaConta(donoEsperado) : null;
   let q = supabase
     .from('goals')
     .select('id')
@@ -71,6 +74,7 @@ export async function metaJaGravada(input: {
     .gte('created_at', desde);
   q = input.deadline ? q.eq('deadline', input.deadline) : q.is('deadline', null);
   q = input.wallet_id ? q.eq('wallet_id', input.wallet_id) : q.is('wallet_id', null);
+  if (conta) q = conta.autorizar(q.eq('user_id', conta.userId));
   const { data, error } = await q.limit(1);
   if (error) throw error;
   return (data?.length ?? 0) > 0;

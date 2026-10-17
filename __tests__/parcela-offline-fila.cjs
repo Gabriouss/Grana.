@@ -51,7 +51,7 @@ const semRede = () => ({ data: null, error: { message: 'TypeError: Network reque
 
 function consulta() {
   const q = { filtros: [], insercao: null, faixa: null, upsert: false, unico: false, ou: null };
-  for (const m of ['select', 'order']) q[m] = () => q;
+  for (const m of ['select', 'order', 'setHeader']) q[m] = () => q;
   q.eq = (c, v) => { q.filtros.push((t) => t[c] === v); return q; };
   q.gte = (c, v) => { q.filtros.push((t) => t[c] >= v); return q; };
   q.lt = (c, v) => { q.filtros.push((t) => t[c] < v); return q; };
@@ -121,7 +121,7 @@ async function rpcAdicionarCompraParcelada(params) {
 
 const supabase = {
   from: () => consulta(),
-  rpc: async (fn, params) => (fn === 'adicionar_compra_parcelada' ? rpcAdicionarCompraParcelada(params) : (estado.rede ? { data: [], error: null } : semRede())),
+  rpc: (fn, params) => { const p = Promise.resolve().then(() => fn === 'adicionar_compra_parcelada' ? rpcAdicionarCompraParcelada(params) : (estado.rede ? { data: [], error: null } : semRede())); p.setHeader = () => p; return p; },
 };
 
 const agendados = [];
@@ -133,7 +133,7 @@ const setTimeoutControlado = (fn, ms, ...a) => {
 const dubles = {
   '@react-native-async-storage/async-storage': { __esModule: true, default: AsyncStorage },
   './supabase': { supabase },
-  './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => estado.usuario },
+  './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => estado.usuario, lerSessaoDoDisco: async () => ({user:{id:estado.usuario},access_token:'AUDIT-local'}) },
   './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
   './creditLimitAlert': { checarLimiteCartao: async () => {} },
   './goals': { createGoal: async () => {} },

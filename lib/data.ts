@@ -1,3 +1,4 @@
+import type { EscritaDaConta } from './escrita-da-conta';
 import { supabase } from './supabase';
 import { atualizarTelaGuardada, comCacheOffline, invalidarRespostasAtrasadas } from './cache-de-tela';
 import { idDoUsuarioLocal } from './sessao-offline';
@@ -195,27 +196,28 @@ async function buscar_fetchEntradasPorCarteira(): Promise<{ wallet_id: string | 
  *
  * Sem chave (formulário com rede, APK antigo), é o insert de sempre.
  */
-async function inserirIdempotente<T>(tabela: 'transactions' | 'bills', linha: Record<string, unknown>): Promise<T> {
+async function inserirIdempotente<T>(tabela: 'transactions' | 'bills', linha: Record<string, unknown>, conta: EscritaDaConta | null = null): Promise<T> {
+  const autorizar = <T extends { setHeader(nome: string, valor: string): T }>(q: T) => conta ? conta.autorizar(q) : q;
   const chave = linha.client_request_id;
   if (!chave) {
     const { client_request_id: _semChave, ...semChave } = linha;
-    const { data, error } = await supabase.from(tabela).insert(semChave).select().single();
+    const { data, error } = await autorizar(supabase.from(tabela).insert(semChave).select().single());
     if (error) throw error;
     return data as T;
   }
-  const { data, error } = await supabase
+  const { data, error } = await autorizar(supabase
     .from(tabela)
     .upsert(linha, { onConflict: 'user_id,client_request_id', ignoreDuplicates: true })
-    .select();
+    .select());
   if (error) throw error;
   const gravada = (data as T[] | null)?.[0];
   if (gravada) return gravada;
-  const existente = await supabase
+  const existente = await autorizar(supabase
     .from(tabela)
     .select('*')
     .eq('user_id', linha.user_id as string)
     .eq('client_request_id', chave as string)
-    .single();
+    .single());
   if (existente.error) throw existente.error;
   return existente.data as T;
 }
@@ -236,11 +238,12 @@ export async function addTransaction(input: {
   wallet_id?: string | null;
   /** Chave de idempotência da fila offline (ver `inserirIdempotente`). */
   client_request_id?: string | null;
-}): Promise<Transaction> {
+}, donoEsperado?: string): Promise<Transaction> {
   exigirCartaoNoCredito(input);
   recusarEntradaNoCartao(input);
-  const user_id = await currentUserId();
-  const data = await inserirIdempotente<Transaction>('transactions', { ...input, user_id });
+  const conta = donoEsperado ? await (await import('./escrita-da-conta')).escritaDaConta(donoEsperado) : null;
+  const user_id = conta?.userId ?? await currentUserId();
+  const data = await inserirIdempotente<Transaction>('transactions', { ...input, user_id }, conta);
 
   /* Só saída no crédito — sem `await`/sem propagar erro: checarLimiteCartao
      é fire-and-forget de propósito, uma notificação de limite atrasada ou
@@ -685,10 +688,11 @@ export async function addInstallmentPurchase(input: {
       reenvio da mesma compra parcelada devolve a série já gravada em vez de
       duplicá-la. */
   client_request_id?: string;
-}): Promise<Transaction[]> {
+}, donoEsperado?: string): Promise<Transaction[]> {
   exigirCartaoNoCredito(input);
   const n = Math.max(2, Math.round(input.installments));
-  const { data, error } = await supabase.rpc('adicionar_compra_parcelada', {
+  const conta = donoEsperado ? await (await import('./escrita-da-conta')).escritaDaConta(donoEsperado) : null;
+  const pedido = supabase.rpc('adicionar_compra_parcelada', {
     p_description: input.description || 'Compra parcelada',
     p_total_amount: input.totalAmount,
     p_category: input.category,
@@ -701,6 +705,7 @@ export async function addInstallmentPurchase(input: {
     p_wallet_id: input.wallet_id ?? null,
     p_client_request_id: input.client_request_id ?? null,
   });
+  const { data, error } = await (conta ? conta.autorizar(pedido) : pedido);
   if (error) throw error;
   const rows = (data ?? []) as Transaction[];
 
@@ -870,9 +875,10 @@ export async function addBill(input: {
   wallet_id?: string | null;
   /** Chave de idempotência da fila offline (ver `inserirIdempotente`). */
   client_request_id?: string | null;
-}): Promise<Bill> {
-  const user_id = await currentUserId();
-  const data = await inserirIdempotente<Bill>('bills', { ...input, user_id });
+}, donoEsperado?: string): Promise<Bill> {
+  const conta = donoEsperado ? await (await import('./escrita-da-conta')).escritaDaConta(donoEsperado) : null;
+  const user_id = conta?.userId ?? await currentUserId();
+  const data = await inserirIdempotente<Bill>('bills', { ...input, user_id }, conta);
   invalidarRespostasAtrasadas();
   notificarDadosDosWidgetsAlterados();
   return data;

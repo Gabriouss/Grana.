@@ -157,18 +157,14 @@ export function atualizarFila(mudar: (fila: PendingItem[]) => PendingItem[] | Pr
 /**
  * Separa a fila entre o que é desta conta e o que não é.
  *
- * Item SEM dono é de uma versão anterior do app, gravado quando a fila não
- * carimbava ninguém. Ele conta como desta conta, e não como de ninguém: quem
- * atualiza o app é quem está logado, e descartar seria perder um lançamento
- * que a pessoa fez e ainda não subiu. A janela em que isso erraria é estreita
- * (atualizar o app, sair, entrar com outra conta e só então recuperar a rede),
- * e o outro lado do erro — perder dinheiro registrado — é pior.
+ * Item SEM dono permanece no disco para recuperação, mas nenhuma sessão o
+ * adota. Preservar o registro não autoriza exibi-lo ou gravá-lo noutra conta.
  */
 export function separarPorDono(queue: PendingItem[], userId: string | null) {
   const minhas: PendingItem[] = [];
   const dosOutros: PendingItem[] = [];
   for (const item of queue) {
-    if (!item.userId || item.userId === userId) minhas.push(item);
+    if (userId && item.userId === userId) minhas.push(item);
     else dosOutros.push(item);
   }
   return { minhas, dosOutros };
@@ -180,7 +176,7 @@ export function otimistaDoItem(item: PendingItem): Transaction {
   const input = item.input;
   return {
     id: item.localId,
-    user_id: 'local',
+    user_id: item.userId ?? 'local',
     type: input.type,
     description: input.description,
     amount: input.amount,
@@ -225,7 +221,7 @@ export function otimistasDaParcela(item: PendingItem): Transaction[] {
   const descricao = input.description.trim() || 'Compra parcelada';
   return Array.from({ length: n }, (_, i) => ({
     id: i === 0 ? item.localId : `${item.localId}-${i + 1}`,
-    user_id: 'local',
+    user_id: item.userId ?? 'local',
     type: 'out' as const,
     description: `${descricao} (${i + 1}/${n})`,
     amount: i === n - 1 ? last : base,
@@ -415,7 +411,9 @@ export async function guardarEmRevisao(item: PendingItem, erro: unknown): Promis
 /** Itens desta conta que o banco recusou e esperam a pessoa decidir. */
 export async function listarEmRevisao(): Promise<ItemEmRevisao[]> {
   const userId = await idDoUsuarioLocal();
-  return (await lerRevisao()).filter((item) => !item.userId || item.userId === userId);
+  const lista = await lerRevisao();
+  if (!userId || await idDoUsuarioLocal() !== userId) return [];
+  return lista.filter((item) => item.userId === userId);
 }
 
 /**
@@ -471,7 +469,8 @@ export function resumoDaRevisao(item: ItemEmRevisao): ResumoDaRevisao {
 export async function tirarDaRevisao(localId: string): Promise<ItemEmRevisao | null> {
   const userId = await idDoUsuarioLocal();
   const lista = await lerRevisao();
-  const i = lista.findIndex((item) => item.localId === localId && (!item.userId || item.userId === userId));
+  if (!userId || await idDoUsuarioLocal() !== userId) return null;
+  const i = lista.findIndex((item) => item.localId === localId && !!userId && item.userId === userId);
   if (i < 0) return null;
   const [item] = lista.splice(i, 1);
   await AsyncStorage.setItem(REVISAO_KEY, JSON.stringify(lista));

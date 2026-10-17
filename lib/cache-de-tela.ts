@@ -73,10 +73,11 @@ type Registro<T> = { userId: string; dados: T; guardadoEm: string };
  */
 const idDoUsuario = idDoUsuarioLocal;
 
-export async function guardarTela<T>(nome: string, dados: T): Promise<void> {
+export async function guardarTela<T>(nome: string, dados: T, donoEsperado?: string): Promise<void> {
   try {
     const userId = await idDoUsuario();
     if (!userId) return;
+    if (donoEsperado && userId !== donoEsperado) return;
     const registro: Registro<T> = { userId, dados, guardadoEm: new Date().toISOString() };
     await AsyncStorage.setItem(PREFIXO + nome, JSON.stringify(registro));
   } catch {
@@ -116,6 +117,7 @@ export async function lerTela<T>(nome: string): Promise<{ dados: T; guardadoEm: 
     /* Trocar de conta no mesmo aparelho não pode mostrar o dinheiro da conta
        anterior. Mesmo cuidado de `entitlement-cache.ts`. */
     if (!registro || registro.userId !== userId) return null;
+    if (await idDoUsuario() !== userId) return null;
     return { dados: registro.dados, guardadoEm: registro.guardadoEm };
   } catch {
     return null;
