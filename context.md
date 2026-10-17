@@ -90,6 +90,35 @@ Em 08/10/2026, o autor confirmou que os cinco segredos incluídos no pacote envi
 O histórico e a evidência da exposição permanecem na seção datada de 16/09/2026 abaixo. A rotação resolve a pendência de validade dos valores expostos, sem apagar o fato histórico de que o pacote de projeto foi enviado ao EAS.
 
 ---
+# 17/10/2026 (M1, Antigravity): Granabô 3D no Granachat e na navegação + build 1.10.7 publicada
+
+> Nota de sessão no vault: `00 - Sessões/2026-10-17 - M1 - Granabô 3D no chat, navegação e build 1.10.7`. Nota correspondente criada também no fichário do workspace (`Fichário - Sessões`).
+
+## O que entrou em `main` e na build 1.10.7
+
+1. **Mascote Granabô 3D oficial (modelo W3 + boca L3 renderizado no Blender Cycles) integrado ao app (`00bdbcc`, `28090e9`, `a49c57f`):**
+   - **`assets/granabo/` + `components/Granabo3D.tsx` (`00bdbcc`):** 6 poses PNG (`granabo-frente.png`, `granabo-piscando.png`, `granabo-inclinado.png`, `granabo-pensando.png`, `granabo-feliz.png`, `granabo-tres-quartos.png`, somando 607 KB) e a animação WebP de saudação (`granabo-saudacao.webp`, 36 quadros, 347 KB), extraídos dos renders oficiais de `docs/marketing/reels-granabo/quadros/` (**954 KB / ~0,93 MB no total**). Suporta variantes `'hero' | 'botao' | 'avatar' | 'nav'` e estados `'saudacao' | 'repouso' | 'pensando' | 'feliz' | 'inclinado'`, com levitação 3D contínua, sombra elíptica dinâmica no piso, halo menta, piscadas periódicas, reação de pulo ao toque e respeito integral a `useReducedMotion()`.
+   - **Palco 3D de saudação, cabeçalho e avatares reativos em `components/Granachat.tsx` (`28090e9`):** estado vazio (`renderVazio`) remodelado com o Granabô 3D (132dp) dando boas-vindas com animação 3D de entrada, pílula de fala interativa ao tocar no mascote (`FALAS_SAUDACAO_CURTAS`), saudação adaptada ao período do dia (`obterTituloSaudacao`) e sugestões com ícones e categorias (`SUGESTOES_DETALHADAS`). Cabeçalho e bolhas do assistente (`renderMensagem`) passam a exibir o avatar 3D reativo (`estado="pensando"` enquanto aguarda resposta, `estado="feliz"` ao entregar a última resposta e `estado="repouso"` nas mensagens anteriores). Fatias de código inspecionadas por `__tests__/granachat-recarga-durante-envio.cjs` e `__tests__/janela-cabe-acima-do-teclado.cjs` preservadas intactas.
+   - **Botão central 3D na barra de abas e item na `SideNav` (`a49c57f`):** `BotaoGranabo` em `app/(app)/_layout.tsx` substitui o disco chapado com ícone `sparkles` pela própria esfera 3D do Granabô (74dp, `variante="botao"`, `estado={ativo ? 'feliz' : 'repouso'}`), preservando `discoRef`, `medirReserva` e o anel de foco sem adicionar círculo verde redundante atrás; `components/SideNav.tsx` passa a usar `Granabo3D` (`variante="nav"`) para a rota `'assistente'`. Adicionada a suíte `__tests__/granabo-3d-chat.cjs` (28 verificações). A dobra da landing (`components/ConversaGranachat.tsx`) foi mantida intocada.
+
+2. **Quatro correções de tela e copy do Orquestrador Supremo incluídas na mesma entrega (`a8382b9..db3dc6b`):**
+   - `a8382b9` (`fix(copy)`): rótulo `"Recorrente"` no lugar de `"série mensal"` em `app/(app)/lancamentos.tsx`; autorização de `components/FeedbackModal.tsx` alinhada à política de privacidade (`lib/legal-content.ts`, divulgação sem nome); token `star` amarelo em `lib/theme.ts` para as estrelas de avaliação (exceção pedida pelo autor).
+   - `299eccc` (`ui(avisos)`): texto das caixas de aviso em `components/AlertaHost.tsx` sobe para `typography.body` com entrelinha `1.6` e respiro antes do botão.
+   - `c2362f0` (`layout(carteira)`): lápis de editar em `components/WalletPickerModal.tsx` volta para a fileira da carteira, eliminando a segunda linha vazia que aumentava o cartão.
+   - `db3dc6b` (`layout(graficos)`): donut de categorias no celular em `app/(app)/graficos.tsx` cresce com a largura da tela (`70%`, teto `300px`) em vez de `150px` fixos.
+
+3. **Build 1.10.7 e logística de entrega direta (`6146b7d`):**
+   - Aprovado pelo autor no celular via Expo Go, o branch `feat/granabo-3d-chat` foi mesclado (`--ff-only`) em `main` e removido (regra 10).
+   - Preparo: `npm run build:preparar` (`6146b7d`, `app.json` `1.10.6` → `1.10.7`, **build 1 de 3 da semana**, teto zera na segunda 19/10/2026).
+   - Build EAS: `c5ef010f-02d7-49e1-8611-4aba83f5e7e1` (`versionCode 20`, perfil `preview` Android, concluída às `15:27:52Z`).
+   - **Incidente na entrega do link do pop-up e correção:** quando a build terminou, a Edge Function `eas-build-webhook` atualizou `app_release` (`version = "1.10.7"`, `apk_url = "https://granaponto.com.br/downloads/grana-latest.apk"`), mas a chamada de `repository_dispatch` (`apk-pronto`) para o GitHub falhou porque o segredo `GITHUB_DISPATCH_TOKEN` no Supabase ainda guardava o token antigo do GitHub (anterior à rotação de 08/10/2026). Com isso, `releases/latest` no GitHub continuava na `v1.10.6`. Correção aplicada: (a) disparado `repository_dispatch` (`apk-pronto`) para `.github/workflows/publicar-apk.yml` (run `#39045964649` concluído com `success`, publicando a Release `v1.10.7` / `Grana. 1.10.7` com `grana.apk` assinado e verificado); (b) atualizado o segredo `GITHUB_DISPATCH_TOKEN` no Supabase (`HTTP 201`) com o `GITHUB_TOKEN` vigente (sem expor valores); (c) confirmado por `curl -I -L https://granaponto.com.br/downloads/grana-latest.apk` o redirecionamento `307 → 302 → releases/download/v1.10.7/grana.apk → 200 OK`.
+
+4. **Verificação e limites:**
+   - Verificado e verde: `npx tsc --noEmit` (0 erros), `node __tests__/granabo-3d-chat.cjs` (28/28), `npm run test:parser` (33/33 sub-suítes, incluindo `1635/1635` do design system), `npm run test:assistente-aprendizado` (98/98 + 40/40), `npm run test:assistente-fatura` (4/4), `npm run test:blur`, `npm run test:motion`, `granachat-prazo.cjs`, `granachat-recarga-durante-envio.cjs`, `granachat-historico-offline.cjs`, `janela-cabe-acima-do-teclado.cjs` (149/149) e `teclado-esconde-barra.cjs`.
+   - Conferido pelo autor no celular real via Expo Go antes do disparo da build, e validado o APK `1.10.7` pelo verificador criptográfico de `publicar-apk.yml` (`scripts/verificar-apk.mjs`).
+   - Observação operacional para próxima rodada: o pacote enviado ao EAS ficou com 581 MB porque `.easignore` não lista `docs/marketing/` nem `Criativos Photoshop/` (embora o build tenha subido em 34s e compilado normalmente).
+
+---
 # 08/10/2026 (M1, Quill): rodada da build 1.10.6, voz do widget, janela única e painel web
 
 > Registro da rodada de 08/10, a pedido do Orquestrador Supremo (`ORDEM-quill-registro.md`). Base: relatórios em `E:\Grana-temporarios\2026-10-08-build-e-admin\` (cito o nome de cada um) e `git log`. Rascunho do Ledger usado como apoio: `relatorio-ledger-reequilibrio-marco.md`, `relatorio-ledger-painel-web.md`. Nota de sessão no vault: `00 - Sessões/2026-10-08 - M1 - Build 1.10.6, voz do widget e janela única`.
