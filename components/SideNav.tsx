@@ -5,6 +5,7 @@ import { theme, spacing, radius, type, fonts } from '@/lib/theme';
 import { useBreakpoint } from '@/lib/breakpoints';
 import BrandLogotype from './BrandLogotype';
 import AppPressable from './AppPressable';
+import Granabo3D from './Granabo3D';
 
 export type ItemNav = {
   /** Nome da rota no expo-router (o mesmo usado em <Tabs.Screen name=...>). */
@@ -32,12 +33,14 @@ export default function SideNav({
   rotaAtiva,
   onNavegar,
   rodape,
+  assistenteAtivo = false,
 }: {
   itens: ItemNav[];
   rotaAtiva: string;
   onNavegar: (rota: string) => void;
   /** Itens fixados na base (Perfil), separados do bloco principal. */
   rodape?: ItemNav[];
+  assistenteAtivo?: boolean;
 }) {
   const { ehAmplo } = useBreakpoint();
   const mostrarRotulos = ehAmplo;
@@ -73,7 +76,7 @@ export default function SideNav({
           <ItemBarra
             key={item.rota}
             item={item}
-            ativo={rotaAtiva === item.rota}
+            ativo={item.rota === 'assistente' ? assistenteAtivo : rotaAtiva === item.rota}
             mostrarRotulo={mostrarRotulos}
             onPress={() => onNavegar(item.rota)}
           />
@@ -145,7 +148,11 @@ function ItemBarra({
         ativo && styles.itemAtivo,
       ]}
     >
-      <Ionicons name={item.icone} size={20} color={cor} />
+      {item.rota === 'assistente' ? (
+        <Granabo3D tamanho={24} variante="nav" estado={ativo ? 'feliz' : 'repouso'} />
+      ) : (
+        <Ionicons name={item.icone} size={20} color={cor} />
+      )}
       {mostrarRotulo && (
         <Text style={[styles.rotulo, { color: cor }, ativo && styles.rotuloAtivo]} numberOfLines={1}>
           {item.rotulo}

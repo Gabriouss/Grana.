@@ -13,6 +13,7 @@ import { useKeyboardHeight } from '@/lib/teclado';
 import { useBreakpoint } from '@/lib/breakpoints';
 import { WalletProvider } from '@/lib/wallet-context';
 import AppPressable from '@/components/AppPressable';
+import Granabo3D from '@/components/Granabo3D';
 import SideNav, { type ItemNav } from '@/components/SideNav';
 import Granachat from '@/components/Granachat';
 import { useReducedMotion } from '@/lib/motion';
@@ -319,7 +320,7 @@ function BotaoGranabo({
           { transform: [{ scale: pressao.interpolate({ inputRange: [0, 1], outputRange: [1, 0.94] }) }] },
         ]}
       >
-        <Ionicons name="sparkles" size={26} color={theme.paper} />
+        <Granabo3D tamanho={74} variante="botao" estado={ativo ? 'feliz' : 'repouso'} />
       </Animated.View>
     </AppPressable>
   );
@@ -467,9 +468,10 @@ function AbasEmJavaScript() {
                 itens={ITENS_LATERAIS}
                 rodape={RODAPE_LATERAL}
                 rotaAtiva={props.state.routes[props.state.index]?.name ?? 'index'}
+                assistenteAtivo={chatAberto}
                 onNavegar={(rota) =>
                   rota === 'assistente'
-                    ? setChatAberto(true)
+                    ? setChatAberto((v) => !v)
                     : props.navigation.navigate(rota as never)
                 }
               />
@@ -609,9 +611,5 @@ const styles = StyleSheet.create({
     borderRadius: 37,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.accent2,
-    /* Duas sombras: a de menta é o halo que amarra o disco à barra (sem ela o
-       disco parece colado por cima), a preta é a que o descola do conteúdo. */
-    ...({ boxShadow: sombras.abaCentral } as any),
   },
 });
