@@ -1012,3 +1012,23 @@ Regras permanentes para qualquer sessão que abrir este repositório:
       Substitui a divisão Sol/Luna por cargo de 02/10/2026.
     - Convive com a regra 27 (teto da conta PH) e com a regra 16 (revisão do
       Codex só quando vale a pena).
+
+29. **Nenhum texto do Grana. termina com palavra viúva: uma única palavra
+    sozinha na última linha.** Regra dada pelo autor em 17/10/2026: "regra de
+    escrita no projeto como um todo. Evitar palavras viúvas (uma única palavra
+    em uma linha) na ultima linha de todos os escritos". Vale para o app, o
+    painel admin, a landing, o site de vendas e os criativos.
+
+    O motivo é acabamento: a palavra solta na última linha deixa o bloco
+    desequilibrado e parece descuido, em qualquer superfície.
+
+    - **Na web, o CSS garante:** `text-wrap: pretty` no texto corrido e
+      `text-wrap: balance` em título.
+    - **Em criativo estático, quem monta a peça confere** a última linha de
+      cada bloco de texto e ajusta a quebra à mão.
+    - **No app React Native, vale o que for possível** em cada tela; o que não
+      der para garantir por mecanismo fica registrado como limite, sem afirmar
+      solução que não foi entregue.
+    - **Painel admin:** texto dentro de cartão e aviso usa a largura do
+      contêiner, sem quebra de linha à toa quando há espaço horizontal (pedido
+      do mesmo dia).

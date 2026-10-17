@@ -212,6 +212,7 @@ Arranjos ainda não usados que respeitam o sistema: o espelho do A (celular à e
 - [ ] Print atual, legível e com dado inventado.
 - [ ] Ícones do arsenal `-menta`: 2 ou 3, de dois tamanhos, cortados pela borda, inclinados e desfocados.
 - [ ] Copy sem travessão, sem "não é X, é Y", com "Grana." com ponto.
+- [ ] Sem palavra viúva: a última linha de cada bloco de texto não termina com uma palavra sozinha (regra 29 do `AGENTS.md`); ajuste a quebra à mão.
 - [ ] Nome de arquivo sem erro de digitação; peça em `para-aprovacao` e no `INDICE.md`.
 
 ## 13. Variante: capa de Reel 1080 × 1920
