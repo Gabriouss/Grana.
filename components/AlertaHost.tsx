@@ -67,11 +67,16 @@ const styles = StyleSheet.create({
     fontSize: type.titulo,
     fontFamily: fonts.regular,
   },
+  /* Subiu de `apoio` para `corpo`, com entrelinha mais aberta que o padrão
+     (autor, 17/10/2026: aviso com letra pequena e linhas grudadas). A Neue
+     Machina tem olho alto, e 1.45 ainda deixava as linhas coladas. A margem de
+     baixo afasta o texto do botão, que ficava encostado nele. */
   message: {
     color: theme.inkSoft,
-    fontSize: type.apoio,
-    lineHeight: lh(type.apoio),
+    fontSize: type.corpo,
+    lineHeight: Math.round(type.corpo * 1.6),
     fontFamily: fonts.light,
+    marginBottom: spacing.sm,
   },
   actions: {
     flexDirection: 'row',
