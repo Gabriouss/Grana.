@@ -133,7 +133,8 @@ export default function PainelAdmin() {
     const prazo = criarPrazoAdmin();
     operacao.current = true; setOcupado(true); limpar(); setEtapa('carregando');
     try {
-      const { error } = await prazo.aguardar(() => supabase.auth.signOut());
+      // Só esta sessão: sem escopo o supabase-js revoga todas, inclusive a do celular.
+      const { error } = await prazo.aguardar(() => supabase.auth.signOut({ scope: 'local' }));
       if (error) throw reciboLocal('sair', 'Não foi possível encerrar a sessão. Tente sair novamente.');
       setEtapa('sem-sessao');
     } catch (error) { falhou(error, 'Não foi possível encerrar a sessão.'); setEtapa('erro'); }

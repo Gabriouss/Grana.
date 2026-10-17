@@ -334,7 +334,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
         esquecerLancamentosLocais,
         removerPush: removerPushHabitoAntesDeSair,
         signOutNoServidor: async () => {
-          const { error } = await supabase.auth.signOut();
+          /* Só esta sessão. Sem escopo, o supabase-js usa 'global' e revoga
+             TODAS as sessões da conta: sair na web derrubava o celular
+             (log de auth, 16/10/2026: /logout da web e depois
+             refresh_token_not_found no app). */
+          const { error } = await supabase.auth.signOut({ scope: 'local' });
           if (error) throw error;
         },
         esquecerSessaoDoDisco,
