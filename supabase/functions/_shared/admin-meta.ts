@@ -7,6 +7,9 @@ type PedidoMeta = { recurso: 'meta-leitura'; incluirHoje?: boolean };
 type Linha = Record<string, unknown>;
 type Paginas = { linhas: Linha[]; paginas: number; completo: boolean };
 const FUSO = 'America/Sao_Paulo';
+/* Nomes do mesmo fuso na base IANA: a conta real devolve o alias legado
+   "Brazil/East" (17/10/2026). Fuso realmente diferente continua parcial. */
+const FUSOS_EQUIVALENTES = new Set([FUSO, 'Brazil/East']);
 const DIA = 86400000;
 const CACHE_MS = 15 * 60000;
 const CONFIG = ['META_READ_ACCESS_TOKEN', 'META_AD_ACCOUNT_ID', 'META_GRAPH_API_VERSION'] as const;
@@ -126,7 +129,7 @@ export function criarOperacaoMeta(
       const falha = (e: unknown) => e instanceof FalhaMeta ? e.codigo : total.aborted ? 'prazo' : 'consulta-indisponivel';
       try {
         const contaMeta = await get('',{ fields:'id,currency,timezone_name' });
-        if (contaMeta.currency !== 'BRL' || contaMeta.timezone_name !== FUSO) return { ...base,meta:{ estado:'parcial',
+        if (contaMeta.currency !== 'BRL' || typeof contaMeta.timezone_name !== 'string' || !FUSOS_EQUIVALENTES.has(contaMeta.timezone_name)) return { ...base,meta:{ estado:'parcial',
           motivo:'moeda-ou-fuso-divergente', atualizadoEm:agora.toISOString(), investimentoCentavos:null, campanhas:null,
           moeda: typeof contaMeta.currency === 'string' && /^[A-Z]{3}$/.test(contaMeta.currency) ? contaMeta.currency : null,
           fuso: typeof contaMeta.timezone_name === 'string' && /^[A-Za-z_/+-]{1,80}$/.test(contaMeta.timezone_name) ? contaMeta.timezone_name : null } };

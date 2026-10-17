@@ -73,8 +73,13 @@ async function main() {
   const cap=harness({pages:'infinito'}),rc=await cap.request();eq(rc.body.dados.meta.atual.estado,'parcial');eq(rc.body.dados.meta.investimentoCentavos,null);eq(cap.calls.length<=10,true);
   const zero=await harness({empty:true}).request();eq(zero.body.dados.meta.atual.investimentoCentavos,0);eq(zero.body.dados.meta.variacaoPercentual,null);
   const missing=await harness({missing:true}).request();eq(missing.body.dados.meta.investimentoCentavos,null);
-  for(const opts of [{currency:'USD'},{timezone:'UTC'}]) {
+  for(const opts of [{currency:'USD'},{timezone:'UTC'},{timezone:'America/Manaus'},{currency:'USD',timezone:'Brazil/East'}]) {
     const x=harness(opts),r=await x.request();eq(r.body.dados.meta.estado,'parcial');eq(r.body.dados.meta.investimentoCentavos,null);eq(x.calls.length,1);
+  }
+  // A conta real devolve o alias legado "Brazil/East" (17/10/2026): mesmo fuso, leitura completa e DTO no nome canonico.
+  for(const timezone of ['Brazil/East','America/Sao_Paulo']) {
+    const r=await harness({timezone}).request();
+    eq(r.body.dados.meta.estado,'completo',`fuso ${timezone} vale`);eq(r.body.dados.meta.fuso,'America/Sao_Paulo');eq(r.body.dados.meta.atual.investimentoCentavos,1234);
   }
   for(const [status,code,expected] of [[400,190,'credencial-recusada'],[400,200,'permissao-recusada'],[429,4,'limite-meta'],[503,0,'provedor-indisponivel']]) {
     const x=harness({network:async()=>Response.json({error:{code,message:TOKEN}},{status})}),r=await x.request();
