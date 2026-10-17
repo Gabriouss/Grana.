@@ -1213,8 +1213,21 @@ export function descricaoDoLancamento(text: string, type: TxType, card?: CartaoB
      porque o lançamento ainda sai com a data de hoje e o nome é a única pista
      de que ela precisa ser corrigida. */
   const HOJE = /(?:^|\s)(?:(?:de|para|pra)\s+)?hoje(?:\s+(?:cedo|de\s+manh[ãa]|[àa]\s+(?:tarde|noite)))?(?![\p{L}\d])/giu;
+  /* Forma de pagamento no MEIO da frase: "Maestri 95 reais crédito C6
+     assinaturas" era gravado como "Maestri crédito" (print do autor,
+     17/10/2026), porque `guessDescFromText` só apaga a do fim e a do começo
+     sai acima. O meio de pagamento é campo do lançamento, não nome. Fica
+     quando faz parte do nome: precedida de "de" ("Recarga de crédito") ou
+     seguida de preposição ("crédito do celular", "débito automático"). O
+     "cartão" sozinho fica ("Anuidade cartão"); sai com "no" na frente ou com
+     "de crédito/débito" depois. Sobrou nada, vale o nome sem a limpeza. */
+  const FORMA_PAGAMENTO_SOLTA =
+    /(?<!(?:^|[\s,])(?:de|do|da|dos|das)\s+)(?:(?:(?:no|na|pelo|pela)\s+)?cart[aã]o\s+de\s+(?:cr[ée]dito|d[ée]bito)|(?:no|na|pelo|pela)\s+cart[aã]o|(?:(?:no|na|via|em|pelo|pela)\s+)?(?:pix|dinheiro|esp[ée]cie|d[ée]bito|cr[ée]dito))(?![\p{L}\d])(?!\s+(?:de|do|da|dos|das|para|pra|pro|no|na|em|autom[aá]tico)(?![\p{L}\d]))/giu;
   const semCartao = card ? limparReferenciaCartao(text, card) : text;
-  return guessDescFromText(semCartao.replace(HOJE, ' ').replace(FORMA_PAGAMENTO_INICIAL, ''), type);
+  const nome = guessDescFromText(semCartao.replace(HOJE, ' ').replace(FORMA_PAGAMENTO_INICIAL, ''), type);
+  const limpo = nome.replace(FORMA_PAGAMENTO_SOLTA, ' ').replace(/\s*,(?:\s*,)+/g, ',')
+    .replace(/\s+/g, ' ').replace(/^[\s,]+|[\s,]+$/g, '');
+  return limpo ? limpo.charAt(0).toUpperCase() + limpo.slice(1) : nome;
 }
 
 /**

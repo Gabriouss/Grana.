@@ -80,7 +80,9 @@ function load(file) {
       criarRateLimiter: () => () => false,
       fetchComTimeout: async () => Response.json({ choices: [{ message: completions.shift() ?? { content: 'Pronto.' } }] }),
     };
-    return load(path.resolve(path.dirname(file), name));
+    // `lib/` importa sem extensão ("./types"); `supabase/` importa com.
+    const alvo = path.resolve(path.dirname(file), name);
+    return load(fs.existsSync(alvo) ? alvo : alvo + '.ts');
   };
   m._compile(ts.transpileModule(fs.readFileSync(file, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
@@ -290,6 +292,35 @@ async function comRelogio(instante, fn) {
     gravados = [];
     await conversa(['lança 32 reais de uber hoje']);
     igual(gravados.map((g) => g.p_payload.description), ['Uber'], '"hoje" sai do nome');
+  }
+
+  /* ── 6d. Meio de pagamento no meio da frase não entra no nome ─────────── */
+  /* Print do autor, 17/10/2026: "Maestri 95 reais crédito C6 assinaturas"
+     foi gravado como "Maestri crédito". O crédito vira cartão, a categoria
+     vira categoria, e o nome é só "Maestri". */
+  {
+    cartoes = [C6];
+    for (const frase of ['Maestri 95 reais crédito C6 assinaturas', 'Maestri 95 reais no crédito C6 assinaturas']) {
+      gravados = [];
+      await conversa([frase]);
+      igual(gravados.map((g) => [g.p_payload.description, g.p_payload.amount, g.p_payload.category, g.p_payload.card_id]),
+        [['Maestri', 95, 'Assinaturas', 'c6']], `"${frase}" grava só "Maestri" no nome`);
+    }
+    /* O núcleo da voz (app e widget) é a cópia guardada pelo sync-parser; a
+       mesma frase sai com o mesmo nome dos dois lados. */
+    const heur = load(path.resolve(__dirname, '../lib/heuristics.ts'));
+    for (const [frase, esperado] of [
+      ['Maestri 95 reais crédito C6 assinaturas', 'Maestri assinaturas'],
+      ['Mercado 29,97 crédito C6', 'Mercado'],
+      ['padaria 21,64 no pix', 'Padaria'],
+      ['mercado 40 no débito feira', 'Mercado feira'],
+      ['crédito do celular 20 reais', 'Crédito do celular'],
+      ['débito automático 50 reais', 'Débito automático'],
+    ]) {
+      const cartao = /C6/.test(frase) ? C6 : null;
+      igual(interp.descricaoDoLancamento(frase, 'out', cartao), esperado, `chat: "${frase}"`);
+      igual(heur.descricaoDoLancamento(frase, 'out', cartao), esperado, `voz: "${frase}"`);
+    }
   }
 
   /* ── 7. O código não volta aos textos antigos ─────────────────────────── */
