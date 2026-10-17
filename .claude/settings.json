@@ -1,11 +1,34 @@
 {
-  "enabledPlugins": {
-    "expo@claude-plugins-official": true
-  },
   "permissions": {
     "allow": [
       "Bash(curl https://api.vercel.com/*)",
       "Bash(curl -s https://mcp.cakto.com.br*)"
     ]
+  },
+  "enabledPlugins": {
+    "expo@claude-plugins-official": true,
+    "savvy-progress@claude-kit": true,
+    "cache-tax@claude-code-mods": true,
+    "reflect-mod@claude-reflect-marketplace": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-kit": {
+      "source": {
+        "source": "github",
+        "repo": "johnnyvizz/claude-kit"
+      }
+    },
+    "claude-code-mods": {
+      "source": {
+        "source": "github",
+        "repo": "karanb192/claude-code-mods"
+      }
+    },
+    "claude-reflect-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "bayramannakov/claude-reflect"
+      }
+    }
   }
 }
