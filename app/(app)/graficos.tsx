@@ -60,7 +60,11 @@ export default function GraficosScreen() {
      legenda ocupando todo o resto — e é o donut que carrega a informação.
      Cresce com a janela, mantendo a legenda ao lado. */
   const { ehAmplo, ehMedio, ehCompacto, largura } = useBreakpoint();
-  const tamanhoDonut = ehAmplo ? 280 : ehMedio ? 220 : 150;
+  /* No celular eram 150px fixos, e o anel, que ocupa pouco mais da metade do
+     viewBox por causa da margem dos rótulos, saía com ~80px (autor,
+     17/10/2026: "gráfico de pizza muito pequeno"). Ali o donut fica sozinho
+     acima da legenda, então cresce com a largura da tela, com teto. */
+  const tamanhoDonut = ehAmplo ? 280 : ehMedio ? 220 : Math.min(Math.round(largura * 0.7), 300);
   /* Largura real do card do gráfico de linha, calculada em vez de medida por
      onLayout — dentro do ScrollView largo da web, onLayout fica preso na
      primeira medição (estreita, de antes do layout final assentar) e nunca
