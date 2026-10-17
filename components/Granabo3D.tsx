@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Image, Platform, StyleSheet, View, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native';
+import { Asset } from 'expo-asset';
 import { menta, sombras, theme } from '@/lib/theme';
 import { useReducedMotion } from '@/lib/motion';
 
 export type EstadoGranabo3D = 'saudacao' | 'repouso' | 'pensando' | 'feliz' | 'inclinado';
 export type VarianteGranabo3D = 'hero' | 'botao' | 'avatar' | 'nav';
 
-const ATIVOS_3D: Record<'frente' | 'piscando' | 'inclinado' | 'pensando' | 'feliz' | 'tresQuartos' | 'saudacaoWebp', ImageSourcePropType> = {
+type PoseGranabo = 'frente' | 'piscando' | 'inclinado' | 'pensando' | 'feliz' | 'tresQuartos' | 'saudacaoWebp';
+
+const ATIVOS_3D: Record<PoseGranabo, ImageSourcePropType> = {
   frente: require('@/assets/granabo/granabo-frente.png'),
   piscando: require('@/assets/granabo/granabo-piscando.png'),
   inclinado: require('@/assets/granabo/granabo-inclinado.png'),
@@ -15,6 +18,19 @@ const ATIVOS_3D: Record<'frente' | 'piscando' | 'inclinado' | 'pensando' | 'feli
   tresQuartos: require('@/assets/granabo/granabo-tres-quartos.png'),
   saudacaoWebp: require('@/assets/granabo/granabo-saudacao.webp'),
 };
+
+/** Duracao do fundido entre expressoes. Piscada fica de fora: ela e um corte de ~150ms por natureza. */
+const FUNDIDO_POSE_MS = 120;
+/** Quanto a pose "feliz" fica no ar depois de um toque no mascote. */
+const FELIZ_APOS_TOQUE_MS = 900;
+
+/**
+ * Intervalo ate a proxima piscada: irregular (2,8 a 5,4s) em vez de metronomo de 3,6s,
+ * e de vez em quando dupla. Piscada em intervalo fixo e o que mais denuncia "animacao em loop".
+ */
+function proximoIntervaloDePiscada() {
+  return 2800 + Math.random() * 2600;
+}
 
 export interface Granabo3DProps {
   /** Tamanho em dp do mascote 3D (largura = altura). */
@@ -85,30 +101,53 @@ export default function Granabo3D({
       setInclinadoRepouso(false);
       return;
     }
-    // Piscada curta a cada ~3,6s nos modos de destaque (hero e botão)
+    // Piscada curta, em intervalo irregular, nos modos de destaque (hero e botão)
     const animarPiscada = variante === 'hero' || variante === 'botao';
     if (!animarPiscada) return;
 
-    let tFecha: ReturnType<typeof setTimeout> | null = null;
-    let tInclina: ReturnType<typeof setTimeout> | null = null;
+    let cancelado = false;
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+    const agenda = (fn: () => void, ms: number) => {
+      const t = setTimeout(() => {
+        timers.delete(t);
+        if (!cancelado) fn();
+      }, ms);
+      timers.add(t);
+    };
     let passo = 0;
 
-    const intervalo = setInterval(() => {
-      passo += 1;
+    const piscar = (dupla: boolean) => {
       setPiscando(true);
-      tFecha = setTimeout(() => {
+      agenda(() => {
         setPiscando(false);
-        if (variante === 'hero' && passo % 2 === 1) {
-          setInclinadoRepouso(true);
-          tInclina = setTimeout(() => setInclinadoRepouso(false), 1200);
+        if (dupla) {
+          agenda(() => {
+            setPiscando(true);
+            agenda(() => setPiscando(false), 130);
+          }, 170);
         }
       }, 150);
-    }, 3600);
+    };
+
+    const proxima = () => {
+      agenda(() => {
+        passo += 1;
+        piscar(Math.random() < 0.18);
+        if (variante === 'hero' && passo % 2 === 1) {
+          agenda(() => {
+            setInclinadoRepouso(true);
+            agenda(() => setInclinadoRepouso(false), 1200);
+          }, 150);
+        }
+        proxima();
+      }, proximoIntervaloDePiscada());
+    };
+    proxima();
 
     return () => {
-      clearInterval(intervalo);
-      if (tFecha) clearTimeout(tFecha);
-      if (tInclina) clearTimeout(tInclina);
+      cancelado = true;
+      timers.forEach(clearTimeout);
+      timers.clear();
     };
   }, [estado, reduzirMovimento, saudacaoEmCurso, variante]);
 
@@ -148,12 +187,18 @@ export default function Granabo3D({
     return () => loopFlutuacao.stop();
   }, [estado, flutuacao, haloPulso, reduzirMovimento, variante]);
 
-  /* ── Pulinho quando fica feliz ou recebe toque interativo ─────────────── */
+  /* ── Pulinho quando fica feliz ou recebe toque interativo ───────────────
+     Nao pula na montagem: item de navegacao que ja nasce ativo (estado feliz)
+     pulava a cada troca de tela, sem ninguem ter feito nada. */
+  const primeiraRodadaPulo = useRef(true);
   useEffect(() => {
+    const montagem = primeiraRodadaPulo.current;
+    primeiraRodadaPulo.current = false;
     if (reduzirMovimento) {
       pulo.setValue(0);
       return;
     }
+    if (montagem && pulsoInteracao === 0) return;
     if (estado !== 'feliz' && pulsoInteracao === 0) return;
 
     pulo.setValue(0);
@@ -173,22 +218,75 @@ export default function Granabo3D({
     ]).start();
   }, [estado, pulo, pulsoInteracao, reduzirMovimento]);
 
+  /* ── Feliz por um instante depois do toque ──────────────────────────────
+     Antes a pose "feliz" do toque so aparecia se ele estivesse piscando, ou
+     seja, quase nunca: o pulo acontecia com a cara de repouso. */
+  const [felizPorToque, setFelizPorToque] = useState(false);
+  useEffect(() => {
+    if (pulsoInteracao === 0 || reduzirMovimento) return;
+    setFelizPorToque(true);
+    const t = setTimeout(() => setFelizPorToque(false), FELIZ_APOS_TOQUE_MS);
+    return () => clearTimeout(t);
+  }, [pulsoInteracao, reduzirMovimento]);
+
   /* ── Escolha da pose 3D do Blender ────────────────────────────────────── */
-  const fonteImagem: ImageSourcePropType = (() => {
+  const pose: PoseGranabo = (() => {
     if (saudacaoEmCurso) {
       // Na web o WebP animado 3D roda direto com todos os 36 quadros de Cycles;
       // no nativo ou fallback, a sequência de poses 3D sincronizada garante o giro + piscada.
-      if (Platform.OS === 'web') return ATIVOS_3D.saudacaoWebp;
-      return ATIVOS_3D[quadroEntrada];
+      if (Platform.OS === 'web') return 'saudacaoWebp';
+      return quadroEntrada;
     }
-    if (estado === 'pensando') return ATIVOS_3D.pensando;
-    if (estado === 'feliz' || pulsoInteracao > 0 && piscando) return ATIVOS_3D.feliz;
-    if (estado === 'inclinado') return ATIVOS_3D.inclinado;
-    if (piscando) return ATIVOS_3D.piscando;
-    if (inclinadoRepouso) return ATIVOS_3D.inclinado;
-    if (estado === 'saudacao') return ATIVOS_3D.inclinado;
-    return ATIVOS_3D.frente;
+    if (estado === 'pensando') return 'pensando';
+    if (estado === 'feliz' || felizPorToque) return 'feliz';
+    if (estado === 'inclinado') return 'inclinado';
+    if (piscando) return 'piscando';
+    if (inclinadoRepouso) return 'inclinado';
+    if (estado === 'saudacao') return 'inclinado';
+    return 'frente';
   })();
+
+  /* Fundido curto entre expressoes: a pose anterior fica por baixo enquanto a
+     nova sobe. Trocar a fonte direto era um corte seco. Piscada e saudacao em
+     quadros ficam de fora: sao cortes por natureza. */
+  const [poseExibida, setPoseExibida] = useState<PoseGranabo>(pose);
+  const [poseAnterior, setPoseAnterior] = useState<PoseGranabo | null>(null);
+  const fundido = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (pose === poseExibida) return;
+    const corte = reduzirMovimento || pose === 'piscando' || poseExibida === 'piscando' || saudacaoEmCurso;
+    if (corte) {
+      fundido.stopAnimation();
+      fundido.setValue(1);
+      setPoseAnterior(null);
+      setPoseExibida(pose);
+      return;
+    }
+    setPoseAnterior(poseExibida);
+    setPoseExibida(pose);
+    fundido.setValue(0);
+    Animated.timing(fundido, {
+      toValue: 1,
+      duration: FUNDIDO_POSE_MS,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: Platform.OS !== 'web',
+    }).start(({ finished }) => {
+      if (finished) setPoseAnterior(null);
+    });
+  }, [pose, poseExibida, reduzirMovimento, saudacaoEmCurso, fundido]);
+
+  /* Poses decodificadas antes de precisarem: a primeira piscada ou troca nao
+     pisca de verdade. Falha de prefetch nao muda nada, a pose carrega na hora. */
+  useEffect(() => {
+    (Object.keys(ATIVOS_3D) as PoseGranabo[]).forEach((chave) => {
+      if (chave === 'saudacaoWebp') return;
+      try {
+        Asset.fromModule(ATIVOS_3D[chave] as number).downloadAsync().catch(() => {});
+      } catch {
+        /* sem prefetch a pose carrega na hora, como antes */
+      }
+    });
+  }, []);
 
   const amplitudeY = variante === 'hero' ? -6 : variante === 'botao' ? -2.5 : -2;
   const deslocamentoY = Animated.add(
@@ -266,16 +364,24 @@ export default function Granabo3D({
             variante === 'botao' && styles.nucleoFundoBotao,
           ]}
         />
-        <Image
-          source={fonteImagem}
-          style={{
-            width: diametroEsfera * 1.06,
-            height: diametroEsfera * 1.06,
-          }}
-          resizeMode="contain"
-          fadeDuration={0}
-          accessible={false}
-        />
+        <View style={{ width: diametroEsfera * 1.06, height: diametroEsfera * 1.06 }}>
+          {poseAnterior && (
+            <Image
+              source={ATIVOS_3D[poseAnterior]}
+              style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]}
+              resizeMode="contain"
+              fadeDuration={0}
+              accessible={false}
+            />
+          )}
+          <Animated.Image
+            source={ATIVOS_3D[poseExibida]}
+            style={[StyleSheet.absoluteFill, { width: '100%', height: '100%', opacity: poseAnterior ? fundido : 1 }]}
+            resizeMode="contain"
+            fadeDuration={0}
+            accessible={false}
+          />
+        </View>
       </Animated.View>
 
       {/* Sombra projetada no chão para o palco 3D do modo hero */}
