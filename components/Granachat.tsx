@@ -20,12 +20,13 @@ import { initialWindowMetrics } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from '@/components/AppPressable';
+import Granabo3D, { type EstadoGranabo3D } from '@/components/Granabo3D';
 import { useKeyboardHeight } from '@/components/Sheet';
 import { UI_OUT, useReducedMotion } from '@/lib/motion';
 import { mensagemErro as traduzirErro } from '@/lib/erros';
 import { geometriaDaConversa, type RetanguloNaJanela } from '@/lib/breakpoints';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
-import { theme, spacing, radius, fonts, type, lh, screenRhythm, sombras } from '@/lib/theme';
+import { theme, spacing, radius, fonts, type, lh, screenRhythm, sombras, menta } from '@/lib/theme';
 import {
   fetchMensagens,
   enviarPergunta,
@@ -484,6 +485,40 @@ export default function Granachat({
     requisicaoRef.current?.abort();
   }, []);
 
+  /* ── Estado 3D reativo do Granabô ─────────────────────────────────── */
+  const [pulsoMascote, setPulsoMascote] = useState(0);
+  const [celebrandoResposta, setCelebrandoResposta] = useState(false);
+  const qtdRespostasAssistente = mensagens.filter(
+    (m) => m.papel === 'assistente' && !m.carregando && !m.erro
+  ).length;
+  const qtdAnteriorRef = useRef(qtdRespostasAssistente);
+
+  useEffect(() => {
+    if (qtdRespostasAssistente > qtdAnteriorRef.current && enviosRef.current > 0) {
+      setCelebrandoResposta(true);
+      const t = setTimeout(() => setCelebrandoResposta(false), 2200);
+      qtdAnteriorRef.current = qtdRespostasAssistente;
+      return () => clearTimeout(t);
+    }
+    qtdAnteriorRef.current = qtdRespostasAssistente;
+  }, [qtdRespostasAssistente]);
+
+  useEffect(() => {
+    if (!visivel) setPulsoMascote(0);
+  }, [visivel]);
+
+  const estadoMascoteCabecalho: EstadoGranabo3D = enviando
+    ? 'pensando'
+    : celebrandoResposta
+      ? 'feliz'
+      : mensagens.length === 0
+        ? 'saudacao'
+        : 'repouso';
+
+  const idUltimaAssistente = [...mensagens]
+    .reverse()
+    .find((m) => m.papel === 'assistente' && !m.carregando && !m.erro)?.id;
+
   /* ── Render de cada mensagem ──────────────────────────────────────── */
   const renderMensagem = useCallback(({ item }: { item: MensagemLocal }) => {
     const isUser = item.papel === 'usuario';
@@ -491,6 +526,9 @@ export default function Granachat({
     if (item.carregando) {
       return (
         <View style={[styles.bolhaWrap, styles.bolhaWrapAssistente]}>
+          <View style={styles.avatarBot}>
+            <Granabo3D tamanho={30} variante="avatar" estado="pensando" />
+          </View>
           <View style={[styles.bolha, styles.bolhaAssistente]}>
             <View style={styles.pensando}>
               <ActivityIndicator size="small" color={theme.accent2} />
@@ -503,11 +541,14 @@ export default function Granachat({
       );
     }
 
+    const estadoBolha: EstadoGranabo3D =
+      celebrandoResposta && item.id === idUltimaAssistente ? 'feliz' : 'repouso';
+
     return (
       <View style={[styles.bolhaWrap, isUser ? styles.bolhaWrapUsuario : styles.bolhaWrapAssistente]}>
         {!isUser && (
           <View style={styles.avatarBot}>
-            <Ionicons name="sparkles" size={14} color={theme.paper} />
+            <Granabo3D tamanho={30} variante="avatar" estado={estadoBolha} />
           </View>
         )}
         <View
@@ -529,35 +570,59 @@ export default function Granachat({
         </View>
       </View>
     );
-  }, []);
+  }, [celebrandoResposta, idUltimaAssistente]);
 
-  /* ── Tela vazia (sem histórico) ──────────────────────────────────── */
+  /* ── Tela vazia (sem histórico): palco 3D de saudação ────────────── */
+  const saudacaoTitulo = obterTituloSaudacao(pulsoMascote);
+  const saudacaoFalaCurta = FALAS_SAUDACAO_CURTAS[pulsoMascote % FALAS_SAUDACAO_CURTAS.length];
+
   const renderVazio = useCallback(
     () =>
       carregando ? null : (
         <View style={styles.vazio}>
-          <View style={styles.vazioIcone}>
-            <Ionicons name="sparkles" size={28} color={theme.paper} />
-          </View>
-          <Text style={styles.vazioTitulo}>Olá! Eu sou o Granabô</Text>
+          <AppPressable
+            onPress={() => setPulsoMascote((atual) => atual + 1)}
+            style={styles.palcoMascoteVazio}
+            accessibilityRole="button"
+            accessibilityLabel="Interagir com o mascote Granabô 3D"
+          >
+            <View style={styles.balaoFalaMascote}>
+              <View style={styles.pontoOnline} />
+              <Text style={styles.balaoFalaTexto}>{saudacaoFalaCurta}</Text>
+            </View>
+            <Granabo3D
+              tamanho={104}
+              variante="hero"
+              estado={pulsoMascote > 0 ? 'feliz' : 'saudacao'}
+              pulsoInteracao={pulsoMascote}
+            />
+          </AppPressable>
+
+          <Text style={styles.vazioTitulo}>{saudacaoTitulo}</Text>
           <Text style={styles.vazioTexto}>
-            Pergunte sobre suas finanças: quanto gastou em uma categoria, como está o crédito, boletos
-            pendentes, ou quanto ainda dá pra gastar no mês.
+            Pergunte sobre suas finanças ou peça um lançamento direto por aqui: quanto gastou em uma
+            categoria, como está o crédito, boletos pendentes ou quanto ainda dá pra gastar no mês.
           </Text>
+
           <View style={styles.sugestoes}>
-            {SUGESTOES.map((s) => (
+            {SUGESTOES_DETALHADAS.map((item) => (
               <AppPressable
-                key={s}
+                key={item.pergunta}
                 style={styles.chipSugestao}
-                onPress={() => { setTexto(s); inputRef.current?.focus(); }}
+                onPress={() => {
+                  setPulsoMascote((atual) => atual + 1);
+                  setTexto(item.pergunta);
+                  inputRef.current?.focus();
+                }}
               >
-                <Text style={styles.chipTexto}>{s}</Text>
+                <Ionicons name={item.icone} size={15} color={theme.accent2} />
+                <Text style={styles.chipTexto}>{item.pergunta}</Text>
               </AppPressable>
             ))}
           </View>
         </View>
       ),
-    [carregando]
+    [carregando, pulsoMascote, saudacaoFalaCurta, saudacaoTitulo]
   );
 
   if (!montado) return null;
@@ -616,9 +681,18 @@ export default function Granachat({
         focusable
       >
         <View style={styles.cabecalho}>
-          <View style={styles.cabecalhoTextos}>
-            <Text style={styles.cabecalhoEyebrow}>Assistente</Text>
-            <Text style={styles.cabecalhoTitulo} numberOfLines={1}>Granabô</Text>
+          <View style={styles.cabecalhoIdentidade}>
+            <Granabo3D tamanho={36} variante="avatar" estado={estadoMascoteCabecalho} />
+            <View style={styles.cabecalhoTextos}>
+              <Text style={styles.cabecalhoEyebrow}>
+                {enviando
+                  ? 'Consultando seus dados…'
+                  : celebrandoResposta
+                    ? 'Números conferidos'
+                    : 'Assistente'}
+              </Text>
+              <Text style={styles.cabecalhoTitulo} numberOfLines={1}>Granabô</Text>
+            </View>
           </View>
           <AppPressable
             onPress={fechar}
@@ -700,13 +774,33 @@ export default function Granachat({
   );
 }
 
-/* ── Sugestões de perguntas para tela vazia ──────────────────────────────── */
+/* ── Saudação contextual e sugestões de perguntas para tela vazia ────────── */
 
-const SUGESTOES = [
-  'Quanto gastei em Alimentação?',
-  'Como está meu crédito?',
-  'Quanto posso gastar?',
-  'Resumo do mês',
+function obterTituloSaudacao(interacoes: number): string {
+  if (interacoes > 0) {
+    return 'Pronto pra olhar seus números!';
+  }
+  const hora = new Date().getHours();
+  if (hora >= 5 && hora < 12) return 'Bom dia! Eu sou o Granabô';
+  if (hora >= 12 && hora < 18) return 'Boa tarde! Eu sou o Granabô';
+  return 'Boa noite! Eu sou o Granabô';
+}
+
+const FALAS_SAUDACAO_CURTAS = [
+  'Oi! Tudo na ponta do lápis por aqui',
+  'Pode perguntar ou mandar lançar!',
+  'Tô de olho no saldo e nos cartões',
+  'Toque em uma pergunta abaixo pra começar',
+];
+
+const SUGESTOES_DETALHADAS: {
+  pergunta: string;
+  icone: keyof typeof Ionicons.glyphMap;
+}[] = [
+  { pergunta: 'Quanto gastei em Alimentação?', icone: 'restaurant-outline' },
+  { pergunta: 'Como está meu crédito?', icone: 'card-outline' },
+  { pergunta: 'Quanto posso gastar?', icone: 'wallet-outline' },
+  { pergunta: 'Resumo do mês', icone: 'pie-chart-outline' },
 ];
 
 /* ── Estilos ──────────────────────────────────────────────────────────────── */
@@ -777,6 +871,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.rule,
   },
+  cabecalhoIdentidade: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flexShrink: 1,
+    minWidth: 0,
+  },
   cabecalhoTextos: { flexShrink: 1, minWidth: 0 },
   cabecalhoEyebrow: {
     fontFamily: fonts.regular,
@@ -834,10 +935,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   avatarBot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: theme.accent2,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 2,
@@ -895,20 +995,42 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
-  /* ── Estado vazio ────────────────────────────────────────────────── */
+  /* ── Estado vazio (palco 3D de saudação) ─────────────────────────── */
   vazio: {
     alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.xl,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
   },
-  vazioIcone: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: theme.accent2,
+  palcoMascoteVazio: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.sm,
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  balaoFalaMascote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.icone,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: theme.paperRaised,
+    borderWidth: 1,
+    borderColor: theme.ruleStrong,
+    marginBottom: spacing.xs,
+  },
+  pontoOnline: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: theme.accent2,
+  },
+  balaoFalaTexto: {
+    fontFamily: fonts.regular,
+    fontSize: type.legenda,
+    color: theme.accent2,
+    letterSpacing: 0.2,
   },
   vazioTitulo: {
     fontFamily: fonts.regular,
@@ -930,20 +1052,23 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     gap: spacing.sm,
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   chipSugestao: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.icone,
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: theme.ruleStrong,
-    backgroundColor: theme.paperRaised,
+    backgroundColor: menta(0.07),
   },
   chipTexto: {
     fontFamily: fonts.light,
     fontSize: type.nota,
-    color: theme.accent2,
+    color: theme.ink,
   },
 
   /* ── Input ───────────────────────────────────────────────────────── */
