@@ -132,7 +132,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
     {
       tipo: 'paragrafo',
       texto:
-        'Ao enviar um feedback, você pode marcar uma autorização para que aquele comentário seja mostrado publicamente. A escolha é feita comentário a comentário, a caixa nunca vem marcada, e deixá-la em branco não muda nada no envio.',
+        'Ao enviar um feedback, você pode marcar uma autorização para que aquele comentário seja usado na divulgação do Grana., como site, redes sociais e anúncios, sem o seu nome. A escolha é feita comentário a comentário, a caixa nunca vem marcada, e deixá-la em branco não muda nada no envio.',
     },
     { tipo: 'subtitulo', texto: '6. Seus direitos (LGPD, art. 18)' },
     { tipo: 'paragrafo', texto: 'Você pode, a qualquer momento:' },

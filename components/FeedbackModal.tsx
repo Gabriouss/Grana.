@@ -137,7 +137,7 @@ export default function FeedbackModal({
                 <Ionicons
                   name={rating !== null && n <= rating ? 'star' : 'star-outline'}
                   size={26}
-                  color={rating !== null && n <= rating ? theme.accent : theme.inkFaint}
+                  color={rating !== null && n <= rating ? theme.estrela : theme.inkFaint}
                 />
               </AppPressable>
             ))}
@@ -164,7 +164,7 @@ export default function FeedbackModal({
               setAutorizaUsoPublico((v) => !v);
             }}
             accessibilityRole="checkbox"
-            accessibilityLabel="Autorizo o Grana. a mostrar este comentário publicamente"
+            accessibilityLabel="Autorizo o Grana. a usar este comentário na divulgação do app, sem o meu nome"
             accessibilityState={{ checked: autorizaUsoPublico }}
           >
             <Ionicons
@@ -174,8 +174,8 @@ export default function FeedbackModal({
               aria-hidden
             />
             <Text style={styles.permissaoTexto}>
-              Pode mostrar este comentário publicamente, sem o meu nome. Você escolhe a cada
-              mensagem, e deixar desmarcado não muda nada no envio.
+              Autorizo o Grana. a usar este comentário na divulgação do app, como site,
+              redes sociais e anúncios, sem mostrar meu nome. Vale só para esta mensagem.
             </Text>
           </AppPressable>
 

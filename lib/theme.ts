@@ -58,6 +58,10 @@ export const theme = {
      papel. Valor já catalogado como "proposto" em
      design-system/tokens/tokens.json antes deste token existir de verdade. */
   danger: '#e08a7d',
+  /* Estrela de avaliação preenchida. Exceção à paleta, pedida pelo autor em
+     17/10/2026: estrela amarela é a convenção que todo mundo reconhece, e a
+     menta (`accent`) não lia como nota. Só para estrela; não reaproveitar. */
+  estrela: '#f5c542',
   /* Tom de qualquer coisa SELECIONADA numa lista de opções: o cartão de
      crédito escolhido em `credito.tsx`, o chip de banco/carteira nos
      formulários, a conquista já obtida no `BadgeCard`. Mais claro que

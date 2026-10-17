@@ -110,7 +110,10 @@ const LinhaLancamento = memo(function LinhaLancamento({
             cor de tinta e quem carrega a identidade é o avatar. */}
         <Text style={styles.rowSub}>
           {item.category}
-          {item.parent_id && (item.installment_total ?? 1) <= 1 ? ' · série mensal' : item.recurring ? ' · recorrente' : ''} · {formatDateLabel(item.occurred_on)}
+          {/* Ocorrência gerada de uma série e a origem marcada como recorrente
+              recebem o mesmo nome. Até 17/10/2026 a ocorrência dizia "série
+              mensal", e o autor pediu um rótulo só: "Recorrente". */}
+          {(item.parent_id && (item.installment_total ?? 1) <= 1) || item.recurring ? ' · Recorrente' : ''} · {formatDateLabel(item.occurred_on)}
           {item.id.startsWith('local-') ? ' · aguardando envio' : ''}
         </Text>
       </View>
