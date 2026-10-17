@@ -126,12 +126,15 @@ Deno.serve(async (req: Request) => {
      o reenvio, e sem esta regra o reenvio recriaria a linha com o vínculo que a
      exclusão da conta apagou. Nunca bloqueia a resposta: falha aqui perde só o
      registro financeiro, e o log leva o que basta para reconciliar pela API da
-     Cakto, que não reenvia. */
+     Cakto, que não reenvia.
+     A gravação passa pela função do banco, que toma a mesma trava da exclusão
+     da conta e grava a linha já anonimizada se a conta foi (ou está sendo)
+     excluída enquanto este evento estava em voo (B2-1, revisão do Watchtower
+     de 17/10/2026). O serviço não tem INSERT direto na tabela. */
   if (data !== 'duplicate') {
     try {
       const { error: erroLivro } = await supabase
-        .from('cobranca_eventos')
-        .upsert(linhaCobrancaCakto(body, evento, eventId), { onConflict: 'provider,event_id', ignoreDuplicates: true });
+        .rpc('registrar_cobranca_evento', { p_linha: linhaCobrancaCakto(body, evento, eventId) });
       if (erroLivro) {
         console.error('[cakto-webhook] livro-razão NÃO gravado', { code: erroLivro.code, eventType: evento.type, orderId: evento.orderId });
       }

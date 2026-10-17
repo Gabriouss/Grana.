@@ -22,27 +22,15 @@ function bearer(req: Request): string | null {
   return match?.[1] ?? null;
 }
 
+/* Os IDs da pessoa são lidos e anonimizados DENTRO do banco, numa transação
+   com a mesma trava da gravação do livro (`encerrar_vinculo_cobranca`): um
+   evento de pagamento em voo não grava os IDs depois desta etapa (B2-1,
+   revisão do Watchtower de 17/10/2026). Qualquer erro barra a exclusão,
+   inclusive PGRST202: "função não encontrada na API" não prova que o livro
+   não existe (cache de schema, migration pela metade), então não serve de
+   evidência de anonimização. */
 async function anonimizarLivroDeCobranca(userId: string): Promise<void> {
-  const { data: assinaturas, error: leituraError } = await admin
-    .from('subscriptions')
-    .select('provider_subscription_id, provider_order_id')
-    .eq('user_id', userId);
-  if (leituraError) throw Object.assign(new Error('Falha ao ler assinaturas'), { cause: leituraError });
-  const subscriptionIds = (assinaturas ?? []).map((a) => a.provider_subscription_id).filter((v): v is string => typeof v === 'string' && v !== '');
-  const orderIds = (assinaturas ?? []).map((a) => a.provider_order_id).filter((v): v is string => typeof v === 'string' && v !== '');
-  if (subscriptionIds.length === 0 && orderIds.length === 0) return;
-  const { error } = await admin.rpc('anonimizar_cobranca_eventos', {
-    p_subscription_ids: subscriptionIds,
-    p_order_ids: orderIds,
-  });
-  /* PGRST202 = a função não existe, ou seja, a migration do livro ainda não
-     foi aplicada e a tabela também não existe: não há vínculo a apagar. Os
-     dois nascem na mesma migration. Qualquer outro erro barra a exclusão,
-     para não prometer uma exclusão que deixou o vínculo para trás. */
-  if (error?.code === 'PGRST202') {
-    console.warn('[delete-account] livro de cobrança ausente; nada a anonimizar');
-    return;
-  }
+  const { error } = await admin.rpc('encerrar_vinculo_cobranca', { p_user_id: userId });
   if (error) throw Object.assign(new Error('Falha ao anonimizar o livro de cobrança'), { cause: error });
 }
 
@@ -93,8 +81,8 @@ Deno.serve(async (req: Request) => {
     /* Livro-razão de cobrança (B2): os registros de pagamento ficam pela
        obrigação fiscal, mas os IDs de pedido e de assinatura ligam a venda à
        pessoa (revisão do Watchtower, 16/10/2026). Antes de apagar a conta, esses
-       IDs saem do livro e ficam só valores e datas. Lê os IDs em
-       `subscriptions` antes do deleteUser, enquanto o vínculo ainda existe. */
+       IDs saem do livro e ficam só valores e datas. Roda antes do deleteUser,
+       enquanto `subscriptions` ainda liga a pessoa aos IDs. */
     await anonimizarLivroDeCobranca(user.id);
 
     /* Feedback é deliberadamente preservado, por decisão do autor em

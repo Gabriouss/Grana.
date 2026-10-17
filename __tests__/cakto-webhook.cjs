@@ -266,11 +266,13 @@ checar('livro: valor absurdo vira nulo', cakto.linhaCobrancaCakto(clone({}, { am
 /* O webhook grava o livro sem bloquear a assinatura, e a migration deixa a
    tabela só para o servidor e só para inserção. Checagem de texto. */
 const fonteWebhook = fs.readFileSync('supabase/functions/cakto-webhook/index.ts', 'utf8');
-const posLivro = fonteWebhook.indexOf(".from('cobranca_eventos')");
+const sqlLivroBruto = fs.readFileSync('supabase/migrations/20261015233000_cobranca_eventos.sql', 'utf8');
+const posLivro = fonteWebhook.indexOf(".rpc('registrar_cobranca_evento'");
 const posAssinatura = fonteWebhook.indexOf("rpc('processar_evento_assinatura'");
 checar('webhook: grava o livro DEPOIS da assinatura aceitar o evento', posLivro > posAssinatura && posAssinatura > 0, true);
-checar('webhook: só grava o livro para evento novo (reenvio duplicate não recria a linha)', /if \(data !== 'duplicate'\) \{[\s\S]{0,200}from\('cobranca_eventos'\)/.test(fonteWebhook), true);
-checar('webhook: livro idempotente pelo id do evento', /onConflict: 'provider,event_id', ignoreDuplicates: true/.test(fonteWebhook), true);
+checar('webhook: só grava o livro para evento novo (reenvio duplicate não recria a linha)', /if \(data !== 'duplicate'\) \{[\s\S]{0,200}rpc\('registrar_cobranca_evento'/.test(fonteWebhook), true);
+checar('webhook: o livro não é escrito direto na tabela (só pela função, sob a trava da exclusão)', /from\('cobranca_eventos'\)/.test(fonteWebhook), false);
+checar('migration: livro idempotente pelo id do evento', /on conflict \(provider, event_id\) do nothing/.test(sqlLivroBruto), true);
 const trechoLivro = fonteWebhook.slice(posLivro - 200, fonteWebhook.indexOf("if (data === 'subscription_not_found')"));
 checar('webhook: falha do livro não devolve resposta (não bloqueia o acesso)', /return resposta/.test(trechoLivro), false);
 checar('webhook: falha do livro deixa log', (trechoLivro.match(/livro-razão NÃO gravado/g) || []).length, 2);
@@ -281,7 +283,7 @@ const sqlLivro = migLivro ? fs.readFileSync(`supabase/migrations/${migLivro}`, '
 checar('migration do livro existe', Boolean(migLivro), true);
 checar('migration: chave única provider + event_id', sqlLivro.includes('unique (provider, event_id)'), true);
 checar('migration: RLS ligada', sqlLivro.includes('alter table public.cobranca_eventos enable row level security'), true);
-checar('migration: nada para anon e authenticated', sqlLivro.includes('revoke all on public.cobranca_eventos from anon, authenticated'), true);
+checar('migration: revoga tudo de todos os papéis da API, inclusive o herdado', sqlLivro.includes('revoke all on table public.cobranca_eventos from public, anon, authenticated, service_role'), true);
 checar('migration: nenhuma política aberta', /create policy/.test(sqlLivro), false);
 checar('migration: só inserção (gatilho barra update e delete)', /before update or delete on public\.cobranca_eventos/.test(sqlLivro), true);
 checar('migration: sem coluna de dado pessoal', /\b(email|e_mail|nome|telefone|phone|documento|cpf|endereco)\b/.test(sqlLivro.replace(/comment on table[^;]*;/, '')), false);
