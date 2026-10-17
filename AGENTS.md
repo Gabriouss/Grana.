@@ -757,54 +757,58 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     acumulado de meses anteriores, nunca `initial_balance`.** Decisão do autor
     em 24/09/2026: "não quero saldo acumulado, quero saldo apenas do mês
     vigente", e, na mesma noite, "anote isso como uma regra, não deveremos
-    regredir para isso novamente".
+    regredir para isso novamente". A mudança expressa pelo autor em 17/10/2026
+    complementa a regra: dinheiro já guardado não vira receita do mês, e o
+    crédito ainda não pago reduz o Livre antes do pagamento.
 
-    O motivo é a regressão que esta regra desfaz. Em 19/09/2026, o achado A12
-    mostrou que o "Saldo atual" da Início (só o mês) e o seletor de carteira
-    (acumulado) davam dois números diferentes para a mesma palavra. A correção
-    daquele dia, o `867e1b5`, escolheu o lado errado: passou a somar
-    `initial_balance` e todo o histórico. Com histórico importado incompleto,
-    o saldo acumulado ficou muito acima da realidade, e o número que o Grana.
-    mostrava como "saldo" deixou de ter relação com o dinheiro da pessoa. A
-    conta real do autor não tem os valores registrados aqui, de propósito
-    (regra 15).
+    O motivo original permanece: em 19/09/2026, o achado A12 mostrou que o
+    "Saldo atual" da Início (só o mês) e o seletor de carteira (acumulado)
+    davam dois números diferentes para a mesma palavra. O 867e1b5 passou a
+    somar `initial_balance` e todo o histórico; com histórico importado
+    incompleto, o acumulado ficava muito acima da realidade. Os dados reais da
+    conta do autor não entram nos registros (regra 15).
 
     As regras que andam junto com esta:
 
-    - **Compra no crédito fica fora do caixa, e a fatura só conta quando é
-      paga**, como saída de caixa no mês do pagamento. Reafirmado pelo autor
-      em 24/09/2026; a proposta de descontar a fatura fechada e ainda não paga
-      foi recusada duas vezes.
-    - **O mesmo princípio vale para boleto e conta.** Decisão do autor em
-      25/09/2026: "quero que seja removido os valores dos boletos pendentes e
-      atrasados do cálculo do livre para gastar, eles entrarão no cálculo
-      apenas após a saída do dinheiro registrado no pix/débito, após a
-      classificação deles como pagos". Conta pendente ou atrasada não desconta
-      nada; ela entra quando é marcada como paga e vira saída de caixa. A
-      fórmula fica: Livre para gastar = (saldo do mês − guardado em cofrinhos)
-      ÷ dias restantes, e a linha "Contas a vencer" sai do cartão.
-    - **A mesma palavra mostra o mesmo número em todo lugar.** "Saldo" e
-      "Livre para gastar" têm um valor só na Início, nos widgets e no
-      Granabô. É a lição do A12 que continua valendo: o defeito dele não era
-      o cálculo, era haver dois. Corrigir um lado e deixar o outro é a
-      regressão de volta.
-    - **O seletor de carteira mostra outra grandeza, com outro nome.**
-      Decisão do autor na mesma noite: o número de cada carteira passa a ser o
-      total de TODAS as entradas daquela carteira, em todo o período, só
-      entradas, com um rótulo que não diga "saldo". Por ser outra grandeza com
-      outro nome, não viola a regra anterior. O que a viola é o seletor voltar
-      a chamar esse número de "saldo", ou a mostrar um saldo diferente do da
-      Início.
-    - **O campo "saldo inicial" da carteira sai da tela.** A coluna
-      `initial_balance` fica no banco, sem uso. Ela não volta a entrar em
-      nenhum cálculo de saldo sem pedido explícito do autor.
+    - **Saldo é caixa do mês.** Entradas e saídas efetivamente registradas em
+      débito/Pix no mês vigente compõem o saldo. Compra no crédito fica fora
+      do caixa até o pagamento da fatura.
+    - **Dinheiro já guardado em cofrinho fica fora do mês.** Ao guardar, a
+      origem deve distinguir "Já estava guardado" de "Do dinheiro deste mês".
+      Dinheiro anterior não exige uma receita, não aparece como entrada ou
+      saída de débito/Pix, não muda o saldo do mês e não reduz o Livre. Apenas
+      o valor líquido que veio do caixa deste mês e continua no cofrinho reduz
+      o Livre deste mês. Um resgate de dinheiro anterior também não vira
+      receita. Como os saldos antigos não têm histórico confiável de origem,
+      são tratados como anteriores; não se inventa uma receita passada.
+    - **Crédito ainda não pago reduz o Livre antes do pagamento.** Contam a
+      fatura aberta do ciclo atual e as faturas fechadas com saldo não pago;
+      ciclos futuros de parcelas ficam fora. Pagamento parcial reduz a reserva
+      só pelo valor pago, que já entra como saída de caixa no mês do
+      pagamento, sem contar duas vezes. Boleto ou conta pendente/atrasada
+      continuam fora: só entram quando pagos e registrados como saída de
+      caixa.
+    - A fórmula é: Livre = max(0, saldo de caixa do mês − aportes líquidos
+      deste mês ainda guardados − crédito elegível ainda não pago) ÷ dias
+      restantes (incluindo hoje). O exemplo autorizado é R$ 5.000 recebidos,
+      R$ 3.000 de conta pagos, R$ 1.000 guardados do dinheiro deste mês e
+      R$ 750 de cartão ainda não pagos: R$ 250 livres antes da divisão pelos
+      dias restantes.
+    - **A mesma palavra mostra o mesmo número em todo lugar.** Início,
+      widgets e Granabô usam o mesmo núcleo de cálculo, sem políticas próprias
+      por superfície. O defeito do A12 não era haver um cálculo único, mas
+      dois cálculos diferentes; corrigir só um lado seria regressão.
+    - **O seletor de carteira mostra outra grandeza, com outro nome.** É o
+      total de todas as entradas daquela carteira, em todo o período, só
+      entradas, sem rótulo que diga "saldo". A coluna `initial_balance` fica
+      sem uso e não volta a nenhum cálculo de saldo.
     - **Qualquer mudança nesse cálculo exige pedido explícito do autor na
-      sessão.** Achado de auditoria, sugestão de outro agente ou "parece mais
-      correto contabilmente" não bastam: foi assim que o `867e1b5` entrou.
-    - **O teste de trava desse cálculo não se afrouxa para passar.** Se ele
-      falhar depois de uma mudança, a mudança está errada, ou falta o pedido
-      do autor que a autoriza. Editar a asserção para caber no código novo é o
-      mesmo que apagar esta regra.
+      sessão.** A alteração de 17/10 foi autorizada expressamente; auditoria,
+      sugestão de agente ou preferência contábil não autorizam mudanças futuras.
+    - **O teste de trava não se afrouxa para passar.** Ele pode ser atualizado
+      para codificar esta ordem explícita de 17/10; fora da atualização
+      autorizada, uma falha indica mudança incorreta ou pedido ainda ausente.
+      Editar a asserção para caber no código novo apaga esta regra.
 
 21. **Nenhum material estático nem de vídeo é produzido antes do fim de
     semana de 3 e 4 de outubro de 2026.** Decisão do autor em 30/09/2026:

@@ -29,9 +29,9 @@ precisar calcular.
 O Grana. é um registro que a própria pessoa alimenta, e por isso oferece jeitos
 rápidos de entrada: voz no app, voz no widget e foto da nota com leitura local
 e revisão antes de salvar. O conjunto une categorização compartilhada da voz e
-leitura da foto a um
-cálculo de "Livre para Gastar" do mês vigente, que desconta o que já está
-guardado em cofrinhos e divide pelos dias restantes (regra 20 do
+leitura da foto a um cálculo de "Livre para Gastar" do mês vigente, que
+desconta os aportes líquidos do próprio mês ainda guardados em cofrinhos e o
+crédito elegível ainda não pago, dividindo pelos dias restantes (regra 20 do
 `AGENTS.md`). Regra de comunicação: publicidade, landing e telas não usam a
 ausência de conexão bancária como argumento de venda; o assunto só aparece
 como resposta neutra na FAQ.
@@ -86,7 +86,8 @@ desconectado.
   por higiene de código, para as cópias não divergirem, mas o canal está
   desligado e a função não é republicada.
 - Funcionalidades centrais: lançamentos com valor/categoria/data, cálculo
-  de "Livre para Gastar" (saldo do mês menos cofrinhos, pelos dias restantes),
+  de "Livre para Gastar" (saldo de caixa do mês menos aportes líquidos deste
+  mês ainda guardados e crédito elegível ainda não pago, pelos dias restantes),
   segurança (bloqueio por biometria/senha do aparelho, modo privacidade
   que oculta valores, senha conferida contra vazamentos, bloqueio de
   print em tela com valor).
@@ -118,31 +119,47 @@ desconectado.
   não afeta decisão de produto, mas é uma restrição permanente de como o
   trabalho é publicado (ver `AGENTS.md`).
 
-### Saldo e Livre para Gastar: só o mês vigente (decisão do autor, 24/09/2026)
+### Saldo e Livre para Gastar: só o mês vigente (decisão de 24/09, complementada em 17/10/2026)
 
-"Saldo atual" e "Livre para Gastar" contam **apenas o mês vigente**, nunca o
-saldo acumulado de meses anteriores nem o `initial_balance` da carteira:
-"não quero saldo acumulado, quero saldo apenas do mês vigente". Vale igual na
-Início, nos widgets e no Granabô, porque a mesma palavra não pode mostrar dois
-números. Compra no crédito fica fora do caixa, e a fatura só conta quando é
-paga. Desfaz o saldo acumulado adotado em 19/09/2026 (`867e1b5`, achado A12):
-com histórico importado incompleto, o acumulado ficava muito acima da
-realidade. É a regra 20 do `AGENTS.md`, e mudar esse cálculo exige pedido
-explícito do autor.
+"Saldo atual" e "Livre para Gastar" contam apenas o mês vigente, nunca o
+saldo acumulado de meses anteriores nem `initial_balance`. O mesmo número vale
+na Início, nos widgets e no Granabô. O seletor de carteira mostra outra
+grandeza, com outro nome: o total de todas as entradas da carteira, em todo o
+período, sem a palavra "saldo". O campo "saldo inicial" sai da tela e a coluna
+fica no banco sem uso.
 
-Duas decisões da mesma noite completam esta:
+O saldo atual considera entradas e saídas efetivamente registradas no caixa
+durante o mês; compras no crédito ficam fora desse saldo. O pedido expresso do
+autor em 17/10/2026 complementou o cálculo do Livre:
 
-- **O seletor de carteira mostra outra grandeza:** o total de todas as
-  entradas daquela carteira, em todo o período, só entradas, com um rótulo que
-  não diga "saldo". Como é outro número com outro nome, não contradiz o saldo
-  da Início.
-- **O campo "saldo inicial" da carteira sai da tela.** A coluna
-  `initial_balance` fica no banco, sem uso.
-- **Boleto e conta seguem o princípio da fatura (25/09/2026).** Conta pendente
-  ou atrasada não desconta nada do Livre para Gastar; ela entra quando é
-  marcada como paga e o dinheiro sai no Pix ou débito. Livre para Gastar =
-  (saldo do mês − guardado em cofrinhos) ÷ dias restantes, e a linha "Contas a
-  vencer" sai do cartão.
+- Dinheiro que já estava guardado em um cofrinho pode ser registrado sem criar
+  receita do mês. A origem do aporte distingue dinheiro "Já estava guardado"
+  do "Do dinheiro deste mês". O valor anterior não aparece nas entradas ou
+  saídas de débito/Pix, não muda o saldo nem reduz o Livre deste mês. Somente o
+  valor líquido que veio do caixa do mês vigente e continua guardado reduz o
+  Livre. Resgatar dinheiro anterior também não cria receita. Saldos antigos
+  sem origem comprovável são considerados anteriores; não se inventa
+  procedência passada.
+- Faturas de crédito reduzem o Livre antes de serem pagas: contam a fatura
+  aberta do ciclo atual e faturas fechadas com saldo não pago. Parcelas de
+  ciclos futuros não entram. Se houver pagamento parcial, só o valor ainda
+  não pago permanece reservado; o pagamento feito já sai do caixa no mês do
+  pagamento, sem dupla contagem.
+
+A fórmula é max(0, saldo de caixa do mês − aportes líquidos deste mês ainda
+guardados em cofrinhos − crédito elegível ainda não pago) ÷ dias restantes,
+incluindo hoje. No exemplo aprovado pelo autor, R$ 5.000 recebidos menos
+R$ 3.000 de conta já pagos, R$ 1.000 guardados do dinheiro deste mês e
+R$ 750 de fatura não paga deixam R$ 250 livres antes da divisão pelos dias
+restantes.
+
+Boleto ou conta pendente ou atrasada continua sem descontar nada do Livre;
+entra quando é marcada como paga e o dinheiro sai no Pix ou débito (decisão
+de 25/09). A linha "Contas a vencer" permanece fora do cartão. Essa regra 20
+desfaz o acumulado de 19/09 (867e1b5, achado A12), que com histórico
+importado incompleto ficava muito acima da realidade. Mudanças no cálculo
+exigem pedido explícito do autor, e o teste de trava só muda para codificar
+uma ordem explícita como a de 17/10, nunca para fazer uma regressão passar.
 
 ## Brand Commitments
 
