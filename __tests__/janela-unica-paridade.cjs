@@ -97,9 +97,9 @@ function find(node, predicate) { if (!node || typeof node !== 'object') return; 
   }
   assert.deepEqual(app.writes[0].payload, widget.writes[0].payload, 'débito: payload igual');
   assert.equal(widget.writes[0].saved, 'fala-widget', 'widget mantém id da fala guardada');
-  const focus = revisao({ initialText: 'Refri 829', referenciaDaVoz: ref });
+  const focus = revisao({ initialText: 'Refri 82', referenciaDaVoz: ref });
   const input = find(focus.sheet(), (n) => n.type === 'TextInput' && n.props.accessibilityLabel === 'Valor do lançamento em reais');
-  assert.equal(input.props.value, ''); assert.equal(input.props.autoFocus, true, 'Refri 829: valor vazio com foco, sem sugerir valor');
+  assert.equal(input.props.value, ''); assert.equal(input.props.autoFocus, true, 'Refri 82: valor vazio com foco, sem sugerir valor');
   const retry = revisao(a); retry.fail(true);
   const valores = { ...retry.node.props.inicial, description: 'Mercado editado', amount: '65,00' };
   let release; retry.hold(new Promise((r) => { release = r; }));

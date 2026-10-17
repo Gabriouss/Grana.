@@ -39,15 +39,15 @@ export function transcricaoForaDeContexto(texto: string): boolean {
 /**
  * Reais e centavos colados pelo reconhecedor: "vinte e nove e noventa e sete"
  * chega como "Mercado 2997" (print do autor, build 1.10.7, 17/10/2026), e a
- * revisão abria com R$ 0,00. Decisão do autor na mesma data: número "nu" de 4
- * dígitos, sem "reais", "R$", "mil" nem separador, é reais e centavos
- * (2997 -> 29,97). "21 com 64" é a mesma fala com outra ligação.
+ * revisão abria com R$ 0,00. Decisão do autor na mesma data: número "nu" de 3
+ * ou 4 dígitos, sem "reais", "R$", "mil" nem separador, é reais e centavos e
+ * grava direto (2997 -> 29,97; 590 -> 5,90). "21 com 64" é a mesma fala com
+ * outra ligação.
  *
- * Três dígitos NÃO entram, embora a ordem de 17/10 pedisse "590 -> 5,90":
- * "590" é tanto "cinco e noventa" quanto "quinhentos e noventa", e "Cinema
- * 124" ou "Uber 150" virariam R$ 1,24 e R$ 1,50 (trava de
- * __tests__/voz-auditoria-rodada7.cjs). Continuam na revisão sem valor
- * sugerido, como antes; a escolha volta ao autor.
+ * Três dígitos entraram depois, também por decisão explícita do autor em
+ * 17/10, sabendo do risco: "590" também pode ser "quinhentos e noventa", e
+ * "Uber 150" dito "cento e cinquenta" sem "reais" grava R$ 1,50. Quem quiser
+ * valor cheio diz "reais".
  *
  * Só reescreve o número que já seria o valor da fala: "IPVA 2026 1500 reais"
  * fica como está. Com "reais", "R$" ou "mil" vale a regra de sempre, inclusive
@@ -60,12 +60,12 @@ export function lerCentavosColadosVoz(texto: string): string {
   // Outro número solto na fala ("Cinema 1254 00") deixa a leitura ambígua.
   if ((saida.match(/(?<![\p{L}\d.,])\d+(?:[.,]\d+)*(?![\p{L}\d])/gu) ?? []).length !== 1) return saida;
   const valor = guessAmountFromText(saida);
-  const nus = [...saida.matchAll(/(?<![\p{L}\d.,$]|final\s{1,3}|R\$\s{0,3})([1-9]\d{3})(?![\p{L}\d]|[.,]\d|\s*(?:reais|real|mil)\b)/giu)]
+  const nus = [...saida.matchAll(/(?<![\p{L}\d.,$]|final\s{1,3}|R\$\s{0,3})([1-9]\d{2,3})(?![\p{L}\d]|[.,]\d|\s*(?:reais|real|mil)\b)/giu)]
     .filter((m) => Number(m[1]) === valor);
   if (nus.length !== 1) return saida;
   const n = nus[0][1];
   const indice = nus[0].index ?? 0;
-  return `${saida.slice(0, indice)}${n.slice(0, 2)},${n.slice(2)}${saida.slice(indice + n.length)}`;
+  return `${saida.slice(0, indice)}${n.slice(0, -2)},${n.slice(-2)}${saida.slice(indice + n.length)}`;
 }
 
 /** Valor da fala, com a leitura de centavos colados. Mesma conta no widget e no app. */

@@ -43,21 +43,21 @@ async function valoresEParidade() {
   }
   // Não introduzir heurística de dividir por 100: nem 1254 nem 125400 provam centavos.
   /* Exceção decidida pelo autor em 17/10/2026 (build 1.10.7, "Mercado 2997"):
-     EXATAMENTE quatro dígitos nus, sem "reais", "R$" nem "mil", são reais e
-     centavos. Três dígitos e cinco ou mais continuam presos aqui. */
+     três ou quatro dígitos nus, sem "reais", "R$", "mil" nem outro número,
+     são reais e centavos. Cinco ou mais continuam presos aqui. */
   for (const inteiro of [1, 5, 12, 18, 99, 100, 1254, 1899, 10000, 45000, 125400, 999999]) {
     for (let centavos = 0; centavos < 100; centavos++) {
       const c = String(centavos).padStart(2, '0');
       for (const t of [`Cinema ${inteiro}${c}`, `Cinema ${inteiro} ${c}`]) {
-        const quatroDigitosNus = /^Cinema [1-9]\d{3}$/.test(t);
+        const centavosColados = /^Cinema [1-9]\d{2,3}$/.test(t);
         check('valor inseguro não preenche revisão: ' + t, confianca.valorSeguroParaRevisaoVoz(t),
-          quatroDigitosNus ? Number(`${inteiro}.${c}`) : null);
+          centavosColados ? Number(`${inteiro}.${c}`) : null);
       }
       const t = `Cinema ${inteiro},${c}`;
       check('decimal explícito: ' + t, confianca.valorSeguroParaRevisaoVoz(t), Number(`${inteiro}.${c}`));
     }
   }
-  // 17/10/2026: 'Cinema 1254' (quatro dígitos nus) passou a gravar 12,54; ver abaixo.
+  // 17/10/2026: 'Cinema 1254' e 'Cinema 590' (dígitos nus) passaram a gravar; ver abaixo.
   for (const t of ['Cinema 12 54', 'Cinema 12.54.00', 'Cinema 12,54,00',
     'Cinema 1.254', 'Cinema 125400', 'Cinema 45 mil', 'Cinema 12,54 e pipoca 20', 'não lançar cinema 12,54']) await caso(t, null);
   for (const [t, valor] of [
@@ -67,7 +67,7 @@ async function valoresEParidade() {
     ['mercado 34,57 cartão C6 carteira pessoal', 34.57], ['festa 143,98 carteira empresa', 143.98],
     ['Cinema 12,54 cartão Itaú carteira empresa', 12.54],
     ['Cinema 12,54 no pix carteira pessoal', 12.54],
-    ['Cinema 1254', 12.54],
+    ['Cinema 1254', 12.54], ['Cinema 590', 5.9], ['Cinema 5 e 90', 5.9],
   ]) await caso(t, valor);
   for (const resto of ['cartão desconhecido', 'carteira inexistente', 'cartão C6 carteira empresa', 'em parcelas']) {
     await caso('Cinema 12,54 ' + resto, null);
@@ -75,8 +75,8 @@ async function valoresEParidade() {
   for (let reais = 1; reais <= 50; reais++) {
     for (const c of ['00', '01', '09', '10', '54', '99']) {
       await caso(`Cinema ${reais},${c} no pix`, Number(`${reais}.${c}`));
-      // Quatro dígitos nus são reais e centavos (autor, 17/10/2026); três não.
-      await caso(`Cinema ${reais}${c}`, reais >= 10 ? Number(`${reais}.${c}`) : null);
+      // Três ou quatro dígitos nus são reais e centavos (autor, 17/10/2026).
+      await caso(`Cinema ${reais}${c}`, Number(`${reais}.${c}`));
       await caso(`Cinema ${reais} ${c}`, null);
     }
   }

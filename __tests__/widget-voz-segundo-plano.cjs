@@ -663,7 +663,7 @@ function falaNova(id, source, extras = {}) {
   /* ── 15. Confiabilidade real e botão REAL ligado ao núcleo REAL ──────────── */
   if (rodar(15)) {
     const { montarBotao } = require('./voz-captura-paridade.cjs');
-    for (const texto of ['Mercado R$ 120 no débito.', 'Refri 829 no crédito']) {
+    for (const texto of ['Mercado R$ 120 no débito.', 'Refri 82 no crédito']) {
       limparAparelho();
       const p = novoProcesso();
       ctl.cartoes = [{ id: 'c1', name: 'Nubank', bank: 'Nubank', closing_day: 5 }];
@@ -682,7 +682,7 @@ function falaNova(id, source, extras = {}) {
       await p.tarefa.executarTarefa(falaNova('mesma-widget', 'widget', {
         capturadoEm: capturaReal.capturadoEm, dataCaptura: capturaReal.dataCaptura,
       }));
-      if (texto.includes('829')) {
+      if (texto.includes('Refri 82')) {
         assert.equal(p.escritas.length, 0, 'confiabilidade real recusa valor ambíguo nas duas entradas');
         assert.equal(revisoes.length, 1); assert.equal(revisoes[0].ouvido, texto);
         assert.equal(alertasApp[0].titulo, 'Confirme o valor que ouvi');

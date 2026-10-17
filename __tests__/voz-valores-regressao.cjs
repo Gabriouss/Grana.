@@ -53,22 +53,23 @@ for (const frase of ['Energético 18 e 99', 'Energético dezoito e noventa e nov
   assert.equal(h.guessAmountFromText(frase), 18.99);
 }
 assert.equal(h.guessAmountFromText('Mercado 18,9'), 18.9);
-/* Reais e centavos colados (autor, 17/10/2026, build 1.10.7): número nu de 4
-   dígitos é reais e centavos e lança sozinho; de 3 dígitos é sugerido assim,
-   mas vai à revisão ("590" também é "quinhentos e noventa"). Com "reais",
-   "R$" ou "mil" nada muda. Substitui o "Mercado 1899" em revisão de 14/09. */
+/* Reais e centavos colados (autor, 17/10/2026, build 1.10.7): número nu de 3
+   ou 4 dígitos é reais e centavos e lança sozinho ("590" = R$ 5,90). Com
+   "reais", "R$" ou "mil" nada muda. Substitui o "Mercado 1899" em revisão de
+   14/09. Dois dígitos ("Almoço 20") continuam em revisão. */
 for (const [frase, valor, revisa, sugerido] of [
   ['Mercado 2997, crédito C6.', 29.97, false, 29.97],
   ['Mercado 1899', 18.99, false, 18.99],
   ['padaria 2164 no pix', 21.64, false, 21.64],
   ['padaria 21 com 64 no pix', 21.64, false, 21.64],
-  ['padaria 590 no pix', 590, true, null],
+  ['padaria 590 no pix', 5.9, false, 5.9],
+  ['padaria 5 e 90 no pix', 5.9, false, 5.9],
   ['mercado 2997 reais', 2997, true, null],
   ['mercado R$ 2997', 2997, true, null],
   ['mercado 2 mil', 2000, true, null],
   ['IPVA 2026 1500 reais', 1500, true, null],
   ['cartão final 1234 mercado 50 reais', 50, false, 50],
-  ['Gasolina 100', 100, true, null],
+  ['Gasolina 100', 1, false, 1],
   ['Notebook 2500', 25, false, 25],
 ]) {
   assert.equal(valorDaFalaVoz(frase), valor, 'valor da fala: ' + frase);
@@ -180,12 +181,17 @@ carregar('lib/widget-voz-task.ts', {
   assert.equal(writes[1].card_id, 'c6');
   assert.equal(writes[2].kind, 'bill');
   assert.equal(writes[2].recurring, true);
-  /* 17/10/2026 (autor): 4 dígitos nus são reais e centavos e gravam; 3 dígitos
-     ("590" ou "quinhentos e noventa"?) continuam fora da RPC, em revisão. */
-  texto = 'Mercado 590';
+  /* 17/10/2026 (autor): 3 e 4 dígitos nus são reais e centavos e gravam;
+     dois dígitos ("Mercado 50") continuam fora da RPC, em revisão. */
+  texto = 'Mercado 50';
   await task({ caminho: '/teste.m4a', requestId: 'ambiguo' });
-  assert.equal(writes.length, 3, 'três dígitos nus não alcançam a RPC');
+  assert.equal(writes.length, 3, 'inteiro de dois dígitos nu não alcança a RPC');
   assert.equal(revisoes.at(-1), 'Confirme o valor que ouvi');
+  texto = 'Mercado 590';
+  await task({ caminho: '/teste.m4a', requestId: 'tres' });
+  assert.equal(writes.length, 4, 'três dígitos nus gravam como reais e centavos');
+  assert.equal(writes[3].amount, 5.9);
+  writes.pop();
   texto = 'Mercado 1899';
   await task({ caminho: '/teste.m4a', requestId: 'colado' });
   assert.equal(writes.length, 4, 'quatro dígitos nus gravam como reais e centavos');

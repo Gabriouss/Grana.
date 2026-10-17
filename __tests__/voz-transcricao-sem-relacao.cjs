@@ -31,7 +31,8 @@ let aprovadas = 0;
 const ok = (c, nome) => { assert.ok(c, nome); aprovadas++; console.log('  ok  ' + nome); };
 
 const LIXO = 'Acompanhe o processo de produção de um produto de qualidade e de qualidade';
-const FALA = 'Uber 825 credito C6';
+/* Dois dígitos: desde 17/10/2026, "825" nu já grava R$ 8,25 (decisão do autor). */
+const FALA = 'Uber 82 credito C6';
 
 function montar(origem) {
   /* Bordas controladas pelo cenário. */
@@ -125,7 +126,7 @@ const resumo = (m) => JSON.stringify({
     let m = await rodar(origem, (x) => ({ local: LIXO, servidor: x.servidorDiz(FALA) }));
     ok(m.e.localChamadas === 1 && m.e.envios === 1, `${origem}: lixo do aparelho aciona o servidor (1 local, 1 envio)`);
     ok(m.e.falhas.length === 0, `${origem}: não cai em "não entendi" quando o servidor entendeu`);
-    /* "825" solto continua indo à revisão (regra de 14/09: pode ser R$ 8,25). Já com a fala CERTA, a revisão leva o texto certo. */
+    /* "82" solto continua indo à revisão (inteiro nu de dois dígitos). Já com a fala CERTA, a revisão leva o texto certo. */
     ok(m.e.revisoes.length === 1 && m.e.revisoes[0].titulo === 'Confirme o valor que ouvi' && m.e.revisoes[0].transcricao === FALA, `${origem}: a revisão recebe "${FALA}", não o lixo`);
 
     /* 2. Mesma fala dita com "reais": grava saída de 825, crédito no C6, descrição Uber. */
