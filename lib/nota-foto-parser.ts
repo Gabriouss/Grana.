@@ -36,6 +36,13 @@ const ROTULO_A_PAGAR = /\b(TOTAL\s+A\s+PAGAR|VALOR\s+A\s+PAGAR|TOTAL\s+LIQUIDO|V
 const ROTULO_FORTE = /\b(VALOR\s+TOTAL|TOTAL\s+A\s+PAGAR|VALOR\s+A\s+PAGAR|TOTAL\s+GERAL|TOTAL\s+R\s*[S$5])\b/;
 /** Só "TOTAL". Vale menos: aparece também em rodapés de tributos e de itens. */
 const ROTULO_FRACO = /\bTOTAL\b/;
+/**
+ * A linha da forma de pagamento com o valor ao lado ("Cartao de Credito
+ * 29,97"): último recurso quando o rótulo do total ficou sem número na foto.
+ * Só com o valor na MESMA linha; dois valores diferentes (parte no Pix, parte
+ * no cartão) deixam o campo vazio.
+ */
+const ROTULO_PAGAMENTO = /\bCARTAO\s+(?:DE\s+)?(?:CREDITO|DEBITO)\b|^\s*(?:CREDITO|DEBITO|PIX|DINHEIRO)\b/;
 /** Linhas que têm a palavra total, mas falam de outra coisa. */
 const NAO_E_O_TOTAL = /SUBTOTAL|SUB\s+TOTAL|TROCO|DESCONTO|ACRESCIMO|TRIBUT|IMPOSTO|ITENS|QTD|QUANTIDADE|PAGO|RECEBIDO|APROXIMAD|DESCRICAO|CODIGO|VL\.?\s*UNIT|UNIT\b/;
 
@@ -95,7 +102,50 @@ function candidatosDoRotulo(linhas: string[], rotulo: RegExp): number[] {
 }
 
 /** Uma linha como o ML Kit a devolve: texto e, quase sempre, a caixa dela na foto. */
-export type LinhaLida = { text: string; frame?: { top: number; left: number; height: number; width?: number } };
+export type LinhaLida = {
+  text: string;
+  frame?: { top: number; left: number; height: number; width?: number };
+  /** Cantos da linha na foto, a partir do de cima à esquerda, em sentido horário. */
+  cornerPoints?: readonly { x: number; y: number }[];
+};
+
+/**
+ * Foto torta, endireitada pelos cantos de cada linha.
+ *
+ * Com o cupom inclinado, a caixa reta (`frame`) de uma linha comprida fica
+ * bem mais alta que a letra, e linhas de fileiras diferentes passam a dividir
+ * a mesma altura: o mesmo cupom do vídeo do autor (17/10/2026) que funcionou
+ * numa foto saiu noutra com o nome "Fonte Ibpt Cartao De Credito Iten" e sem
+ * total. Aqui a inclinação é a mediana do ângulo das linhas compridas, e cada
+ * linha ganha uma caixa no papel desvirado: a altura real da letra, com topo e
+ * esquerda girados de volta. Vale para cupom de lado ou de ponta-cabeça. Sem
+ * cantos em alguma linha, ou com a foto reta, nada muda.
+ */
+function endireitar(linhas: LinhaLida[]): LinhaLida[] {
+  if (linhas.length === 0 || linhas.some((l) => l.cornerPoints?.length !== 4)) return linhas;
+  const angulos = linhas
+    .map((l) => {
+      const [a, b, , d] = l.cornerPoints!;
+      return { ang: Math.atan2(b.y - a.y, b.x - a.x), largura: Math.hypot(b.x - a.x, b.y - a.y), altura: Math.hypot(d.x - a.x, d.y - a.y) };
+    })
+    .filter((l) => l.altura > 0 && l.largura >= 3 * l.altura)
+    .map((l) => l.ang)
+    .sort((x, y) => x - y);
+  if (angulos.length === 0) return linhas;
+  const ang = angulos[Math.floor(angulos.length / 2)];
+  if (Math.abs(ang) < (1.5 * Math.PI) / 180) return linhas;
+  const cos = Math.cos(-ang);
+  const sin = Math.sin(-ang);
+  return linhas.map((l) => {
+    const cantos = l.cornerPoints!.map((p) => ({ x: p.x * cos - p.y * sin, y: p.x * sin + p.y * cos }));
+    const xs = cantos.map((c) => c.x);
+    const [a, , , d] = l.cornerPoints!;
+    const altura = Math.hypot(d.x - a.x, d.y - a.y);
+    const centro = cantos.reduce((t, c) => t + c.y, 0) / 4;
+    const esquerda = Math.min(...xs);
+    return { ...l, frame: { top: centro - altura / 2, left: esquerda, height: altura, width: Math.max(...xs) - esquerda } };
+  });
+}
 
 /**
  * Texto da foto numa linha por FILEIRA visual, da esquerda para a direita.
@@ -115,7 +165,7 @@ export type LinhaLida = { text: string; frame?: { top: number; left: number; hei
  * Sem caixa em alguma linha, devolve a ordem original.
  */
 export function textoPorFileira(linhas: LinhaLida[]): string {
-  const validas = linhas.filter((l) => l.text.trim());
+  const validas = endireitar(linhas.filter((l) => l.text.trim()));
   if (validas.some((l) => !l.frame || !(l.frame.height > 0))) return validas.map((l) => l.text).join('\n');
 
   const centro = (l: LinhaLida) => l.frame!.top + l.frame!.height / 2;
@@ -165,7 +215,11 @@ function valorDaFotoInclinada(linhasDaFileira: LinhaLida[], todas: LinhaLida[]):
   if (candidatos.length === 0) return null;
   const altura = Math.max(rotulo.frame!.height, candidatos[0].l.frame!.height);
   if (candidatos[0].dy > altura) return null;
-  if (candidatos.length > 1 && candidatos[1].dy - candidatos[0].dy < altura / 2) return null;
+  /* Empate com o MESMO número não é dúvida: no cupom de 17/10/2026 o "29.97"
+     do total e o da linha "Cartao de Credito", logo abaixo, são o mesmo. */
+  const valor = (l: LinhaLida) => soUmValor(pontoDecimalParaVirgula(l.text.trim()));
+  if (candidatos.length > 1 && candidatos[1].dy - candidatos[0].dy < altura / 2 &&
+      valor(candidatos[1].l) !== valor(candidatos[0].l)) return null;
   return candidatos[0].l.text.trim();
 }
 
@@ -196,6 +250,12 @@ export function extrairTotalDaFoto(texto: string): TotalDaFoto {
     if (distintos.length === 1) return { valorTotal: distintos[0], motivo: 'ok' };
     if (distintos.length > 1) return { valorTotal: null, motivo: 'ambiguo' };
   }
+  const pagos = [...new Set(linhas.flatMap((linha) => {
+    const t = normalizarRotulo(linha);
+    return ROTULO_PAGAMENTO.test(t) && !NAO_E_O_TOTAL.test(t) ? valoresDaLinha(linha).filter((v) => v > 0) : [];
+  }))];
+  if (pagos.length === 1) return { valorTotal: pagos[0], motivo: 'ok' };
+  if (pagos.length > 1) return { valorTotal: null, motivo: 'ambiguo' };
   return { valorTotal: null, motivo: 'sem_total' };
 }
 
@@ -363,23 +423,40 @@ const SUFIXO_SOCIETARIO = /\s+(LTDA|EIRELI|EPP|ME|MEI|S\/A|SA|S\.A|CIA)\.?$/;
 /* Palavras que ficam em maiúsculas depois de arrumar a caixa. */
 const SIGLAS = new Set(['AUDIT', 'BR', 'GNV']);
 
+/** Rodapé, pagamento e tabela de itens: nunca o nome da loja, mesmo quando a foto os põe no topo. */
+const RODAPE = /FONTE|IBPT|\bLEI\b|TRIBUT|IMPOSTO|ICMS|CARTAO\s+(?:DE\s+)?(?:CREDITO|DEBITO)|^(?:CREDITO|DEBITO|PIX|DINHEIRO)\b[\s\d.,R$:]*$|\bITE[MN]S?\b|\bQTD|DESCRICAO|CODIGO|VALOR|TROCO|\bPAGO\b|CHAVE|ACESSO|PROTOCOLO|EMISSAO|CONSULT|\bSERIE\b|\bVEND|\bOPER/;
+
 /**
- * Nome do estabelecimento: a primeira linha do topo do cupom que parece nome
- * (letras, sem CNPJ, sem endereço, sem o título do documento), sem sufixo
- * societário, com a caixa arrumada e encurtada na palavra.
+ * Nome do estabelecimento, achado pelo lugar e não pela ordem das linhas.
+ *
+ * Numa NFC-e o nome fica logo ACIMA do CNPJ (nome fantasia e razão social).
+ * Com CNPJ lido, o nome é procurado nas linhas antes dele; sem CNPJ, nas
+ * primeiras do texto. Nunca vem de rodapé, pagamento ou cabeçalho de itens
+ * (`RODAPE`). Vence o primeiro candidato que parece nome, com duas palavras ou
+ * seis letras; ruído curto do OCR ("Hift", no cupom do autor de 17/10/2026)
+ * só vale se não houver outro. Sai sem sufixo societário, com a caixa
+ * arrumada e encurtada na palavra.
  */
 function estabelecimentoDaNota(originais: string[]): string | null {
-  for (const original of originais.slice(0, 5)) {
-    const t = normalizarTexto(original).trim();
-    // O nome fica acima dos itens: a primeira linha com dinheiro ou total encerra o topo.
-    if (new RegExp(VALOR.source).test(t) || /TOTAL/.test(t)) break;
-    if (!t || NAO_E_NOME.test(t)) continue;
+  const normais = originais.map((o) => normalizarTexto(o).trim());
+  const cnpj = normais.findIndex((t) => /CNPJ/.test(t));
+  const topo = cnpj > 0 ? normais.slice(Math.max(0, cnpj - 6), cnpj) : normais.slice(0, 5);
+  const candidatos: string[] = [];
+  for (const t of topo) {
+    // Sem CNPJ, o nome fica acima dos itens: a primeira linha com dinheiro ou total encerra o topo.
+    if (cnpj <= 0 && (new RegExp(VALOR.source).test(t) || /\bTOTAL\b/.test(t))) break;
+    if (!t || NAO_E_NOME.test(t) || RODAPE.test(t) || /TOTAL/.test(t)) continue;
     const letras = (t.match(/[A-Z]/g) ?? []).length;
     const digitos = (t.match(/\d/g) ?? []).length;
     if (letras < 3 || digitos > letras / 2) continue;
     let nome = t.replace(/[^A-Z0-9&'\s.-]/g, ' ').replace(/\s+/g, ' ').trim();
     for (let i = 0; i < 3; i++) nome = nome.replace(SUFIXO_SOCIETARIO, '').trim();
-    if (nome.length < 3) continue;
+    if (nome.length >= 3) candidatos.push(nome);
+  }
+  const pareceNome = (n: string) =>
+    n.split(' ').filter((p) => /[A-Z]{2}/.test(p)).length >= 2 || (n.match(/[A-Z]/g) ?? []).length >= 6;
+  const nome = candidatos.find(pareceNome) ?? candidatos[0];
+  if (nome) {
     const arrumado = nome
       .split(' ')
       .map((p) => (SIGLAS.has(p) ? p : p.charAt(0) + p.slice(1).toLowerCase()))
