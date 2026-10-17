@@ -444,7 +444,6 @@ const styles = StyleSheet.create({
   },
   walletCard: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     alignItems: 'center',
     gap: spacing.md,
     backgroundColor: theme.paper,
@@ -458,9 +457,12 @@ const styles = StyleSheet.create({
     borderColor: theme.accent2,
     backgroundColor: 'rgba(31,169,141,0.08)',
   },
+  /* Sem `flexBasis: '100%'`: ele jogava o lápis (e a lixeira) para uma
+     segunda fileira só deles, e o cartão crescia uma linha vazia (autor,
+     17/10/2026). Agora as ações ficam na mesma fileira, à direita, e quem
+     quebra em fonte grande é o `walletInfo` de dentro. */
   walletCardMain: {
     flex: 1,
-    flexBasis: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
