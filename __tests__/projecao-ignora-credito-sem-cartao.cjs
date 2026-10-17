@@ -22,6 +22,10 @@ function carregar(arquivo) {
   }).outputText;
   vm.runInNewContext(js, { exports, console, Math, Date, Object, Array, Number, String, Set, Map, JSON, require(id) {
     if (id === './supabase') return { supabase: {} }; // diagnostico.ts so usa o banco ao salvar o diagnostico
+    if (id === '../supabase/functions/_shared/livre-para-gastar') return {
+      // Este teste exercita projecao; a regra 20 roda nos seus testes reais.
+      calcularLivre() { throw new Error('Livre deve ser testado pelo modulo real na suite da regra 20'); },
+    };
     if (id.startsWith('./')) return carregar(path.posix.join('lib', id.slice(2) + '.ts'));
     throw new Error('import nao simulado: ' + id);
   } });

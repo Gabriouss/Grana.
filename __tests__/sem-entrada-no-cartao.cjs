@@ -36,7 +36,7 @@ const AsyncStorage = {
 };
 function consulta() {
   const q = { linhas: null };
-  for (const m of ['select', 'order', 'eq', 'gte', 'lte', 'range', 'single', 'maybeSingle']) q[m] = () => q;
+  for (const m of ['select', 'order', 'eq', 'gte', 'lte', 'range', 'single', 'maybeSingle', 'setHeader']) q[m] = () => q;
   q.insert = (l) => { q.linhas = [].concat(l); return q; };
   q.upsert = (l) => { q.linhas = [].concat(l); return q; };
   q.then = (res, rej) => Promise.resolve().then(() => {
@@ -53,7 +53,8 @@ const notificacoes = [];
 const dubles = {
   '@react-native-async-storage/async-storage': { __esModule: true, default: AsyncStorage },
   './supabase': { supabase: { from: () => consulta(), rpc: async () => ({ data: [], error: null }) } },
-  './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u-1' },
+  './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u-1',
+    lerSessaoDoDisco: async () => ({ user: { id: 'u-1' }, access_token: 'AUDIT-local' }) },
   './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
   './creditLimitAlert': { checarLimiteCartao: async () => {} },
   './goals': { createGoal: async () => {} },
