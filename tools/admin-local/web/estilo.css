@@ -87,7 +87,7 @@
   --lh-compacto: 1.35;
   --lh-corpo: 1.5;
   /* Largura de leitura: texto corrido não passa disso; estado curto, menos ainda. */
-  --medida: 54ch;
+  --medida: 96ch;
   --medida-curta: 46ch;
   /* Entreletras: rótulo em caixa alta abre um pouco; título grande fecha um pouco. */
   --tr-rotulo: 0.04em;
@@ -151,6 +151,7 @@ h1, h2, h3, h4, h5, h6, strong, b, th { font-weight: 400; }
 em, i { font-style: normal; color: var(--ink-soft); }
 h1, h2, h3, h4, p { margin: 0; }
 h1, h2, h3 { text-wrap: balance; }
+p, li, figcaption, caption, .alerta { text-wrap: pretty; }
 
 a { color: var(--ink-soft); text-decoration-color: var(--rule-strong); text-underline-offset: 3px; }
 a:hover { color: var(--ink); text-decoration-color: var(--accent-2); }
@@ -512,7 +513,7 @@ a.cartao:hover { border-color: var(--rule-strong); }
 
 .alerta {
   display: grid;
-  grid-template-columns: 10px minmax(0, var(--medida));
+  grid-template-columns: 10px minmax(0, 1fr);
   gap: var(--s-md);
   align-items: start;
   padding: var(--s-md) var(--s-lg);
