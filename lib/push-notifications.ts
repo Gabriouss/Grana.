@@ -123,5 +123,19 @@ export function observarTrocaDeTokenPush(
 ): NotificationsModule.EventSubscription | null {
   const Notifications = getNotifications();
   if (!Notifications || Platform.OS === 'web') return null;
-  return Notifications.addPushTokenListener(() => aoTrocar());
+  /* Só reage a token NOVO. O `getDevicePushTokenAsync` nativo (chamado por
+     dentro de `getExpoPushTokenAsync`) emite este mesmo evento a cada
+     sucesso, e reagir a ele pedia o token de novo: laço sem fim. Com o FCM
+     funcionando na 1.10.7, foram ~2,5 POST por segundo em `push_tokens`
+     enquanto o app ficava aberto (logs de borda, 17/10/2026), disputando
+     rede e JavaScript com o resto do app e com a tarefa do widget. O primeiro
+     token visto é o da sincronização da abertura: só é anotado. */
+  let ultimo: string | null = null;
+  return Notifications.addPushTokenListener(({ data }) => {
+    const token = String(data);
+    if (token === ultimo) return;
+    const primeiro = ultimo === null;
+    ultimo = token;
+    if (!primeiro) aoTrocar();
+  });
 }
