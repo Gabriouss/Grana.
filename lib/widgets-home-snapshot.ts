@@ -1,5 +1,5 @@
 import { calcularSafeToSpend } from './safe-to-spend';
-import type { Bill, Goal, Transaction } from './types';
+import type { Bill, Goal, Transaction, CreditCard, CreditCardInvoicePayment } from './types';
 
 export type CompromissoDoWidget = {
   id: string;
@@ -133,13 +133,15 @@ export function montarSnapshotWidgets(input: {
   bills: Bill[];
   goals: Goal[];
   privacyHidden: boolean;
+  cards?: CreditCard[];
+  payments?: CreditCardInvoicePayment[];
   hoje?: Date;
   updatedAt?: string;
 }): SnapshotWidgetsV1 {
   const hoje = input.hoje ?? new Date();
   /* Mesma conta da Início (regra 20): só o caixa do mês vigente, sem saldo
      inicial. O widget é sempre a visão "Total". */
-  const livre = calcularSafeToSpend(input.transactions, input.goals, hoje);
+  const livre = calcularSafeToSpend(input.transactions, input.goals, hoje, { cards: input.cards, payments: input.payments });
   const compromissos = selecionarCompromissosDoMes(input.bills, hoje);
 
   return {

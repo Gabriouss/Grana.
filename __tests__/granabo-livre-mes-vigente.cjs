@@ -37,6 +37,8 @@ const userId = 'usuario-a';
 let TX = [];
 let BILLS = [];
 let GOALS = [];
+let CARDS = [];
+let PAYMENTS = [];
 const tabelasLidas = [];
 class Query {
   constructor(table) { this.table = table; this.filters = []; }
@@ -45,13 +47,15 @@ class Query {
   neq(k, v) { this.filters.push((r) => r[k] !== v); return this; }
   gte(k, v) { this.filters.push((r) => String(r[k]) >= v); return this; }
   lte(k, v) { this.filters.push((r) => String(r[k]) <= v); return this; }
+  range(de, ate) { this.slice = [de, ate]; return this; }
   maybeSingle() { this.single = true; return this; }
   insert() { return Promise.resolve({ error: null }); }
   then(resolve, reject) {
     tabelasLidas.push(this.table);
     let rows = this.table === 'transactions' ? TX : this.table === 'bills' ? BILLS : this.table === 'goals' ? GOALS
-      : this.table === 'budgets' ? [] : this.table === 'categories' ? [] : [];
+      : this.table === 'credit_cards' ? CARDS : this.table === 'credit_card_invoices' ? PAYMENTS : this.table === 'budgets' ? [] : this.table === 'categories' ? [] : [];
     rows = rows.map((r) => ({ user_id: userId, ...r })).filter((r) => this.filters.every((f) => f(r)));
+    if (this.slice) rows = rows.slice(this.slice[0], this.slice[1]+1);
     return Promise.resolve({ data: this.single ? rows[0] ?? null : rows, error: null }).then(resolve, reject);
   }
 }
@@ -111,6 +115,7 @@ const caixa = (type, amount, occurred_on, extra = {}) => ({ type, amount, occurr
     { amount: 69.9, due_date: '2026-08-10', status: 'due' },   // atrasado de mês anterior
   ];
   GOALS = [];
+  PAYMENTS = [{card_id:'c6',year:2026,month:8,amount:500}];
   agoraFixo = DataReal.parse('2026-09-24T15:00:00-03:00');
   const livre = await perguntar(tool('livreParaGastar'));
   casa(livre, /saldo do mês R\$ 142,67/, 'referência do autor: saldo do mês 142,67 (sem os meses anteriores)');
@@ -126,7 +131,7 @@ const caixa = (type, amount, occurred_on, extra = {}) => ({ type, amount, occurr
   TX.pop();
 
   /* Cofrinho desconta do livre, não do saldo. */
-  GOALS = [{ current_amount: 42.67 }];
+  GOALS = [{ current_amount: 42.67, month_reserves: {'2026-09':42.67} }];
   const comMeta = await perguntar(tool('livreParaGastar'));
   casa(comMeta, /: R\$ 100,00\n/, 'cofrinho desconta do livre');
   casa(comMeta, /saldo do mês R\$ 142,67/, 'e não muda o saldo do mês');
@@ -174,10 +179,26 @@ const caixa = (type, amount, occurred_on, extra = {}) => ({ type, amount, occurr
     '2026-09-24',
   );
   ok(Math.abs(r.saldoAtual - 142.67) < 1e-9, 'função pura: só setembro, só caixa (sem agosto, outubro, compra nem estorno no cartão)');
-  ok(r.diasRestantes === 7 && Math.abs(r.livrePorDia - 142.67 / 7) < 1e-9, 'função pura: 7 dias e livre por dia');
+  ok(r.diasRestantes === 7 && r.livrePorDia === 0, 'função pura: 7 dias e livre por dia');
   ok(!('contasFixasPendentes' in r), 'função pura: boleto não faz parte do contrato');
   ok(calcularLivreParaGastar([], [], '2026-02-28').diasRestantes === 1 && calcularLivreParaGastar([], [], '2028-02-28').diasRestantes === 2,
     'dias restantes no fim de fevereiro, com e sem ano bissexto');
+
+  // Pedido expresso 17/10/2026: handler real, origens e pagamento parcial.
+  agoraFixo = DataReal.parse('2026-10-17T12:00:00-03:00');
+  TX = [caixa('in',5000,'2026-10-10'),caixa('out',3000,'2026-10-10'),caixa('out',750,'2026-10-10',{card_id:'c'})];
+  CARDS = [{id:'c',closing_day:20}];
+  PAYMENTS = [];
+  GOALS = [{current_amount:6000,month_reserves:{'2026-10':1000}}];
+  casa(await perguntar(tool('livreParaGastar')),/: R\$ 250,00\n/,'17/10 exemplo real do autor: 250');
+  TX.push(caixa('out',300,'2026-10-15'));
+  PAYMENTS = [{card_id:'c',year:2026,month:9,amount:300,paid_on:'2026-10-15'}];
+  casa(await perguntar(tool('livreParaGastar')),/: R\$ 250,00\n/,'parcial nao conta duas vezes no handler');
+  TX.push(caixa('out',450,'2026-10-16'));PAYMENTS[0].amount=750;
+  casa(await perguntar(tool('livreParaGastar')),/: R\$ 250,00\n/,'quitacao nao conta duas vezes no handler');
+  TX=Array.from({length:1001},(_,i)=>caixa('in',1,'2026-10-10',{id:String(i)}));
+  GOALS=[];CARDS=[];PAYMENTS=[];
+  casa(await perguntar(tool('livreParaGastar')),/: R\$ 1\.001,00\n/,'handler pagina alem de 1000 lancamentos');
 
   global.Date = DataReal;
   console.log(`granabo-livre-mes-vigente: ${passou} checagens OK`);

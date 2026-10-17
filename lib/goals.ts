@@ -1,3 +1,4 @@
+import type { OrigemCofrinho } from './cofrinho-origem';
 import { supabase } from './supabase';
 import { comCacheOffline, invalidarRespostasAtrasadas } from './cache-de-tela';
 import { idDoUsuarioLocal } from './sessao-offline';
@@ -113,10 +114,11 @@ export async function updateGoal(
  * pelo CHECK da tabela). Concede XP proporcional ao valor guardado (nunca a
  * resgates) e um bônus único na primeira vez que a meta é batida.
  */
-export async function depositToGoal(goal: Goal, delta: number): Promise<Goal> {
+export async function depositToGoal(goal: Goal, delta: number, origem: OrigemCofrinho = 'mes'): Promise<Goal> {
   const { data, error } = await supabase.rpc('deposit_to_goal', {
     p_goal_id: goal.id,
     p_delta: delta,
+    p_origin: origem,
   });
   if (error) throw error;
   invalidarRespostasAtrasadas();

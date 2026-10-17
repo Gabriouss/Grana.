@@ -1,4 +1,4 @@
-import { fetchBills, fetchTransactions } from './data';
+import { fetchBills, fetchTransactions, fetchCreditCards, fetchCardInvoicePayments } from './data';
 import { fetchGoals } from './goals';
 import { montarSnapshotWidgets } from './widgets-home-snapshot';
 import {
@@ -38,15 +38,18 @@ export function sincronizarWidgetsHome(userId: string, privacyHidden: boolean): 
   garantirUsuario(userId);
   definirPrivacidade(privacyHidden);
 
-  return Promise.all([fetchTransactions(), fetchBills(), fetchGoals()])
-    .then(([transactions, bills, goals]) => {
+  return Promise.all([fetchTransactions(), fetchBills(), fetchGoals(), fetchCreditCards(), fetchCardInvoicePayments()])
+    .then(([transactions, bills, goals, cards, payments]) => {
       if (
         geracaoDestaBusca !== geracao ||
         usuarioAtual !== userId ||
         numeroDestaBusca !== numeroDaBusca
       ) return false;
-      atualizarSnapshot(montarSnapshotWidgets({ userId, transactions, bills, goals, privacyHidden }));
+      atualizarSnapshot(montarSnapshotWidgets({ userId, transactions, bills, goals, cards, payments, privacyHidden }));
       return true;
     })
-    .catch(() => false);
+    .catch((erro) => {
+      console.error('[widgets-home] fontes do Livre indisponiveis', erro);
+      return false;
+    });
 }

@@ -162,6 +162,7 @@ export type Goal = {
   title: string;
   target_amount: number;
   current_amount: number;
+  month_reserves?: Record<string, number>;
   color: string;
   icon: string;
   deadline: string | null;

@@ -1,30 +1,18 @@
+import { calcularLivre, type ContextoLivre } from '../supabase/functions/_shared/livre-para-gastar';
 import { isCreditTx } from './transaction-rules';
 import type { Goal, Transaction } from './types';
 
 export type SafeToSpend = {
   saldoAtual: number;
+  creditoNaoPago: number;
   reservadoEmMetas: number;
   diasRestantes: number;
   livreTotal: number;
   livrePorDia: number;
 };
 
-/* ── Regra 20 do AGENTS.md ────────────────────────────────────────────────
-   "Saldo atual" e "Livre para gastar" usam SÓ o mês vigente: nunca saldo
-   de meses anteriores, nunca `initial_balance` (decisão do autor em
-   24/09/2026: "não quero saldo acumulado, quero saldo apenas do mês
-   vigente"). O `867e1b5` (19/09, achado A12) tinha feito o contrário, e com
-   histórico importado incompleto o "saldo" ficou sem relação com o dinheiro
-   da pessoa. A lição do A12 continua: a palavra "saldo" tem um número só, e
-   ele sai daqui para a Início e para os widgets.
-
-   Compra no crédito fica fora do caixa; a fatura entra como saída no mês em
-   que é paga (a saída do pagamento não é crédito). Boleto pendente ou
-   atrasado também fica fora (autor, 25/09/2026): ele pesa quando é marcado
-   pago, porque `pagar_conta` grava a saída de caixa e `reabrir_conta` a
-   apaga, então o valor nunca conta duas vezes nem nenhuma. Qualquer mudança nesta
-   conta exige pedido explícito do autor, e a trava
-   `__tests__/regra-20-saldo-do-mes.cjs` não se afrouxa para passar. */
+/* Regra 20: pedido expresso de 17/10/2026; reserva do mes e credito nao pago
+   abatem Livre. Cofrinho anterior, initial_balance e boleto pendente ficam fora. */
 
 function chaveDoMes(hoje: Date): string {
   return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
@@ -53,30 +41,9 @@ export function rotuloDiasRestantes(dias: number): string {
   return dias === 1 ? '1 dia restante' : `${dias} dias restantes`;
 }
 
-function diasRestantesNoMes(hoje: Date): number {
-  const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
-  return Math.max(1, ultimoDia - hoje.getDate() + 1);
-}
-
-/**
- * Livre/dia = (saldo do mês − total guardado em cofrinhos) / dias restantes.
- * Sem boletos (ver acima). Fonte única para a Início e os widgets.
- */
 export function calcularSafeToSpend(
-  transactions: Transaction[],
-  goals: Goal[],
-  hoje: Date = new Date()
+  transactions: Transaction[], goals: Goal[], hoje: Date = new Date(), contexto: ContextoLivre = {},
 ): SafeToSpend {
-  const saldoAtual = calcularSaldoAtual(transactions, hoje);
-  const reservadoEmMetas = goals.reduce((soma, goal) => soma + Number(goal.current_amount), 0);
-  const diasRestantes = diasRestantesNoMes(hoje);
-  const livreTotal = Math.max(0, saldoAtual - reservadoEmMetas);
-
-  return {
-    saldoAtual,
-    reservadoEmMetas,
-    diasRestantes,
-    livreTotal,
-    livrePorDia: livreTotal / diasRestantes,
-  };
+  const hojeISO = `${chaveDoMes(hoje)}-${String(hoje.getDate()).padStart(2, '0')}`;
+  return calcularLivre(transactions, goals, hojeISO, contexto);
 }

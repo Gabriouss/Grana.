@@ -34,6 +34,7 @@ function carregar(arquivo, dubles = {}) {
     exports, console, Date, Math,
     require: (id) => {
       if (id in dubles) return dubles[id];
+      if (id.startsWith('.')) return carregar(path.relative(root, path.resolve(root, path.dirname(arquivo), id.endsWith('.ts') ? id : id + '.ts')), dubles);
       throw new Error('import nao simulado em ' + arquivo + ': ' + id);
     },
   });

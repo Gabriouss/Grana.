@@ -1,3 +1,4 @@
+// Regra atualizada por pedido expresso do autor em 17/10/2026 (ordem da tarde).
 /*
  * TRAVA DA REGRA 20 do AGENTS.md: "Saldo atual" e "Livre para gastar" usam
  * SÓ o mês vigente. Nunca saldo acumulado de meses anteriores, nunca
@@ -52,8 +53,8 @@ function carregar(arquivo, dubles = {}) {
     exports, console, JSON, Date, String, Object, Array, Error, Promise, RegExp, Number, Math, Set, Map, Intl,
     require: (id) => {
       if (id in dubles) return dubles[id];
-      if (id.startsWith('./')) {
-        const alvo = path.join(path.dirname(arquivo), id.slice(2) + '.ts');
+      if (id.startsWith('.')) {
+        const alvo = path.join(path.dirname(arquivo), id.endsWith('.ts') ? id : id + '.ts');
         if (fs.existsSync(path.join(root, alvo))) return carregar(alvo, dubles);
       }
       throw new Error(`import não simulado em ${arquivo}: ${id}`);
@@ -104,10 +105,10 @@ const contas = [
   const r = calcularSafeToSpend(transacoes, [], hoje);
   trava(centavos(r.saldoAtual) === 14267, `caso do autor: saldo esperado 142,67, veio ${r.saldoAtual}`);
   trava(r.diasRestantes === 7, `dias restantes em 24/09: 7, veio ${r.diasRestantes}`);
-  trava(centavos(r.livreTotal) === 14267, `livre no total: 142,67, veio ${r.livreTotal}`);
-  trava(centavos(r.livrePorDia) === 2038, `livre por dia: 20,38, veio ${r.livrePorDia}`);
+  trava(centavos(r.livreTotal) === 0, `17/10: livre no total zero com credito pendente, veio ${r.livreTotal}`);
+  trava(centavos(r.livrePorDia) === 0, `17/10: livre por dia zero com credito pendente, veio ${r.livrePorDia}`);
   trava(!('contasFixasPendentes' in r), 'o resultado voltou a ter contas pendentes');
-  ok('caso de referência do autor: saldo 142,67, livre 142,67 e 20,38 por dia');
+  ok('17/10/2026: credito pendente zera o Livre; referencia de caixa preservada');
 
   /* 2. Mês anterior e mês seguinte não entram. */
   const soSetembro = transacoes.filter((t) => t.occurred_on.startsWith('2026-09'));
@@ -137,11 +138,11 @@ const contas = [
      pode é o boleto entrar na conta do Livre. */
   trava(!/bills|status === 'due'/.test(fontes['lib/safe-to-spend.ts'].replace(/\/\*[\s\S]*?\*\//g, '')),
     'lib/safe-to-spend.ts volta a descontar boleto pendente');
-  trava(/calcularSafeToSpend\(input\.transactions, input\.goals, hoje\)/.test(fontes['lib/widgets-home-snapshot.ts']),
+  trava(/calcularSafeToSpend\(input\.transactions, input\.goals, hoje, \{ cards: input\.cards, payments: input\.payments \}\)/.test(fontes['lib/widgets-home-snapshot.ts']),
     'o widget passa boletos (ou outra coisa) para calcularSafeToSpend');
   const inicio = fs.readFileSync(path.join(root, 'app/(app)/index.tsx'), 'utf8');
   trava(
-    /calcularSafeToSpend\(walletCashTransactions, walletGoals\)/.test(inicio),
+    /calcularSafeToSpend\(lancamentosDaCarteira\(transactions, creditCards, activeWalletId\), walletGoals, new Date\(\), \{ cards: creditCards, payments: invoicePayments \?\? \[\] \}\)/.test(inicio),
     'a Início passa outra coisa para calcularSafeToSpend (contas ou saldo inicial?)'
   );
   trava(!/saldoInicialEmEscopo/.test(inicio), 'a Início voltou a somar o saldo inicial das carteiras');
@@ -205,12 +206,12 @@ const contas = [
     bills: [...contas, bill({ amount: 5000, due_date: '2026-09-02' }), bill({ amount: 800, due_date: '2026-08-10' })],
   });
   trava(
-    centavos(comMuitosBoletos.safeToSpend.livreTotal) === 14267,
+    centavos(comMuitosBoletos.safeToSpend.livreTotal) === 0,
     `boleto pendente ou atrasado mudou o Livre: ${comMuitosBoletos.safeToSpend.livreTotal}`
   );
   /* Pago, o boleto vira saída de caixa (pagar_conta) e aí sim pesa. */
   const pago = [...transacoes, tx({ type: 'out', amount: 107.18, occurred_on: '2026-09-24', description: 'Boleto pago' })];
-  trava(centavos(calcularSafeToSpend(pago, [], hoje).livreTotal) === 14267 - 10718, 'boleto pago não saiu do caixa');
+  trava(centavos(calcularSafeToSpend(pago, [], hoje).livreTotal) === 0, 'boleto pago não saiu do caixa');
   ok('boleto pendente ou atrasado não muda o Livre; pago, pesa pela saída de caixa');
 
   console.log(`\n${aprovadas} checagens da trava da regra 20 passaram — 0 falhas`);

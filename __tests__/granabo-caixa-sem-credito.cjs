@@ -66,6 +66,7 @@ class Query {
   eq(k, v) { this.filters.push((r) => r[k] === v); return this; }
   neq(k, v) { this.filters.push((r) => r[k] !== v); return this; }
   gte() { return this; } lte() { return this; } is() { return this; } in() { return this; }
+  range(de, ate) { this.slice = [de, ate]; return this; }
   maybeSingle() { this.single = true; return this; }
   insert() { return Promise.resolve({ error: null }); }
   then(resolve, reject) {
@@ -75,6 +76,7 @@ class Query {
       : [];
     if (this.table === 'transactions') consultasTx.push(this.colunas);
     rows = rows.filter((r) => this.filters.every((f) => f(r)));
+    if (this.slice) rows = rows.slice(this.slice[0], this.slice[1] + 1);
     return Promise.resolve({ data: this.single ? rows[0] ?? null : rows, error: null }).then(resolve, reject);
   }
 }

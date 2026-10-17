@@ -119,17 +119,17 @@ const snapshot = montarSnapshotWidgets({
     tx({ id: 'credito', amount: 500, type: 'out', payment_method: 'credit' }),
   ],
   bills: [bill({ id: 'conta', due_date: '2026-09-12', amount: 200 })],
-  goals: [goal({ id: 'meta', current_amount: 100, target_amount: 1000 })],
+  goals: [goal({ id: 'meta', current_amount: 100, target_amount: 1000, month_reserves: { '2026-09': 100 } })],
   privacyHidden: true,
   hoje,
   updatedAt: '2026-09-04T15:00:00.000Z',
 });
 conferir('contrato versionado', snapshot.version === 1);
 conferir('preserva modo privacidade', snapshot.privacyHidden === true);
-/* 1000 de entrada − 100 de débito − 100 no cofrinho. O crédito (500) fica
-   fora do caixa, e o boleto de 200 também (regra 20, 25/09/2026). */
-conferir('não desconta compra no crédito do caixa', snapshot.safeToSpend.livreTotal === 800, snapshot.safeToSpend);
-conferir('boleto pendente não desconta do livre (regra 20)', snapshot.safeToSpend.livreTotal === 800);
+/* Pedido 17/10/2026: 1000 - 100 caixa - 100 aporte do mes - 500 credito = 300.
+   Boleto pendente continua fora. */
+conferir('credito reserva Livre sem alterar caixa', snapshot.safeToSpend.livreTotal === 300, snapshot.safeToSpend);
+conferir('boleto pendente não desconta do livre (regra 20)', snapshot.safeToSpend.livreTotal === 300);
 conferir('data determinística', snapshot.updatedAt === '2026-09-04T15:00:00.000Z');
 
 /* ── Regra 20 (24/09/2026): só o mês vigente, sem saldo inicial ─────────

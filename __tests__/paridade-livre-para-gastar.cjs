@@ -1,16 +1,4 @@
-/* Paridade da regra 20: o "saldo" e o "livre para gastar" do Granabô são os
- * mesmos números da Início e dos widgets.
- *
- *   node __tests__/paridade-livre-para-gastar.cjs
- *
- * `lib/safe-to-spend.ts` (app) e `supabase/functions/_shared/caixa.ts`
- * (Granabô, porque o Deno não importa de `lib/`) são duas cópias da mesma
- * regra. A lição do A12 é que o defeito não era o cálculo, era haver dois:
- * este teste roda os DOIS módulos reais sobre milhares de históricos gerados e
- * exige os cinco campos iguais. Datas de outros meses, compra e estorno no
- * cartão, cartão com `payment_method` nulo, crédito sem cartão, cofrinhos,
- * saldo negativo, fim de fevereiro e virada de ano.
- */
+// Pedido 17/10/2026: adaptadores reais app e Granabo usam um nucleo executavel.
 const fs = require('node:fs');
 const path = require('node:path');
 const Module = require('node:module');
@@ -36,7 +24,7 @@ const app = carregar(path.join(root, 'lib/safe-to-spend.ts'));
 const servidor = carregar(path.join(root, 'supabase/functions/_shared/caixa.ts'));
 
 let passou = 0;
-const CAMPOS = ['saldoAtual', 'reservadoEmMetas', 'diasRestantes', 'livreTotal', 'livrePorDia'];
+const CAMPOS = ['saldoAtual', 'creditoNaoPago', 'reservadoEmMetas', 'diasRestantes', 'livreTotal', 'livrePorDia'];
 function comparar(transacoes, metas, hojeISO, rotulo) {
   const [a, m, d] = hojeISO.split('-').map(Number);
   const doApp = app.calcularSafeToSpend(transacoes, metas, new Date(a, m - 1, d, 12));
@@ -56,7 +44,7 @@ const ref = comparar([
   tx('in', 9000, '2026-08-10'), tx('in', 2948, '2026-09-05'), tx('out', 2805.33, '2026-09-10'),
   tx('out', 500, '2026-09-12', { payment_method: 'credit', card_id: 'c6' }),
 ], [], '2026-09-24', 'referência do autor');
-assert.ok(Math.abs(ref.saldoAtual - 142.67) < 1e-9 && ref.diasRestantes === 7 && ref.livrePorDia.toFixed(2) === '20.38');
+assert.ok(Math.abs(ref.saldoAtual - 142.67) < 1e-9 && ref.diasRestantes === 7 && ref.livrePorDia === 0);
 passou++;
 
 /* ── Históricos gerados ─────────────────────────────────────────────────── */

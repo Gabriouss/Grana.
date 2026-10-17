@@ -1697,25 +1697,39 @@ async function executarFerramenta(
       const fimMes = `${hojeISO.slice(0, 7)}-${pad(new Date(Date.UTC(anoH, mesH, 0)).getUTCDate())}`;
       /* Boleto pendente ou atrasado NÃO entra (decisão do autor, 25/09/2026):
          ele pesa quando é marcado como pago, porque aí vira saída de caixa. */
-      const [txResult, goalsResult] = await Promise.all([
-        supabase
+      // Nenhuma fonte financeira pode ser truncada pelo teto de 1000 da API.
+      async function lerFonteLivre<T>(buscar: (de: number, ate: number) => PromiseLike<{ data: T[] | null; error: unknown }>) {
+        const data: T[] = [];
+        for (let de = 0; ; de += 1000) {
+          const pagina = await buscar(de, de + 999);
+          if (pagina.error) throw pagina.error;
+          data.push(...(pagina.data ?? []));
+          if ((pagina.data?.length ?? 0) < 1000) return { data, error: null };
+        }
+      }
+      const [txResult, goalsResult, cardsResult, paymentsResult] = await Promise.all([
+        lerFonteLivre<Parameters<typeof calcularLivreParaGastar>[0][number]>((de, ate) => supabase
           .from('transactions')
-          .select('type, amount, occurred_on, payment_method, card_id')
+          .select('id, type, amount, occurred_on, payment_method, card_id, parent_id, installment_current, installment_total')
           .eq('user_id', userId)
-          .gte('occurred_on', inicioMes)
-          .lte('occurred_on', fimMes),
-        supabase.from('goals').select('current_amount').eq('user_id', userId),
+          .lte('occurred_on', fimMes).order('id').range(de, ate)),
+        lerFonteLivre<Parameters<typeof calcularLivreParaGastar>[1][number]>((de, ate) => supabase.from('goals').select('current_amount, month_reserves').eq('user_id', userId).order('id').range(de, ate)),
+        lerFonteLivre<{ id: string; closing_day: number }>((de, ate) => supabase.from('credit_cards').select('id, closing_day').eq('user_id', userId).order('id').range(de, ate)),
+        lerFonteLivre<{ card_id: string; year: number; month: number; amount: number; paid_on: string }>((de, ate) => supabase.from('credit_card_invoices').select('card_id, year, month, amount, paid_on').eq('user_id', userId).order('id').range(de, ate)),
       ]);
       if (txResult.error) throw txResult.error;
       if (goalsResult.error) throw goalsResult.error;
 
-      const r = calcularLivreParaGastar(txResult.data ?? [], goalsResult.data ?? [], hojeISO);
+      if (cardsResult.error) throw cardsResult.error;
+      if (paymentsResult.error) throw paymentsResult.error;
+      const r = calcularLivreParaGastar(txResult.data ?? [], goalsResult.data ?? [], hojeISO, { cards: cardsResult.data ?? [], payments: paymentsResult.data ?? [] });
       const rotuloMes = `${dataBR(inicioMes)} a ${dataBR(fimMes)}`;
       return (
         `Livre para gastar no mês vigente (${rotuloMes}): R$ ${formatarBRL(r.livreTotal)}\n` +
         `Isso dá R$ ${formatarBRL(r.livrePorDia)} por dia (${rotuloDiasRestantes(r.diasRestantes)}).\n` +
         `Detalhes: saldo do mês R$ ${formatarBRL(r.saldoAtual)} (entradas menos saídas de caixa deste mês; compras no crédito ` +
-        `entram quando a fatura é paga, e boletos quando são pagos), guardado em metas R$ ${formatarBRL(r.reservadoEmMetas)}. ` +
+        `entram quando a fatura é paga, e boletos quando são pagos), guardado do mês em metas R$ ${formatarBRL(r.reservadoEmMetas)}. ` +
+        `Crédito ainda não pago reservado: R$ ${formatarBRL(r.creditoNaoPago)}. ` +
         'O saldo não inclui meses anteriores.'
       );
     }
