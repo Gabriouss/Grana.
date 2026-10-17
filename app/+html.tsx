@@ -66,6 +66,9 @@ html {
 body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Herdado: o texto corrido nao fecha a ultima linha com palavra sozinha.
+     Titulos com \`textWrap: balance\` proprio continuam valendo. */
+  text-wrap: pretty;
 }
 /* Campo autopreenchido pelo navegador vinha com fundo amarelo-claro e texto
    quase preto no meio da UI petróleo — o Chrome pinta por cima do background
