@@ -720,7 +720,7 @@ const PERGUNTAS_FAQ = [
   {
     pergunta: 'Como o Livre para Gastar é calculado?',
     resposta:
-      'O Grana. parte do saldo do mês: as entradas menos as saídas já pagas, como Pix e débito. Depois tira o que está guardado nos cofrinhos e divide o resto pelos dias que faltam. Compra no crédito só entra quando a fatura é paga, e boleto só entra quando você marca como pago. É uma estimativa feita com o que você registrou.',
+      'O Grana. calcula o Livre para Gastar assim: considera o saldo do mês, desconta o valor guardado nos cofrinhos neste mês e as faturas de cartão ainda não pagas. Depois, divide o restante pelos dias que faltam. Contas e boletos pendentes não são descontados. É uma estimativa feita com o que você registra.',
   },
   {
     pergunta: 'Posso editar ou excluir meus dados?',
