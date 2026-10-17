@@ -1026,9 +1026,12 @@ Regras permanentes para qualquer sessão que abrir este repositório:
       `text-wrap: balance` em título.
     - **Em criativo estático, quem monta a peça confere** a última linha de
       cada bloco de texto e ajusta a quebra à mão.
-    - **No app React Native, vale o que for possível** em cada tela; o que não
-      der para garantir por mecanismo fica registrado como limite, sem afirmar
-      solução que não foi entregue.
+    - **No app React Native não há mecanismo.** O app não usa
+      `textBreakStrategy` nem equivalente; no Android o padrão do RN já tende a
+      equilibrar parágrafos, e no iOS não há controle de quebra. Em texto curto
+      e fixo de tela, quem escreve confere a última linha e reescreve a frase;
+      não se cola espaço não separável em todo texto. A landing (Expo web) herda
+      `text-wrap: pretty` do `body` em `app/+html.tsx`.
     - **Painel admin:** texto dentro de cartão e aviso usa a largura do
       contêiner, sem quebra de linha à toa quando há espaço horizontal (pedido
       do mesmo dia).
