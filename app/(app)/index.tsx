@@ -1,3 +1,4 @@
+import { movimentarCofrinhoLocal, type OrigemCofrinho } from '@/lib/cofrinho-origem';
 import { boletoAtrasado, boletosDaSemana } from '../../lib/boletos-da-semana';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -124,6 +125,7 @@ export default function InicioScreen() {
   const [invoicePayments, setInvoicePayments] = useState<CreditCardInvoicePayment[] | null>(null);
   const [bills, setBills] = useState<Bill[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [fontesLivreDisponiveis, setFontesLivreDisponiveis] = useState(false);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [lifetimeXp, setLifetimeXp] = useState(0);
   const [diagnostico, setDiagnostico] = useState<DiagnosticoCarregado | null>(null);
@@ -383,6 +385,7 @@ export default function InicioScreen() {
       setGoals(DEMO_GOALS);
       setLifetimeXp(DEMO_LIFETIME_XP);
       setInvoicePayments([]);
+      setFontesLivreDisponiveis(true);
       setCreditCards(DEMO_CREDIT_CARDS);
       versaoLancamentosCarregada.current = versaoAoComecar;
       setError(null);
@@ -438,14 +441,17 @@ export default function InicioScreen() {
         scheduleDailyHabitReminder({ ...prefs.horario, ...contextoDoLembrete(tx), almocoAtivo: prefs.almocoAtivo }).catch(() => {});
       });
 
+      let cofrinhosConferidos = false;
+      setFontesLivreDisponiveis(false);
       try {
         const goals = await fetchGoals();
         if (!vigente()) return;
         setGoals(goals);
+        cofrinhosConferidos = true;
       } catch (erro) {
         if (!vigente()) return;
         if (ehTabelaNovaAusente(erro)) setGoals([]);
-        else if (!isLikelyNetworkError(erro)) console.error('[inicio] fetchGoals falhou', erro);
+        console.error('[inicio] fetchGoals falhou', erro);
       }
       if (!vigente()) return;
       /* Fora do Promise.all principal pelo mesmo motivo dos cofrinhos: sem os
@@ -455,9 +461,10 @@ export default function InicioScreen() {
         const pagamentos = await fetchCardInvoicePayments();
         if (!vigente()) return;
         setInvoicePayments(pagamentos);
+        setFontesLivreDisponiveis(cofrinhosConferidos);
       } catch (erro) {
         if (!vigente()) return;
-        if (!isLikelyNetworkError(erro)) console.error('[inicio] fetchCardInvoicePayments falhou', erro);
+        console.error('[inicio] fetchCardInvoicePayments falhou', erro);
       }
       if (!vigente()) return;
       try {
@@ -651,8 +658,8 @@ export default function InicioScreen() {
      inicial e sem boleto pendente (regra 20 do AGENTS.md). O recorte do mês é
      feito dentro de `calcularSafeToSpend`, a mesma função dos widgets. */
   const safeToSpend = useMemo(
-    () => calcularSafeToSpend(walletCashTransactions, walletGoals),
-    [walletCashTransactions, walletGoals]
+    () => calcularSafeToSpend(lancamentosDaCarteira(transactions, creditCards, activeWalletId), walletGoals, new Date(), { cards: creditCards, payments: invoicePayments ?? [] }),
+    [transactions, creditCards, activeWalletId, walletGoals, invoicePayments]
   );
   // `walletTransactions`, não `walletCashTransactions`: uma parcela de
   // compra no crédito É um comprometimento futuro de verdade (a fatura vai
@@ -1112,16 +1119,16 @@ export default function InicioScreen() {
     }
   }
 
-  async function handleDepositGoal(goal: Goal, delta: number) {
+  async function handleDepositGoal(goal: Goal, delta: number, origem: OrigemCofrinho) {
     if (isDemoMode) {
       setGoals((prev) =>
-        prev.map((g) => (g.id === goal.id ? { ...g, current_amount: Math.max(0, Number(g.current_amount) + delta) } : g))
+        prev.map((g) => (g.id === goal.id ? movimentarCofrinhoLocal(g, delta, origem) : g))
       );
       triggerToast(delta >= 0 ? 'Guardado no cofrinho (exemplo)' : 'Resgatado do cofrinho (exemplo)');
       return;
     }
     const nivelAntes = calcularLevelState(lifetimeXp).level;
-    const atualizada = await depositToGoal(goal, delta);
+    const atualizada = await depositToGoal(goal, delta, origem);
     setGoals((prev) => prev.map((g) => (g.id === goal.id ? atualizada : g)));
     triggerToast(delta >= 0 ? 'Guardado no cofrinho' : 'Resgatado do cofrinho');
     try {
@@ -1196,7 +1203,7 @@ export default function InicioScreen() {
         }}
         collapsable={false}
       >
-        <SafeToSpendCard data={safeToSpend} sugestaoArquetipo={arquetipoSugerido} />
+        <SafeToSpendCard indisponivel={!fontesLivreDisponiveis} data={safeToSpend} sugestaoArquetipo={arquetipoSugerido} />
       </View>
     ),
     cofrinhos: () => (

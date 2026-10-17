@@ -49,6 +49,7 @@ function carregar(caminho, dependencias = {}) {
     Date: DataFixa,
     require: (nome) => {
       if (nome in dependencias) return dependencias[nome];
+      if (nome.startsWith('.')) return carregar(require('node:path').resolve(require('node:path').dirname(caminho), nome.endsWith('.ts') ? nome : nome + '.ts'), dependencias);
       throw new Error(`import inesperado em ${caminho}: ${nome}`);
     },
   });
@@ -79,11 +80,12 @@ const { EXEMPLO_LIVRE, EXEMPLO_CONVERSA, emReais } = exemplo;
      coisa. `caixa` continua filtrado para provar que filtrar antes não muda
      nada. */
   const caixa = demo.DEMO_TRANSACTIONS.filter((t) => !regras.isCreditTx(t) && noMes(t.occurred_on));
-  const r = livre.calcularSafeToSpend(caixa, demo.DEMO_GOALS, new DataFixa());
-  const semFiltro = livre.calcularSafeToSpend(demo.DEMO_TRANSACTIONS, demo.DEMO_GOALS, new DataFixa());
+  const r = livre.calcularSafeToSpend(demo.DEMO_TRANSACTIONS, demo.DEMO_GOALS, new DataFixa(), {cards:demo.DEMO_CREDIT_CARDS,payments:[]});
+  const semFiltro = livre.calcularSafeToSpend(caixa, demo.DEMO_GOALS, new DataFixa());
   conferir(centavos(semFiltro.saldoAtual), centavos(r.saldoAtual), 'o app recorta o mês sozinho (regra 20)');
   conferir(centavos(r.saldoAtual), centavos(EXEMPLO_LIVRE.saldo), 'saldo atual');
   conferir(centavos(r.reservadoEmMetas), centavos(EXEMPLO_LIVRE.cofrinhos), 'reservado em cofrinhos');
+  conferir(centavos(r.creditoNaoPago), centavos(EXEMPLO_LIVRE.creditoNaoPago), 'credito aberto reservado');
   conferir(r.diasRestantes, EXEMPLO_LIVRE.diasRestantes, 'dias restantes');
   conferir(centavos(r.livreTotal), centavos(EXEMPLO_LIVRE.livreNoTotal), 'livre no total');
   conferir(centavos(r.livrePorDia), centavos(EXEMPLO_LIVRE.porDia), 'livre por dia, arredondado como o app');

@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, TextInput, View, StyleSheet } from 'react-native';
 import AppModal from './AppModal';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, fonts, type, hitSlopPara } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, hitSlopPara, touchTarget } from '@/lib/theme';
 import { formatMoney, parseAmount, formatMoneyInput } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
 import type { Goal } from '@/lib/types';
 import AppPressable from './AppPressable';
 import Sheet from './Sheet';
+import { valorResgatavel, type OrigemCofrinho } from '@/lib/cofrinho-origem';
 
 type Modo = 'guardar' | 'resgatar';
 
@@ -27,17 +28,19 @@ export default function GoalDepositModal({
   goal: Goal | null;
   saving: boolean;
   onClose: () => void;
-  onSubmit: (delta: number) => void;
+  onSubmit: (delta: number, origem: OrigemCofrinho) => void;
 }) {
   const [modo, setModo] = useState<Modo>('guardar');
   const [valor, setValor] = useState('');
   const [semValor, setSemValor] = useState(false);
+  const [origem, setOrigem] = useState<OrigemCofrinho>('mes');
 
   useEffect(() => {
     if (visible) {
       setModo('guardar');
       setValor('');
       setSemValor(false);
+      setOrigem('mes');
     }
   }, [visible, goal?.id]);
 
@@ -46,7 +49,8 @@ export default function GoalDepositModal({
   const atual = Number(goal.current_amount);
   const alvo = Number(goal.target_amount);
   const parsed = parseAmount(valor);
-  const excedeResgate = modo === 'resgatar' && parsed > atual;
+  const disponivel = valorResgatavel(goal, origem);
+  const excedeResgate = modo === 'resgatar' && parsed > disponivel;
 
   function handleSubmit() {
     if (excedeResgate) return;
@@ -54,7 +58,7 @@ export default function GoalDepositModal({
       setSemValor(true);
       return;
     }
-    onSubmit(modo === 'guardar' ? parsed : -parsed);
+    onSubmit(modo === 'guardar' ? parsed : -parsed, origem);
   }
 
   return (
@@ -87,6 +91,20 @@ export default function GoalDepositModal({
           </AppPressable>
         </View>
 
+        <Text style={styles.subtitle}>{modo === 'guardar' ? 'De onde vem esse dinheiro?' : 'Qual dinheiro quer resgatar?'}</Text>
+        {(['mes', 'anterior'] as const).map((opcao) => (
+          <AppPressable key={opcao} onPress={() => setOrigem(opcao)}
+            accessibilityRole="radio" accessibilityState={{ checked: origem === opcao }}
+            style={[styles.typeBtn, styles.originChoice, origem === opcao && styles.typeBtnGuardar]}>
+            <Text style={styles.typeText}>{opcao === 'mes' ? 'Do dinheiro deste mês' : 'Já estava guardado'}</Text>
+          </AppPressable>
+        ))}
+        <Text style={styles.subtitle}>
+          {origem === 'anterior' ? 'Fica fora das entradas, saídas e do Livre deste mês.'
+            : modo === 'guardar' ? 'Reduz o Livre deste mês, sem criar uma saída em Débito e Pix.' : 'Devolve ao Livre o que foi guardado neste mês.'}
+          {modo === 'resgatar' ? ` Disponível: R$ ${formatMoney(disponivel)}.` : ''}
+        </Text>
+
         <View style={styles.amountRow}>
           <Text style={styles.amountPrefix}>R$</Text>
           <TextInput
@@ -101,7 +119,7 @@ export default function GoalDepositModal({
             autoFocus
           />
         </View>
-        {excedeResgate && <Text style={styles.errorText}>Valor maior que o guardado no cofrinho.</Text>}
+        {excedeResgate && <Text style={styles.errorText}>Valor maior que o disponível nessa origem.</Text>}
         {semValor && !excedeResgate && (
           <Text style={styles.errorText} role="alert" accessibilityLiveRegion="assertive">Informe um valor maior que zero.</Text>
         )}
@@ -117,7 +135,7 @@ export default function GoalDepositModal({
               <Text style={styles.saveBtnText}>Atualizando cofrinho…</Text>
             </View>
           ) : (
-            <Text style={styles.saveBtnText}>{modo === 'guardar' ? 'Guardar no cofrinho' : 'Resgatar para o saldo'}</Text>
+            <Text style={styles.saveBtnText}>{modo === 'guardar' ? 'Guardar no cofrinho' : 'Resgatar do cofrinho'}</Text>
           )}
         </AppPressable>
       </Sheet>
@@ -131,6 +149,7 @@ const styles = StyleSheet.create({
   subtitle: { color: theme.inkFaint, fontSize: type.apoio, fontFamily: fonts.light, fontVariant: ['tabular-nums'] },
   typeRow: { flexDirection: 'row', gap: spacing.xs },
   typeBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.sm, backgroundColor: theme.paper },
+  originChoice: { minHeight: touchTarget, justifyContent: 'center', flex: 0 },
   typeBtnGuardar: { backgroundColor: theme.entradaFundo, borderWidth: 1, borderColor: theme.entradaBorda },
   typeBtnResgatar: { backgroundColor: theme.saidaFundo, borderWidth: 1, borderColor: theme.saidaBorda },
   typeText: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },

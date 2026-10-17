@@ -15,16 +15,20 @@ import PrivacyValue from './PrivacyValue';
 export default function SafeToSpendCard({
   data,
   sugestaoArquetipo,
+  indisponivel = false,
 }: {
   data: SafeToSpend;
   sugestaoArquetipo?: Arquetipo | null;
+  indisponivel?: boolean;
 }) {
-  const { livrePorDia, livreTotal, saldoAtual, reservadoEmMetas, diasRestantes } = data;
+  const { livrePorDia, livreTotal, saldoAtual, reservadoEmMetas, creditoNaoPago, diasRestantes } = data;
   const semSaldo = saldoAtual <= 0;
 
   return (
     <View style={styles.card}>
       <Text style={styles.label}>Livre para gastar</Text>
+
+      {indisponivel ? <Text style={styles.zeroText} accessibilityRole="alert">Livre indisponível. Atualize a Início para conferir cofrinhos e pagamentos.</Text> : <>
 
       {semSaldo ? (
         <Text style={styles.zeroText}>Sem saldo disponível este mês ainda.</Text>
@@ -46,14 +50,19 @@ export default function SafeToSpendCard({
             pendente ou atrasado não desconta do Livre. Ele pesa quando é pago,
             porque o pagamento vira saída de caixa no Pix/débito. */}
         <View style={styles.row}>
-          <Text style={styles.rowKey}>Reservado em cofrinhos</Text>
+          <Text style={styles.rowKey}>Guardado do mês em cofrinhos</Text>
           <PrivacyValue><Text style={styles.rowVal}>{formatBRLSubtraido(reservadoEmMetas)}</Text></PrivacyValue>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.rowKey}>Crédito ainda não pago</Text>
+          <PrivacyValue><Text style={styles.rowVal}>{formatBRLSubtraido(creditoNaoPago)}</Text></PrivacyValue>
         </View>
         <View style={styles.row}>
           <Text style={styles.rowKey}>{`Livre no total · ${rotuloDiasRestantes(diasRestantes)}`}</Text>
           <PrivacyValue><Text style={[styles.rowVal, styles.rowValStrong]}>{`R$ ${formatMoney(livreTotal)}`}</Text></PrivacyValue>
         </View>
       </View>
+      </>}
 
       {sugestaoArquetipo && (
         <Text style={styles.hint}>

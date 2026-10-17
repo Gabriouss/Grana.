@@ -265,6 +265,7 @@ function VisualLivre({ ativo, instantaneo, largura }: PropsVisual) {
   const linhas: { chave: string; valor: string; forte?: boolean }[] = [
     { chave: 'Saldo atual', valor: emReais(EXEMPLO_LIVRE.saldo) },
     { chave: 'Reservado em cofrinhos', valor: `− ${emReais(EXEMPLO_LIVRE.cofrinhos)}` },
+    { chave: "Crédito ainda não pago", valor: `− ${emReais(EXEMPLO_LIVRE.creditoNaoPago)}` },
     { chave: `Livre no total · ${EXEMPLO_LIVRE.diasRestantes} dias restantes`, valor: emReais(EXEMPLO_LIVRE.livreNoTotal), forte: true },
   ];
   return (

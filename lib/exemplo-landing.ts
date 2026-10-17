@@ -1,65 +1,34 @@
-/**
- * O exemplo fictício ÚNICO da landing page.
- *
- * Existe porque a mesma conta de "Livre para Gastar" aparecia em vários
- * lugares da página com resultados diferentes. Primeiro eram três números
- * digitados à mão (R$ 84,00, R$ 48,00 e R$ 48,23/dia, este último o valor que
- * o achado V01 da auditoria de 06/09/2026 reprovou). Unificados, sobrou um
- * quarto lugar que ninguém tinha contado: as CAPTURAS REAIS do app que a
- * própria página exibe (`public/telas/inicio-web.png` e `inicio-mobile.png`),
- * que mostram outra conta, R$ 59,76/dia.
- *
- * Imagem não se edita junto com o código. Então, desde 13/09/2026, o exemplo
- * único é o DAS CAPTURAS, e tudo que a página desenha em código segue ele.
- *
- * Desde 25/09/2026 (regra 20 do AGENTS.md, decisão do autor), boleto pendente
- * não desconta do Livre para gastar: pesa só quando é pago. A conta ficou:
- *
- *   Saldo atual                     R$ 5.815,00
- *   Reservado em cofrinhos        − R$ 2.450,00
- *   Livre no total · 26 dias        R$ 3.365,00   → R$ 129,42/dia
- *
- * As capturas `public/telas/inicio-web.png` e `inicio-mobile.png`, e as cenas
- * compostas a partir delas (`public/telas/multiplataforma.webp` e o notebook do
- * herói), foram refeitas em 25/09/2026 com essa conta, sem a linha "Contas a
- * vencer".
- *
- * Regra que este arquivo existe para manter: **nenhum componente da landing
- * escreve valor de Livre para Gastar à mão.** Todos importam daqui. Se as
- * capturas forem refeitas com outra conta, estes quatro números mudam junto,
- * e só eles.
- *
- * Tudo em CENTAVOS inteiros, para a subtração não carregar erro de ponto
- * flutuante.
- *
- * Os valores são de conta fictícia de demonstração. Nunca usar dado de conta
- * real em material de marketing, nem em modo de demonstração.
+/** Exemplo ficticio de setembro/2026. Atualizado para a regra autorizada em
+ * 17/10/2026: os cofrinhos existentes sao anteriores ao mes (reserva zero),
+ * e a fatura aberta de 1342,50 reserva dinheiro antes do pagamento.
+ * Os numeros textuais acompanham a regra; capturas estaticas antigas precisam
+ * ser refeitas pelo fluxo de capturas, sem retocar os valores em imagem.
  */
-
-/** Os únicos números digitados, em centavos, copiados da captura da Início. */
 const PARTIDA_CENTAVOS = {
   saldo: 581500,
-  cofrinhos: 245000,
+  cofrinhos: 0,
+  creditoNaoPago: 134250,
   diasRestantes: 26,
 } as const;
 
 /** Contas pendentes do mês fictício: só a conversa do Granabô cita. */
 const CONTAS_DO_MES_CENTAVOS = 181135;
 
-const livreCentavos = PARTIDA_CENTAVOS.saldo - PARTIDA_CENTAVOS.cofrinhos;
+const livreCentavos = PARTIDA_CENTAVOS.saldo - PARTIDA_CENTAVOS.cofrinhos - PARTIDA_CENTAVOS.creditoNaoPago;
 
 /* O por dia é ARREDONDADO ao centavo, igual ao que o app mostra
-   (3.365,00 ÷ 26 = 129,4230…). A exigência do V01 era que a subtração que a
+   (4.472,50 ÷ 26 = 172,0230…). A exigência do V01 era que a subtração que a
    pessoa lê na tela feche, e ela fecha ao centavo. */
 const porDiaCentavos = Math.round(livreCentavos / PARTIDA_CENTAVOS.diasRestantes);
 
 export const EXEMPLO_LIVRE = {
   saldo: PARTIDA_CENTAVOS.saldo / 100,
   cofrinhos: PARTIDA_CENTAVOS.cofrinhos / 100,
+  creditoNaoPago: PARTIDA_CENTAVOS.creditoNaoPago / 100,
   diasRestantes: PARTIDA_CENTAVOS.diasRestantes,
-  /** R$ 3.365,00: o que sobra depois dos cofrinhos. */
+  /** R$ 4.472,50: o que sobra depois da reserva do credito. */
   livreNoTotal: livreCentavos / 100,
-  /** R$ 129,42: o valor por dia que a Início mostra. */
+  /** R$ 172,02: o valor por dia que a Início mostra. */
   porDia: porDiaCentavos / 100,
 } as const;
 

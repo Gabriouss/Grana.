@@ -1,3 +1,4 @@
+import type { OrigemCofrinho } from '@/lib/cofrinho-origem';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View, Platform } from 'react-native';
 import AppModal from './AppModal';
@@ -55,7 +56,7 @@ export default function GoalsCarousel({
   onAbrirDepositoConcluido?: () => void;
   onCreateGoal: (input: NovaMeta) => Promise<void>;
   onUpdateGoal: (goal: Goal, input: NovaMeta) => Promise<void>;
-  onDeposit: (goal: Goal, delta: number) => Promise<void>;
+  onDeposit: (goal: Goal, delta: number, origem: OrigemCofrinho) => Promise<void>;
   onDeleteGoal: (goal: Goal) => Promise<void>;
 }) {
   const { ligado } = useFlags();
@@ -144,11 +145,11 @@ export default function GoalsCarousel({
     }
   }
 
-  async function handleDeposit(delta: number) {
+  async function handleDeposit(delta: number, origem: OrigemCofrinho) {
     if (!depositTarget) return;
     setDepositing(true);
     try {
-      await onDeposit(depositTarget, delta);
+      await onDeposit(depositTarget, delta, origem);
       setDepositTarget(null);
     } catch (e: any) {
       Alert.alert('Erro ao movimentar cofrinho', e.message);
