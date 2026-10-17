@@ -156,7 +156,10 @@ const styles = StyleSheet.create({
   typeTextOn: { color: theme.ink},
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 1, borderBottomColor: theme.ruleStrong, paddingBottom: 10 },
   amountPrefix: { color: theme.inkFaint, fontSize: type.destaque, fontFamily: fonts.light },
-  amountInput: { color: theme.ink, fontSize: type.valor, flex: 1, fontFamily: fonts.regular },
+  /* minWidth 0: o <input> da web tem largura minima propria (size=20) e, sem isto, o
+     flex: 1 nao deixa a linha encolher; ela passava do painel e o foco do autoFocus
+     rolava o conteudo para a esquerda, cortando titulo e textos. */
+  amountInput: { color: theme.ink, fontSize: type.valor, flex: 1, minWidth: 0, fontFamily: fonts.regular },
   errorText: { color: theme.danger, fontSize: type.nota, fontFamily: fonts.regular },
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },
