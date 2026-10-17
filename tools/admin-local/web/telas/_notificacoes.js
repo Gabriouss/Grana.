@@ -76,6 +76,8 @@ export function totalConhecido(leitura) {
   return null;
 }
 
+export const temContagemIndisponivel = (leitura) => totalConhecido(leitura) === null && leitura.situacao !== 'carregando';
+
 // ---------------------------------------------------------------------------
 // Tela
 
@@ -137,10 +139,11 @@ export function montarSino({ h, api, acao }) {
   function pintarBotao() {
     const total = totalConhecido(leitura);
     const rotulo = rotuloContador(total);
+    const indisponivel = temContagemIndisponivel(leitura);
     botao.setAttribute('aria-label', nomeAcessivelSino(total));
-    botao.classList.toggle('sino-indisponivel', total === null && leitura.situacao === 'erro');
-    contador.hidden = !(rotulo || (total === null && leitura.situacao === 'erro'));
-    contador.textContent = rotulo || '!';
+    botao.classList.toggle('sino-indisponivel', indisponivel);
+    contador.hidden = !(rotulo || indisponivel);
+    contador.textContent = rotulo || (indisponivel ? '!' : '');
   }
 
   async function carregar() {

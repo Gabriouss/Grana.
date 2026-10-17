@@ -52,6 +52,10 @@ igual(web.rotuloMarcarTodas(3), lib.rotuloMarcarTodas(3));
 igual(web.totalConhecido({ situacao: 'erro', ultima: { lista: paraWeb, atualizadoEm: iso(9) } }), 4);
 igual(web.totalConhecido({ situacao: 'erro' }), null);
 igual(web.totalConhecido({ situacao: 'carregando' }), null);
+igual(web.temContagemIndisponivel({ situacao: 'erro' }), true, 'erro sem cache tem indicador de indisponibilidade');
+igual(web.temContagemIndisponivel({ situacao: 'indisponivel' }), true, 'null de configuração tem indicador de indisponibilidade');
+igual(web.temContagemIndisponivel({ situacao: 'carregando' }), false, 'carregamento não antecipa alerta');
+igual(web.temContagemIndisponivel({ situacao: 'erro', ultima: { lista: paraWeb, atualizadoEm: iso(9) } }), false, 'erro com cache conserva o total conhecido');
 
 // ---- servidor local: dublê em memória
 const config = require('../tools/admin-local/config.cjs');
