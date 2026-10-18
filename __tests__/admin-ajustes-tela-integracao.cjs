@@ -8,6 +8,7 @@ const texto = (x) => walk(x).map((y) => y.attrs?.texto || '').join(' ');
 // Carrega o módulo real da tela num escopo próprio, como um ES module, e publica só o que ele exporta.
 // Os imports resolvem pelos exports reais carregados antes: nenhum dublê de _pecas.js nem de ajustes.js.
 function carregarModulo(arquivo, sandbox) {
+  if (arquivo !== '_legenda-publicacao.js') carregarModulo('_legenda-publicacao.js', sandbox);
   const fonte = fs.readFileSync('tools/admin-local/web/telas/' + arquivo, 'utf8');
   const nomes = [...fonte.matchAll(/^export (?:async )?(?:function|const) (\w+)/gm)].map((m) => m[1]);
   const corpo = fonte.replace(/^import .*;\r?\n/gm, '').replace(/^export /gm, '');
@@ -19,7 +20,7 @@ function carregarModulo(arquivo, sandbox) {
   const dto=pedidoPublico(raw); assert.equal(JSON.stringify(dto).includes(canario),false);
   const root=n('main'),calls=[];
   const ctx={h:n,obsoleta:()=>false,recarregar:()=>{},formatar:{dataHora:(v)=>v},alerta:(_tipo,t)=>n('p',{texto:t}),selo:(_n,t)=>n('span',{texto:t}),estado:{carregando:()=>{},erro:()=>assert.fail('DTO real deve renderizar')},api:async()=>({dados:{pedidos:[dto],remoto:{status:'ativo'}}}),confirmar:async()=>true,acao:async(url,body)=>calls.push({url,body}),aviso:()=>{}};
-  const sandbox={ctx,root};vm.runInNewContext(fs.readFileSync('tools/admin-local/web/telas/ajustes.js','utf8').replace(/export (async )?function /g,'$1function '),sandbox);
+  const sandbox={ctx,root};vm.runInNewContext(fs.readFileSync('tools/admin-local/web/telas/ajustes.js','utf8').replace(/^import .*;\r?\n/gm,'').replace(/export (async )?function /g,'$1function '),sandbox);
   const pedidos=await vm.runInNewContext('montarFila(root,ctx)',sandbox);
   Object.assign(sandbox,{pedidos,pecaId:raw.pecaId});
   root.appendChild(vm.runInNewContext('secaoAjustesDaPeca(ctx,pedidos,pecaId)',sandbox));

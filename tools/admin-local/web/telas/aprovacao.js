@@ -3,6 +3,7 @@
 
 import { tituloPeca, rotuloSemana, rotuloEstado, trilha, historicoDaPeca, agruparFamilias, idadeDemanda, formatoDaPeca, ROTULOS_FORMATO, juntarCapasAoReel, pecaDaFila, arquivada } from './_pecas.js';
 import { montarMidia, midiasDaPeca, topoDaPrevia } from './_previa-publicacao.js';
+import { faltaLegenda, localLegenda } from './_legenda-publicacao.js';
 import { montarFila, secaoAjustesDaPeca, situacaoDaFamilia, contarPrecisaDeVoce, textoAlertaDemanda, observarPedidos, pedidoAberto, filaDisponivel } from './ajustes.js';
 
 // Mesmos rótulos de estado usados no detalhe dos pedidos em ajustes.js.
@@ -376,7 +377,7 @@ export async function montar(raiz, ctx) {
     if (filaIndisponivel) detalhe.appendChild(ctx.alerta('atencao', 'A fila não pôde ser conferida. Atualize antes de registrar aceite.'));
 
     // 4. Pedidos já feitos e a decisão.
-    const ajustesDaPeca = secaoAjustesDaPeca(ctx, pedidos, p.id, comparacao?.estado || { pronta: false, observadores: new Set() });
+    const ajustesDaPeca = secaoAjustesDaPeca(ctx, pedidos, p.id, comparacao?.estado || { pronta: false, observadores: new Set() }, p);
     if (ajustesDaPeca) detalhe.appendChild(ajustesDaPeca);
     const pedidoComVersaoAtual = pedidos?.find((r) => r.pecaId === p.id &&
       typeof r.versaoAtual === 'string' &&
@@ -389,12 +390,15 @@ export async function montar(raiz, ctx) {
         onclick: () => { janela.close?.(); return pedirAjuste(ctx, { ...p, versao: pedidoComVersaoAtual.versaoAtual }); },
       }));
     }
-    const botaoAprovar = h('button', { class: 'botao botao-primario', type: 'button', texto: p.aprovada ? 'Aprovada nesta versão' : temPedidoAberto ? 'Aceite pela fila de ajustes' : 'Aprovar esta versão', disabled: !!p.aprovada || temPedidoAberto || filaIndisponivel || arquivada(p) || !!pendencia,
+    if (faltaLegenda(p)) detalhe.appendChild(ctx.alerta('atencao', `Falta a legenda para publicar. ${localLegenda(p)}`));
+    const botaoAprovar = h('button', { class: 'botao botao-primario', type: 'button', texto: p.aprovada ? 'Aprovada nesta versão' : temPedidoAberto ? 'Aceite pela fila de ajustes' : 'Aprovar esta versão', disabled: faltaLegenda(p) || !!p.aprovada || temPedidoAberto || filaIndisponivel || arquivada(p) || !!pendencia,
       onclick: () => aprovar(ctx, p, botaoAprovar) });
     const podePedir = !filaIndisponivel && !arquivada(p);
     const aberto = rascunhoAberto === chaveRascunho(p);
     const botaoAjuste = h('button', { class: 'botao', type: 'button', texto: aberto ? 'Fechar pedido de ajuste' : rascunhos.get(chaveRascunho(p))?.texto ? 'Pedir ajuste (rascunho guardado)' : 'Pedir ajuste', 'aria-expanded': String(aberto),
       disabled: !podePedir, onclick: () => { rascunhoAberto = aberto ? null : chaveRascunho(p); focarAjuste = !aberto; desenharDetalhe(); } });
+    if (faltaLegenda(p)) detalhe.appendChild(h('button', { class: 'botao', type: 'button', texto: 'Solicitar ajuste da legenda', disabled: !podePedir,
+      onclick: () => { rascunhoAberto = chaveRascunho(p); focarAjuste = true; desenharDetalhe(); } }));
     if (aberto && podePedir) {
       if (!rascunhos.has(chaveRascunho(p))) rascunhos.set(chaveRascunho(p), { categorias: new Set(), texto: '' });
       const secaoAjuste = ajusteNaJanela(ctx, p, rascunhos.get(chaveRascunho(p)), {
@@ -416,7 +420,7 @@ export async function montar(raiz, ctx) {
       disabled: filaIndisponivel || temPedidoAberto || arquivada(p),
       onclick: () => recusarPeca(ctx, p, familiaAtual?.pecas || [p], pedidos, botaoRecusar) });
     const botaoMover = p.aprovada && p.estado === 'para-aprovacao' ? h('button', {
-      class: 'botao', type: 'button', texto: 'Mover para aprovados', disabled: filaIndisponivel || temPedidoAberto || !!pendencia,
+      class: 'botao', type: 'button', texto: 'Mover para aprovados', disabled: faltaLegenda(p) || filaIndisponivel || temPedidoAberto || !!pendencia,
       onclick: () => promoverPeca(ctx, p, botaoMover),
     }) : null;
     [botaoAprovar, botaoAjuste, botaoRecusar, botaoMover,
@@ -638,7 +642,7 @@ export async function recusarPeca(ctx, p, familia, pedidos, botao) {
 }
 
 export async function promoverPeca(ctx, p, botao) {
-  if (botao.disabled || !p.aprovada || p.estado !== 'para-aprovacao' || ctx.obsoleta()) return;
+  if (botao.disabled || faltaLegenda(p) || !p.aprovada || p.estado !== 'para-aprovacao' || ctx.obsoleta()) return;
   botao.disabled = true;
   try {
     const ok = await ctx.confirmar({ titulo: 'Mover para aprovados',
@@ -668,6 +672,7 @@ export async function promoverPeca(ctx, p, botao) {
 }
 
 async function aprovar(ctx, p, botao) {
+  if (botao.disabled || ctx.obsoleta() || faltaLegenda(p)) return;
   const ok = await ctx.confirmar({
     titulo: 'Aprovar esta versão',
     texto: 'Isto registra o seu aceite desta peça e desta legenda, na versão que está na tela. Não publica, não agenda e não envia nada ao Instagram ou à Meta. Se o arquivo mudar depois, o aceite deixa de valer.',

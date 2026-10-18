@@ -3,6 +3,7 @@
 // o resumo e, recolhida, a lista completa. Ações (aceitar, tentar de novo) ficam no detalhe da peça.
 
 // A lista recolhe e abre por escolha da pessoa; recarregar a tela não muda isso nem faz a tela pular.
+import { faltaLegenda, localLegenda } from './_legenda-publicacao.js';
 const estadoLista = { aberta: false };
 const detalhesDasFilas = new WeakMap();
 const saudeDasFilas = new WeakMap();
@@ -231,13 +232,14 @@ function tecnico(ctx, d) {
 }
 
 // Seção do detalhe da peça: só os pedidos DELA, com as ações quando cabem.
-export function secaoAjustesDaPeca(ctx, pedidos, pecaId, comparacao) {
+export function secaoAjustesDaPeca(ctx, pedidos, pecaId, comparacao, peca) {
   const { h } = ctx;
   const meus = ordenarPedidos((pedidos || []).filter((p) => p.pecaId === pecaId));
   if (!meus.length) return null;
   const secao = h('section', { class: 'peca-ajustes', 'aria-label': 'Ajustes pedidos' });
   const redesenhar = () => secao.replaceChildren(h('h3', { texto: 'Ajustes pedidos' }),
-    h('ul', { class: 'pedidos-itens' }, ordenarPedidos(pedidos.filter((p) => p.pecaId === pecaId)).map((p) => linhaPedido(ctx, p, { acoes: true, disponivel: filaDisponivel(pedidos), aceitePermitido: !comparacao || (comparacao.pronta && comparacao.pedidoId === p.id) }))));
+    h('ul', { class: 'pedidos-itens' }, ordenarPedidos(pedidos.filter((p) => p.pecaId === pecaId)).map((p) => linhaPedido(ctx, p, { acoes: true, disponivel: filaDisponivel(pedidos), aceitePermitido: (!peca || !faltaLegenda(peca)) && (!comparacao || (comparacao.pronta && comparacao.pedidoId === p.id)) }))),
+    ...(peca && faltaLegenda(peca) ? [h('p', { class: 'campo-ajuda', role: 'status', texto: `Falta a legenda para publicar. ${localLegenda(peca)}` })] : []));
   comparacao?.observadores.add(redesenhar);
   redesenhar.alvo = secao;
   if (!detalhesDasFilas.has(pedidos)) detalhesDasFilas.set(pedidos, new Set());

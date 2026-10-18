@@ -7,12 +7,13 @@ const walk = (n) => [n, ...(n.children || []).flatMap(walk)];
 // Carrega o módulo real da tela num escopo próprio, como um ES module, e publica só o que ele exporta.
 // Os imports resolvem pelos exports reais carregados antes: nenhum dublê de _pecas.js nem de ajustes.js.
 function carregarModulo(arquivo, sandbox) {
+  if (arquivo !== '_legenda-publicacao.js') carregarModulo('_legenda-publicacao.js', sandbox);
   const fonte = fs.readFileSync('tools/admin-local/web/telas/' + arquivo, 'utf8');
   const nomes = [...fonte.matchAll(/^export (?:async )?(?:function|const) (\w+)/gm)].map((m) => m[1]);
   const corpo = fonte.replace(/^import .*;\r?\n/gm, '').replace(/^export /gm, '');
   vm.runInNewContext('(function(){' + corpo + '\n;Object.assign(globalThis,{' + nomes.join(',') + '});})()', sandbox);
 }
-const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8').replace(/export (async )?function /g, '$1function ');
+const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8').replace(/^import .*;\r?\n/gm, '').replace(/export (async )?function /g, '$1function ');
 (async () => {
   let antigo = false, erro = false, confirmado = true, resolver, extra = {};
   const calls = [], avisos = [], pedidos = [];
@@ -54,7 +55,7 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   assert.equal(fs.readFileSync('tools/admin-local/web/telas/aprovacao.js', 'utf8').includes('vai para o GitHub público'), false);
   antigo = false; erro = false;
   pedidos.splice(0, pedidos.length, { ...base, estado: 'corrigido-aguardando-aceite' });
-  const peca = { id: base.pecaId, versao: base.versaoCorrigida, estado: 'para-aprovacao', tipo: 'imagem', titulo: 'Peça fictícia', arquivos: [{ nome: 'peca-ficticia.png', tipo: 'imagem', url: '/docs/marketing/ficticio/peca-ficticia.png' }] };
+  const peca = { id: base.pecaId, versao: base.versaoCorrigida, legenda: 'Legenda fictícia desta versão.', estado: 'para-aprovacao', tipo: 'imagem', titulo: 'Peça fictícia', arquivos: [{ nome: 'peca-ficticia.png', tipo: 'imagem', url: '/docs/marketing/ficticio/peca-ficticia.png' }] };
   ctx.api = async (url) => ({ dados: url.endsWith('/pecas') ? { pecas: [peca] } : { pedidos } });
   Object.assign(ctx, { params: {}, cabecalho() {}, midia: () => node('img'), selo: (_tipo,t) => node('span',{texto:t}), markdown: (t) => node('p',{texto:t}) });
   // Fase 2: a Aprovação real monta a mesa de demandas com _pecas.js e ajustes.js reais.
