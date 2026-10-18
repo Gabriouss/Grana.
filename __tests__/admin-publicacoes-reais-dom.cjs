@@ -134,6 +134,14 @@ const job = (contaId, rede, estado, extra = {}) => ({
     ok(await semOverflow(), `${width}px: sem overflow com a prévia aberta`);
     const corpoTexto = await page.locator('main, .tela, body').first().innerText();
     ok(!/\[object |null|undefined/.test(corpoTexto), `${width}px: nenhum [object/null/undefined vaza para a tela`);
+    // a decodificacao do blob e assincrona: espera com prazo explicito e falha dizendo quais imagens nao decodificaram
+    await page.waitForFunction(() => {
+      const l = [...document.querySelectorAll('.pub-real-previa-destino img')];
+      return l.length >= 2 && l.every((i) => i.complete && i.naturalWidth > 0);
+    }, null, { timeout: 10000 }).catch(async () => {
+      const estado = await page.locator('.pub-real-previa-destino img').evaluateAll((l) => l.map((i, n) => `#${n} complete=${i.complete} naturalWidth=${i.naturalWidth} src=${String(i.src).slice(0, 40)}`));
+      throw new Error(`${width}px: imagens da prévia não decodificaram em 10s: ${JSON.stringify(estado)}`);
+    });
     const imgs = await page.locator('.pub-real-previa-destino img').evaluateAll((l) => l.map((i) => [i.complete, i.naturalWidth]));
     if (process.env.DEPURA) console.log(await page.locator('.pub-real-previa-destino img').evaluateAll((l) => l.map((i) => i.outerHTML.slice(0, 220))));
     ok(imgs.length >= 2 && imgs.every(([c, w]) => c && w > 0), `${width}px: mídia da prévia decodificada (${JSON.stringify(imgs)})`);
