@@ -14,6 +14,7 @@ const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julh
 const ESTADO_REAL = { planejado: 'Planejado', 'programado-no-painel': 'Programado no painel', preparando: 'Preparando', 'agendado-na-meta': 'Agendado na Meta', publicado: 'Publicado', falhou: 'Falhou', cancelado: 'Cancelado', 'cancelamento-pendente': 'Cancelamento pendente', 'precisa-conferir': 'Precisa conferir', bloqueado: 'Bloqueado' };
 const identidade = (p) => JSON.stringify([p?.pecaId || p?.id, p?.versao]);
 export function diaReal(job) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(job?.dataPublicacaoMeta || '')) return job.dataPublicacaoMeta;
   const data = new Date(job?.destino?.publicarEm);
   if (!Number.isFinite(data.getTime())) return null;
   const partes = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(data).map((p) => [p.type, p.value]));
@@ -53,16 +54,25 @@ export function leituraRealCompleta(camada, reais) {
 }
 const AVISO_PODE_TER_REAL = 'Pode já ter agendamento real. Veja em Ambos.';
 
-export function projetarCalendario(d, jobs, camada = 'ambos') {
+export function projetarCalendario(d, jobs, camada = 'ambos', posts = [], catalogo = []) {
   const grupos = new Map();
+  const publicados = new Map();
+  for (const post of posts) {
+    if (!post.vinculo || !/^\d{4}-\d{2}-\d{2}$/.test(post.data || '') || (d.mes && post.data.slice(0, 7) !== d.mes)) continue;
+    const k = identidade(post.vinculo);
+    if (!publicados.has(k)) publicados.set(k, []);
+    if (!publicados.get(k).some((p) => p.chave === post.chave && p.rede === post.rede)) publicados.get(k).push(post);
+  }
   for (const job of jobs) {
     if (!Number.isFinite(Date.parse(job.confirmadoEm || '')) || !diaReal(job)) continue;
     const k = identidade(job.peca);
     if (!grupos.has(k)) grupos.set(k, []);
-    grupos.get(k).push(job);
+    const post = (publicados.get(k) || []).find((p) => job.estado === 'publicado' && p.rede === job.destino?.rede && linkPublicado(p.link) && linkPublicado(p.link) === linkPublicado(job.permalink));
+    grupos.get(k).push(post ? { ...job, dataPublicacaoMeta: post.data } : job);
   }
   const itens = [];
-  const editoriais = [...(d.itens || []), ...(d.aprovadosSemData || d.semData || []).map((p) => ({ peca: p }))];
+  // O catálogo fornece a peça vinculada mesmo quando ela não tem entrada editorial neste mês.
+  const editoriais = [...(d.itens || []), ...(d.aprovadosSemData || d.semData || []).map((p) => ({ peca: p })), ...catalogo.filter((p) => publicados.has(identidade(p))).map((p) => ({ peca: p }))];
   const vistos = new Set();
   for (const i of editoriais) {
     const p = i.peca || { id: i.id, versao: i.versao, titulo: i.titulo, tipo: i.tipo };
@@ -70,18 +80,20 @@ export function projetarCalendario(d, jobs, camada = 'ambos') {
     if (vistos.has(k)) continue;
     vistos.add(k);
     const todos = grupos.get(k) || [];
+    const pubs = camada === 'planejado' ? [] : publicados.get(k) || [];
     const ativos = camada === 'real' ? todos : todos.filter((j) => !['cancelado', 'falhou'].includes(j.estado));
     const foraDoMes = (d.vinculos || []).filter((v) => identidade(v) === k).flatMap((v) => v.destinos || [])
       .filter((v) => v.data?.slice(0, 7) !== d.mes && !['cancelado', 'falhou'].includes(v.estado));
-    if (camada !== 'planejado' && foraDoMes.length && !ativos.length) continue;
-    if (camada !== 'planejado' && ativos.length) {
-      const dias = [...new Set([...ativos.map(diaReal), ...foraDoMes.map((v) => v.data)])].sort();
-      for (const dia of dias.filter((v) => ativos.some((j) => diaReal(j) === v))) itens.push({ ...i, peca: p, data: dia, jobs: ativos.filter((j) => diaReal(j) === dia), historico: todos.filter((j) => ['cancelado', 'falhou'].includes(j.estado)), marcador: dias.length > 1, principal: dia === dias[0] });
+    if (camada !== 'planejado' && foraDoMes.length && !ativos.length && !pubs.length) continue;
+    if (camada !== 'planejado' && (ativos.length || pubs.length)) {
+      const dias = [...new Set([...ativos.map(diaReal), ...pubs.map((p) => p.data), ...foraDoMes.map((v) => v.data)])].sort();
+      for (const dia of dias.filter((v) => ativos.some((j) => diaReal(j) === v) || pubs.some((p) => p.data === v))) itens.push({ ...i, peca: p, data: dia, jobs: ativos.filter((j) => diaReal(j) === dia), publicacoes: pubs.filter((p) => p.data === dia), historico: todos.filter((j) => ['cancelado', 'falhou'].includes(j.estado)), marcador: dias.length > 1, principal: dia === dias[0] });
     } else if (camada !== 'real' && i.data) itens.push({ ...i, peca: p, historico: todos });
   }
   // Sem vínculo exato, o job permanece na lista. Não cria uma peça editorial fictícia.
   const semData = (d.aprovadosSemData || d.semData || []).filter((p) => camada !== 'real' && (camada === 'planejado' || (!(grupos.get(identidade(p)) || []).some((j) => !['cancelado', 'falhou'].includes(j.estado)) && !(d.vinculos || []).some((v) => identidade(v) === identidade(p) && v.destinos?.some((j) => !['cancelado', 'falhou'].includes(j.estado))))));
-  return { ...d, itens: itens.sort((a, b) => a.data.localeCompare(b.data)), aprovadosSemData: semData, semData };
+  const restantes = semData.filter((p) => camada === 'planejado' || !publicados.has(identidade(p)));
+  return { ...d, itens: itens.sort((a, b) => a.data.localeCompare(b.data)), aprovadosSemData: restantes, semData: restantes };
 }
 
 export async function montar(raiz, ctx) {
@@ -125,7 +137,7 @@ export async function montar(raiz, ctx) {
     if (controleReal.abrirCompositor(peca, data) === false) return;
     dialogo.showModal();
   };
-  const pubDe = (peca) => meta.posts.find((p) => p.vinculo && identidade(p.vinculo) === identidade(peca)) || null;
+  const pubDe = (item) => item.publicacoes?.[0] || null;
   async function carregarMeta() {
     const minha = ++geracaoMeta;
     let r;
@@ -151,13 +163,13 @@ export async function montar(raiz, ctx) {
   // Item entregue a abrirPreviaPost (_previa-post.js, do Prism): { peca, formato, rede, jobs, publicado, data, origem }.
   const FORMATO_PREVIA = { reel: 'reels', reels: 'reels', carrossel: 'carrossel', stories: 'stories', video: 'feed', imagem: 'feed', post: 'feed', feed: 'feed' };
   const formatoPrevia = (peca, jobs, post) => FORMATO_PREVIA[jobs[0]?.destino?.formato] || FORMATO_PREVIA[post?.formato] || FORMATO_PREVIA[String(peca?.tipo || '').toLowerCase()] || 'feed';
-  // Peça completa (arquivos e legenda) do mesmo catálogo que a tela Feed usa; uma leitura por montagem, nenhuma rota nova.
-  let feedLido = null;
+  // Peça completa do Acervo, inclusive fora da fila editorial; uma leitura por montagem, nenhuma rota nova.
+  let catalogoLido = null;
   async function carregarPeca(id, versao) {
-    feedLido ||= ctx.api('/api/marketing/feed').then((r) => { const d = r.dados; return Array.isArray(d) ? d : (d && (d.pecas || d.itens)) || []; });
-    try { return (await feedLido).find((p) => p.id === id && p.versao === versao) || null; } catch (err) { console.warn('[calendario-feed]', err.codigo || 'leitura-falhou'); feedLido = null; return null; }
+    catalogoLido ||= ctx.api('/api/marketing/pecas').then((r) => { const d = r.dados; return Array.isArray(d) ? d : (d && (d.pecas || d.itens)) || []; });
+    try { return (await catalogoLido).find((p) => p.id === id && p.versao === versao) || null; } catch (err) { console.warn('[calendario-catalogo]', err.codigo || 'leitura-falhou'); catalogoLido = null; return null; }
   }
-  const itemPrevia = (i, pub) => { const jobs = i.jobs || []; return { carregarPeca, origem: jobs.length ? 'real' : 'planejado', peca: i.peca, data: i.data, jobs, publicado: pub || null, formato: formatoPrevia(i.peca, jobs, pub), rede: jobs[0]?.destino?.rede || pub?.rede || 'instagram' }; };
+  const itemPrevia = (i, pub) => { const jobs = i.jobs || []; return { carregarPeca, origem: pub ? 'meta' : jobs.length ? 'real' : 'planejado', peca: i.peca, data: i.data, jobs, publicado: pub || null, formato: formatoPrevia(i.peca, jobs, pub), rede: jobs[0]?.destino?.rede || pub?.rede || 'instagram' }; };
   // A miniatura vem de uma rota local autenticada (a CSP só aceita self, data e blob): busca com o cabeçalho do painel e exibe como blob.
   const ROTA_MINIATURA = '/api/marketing/calendario/meta-midia?chave=';
   function miniaturaDoPost(src) {
@@ -183,29 +195,29 @@ export async function montar(raiz, ctx) {
     !compacto && link ? h('a', { href: link, target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação' }) : null);
   }
   function cartaoCompacto(i) {
-    const reais = i.jobs || [], pub = pubDe(i.peca);
+    const reais = i.jobs || [], pub = pubDe(i);
     const movel = !reais.length && !pub;
     return h('article', { class: `cal-item cal-unico-item cal-compacto${reais.length ? ' cal-item-real' : ''}`, draggable: movel ? 'true' : 'false', dados: { peca: i.peca.id, versao: i.peca.versao }, 'aria-label': nomeDaPeca(i.peca),
       ondragstart: (e) => { if (!movel) { e.preventDefault(); return; } e.dataTransfer.setData('text/x-grana-peca', i.peca.id); },
       ...abrirAoClicar(itemPrevia(i, pub)) },
     h('strong', { class: 'cal-item-titulo', texto: nomeDaPeca(i.peca) }),
-    h('span', { class: 'cal-item-canal', texto: reais.length ? 'Agendado' : pub ? 'Publicado' : 'Planejado' }));
+    h('span', { class: 'cal-item-canal', texto: pub || reais.some((j) => j.estado === 'publicado') ? 'Publicado' : reais.length ? 'Agendado' : 'Planejado' }));
   }
   function cartao(i, planejar) {
-    const reais = i.jobs || [], pub = pubDe(i.peca);
+    const reais = i.jobs || [], pub = pubDe(i);
     const movel = !reais.length && !pub;
     return h('article', { class: `cal-item cal-unico-item${reais.length ? ' cal-item-real' : ''}`, draggable: movel ? 'true' : 'false', dados: { peca: i.peca.id, versao: i.peca.versao },
       ondragstart: (e) => { if (!movel) { e.preventDefault(); return; } e.dataTransfer.setData('text/x-grana-peca', i.peca.id); },
       ...abrirAoClicar(itemPrevia(i, pub)) },
       h('strong', { class: 'cal-item-titulo', texto: i.marcador && !i.principal ? `Destino de ${nomeDaPeca(i.peca)}` : nomeDaPeca(i.peca) }),
-      h('span', { class: 'cal-item-canal', texto: reais.length ? i.marcador ? 'Mesma peça, destinos em dias diferentes' : 'Agendamento confirmado' : pub ? 'Publicado na Meta' : 'Planejado' }),
-      pub && !reais.length ? h('div', { class: 'cal-unico-destino' },
-        h('strong', { texto: `${ROTULO_REDE[pub.rede] || pub.rede} · ${ROTULO_FORMATO[pub.formato] || 'Post'}` }),
-        h('span', { texto: `Publicado em ${ctx.formatar.data(pub.data)}` }),
-        linkPublicado(pub.link) ? h('a', { href: linkPublicado(pub.link), target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação' }) : null) : null,
+      h('span', { class: 'cal-item-canal', texto: pub ? 'Publicado na Meta' : reais.length ? i.marcador ? 'Mesma peça, destinos em dias diferentes' : 'Agendamento confirmado' : 'Planejado' }),
+      ...(i.publicacoes || []).filter((p) => !reais.some((j) => j.estado === 'publicado' && j.destino.rede === p.rede && linkPublicado(p.link) && linkPublicado(p.link) === linkPublicado(j.permalink))).map((p) => h('div', { class: 'cal-unico-destino' },
+        h('strong', { texto: `${ROTULO_REDE[p.rede] || p.rede} · ${ROTULO_FORMATO[p.formato] || 'Post'} · Publicado` }),
+        h('span', { texto: `Publicado em ${ctx.formatar.data(p.data)}` }),
+        linkPublicado(p.link) ? h('a', { href: linkPublicado(p.link), target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação' }) : null)),
       ...reais.map((j) => h('div', { class: 'cal-unico-destino' },
         h('strong', { texto: `${j.destino.rede} · ${j.destino.formato} · ${ESTADO_REAL[j.estado] || `Estado desconhecido: ${j.estado}`}` }),
-        h('span', { texto: new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }).format(new Date(j.destino.publicarEm)) + ' · São Paulo' }),
+        h('span', { texto: j.dataPublicacaoMeta ? `Publicado em ${ctx.formatar.data(j.dataPublicacaoMeta)}` : new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }).format(new Date(j.destino.publicarEm)) + ' · São Paulo' }),
         j.codigoErro ? h('span', { texto: `Motivo: ${j.codigoErro}` }) : null,
         j.estado === 'publicado' ? linkPublicado(j.permalink) ? h('a', { href: linkPublicado(j.permalink), target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação' }) : h('span', { texto: 'O link da publicação não está disponível nesta fonte. Consulte o ID e o recibo.' }) : null,
         h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Ver destino e recibos', onclick: () => { navegar({ visao: 'lista' }); } }))),
@@ -214,10 +226,14 @@ export async function montar(raiz, ctx) {
   }
   async function desenhar() {
     const minha = ++geracao;
+    const conhecidos = new Set([...(dados.itens || []).map((i) => identidade(i.peca || i)), ...(dados.aprovadosSemData || dados.semData || []).map(identidade)]);
+    const faltantes = new Map(meta.posts.filter((p) => p.vinculo && !conhecidos.has(identidade(p.vinculo))).map((p) => [identidade(p.vinculo), p.vinculo]));
+    const pecasPublicadas = camada === 'planejado' ? [] : (await Promise.all([...faltantes.values()].map((p) => carregarPeca(p.pecaId, p.versao)))).filter(Boolean);
+    if (encerrada || ctx.obsoleta() || minha !== geracao) return;
     calendario.replaceChildren();
     await montarEditorial(calendario, { ...ctx, params: { ...ctx.params, mes }, calendarioParcial: dados.reais && camada !== 'planejado' && !dados.reais.completo, cabecalho() {}, cartaoCalendario: cartao, cartaoCompacto, cartaoMeta, meta: { ...meta, mostrar: camada !== 'planejado' }, agendarReal: abrir, leituraRealCompleta: leituraRealCompleta(camada, dados?.reais),
       obsoleta: () => encerrada || ctx.obsoleta() || minha !== geracao,
-      api: (url) => url.startsWith('/api/marketing/calendario?') ? Promise.resolve({ dados: projetarCalendario({ ...dados, vinculos: [...referencias.values()] }, [...acumulados.values()], camada) }) : ctx.api(url) });
+      api: (url) => url.startsWith('/api/marketing/calendario?') ? Promise.resolve({ dados: projetarCalendario({ ...dados, vinculos: [...referencias.values()] }, [...acumulados.values()], camada, meta.posts, pecasPublicadas) }) : ctx.api(url) });
   }
   async function carregar(continuar = false) {
     if (ocupado || encerrada || ctx.obsoleta()) return;
@@ -340,11 +356,11 @@ async function montarEditorial(raiz, ctx) {
   inicio.setDate(1 - ((primeiro.getDay() + 6) % 7)); // semana começa na segunda
   const hojeIso = ctx.formatar.isoLocal(hoje);
   // Uma lista por dia com os cartões do planejamento/real e, na camada Real ou Ambos, os posts publicados que
-  // o servidor não casou com nenhuma peça (vinculo nulo). Nunca se cria vínculo aqui.
+  // não representados por um cartão de peça (inclusive vínculo sem peça disponível). Nunca se cria vínculo aqui.
   const porDia = new Map();
   const somar = (data, e) => { if (!porDia.has(data)) porDia.set(data, []); porDia.get(data).push(e); };
   for (const i of itens) somar(i.data, { item: i });
-  if (ctx.cartaoMeta && ctx.meta?.mostrar) for (const post of ctx.meta.posts) if (!post.vinculo && /^\d{4}-\d{2}-\d{2}$/.test(post.data || '')) somar(post.data, { post });
+  if (ctx.cartaoMeta && ctx.meta?.mostrar) for (const post of ctx.meta.posts) if (!itens.some((i) => i.publicacoes?.some((p) => p.chave === post.chave && p.rede === post.rede)) && /^\d{4}-\d{2}-\d{2}$/.test(post.data || '')) somar(post.data, { post });
   const compacto = !!ctx.cartaoCompacto;
   // O aviso de leitura real incompleta aparece uma vez por superfície (bandeja, janela do dia, agenda), nunca em cada cartão.
   const notaReal = () => (ctx.agendarReal && !ctx.leituraRealCompleta ? h('p', { class: 'campo-ajuda cal-aviso-real', texto: AVISO_PODE_TER_REAL }) : null);
