@@ -665,7 +665,7 @@ export function arquivosDaPeca(peca) {
 // Prévia de uma peça: imagem, vídeo (com controles, sem autoplay) ou carrossel com setas.
 export function midia(peca, { grande = false } = {}) {
   const arquivos = arquivosDaPeca(peca).filter((a) => EXT_VIDEO.test(a) || EXT_IMAGEM.test(a));
-  const alt = peca.textoAlternativo || peca.titulo || 'Peça de marketing';
+  const alt = peca.textoAlternativo || peca.nomeExibicao || 'Peça de marketing';
   const classe = `previa${grande ? ' previa-grande' : ''}`;
   if (!arquivos.length) {
     const outro = arquivosDaPeca(peca)[0];

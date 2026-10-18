@@ -3,9 +3,12 @@
 
 export function tituloPeca(p) {
   if (!p) return 'Peça';
-  let nome = String(p.nome || p.titulo || p.id || '').split('/').pop();
-  if (p.tipo === 'carrossel' && /\*/.test(nome)) nome = `carrossel de ${(p.arquivos || []).length || '?'} slides`;
-  return p.codigo && !nome.startsWith(p.codigo) ? `${p.codigo} · ${nome}` : nome || p.codigo || 'Peça';
+  if (typeof p.nomeExibicao === 'string' && p.nomeExibicao.trim()) return p.nomeExibicao.trim();
+  const formato = p.tipo === 'stories' || /^S\d/i.test(p.codigo || '') ? 'Stories'
+    : ['video', 'reel', 'reels'].includes(p.tipo) ? 'Reels'
+      : p.tipo === 'carrossel' ? 'Carrossel' : p.tipo === 'texto' ? 'Texto' : 'Post';
+  const numero = Number(p.semana?.numero);
+  return `${formato} · ${Number.isInteger(numero) && numero > 0 && numero <= 53 ? `Semana ${numero}` : 'Semana não informada'}`;
 }
 
 export function rotuloSemana(s) {

@@ -420,10 +420,13 @@ function lerCopys(raiz, semana, ler = fs.readFileSync) {
       if (!codigo) continue;
       const corpo = sec.slice(cab[0].length).trim();
       const legenda = /\*\*Legenda:\*\*\s*([\s\S]*?)(?:\n\s*\n|$)/.exec(corpo);
+      const tituloPublicacao = /\*\*Título:\*\*[^\S\n]*([^\n]+)/i.exec(corpo);
       const limpo = corpo.replace(/\*\*/g, '').replace(/\n{3,}/g, '\n\n').trim();
       const item = {
         codigo: codigo[1],
         titulo: cab[2].replace(/\*\*/g, '').trim(),
+        tituloPublicacao: tituloPublicacao?.[1]?.trim() || null,
+        primeiraLinhaLegenda: (legenda ? legenda[1] : limpo).trim().split('\n')[0],
         legenda: legenda ? legenda[1].replace(/\s+/g, ' ').trim() : limpo.slice(0, 1200),
         fonte: `${semana.relativo}/${estado}/pecas/COPYS-FINAIS.md`,
       };
@@ -440,6 +443,27 @@ function limparTitulo(t) {
     .replace(/,\s*,/g, ',')
     .replace(/^[\s·,]+|[\s·,]+$/g, '')
     .replace(/\s{2,}/g, ' ');
+}
+
+// Nome de apresentação não participa da versão nem substitui o título/legenda
+// aceitos. O caminho físico nunca é usado para inventar o assunto da peça.
+function nomeExibicaoPeca({ tituloPublicacao, tituloEditorial, primeiraLinhaLegenda, tipo, codigo, semana } = {}) {
+  const formato = tipo === 'stories' || /^S\d/i.test(codigo || '') ? 'Stories'
+    : ['video', 'reels', 'reel'].includes(tipo) ? 'Reels'
+      : tipo === 'carrossel' ? 'Carrossel' : tipo === 'texto' ? 'Texto' : 'Post';
+  const limpar = valor => {
+    if (typeof valor !== 'string') return '';
+    const texto = valor.split(/\r?\n/)[0].replace(/\*\*|`|^#+\s*/g, '').replace(/\b[CRES]\d{1,2}\b/gi, '')
+      .replace(/^[\s·,:;|\-–—]+|[\s·,:;|\-–—]+$/g, '').replace(/\s+/g, ' ').trim();
+    if (!texto || /[\\/]|\.(?:mp4|mov|webm|png|jpe?g|webp|gif|md|txt)\b/i.test(texto)
+      || /^(?:(?:card|post)(?: estático)?|estático|carrossel|reels?|stories|story|vídeo|texto|legenda|fixture|sem título|copy)(?:\s*[,·:|\-]\s*)?$/i.test(texto)) return '';
+    if (texto.length <= 96) return texto;
+    return texto.slice(0, 93).replace(/\s+\S*$/, '').trimEnd() + '…';
+  };
+  const assunto = limpar(tituloPublicacao) || limpar(tituloEditorial) || limpar(primeiraLinhaLegenda);
+  const numero = Number(semana?.numero);
+  return assunto ? `${assunto} · ${formato}`
+    : `${formato} · ${Number.isInteger(numero) && numero > 0 && numero <= 53 ? `Semana ${numero}` : 'Semana não informada'}`;
 }
 
 // Decisão editorial do autor: são variantes, não duplicatas a apagar. O
@@ -652,6 +676,9 @@ function montarCatalogo(raiz) {
             estado,
             tipo: ehCarrossel ? 'carrossel' : primeiro.tipo,
             titulo: copy && (estado !== 'historico' || revisao?.vigente) ?`${copy.codigo} · ${limparTitulo(copy.titulo)}` : nomeCurto,
+            nomeExibicao: nomeExibicaoPeca({ tituloPublicacao: !ehDocCopy && copy?.tituloPublicacao,
+              tituloEditorial: !ehDocCopy && copy?.titulo, primeiraLinhaLegenda: !ehDocCopy && copy?.primeiraLinhaLegenda,
+              tipo: ehCarrossel ? 'carrossel' : primeiro.tipo, codigo, semana }),
             nome: nomeCurto,
             codigo: codigo || null,
             legenda,
@@ -970,6 +997,7 @@ module.exports = {
   aceiteValido,
   versaoDeArquivos,
   versaoComposta,
+  nomeExibicaoPeca,
   lerAnterior,
   caminhoSeguro,
 };

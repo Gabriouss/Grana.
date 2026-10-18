@@ -44,7 +44,7 @@ export async function montar(raiz, ctx) {
   const seletorSemana = h('select', { id: 'acervo-semana', onchange: (e) => { filtro.semana = e.target.value; desenhar(); } },
     h('option', { value: 'todas', texto: 'Todas as semanas' }),
     semanas.map((s) => h('option', { value: String(s.numero), texto: rotuloSemana(s), selected: filtro.semana === String(s.numero) })));
-  const busca = h('input', { id: 'acervo-busca', type: 'search', placeholder: 'Código ou nome do arquivo', autocomplete: 'off',
+  const busca = h('input', { id: 'acervo-busca', type: 'search', placeholder: 'Assunto ou código da peça', autocomplete: 'off',
     oninput: (e) => { filtro.busca = e.target.value.trim().toLowerCase(); desenhar(); } });
 
   corpo.appendChild(h('div', { class: 'barra-filtros' },
@@ -78,7 +78,7 @@ export async function montar(raiz, ctx) {
   const passaResto = (p) => {
     if (filtro.tipo !== 'todos' && p.tipo !== filtro.tipo) return false;
     if (filtro.semana !== 'todas' && String(p.semana?.numero) !== filtro.semana) return false;
-    if (filtro.busca && !`${p.codigo || ''} ${p.nome || ''} ${p.caminho || ''}`.toLowerCase().includes(filtro.busca)) return false;
+    if (filtro.busca && !`${p.nomeExibicao || ''} ${p.codigo || ''} ${p.nome || ''} ${p.caminho || ''}`.toLowerCase().includes(filtro.busca)) return false;
     return true;
   };
 

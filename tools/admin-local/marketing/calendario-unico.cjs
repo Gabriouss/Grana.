@@ -31,7 +31,7 @@ function criarCalendarioUnico({ editorial = obterCalendario, catalogo = listarPe
     const base = editorial(raiz, mes);
     const pecas = catalogo(raiz).pecas;
     const pendenciasLegenda = pecas.filter(p => p.aprovada && !temLegenda(p)).map(p => ({
-      pecaId: p.id, versao: p.versao, titulo: p.titulo, codigo: 'legenda-obrigatoria', motivo: 'Falta a legenda para publicar',
+      pecaId: p.id, versao: p.versao, titulo: p.titulo, nomeExibicao: p.nomeExibicao, codigo: 'legenda-obrigatoria', motivo: 'Falta a legenda para publicar',
     }));
     const reais = { status: 'nao-consultado', itens: [], completo: false, proximoCursor: null,
       continuacao: filtros.cursorReal !== undefined, motivo: null, consultadoEm: null };

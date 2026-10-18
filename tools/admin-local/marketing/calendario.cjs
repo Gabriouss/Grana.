@@ -73,6 +73,7 @@ function resumoPeca(p, plano = null) {
     id: p.id,
     versao: p.versao,
     titulo: p.titulo,
+    nomeExibicao: p.nomeExibicao,
     tipo: p.tipo,
     estado: p.estado,
     estadoEfetivo: p.estadoEfetivo,

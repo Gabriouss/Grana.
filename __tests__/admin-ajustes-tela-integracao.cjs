@@ -84,7 +84,7 @@ function carregarModulo(arquivo, sandbox) {
   const semana = { numero: 39, inicio: '2026-09-21', fim: '2026-09-27' };
   const dir = 'docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/';
   const variante = (letra, nome, extra = {}) => ({ id: letra.repeat(16), versao: letra.repeat(40), estado: 'para-aprovacao', tipo: 'video', nome, caminho: dir + nome, semana, arquivos: [], ...extra });
-  const sem = variante('a', 'reel-audit-v2.mp4'), narrado = variante('b', 'reel-audit-v2-narrado.mp4');
+  const sem = variante('a', 'reel-audit-v2.mp4'), narrado = variante('b', 'reel-audit-v2-narrado.mp4', { nomeExibicao: 'Notificação vira lançamento · Reels' });
   const capa = variante('c', 'reel-audit-v2-capa.png', { tipo: 'imagem', capaDe: sem.id }), outra = variante('d', 'outro-audit.png', { tipo: 'imagem' });
   const acervo = [sem, narrado, capa, outra];
   const familias = [{ id: 'f1', chave: 'familia-reel-audit', principal: sem, alternativas: [narrado], capas: [capa] }, { id: 'f2', chave: 'familia-outro', principal: outra, alternativas: [], capas: [] }];
@@ -94,7 +94,7 @@ function carregarModulo(arquivo, sandbox) {
   assert.equal(walk(mesa.raiz).filter((x) => x.attrs?.class === 'demanda-familia').length, 2, 'quatro arquivos, duas famílias, duas linhas');
   assert.ok(walk(mesa.raiz).some((x) => x.textContent === '2 famílias com esses filtros'));
   const alternativas = walk(mesa.raiz).find((x) => x.attrs?.['aria-label'] === 'Alternativas da família');
-  assert.deepEqual(walk(alternativas).filter((x) => x.tag === 'button').map((x) => x.attrs.texto), ['reel-audit-v2-narrado.mp4'], 'irmã narrada em Alternativas; capa fora dela');
+  assert.deepEqual(walk(alternativas).filter((x) => x.tag === 'button').map((x) => x.attrs.texto), [narrado.nomeExibicao], 'irmã narrada em Alternativas com nome legível; capa fora dela');
   // Recusar: motivo obrigatório, sucessora só da mesma família, confirmação explícita e POST com a versão exata.
   const recusa = await montarAprovacao(null, { motivo: '  Motivo AUDIT  ', sucessora: narrado.id }, acervo, familias);
   const botaoRecusar = walk(recusa.raiz).find((x) => x.attrs?.texto === 'Recusar peça');

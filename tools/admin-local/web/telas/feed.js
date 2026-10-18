@@ -10,6 +10,7 @@
 // tardia para a mais antiga. Nenhum número inventado: os contadores contam as peças.
 
 import { AVATAR, EXT_VIDEO, iconeSvg, midiasDaPeca, montarMidia, topoDaPrevia, ligarDialogo } from './_previa-publicacao.js';
+import { tituloPeca } from './_pecas.js';
 
 const CANAIS = { 'instagram-feed': 'Feed', stories: 'Stories', reels: 'Reels', anuncio: 'Anúncio' };
 
@@ -64,7 +65,8 @@ function normalizar(lista, ctx) {
     return {
       bruto: p,
       id: p.id,
-      titulo: p.titulo || nomeDoArquivo(p.caminho || todos[0]) || 'Peça sem título',
+      titulo: tituloPeca(p),
+      nomeExibicao: tituloPeca(p),
       legenda: p.legenda || '',
       midias,
       // capa pareada pelo catálogo (<video>-capa.png); a rota do feed já tira a capa da grade como peça solta

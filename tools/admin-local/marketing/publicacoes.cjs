@@ -82,7 +82,7 @@ function criarPublicacoes({ remoto, catalogo = listarPecas, obterPeca = obterPec
       return { pecas: pecas.map(p => {
         const m = motivo(raiz, p);
         const imagem = p.capa?.url || p.arquivos?.find(a => a.tipo === 'imagem')?.url;
-        return { id: p.id, titulo: p.titulo, versao: p.versao, tipo: p.tipo, aprovada: !m,
+        return { id: p.id, titulo: p.nomeExibicao || p.titulo, nomeExibicao: p.nomeExibicao, versao: p.versao, tipo: p.tipo, aprovada: !m,
           miniaturaUrl: !m && imagem ? `/api/marketing/publicacoes/miniatura?pecaId=${p.id}` : null,
           bloqueios: m ? [{ codigo: m, mensagem: MENSAGEM_SEM_ACEITE }] : [] };
       }), total: pecas.length };
