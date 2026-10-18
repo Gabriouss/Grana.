@@ -19,15 +19,15 @@ try { proporcaoSalva = localStorage.getItem('grana-admin-feed-proporcao') || '4/
 
 export async function montar(raiz, ctx) {
   const h = ctx.h;
-  ctx.cabecalho(raiz, 'Feed', 'Como o perfil fica com as peças que você aprovou. Aprovar não publica nada; a publicação continua sendo sua, no aplicativo do Instagram.');
+  ctx.cabecalho(raiz, 'Feed', 'O que está publicado de verdade no perfil do Instagram, lido da Meta (só leitura). Abaixo, as peças aprovadas que ainda não saíram. Aprovar não publica nada.');
   const area = h('div', { class: 'feed' });
   raiz.appendChild(area);
 
   const carregar = async () => {
-    ctx.estado.carregando(area, 'Lendo as peças aprovadas…');
-    let resposta;
+    ctx.estado.carregando(area, 'Lendo o perfil no Instagram…');
+    let resposta, real;
     try {
-      resposta = await ctx.api('/api/marketing/feed');
+      [resposta, real] = await Promise.all([ctx.api('/api/marketing/feed'), ctx.api('/api/marketing/feed-real')]);
     } catch (err) {
       if (ctx.obsoleta && ctx.obsoleta()) return;
       ctx.estado.erro(area, err, carregar);
@@ -36,8 +36,18 @@ export async function montar(raiz, ctx) {
     if (ctx.obsoleta && ctx.obsoleta()) return;
     const dados = resposta && resposta.dados;
     if (dados && dados.status === 'ausente') { ctx.estado.ausente(area, 'marketing', dados.motivo); return; }
-    const pecas = normalizar(Array.isArray(dados) ? dados : (dados && (dados.pecas || dados.itens)) || [], ctx);
-    desenhar(area, pecas, ctx, (dados && !Array.isArray(dados) && dados.perfil) || {});
+    const rd = (real && real.dados) || {};
+    const publicadas = new Set(Array.isArray(rd.vinculadas) ? rd.vinculadas : []);
+    const todas = normalizar(Array.isArray(dados) ? dados : (dados && (dados.pecas || dados.itens)) || [], ctx);
+    const pecas = todas.filter((p) => !publicadas.has(p.id));
+    while (area.firstChild) area.removeChild(area.firstChild);
+    area.appendChild(blocoReal(ctx, rd, carregar));
+    const alvo = h('div', { class: 'feed' });
+    area.appendChild(h('section', { class: 'feed-proximas', 'aria-label': 'Próximas, ainda não publicadas' },
+      h('h3', { texto: 'Próximas, ainda não publicadas' }),
+      h('p', { class: 'fraco', texto: 'Peças aprovadas no painel que não aparecem no perfil acima. Não estão no Instagram.' }),
+      alvo));
+    desenhar(alvo, pecas, ctx, (dados && !Array.isArray(dados) && dados.perfil) || {});
   };
 
   let dialogo = null;
@@ -139,7 +149,7 @@ function desenhar(area, pecas, ctx, perfilDados) {
           : h('span', { class: 'fraco', texto: perfilDados.bioPendente || 'Bio ainda não definida em nenhum material de marketing.' }),
         perfilDados.observacao ? h('span', { class: 'fraco', texto: perfilDados.observacao }) : null)));
 
-  area.appendChild(perfil);
+  void perfil; // o perfil real vem de blocoReal; aqui só a grade das aprovadas
 
   // abas: publicações e reels, como no perfil
   let aba = 'publicacoes';
@@ -325,4 +335,61 @@ function dataCurta(iso) {
 function resumo(t, n) {
   const s = String(t).replace(/\s+/g, ' ').trim();
   return s.length > n ? `${s.slice(0, n - 1)}…` : s;
+}
+
+// ---------------------------------------------------------------------------
+// Perfil real (Graph, só leitura)
+
+const TIPOS_REAL = { reel: 'Reel', carrossel: 'Carrossel', video: 'Vídeo', imagem: 'Feed' };
+const MOTIVOS_REAL = {
+  'nao-configurado': 'A leitura do Instagram não está configurada neste computador (variáveis META_* do .env).',
+  'sem-permissao': 'A Meta recusou a credencial de leitura. Gere um token novo com permissão de conteúdo do Instagram.',
+  'resposta-invalida': 'A Meta respondeu de um jeito que o painel não entendeu.',
+};
+
+function blocoReal(ctx, rd, recarregar) {
+  const h = ctx.h;
+  const bloco = h('section', { class: 'feed-real', 'aria-label': 'Perfil real do Instagram' });
+  if (rd.status !== 'disponivel') {
+    const motivo = MOTIVOS_REAL[rd.motivo] || 'Não foi possível ler o perfil na Meta agora.';
+    bloco.appendChild(h('div', { class: 'estado estado-erro', role: 'alert' },
+      h('p', { class: 'estado-texto', texto: motivo }),
+      h('button', { class: 'botao', type: 'button', texto: 'Tentar de novo', onclick: recarregar })));
+    return bloco;
+  }
+  const p = rd.perfil || {};
+  const n = (v) => (v === null || v === undefined ? '—' : new Intl.NumberFormat('pt-BR').format(v));
+  bloco.appendChild(h('header', { class: 'feed-perfil' },
+    h('div', { class: 'feed-avatar' }, h('img', { src: AVATAR, alt: 'Ícone circular do Grana.', width: 150, height: 150 })),
+    h('div', { class: 'feed-identidade' },
+      h('div', { class: 'feed-nome-linha' },
+        h('h2', { class: 'feed-nome', texto: p.usuario ? '@' + p.usuario : 'Instagram' }),
+        h('span', { class: 'selo selo-neutro', texto: 'Lido da Meta' })),
+      h('ul', { class: 'feed-contadores', 'aria-label': 'Contadores do perfil' },
+        h('li', null, h('b', { texto: n(p.posts) }), 'publicações'),
+        h('li', null, h('b', { texto: n(p.seguidores) }), 'seguidores'),
+        h('li', null, h('b', { texto: n(p.seguindo) }), 'seguindo')))));
+  const posts = Array.isArray(rd.posts) ? rd.posts : [];
+  if (!rd.completo) bloco.appendChild(h('p', { class: 'fraco', texto: `Mostrando as ${posts.length} publicações mais recentes.` }));
+  if (!posts.length) {
+    bloco.appendChild(h('div', { class: 'estado estado-vazio', role: 'status' }, h('p', { class: 'estado-texto', texto: 'A Meta não devolveu nenhuma publicação para este perfil.' })));
+    return bloco;
+  }
+  const grade = h('ul', { class: 'feed-grade', dados: { proporcao: '45' }, 'aria-label': 'Publicações do perfil' });
+  for (const post of posts) {
+    const tipo = TIPOS_REAL[post.formato] || 'Feed';
+    const data = post.data ? dataCurta(post.data) : '';
+    const legenda = resumo(post.legenda || '', 140);
+    const midia = post.miniatura ? h('img', { src: post.miniatura, alt: '', loading: 'lazy', decoding: 'async' })
+      : h('span', { class: 'feed-celula-texto', texto: legenda || tipo });
+    const a = h('a', { class: 'feed-celula', href: post.link || '#', target: '_blank', rel: 'noopener noreferrer',
+      'aria-label': `${tipo} de ${data}. ${legenda || 'Sem legenda'}.${post.link ? ' Abrir no Instagram.' : ''}` },
+      midia,
+      h('span', { class: 'feed-celula-selo', 'aria-hidden': 'true', texto: `${tipo} · ${data}` }),
+      h('span', { class: 'feed-celula-veu', 'aria-hidden': 'true', texto: legenda || 'Abrir no Instagram' }));
+    if (!post.link) a.removeAttribute('href');
+    grade.appendChild(h('li', null, a));
+  }
+  bloco.appendChild(grade);
+  return bloco;
 }

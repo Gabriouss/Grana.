@@ -155,6 +155,7 @@ const leituras = {
   '/api/cakto/resumo': () => ({ status: 'ausente', motivo: 'Simulado: a Cakto não oferece leitura configurada neste computador.' }),
   '/api/git/estado': () => ({ branch: 'main', commit: { hash: '0000000', assunto: 'commit simulado', data: diasAtras(0, 9) }, aFrente: 0, atras: 0, alterados: 0 }),
   '/api/marketing/pecas': () => ({ pecas: pecas.map((x) => ({ ...x })) }),
+  '/api/marketing/feed-real': () => ({ status: 'nao-configurado', motivo: 'nao-configurado', perfil: null, posts: [], vinculadas: [], completo: false }),
   '/api/marketing/feed': () => ({
     pecas: pecas.filter((x) => x.estado === 'aprovados' || x.aceite)
       .sort((a, b) => String(a.publicacao?.data || '9999').localeCompare(String(b.publicacao?.data || '9999'))
