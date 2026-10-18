@@ -4,7 +4,7 @@ import { theme } from '@/lib/theme';
 
 type Ponto = { x: number; y: number };
 type Retangulo = { left: number; top: number; right: number; bottom: number };
-const TAMANHO = 74;
+const TAMANHO = 104;
 const MARGEM = 12;
 const LIMIAR = 6;
 const CHAVE = 'grana.granabo.posicao.v1';
