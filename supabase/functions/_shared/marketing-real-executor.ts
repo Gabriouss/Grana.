@@ -40,7 +40,10 @@ export function criarExecutorReal(deps:Deps){
     catch{return 'inicio-indisponivel';}
     if(!inicio)return 'nao-devida';
     let resultados:ResultadoRenovacao[];
-    try{resultados=await criarRenovacao({rede:deps.rede??fetch,versao,env:deps.env,signal:comPrazo(controller.signal,prazo.renovacaoLeitura)})(inicio.contas);}
+    // Prazo efetivo da fase toda: rejeita no limite mesmo que uma leitura nao coopere
+    // com o abort, e o resultado que chegar depois nunca e registrado.
+    try{resultados=await consultaComPrazo(s=>criarRenovacao({rede:deps.rede??fetch,versao,env:deps.env,signal:s})(inicio.contas),
+     controller.signal,prazo.renovacaoLeitura);}
     catch{resultados=inicio.contas.map(c=>({contaId:c.contaId,resultado:'inconclusivo',motivo:'leitura-interrompida'}));}
     try{return (await rpcReal<{resultado:string}>(client,'renovacao_registrar',{p_worker:worker,p_renovacao:inicio.renovacaoId,
      p_lease:inicio.lease,p_resultado:{contas:resultados}},AbortSignal.timeout(prazo.renovacaoRegistro))).resultado;}

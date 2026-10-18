@@ -3,6 +3,7 @@
 // (`admin_marketing_real_renovacao_registrar`).
 // Leitura que nao chegou a uma resposta conclusiva vira "inconclusivo": nao
 // renova nem revoga (regra 9). So o erro 190 da Graph prova token ruim.
+import { consultaComPrazo } from './admin-agregados.ts';
 import { jsonLimitado } from './marketing-real-graph.ts';
 export type ContaRenovacao={contaId:string;rede:'facebook'|'instagram';remotoId:string;credencialRef:string};
 export type ResultadoRenovacao={contaId:string;
@@ -13,7 +14,7 @@ export const PERMISSOES={instagram:{permissao:'instagram_content_publish',format
 type Leitura={ok:true;d:Record<string,unknown>}|{ok:false;tipo:'token';sub:number|null}|{ok:false;tipo:'negado'|'nao-aplicavel'|'inconclusivo'};
 type Deps={rede:typeof fetch;versao:string;env:(n:string)=>string|undefined;signal:AbortSignal;prazoLeitura?:number};
 // 463 = token expirado; o resto do 190 (senha trocada, app removido, sessao encerrada) e revogacao.
-const EXPIRADO=new Set([463]);
+const EXPIRADO=new Set([463]),ID_NUM=/^[0-9]{1,40}$/;
 
 export function criarRenovacao(deps:Deps){
  if(!/^v\d+\.\d+$/.test(deps.versao))throw new Error('configuracao-invalida');
@@ -21,23 +22,37 @@ export function criarRenovacao(deps:Deps){
  async function ler(token:string,caminho:string,campos:Record<string,string>):Promise<Leitura>{
   if(!/^(?:me|me\/permissions|me\/accounts|[0-9]{1,40})$/.test(caminho))throw new Error('destino-invalido');
   const url=new URL(`https://graph.facebook.com/${deps.versao}/${caminho}`);url.search=new URLSearchParams(campos).toString();
-  try{
-   const r=await deps.rede(url,{method:'GET',redirect:'error',signal:AbortSignal.any([deps.signal,AbortSignal.timeout(prazo)]),
-    headers:{Authorization:'Bearer '+token}});
+  // O prazo cobre cabecalho E corpo e rejeita mesmo sem cooperacao do transporte:
+  // resposta que chega depois nao e usada (R2 do Harbor).
+  try{return await consultaComPrazo(async s=>{
+   const r=await deps.rede(url,{method:'GET',redirect:'error',signal:s,headers:{Authorization:'Bearer '+token}});
    const d=await jsonLimitado(r);
-   if(r.ok&&!d.error)return {ok:true,d};
+   if(r.ok&&!d.error)return {ok:true,d} as Leitura;
    if(r.status>=500)return {ok:false,tipo:'inconclusivo'};
    const e=d.error as {code?:unknown;error_subcode?:unknown}|undefined,code=typeof e?.code==='number'?e.code:-1;
    if(code===190)return {ok:false,tipo:'token',sub:typeof e?.error_subcode==='number'?e.error_subcode:null};
    if(code===100)return {ok:false,tipo:'nao-aplicavel'};
    if(code===10||(code>=200&&code<300))return {ok:false,tipo:'negado'};
    // Limite de chamadas, servico ou codigo desconhecido: nada provado, espera.
-   return {ok:false,tipo:'inconclusivo'};
-  }catch{return {ok:false,tipo:'inconclusivo'};}
+   return {ok:false,tipo:'inconclusivo'} as Leitura;
+  },deps.signal,prazo);}catch{return {ok:false,tipo:'inconclusivo'};}
  }
  const porToken=(l:Leitura&{ok:false;tipo:'token'}):ResultadoRenovacao['resultado']=>l.sub!==null&&EXPIRADO.has(l.sub)?'expirada':'revogada';
- const concedidas=(d:Record<string,unknown>)=>Array.isArray(d.data)?new Set((d.data as {permission?:unknown;status?:unknown}[])
-  .filter(p=>p.status==='granted'&&typeof p.permission==='string').map(p=>p.permission as string)):null;
+ // Schema conferido antes de decidir: um registro fora do formato torna a lista
+ // inteira ilegivel (null), e ilegivel e inconclusivo, nunca "ausente" (R1 do Harbor).
+ const concedidas=(d:Record<string,unknown>)=>{
+  if(!Array.isArray(d.data))return null;const s=new Set<string>();
+  for(const p of d.data as {permission?:unknown;status?:unknown}[]){
+   if(!p||typeof p!=='object'||typeof p.permission!=='string'||!/^[a-z_]{1,80}$/.test(p.permission)
+    ||typeof p.status!=='string'||!['granted','declined','expired'].includes(p.status))return null;
+   if(p.status==='granted')s.add(p.permission);
+  }
+  return s;};
+ const paginasLegiveis=(d:Record<string,unknown>)=>{
+  if(!Array.isArray(d.data))return null;
+  for(const x of d.data as {id?:unknown;tasks?:unknown}[])
+   if(!x||typeof x!=='object'||typeof x.id!=='string'||!ID_NUM.test(x.id)||!Array.isArray(x.tasks)||x.tasks.some(k=>typeof k!=='string'))return null;
+  return d.data as {id:string;tasks:string[]}[];};
 
  return async function renovar(contas:ContaRenovacao[]):Promise<ResultadoRenovacao[]>{
   const tokens=new Map<string,string>(),permissoes=new Map<string,Promise<Leitura>>(),paginas=new Map<string,Promise<Leitura>>();
@@ -54,9 +69,12 @@ export function criarRenovacao(deps:Deps){
    for(const ref of tokens.keys()){if(ref===c.credencialRef)continue;
     const [p,a]=await Promise.all([perms(ref),contasDoUsuario(ref)]);
     if(!p.ok||!a.ok){if(p.ok===false&&p.tipo==='inconclusivo'||a.ok===false&&a.tipo==='inconclusivo')algumInconclusivo=true;continue;}
-    const lista=concedidas(p.d),pagina=Array.isArray(a.d.data)?(a.d.data as {id?:unknown;tasks?:unknown}[]).find(x=>x.id===c.remotoId):undefined;
-    if(!lista||!pagina)continue;
-    return lista.has(permissao)&&Array.isArray(pagina.tasks)&&pagina.tasks.includes('CREATE_CONTENT');
+    const lista=concedidas(p.d),todas=paginasLegiveis(a.d);
+    if(!lista||!todas){algumInconclusivo=true;continue;}
+    const pagina=todas.find(x=>x.id===c.remotoId);
+    // Fora da primeira pagina de resultados nao prova que o usuario nao administra a pagina.
+    if(!pagina){if(a.d.paging&&typeof (a.d.paging as {next?:unknown}).next==='string')algumInconclusivo=true;continue;}
+    return lista.has(permissao)&&pagina.tasks.includes('CREATE_CONTENT');
    }
    return algumInconclusivo?'inconclusivo':null;
   }
@@ -64,7 +82,7 @@ export function criarRenovacao(deps:Deps){
   async function uma(c:ContaRenovacao):Promise<ResultadoRenovacao>{
    const base={contaId:c.contaId};
    const token=tokens.get(c.credencialRef);if(!token)return {...base,resultado:'indisponivel',motivo:'credencial-ausente'};
-   if(!/^[0-9]{1,40}$/.test(c.remotoId))return {...base,resultado:'indisponivel',motivo:'conta-invalida'};
+   if(!ID_NUM.test(c.remotoId))return {...base,resultado:'indisponivel',motivo:'conta-invalida'};
    // IG: o no da conta precisa abrir. FB: o token precisa SER o da pagina (publicar exige token de pagina).
    const no=await ler(token,c.rede==='facebook'?'me':c.remotoId,{fields:'id'});
    if(!no.ok){
@@ -72,6 +90,7 @@ export function criarRenovacao(deps:Deps){
     if(no.tipo==='inconclusivo')return {...base,resultado:'inconclusivo',motivo:'graph-indisponivel'};
     return {...base,resultado:'indisponivel',motivo:'conta-inacessivel'};
    }
+   if(typeof no.d.id!=='string'||!ID_NUM.test(no.d.id))return {...base,resultado:'inconclusivo',motivo:'resposta-ilegivel'};
    if(no.d.id!==c.remotoId)return {...base,resultado:'indisponivel',motivo:c.rede==='facebook'?'token-nao-e-da-pagina':'conta-inacessivel'};
    const {permissao,formatos}=PERMISSOES[c.rede];
    const p=await perms(c.credencialRef);let tem:boolean;

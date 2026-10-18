@@ -61,12 +61,13 @@ async function comoDono(db, sql, params = []) {
   await db.exec('reset role');
   try { return (await db.query(sql, params)).rows; } finally { await db.exec('set role service_role'); }
 }
-function clienteDb(db) {
+function clienteDb(db, opcoes = {}) {
   return {
     rpc: (nome, args) => ({
       abortSignal: async (s) => {
         if (s?.aborted) return { data: null, error: { message: 'abortado' } };
         const n = nome.replace('admin_marketing_real_', ''), valores = ARGS[n].map((k) => args[k]);
+        if (opcoes[n]) return opcoes[n]();
         try {
           const r = await db.query(`select public.${nome}(${valores.map((_, i) => '$' + (i + 1)).join(',')}) as r`, valores);
           return { data: r.rows[0].r, error: null };
@@ -113,9 +114,9 @@ async function cenario(db, { conexaoFb = 'verificada' } = {}) {
   return { ig, fb };
 }
 const devida = (db) => comoDono(db, `update public.admin_marketing_controles set capacidade_validada_em=now()-interval '21 hours',renovacao_tentada_em=null`);
-async function rodar(db, graph, prazos) {
+async function rodar(db, graph, prazos, opcoes) {
   const logs = [];
-  const executar = executorMod.criarExecutorReal({ env: (n) => ENV[n], cliente: () => clienteDb(db), rede: graph.rede, log: (l) => logs.push(l), prazos });
+  const executar = executorMod.criarExecutorReal({ env: (n) => ENV[n], cliente: () => clienteDb(db, opcoes), rede: graph.rede, log: (l) => logs.push(l), prazos });
   const r = await executar(new Request('https://x/functions/v1/marketing-real-executor', { method: 'POST',
     headers: { 'x-marketing-real-secret': SECRET, 'Content-Type': 'application/json' }, body: '{}' }));
   return { status: r.status, log: JSON.parse(logs.at(-1)), logs };
@@ -248,6 +249,76 @@ async function main() {
     ok((await controles(db)).renovacao_lease === null, 'lease liberada depois do prazo');
   } finally { await db.close(); }
 
+  // 8b. R1 do Harbor: resposta com JSON valido mas schema ilegivel vira inconclusivo e nada muda.
+  const retrato = async (db) => ({ contas: (await db.query(`select rede,conexao,valida_ate,capacidades from public.admin_marketing_real_contas order by rede`)).rows,
+    controles: (await db.query(`select capacidade_validada_em,margem_validada_ate from public.admin_marketing_controles`)).rows[0] });
+  const ilegiveis = [
+    ['identidade sem id', { [`user:${IG}`]: () => json({}), 'page:me': () => json({}) }, ['instagram', 'facebook']],
+    ['id que nao e numero', { [`user:${IG}`]: () => json({ id: { id: IG } }), 'page:me': () => json({ id: Number(PAGINA) }) }, ['instagram', 'facebook']],
+    ['permissoes data:[{}]', { 'user:me/permissions': () => json({ data: [{}] }) }, ['instagram', 'facebook']],
+    ['permissoes sem data', { 'user:me/permissions': () => json({ permissions: 'tudo' }) }, ['instagram', 'facebook']],
+    ['status desconhecido', { 'user:me/permissions': () => json({ data: [{ permission: 'instagram_content_publish', status: 'talvez' }, { permission: 'pages_manage_posts', status: 'granted' }] }) }, ['instagram', 'facebook']],
+    ['tasks como texto', { 'user:me/accounts': () => json({ data: [{ id: PAGINA, tasks: 'CREATE_CONTENT' }] }) }, ['facebook']],
+    ['pagina sem tasks', { 'user:me/accounts': () => json({ data: [{ id: PAGINA }] }) }, ['facebook']],
+    ['pagina fora da primeira pagina de resultados', { 'user:me/accounts': () => json({ data: [], paging: { next: 'https://graph.facebook.com/x' } }) }, ['facebook']],
+  ];
+  for (const [nome, cen, inconclusivas] of ilegiveis) {
+    db = await novoBanco();
+    try {
+      await cenario(db);const antes = await retrato(db);
+      const r = await rodar(db, graphDublada(cen));const k = await contas(db);
+      eq(r.log.renovacao, 'inconclusiva', `R1 ${nome}: ciclo inconclusivo`);
+      ok(inconclusivas.every((rede) => k[rede].renovacao.resultado === 'inconclusivo'), `R1 ${nome}: recibo inconclusivo nas contas afetadas`);
+      const depois = await retrato(db);
+      eq(depois.controles, antes.controles, `R1 ${nome}: global nao renova`);
+      eq(depois.contas.filter((x) => inconclusivas.includes(x.rede)), antes.contas.filter((x) => inconclusivas.includes(x.rede)),
+        `R1 ${nome}: conexao, validade e capacidades intactas`);
+    } finally { await db.close(); }
+  }
+
+  // 8c. R2 do Harbor: corpo que chega tarde ou nunca, sem cooperar com o abort, nao renova depois do prazo.
+  const corpoTarde = (corpo, ms) => () => new Response(new ReadableStream({ start(c) {
+    if (ms !== null) setTimeout(() => { try { c.enqueue(new TextEncoder().encode(JSON.stringify(corpo))); c.close(); } catch {} }, ms);
+  } }), { status: 200 });
+  const PR = { total: 100, renovacaoInicio: 20, renovacaoLeitura: 40, renovacaoRegistro: 40 };
+  for (const [nome, ms] of [['corpo tardio', 250], ['corpo que nunca termina', null]]) {
+    db = await novoBanco();
+    try {
+      await cenario(db);const antes = await retrato(db), t0 = Date.now();
+      const r = await rodar(db, graphDublada({ [`user:${IG}`]: corpoTarde({ id: IG }, ms), 'page:me': corpoTarde({ id: PAGINA }, ms) }), PR);
+      const dur = Date.now() - t0;
+      ok(dur < 230, `R2 ${nome}: executor termina dentro do orcamento (${dur} ms)`);
+      eq(r.log.renovacao, 'inconclusiva', `R2 ${nome}: ciclo inconclusivo`);
+      await new Promise((ok_) => setTimeout(ok_, 300));
+      eq(await retrato(db), antes, `R2 ${nome}: resposta tardia nao renova nada, nem depois de chegar`);
+      eq((await recibos(db)).map((x) => x.resultado), ['inconclusiva'], `R2 ${nome}: recibo inconclusivo dentro da reserva de registro`);
+    } finally { await db.close(); }
+  }
+  // O modulo sozinho tambem segura o prazo por leitura (a fase do executor e a segunda camada).
+  {
+    const renovMod = carregar('supabase/functions/_shared/marketing-real-renovacao.ts'), t0 = Date.now();
+    const g = graphDublada({ [`user:${IG}`]: corpoTarde({ id: IG }, 250), 'page:me': corpoTarde({ id: PAGINA }, null) });
+    const res = await renovMod.criarRenovacao({ rede: g.rede, versao: 'v25.0', env: (n) => ENV[n], signal: new AbortController().signal, prazoLeitura: 40 })([
+      { contaId: 'a', rede: 'instagram', remotoId: IG, credencialRef: 'MARKETING_IG_TOKEN' }, { contaId: 'b', rede: 'facebook', remotoId: PAGINA, credencialRef: 'MARKETING_FB_PAGE_TOKEN' }]);
+    ok(Date.now() - t0 < 200, 'R2 modulo: leitura com corpo tardio respeita o prazo por GET');
+    eq(res.map((x) => x.resultado), ['inconclusivo', 'inconclusivo'], 'R2 modulo: corpo tardio ou infinito e inconclusivo');
+  }
+  // Registro que falha ou pendura: nada renova, o log diz, e a lease vencida vira recibo.
+  for (const [nome, falha] of [['registro recusado', async () => ({ data: null, error: { message: 'fonte-indisponivel' } })],
+    ['registro pendurado', () => new Promise(() => {})]]) {
+    db = await novoBanco();
+    try {
+      await cenario(db);const antes = await retrato(db), t0 = Date.now();
+      const r = await rodar(db, graphDublada(), PR, { renovacao_registrar: falha });
+      ok(Date.now() - t0 < 230, `R2 ${nome}: termina dentro do orcamento`);
+      eq([r.log.renovacao, await retrato(db)], ['registro-pendente', antes], `R2 ${nome}: nada renova sem registro`);
+      await comoDono(db, `update public.admin_marketing_controles set renovacao_lease_expira_em=now()-interval '1 second',renovacao_tentada_em=now()-interval '2 hours'`);
+      await comoDono(db, `update public.admin_marketing_real_renovacoes set iniciado_em=now()-interval '2 hours'`);
+      await rodar(db, graphDublada({ rede: true }));
+      eq((await recibos(db))[0].detalhe, { motivo: 'sem-registro' }, `R2 ${nome}: ciclo sem registro vira recibo inconclusivo`);
+    } finally { await db.close(); }
+  }
+
   // 9. Banco: lease, recibo sem registro, validacao e grants.
   db = await novoBanco();
   try {
@@ -280,4 +351,7 @@ async function main() {
 
   console.log(`marketing-real-renovacao: ${checks} verificacoes; executor e renovacao reais + SQL real (PGlite); Graph dublada, zero rede`);
 }
-main().catch((e) => { console.error(e); process.exitCode = 1; });
+// Promise que nunca resolve esvazia o event loop e o Node sai com 0 sem terminar: isso e falha.
+let concluiu = false;
+process.on('exit', () => { if (!concluiu && !process.exitCode) { console.error('marketing-real-renovacao: terminou sem concluir (promessa pendurada)'); process.exitCode = 1; } });
+main().then(() => { concluiu = true; }, (e) => { console.error(e); process.exitCode = 1; });
