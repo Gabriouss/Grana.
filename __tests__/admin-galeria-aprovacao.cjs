@@ -169,7 +169,7 @@ assert.equal(_pecas.juntarCapasAoReel([{ chave: 'c', principal: capa, pecas: [ca
     const r = node('main');
     await load('aprovacao.js').montar(r, c);
     assert.equal(walk(r).filter((n) => n.attrs.class === 'galeria-card-aviso' && n.attrs.texto === 'Outra versão na fila (2)').length, 2);
-    assert.ok(text(r).includes('Há outra versão de C14 na fila desta semana'));
+    assert.ok(text(r).includes('Há outra versão desta peça na fila desta semana'));
     assert.ok(walk(r).some((n) => n.tag === 'button' && n.attrs.texto === `Ver ${_pecas.tituloPeca(v7)}`), 'atalho para a outra versão com nome de apresentação');
   }
   console.log('admin-galeria-aprovacao: formatos, capa no Reel, órfã visível, carrossel uma peça, filtros e contador igual à galeria, ajuste na janela com categoria, clique duplo e versão obsoleta, COPYS-FINAIS fora da fila e do contador, aviso de versão duplicada: OK');

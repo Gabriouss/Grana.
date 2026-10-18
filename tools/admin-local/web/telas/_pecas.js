@@ -116,6 +116,10 @@ export function formatoDaPeca(p) {
   if (canal === 'reels') return 'reels';
   if (canal === 'stories') return 'stories';
   if (canal === 'instagram-feed') return 'feed';
+  // Sem depender do nome (nome = título da arte): 3:4, 4:5 e 1:1 são feed (Instagram e Facebook).
+  // 9:16 NÃO prova stories (também é capa de Reel): sem planejamento/destino, fica 'conferir'.
+  const prop = p.largura > 0 && p.altura > 0 ? p.largura / p.altura : 0;
+  if (prop && [0.75, 0.8, 1].some((alvo) => Math.abs(prop - alvo) <= 0.02)) return 'feed';
   const caminho = String(p.caminho || '').toLowerCase();
   if (/(^|[\/_-])stor(y|ies)([\/_.-]|$)/.test(caminho)) return 'stories';
   if (/(^|[\/_-])(feed|card)([\/_.-]|$)/.test(caminho)) return 'feed';

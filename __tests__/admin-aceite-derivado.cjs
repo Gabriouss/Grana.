@@ -17,7 +17,13 @@ assert.deepEqual(derivados.map((a) => a.id).sort(), DERIVACOES_AUTORIZADAS.map((
 const copia = (o) => structuredClone(o);
 
 for (const a of derivados) {
-  const p = pecas.find((x) => x.id === a.id);
+  const real = pecas.find((x) => x.id === a.id);
+  // 18/10: a legenda do Reel passou a entrar no catálogo (ligada pelo nome do arquivo) e a versão dela muda, então o aceite
+  // derivado do Reel real lapsa de propósito até o autor aprovar de novo. A cadeia continua travada no estado em que a
+  // derivação foi autorizada (sem legenda); isso prova que o renome só trocou id e caminho.
+  const p = real && real.composicao ? { ...real, legenda: null, versao: cat.versaoComposta(real.composicao.video, real.composicao.capa, null),
+    composicao: { ...real.composicao, legenda: 'sem-legenda' } } : real;
+  if (real && real.legenda) assert.equal(aceiteValido(a, real, Date.now(), aceites), false, `${a.id}: com a legenda ligada o aceite antigo lapsa e pede nova aprovação`);
   assert.ok(p && p.composicao, `${a.id}: Reel composto no acervo`);
   assert.equal(aceiteValido(a, p, Date.now(), aceites), true, `${a.id}: derivação autorizada com cadeia íntegra vale`);
   assert.equal(aceiteValido(a, p), false, `${a.id}: sem a lista de aceites não há como conferir a capa, então não vale`);
@@ -48,18 +54,20 @@ if (outroReel) {
   assert.equal(aceiteValido(forjado, outroReel, Date.now(), aceites), false, 'derivação não listada no código é recusada');
 }
 
-// Consumidores concordam: catálogo (aprovada + aceite), calendário (recibo) e cronograma usam o mesmo predicado.
+// Consumidores concordam. Com a legenda ligada ao Reel (18/10) o aceite derivado lapsa em todos eles
+// ao mesmo tempo: o catálogo não aprova mais e o calendário não mostra recibo derivado.
 const enr = cat.enriquecer(raiz, pecas);
-for (const a of derivados) {
-  const p = enr.find((x) => x.id === a.id);
-  assert.equal(p.aprovada, true); assert.equal(p.aceite?.evidencia, EVIDENCIA_DERIVADA, 'catálogo usa o mesmo validador');
-}
 const cal = require('../tools/admin-local/marketing/calendario.cjs').obterCalendario(raiz, '2026-10');
 for (const a of derivados) {
-  const item = [...cal.itens, ...cal.aprovadosSemData].find((r) => r.peca?.id === a.id || r.id === a.id);
-  assert.ok(item, `${a.id} aparece no calendário`);
-  const recibo = item.peca ? item.peca.reciboAceite : item.reciboAceite;
-  assert.equal(recibo?.evidencia, EVIDENCIA_DERIVADA, `${a.id}: calendário com recibo válido`);
+  const p = enr.find((x) => x.id === a.id);
+  if (p.legenda) {
+    assert.equal(p.aprovada, false, `${a.id}: legenda ligada, Reel volta para o aceite do autor`);
+    assert.equal(p.aceite, null);
+    const item = [...cal.itens, ...cal.aprovadosSemData].find((r) => r.peca?.id === a.id || r.id === a.id);
+    assert.ok(!item || (item.peca ? item.peca.reciboAceite : item.reciboAceite)?.evidencia !== EVIDENCIA_DERIVADA, `${a.id}: calendário sem recibo derivado`);
+  } else {
+    assert.equal(p.aprovada, true); assert.equal(p.aceite?.evidencia, EVIDENCIA_DERIVADA, 'catálogo usa o mesmo validador');
+  }
 }
 // Achado do Flare (14/10): checkout CRLF mudava a legenda e, por ela, a versão da peça.
 {

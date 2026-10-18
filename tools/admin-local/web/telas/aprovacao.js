@@ -356,7 +356,7 @@ export async function montar(raiz, ctx) {
         a.aceiteSuperado ? h('span', { class: 'campo-ajuda', texto: ` Tinha aceite de ${ctx.formatar.dataHora(a.aceiteSuperado.aprovadoEm)}, que não vale mais.` } ) : null)))));
     const irmas = familiaAtual ? outrasVersoes(familiaAtual) : [];
     if (irmas.length) {
-      detalhe.appendChild(ctx.alerta('atencao', `Há ${irmas.length === 1 ? 'outra versão' : `${irmas.length} outras versões`} de ${p.codigo} na fila desta semana, como peça separada. Confira qual é a vigente antes de aprovar: aprovar esta não recusa a outra.`));
+      detalhe.appendChild(ctx.alerta('atencao', `Há ${irmas.length === 1 ? 'outra versão' : `${irmas.length} outras versões`} desta peça na fila desta semana, como peça separada. Confira qual é a vigente antes de aprovar: aprovar esta não recusa a outra.`));
       detalhe.appendChild(h('div', { class: 'bloco-acao' }, irmas.map((o) => h('button', {
         class: 'botao botao-fantasma', type: 'button', texto: `Ver ${tituloPeca(o.principal)}`, onclick: () => escolher(o.principal) }))));
     }

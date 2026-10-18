@@ -141,6 +141,38 @@ function sha1Arquivo(abs) {
   return sha1;
 }
 
+// Medidas da imagem lidas do cabeçalho (PNG e JPEG), sem dependência. O formato de uma estática
+// vem da proporção, não do nome do arquivo (nome = título da arte, 18/10).
+const cacheDimensoes = new Map();
+function dimensoesImagem(abs) {
+  let st;
+  try { st = fs.statSync(abs); } catch { return null; }
+  const chave = `${abs}|${st.size}|${st.mtimeMs}`;
+  if (cacheDimensoes.has(chave)) return cacheDimensoes.get(chave);
+  let dim = null;
+  try {
+    const fd = fs.openSync(abs, 'r');
+    try {
+      const buf = Buffer.alloc(Math.min(st.size, 262144));
+      fs.readSync(fd, buf, 0, buf.length, 0);
+      if (buf.length > 24 && buf.readUInt32BE(0) === 0x89504e47 && buf.toString('latin1', 12, 16) === 'IHDR') {
+        dim = { largura: buf.readUInt32BE(16), altura: buf.readUInt32BE(20) };
+      } else if (buf.length > 4 && buf[0] === 0xff && buf[1] === 0xd8) {
+        for (let i = 2; i + 9 < buf.length;) {
+          if (buf[i] !== 0xff) { i++; continue; }
+          const marca = buf[i + 1];
+          if (marca === 0xff) { i++; continue; }
+          if (marca >= 0xc0 && marca <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marca)) { dim = { altura: buf.readUInt16BE(i + 5), largura: buf.readUInt16BE(i + 7) }; break; }
+          i += 2 + buf.readUInt16BE(i + 2);
+        }
+      }
+    } finally { fs.closeSync(fd); }
+  } catch { dim = null; }
+  if (dim && !(dim.largura > 0 && dim.altura > 0 && dim.largura < 20000 && dim.altura < 20000)) dim = null;
+  cacheDimensoes.set(chave, dim);
+  return dim;
+}
+
 function idDe(relativo) {
   return crypto.createHash('sha1').update(relativo).digest('hex').slice(0, 16);
 }
@@ -298,8 +330,8 @@ const EVIDENCIAS_AUTOR = Object.freeze([EVIDENCIA_PAINEL]);
 // 14/10/2026 para os Reels que já estavam em aprovados. Reel novo exige aceite composto explícito.
 // Editar aprovacoes.json não cria derivação nova; a cadeia ainda é conferida byte a byte.
 const DERIVACOES_AUTORIZADAS = Object.freeze([
-  Object.freeze({ id: 'a73f19a82efb0f87', versao: 'c3f392ddc38abb04b0dca30d95490338db99e80a' }), // motion base
-  Object.freeze({ id: 'a4d997e49dfa98fa', versao: 'd2291cb48d01c6943cb7d758c70a661c0119149e' }), // notificacao-1
+  Object.freeze({ id: 'a8163352aef99dbe', versao: 'c3f392ddc38abb04b0dca30d95490338db99e80a' }), // motion base
+  Object.freeze({ id: '12c0619f5a59fa78', versao: 'd2291cb48d01c6943cb7d758c70a661c0119149e' }), // notificacao-1
 ]);
 const RE_ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 const dataPassada = (iso, agora) => typeof iso === 'string' && RE_ISO.test(iso) && dataValida(iso.slice(0, 10))
@@ -401,6 +433,18 @@ function agrupar(arquivosDoDiretorio) {
 // ---------- legendas a partir dos documentos de copy existentes ----------
 
 // Lê COPYS-FINAIS.md da semana: "## C01 · Título" e "### Card estático, C01".
+// Chave de comparação entre o título da seção e o nome do arquivo: sem acento, caixa nem pontuação.
+function nomeNormalizado(t) {
+  return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+// Nome do arquivo sem pasta, sem extensão, sem índice de carrossel e sem sufixo -capa.
+function nomeDoArquivo(nome) {
+  return String(nome || '').replace(/^.*[\/]/, '').replace(/\.[A-Za-z0-9]{1,5}$/, '').replace(/[-_]\d{1,2}$/, '').replace(/-capa$/i, '').trim();
+}
+function copyDaPeca(copys, codigo, nome) {
+  return (codigo && copys[codigo]) || copys[`nome:${nomeNormalizado(nomeDoArquivo(nome))}`] || null;
+}
+
 function lerCopys(raiz, semana, ler = fs.readFileSync) {
   const mapa = {};
   for (const estado of ESTADOS) {
@@ -417,13 +461,15 @@ function lerCopys(raiz, semana, ler = fs.readFileSync) {
       const cab = /^(#{2,3}) (.+)$/m.exec(sec);
       if (!cab) continue;
       const codigo = /\b([CRES]\d{1,2})\b/.exec(cab[2]);
-      if (!codigo) continue;
+      // Sem código (autor, 18/10): a seção é achada pelo nome do arquivo, que é o título da arte.
+      const tituloSecao = nomeNormalizado(cab[2].replace(/\*\*/g, '').replace(/\b[CRES]\d{1,2}\b/g, ''));
+      if (!codigo && !tituloSecao) continue;
       const corpo = sec.slice(cab[0].length).trim();
       const legenda = /\*\*Legenda:\*\*\s*([\s\S]*?)(?:\n\s*\n|$)/.exec(corpo);
       const tituloPublicacao = /\*\*Título:\*\*[^\S\n]*([^\n]+)/i.exec(corpo);
       const limpo = corpo.replace(/\*\*/g, '').replace(/\n{3,}/g, '\n\n').trim();
       const item = {
-        codigo: codigo[1],
+        codigo: codigo ? codigo[1] : null,
         titulo: cab[2].replace(/\*\*/g, '').trim(),
         tituloPublicacao: tituloPublicacao?.[1]?.trim() || null,
         primeiraLinhaLegenda: (legenda ? legenda[1] : limpo).trim().split('\n')[0],
@@ -431,7 +477,8 @@ function lerCopys(raiz, semana, ler = fs.readFileSync) {
         fonte: `${semana.relativo}/${estado}/pecas/COPYS-FINAIS.md`,
       };
       // O lote piloto (###) vale mais que a lista geral (##) para o mesmo código.
-      if (!mapa[item.codigo] || cab[1] === '###') mapa[item.codigo] = item;
+      if (item.codigo && (!mapa[item.codigo] || cab[1] === '###')) mapa[item.codigo] = item;
+      if (tituloSecao && !mapa[`nome:${tituloSecao}`]) mapa[`nome:${tituloSecao}`] = item;
     }
   }
   return mapa;
@@ -476,6 +523,7 @@ const REELS_EDITORIAIS = [
     familia: 'motion-desistiu',
     codigo: null,
     base: 'grana-motion-desistiu-foto-da-nota',
+    arquivoBase: 'Já desistiu de controlar seus gastos', // nome atual do arquivo (nome = título da arte, 18/10)
     pastas: {
       base: `${SEMANA_39_EDITORIAL}/aprovados/pecas/reels`,
       narrado: `${SEMANA_39_EDITORIAL}/para-aprovacao/pecas/reels`,
@@ -520,8 +568,9 @@ function editorialDaPeca(nome, relativoRepo) {
   }
   for (const reel of REELS_EDITORIAIS) {
     for (const variante of ['base', 'narrado']) {
-      const stem = reel.base + (variante === 'narrado' ? '-narrado' : '');
-      if (nome !== `${stem}.mp4` && nome !== `${stem}-capa.png`) continue;
+      const stems = variante === 'narrado' ? [`${reel.base}-narrado`] : [reel.base, reel.arquivoBase].filter(Boolean);
+      const stem = stems.find((x) => nome === `${x}.mp4` || nome === `${x}-capa.png`);
+      if (!stem) continue;
       if (relativoRepo !== `${reel.pastas[variante]}/${nome}`) continue;
       const ehCapa = nome.endsWith('-capa.png');
       return {
@@ -629,7 +678,7 @@ function montarCatalogo(raiz) {
           const editorial = !ehCarrossel ? editorialDaPeca(primeiro.nome, relRepo(primeiro)) : null;
           const codigoOriginal = codigoDaPeca(relNaSemana);
           const codigo = editorial ? editorial.codigo : codigoOriginal;
-          const copy = codigoOriginal && copys[codigoOriginal];
+          const copy = copyDaPeca(copys, codigoOriginal, primeiro.nome);
           const ehDocCopy = primeiro.nome === 'COPYS-FINAIS.md';
           // A referência editorial fica separada da legenda incorporada à
           // versão aceita. Classificar uma variante não altera seu aceite.
@@ -664,10 +713,11 @@ function montarCatalogo(raiz) {
             semana: { numero: semana.numero, inicio: semana.inicio, fim: semana.fim, mes: semana.mes },
             estado,
             tipo: ehCarrossel ? 'carrossel' : primeiro.tipo,
-            titulo: copy && (estado !== 'historico' || revisao?.vigente) ?`${copy.codigo} · ${limparTitulo(copy.titulo)}` : nomeCurto,
-            nomeExibicao: nomeExibicaoPeca({ nomeArquivo: ehCarrossel ? (/^(carrossel|card)$/i.test(primeiro.grupo || '') ? path.posix.basename(path.posix.dirname(relRepo(primeiro))) : primeiro.grupo) : primeiro.nome,
+            titulo: copy && (estado !== 'historico' || revisao?.vigente) ? (limparTitulo(copy.titulo) || nomeCurto) : nomeCurto,
+            nomeExibicao: nomeExibicaoPeca({ nomeArquivo: ehCarrossel ? primeiro.nome.replace(/[-_]\d{1,2}(\.[^.]+)$/, '$1') : primeiro.nome,
               tipo: ehCarrossel ? 'carrossel' : primeiro.tipo, codigo }),
             nome: nomeCurto,
+            ...(primeiro.tipo === 'imagem' ? (dimensoesImagem(primeiro.abs) || {}) : {}),
             codigo: codigo || null,
             legenda,
             fonteLegenda: legenda ? copy.fonte : null,
@@ -938,7 +988,8 @@ function lerAnterior(raiz, pedido, peca, { resolver, executar, arquivo } = {}) {
   const semana = { relativo: semanaRel };
   const codigo = codigoDaPeca(peca.caminho.slice(semanaRel.length + 1));
   const copys = lerCopys(raiz, semana, ler);
-  const legenda = codigo && copys[codigo] && grupo[0].nome !== 'COPYS-FINAIS.md' ? copys[codigo].legenda : null;
+  const copyAnterior = copyDaPeca(copys, codigo, grupo[0].nome);
+  const legenda = copyAnterior && grupo[0].nome !== 'COPYS-FINAIS.md' ? copyAnterior.legenda : null;
   const shas = grupo.map((a) => crypto.createHash('sha1').update(ler(path.join(raiz, a.rel))).digest('hex'));
   // Reel com capa: a versão pedida era composta; a capa é lida no mesmo commit.
   let alvo = versaoDeArquivos(shas, legenda);

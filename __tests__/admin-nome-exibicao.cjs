@@ -41,7 +41,7 @@ try {
   assert.equal(por('E01.png').nomeExibicao, 'E01 · Post');
   assert.equal(por('R01.mp4').nomeExibicao, 'R01 · Reels');
   assert.equal(por('S01.png').nomeExibicao, 'S01 · Stories');
-  assert.equal(antes.find(p => p.tipo === 'carrossel').nomeExibicao, 'c01 · Carrossel');
+  assert.equal(antes.find(p => p.tipo === 'carrossel').nomeExibicao, 'C01 · Carrossel');
   assert.equal(por('arquivo-cru.png').nomeExibicao, 'arquivo-cru · Post');
   // Trocar só o título de apresentação não invalida os bytes e a legenda já aceitos.
   fs.writeFileSync(path.join(pasta, 'COPYS-FINAIS.md'), copy.replace('Seu dinheiro tem destino', 'Cada gasto tem um lugar'));
