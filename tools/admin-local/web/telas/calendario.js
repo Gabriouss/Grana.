@@ -21,6 +21,14 @@ export function linkPublicado(valor) {
 // Somente apresentação. A identidade editorial e os registros reais nunca são gravados juntos.
 // "Agendar de verdade" só aparece com a fila real lida por inteiro e sem job ativo da peça: fora disso
 // (camada Planejado, leitura parcial ou indisponível) um agendamento real pode existir sem estar na tela.
+// Hoje em São Paulo, como AAAA-MM-DD, para saber se a data de um cartão planejado já passou.
+export function hojeSaoPaulo(agora = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', dateStyle: 'short' }).format(agora);
+}
+export function dataPassou(data, agora = new Date()) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(data || '') && data < hojeSaoPaulo(agora);
+}
+
 export function leituraRealCompleta(camada, reais) {
   return camada !== 'planejado' && reais?.status === 'disponivel' && reais.completo === true;
 }
@@ -109,7 +117,7 @@ export async function montar(raiz, ctx) {
         j.estado === 'publicado' ? linkPublicado(j.permalink) ? h('a', { href: linkPublicado(j.permalink), target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação' }) : h('span', { texto: 'O link da publicação não está disponível nesta fonte. Consulte o ID e o recibo.' }) : null,
         h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Ver destino e recibos', onclick: () => { navegar({ visao: 'lista' }); } }))),
       ...(i.historico || []).map((j) => h('span', { class: 'campo-ajuda', texto: `${j.destino.rede}: ${ESTADO_REAL[j.estado] || j.estado}${j.codigoErro ? ` · ${j.codigoErro}` : ''}. Histórico na lista.` })),
-      !reais.length ? h('div', { class: 'bloco-acao' }, h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Mudar data', onclick: planejar }), leituraRealCompleta(camada, dados?.reais) ? h('button', { class: 'botao', type: 'button', texto: 'Agendar de verdade', onclick: (e) => abrir(i.peca, i.data, e.currentTarget) }) : h('span', { class: 'campo-ajuda cal-aviso-real', texto: AVISO_PODE_TER_REAL })) : null);
+      !reais.length ? h('div', { class: 'bloco-acao' }, h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Mudar data', onclick: planejar }), dataPassou(i.data) ? h('span', { class: 'campo-ajuda cal-aviso-real', texto: 'Data passou' }) : leituraRealCompleta(camada, dados?.reais) ? h('button', { class: 'botao', type: 'button', texto: 'Agendar de verdade', onclick: (e) => abrir(i.peca, i.data, e.currentTarget) }) : h('span', { class: 'campo-ajuda cal-aviso-real', texto: AVISO_PODE_TER_REAL })) : null);
   }
   async function desenhar() {
     const minha = ++geracao;
@@ -149,7 +157,7 @@ export async function montar(raiz, ctx) {
       const incompleto = r && r.status !== 'nao-consultado' && (!r.completo || r.status === 'indisponivel' || (!continuar && r.continuacao));
       status.replaceChildren(...[...(incompleto ? [ctx.alerta('atencao', `Leitura ${r.status === 'indisponivel' ? 'indisponível' : 'parcial'} dos agendamentos. Os dados já recebidos foram preservados. ${r.motivo || 'Há mais resultados para consultar.'}`)] : []),
         r?.consultadoEm ? h('p', { class: 'campo-ajuda', texto: `Consulta real: ${ctx.formatar.dataHora(r.consultadoEm)} · São Paulo` }) : null,
-        ...(resposta.pendenciasLegenda?.length ? [ctx.alerta('atencao', `${resposta.pendenciasLegenda.length} peças já aprovadas precisam de legenda. Confira a Aprovação antes de agendar.`)] : [])].filter(Boolean));
+        ...(resposta.pendenciasLegenda?.length ? [ctx.alerta('atencao', `${resposta.pendenciasLegenda.length} ${resposta.pendenciasLegenda.length === 1 ? 'peça já aprovada precisa' : 'peças já aprovadas precisam'} de legenda. Confira a Aprovação antes de agendar.`)] : [])].filter(Boolean));
       await desenhar();
       if (r?.proximoCursor) paginacao.appendChild(h('button', { class: 'botao', type: 'button', texto: 'Carregar mais agendamentos do mês', onclick: async () => { await carregar(true); controleReal?.atualizarLista?.(); } }));
       paginacao.appendChild(h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Atualizar mês', onclick: async () => { await carregar(); controleReal?.atualizarLista?.(); } }));
@@ -284,8 +292,9 @@ async function montarEditorial(raiz, ctx) {
         const li = h('div', { class: 'cal-item', draggable: 'true', title: p.titulo || p.id, dados: { id: p.id } },
           p.capa?.url && p.capa.tipo === 'imagem' ? h('img', { class: 'cal-item-capa', src: ctx.urlArquivo(p.capa.url), alt: '', loading: 'lazy' }) : null,
           h('span', { class: 'cal-item-titulo', texto: p.titulo || 'Peça sem título' }),
-          h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Escolher data', onclick: () => planejar(p) }),
-          ctx.agendarReal ? ctx.leituraRealCompleta ? h('button', { class: 'botao', type: 'button', texto: 'Agendar de verdade', onclick: (e) => ctx.agendarReal(p, '', e.currentTarget) }) : h('span', { class: 'campo-ajuda cal-aviso-real', texto: AVISO_PODE_TER_REAL }) : null);
+          h('div', { class: 'bloco-acao' },
+            h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Escolher data', onclick: () => planejar(p) }),
+            ctx.agendarReal ? ctx.leituraRealCompleta ? h('button', { class: 'botao', type: 'button', texto: 'Agendar de verdade', onclick: (e) => ctx.agendarReal(p, '', e.currentTarget) }) : h('span', { class: 'campo-ajuda cal-aviso-real', texto: AVISO_PODE_TER_REAL }) : null));
         const item = h('li', {}, li, h('div', { class: 'bloco-acao' }, botaoVinculo(ctx, p)), detalhesCronograma(ctx, p));
         if (ctx.params.peca === p.id) {
           item.appendChild(h('p', { class: 'campo-ajuda', role: 'status', texto: 'Peça selecionada após o aceite. Ligue ao cronograma para receber a previsão.' }));

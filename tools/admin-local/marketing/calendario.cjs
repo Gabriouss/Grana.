@@ -126,9 +126,9 @@ function obterCalendario(raiz, mes) {
   }));
 
   const avisos = [...(dados.avisosCronograma || [])];
-  if (aprovadosSemData.length) avisos.push(`${aprovadosSemData.length} peça(s) aprovada(s) sem data válida no cronograma; nenhuma data foi inferida.`);
+  if (aprovadosSemData.length) avisos.push(`${aprovadosSemData.length} ${aprovadosSemData.length === 1 ? 'peça aprovada está sem data válida' : 'peças aprovadas estão sem data válida'} no cronograma. Nenhuma data foi inferida.`);
   if (!dados.diaD) avisos.push('Dia D ainda não declarado. Nada da campanha é publicado antes dele (decisão do autor de 25/09/2026).');
-  if (desatualizados.length) avisos.push(`${desatualizados.length} planejamento(s) perderam a validade porque a peça mudou ou perdeu o aceite.`);
+  if (desatualizados.length) avisos.push(`${desatualizados.length} ${desatualizados.length === 1 ? 'planejamento perdeu a validade porque a peça mudou ou perdeu' : 'planejamentos perderam a validade porque a peça mudou ou perdeu'} o aceite.`);
 
   return {
     mes: alvo,

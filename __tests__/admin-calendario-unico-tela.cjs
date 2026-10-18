@@ -37,4 +37,12 @@ assert.equal(sandbox.leituraRealCompleta('ambos', { status: 'nao-consultado' }),
 assert.equal(sandbox.leituraRealCompleta('ambos', undefined), false);
 assert.equal(sandbox.leituraRealCompleta('ambos', { status: 'disponivel', completo: true }), true);
 assert.equal(sandbox.leituraRealCompleta('real', { status: 'disponivel', completo: true }), true);
+// Item 4 do autor: data de cartão planejado que já passou (dia em São Paulo) não oferece agendar
+const agora = new Date('2026-10-18T02:00:00Z'); // 17/10 23:00 em São Paulo
+assert.equal(sandbox.hojeSaoPaulo(agora), '2026-10-17');
+assert.equal(sandbox.dataPassou('2026-10-16', agora), true);
+assert.equal(sandbox.dataPassou('2026-10-17', agora), false, 'hoje ainda não passou');
+assert.equal(sandbox.dataPassou('2026-10-20', agora), false);
+assert.equal(sandbox.dataPassou('', agora), false);
+assert.equal(sandbox.dataPassou(undefined, agora), false);
 console.log('admin-calendario-unico-tela: identidade, confirmação, estados independentes, fuso, marcadores, cancelamento/falha, links seguros e imutabilidade OK');
