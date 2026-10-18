@@ -26,6 +26,17 @@ Versões substituídas: as copys de `semana-40 / para-aprovacao / COPYS-FINAIS.m
 
 Gates: teste dos 10 cupons da foto da nota (C10) **afirmado pelo autor em 13/10/2026, sem relatório anexo** (registro de afirmação, não de QA). App "100%": afirmado pelo autor em 13/10/2026; a última auditoria datada no repositório é a de 03/10 (`context.md`, commit `a83b5b1`). Peças Android pedem QA do APK e do widget; peças web pedem QA no Chrome; peças pagas pedem a legenda da seção 4 e a conferência do preço vigente na Cakto.
 
+## Carrossel "Olhar só o saldo engana o seu mês" (v9, 18/10/2026)
+
+Origem: pedido do autor sobre a v8 na fila do painel ("Celular na página 4 maior que o notebook tá estranho", "os textos ainda estão muito lá pra cima", "proporções realistas"). Copy inalterada em relação à v8.
+
+| Peça / arquivo | Fonte | Status | Responsável | Aceite do autor | QA | Publicação |
+|---|---|---|---|---|---|---|
+| `para-aprovacao/pecas/lumen-v8/Olhar só o saldo engana o seu mês-1..5.png` (1080×1440) | `apoio/ferramentas/gerar-carrossel-v9.py`, local (Pillow), sem ElevenLabs, dados fictícios | para-aprovacao (v9, mesma peça no mesmo caminho da v8) | Lumen (Claude) | não registrado | pendente | não publicado |
+| `historico/pecas/carrossel-olhar-so-o-saldo-v8/Olhar só o saldo engana o seu mês-1..5-v8.png` | v8 de 16/10/2026 | substituída pela v9 | Lumen | não aplicável | não aplicável | não publicado |
+
+Mudanças da v9: na tela 4 o notebook é grande e o celular fica à frente com cerca de 57% da altura da tampa, os dois inteiros; o bloco de texto das cinco telas desceu. Nas telas 2 e 5 (texto à direita, celular à esquerda) o texto só desce até onde não encosta no celular: descer mais exigiria celular menor ou outra composição, decisão do autor.
+
 ## Apoio
 
 | Material | Fonte e status | Responsável / evidência | QA / publicação |
