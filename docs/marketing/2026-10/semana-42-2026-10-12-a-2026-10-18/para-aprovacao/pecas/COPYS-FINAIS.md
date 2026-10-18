@@ -12,7 +12,7 @@ Escrita em 18/10/2026 para o Reel que estava aprovado sem legenda. O Reel foi pu
 
 **Título:** Olhar só o saldo engana o seu mês
 
-**Legenda:** O mesmo saldo pesa diferente conforme a data, e é por isso que ele sozinho engana. Nesta sequência, a ideia é trocar o susto do fim do mês por uma conta simples de acompanhar: quanto já foi, quanto falta e o que cabe em cada dia. Passe as telas para ver como isso aparece no Grana. e, se fizer sentido, comece pelo link da bio. O Grana. custa menos de R$ 0,37 por dia (plano mensal de R$ 9,90 ou anual de R$ 97,90). Valores, periodicidade e renovação estão na página de planos. Sete dias para pedir o reembolso. Telas com dados de exemplo.
+**Legenda:** O mesmo saldo pesa diferente conforme a data, e é por isso que ele sozinho engana. Nesta sequência, a ideia é trocar o susto do fim do mês por uma conta simples de acompanhar: quanto já foi, quanto falta e o que cabe em cada dia. Passe as telas para ver como isso aparece no Grana. e, se fizer sentido, comece pelo link da bio. O Grana. custa menos de R$ 0,37 por dia (plano mensal de R$ 9,90 ou anual de R$ 97,90). Valores, periodicidade e renovação estão na página de planos. Sete dias para pedir o reembolso.
 
 ## Quanto dá pra gastar hoje
 
