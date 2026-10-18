@@ -12,7 +12,7 @@ const TERMINAIS = new Set(['publicado', 'cancelado']);
 const INCERTOS = new Set(['precisa-conferir', 'cancelamento-pendente']);
 const pedido = (acao, campos = {}) => ({ recurso: 'publicacoes-simulacao', modo: 'simulacao', acao, ...campos });
 
-export async function montar(raiz, ctx) {
+async function montarSimulacao(raiz, ctx) {
   const { h } = ctx;
   let ocupado = false;
   let dados = null;
@@ -196,4 +196,12 @@ export async function montar(raiz, ctx) {
   }
 
   await carregar();
+}
+
+// A fila real tem uma fronteira própria. A simulação só abre quando a pessoa
+// escolhe explicitamente o modo de demonstração na URL.
+export async function montar(raiz, ctx) {
+  if (ctx.params?.modo === 'simulacao') return montarSimulacao(raiz, ctx);
+  const { montarReal } = await import('./_publicacoes-reais-ui.js');
+  return montarReal(raiz, ctx);
 }

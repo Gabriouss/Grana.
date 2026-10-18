@@ -81,6 +81,7 @@ async function montarCena({ apiResp, acaoResp, confirmar = true, formulario = nu
   const raiz = dom.node('main');
   const ctx = {
     h: dom.node,
+    params: { modo: 'simulacao' },
     obsoleta: () => false,
     dataHora: (iso) => `local(${iso})`,
     cabecalho: (r, titulo, sub, acoes = []) => r.append(dom.node('header', {}, dom.node('h1', { texto: titulo }), dom.node('p', { texto: sub }), ...acoes)),

@@ -35,9 +35,12 @@ export function montarMidia(h, p) {
     return { elemento: midiaEl, pausar };
   }
   const trilho = h('div', { class: 'feed-trilho', tabindex: '0', role: 'group', 'aria-roledescription': 'carrossel', 'aria-label': p.titulo });
-  const slides = p.midias.map((arq, i) => {
+  const slides = p.midias.map((item, i) => {
+    // Aceita string (caminho, tipo pela extensão) ou { url, tipo }: blob: não tem extensão.
+    const arq = typeof item === 'string' ? item : item.url;
+    const ehVideoItem = typeof item === 'string' ? EXT_VIDEO.test(item) : item.tipo === 'video';
     const alt = p.midias.length > 1 ? `${p.titulo}, ${i + 1} de ${p.midias.length}` : p.titulo;
-    const el = EXT_VIDEO.test(arq)
+    const el = ehVideoItem
       ? h('video', { src: arq, controls: true, preload: 'metadata', playsinline: true, 'aria-label': alt, ...(p.capa ? { poster: p.capa.url } : {}) })
       : h('img', { src: arq, alt, decoding: 'async' });
     Object.assign(el.style, { width: '100%', height: '100%', objectFit: 'contain' });
