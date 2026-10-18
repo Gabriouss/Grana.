@@ -279,6 +279,10 @@ const GET = {
   }], { pecas: [], semanas: [], total: 0 }),
   '/api/marketing/ajustes': (req, res) => responderOk(res, { pedidos: pedidosComTitulo(marketing('ajustes-fila').fila.listar()), armazenamento: 'privado-local', remoto: marketing('ajustes-fila').fila.remotoStatus(),
     vigia: marketing('ajustes-fila').vigiaEstado(), servidor: { desatualizado: require('./versao-codigo.cjs').desatualizado() } }),
+  '/api/marketing/feed-real': (req, res, url) => {
+    if ([...url.searchParams.keys()].length) return responderErro(res, 400, 'pedido-invalido', 'Esta leitura não aceita filtros.');
+    return rotaMarketingGet(res, 'meta-publicados', ['feedReal'], [], { posts: [], perfil: null, vinculadas: [] });
+  },
   '/api/marketing/feed': (req, res) => rotaMarketingGet(res, 'catalogo', ['feed'], [], { pecas: [], total: 0 }),
   '/api/marketing/documento': (req, res) => rotaMarketingGet(res, 'catalogo', ['documento'], [], { markdown: '' }),
   '/api/marketing/calendario': (req, res, url) => {

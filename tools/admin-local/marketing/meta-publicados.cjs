@@ -221,9 +221,53 @@ function criarMetaPublicados({ ler = config.ler, catalogo = listarPecas, agora =
     if (dados.completo) cache.set(mes, { em: agora().getTime(), dados });
     return dados;
   }
+  // Aba Feed: o perfil REAL do Instagram (só GET). Contadores vêm do usuário IG; a grade, de /media (até
+  // MAX_PAGINAS*50 posts). Falha vira status 'indisponivel' com motivo, nunca grade vazia calada.
+  let guardadoFeed = null;
+  async function feedReal(raiz) {
+    if (guardadoFeed && agora().getTime() - guardadoFeed.em < VALIDADE_MS) return guardadoFeed.dados;
+    const versao = ler('META_GRAPH_API_VERSION') || '';
+    const tokens = ['META_ACCESS_TOKEN', 'META_INSIGHTS_ACCESS_TOKEN', 'META_READ_ACCESS_TOKEN'].map((n) => ler(n)).filter(Boolean);
+    const ig = ler('META_IG_USER_ID') || '';
+    const base = { consultadoEm: agora().toISOString(), perfil: null, posts: [], vinculadas: [] };
+    if (!/^v\d+\.\d+$/.test(versao) || !tokens.length || !/^\d+$/.test(ig)) return { ...base, status: 'nao-configurado', motivo: 'nao-configurado', completo: false };
+    let r, perfil, ultimo;
+    for (const token of tokens) {
+      try {
+        const q = new URLSearchParams({ fields: 'username,name,media_count,followers_count,follows_count' });
+        const p = await pedirJson('meta-instagram', `https://graph.facebook.com/${versao}/${ig}?${q}`, { cabecalhos: { Authorization: `Bearer ${token}` } });
+        if (p.status >= 400 || !p.dados || typeof p.dados !== 'object') {
+          const codigo = Number(p.dados?.error?.code);
+          throw new ErroMarketing([10, 100, 190, 200, 210].includes(codigo) ? 'sem-permissao' : 'resposta-invalida', 'A Meta não devolveu o perfil.', 502);
+        }
+        perfil = p.dados;
+        r = await lerRede({ rede: 'instagram', caminho: `${ig}/media`, campos: 'caption,media_type,media_product_type,permalink,thumbnail_url,media_url,timestamp',
+          inicio: '0000-01-01', fim: '9999-12-31', versao, token, campoData: 'timestamp',
+          normalizar: (i, quando, dia) => ({ rede: 'instagram', formato: formatoInstagram(i), data: dia, publicadoEm: quando, legenda: String(i.caption || ''), legendaCompleta: i.caption || '',
+            miniatura: https(i.thumbnail_url) || https(i.media_url), link: https(i.permalink), chave: chave('instagram', i.id || i.permalink || quando) }) });
+        break;
+      } catch (e) { ultimo = e; r = null; if (!/sem-permissao|credencial-recusada/.test(e.codigo || '')) break; }
+    }
+    if (!r) {
+      console.error(`[painel] meta-feed-real-${ultimo?.codigo || 'falhou'}`);
+      return { ...base, status: 'indisponivel', motivo: ultimo?.codigo || 'falhou', completo: false };
+    }
+    const ordem = r.posts.sort((a, b) => Date.parse(b.publicadoEm) - Date.parse(a.publicadoEm));
+    const posts = vincular(ordem, catalogo(raiz).pecas, registroDePublicados(raiz));
+    lembrar(posts);
+    const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
+    const dados = {
+      ...base, status: 'disponivel', completo: r.completo,
+      perfil: { usuario: String(perfil.username || ''), nome: String(perfil.name || ''), posts: num(perfil.media_count), seguidores: num(perfil.followers_count), seguindo: num(perfil.follows_count) },
+      posts, vinculadas: [...new Set(posts.map((p) => p.vinculo?.pecaId).filter(Boolean))],
+    };
+    guardadoFeed = { em: agora().getTime(), dados };
+    return dados;
+  }
+  publicados.feedReal = feedReal;
   publicados.midia = midia;
   return publicados;
 }
 
 const padrao = criarMetaPublicados();
-module.exports = { criarMetaPublicados, publicados: padrao, midia: padrao.midia, vincular };
+module.exports = { criarMetaPublicados, publicados: padrao, midia: padrao.midia, feedReal: padrao.feedReal, vincular };
