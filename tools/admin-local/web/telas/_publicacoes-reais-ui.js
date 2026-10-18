@@ -56,7 +56,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     h('a', { class: 'botao botao-fantasma', href: '#/marketing/publicacoes?modo=simulacao', texto: 'Abrir simulação isolada' }),
     h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Atualizar estado real', onclick: () => atualizarTudo() }),
   ];
-  if (!integracao) ctx.cabecalho(raiz, 'Agendamento real', 'Uma confirmação autoriza execução futura no serviço remoto. Calendário editorial e Dia D são referências; não autorizam publicação.', acoesTopo);
+  if (!integracao) ctx.cabecalho(raiz, 'Agendamento real', 'Uma confirmação autoriza execução futura no serviço remoto. O calendário editorial é referência; só a confirmação autoriza publicação.', acoesTopo);
   if (integracao) {
     integracao.topo.append(disponibilidade, controles, recibo, h('div', { class: 'bloco-acao' }, acoesTopo));
     integracao.painel.append(reciboPainel, compositor, previewEl);

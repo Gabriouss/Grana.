@@ -128,7 +128,6 @@ function obterCalendario(raiz, mes) {
 
   const avisos = [...(dados.avisosCronograma || [])];
   if (aprovadosSemData.length) avisos.push(`${aprovadosSemData.length} ${aprovadosSemData.length === 1 ? 'peça aprovada está sem data válida' : 'peças aprovadas estão sem data válida'} no cronograma. Nenhuma data foi inferida.`);
-  if (!dados.diaD) avisos.push('Dia D ainda não declarado. Nada da campanha é publicado antes dele (decisão do autor de 25/09/2026).');
   if (desatualizados.length) avisos.push(`${desatualizados.length} ${desatualizados.length === 1 ? 'planejamento perdeu a validade porque a peça mudou ou perdeu' : 'planejamentos perderam a validade porque a peça mudou ou perdeu'} o aceite.`);
 
   return {
@@ -203,8 +202,6 @@ function planejar(raiz, corpo = {}) {
     gravarJsonAtomico(caminhoPainel(raiz, ARQUIVO), dados);
     const avisos = ['Planejamento salvo no painel. Nada foi agendado no Instagram nem na Meta.'];
     cr.sincronizarComAviso(raiz, avisos, 'Planejamento salvo');
-    if (!dados.diaD) avisos.push('O dia D ainda não foi declarado: a data é planejamento, não autorização de publicar.');
-    else if (corpo.data < dados.diaD) avisos.push('A data escolhida é anterior ao dia D declarado.');
     return { planejamento: registro, avisos };
   });
 }

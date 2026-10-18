@@ -611,9 +611,7 @@ export function montarEnsaioCalendario(raiz, ctx) {
   let ocupado = false;
   const texto = (valor) => typeof valor === 'string' && valor ? valor : 'Não informado';
   const motivos = {
-    'dia-d-nao-declarado': 'O dia D ainda não foi declarado.',
     'calendario-sem-planejamentos': 'O calendário ainda não tem planejamentos.',
-    'antes-do-dia-d': 'A data está antes do dia D.',
     'data-ou-hora-invalida': 'Informe uma data e um horário válidos.',
     'horario-nao-futuro': 'O horário marcado já passou.',
     'peca-ausente': 'A peça não foi encontrada.',
@@ -651,7 +649,7 @@ export function montarEnsaioCalendario(raiz, ctx) {
       corpo.appendChild(h('p', { class: 'campo-ajuda', texto: `Leitura: ${ctx.formatar.dataHora(d.geradoEm || resposta.atualizadoEm)} · Fuso: ${texto(d.fuso)} · Dia D: ${d.diaD || 'não declarado'}` }));
       corpo.appendChild(h('p', { texto: `${d.itens.length} ${d.itens.length === 1 ? 'item' : 'itens'} · ${d.itens.filter((i) => i.estado === 'ensaio').length} ensaiados · ${d.itens.filter((i) => i.estado === 'bloqueado').length} bloqueados` }));
       if (d.bloqueiosGerais?.length) corpo.appendChild(h('div', {}, h('h3', { texto: 'Bloqueios do ensaio' }), lista(d.bloqueiosGerais)));
-      if (!d.itens.length) corpo.appendChild(h('p', { texto: 'Nenhum planejamento disponível para ensaiar. Declare o dia D e marque as datas no calendário editorial.' }));
+      if (!d.itens.length) corpo.appendChild(h('p', { texto: 'Nenhum planejamento disponível para ensaiar. Marque as datas no calendário editorial.' }));
       for (const i of d.itens) {
         corpo.appendChild(h('article', { class: 'secao' },
           h('h3', { class: 'secao-titulo', texto: `${texto(i.midias?.[0]?.nome || 'Peça do ensaio')} · ${i.estado === 'ensaio' ? 'Ensaiado, sem agendamento real' : 'Bloqueado no ensaio'}` }),

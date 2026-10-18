@@ -42,8 +42,6 @@ function criarEnsaio(deps) {
       const versao = /^[a-f0-9]{40}$/.test(r?.versao) ? r.versao : null;
       const id = /^[a-f0-9]{16}$/.test(r?.id) ? r.id : null;
       const quandoUtc = instante(data, hora);
-      if (!catalogo.dataValida(plano.diaD)) negar('dia-d-nao-declarado');
-      else if (catalogo.dataValida(data) && data < plano.diaD) negar('antes-do-dia-d');
       if (!quandoUtc) negar('data-ou-hora-invalida');
       else if (Date.parse(quandoUtc) <= agora) negar('horario-nao-futuro');
       if (!p) negar('peca-ausente');
@@ -77,7 +75,7 @@ function criarEnsaio(deps) {
       modo: 'ensaio', realHabilitado: false, chamadasMeta: 0, geradoEm: new Date(agora).toISOString(),
       fuso: FUSO, diaD: catalogo.dataValida(plano.diaD) ? plano.diaD : null, itens,
       resumo: { total: itens.length, ensaiados: itens.filter((i) => i.estado === 'ensaio').length, bloqueados: itens.filter((i) => i.estado === 'bloqueado').length },
-      bloqueiosGerais: [...(!catalogo.dataValida(plano.diaD) ? ['dia-d-nao-declarado'] : []), ...(!itens.length ? ['calendario-sem-planejamentos'] : [])],
+      bloqueiosGerais: [...(!itens.length ? ['calendario-sem-planejamentos'] : [])],
       pendenciasReais: ['julgamento-keel-e-aviso-orquestrador', 'confirmacao-real-do-autor', 'conta-permissoes-token-e-quota', 'midia-remota-validada', 'agendador-e-outbox-com-reconciliacao'],
       aviso: 'Ensaio local. Nada foi agendado ou publicado na Meta. Instagram exige execução na hora marcada; este ensaio não cria um agendador.',
     };

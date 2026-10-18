@@ -41,9 +41,12 @@ test('ensaio real converte Sao Paulo/UTC; apenas tres leituras sem Meta/env', ()
   assert.equal(r.itens[0].estado, 'ensaio'); assert.equal(r.modo, 'ensaio'); assert.equal(r.realHabilitado, false);
   assert.equal(r.chamadasMeta, 0); assert.deepEqual(h.leituras, ['plano', 'pecas', 'aceites']); assert.deepEqual(calls, []);
 });
-test('dia D nulo e data anterior deixam recibo por item', () => {
-  let h = fixture(); h.plano.diaD = null; negado(h, 'dia-d-nao-declarado');
-  h = fixture(); h.plano.diaD = '2026-10-11'; negado(h, 'antes-do-dia-d');
+test('dia D nulo ou posterior à data NÃO bloqueia o ensaio (decisão do autor, 18/10)', () => {
+  for (const diaD of [null, '2026-10-11']) {
+    const h = fixture(); h.plano.diaD = diaD; const r = h.run();
+    assert(!r.itens[0].bloqueios.includes('dia-d-nao-declarado') && !r.itens[0].bloqueios.includes('antes-do-dia-d'));
+    assert(!r.bloqueiosGerais.includes('dia-d-nao-declarado'));
+  }
 });
 test('pasta para-aprovacao mesmo com aceite nunca entra', () => {
   const h = fixture(); h.p.estado = 'para-aprovacao'; h.p.caminho = h.p.caminho.replace('/aprovados/', '/para-aprovacao/');
