@@ -118,6 +118,35 @@ Fonte: `E:\Grana-temporarios\2026-10-17-meta-token\relatorio-Claude3-meta-token-
 - **Pendências do autor:** decisão sobre o token de leitura orgânico; checar versão vigente do Graph; forma de pagamento na conta de anúncios; ativação do Pixel (copy, 180 dias de consentimento, domínio, payload, desligar coleta automática); reembolso/ledger Cakto; autoria de `docs/marketing/painel/historico.json` e `docs/marketing/solicitacoes-correcao/`.
 
 ---
+# 17 e 18/10/2026 (M1, Quill): correções da tarde, produção aplicada, build 1.10.8 e agendamento real do time Claude
+
+> Notas de sessão no vault (`00 - Sessões`): `2026-10-17 - M1 - Correções da tarde, publicações e build 1.10.8` e `2026-10-17 - M1 - Agendamento real Instagram e Facebook` (seção "Depois das 23h36"). Fontes: `E:\Grana-temporarios\2026-10-17-voz-widget`, `2026-10-17-tarde` e `2026-10-17-agendamento-real`. Pedido do autor: "Todo o trabalho de hoje ta documentado no Vault?" e "Documentacao tudo". Sem valor de segredo.
+
+## Correções do app de 17/10 (pedido, causa, commit)
+
+- **Voz A1, "Mercado 2997, crédito C6" abria R$ 0,00.** Causa confirmada: `precisaRevisarValorVoz` mandava inteiro nu para revisão e `valorSeguroParaRevisaoVoz` devolvia `null`. `c9d1861` (quatro dígitos nus = reais e centavos, `lib/voz-confiabilidade.ts`, `lib/widget-voz-task.ts`) e `212a215` (três dígitos, 590 = R$ 5,90, grava direto, decisão do autor). Risco aceito: "Uber 150" dito "cento e cinquenta" sem "reais" grava R$ 1,50.
+- **Widget lento e "Áudio guardado" (A2).** Servidor descartado (200 em 0,6 a 2 s). Causa de um laço, confirmada: ~2,5 POST/s em `push_tokens` (2192/h às 02h UTC e 1920/h às 16h UTC, contra ~10/h antes da 1.10.7), porque `onNewToken` fazia o `_layout` ressincronizar o token em ciclo desde que o FCM funcionou na 1.10.7. `6e5ecd3` (`lib/push-notifications.ts`, teste `push-token-sem-laco.cjs`). **HIPÓTESE não provada:** o laço atrasa a tarefa do widget e estoura o prazo de 8 s.
+- **"Crédito" no nome (K1).** `descricaoDoLancamento` só tirava a forma de pagamento nas pontas (núcleo `lib/heuristics.ts` + cópia `_shared/interpretar-lancamento.ts`). `7612cd0` + deploy `assistente-financeiro` **v52** (2026-10-17T22:03:15Z, `verify_jwt=true`, backup v51 em `retorno/assistente-financeiro-antes.eszip`, sonda sem JWT 401).
+- **Foto da nota (K2).** Hipótese forte, sem a saída real do ML Kit: cupom inclinado junta linhas de fileiras diferentes e perde o "VALOR TOTAL". `27468ee` (`endireitar` pelos `cornerPoints`, nome acima do CNPJ, rodapé filtrado; achado lateral: `/\bTOTAL\b/` estava com backspace literal e nunca casava).
+- **Deslogamento (A3).** `c21719b` (`signOut({ scope: 'local' })` em `lib/auth-context.tsx` e `PainelAdmin.web.tsx`) e `675482d` (trava em `sair-da-conta.cjs`). Pergunta aberta ao autor: trocar a senha deve derrubar os outros aparelhos? Exigiria `signOut({ scope: 'others' })`, que não existe.
+- **Fila offline A1:** `8840604` (cache e envios da fila isolados por conta; `lib/offline-cache.ts`, `lib/fila-pendente.ts`, `lib/escrita-da-conta.ts`).
+- **Modal do cofrinho web:** `c48fc64`, `minWidth: 0` no `amountInput` (campo de 426 px num painel de 385 px; medido: `scrollLeft` 37 antes, 0 depois). Outros 3 modais têm o mesmo padrão, sem repro (sem confiabilidade suficiente).
+- **Animação do Granabô:** `5668f4e` (piscadas irregulares, fundido de 120 ms, pose feliz ao toque, sem pulo na montagem). **FAQ da landing:** `45d9e32`.
+- **Painel admin:** `0c2a075` (sino com `!` âmbar quando a contagem está indisponível) e `3c2e0b8` (E7 recusa envelope `e7.v1` inválido e período inválido, remove exportação). M7 segue parcial: E5 simulado, sem prévia de mídia.
+
+## Produção aplicada pelo Orquestrador (17/10, ~19:40 BRT, com autorização do autor)
+
+Migrations `20261015190000`, `20261016140000`, `20261016160000`, `20261016170000` e `20261017180000`; funções `admin-marketing` v1, `admin-ajustes` v5, `admin-publicacoes-simulacao` v1, `marketing-simulacao-executor` v1 (desligado), `admin-meta` v1 e `admin-analytics` v1, todas `verify_jwt=true` e 401 sem login. Secrets Meta (só nomes) criados; correção Brazil/East `12be6ce`. Evidências em `E:\Grana-temporarios\2026-10-17-tarde\aplicar-17-10\`. Em `.claude/settings.local.json` (ignorado pelo git) há `deny` para `eas build`, `eas submit`, `supabase db push`/`db reset`, `functions delete`, `git push --force`, `git reset --hard`, `git init` e `rm -rf`, mais a frase de autorização do autor ao Orquestrador para migrations e funções; não há registro do antes e depois do ajuste.
+
+## Build 1.10.8
+
+Preparo `52c681c` (18/10 00:07), EAS `854214cd`, versionCode 21 para 22, **2 de 3 da semana** (regra 22), pacote antigo de 581 MB (ver o ALERTA do `.easignore` acima). O autor recusou um preparo antes de mandar a ordem (detalhe não está nas fontes). Gate do Vigil em `65e17d9`: verde em tudo (`tsc`, `test:ci`, `test:admin`, voz, assistente, blur, motion, parser); `expo export --platform web` incompleto por falta de `.env` no clone. O gate do Sentinel em `c9d1861` falhou em `projecao-ignora-credito-sem-cartao.cjs:26` (fixture sem o novo `_shared/livre-para-gastar`, dono Forge). O roteiro de QA no aparelho (`qa-1.10.8.md`) não tem resultado registrado: widget sem abrir o app, valor sem vírgula, "crédito" fora do nome, foto do cupom em 5 posições, Livre com cofrinho e fatura, sair da web, modal do cofrinho.
+
+## Agendamento real Instagram e Facebook, time Claude (18/10, após 23h36)
+
+Ordem do autor: "continue o trabalho de onde o time codex parou. Arrocha". Keel `6303734` (remoto: migration `20261018001000_admin_marketing_real.sql`, adaptador Graph, executor por etapas; `marketing-real-executor.cjs`, 107 verificações), Lumen `1856e91` + `38848c0` (UI e layout, já em `origin/main`), Anvil `cef190f` (Node local; C3 resolvido: chave de confirmação gravada no PC antes da RPC). **Nada em produção.** **Lynx bloqueou a migration e a ativação do executor** (`revisao-Lynx-agendamento.md`): **B1** jobs pulados ocupam o `LIMIT` do claim e a fila inteira para; **B2** `reagendar` despausa o job; **B3** reagendar abre caminho para dois jobs no mesmo alvo. A publicação única (índice `admin_marketing_publicar_unico_idx`, `admitir`) está DE ACORDO. Não bloqueantes: F1 chave da tela diverge da persistida (falso "resultado desconhecido"), F2 ator não amarrado no SQL, F3 `incerto` sem ID sem saída manual. Não há `qa-vigil.md`: o QA do Vigil (`checklist-Sentinel.md` em `cef190f`) não tem recibo. Não verificado: Storage real, Graph real, cron, corrida entre conexões reais, capacidade dos oito pares; FB Stories e FB Reels seguem bloqueados.
+
+---
 # 17/10/2026 (M1, Antigravity): Granabô 3D no Granachat e na navegação + build 1.10.7 publicada
 
 > Nota de sessão no vault: `00 - Sessões/2026-10-17 - M1 - Granabô 3D no chat, navegação e build 1.10.7`. Nota correspondente criada também no fichário do workspace (`Fichário - Sessões`).
