@@ -72,10 +72,19 @@ export function rotuloPeriodo(p) {
   return `${dia(p.startInclusive)} a ${dia(fim.toISOString())} (${p.timezone})`;
 }
 
+// Unidades que o contrato conhece. Contagem não leva unidade (o nome da métrica já diz o que se conta);
+// unidade desconhecida nunca aparece em snake_case cru: o texto entra legível, sem sublinhado.
+const reais = (n) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(/ /g, ' ');
+const UNIDADES_CONTAGEM = new Set(['assinaturas', 'count', 'contagem']);
 export function valorDaMetrica(m) {
   const n = num(m.value);
   if (n === null) return 'Sem valor';
-  return `${n}${m.unit ? ` ${m.unit}` : ''}`;
+  const unidade = typeof m.unit === 'string' ? m.unit.trim() : '';
+  if (unidade === 'BRL_centavos') return reais(m.value / 100);
+  if (unidade === 'BRL') return reais(m.value);
+  if (unidade === 'percent') return `${n}%`;
+  if (!unidade || UNIDADES_CONTAGEM.has(unidade)) return n;
+  return `${n} ${unidade.replace(/_+/g, ' ')}`;
 }
 
 export function amostraTexto(s) {
@@ -178,7 +187,7 @@ export async function montar(raiz, ctx) {
 
     partes.push(ctx.secao('Métricas da semana', ctx.tabela([
       { titulo: 'Métrica', valor: (m) => nomeMetrica(m.metricId) },
-      { titulo: 'Valor', valor: (m) => valorDaMetrica(m), classe: 'num' },
+      { titulo: 'Valor', valor: (m) => valorDaMetrica(m), classe: 'num valor-uma-linha' },
       { titulo: 'Estado', valor: (m) => selo(VALOR, m.state) },
       { titulo: 'Fonte', valor: (m) => (m.sourceIds || []).map(nomeFonte).join(', ') || 'sem fonte' },
       { titulo: 'Notas', valor: (m) => (m.noteCodes || []).map(texto).join(' ') || 'sem nota' },

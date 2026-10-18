@@ -139,7 +139,7 @@ const csvDireto = (() => {
     ok(rev.includes('Sem valor') && rev.includes('Parcial') && !rev.includes('Observado'), 'Beacon: reversões sem prova de completude não viram zero observado');
     const refunds = RELATORIO_DE_TESTE.metrics.find(m => m.metricId === 'cakto_refunds_chargebacks');
     ok(refunds.value === null && refunds.state === 'partial' && refunds.noteCodes.includes('ledger_completeness_unproven'), 'fixture conserva ausência e motivo da cobertura parcial');
-    igual(sandbox.valorDaMetrica({ value: 0, unit: 'BRL', state: 'observed' }), '0 BRL', 'zero efetivamente observado continua sendo exibido');
+    igual(sandbox.valorDaMetrica({ value: 0, unit: 'BRL', state: 'observed' }), 'R$ 0,00', 'zero efetivamente observado continua sendo exibido');
     ok(x.includes('não é lucro'), 'receita bruta não é chamada de lucro');
   }
   { // exportar CSV: manda o MESMO relatório; sucesso
@@ -173,7 +173,17 @@ const csvDireto = (() => {
   }
   { // funções puras
     igual(vm.runInNewContext('valorDaMetrica({value:null,unit:"BRL"})', sandbox), 'Sem valor', 'null vira "Sem valor"');
-    igual(vm.runInNewContext('valorDaMetrica({value:0,unit:"BRL"})', sandbox), '0 BRL', 'zero observado fica zero');
+    igual(vm.runInNewContext('valorDaMetrica({value:0,unit:"BRL"})', sandbox), 'R$ 0,00', 'zero observado fica zero');
+    const valor = (m) => vm.runInNewContext(`valorDaMetrica(${JSON.stringify(m)})`, sandbox);
+    igual(valor({ value: 0, unit: 'BRL_centavos' }), 'R$ 0,00', 'BRL_centavos zero vira R$ 0,00');
+    igual(valor({ value: 12345, unit: 'BRL_centavos' }), 'R$ 123,45', 'centavos viram reais em pt-BR');
+    igual(valor({ value: 123456789, unit: 'BRL_centavos' }), 'R$ 1.234.567,89', 'milhar em pt-BR');
+    igual(valor({ value: 12, unit: 'assinaturas' }), '12', 'contagem sem unidade');
+    igual(valor({ value: 12.5, unit: 'percent' }), '12,5%', 'porcentagem com %');
+    igual(valor({ value: 3, unit: 'qualificados_por_dia' }), '3 qualificados por dia', 'unidade desconhecida legível, nunca em snake_case cru');
+    ok(!/_/.test(valor({ value: 3, unit: 'alguma_unidade_nova' })), 'nenhum sublinhado na tela');
+    igual(valor({ value: 7 }), '7', 'sem unidade informada');
+    igual(valor({ value: null, unit: 'BRL_centavos' }), 'Sem valor', 'valor ausente continua sem valor');
   }
 
   // ---------- fiação ----------
