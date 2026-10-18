@@ -88,6 +88,9 @@ export function criarRenovacao(deps:Deps){
    if(!no.ok){
     if(no.tipo==='token')return {...base,resultado:porToken(no),motivo:'token:'+(no.sub??'190')};
     if(no.tipo==='inconclusivo')return {...base,resultado:'inconclusivo',motivo:'graph-indisponivel'};
+    // 100 tambem sai por campo mal pedido ou mudanca da Graph, e nem o subcodigo 33
+    // ("nao existe OU falta permissao") prova conta inexistente: so recibo (F2 do Lynx).
+    if(no.tipo==='nao-aplicavel')return {...base,resultado:'inconclusivo',motivo:'graph-codigo-100'};
     return {...base,resultado:'indisponivel',motivo:'conta-inacessivel'};
    }
    if(typeof no.d.id!=='string'||!ID_NUM.test(no.d.id))return {...base,resultado:'inconclusivo',motivo:'resposta-ilegivel'};

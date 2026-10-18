@@ -260,6 +260,9 @@ async function main() {
     ['status desconhecido', { 'user:me/permissions': () => json({ data: [{ permission: 'instagram_content_publish', status: 'talvez' }, { permission: 'pages_manage_posts', status: 'granted' }] }) }, ['instagram', 'facebook']],
     ['tasks como texto', { 'user:me/accounts': () => json({ data: [{ id: PAGINA, tasks: 'CREATE_CONTENT' }] }) }, ['facebook']],
     ['pagina sem tasks', { 'user:me/accounts': () => json({ data: [{ id: PAGINA }] }) }, ['facebook']],
+    // F2 do Lynx: 100 no no da conta nao prova conta inexistente, nem com subcodigo 33.
+    ['codigo 100 no no da conta', { [`user:${IG}`]: () => json({ error: { code: 100 } }, 400), 'page:me': () => json({ error: { code: 100 } }, 400) }, ['instagram', 'facebook']],
+    ['codigo 100/33 no no da conta', { [`user:${IG}`]: () => json({ error: { code: 100, error_subcode: 33 } }, 400), 'page:me': () => json({ error: { code: 100, error_subcode: 33 } }, 400) }, ['instagram', 'facebook']],
     ['pagina fora da primeira pagina de resultados', { 'user:me/accounts': () => json({ data: [], paging: { next: 'https://graph.facebook.com/x' } }) }, ['facebook']],
   ];
   for (const [nome, cen, inconclusivas] of ilegiveis) {
@@ -275,6 +278,18 @@ async function main() {
         `R1 ${nome}: conexao, validade e capacidades intactas`);
     } finally { await db.close(); }
   }
+
+  // Controle do F2: recusa explicita de permissao (code 10) no no continua derrubando a conta.
+  db = await novoBanco();
+  try {
+    await cenario(db);
+    await rodar(db, graphDublada({ [`user:${IG}`]: () => json({ error: { code: 10 } }, 403) }));
+    const k = await contas(db);
+    eq([k.instagram.conexao, k.instagram.renovacao.motivo], ['indisponivel', 'conta-inacessivel'], 'F2: code 10 no no segue indisponivel');
+    const r100 = await (async () => { await devida(db); await comoDono(db, `update public.admin_marketing_real_contas set conexao='verificada'`);
+      await rodar(db, graphDublada({ [`user:${IG}`]: () => json({ error: { code: 100 } }, 400) })); return (await contas(db)).instagram; })();
+    eq([r100.conexao, r100.renovacao.resultado, r100.renovacao.motivo], ['verificada', 'inconclusivo', 'graph-codigo-100'], 'F2: code 100 deixa recibo com motivo proprio');
+  } finally { await db.close(); }
 
   // 8c. R2 do Harbor: corpo que chega tarde ou nunca, sem cooperar com o abort, nao renova depois do prazo.
   const corpoTarde = (corpo, ms) => () => new Response(new ReadableStream({ start(c) {
