@@ -83,6 +83,8 @@ export type OperacaoAdmin<P extends PedidoAdmin> = {
   validar: (pedido: unknown) => P;
   executar: (cliente: SupabaseClient, pedido: P, contexto: { userId: string; agora: Date; signal: AbortSignal })
     => Promise<{ dados: unknown; falhas?: string[] }>;
+  // Opt-in para erros de negocio fechados; nunca serializar erro bruto.
+  tratarErro?: (erro: unknown) => { status: 400|403|404|409|413|415|422|503; codigo: string; mensagem: string } | null;
 };
 
 export const operacaoConsulta: OperacaoAdmin<PedidoAdmin> = {
@@ -255,6 +257,8 @@ export function criarHandlerAdmin<P extends PedidoAdmin = PedidoAdmin>(
       return responder(200, { ok: true, contrato: 1, geradoEm: new Date().toISOString(), dados: resultado.dados });
     } catch (e) {
       const prazo = total.signal.aborted || (e instanceof Error && e.message === 'prazo');
+      const negocio = !prazo ? operacao.tratarErro?.(e) : null;
+      if (negocio) return responder(negocio.status, { ok: false, erro: { codigo: negocio.codigo, mensagem: negocio.mensagem } });
       autorizacao = autorizacao === 'nao-verificada' ? (prazo ? 'prazo' : 'indisponivel') : autorizacao;
       return erro(prazo ? 504 : 503, prazo ? 'prazo' : 'indisponivel');
     } finally {

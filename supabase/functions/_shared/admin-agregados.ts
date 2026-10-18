@@ -20,6 +20,8 @@ export async function consultaComPrazo<T>(
     else total.addEventListener('abort', cancelar, { once: true });
     timer = setTimeout(cancelar, prazoMs);
   });
+  // Sinal já abortado rejeita `expirou` antes do race: sem isto, rejeição sem tratamento derruba o isolate.
+  expirou.catch(() => {});
   try {
     if (total.aborted) throw new Error('prazo');
     return await Promise.race([Promise.resolve().then(() => executar(controller.signal)), expirou]);
