@@ -1,0 +1,31 @@
+/* Só a janela do calendário. O Feed continua dono de mídia, setas e carrossel. */
+dialog.previa-post { width:min(1080px,calc(100vw - 48px)); max-height:calc(100dvh - 48px); }
+.previa-post .feed-post-corpo { height:min(820px,calc(100dvh - 48px)); grid-template-columns:minmax(0,1fr) minmax(320px,400px); }
+.previa-post .feed-post-lado { overflow:auto; min-width:0; }
+.previa-post .feed-post-topo { flex:none; position:sticky; top:0; background:var(--paper); z-index:2; }
+.previa-post .feed-post-midia { width:100%; height:100%; max-width:100%; min-width:0; justify-self:center; }
+.previa-post .feed-post-midia.previa-post-vertical { width:auto; max-height:100%; aspect-ratio:9/16 !important; }
+.previa-post .feed-trilho { min-width:0; max-width:100%; }
+.previa-post .feed-legenda { flex:none; overflow:visible; padding:var(--s-lg); }
+.previa-post .feed-post-meta { padding:var(--s-lg); }
+.previa-post-avisos { padding:var(--s-lg) var(--s-lg) 0; }
+.previa-post-avisos h2 { font-size:18px; line-height:1.4; font-weight:400; overflow-wrap:anywhere; margin:0; }
+.previa-post-legenda { white-space:pre-wrap; overflow-wrap:anywhere; margin:8px 0 0; line-height:1.6; }
+.previa-post-estados { margin-top:var(--s-lg); }
+.previa-post-estados h3 { font-size:14px; font-weight:400; margin:0 0 12px; }
+.previa-post-destinos { list-style:none; margin:0; padding:0; }
+.previa-post-destino { display:flex; flex-direction:column; align-items:flex-start; gap:6px; padding:12px 0; border-top:1px solid var(--rule); overflow-wrap:anywhere; }
+.previa-post-destino .campo-ajuda { margin:0; }
+.previa-post-destino .botao { white-space:normal; text-align:left; }
+.previa-post-play { position:absolute; left:12px; right:12px; bottom:48px; padding:12px; background:var(--paper); color:var(--ink); font-size:14px; }
+@media(max-width:899px) {
+  dialog.previa-post { width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; }
+  .previa-post .feed-post-corpo { display:flex; flex-direction:column; height:100dvh; overflow:auto; }
+  .previa-post .feed-post-lado { display:contents; }
+  .previa-post .feed-post-topo { order:0; }
+  .previa-post .feed-post-midia { order:1; height:auto; flex:none; width:100%; max-height:none; aspect-ratio:4/5; }
+  .previa-post .feed-post-midia.previa-post-vertical { width:min(100%,calc(72dvh * 9/16)); height:auto; max-height:none; align-self:center; }
+  .previa-post-avisos { order:2; }
+  .previa-post .feed-legenda { order:3; }
+  .previa-post .feed-post-meta { order:4; }
+}
