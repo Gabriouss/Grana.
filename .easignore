@@ -63,7 +63,6 @@ design-system/
 *.md
 !README.md
 playwright*.config.cjs
-landing-meta.json
 skills-lock.json
 supabase/migrations/
 supabase/email-templates/
