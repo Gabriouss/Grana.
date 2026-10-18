@@ -1679,13 +1679,14 @@ button.cal-item { cursor: pointer; }
 .lista-sem-data .cal-item {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  grid-template-areas: 'capa titulo' 'acao acao';
+  grid-template-areas: 'capa titulo' 'formato formato' 'acao acao';
   align-items: center;
   gap: var(--s-xs) var(--s-sm);
   padding: var(--s-sm);
   font-size: var(--t-legenda);
   overflow: visible;
 }
+.lista-sem-data .cal-item-canal { grid-area: formato; }
 .lista-sem-data .cal-item-capa { grid-area: capa; width: 40px; height: 40px; border-radius: var(--r-sm); }
 .lista-sem-data .cal-item-titulo {
   grid-area: titulo;
@@ -3083,9 +3084,9 @@ dialog.central::backdrop { background: var(--scrim); }
 .cal-unico-painel .secao { min-width:0; }
 .cal-unico-pausas:empty, .cal-unico-status:empty { display:none; }
 .tela-calendario [hidden] { display:none !important; }
-.tela-calendario .agenda-item { grid-template-columns:100px minmax(0,1fr); align-items:start; }
+.tela-calendario .agenda-item { grid-template-columns:minmax(0,1fr); gap:var(--s-sm); align-items:start; }
 .tela-calendario .cal-dia { min-width:0; }
-.tela-calendario .calendario-layout { grid-template-columns:minmax(0,1fr) 300px; }
+.tela-calendario .calendario-layout { grid-template-columns:minmax(0,1fr) 272px; }
 .tela-calendario .calendario-layout > .cal-sem-data { grid-column:2; grid-row:2; }
 @media (max-width:1099px) {
   .tela-calendario .calendario-layout { grid-template-columns:minmax(0,1fr); }
@@ -3100,11 +3101,24 @@ dialog.central::backdrop { background: var(--scrim); }
 .cal-num-botao:hover { text-decoration:underline; }
 .cal-hoje .cal-num-botao { padding:0; }
 .cal-mais { padding:2px var(--s-sm); border:1px solid var(--rule-strong); border-radius:var(--r-sm); background:var(--paper-raised); color:var(--accent-2); font:inherit; font-size:var(--t-micro); cursor:pointer; }
-.tela-calendario .cal-unico-item.cal-compacto { height:54px; min-height:0; padding:4px 6px; gap:0; justify-content:center; cursor:pointer; }
-.tela-calendario .cal-unico-item.cal-compacto .cal-item-titulo { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; flex:none; white-space:normal; overflow:hidden; font-size:12px; line-height:1.3; }
-.tela-calendario .cal-dia .cal-compacto .cal-item-canal { display:block; flex:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; line-height:1.3; }
+.tela-calendario .cal-dia { padding:6px; }
+.tela-calendario .cal-unico-item.cal-compacto { height:54px; min-height:0; padding:4px 5px; gap:0; justify-content:center; cursor:pointer; }
+.tela-calendario .cal-unico-item.cal-compacto .cal-item-titulo { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; flex:none; white-space:normal; overflow:hidden; font-size:12px; line-height:1.3; letter-spacing:-0.01em; }
+.tela-calendario .cal-dia .cal-compacto .cal-item-canal { display:block; flex:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; line-height:1.3; }
 .cal-compacto .cal-meta-legenda { display:none; }
+/* Bandeja de sem data: um cartão por peça, com tudo dentro dele. */
+.lista-sem-data > .cal-sem-cartao { display:flex; flex-direction:column; gap:var(--s-sm); padding:var(--s-sm); border:1px solid var(--rule); border-radius:var(--r-md); background:var(--paper-raised); min-width:0; }
+.lista-sem-data > .cal-sem-cartao > .cal-item { padding:0; border:0; background:none; min-height:0; }
+.cal-aviso-real { overflow-wrap:anywhere; white-space:normal; min-width:0; }
+.cal-sem-data { min-width:0; padding:var(--s-md); }
+.cal-sem-data-resumo { font-size:16px; white-space:nowrap; gap:var(--s-sm); }
+.lista-sem-data .bloco-acao { flex-wrap:wrap; min-width:0; }
+.cal-sem-detalhe { font-size:var(--t-micro); color:var(--ink-soft); }
+.cal-sem-detalhe > summary { cursor:pointer; color:var(--accent-2); }
+.cal-sem-detalhe[open] > summary { margin-bottom:var(--s-sm); }
+.cal-sem-detalhe > * + * { margin-top:var(--s-sm); }
 .cal-item-meta, .cal-unico-item[tabindex] { cursor:pointer; }
+.cal-meta-miniatura-caixa { min-width:0; }
 .cal-meta-miniatura { width:64px; height:64px; border-radius:var(--r-sm); object-fit:cover; }
 .cal-meta-legenda { color:var(--ink-faint); }
 .cal-dia-dialogo { width:min(560px, 92vw); max-height:86dvh; margin:auto; padding:var(--s-xl); overflow:auto; border:1px solid var(--rule-strong); border-radius:var(--r-lg); background:var(--paper); color:var(--ink); }
