@@ -169,12 +169,12 @@ async function main() {
   {
     const db = await novoBanco();
     try {
-      await agendar(db);
+      const { admin, rpc } = await agendar(db);
       const g = graphFake((c) => {
         if (c.metodo === 'POST' && c.caminho === '123/media') return { id: '9001' };
         if (c.metodo === 'GET' && c.caminho === '9001') return { status_code: 'FINISHED' };
         if (c.metodo === 'POST' && c.caminho === '123/media_publish') return { id: '9100' };
-        if (c.metodo === 'GET' && c.caminho === '9100') return { id: '9100', media_product_type: 'FEED' };
+        if (c.metodo === 'GET' && c.caminho === '9100') return { id: '9100', media_product_type: 'FEED', permalink: 'https://www.instagram.com/p/AbC123/' };
         throw new Error('rota inesperada ' + c.metodo + ' ' + c.caminho);
       });
       for (let i = 0; i < 4; i++) {
@@ -185,6 +185,8 @@ async function main() {
       }
       const j = await job(db);
       eq([j.estado, j.remoto_id], ['publicado', '9100'], 'publicado só com o ID do post e o readback');
+      ok(new URL(g.chamadas.at(-1).url).searchParams.get('fields').split(',').includes('permalink'), 'o link vem na mesma leitura de volta (GET)');
+      eq((await rpc('consultar', [admin, { acao: 'listar' }])).jobs[0].permalink, 'https://www.instagram.com/p/AbC123/', 'consulta devolve o link do post publicado');
       eq(g.chamadas.map((c) => c.metodo + ' ' + c.caminho), ['POST 123/media', 'GET 9001', 'POST 123/media_publish', 'GET 9100'], 'uma chamada por etapa, na ordem do protocolo');
       eq(g.chamadas.filter((c) => c.caminho.endsWith('media_publish')).length, 1, 'media_publish exatamente uma vez');
       ok(g.chamadas.every((c) => c.auth === 'Bearer ' + TOKEN && !c.url.includes(TOKEN)), 'token só no cabeçalho, nunca na URL');
@@ -294,6 +296,16 @@ async function main() {
     };
     eq((await reel({ video_status: 'ready', publishing_phase: { status: 'complete', publish_status: 'published' } })).estado, 'publicado', 'Reel do Facebook: publicado só com a fase de publicação concluída');
     eq((await reel({ video_status: 'ready', publishing_phase: { status: 'complete', publish_status: 'draft' } })).estado, 'incerto', 'Reel em rascunho não conta como publicado');
+    // Item 7: link só absoluto, https e do host da própria rede; nunca montado por suposição.
+    const fase = { video_status: 'ready', publishing_phase: { status: 'complete', publish_status: 'published' } };
+    const reelLink = async (permalink_url) => { const g = graphFake(() => ({ status: fase, permalink_url }));
+      const a = graphMod.criarAdaptadorGraphReal({ rede: g.rede, versao: 'v25.0', token: TOKEN, signal: new AbortController().signal, assinar: async () => '' });
+      return (await a.executar({ jobId: 'j', rede: 'facebook', formato: 'reels', etapa: 'verificar-publicacao', remotoContaId: '123', processamento: { publicacaoId: '777' } },
+        { legenda: 'x', midias: [{ tipo: 'video', mime: 'video/mp4', objeto: 'o', sha256: 'a'.repeat(64), bytes: 10 }] })).processamento.permalink; };
+    eq(await reelLink('https://www.facebook.com/reel/777'), 'https://www.facebook.com/reel/777', 'Reel do Facebook guarda o link absoluto');
+    eq(await reelLink('/123/videos/777/'), null, 'link relativo fica nulo');
+    eq([await reelLink('https://evil.example/reel/777'), await reelLink('http://www.facebook.com/reel/777'), await reelLink('https://www.instagram.com/reel/777'), await reelLink(undefined)],
+      [null, null, null, null], 'outro host, sem https, host de outra rede ou ausente: nulo');
     const g = graphFake(() => ({ id: '9100', media_product_type: 'STORY' }));
     const a = graphMod.criarAdaptadorGraphReal({ rede: g.rede, versao: 'v25.0', token: TOKEN, signal: new AbortController().signal, assinar: async () => '' });
     const r = await a.executar({ jobId: 'j', rede: 'instagram', formato: 'feed', etapa: 'verificar-publicacao', remotoContaId: '123', processamento: { publicacaoId: '9100' } },

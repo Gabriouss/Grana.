@@ -6,7 +6,13 @@ export type EtapaGraph='preparar'|'consultar-preparo'|'publicar'|'verificar-publ
 export type MidiaGraph={objeto:string;sha256:string;mime:string;bytes:number;tipo:'imagem'|'video'};
 export type JobGraph={jobId:string;rede:'facebook'|'instagram';formato:'feed'|'carrossel'|'reels'|'stories';
  etapa:EtapaGraph;remotoContaId:string;processamento:EstadoGraph;remotoId?:string|null};
-export type EstadoGraph={itens?:string[];container?:string;video?:string;uploadUrl?:string;transferido?:boolean;publicacaoId?:string};
+export type EstadoGraph={itens?:string[];container?:string;video?:string;uploadUrl?:string;transferido?:boolean;publicacaoId?:string;permalink?:string|null};
+// Link relativo (o permalink_url de video de Page pode vir assim) ou de outro host nao e montado: fica nulo.
+const HOSTS_LINK={instagram:new Set(['www.instagram.com','instagram.com']),facebook:new Set(['www.facebook.com','facebook.com','m.facebook.com','web.facebook.com'])};
+export function linkOficial(v:unknown,rede:'facebook'|'instagram'):string|null{
+ if(typeof v!=='string'||v.length>500)return null;
+ try{const u=new URL(v);return u.protocol==='https:'&&HOSTS_LINK[rede].has(u.hostname)&&!u.username&&!u.password&&!u.port?u.href:null;}catch{return null;}
+}
 export type ResultadoGraph={estado:'adiado'|'preparo-parcial'|'pronto'|'processando'|'publicacao-aceita'|'publicado'|'cancelado'|'falhou'|'incerto';
  processamento?:EstadoGraph;remotoId?:string;codigo?:string};
 type Deps={rede:typeof fetch;versao:string;token:string;assinar:(midia:MidiaGraph)=>Promise<string>;signal:AbortSignal};
@@ -51,19 +57,21 @@ export function criarAdaptadorGraphReal(deps:Deps){
    if(job.etapa==='cancelar')return {estado:'incerto',codigo:'cancelamento-requer-conferencia'};
    if(job.etapa==='reconciliar'&&!estado.publicacaoId&&!job.remotoId)return {estado:'incerto',codigo:'publicacao-sem-id-recuperavel'};
    if(job.etapa==='verificar-publicacao'||job.etapa==='reconciliar'){
-    const post=id(estado.publicacaoId??job.remotoId),publicado:ResultadoGraph={estado:'publicado',remotoId:post,processamento:estado};
+    const post=id(estado.publicacaoId??job.remotoId);
+    // O link vem na MESMA leitura de volta; sem link absoluto da propria rede, fica nulo.
+    const publicado=(link:unknown):ResultadoGraph=>({estado:'publicado',remotoId:post,processamento:{...estado,permalink:linkOficial(link,job.rede)}});
     if(job.rede==='instagram'){
      // media_product_type separa Story, Reel e Feed (IG Content Publishing, "Story posts").
-     const d=await graph(post,'GET',{fields:'id,media_product_type'});
-     if(d.id===post&&d.media_product_type===(job.formato==='reels'?'REELS':job.formato==='stories'?'STORY':'FEED'))return publicado;
+     const d=await graph(post,'GET',{fields:'id,media_product_type,permalink'});
+     if(d.id===post&&d.media_product_type===(job.formato==='reels'?'REELS':job.formato==='stories'?'STORY':'FEED'))return publicado(d.permalink);
     }else if(job.formato==='reels'){
      // Reel de Page: o ID e o do video. success:true do finish nao prova nada;
      // so a fase de publicacao concluida e publicada (FB Reels Publishing, status).
-     const d=await graph(post,'GET',{fields:'status'});
+     const d=await graph(post,'GET',{fields:'status,permalink_url'});
      const fase=(d.status as {publishing_phase?:{status?:string;publish_status?:string}}|undefined)?.publishing_phase;
-     if((fase?.status==='complete'||fase?.status==='completed')&&fase.publish_status==='published')return publicado;
+     if((fase?.status==='complete'||fase?.status==='completed')&&fase.publish_status==='published')return publicado(d.permalink_url);
     }else{
-     const d=await graph(post,'GET',{fields:'id,is_published'});if(d.id===post&&d.is_published===true)return publicado;
+     const d=await graph(post,'GET',{fields:'id,is_published,permalink_url'});if(d.id===post&&d.is_published===true)return publicado(d.permalink_url);
     }
     return {estado:'incerto',codigo:'publicacao-sem-readback'};
    }

@@ -110,6 +110,8 @@ begin
 end $$;
 
 -- O painel le o ultimo recibo de cada conta e do ciclo para mostrar o aviso.
+-- Item 7: o link do post vem da leitura de volta (so GET) gravada em
+-- processamento; so aparece em job publicado e com host da propria rede.
 create or replace function public.admin_marketing_real_consultar(p_admin uuid,p_filtro jsonb)
 returns jsonb language plpgsql security invoker set search_path='' as $$
 declare saida jsonb; lid uuid; total integer;
@@ -132,7 +134,8 @@ begin
     select g.id,g.criado_em,jsonb_build_object('jobId',g.id,'loteId',g.lote_id,'revisao',g.revisao,
       'snapshotId',g.snapshot_id,'estrategia',g.estrategia,'estado',g.estado,'codigoErro',g.codigo_erro,
       'atualizadoEm',g.atualizado_em,'proximaVerificacaoEm',g.proxima_verificacao_em,'remotoId',g.remoto_id,
-      'permalink',null,'confirmadoEm',a.confirmado_em,'concluidoEm',g.concluido_em,
+      'permalink',case when g.estado='publicado' and (g.processamento->>'permalink') ~ ('^https://(www\.|m\.|web\.)?'||a.rede||'\.com/')
+        then g.processamento->>'permalink' end,'confirmadoEm',a.confirmado_em,'concluidoEm',g.concluido_em,
       'cancelamentoSolicitadoEm',g.cancelamento_solicitado_em,
       'destino',jsonb_build_object('contaId',g.conta_id,'rede',a.rede,'formato',a.formato,'publicarEm',a.publicar_em,'fuso',a.fuso),
       'peca',jsonb_build_object('pecaId',a.peca_id,'versao',a.versao),
