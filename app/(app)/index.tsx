@@ -1532,13 +1532,13 @@ export default function InicioScreen() {
         <VoiceEntryButton
           label="Lançar por voz"
           onSaved={() => { void load(); }}
-          textStyle={styles.smartActionPrimaryText}
-          /* O lançamento por voz é o atalho primário da Home: fica sempre
-             na primeira posição, tanto no desktop quanto no aplicativo. */
-          iconColor={theme.accent2}
+          textStyle={styles.smartActionText}
+          /* Mesmo padrão dos outros três atalhos (autor, 18/10/2026): a voz
+             segue na primeira posição, sem destaque próprio. */
+          iconColor={theme.ink}
           iconSize={18}
-          style={[styles.smartActionBtn, styles.smartActionBtnPrimary]}
-          hoverStyle={styles.smartActionBtnPrimaryHover}
+          style={styles.smartActionBtn}
+          hoverStyle={styles.smartActionBtnHover}
           onTranscribed={(text, ref) => {
             const destino = destinoDaFala(text, wallets, creditCards);
             if (destino === 'contas') {
@@ -1554,6 +1554,19 @@ export default function InicioScreen() {
             setPasteModalOpen(true);
           }}
         />
+      </View>
+    ) : null,
+    ligado('foto_nota') ? (
+      <View key="foto-nota" style={styles.smartActionCell}>
+        <AppPressable
+          style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
+          onPress={() => setFotoNotaOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Fotografar nota"
+        >
+          <Ionicons name="camera-outline" size={18} color={theme.ink} />
+          <Text style={styles.smartActionText} numberOfLines={1} adjustsFontSizeToFit>Fotografar nota</Text>
+        </AppPressable>
       </View>
     ) : null,
     ligado('colar_comprovante') ? (
@@ -1582,26 +1595,14 @@ export default function InicioScreen() {
         </AppPressable>
       </View>
     ) : null,
-    ligado('foto_nota') && Platform.OS !== 'web' ? (
-      <View key="foto-nota" style={styles.smartActionCell}>
-        <AppPressable
-          style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
-          onPress={() => setFotoNotaOpen(true)}
-          accessibilityRole="button"
-          accessibilityLabel="Fotografar nota"
-        >
-          <Ionicons name="camera-outline" size={18} color={theme.ink} />
-          <Text style={styles.smartActionText} numberOfLines={1} adjustsFontSizeToFit>Fotografar nota</Text>
-        </AppPressable>
-      </View>
-    ) : null,
   ].filter((cell): cell is ReactElement => cell !== null);
-  const smartActionRows = Platform.OS === 'web'
-    ? [smartActionCells.slice(0, 1), smartActionCells.slice(1)].filter((row) => row.length > 0)
-    : Array.from(
-      { length: Math.ceil(smartActionCells.length / 2) },
-      (_, row) => smartActionCells.slice(row * 2, row * 2 + 2),
-    );
+  /* A mesma grade no app e na web (autor, 18/10/2026): linha 1 voz e foto da
+     nota, linha 2 colar comprovante e importar extrato. Atalho desligado por
+     flag só encurta a grade; a ordem não muda. */
+  const smartActionRows = Array.from(
+    { length: Math.ceil(smartActionCells.length / 2) },
+    (_, row) => smartActionCells.slice(row * 2, row * 2 + 2),
+  );
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: theme.paper }}>
@@ -2115,17 +2116,7 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
   },
   smartActionBtnHover: { borderColor: theme.ruleStrong },
-  smartActionBtnPrimary: { backgroundColor: theme.paperSelected, borderColor: theme.accent2 },
-  smartActionBtnPrimaryHover: { backgroundColor: theme.hover, borderColor: theme.accent2 },
   smartActionText: {
-    color: theme.ink,
-    fontSize: type.legenda,
-    lineHeight: lh(type.legenda, 'apoio'),
-    fontFamily: fonts.regular,
-    textAlign: 'left',
-    flexShrink: 1,
-  },
-  smartActionPrimaryText: {
     color: theme.ink,
     fontSize: type.legenda,
     lineHeight: lh(type.legenda, 'apoio'),
