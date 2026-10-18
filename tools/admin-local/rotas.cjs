@@ -187,6 +187,25 @@ async function rotaMarketingGet(res, nomeModulo, nomesFuncao, args, vazio) {
   try { responderOk(res, await fn(RAIZ_DADOS, ...args)); } catch (e) { erroDeMarketing(res, e); }
 }
 
+// Aprovar é UMA ação (autor, 18/10): grava o aceite desta versão e fecha junto o pedido de ajuste
+// que entregou exatamente esta versão. As travas reais continuam no aprovar (legenda, versão).
+async function aprovarEFecharPedido(res, id, corpo) {
+  try {
+    const resultado = await marketing('aprovacoes').aprovar(RAIZ_DADOS, id, corpo);
+    const avisos = [...(resultado.avisos || [])];
+    let pedidosFechados = 0;
+    const fila = marketing('ajustes-fila').fila;
+    const peca = marketing('catalogo').obterPeca(RAIZ_DADOS, id);
+    for (const r of fila.listar().filter((x) => x.pecaId === id && x.estado === 'corrigido-aguardando-aceite' && x.versaoCorrigida === peca.versao)) {
+      try { await fila.aceitar(peca, r.id); pedidosFechados++; } catch (e) {
+        console.error(`[painel] aprovar-fechar-pedido: ${e.codigo || 'falhou'}`);
+        avisos.push('O aceite foi gravado, mas o pedido de ajuste desta peça não fechou. Atualize a tela.');
+      }
+    }
+    responderOk(res, { ...resultado, pedidosFechados, avisos });
+  } catch (e) { erroDeMarketing(res, e); }
+}
+
 async function rotaMarketingPost(res, nomeModulo, nomesFuncao, args) {
   const fn = funcao(marketing(nomeModulo), nomesFuncao);
   if (!fn) return responderErro(res, 503, 'modulo-pendente', 'Módulo de marketing ainda não instalado.');
@@ -414,7 +433,8 @@ async function tratarAcao(req, res, url, corpo, sessao) {
       if (req.method !== 'POST') return responderErro(res, 405, 'metodo-recusado', 'Use POST para recusar.');
       r = rotaMarketingPost(res, 'historico', ['recusar'], [m[1], corpo]);
     }
-    else if (m) r = rotaMarketingPost(res, 'aprovacoes', m[2] === 'aprovar' ? ['aprovar'] : ['pedirAjuste', 'ajuste'], [m[1], corpo]);
+    else if (m && m[2] === 'aprovar') r = aprovarEFecharPedido(res, m[1], corpo);
+    else if (m) r = rotaMarketingPost(res, 'aprovacoes', ['pedirAjuste', 'ajuste'], [m[1], corpo]);
     else if (p === '/api/marketing/calendario') r = rotaMarketingPost(res, 'calendario', ['planejar', 'salvar', 'gravar'], [corpo]);
     else r = rotaMarketingPost(res, 'trafego', ['salvarCampanha', 'salvar', 'gravar'], [corpo]);
     await r;

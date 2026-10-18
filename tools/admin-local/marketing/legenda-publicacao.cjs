@@ -6,6 +6,8 @@ const MENSAGEM = 'Falta a legenda para publicar';
 function temLegenda(peca) {
   // A capa de um Reel usa a legenda do Reel; não exige a própria.
   if (peca?.capaDe) return true;
+  // Documento de copy (COPYS*.md) não é arte: a exigência vale só para imagem e vídeo (autor, 18/10).
+  if (peca?.tipo === 'texto') return true;
   return typeof peca?.legenda === 'string' && peca.legenda.trim().length > 0;
 }
 function bloqueiosAprovacao(peca) {

@@ -54,10 +54,12 @@ function filaFixture() {
     const semLegenda = cat.montarCatalogo(dir);
     const compostoSemLegenda = semLegenda.find(p => p.tipo === 'video');
     assert.ok(compostoSemLegenda.composicao, 'premissa: vídeo e capa selados na versão composta');
-    for (const tipo of ['video', 'carrossel', 'texto']) {
+    for (const tipo of ['video', 'carrossel']) {
       const alvo = semLegenda.find(p => p.tipo === tipo); assert.ok(alvo, tipo);
       await assert.rejects(ap.aprovar(dir, alvo.id, { versao: alvo.versao, confirmacao: true }), rejeita);
     }
+    // 18/10: documento de copy (texto) não exige legenda; só arte (imagem/vídeo).
+    assert.deepEqual(semLegenda.find(p => p.tipo === 'texto').bloqueiosAprovacao || [], []);
     assert.equal(fs.existsSync(path.join(dir, 'docs/marketing/painel/aprovacoes.json')), false);
     // Registro histórico sem legenda fica intacto, mas não autoriza repetir aceite/operação.
     const arquivo = path.join(dir, 'docs/marketing/painel/aprovacoes.json');

@@ -14,7 +14,7 @@ function carregar(nome) {
 }
 const legenda = carregar('_legenda-publicacao.js');
 for (const tipo of ['imagem', 'video', 'carrossel', 'texto']) {
-  for (const texto of [undefined, null, '', '  \n\t']) assert.equal(legenda.faltaLegenda({ tipo, legenda: texto, editorial: { copyCanonica: 'Só referência' } }), true);
+  for (const texto of [undefined, null, '', '  \n\t']) assert.equal(legenda.faltaLegenda({ tipo, legenda: texto, editorial: { copyCanonica: 'Só referência' } }), tipo !== 'texto', 'documento de copy (texto) não exige legenda (18/10)');
   assert.equal(legenda.faltaLegenda({ tipo, legenda: 'Texto real', composicao: { legenda: 'incluida' } }), false);
 }
 assert.equal(legenda.faltaLegenda({ legenda: 'Texto real', bloqueiosAprovacao: [{ codigo: 'legenda-obrigatoria' }] }), true);
@@ -28,13 +28,17 @@ const ctx = { h, obsoleta: () => false, formatar: { dataHora: (v) => v }, acao()
 const pedido = { id: 'audit', pecaId: 'a'.repeat(16), estado: 'corrigido-aguardando-aceite', versaoCorrigida: 'b'.repeat(40), commit: 'c'.repeat(40), criadoEm: '2026-10-18', tentativas: 0 };
 for (const texto of ['', '   ', 'Texto real']) {
   const secao = ajustes.secaoAjustesDaPeca(ctx, [pedido], pedido.pecaId, { pronta: true, pedidoId: pedido.id, observadores: new Set() }, { legenda: texto, composicao: { video: [], legenda: texto ? 'incluida' : 'sem-legenda' } });
-  const botao = todos(secao).find((n) => n.attrs.texto === 'Aceitar versão corrigida');
-  assert.equal(botao.attrs.disabled, !texto.trim());
-  if (!texto.trim()) {
-    assert(todos(secao).some((n) => /Falta a legenda para publicar/.test(n.attrs.texto || '')));
-    botao.disabled = true;
-    ajustes.agir(ctx, pedido, 'aceitar', botao);
-  }
+  // 18/10: o aceite é só pelo botão Aprovar da peça; a seção do pedido não tem mais botão de aceite.
+  assert.equal(todos(secao).some((n) => n.attrs.texto === 'Aceitar versão corrigida'), false);
+  assert.equal(todos(secao).some((n) => /Falta a legenda para publicar/.test(n.attrs.texto || '')), !texto.trim());
 }
 assert.equal(posts, 0, 'sem escrita quando o aceite está bloqueado');
-console.log('admin-legenda-publicacao-tela: formatos, espaços, composto, DTO, local atual e aceite corrigido bloqueado sem POST OK');
+console.log('admin-legenda-publicacao-tela: formatos, espaços, composto, DTO, local atual e seção do pedido sem botão de aceite, sem POST OK');
+// 18/10: documento de copy (tipo texto) não exige legenda; arte continua exigindo, no servidor e na tela.
+{
+  const servidor = require('../tools/admin-local/marketing/legenda-publicacao.cjs');
+  assert.equal(servidor.temLegenda({ tipo: 'texto', legenda: '' }), true);
+  assert.equal(servidor.temLegenda({ tipo: 'imagem', legenda: '' }), false);
+  assert.equal(servidor.temLegenda({ tipo: 'video' }), false);
+  assert.equal(servidor.bloqueiosAprovacao({ tipo: 'texto' }).length, 0);
+}
