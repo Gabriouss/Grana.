@@ -33,3 +33,40 @@ Screenshots/
 /ios
 modules/*/android/build/
 modules/*/android/.cxx/
+
+# Material que nao entra no APK (18/10/2026, pedido do autor: "Tire tudo o que
+# for desnecessario para o bom funcionamento do aplicativo do pacote EAS").
+# O pacote tinha 581 MB, quase tudo marketing e ferramentas. O app importa de
+# fora das pastas de codigo SO: supabase/functions/_shared (lib/safe-to-spend.ts
+# usa livre-para-gastar), vendor/ (dependencias file: do package.json) e
+# plugins/ (app.json). Esses ficam.
+docs/
+documentation/
+dogfood-output/
+plans/
+skills/
+agent/
+maestro/
+tools/
+site-vendas/
+public/
+dist/
+data/
+test-results/
+__tests__/
+.maestri/
+Criativos Photoshop/
+design-system/
+*.mp4
+*.psd
+*.psb
+*.md
+!README.md
+playwright*.config.cjs
+landing-meta.json
+skills-lock.json
+supabase/migrations/
+supabase/email-templates/
+supabase/*.sql
+supabase/functions/*
+!supabase/functions/_shared/
