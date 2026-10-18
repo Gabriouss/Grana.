@@ -58,8 +58,15 @@ export function situacaoDaFamilia(grupo, pedidos) {
   return situacoes.find((s) => s.secao === 'voce') || situacoes.find((s) => s.secao === 'agentes') || situacoes[0];
 }
 
+// Arte sem legenda e sem pedido em curso não é aprovável: vai para a linha "Sem legenda (n)"
+// e não conta em "Precisa de você" (autor, 18/10). Mesmo predicado na mesa e no contador.
+export function aguardaLegenda(g, pedidos) {
+  return situacaoDaFamilia(g, pedidos)?.secao === 'voce' && !g.principal?.aprovada && faltaLegenda(g.principal)
+    && !(pedidos || []).some((r) => g.pecas.some((p) => p.id === r.pecaId) && pedidoAberto(r));
+}
+
 export function contarPrecisaDeVoce(familias, pedidos) {
-  return familias.filter((g) => situacaoDaFamilia(g, pedidos)?.secao === 'voce').length;
+  return familias.filter((g) => situacaoDaFamilia(g, pedidos)?.secao === 'voce' && !aguardaLegenda(g, pedidos)).length;
 }
 
 export function textoAlertaDemanda(a) {

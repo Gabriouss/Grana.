@@ -102,8 +102,7 @@ function normalizar(lista, ctx) {
 function textoSemana(s) {
   if (!s) return null;
   if (typeof s === 'string') return s;
-  const n = s.numero ? `Semana ${s.numero}` : 'Semana';
-  return s.inicio && s.fim ? `${n}, ${dataCurta(s.inicio)} a ${dataCurta(s.fim)}` : n;
+  return s.inicio && s.fim ? `${dataCurta(s.inicio)} a ${dataCurta(s.fim)}` : null;
 }
 
 function nomeDoArquivo(c) {
@@ -269,7 +268,7 @@ function abrirPost(area, lista, indice, ctx) {
   const dados = [
     p.data ? `Publicação planejada: ${ctx.formatar ? ctx.formatar.data(p.data) : p.data}${p.hora ? ` às ${p.hora}` : ''}` : 'Aprovada, ainda sem data de publicação',
     p.aprovadoEm ? `Aprovada em ${ctx.dataHora ? ctx.dataHora(p.aprovadoEm) : p.aprovadoEm}` : null,
-    p.semana ? `Semana: ${p.semana}` : null,
+    p.semana ? `Período: ${p.semana}` : null,
   ].filter(Boolean);
   const meta = h('div', { class: 'feed-post-meta' },
     h('div', { class: 'feed-post-acoes', 'aria-hidden': 'true' }, iconeSvg('curtir'), iconeSvg('comentar'), iconeSvg('enviar'), h('span', null, iconeSvg('salvar'))),

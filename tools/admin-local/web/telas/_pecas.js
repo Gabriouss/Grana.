@@ -12,10 +12,18 @@ export function tituloPeca(p) {
 }
 
 export function rotuloSemana(s) {
-  if (!s) return 'sem semana';
+  // Período só como datas ("12 a 18 out"); "Semana N" não chega ao autor (18/10).
+  if (!s) return 'sem data';
   if (typeof s === 'string') return s;
-  const fmt = (d) => (d ? d.split('-').reverse().slice(0, 2).join('/') : '?');
-  return `Semana ${s.numero} (${fmt(s.inicio)} a ${fmt(s.fim)})`;
+  return periodoCurto(s.inicio, s.fim);
+}
+
+const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+export function periodoCurto(inicio, fim) {
+  const p = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ''); return m ? { dia: Number(m[3]), mes: MESES[Number(m[2]) - 1] } : null; };
+  const a = p(inicio), b = p(fim);
+  if (!a || !b) return a ? `${a.dia} ${a.mes}` : 'sem data';
+  return a.mes === b.mes ? `${a.dia} a ${b.dia} ${b.mes}` : `${a.dia} ${a.mes} a ${b.dia} ${b.mes}`;
 }
 
 const ESTADOS = {
@@ -100,6 +108,8 @@ export function ehReferenciaEditorial(p) {
 
 // O que entra na mesa de Aprovação e no contador "Aprovação (N)".
 export function pecaDaFila(p) {
+  // Recusada sai de Aprovação de vez (autor, 18/10); segue no Acervo, com o motivo.
+  if (p?.estado === 'historico' && (p.recusada || p.recusa)) return false;
   return ['para-aprovacao', 'aprovados', 'historico'].includes(p?.estado) && !ehReferenciaEditorial(p);
 }
 

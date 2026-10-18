@@ -29,7 +29,7 @@ const _pecas = load('_pecas.js');
 const ajustes = load('ajustes.js');
 const SEM = { numero: 41, inicio: '2026-10-05', fim: '2026-10-11' };
 const D = 'docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/para-aprovacao/pecas/';
-const peca = (id, extra) => ({ id, versao: id[0].repeat(40), semana: SEM, estado: 'para-aprovacao', arquivos: [], ...extra });
+const peca = (id, extra) => ({ id, versao: id[0].repeat(40), semana: SEM, estado: 'para-aprovacao', arquivos: [], legenda: 'Legenda AUDIT', ...extra });
 const reel = peca('a'.repeat(16), { tipo: 'video', caminho: D + 'reels/reel-audit.mp4', nome: 'reels/reel-audit.mp4', capa: { pecaId: 'b'.repeat(16), url: '/x/capa.png' } });
 const capa = peca('b'.repeat(16), { tipo: 'imagem', caminho: D + 'reels/reel-audit-capa.png', nome: 'reels/reel-audit-capa.png', capaDe: reel.id });
 const orfa = peca('c'.repeat(16), { tipo: 'imagem', caminho: D + 'solta-1080x1920-capa.png', nome: 'solta-1080x1920-capa.png', capaOrfa: true });
@@ -78,6 +78,15 @@ assert.equal(_pecas.juntarCapasAoReel([{ chave: 'c', principal: capa, pecas: [ca
   assert.ok(formatos.includes('Carrossel · 3 páginas'), 'carrossel é uma peça com as páginas juntas');
   assert.ok(formatos.includes('Formato a conferir'));
   assert.ok(formatos.includes('Stories'));
+  // 18/10: período só como datas, nenhum "Semana N" para o autor.
+  assert.ok(!/Semana \d/.test(text(raiz)), 'sem Semana N na mesa'); assert.ok(text(raiz).includes('5 a 11 out'));
+  // 18/10: arte sem legenda sai de "Precisa de você" e do contador, para a linha "Sem legenda (n)".
+  {
+    const semLeg = peca('9'.repeat(16), { tipo: 'imagem', caminho: D + 'sem-legenda.png', nome: 'sem-legenda.png', legenda: '' });
+    acervo.push(semLeg); const r2 = node('main'); await load('aprovacao.js').montar(r2, ctx); acervo.pop();
+    assert.ok(text(r2).includes('Sem legenda (1)')); assert.equal(contagens.at(-1), 5, 'sem legenda não conta como aprovável');
+    assert.ok(text(r2).includes('Precisa de você (5)')); chamadas.splice(-2); contagens.pop();
+  }
   assert.ok(text(raiz).includes('Capa sem Reel'), 'órfã tem aviso no card');
   // A janela do Reel (selecionado ao montar) mostra a capa dele, com aceite próprio.
   assert.ok(text(raiz).includes('Capa deste Reel'));

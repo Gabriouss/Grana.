@@ -51,7 +51,7 @@ export async function montar(raiz, ctx) {
     grupoChips('Estado', FILTROS_ESTADO, 'estado'),
     grupoChips('Formato', FILTROS_TIPO, 'tipo'),
     h('div', { class: 'form-linha' },
-      h('div', { class: 'campo' }, h('label', { for: 'acervo-semana', texto: 'Semana' }), seletorSemana),
+      h('div', { class: 'campo' }, h('label', { for: 'acervo-semana', texto: 'Período' }), seletorSemana),
       h('div', { class: 'campo' }, h('label', { for: 'acervo-busca', texto: 'Buscar' }), busca))));
 
   const resumo = h('p', { class: 'fila-contagem', 'aria-live': 'polite' });

@@ -13,7 +13,12 @@ function load(nome) {
   return m.exports;
 }
 const pecas = load('_pecas.js'), ajustes = load('ajustes.js');
-const p = (id, extra = {}) => ({ id, familia: id, estado: 'para-aprovacao', ...extra });
+// 18/10: recusada sai de Aprovação de vez; versão antiga sem recusa continua para comparação.
+assert.equal(pecas.pecaDaFila({ estado: 'historico', recusada: true }), false);
+assert.equal(pecas.pecaDaFila({ estado: 'historico', recusa: { motivo: 'x' } }), false);
+assert.equal(pecas.pecaDaFila({ estado: 'historico' }), true);
+assert.equal(pecas.pecaDaFila({ estado: 'para-aprovacao' }), true);
+const p = (id, extra = {}) => ({ id, familia: id, estado: 'para-aprovacao', legenda: 'Legenda AUDIT', ...extra });
 const pedido = (pecaId, estado, extra = {}) => ({ pecaId, estado, criadoEm: '2026-10-12T10:00:00Z', ...extra });
 const acervo = [p('a'), p('b', { familia: 'a' }), p('c'), p('d', { aprovada: true }), p('e', { aprovada: true, estado: 'aprovados' })];
 const familias = pecas.agruparFamilias(acervo);

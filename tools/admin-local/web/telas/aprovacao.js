@@ -4,7 +4,7 @@
 import { tituloPeca, rotuloSemana, rotuloEstado, trilha, historicoDaPeca, agruparFamilias, idadeDemanda, formatoDaPeca, ROTULOS_FORMATO, juntarCapasAoReel, pecaDaFila, arquivada } from './_pecas.js';
 import { montarMidia, midiasDaPeca, topoDaPrevia } from './_previa-publicacao.js';
 import { faltaLegenda, localLegenda } from './_legenda-publicacao.js';
-import { montarFila, secaoAjustesDaPeca, situacaoDaFamilia, contarPrecisaDeVoce, textoAlertaDemanda, observarPedidos, pedidoAberto, filaDisponivel } from './ajustes.js';
+import { montarFila, secaoAjustesDaPeca, situacaoDaFamilia, contarPrecisaDeVoce, textoAlertaDemanda, observarPedidos, pedidoAberto, filaDisponivel, aguardaLegenda } from './ajustes.js';
 
 // Mesmos rótulos de estado usados no detalhe dos pedidos em ajustes.js.
 const ESTADOS_AJUSTE = {
@@ -103,7 +103,7 @@ export async function montar(raiz, ctx) {
     h('select', { id, onchange: (e) => { filtros[chave] = e.target.value; guardarFiltros(filtros); desenharLista(); desenharDetalhe(); } },
       opcoes.map(([value, texto]) => h('option', { value, texto, selected: filtros[chave] === value }))));
   corpo.appendChild(h('div', { class: 'barra-filtros filtros-demandas form-linha' },
-    seletor('demandas-semana', 'Semana', [['todas', 'Todas as semanas'], ...semanas.map((s) => [s.inicio, rotuloSemana(s)])], 'semana'),
+    seletor('demandas-semana', 'Período', [['todas', 'Todos os períodos'], ...semanas.map((s) => [s.inicio, rotuloSemana(s)])], 'semana'),
     seletor('demandas-estado', 'Próxima ação', [['todos', 'Todas'], ['voce', 'Precisa de você'], ['agentes', 'Com os agentes'], ['resolvidas', 'Resolvidas']], 'estado')));
   // Formato em fichas: Reels separados dos estáticos, e os estáticos por destino comprovado.
   const fichas = (rotulo, opcoes, chave) => h('div', { class: 'filtros', role: 'group', 'aria-label': rotulo },
@@ -240,8 +240,11 @@ export async function montar(raiz, ctx) {
     };
     const visiveis = familias.filter((g) => passaFormato(g) && g.pecas.some((p) => filtros.semana === 'todas' || p.semana?.inicio === filtros.semana));
     const grupos = { voce: [], agentes: [], resolvidas: [] };
+    // Arte sem legenda não é aprovável: fica numa linha própria até a legenda chegar (autor, 18/10).
+    const semLegenda = [];
     for (const g of visiveis) {
       const s = situacaoFamilia(g);
+      if (aguardaLegenda(g, pedidos)) { semLegenda.push(g); continue; }
       if (filtros.estado !== 'todos' && filtros.estado !== s.secao) continue;
       if (s.secao === 'resolvidas') {
         const em = Date.parse(s.em || '');
@@ -249,7 +252,7 @@ export async function montar(raiz, ctx) {
       }
       grupos[s.secao].push(g);
     }
-    const exibidos = Object.values(grupos).flat();
+    const exibidos = [...Object.values(grupos).flat(), ...semLegenda];
     if (!exibidos.some((g) => g.pecas.some((p) => p.id === selecionada?.id))) selecionada = exibidos[0]?.principal || null;
     contagemFamilias.textContent = `${exibidos.length} ${exibidos.length === 1 ? 'família' : 'famílias'} com esses filtros`;
     for (const [chave, titulo] of [['voce', 'Precisa de você'], ['agentes', 'Com os agentes'], ['resolvidas', 'Resolvidas']]) {
@@ -261,6 +264,15 @@ export async function montar(raiz, ctx) {
       for (const g of grupos[chave]) itens.appendChild(cardDaFamilia(g));
       secao.appendChild(itens);
       lista.appendChild(secao);
+      if (chave === 'agentes' && semLegenda.length) {
+        const linha = h('details', { class: 'demanda-secao demanda-resolvidas', 'aria-label': 'Sem legenda' },
+          h('summary', { class: 'demanda-secao-titulo', texto: `Sem legenda (${semLegenda.length})` }),
+          h('p', { class: 'campo-ajuda', texto: 'A legenda está sendo escrita. Quando chegar, a peça volta para você aprovar.' }));
+        const itensSem = h('ul', { class: 'galeria-grade demanda-lista' });
+        for (const g of semLegenda) itensSem.appendChild(cardDaFamilia(g));
+        linha.appendChild(itensSem);
+        lista.appendChild(linha);
+      }
     }
   };
 
@@ -437,7 +449,7 @@ export async function montar(raiz, ctx) {
       h('summary', { texto: 'Detalhes do arquivo' }),
       h('dl', { class: 'lista-chave-valor' },
         h('dt', { texto: 'Estado' }), h('dd', { texto: rotuloEstado(p) }),
-        h('dt', { texto: 'Semana' }), h('dd', { texto: rotuloSemana(p.semana) }),
+        h('dt', { texto: 'Período' }), h('dd', { texto: rotuloSemana(p.semana) }),
         // F4-1: sem hash da versão; o arquivo pelo nome e pela data em que mudou.
         h('dt', { texto: 'Arquivo' }), h('dd', { class: 'quebra', texto: String(p.caminho || p.nome || 'não informado').split('/').pop() }),
         p.modificadoEm ? [h('dt', { texto: 'Alterado em' }), h('dd', { texto: ctx.formatar.dataHora(p.modificadoEm) })] : null,

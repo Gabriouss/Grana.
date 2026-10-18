@@ -83,7 +83,7 @@ function carregarModulo(arquivo, sandbox) {
   // Famílias do servidor: variantes do mesmo reel viram UMA linha, com a irmã em "Alternativas" e a capa fora dela.
   const semana = { numero: 39, inicio: '2026-09-21', fim: '2026-09-27' };
   const dir = 'docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/';
-  const variante = (letra, nome, extra = {}) => ({ id: letra.repeat(16), versao: letra.repeat(40), estado: 'para-aprovacao', tipo: 'video', nome, caminho: dir + nome, semana, arquivos: [], ...extra });
+  const variante = (letra, nome, extra = {}) => ({ id: letra.repeat(16), versao: letra.repeat(40), estado: 'para-aprovacao', tipo: 'video', nome, caminho: dir + nome, semana, arquivos: [], legenda: 'Legenda AUDIT', ...extra });
   const sem = variante('a', 'reel-audit-v2.mp4'), narrado = variante('b', 'reel-audit-v2-narrado.mp4', { nomeExibicao: 'Notificação vira lançamento · Reels' });
   const capa = variante('c', 'reel-audit-v2-capa.png', { tipo: 'imagem', capaDe: sem.id }), outra = variante('d', 'outro-audit.png', { tipo: 'imagem' });
   const acervo = [sem, narrado, capa, outra];
