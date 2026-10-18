@@ -286,6 +286,14 @@ const GET = {
     }
     return rotaMarketingGet(res, 'calendario-unico', ['calendario'], [filtros], { itens: [], reais: { status: 'indisponivel', itens: [], completo: false } });
   },
+  '/api/marketing/calendario/meta-publicados': (req, res, url) => {
+    const filtros = {};
+    for (const [chave, valor] of url.searchParams) {
+      if (chave !== 'mes' || Object.hasOwn(filtros, chave)) return responderErro(res, 400, 'pedido-invalido', 'Confira os filtros do calendário.');
+      filtros[chave] = valor;
+    }
+    return rotaMarketingGet(res, 'meta-publicados', ['publicados'], [filtros], { posts: [], redes: {}, completo: false });
+  },
   '/api/marketing/calendario/ensaio': (req, res) => rotaMarketingGet(res, 'meta-ensaio', ['ensaiar'], [], { modo: 'ensaio', realHabilitado: false, itens: [] }),
   '/api/marketing/cronograma': (req, res) => rotaMarketingGet(res, 'cronograma', ['ler'], [], null),
   '/api/marketing/resultados': async (req, res, url) => responderOk(res, await adaptador('meta-leitura').ler({ incluirHoje: url.searchParams.get('incluirHoje') === '1' })),
