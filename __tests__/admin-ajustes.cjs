@@ -63,9 +63,11 @@ async function test(name, fn) { await fn(); count++; console.log('OK ' + name); 
     const h = setup(); await h.fila.solicitar(h.peca, { versao: h.peca.versao, motivo: 'ajuste' }); const r = await h.fila.claim(); h.peca.versao = 'b'.repeat(40);
     await h.fila.marcar(r.id, r.lease.id, 'corrigido-aguardando-aceite', { pecaId: h.peca.id, versao: h.peca.versao, commit: 'c'.repeat(40) });
     const aceites = [];
-    const deps = { fila: h.fila, obterPeca: () => ({ ...h.peca }), aprovar: async (_raiz, id, corpo) => { aceites.push([id, corpo.versao]); return { aprovacao: { id }, avisos: [] }; } };
+    const promocoes = [];
+    const deps = { promover: async (_raiz,id,corpo) => { assert(h.db.pedidos.every(p => p.estado !== 'corrigido-aguardando-aceite')); promocoes.push([id,corpo]); return { promocao: {id,versao:corpo.versao}, avisos: [] }; }, fila: h.fila, obterPeca: () => ({ ...h.peca }), aprovar: async (_raiz, id, corpo) => { aceites.push([id, corpo.versao]); return { aprovacao: { id, versao: corpo.versao, aprovadoEm: '2026-10-18T20:00:00-03:00', evidencia: 'aceite do autor' }, avisos: [] }; } };
     const res = await aprovarEFechar('/fixture', h.peca.id, { versao: h.peca.versao, confirmacao: true }, deps);
     assert.deepEqual(aceites, [[h.peca.id, h.peca.versao]], 'um aceite, da versão exibida');
+    assert.equal(promocoes.length,1); assert.equal(res.promocao.versao,h.peca.versao);
     assert.equal(res.pedidosFechados, 1); assert.equal(h.db.pedidos[0].estado, 'aceito', 'pedido fechado gravado na fila');
     assert.equal(h.db.pedidos[0].aceite.versao, h.peca.versao);
     const de_novo = await aprovarEFechar('/fixture', h.peca.id, { versao: h.peca.versao, confirmacao: true }, deps);
@@ -75,7 +77,7 @@ async function test(name, fn) { await fn(); count++; console.log('OK ' + name); 
     await h2.fila.marcar(r2.id, r2.lease.id, 'corrigido-aguardando-aceite', { pecaId: h2.peca.id, versao: h2.peca.versao, commit: 'c'.repeat(40) });
     const erroOriginal = console.error; console.error = () => {};
     try {
-      const falha = await aprovarEFechar('/fixture', h2.peca.id, { versao: h2.peca.versao, confirmacao: true }, { ...deps, fila: { listar: () => h2.fila.listar(), aceitar: async () => { throw Object.assign(new Error('x'), { codigo: 'versao-mudou' }); } } });
+      const falha = await aprovarEFechar('/fixture', h2.peca.id, { versao: h2.peca.versao, confirmacao: true }, { ...deps, obterPeca: () => ({ ...h2.peca }), fila: { listar: () => h2.fila.listar(), aceitar: async () => { throw Object.assign(new Error('x'), { codigo: 'versao-mudou' }); } } });
       assert.equal(falha.pedidosFechados, 0); assert.ok(falha.avisos.some((t) => /não fechou/.test(t)), 'recibo visível');
     } finally { console.error = erroOriginal; }
     assert.equal(h2.db.pedidos[0].estado, 'corrigido-aguardando-aceite');
@@ -83,7 +85,26 @@ async function test(name, fn) { await fn(); count++; console.log('OK ' + name); 
     const h3 = setup(); await h3.fila.solicitar(h3.peca, { versao: h3.peca.versao, motivo: 'ajuste' }); const r3 = await h3.fila.claim(); h3.peca.versao = 'b'.repeat(40);
     await h3.fila.marcar(r3.id, r3.lease.id, 'corrigido-aguardando-aceite', { pecaId: h3.peca.id, versao: 'b'.repeat(40), commit: 'c'.repeat(40) }); h3.peca.versao = 'a'.repeat(40);
     const outra = await aprovarEFechar('/fixture', h3.peca.id, { versao: h3.peca.versao, confirmacao: true }, { ...deps, fila: h3.fila, obterPeca: () => ({ ...h3.peca }) });
-    assert.equal(outra.pedidosFechados, 0); assert.equal(h3.db.pedidos[0].estado, 'corrigido-aguardando-aceite');
+    assert.equal(outra.pedidosFechados, 1); assert.equal(h3.db.pedidos[0].estado, 'encerrado');
+    assert.equal(h3.db.pedidos[0].aceite,null,'nao inventa aceite do hash antigo');
+    assert.equal(h3.db.pedidos[0].versaoCorrigida,'b'.repeat(40));
+    assert.equal(h3.db.pedidos[0].aceiteSubstituto.versao,h3.peca.versao);
+    // Falha de promoção mantém aceite e fechamento e devolve motivo visível, com log.
+    const logs = []; console.error = (t) => logs.push(t);
+    try {
+      const antes = aceites.length;
+      const resFalha = await aprovarEFechar('/fixture', h.peca.id, { versao: h.peca.versao, confirmacao: true }, {
+        ...deps, promover: async (_raiz, id, corpo) => {
+          assert.equal(aceites.length,antes+1,'aceite acontece antes de promover');
+          assert.equal(id,h.peca.id);assert.equal(corpo.versao,h.peca.versao);assert.equal(corpo.confirmacao,true);
+          assert.equal(h.db.pedidos[0].estado,'aceito','fechamento persistiu antes de promover');
+          throw Object.assign(new Error('Destino indisponível.'),{codigo:'destino-indisponivel'});
+        },
+      });
+      assert.equal(resFalha.aprovacao.versao,h.peca.versao);assert.equal(resFalha.promocao,null);
+      assert(resFalha.avisos.some(t=>t.includes('Destino indisponível. Atualize')),'motivo sem ponto duplicado');
+      assert(logs.some(t=>t.includes('aprovar-promover: destino-indisponivel')));
+    } finally { console.error = erroOriginal; }
   });
   await test('versao mudou antes envio: desatualizado e zero entrega', async () => {
     const h = setup(); await h.fila.solicitar(h.peca, { versao: h.peca.versao, motivo: 'ajuste' }); h.peca.versao = 'b'.repeat(40);

@@ -248,6 +248,27 @@ function criarFila(deps) {
       r.aceite = { versao: peca.versao, em: deps.agora() }; mudar(db, r, 'aceito', 'autor-aceitou'); return r;
     });
   }
+  // Um aceite explícito da versão atual encerra a correção anterior sem fingir que
+  // o hash antigo foi aceito. Preserva os dois hashes e o motivo no recibo privado.
+  async function encerrarPorAceite(peca, pedidoId, aceite) {
+    return deps.transacao((db) => {
+      const atual = deps.obterPeca(peca.id);
+      if (!atual || atual.versao !== peca.versao || aceite?.id !== peca.id ||
+        aceite.versao !== peca.versao || !aceite.evidencia || !Number.isFinite(Date.parse(aceite.aprovadoEm))) {
+        throw erro('versao-mudou', 'Confira o aceite da versão atual antes de encerrar a correção anterior.');
+      }
+      exigirLegenda(atual);
+      const r = achar(db, pedidoId);
+      if (r.pecaId !== peca.id || r.estado !== 'corrigido-aguardando-aceite' || !r.versaoCorrigida || r.versaoCorrigida === peca.versao) {
+        throw erro('estado-invalido', 'O pedido não é uma correção anterior desta peça.');
+      }
+      r.lease = null;
+      r.motivoEncerramento = 'Correção anterior superada pelo aceite explícito da versão atual.';
+      r.aceiteSubstituto = { versao: aceite.versao, em: aceite.aprovadoEm };
+      mudar(db, r, 'encerrado', 'correcao-superada-por-aceite');
+      return r;
+    });
+  }
   // Remote bridge (web panel -> table -> this queue). The local queue stays the only one
   // that delivers; remote rows are imported once (idempotent by remotoId) and every local
   // state change is mirrored back so the web panel can show progress.
@@ -346,7 +367,7 @@ function criarFila(deps) {
     } catch { deps.log('ajuste-vigia-falhou'); }
     finally { ticking = false; }
   }
-  return { solicitar, claim, renovar, lerPedido, marcar, autorizarCusto, recusarCusto, consumirAutorizacaoCusto, reenviar, encerrar, encerrarPeloAgente, retry, conferirAceite, aceitar, tick, sincronizarRemoto,
+  return { solicitar, claim, renovar, lerPedido, marcar, autorizarCusto, recusarCusto, consumirAutorizacaoCusto, reenviar, encerrar, encerrarPeloAgente, retry, conferirAceite, aceitar, encerrarPorAceite, tick, sincronizarRemoto,
     listar: () => deps.ler().pedidos, eventos: () => deps.ler().eventos, remotoStatus: () => ({ ...remoto }) };
 }
 const MOTIVOS_SEM_ENVIO = new Set(['terminal-inacessivel', 'agente-fechado', 'caixa-ocupada']);

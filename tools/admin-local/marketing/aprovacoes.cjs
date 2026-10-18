@@ -4,8 +4,8 @@
 // Regra 25: aprovado exige evidência datada do aceite para AQUELA versão.
 // O registro vai para docs/marketing/painel/aprovacoes.json e uma linha de
 // evidência é acrescentada ao INDICE.md da semana da peça. Nenhum arquivo é
-// movido de pasta: a peça continua em para-aprovacao e passa a contar como
-// aprovada porque a versão dela tem aceite registrado.
+// movido por aprovar isoladamente: aprovarEFechar conclui a ação promovendo
+// a versão aceita para aprovados, depois de fechar as correções entregues.
 //
 // Aceitar projeta a previsão do cronograma no calendário. Nunca publica na Meta.
 
@@ -165,21 +165,52 @@ async function pedirAjuste(raiz, id, corpo = {}) {
 }
 
 // Aprovar é UMA ação (autor, 18/10): grava o aceite desta versão e fecha junto o pedido de ajuste
-// que entregou exatamente esta versão. As travas reais continuam no aprovar (legenda, versão).
-// Falha ao fechar o pedido não desfaz o aceite: vira aviso visível e log.
+// entregue e promove para aprovados. Correção anterior é encerrada com recibo de
+// substituição; só hash idêntico recebe aceite. Falhas preservam o aceite e deixam aviso e log.
 async function aprovarEFechar(raiz, id, corpo = {}, deps = {}) {
+  // Uma resposta perdida pode chegar depois da mudança de ID/pasta. Retome pela
+  // prova da promoção; o módulo confere arquivos, aceite e versão novamente.
+  const anterior = !deps.aprovar && ler(raiz).aprovacoes.find((a) => a.origem?.id === id && a.versao === corpo.versao);
+  if (anterior) {
+    const promovida = await (deps.promover || require('./promocao.cjs').promover)(raiz, id, corpo);
+    return { aprovacao: anterior, jaExistia: true, pedidosFechados: 0, ...promovida };
+  }
   const resultado = await (deps.aprovar || aprovar)(raiz, id, corpo);
   const avisos = [...(resultado.avisos || [])];
   let pedidosFechados = 0;
   const fila = deps.fila || require('./ajustes-fila.cjs').fila;
   const peca = (deps.obterPeca || obterPeca)(raiz, id);
-  for (const r of fila.listar().filter((x) => x.pecaId === id && x.estado === 'corrigido-aguardando-aceite' && x.versaoCorrigida === peca.versao)) {
-    try { await fila.aceitar(peca, r.id); pedidosFechados++; } catch (e) {
-      console.error(`[painel] aprovar-fechar-pedido: ${e.codigo || 'falhou'}`);
-      avisos.push('O aceite foi gravado, mas o pedido de ajuste desta peça não fechou. Atualize a tela.');
+  try {
+    if (resultado.aprovacao?.id !== peca.id || resultado.aprovacao?.versao !== peca.versao) {
+      throw new ErroMarketing('versao-mudou', 'A peça mudou depois do aceite.', 409);
+    }
+    for (const r of fila.listar().filter((x) => x.pecaId === id && x.estado === 'corrigido-aguardando-aceite')) {
+      try {
+        if (r.versaoCorrigida === peca.versao) await fila.aceitar(peca, r.id);
+        else await fila.encerrarPorAceite(peca, r.id, resultado.aprovacao);
+        pedidosFechados++;
+      } catch (e) {
+        console.error(`[painel] aprovar-fechar-pedido: ${e.codigo || 'falhou'}`);
+        avisos.push('O aceite foi gravado, mas o pedido de ajuste desta peça não fechou. Atualize a tela.');
+      }
+    }
+  } catch (e) {
+    console.error(`[painel] aprovar-conferir-pedidos: ${e.codigo || 'falhou'}`);
+    avisos.push('O aceite foi gravado, mas a fila de ajustes não pôde ser conferida. Atualize antes de tentar novamente.');
+  }
+  let promocao = null;
+  if (peca.estado === 'para-aprovacao') {
+    try {
+      const promovida = await (deps.promover || require('./promocao.cjs').promover)(raiz, id, { versao: corpo.versao, confirmacao: true });
+      promocao = promovida.promocao;
+      avisos.push(...(promovida.avisos || []));
+    } catch (e) {
+      console.error(`[painel] aprovar-promover: ${e.codigo || 'falhou'}`);
+      const motivo = require('../config.cjs').ocultar(String(e.message || 'Falha ao mover a peça')).replace(/[.\s]+$/u, '');
+      avisos.push(`O aceite foi gravado, mas a promoção não foi concluída: ${motivo}. Atualize e tente Aprovar novamente.`);
     }
   }
-  return { ...resultado, pedidosFechados, avisos };
+  return { ...resultado, pedidosFechados, promocao, avisos };
 }
 
 module.exports = { listarAprovacoes, aprovar, pedirAjuste, aprovarEFechar };
