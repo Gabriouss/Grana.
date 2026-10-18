@@ -52,6 +52,16 @@ export function dataPassou(data, agora = new Date()) {
 export function leituraRealCompleta(camada, reais) {
   return camada !== 'planejado' && reais?.status === 'disponivel' && reais.completo === true;
 }
+// Por que "Agendar de verdade" não pode ser usado agora, com a saída escrita; null quando pode.
+// O botão nunca some em silêncio (regra 9): fica visível, desabilitado e com este motivo.
+export function motivoSemAgendar(camada, reais, data, agora = new Date()) {
+  if (dataPassou(data, agora)) return 'Data já passou: use "Mudar data" e escolha uma nova.';
+  if (camada === 'planejado') return 'A camada Planejado não lê a fila real: selecione Ambos para agendar.';
+  if (!reais || reais.status === 'nao-consultado') return 'Fila real ainda não consultada: clique em "Atualizar mês".';
+  if (reais.status === 'indisponivel') return 'Fila real indisponível: clique em "Atualizar mês" e tente de novo.';
+  if (reais.completo !== true) return 'Leitura da fila real incompleta: clique em "Carregar mais agendamentos do mês".';
+  return null;
+}
 const AVISO_PODE_TER_REAL = 'Pode já ter agendamento real. Veja em Ambos.';
 
 export function projetarCalendario(d, jobs, camada = 'ambos', posts = [], catalogo = []) {
@@ -169,7 +179,45 @@ export async function montar(raiz, ctx) {
     catalogoLido ||= ctx.api('/api/marketing/pecas').then((r) => { const d = r.dados; return Array.isArray(d) ? d : (d && (d.pecas || d.itens)) || []; });
     try { return (await catalogoLido).find((p) => p.id === id && p.versao === versao) || null; } catch (err) { console.warn('[calendario-catalogo]', err.codigo || 'leitura-falhou'); catalogoLido = null; return null; }
   }
-  const itemPrevia = (i, pub) => { const jobs = i.jobs || []; return { carregarPeca, origem: pub ? 'meta' : jobs.length ? 'real' : 'planejado', peca: i.peca, data: i.data, jobs, publicado: pub || null, formato: formatoPrevia(i.peca, jobs, pub), rede: jobs[0]?.destino?.rede || pub?.rede || 'instagram' }; };
+  const MOTIVO_REACEITE = 'A legenda ou o arquivo mudou depois do aceite: aprove esta versão para agendar.';
+  const motivoAgendar = (data, peca) => (peca?.precisaAceite ? MOTIVO_REACEITE : motivoSemAgendar(camada, dados?.reais, data));
+  // Novo aceite em 1 clique onde o autor está: o mesmo POST do Aprovar, com confirmação explícita.
+  async function reaceitar(peca, botao) {
+    if (botao?.disabled || ctx.obsoleta()) return;
+    const ok = await ctx.confirmar({ titulo: 'Aprovar esta versão',
+      texto: 'A legenda ou o arquivo desta peça mudou depois do seu aceite. Aprovar registra o aceite desta versão, com a legenda atual, e mantém a data marcada. Não publica nem agenda nada na Meta.',
+      detalhes: [nomeDaPeca(peca)], rotuloBotao: 'Aprovar esta versão' });
+    if (ok !== true || ctx.obsoleta()) return;
+    if (botao) botao.disabled = true;
+    try {
+      const r = await ctx.acao(`/api/marketing/pecas/${encodeURIComponent(peca.id)}/aprovar`, { versao: peca.versao, confirmacao: true });
+      if (ctx.obsoleta()) return;
+      for (const a of r.dados?.avisos || []) ctx.aviso(a, 'info');
+      if (r.dados?.aprovacao?.versao !== peca.versao) { ctx.aviso('O aceite não foi confirmado. Atualize o mês e tente de novo.', 'erro'); return; }
+      ctx.aviso('Versão aprovada. Agora use "Agendar de verdade".', 'ok');
+      catalogoLido = null;
+      await carregar();
+    } catch (err) {
+      console.warn('[calendario-reaceite]', err.codigo || 'falha');
+      if (!ctx.obsoleta()) ctx.aviso(`O aceite não foi gravado: ${String(err.message || 'falha').replace(/[.\s]+$/u, '')}. Atualize e tente de novo.`, 'erro');
+    } finally { if (botao && !ctx.obsoleta()) botao.disabled = false; }
+  }
+  // Botão sempre visível onde a peça planejada aparece; desabilitado com o motivo quando não pode agendar.
+  const botaoAgendar = (peca, data, comMotivo = true) => {
+    if (peca?.precisaAceite) {
+      const b = h('button', { class: 'botao botao-primario', type: 'button', texto: 'Aprovar esta versão', title: MOTIVO_REACEITE,
+        onclick: (e) => { e.stopPropagation(); reaceitar(peca, e.currentTarget); } });
+      return comMotivo ? [b, h('span', { class: 'campo-ajuda cal-aviso-real', texto: MOTIVO_REACEITE })] : [b];
+    }
+    const motivo = motivoAgendar(data);
+    const b = h('button', { class: 'botao', type: 'button', texto: 'Agendar de verdade', disabled: !!motivo, title: motivo || null,
+      onclick: (e) => { e.stopPropagation(); abrir(peca, data, e.currentTarget); } });
+    return comMotivo && motivo ? [b, h('span', { class: 'campo-ajuda cal-aviso-real', texto: motivo })] : [b];
+  };
+  const itemPrevia = (i, pub) => { const jobs = i.jobs || []; const planejado = !pub && !jobs.length; const motivo = planejado ? motivoAgendar(i.data, i.peca) : null;
+    return { carregarPeca, origem: pub ? 'meta' : jobs.length ? 'real' : 'planejado', peca: i.peca, data: i.data, jobs, publicado: pub || null, formato: formatoPrevia(i.peca, jobs, pub), rede: jobs[0]?.destino?.rede || pub?.rede || 'instagram',
+      agendar: !planejado ? null : i.peca?.precisaAceite ? { habilitado: true, rotulo: 'Aprovar esta versão', motivo, acao: () => reaceitar(i.peca) }
+        : { habilitado: !motivo, motivo, acao: () => abrir(i.peca, i.data, null) } }; };
   // A miniatura vem de uma rota local autenticada (a CSP só aceita self, data e blob): busca com o cabeçalho do painel e exibe como blob.
   const ROTA_MINIATURA = '/api/marketing/calendario/meta-midia?chave=';
   function miniaturaDoPost(src) {
@@ -201,7 +249,8 @@ export async function montar(raiz, ctx) {
       ondragstart: (e) => { if (!movel) { e.preventDefault(); return; } e.dataTransfer.setData('text/x-grana-peca', i.peca.id); },
       ...abrirAoClicar(itemPrevia(i, pub)) },
     h('strong', { class: 'cal-item-titulo', texto: nomeDaPeca(i.peca) }),
-    h('span', { class: 'cal-item-canal', texto: pub || reais.some((j) => j.estado === 'publicado') ? 'Publicado' : reais.length ? 'Agendado' : 'Planejado' }));
+    h('span', { class: 'cal-item-canal', texto: pub || reais.some((j) => j.estado === 'publicado') ? 'Publicado' : reais.length ? 'Agendado' : 'Planejado' }),
+    movel ? botaoAgendar(i.peca, i.data, false) : null);
   }
   function cartao(i, planejar) {
     const reais = i.jobs || [], pub = pubDe(i);
@@ -222,7 +271,7 @@ export async function montar(raiz, ctx) {
         j.estado === 'publicado' ? linkPublicado(j.permalink) ? h('a', { href: linkPublicado(j.permalink), target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação' }) : h('span', { texto: 'O link da publicação não está disponível nesta fonte. Consulte o ID e o recibo.' }) : null,
         h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Ver destino e recibos', onclick: () => { navegar({ visao: 'lista' }); } }))),
       ...(i.historico || []).map((j) => h('span', { class: 'campo-ajuda', texto: `${j.destino.rede}: ${ESTADO_REAL[j.estado] || j.estado}${j.codigoErro ? ` · ${j.codigoErro}` : ''}. Histórico na lista.` })),
-      movel ? h('div', { class: 'bloco-acao' }, h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Mudar data', onclick: planejar }), dataPassou(i.data) ? h('span', { class: 'campo-ajuda cal-aviso-real', texto: 'Data passou' }) : leituraRealCompleta(camada, dados?.reais) ? h('button', { class: 'botao', type: 'button', texto: 'Agendar de verdade', onclick: (e) => abrir(i.peca, i.data, e.currentTarget) }) : null) : null);
+      movel ? h('div', { class: 'bloco-acao' }, h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Mudar data', onclick: planejar }), botaoAgendar(i.peca, i.data)) : null);
   }
   async function desenhar() {
     const minha = ++geracao;
@@ -231,7 +280,7 @@ export async function montar(raiz, ctx) {
     const pecasPublicadas = camada === 'planejado' ? [] : (await Promise.all([...faltantes.values()].map((p) => carregarPeca(p.pecaId, p.versao)))).filter(Boolean);
     if (encerrada || ctx.obsoleta() || minha !== geracao) return;
     calendario.replaceChildren();
-    await montarEditorial(calendario, { ...ctx, params: { ...ctx.params, mes }, calendarioParcial: dados.reais && camada !== 'planejado' && !dados.reais.completo, cabecalho() {}, cartaoCalendario: cartao, cartaoCompacto, cartaoMeta, meta: { ...meta, mostrar: camada !== 'planejado' }, agendarReal: abrir, leituraRealCompleta: leituraRealCompleta(camada, dados?.reais),
+    await montarEditorial(calendario, { ...ctx, params: { ...ctx.params, mes }, calendarioParcial: dados.reais && camada !== 'planejado' && !dados.reais.completo, cabecalho() {}, cartaoCalendario: cartao, cartaoCompacto, cartaoMeta, meta: { ...meta, mostrar: camada !== 'planejado' }, agendarReal: abrir, leituraRealCompleta: leituraRealCompleta(camada, dados?.reais), motivoAgendar, botaoAgendar,
       obsoleta: () => encerrada || ctx.obsoleta() || minha !== geracao,
       api: (url) => url.startsWith('/api/marketing/calendario?') ? Promise.resolve({ dados: projetarCalendario({ ...dados, vinculos: [...referencias.values()] }, [...acumulados.values()], camada, meta.posts, pecasPublicadas) }) : ctx.api(url) });
   }
@@ -439,7 +488,8 @@ async function montarEditorial(raiz, ctx) {
           p.tipo ? h('span', { class: 'cal-item-canal', texto: maiuscula(String(p.tipo)) }) : null,
           h('div', { class: 'bloco-acao' },
             h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Escolher data', onclick: () => planejar(p) }),
-            ctx.agendarReal && ctx.leituraRealCompleta ? h('button', { class: 'botao', type: 'button', texto: 'Agendar de verdade', onclick: (e) => ctx.agendarReal(p, '', e.currentTarget) }) : null));
+            ctx.botaoAgendar ? ctx.botaoAgendar(p, '', false) : null),
+          ctx.motivoAgendar?.('', p) ? h('span', { class: 'campo-ajuda cal-aviso-real', texto: ctx.motivoAgendar('', p) }) : null);
         // Tudo da peça fica no próprio cartão: nome, formato e botões à vista; o detalhe longo do cronograma só ao abrir.
         const vinculo = botaoVinculo(ctx, p), detalhe = detalhesCronograma(ctx, p);
         const item = h('li', { class: 'cal-sem-cartao' }, li,

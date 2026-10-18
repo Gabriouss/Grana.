@@ -53,4 +53,15 @@ assert.equal(sandbox.dataPassou('2026-10-17', agora), false, 'hoje ainda não pa
 assert.equal(sandbox.dataPassou('2026-10-20', agora), false);
 assert.equal(sandbox.dataPassou('', agora), false);
 assert.equal(sandbox.dataPassou(undefined, agora), false);
+// 18/10 noite: "Agendar de verdade" nunca some em silêncio; o motivo diz a saída e o botão fica desabilitado.
+const completa = { status: 'disponivel', completo: true };
+assert.equal(sandbox.motivoSemAgendar('ambos', completa, '2026-10-17', agora), null, 'hoje com leitura completa agenda');
+assert.match(sandbox.motivoSemAgendar('ambos', completa, '2026-10-16', agora), /Data já passou: use "Mudar data"/);
+assert.match(sandbox.motivoSemAgendar('planejado', completa, '2026-10-20', agora), /selecione Ambos/);
+assert.match(sandbox.motivoSemAgendar('ambos', { status: 'indisponivel' }, '2026-10-20', agora), /Fila real indisponível/);
+assert.match(sandbox.motivoSemAgendar('ambos', { status: 'parcial', completo: false }, '2026-10-20', agora), /Carregar mais agendamentos/);
+assert.match(sandbox.motivoSemAgendar('ambos', undefined, '', agora), /ainda não consultada/);
+for (const [camada, reais] of [['planejado', completa], ['ambos', { status: 'parcial', completo: false }], ['ambos', undefined], ['ambos', completa]]) {
+  assert.equal(!!sandbox.motivoSemAgendar(camada, reais, '2026-10-20', agora), !sandbox.leituraRealCompleta(camada, reais), 'F1: só habilita com leitura real completa');
+}
 console.log('admin-calendario-unico-tela: identidade, confirmação, estados independentes, fuso, marcadores, cancelamento/falha, links seguros e imutabilidade OK');

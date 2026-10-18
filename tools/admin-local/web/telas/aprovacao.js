@@ -401,7 +401,9 @@ export async function montar(raiz, ctx) {
       }));
     }
     if (faltaLegenda(p)) detalhe.appendChild(ctx.alerta('atencao', `Falta a legenda para publicar. ${localLegenda(p)}`));
-    const botaoAprovar = h('button', { class: 'botao botao-primario', type: 'button', texto: p.aprovada && p.estado !== 'para-aprovacao' ? 'Aprovada nesta versão' : 'Aprovar', disabled: faltaLegenda(p) || (!!p.aprovada && p.estado !== 'para-aprovacao') || temPedidoAberto || filaIndisponivel || arquivada(p) || !!pendencia,
+    // Em aprovados com versão nova (legenda ou arquivo mudou depois do aceite) o Aprovar volta a valer.
+    const jaAceita = !!p.aprovada && p.estado !== 'para-aprovacao' && !(p.estado === 'aprovados' && !p.aceite && p.aceiteDeVersaoAnterior);
+    const botaoAprovar = h('button', { class: 'botao botao-primario', type: 'button', texto: jaAceita ? 'Aprovada nesta versão' : 'Aprovar', disabled: faltaLegenda(p) || jaAceita || temPedidoAberto || filaIndisponivel || arquivada(p) || !!pendencia,
       onclick: () => aprovar(ctx, p, botaoAprovar) });
     const podePedir = !filaIndisponivel && !arquivada(p);
     const aberto = rascunhoAberto === chaveRascunho(p);
@@ -661,6 +663,13 @@ export async function aprovar(ctx, p, botao) {
     const r = await ctx.acao(`/api/marketing/pecas/${encodeURIComponent(p.id)}/aprovar`, { versao: p.versao, confirmacao: true });
     if (ctx.obsoleta()) return;
     for (const a of r.dados?.avisos || []) ctx.aviso(a, 'info');
+    // Já em aprovados: não há movimentação, só o aceite desta versão.
+    if (p.estado === 'aprovados') {
+      if (r.dados?.aprovacao?.versao !== p.versao) { ctx.aviso('O aceite desta versão não foi confirmado. Atualize e tente Aprovar novamente.', 'erro'); return; }
+      ctx.aviso('Versão aprovada. Siga ao Calendário para agendar.', 'ok');
+      ctx.navegar(`#/marketing/calendario?peca=${encodeURIComponent(p.id)}`);
+      return;
+    }
     const recibo = r.dados?.promocao;
     if (!/^[a-f0-9]{16}$/.test(recibo?.id || '') || recibo.versao !== p.versao) {
       ctx.aviso('A movimentação para aprovados não foi confirmada. Confira os avisos e tente Aprovar novamente.', 'erro');

@@ -108,7 +108,12 @@ export function abrirPreviaPost(item) {
       p.publicado ? h('div', { class: 'previa-post-destino' }, h('strong', { texto: `Publicado no ${REDES[p.publicado.rede] || REDES[p.rede]}` }),
           p.publicado.publicadoEm && Number.isFinite(Date.parse(p.publicado.publicadoEm)) ? h('span', { class: 'campo-ajuda', texto: rotuloDataHorario(p.publicado.publicadoEm) }) : null,
           p.link ? h('a', { class: 'botao botao-fantasma', href: p.link, target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação confirmada' }) : h('span', { class: 'campo-ajuda', texto: 'O link não foi informado pela fonte.' }))
-          : !p.jobs.length ? h('p', { class: 'campo-ajuda', texto: 'Planejado no calendário. Não há confirmação de agendamento ou publicação nesta prévia.' }) : null);
+          : !p.jobs.length ? h('p', { class: 'campo-ajuda', texto: 'Planejado no calendário. Não há confirmação de agendamento ou publicação nesta prévia.' }) : null,
+      // Quem abre pelo Calendário passa conteudo.agendar; sem poder agendar, o botão fica visível, desabilitado e com o motivo.
+      !p.publicado && !p.jobs.length && conteudo.agendar ? h('div', { class: 'bloco-acao previa-post-agendar' },
+        h('button', { class: 'botao botao-primario', type: 'button', texto: conteudo.agendar.rotulo || 'Agendar de verdade', disabled: !conteudo.agendar.habilitado,
+          onclick: () => { dlg.close(); conteudo.agendar.acao(); } }),
+        conteudo.agendar.motivo ? h('p', { class: 'campo-ajuda', role: 'status', texto: conteudo.agendar.motivo }) : null) : null);
     const legenda = h('div', { class: 'feed-legenda' }, h('strong', { texto: '@granaponto' }),
       h('p', { class: 'previa-post-legenda', texto: p.legenda || 'Legenda não disponível nesta fonte.' }));
     const avisos = h('div', { class: 'previa-post-avisos' },
