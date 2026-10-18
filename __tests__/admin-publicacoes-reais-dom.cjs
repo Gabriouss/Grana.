@@ -82,6 +82,9 @@ const job = (contaId, rede, estado, extra = {}) => ({
       if (p === '/api/marketing/notificacoes') return route.fulfill(envelope({ status: 'indisponivel', fonte: 'indisponivel', naoLidas: null }));
       if (p === '/api/marketing/feed') return route.fulfill(envelope({ pecas: [{ id: PECA.id, data: '2026-10-20', hora: '12:00' }] }));
       if (p === '/api/marketing/cronograma') return route.fulfill(envelope(null));
+      if (p === '/api/marketing/calendario/meta-publicados') return route.fulfill(envelope({ mes: '2026-10', completo: false, consultadoEm: new Date().toISOString(),
+        redes: { instagram: { status: 'disponivel', completo: true }, facebook: { status: 'indisponivel', completo: false, motivo: 'token expirado' } },
+        posts: [{ rede: 'instagram', formato: 'reel', data: '2026-10-15', publicadoEm: '2026-10-15T15:00:00Z', legenda: 'Post solto no dia', miniatura: null, link: 'https://www.instagram.com/p/abc/', chave: 'a'.repeat(16), vinculo: null }] }));
       if (p === '/api/marketing/calendario/ensaio') return route.fulfill(envelope({ modo: 'ensaio', realHabilitado: false, chamadasMeta: 0, itens: [] }));
       if (p === '/api/marketing/calendario') return route.fulfill(envelope({ itens: [{ peca: PECA, data: '2026-10-20', canal: 'instagram-feed' }, { peca: { id: 'd'.repeat(16), versao: 'a'.repeat(40), titulo: 'Post com destinos confirmados' }, data: '2026-10-19' }], aprovadosSemData: [],
         reais: { status: leituraParcial ? 'parcial' : 'disponivel', completo: !leituraParcial, proximoCursor: leituraParcial ? 'cursor-qa' : null, itens: jobs.map((j) => ({ ...j, confirmadoEm: '2026-10-18T12:00:00Z', peca: { pecaId: 'd'.repeat(16), versao: 'a'.repeat(40) } })) } }));
@@ -118,16 +121,29 @@ const job = (contaId, rede, estado, extra = {}) => ({
     await page.getByRole('heading', { name: 'Calendário', exact: true }).waitFor({ timeout: 15000 });
     ok(page.url().includes('visao=lista'), `${width}px: rota antiga redireciona para lista do calendário`);
     await page.screenshot({ path: path.join(OUT, `calendario-lista-${width}.png`), fullPage: true });
+    // na grade (largura >= 900) os cartões são compactos: as ações ficam na janela do dia
+    const abrirDia20 = async () => { if (width >= 900) await page.locator('.cal-dia[data-data="2026-10-20"] .cal-num-botao').click(); };
     await page.getByRole('button', { name: 'Calendário', exact: true }).click();
+    await abrirDia20();
     await page.getByRole('button', { name: 'Agendar de verdade', exact: true }).waitFor();
     await page.screenshot({ path: path.join(OUT, `calendario-mes-${width}.png`), fullPage: true });
+    // rodada 2: mês e dias com inicial maiúscula, células do mês todas do mesmo tamanho, post publicado solto no dia
+    if (width >= 900) {
+      const cab = await page.locator('.cal-dia-semana').allInnerTexts();
+      ok(cab.join(',') === 'Seg,Ter,Qua,Qui,Sex,Sáb,Dom', `${width}px: dias da semana com inicial maiúscula (${cab.join(',')})`);
+      const alturas = await page.locator('.cal-dia').evaluateAll((l) => [...new Set(l.map((c) => Math.round(c.getBoundingClientRect().height)))]);
+      ok(alturas.length === 1, `${width}px: todas as células do mês têm a mesma altura (${alturas})`);
+    }
+    ok(await page.locator('.cal-item-meta', { hasText: 'Instagram · Reels' }).count() >= 1, `${width}px: post publicado na Meta aparece solto no dia`);
+    ok(await page.locator('.cal-unico-status .alerta', { hasText: 'Facebook (token expirado)' }).count() === 1, `${width}px: leitura da Meta indisponível vira aviso, não "nada publicado"`);
     // F1 (Lynx): sem leitura real completa o botão some e o aviso toma o lugar, para não abrir um segundo agendamento
     const AVISO = 'Pode já ter agendamento real. Veja em Ambos.';
     const abrirCalendario = async (hash) => {
       await page.goto(`http://127.0.0.1:4399/#/marketing/calendario?mes=2026-10${hash}`);
       await page.reload();
-      await page.getByRole('heading', { name: 'outubro de 2026' }).waitFor({ timeout: 15000 });
+      await page.getByRole('heading', { name: 'Outubro de 2026', exact: true }).waitFor({ timeout: 15000 });
       await page.locator('.cal-unico-item:visible').first().waitFor({ timeout: 15000 });
+      await abrirDia20();
     };
     await abrirCalendario('&camada=planejado');
     ok(await page.getByRole('button', { name: 'Agendar de verdade', exact: true }).count() === 0, `${width}px: camada Planejado não oferece Agendar de verdade`);

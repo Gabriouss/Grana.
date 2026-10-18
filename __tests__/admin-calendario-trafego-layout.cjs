@@ -63,7 +63,7 @@ const base = (api) => ({
     assert.ok(recolhidos.every((d) => !d.attrs.open), 'contexto começa recolhido');
     const bloco = walk(raiz).find((n) => n.attrs.class === 'cal-sem-data-bloco');
     assert.equal(bloco.children[0].attrs.texto, 'Aprovados sem data (12)', 'contagem visível com o bloco fechado');
-    assert.equal(!!bloco.attrs.open, params.secao === 'sem-data', 'só o atalho abre o bloco');
+    assert.equal(!!bloco.attrs.open, true, 'a bandeja de sem data começa aberta: é de onde se arrasta a peça para o dia (rodada 2, pedido do autor)');
     const coluna = walk(raiz).find((n) => n.attrs.id === 'aprovados-sem-data');
     assert.equal(!!coluna.focada, params.secao === 'sem-data');
     assert.ok(text(raiz).includes('1 planejamento perdeu a validade'), 'aviso curto no topo');

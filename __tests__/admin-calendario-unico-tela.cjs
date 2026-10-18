@@ -37,6 +37,14 @@ assert.equal(sandbox.leituraRealCompleta('ambos', { status: 'nao-consultado' }),
 assert.equal(sandbox.leituraRealCompleta('ambos', undefined), false);
 assert.equal(sandbox.leituraRealCompleta('ambos', { status: 'disponivel', completo: true }), true);
 assert.equal(sandbox.leituraRealCompleta('real', { status: 'disponivel', completo: true }), true);
+// Camada "Publicado na Meta": indisponível ou parcial nunca vira "nada publicado"
+assert.equal(sandbox.avisosMeta({ status: 'nao-consultado' }).length, 0);
+assert.equal(sandbox.avisosMeta({ status: 'ok', completo: true, redes: { instagram: { status: 'disponivel', completo: true } } }).length, 0);
+assert.match(sandbox.avisosMeta({ status: 'falhou' })[0], /não quer dizer que nada foi publicado/);
+assert.match(sandbox.avisosMeta({ status: 'ok', completo: false, redes: { facebook: { status: 'indisponivel', motivo: 'token expirado' } } })[0], /Facebook \(token expirado\).*nada foi publicado/);
+assert.match(sandbox.avisosMeta({ status: 'ok', completo: false, redes: { instagram: { status: 'nao-configurado' } } })[0], /Instagram não está configurada/);
+assert.match(sandbox.avisosMeta({ status: 'ok', completo: false, redes: { instagram: { status: 'disponivel', completo: false } } })[0], /Instagram veio parcial/);
+assert.match(sandbox.avisosMeta({ status: 'ok', completo: false, redes: {} })[0], /parcial/);
 // Item 4 do autor: data de cartão planejado que já passou (dia em São Paulo) não oferece agendar
 const agora = new Date('2026-10-18T02:00:00Z'); // 17/10 23:00 em São Paulo
 assert.equal(sandbox.hojeSaoPaulo(agora), '2026-10-17');

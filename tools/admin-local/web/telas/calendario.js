@@ -2,9 +2,13 @@
 // O aceite projeta a previsão do cronograma. Sem previsão, a peça fica na coluna própria.
 // Arrastar da coluna para o dia abre o mesmo formulário do botão "Escolher data".
 
-import { CANAIS, rotuloCanal } from './_pecas.js';
+import { CANAIS, rotuloCanal, tituloPeca } from './_pecas.js';
 
-const DIAS_SEMANA = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
+const DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+const maiuscula = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const ROTULO_REDE = { instagram: 'Instagram', facebook: 'Facebook' };
+const ROTULO_FORMATO = { reel: 'Reels', carrossel: 'Carrossel', video: 'Vídeo', imagem: 'Imagem', post: 'Post' };
+const nomeDaPeca = (p) => p?.nomeExibicao || tituloPeca(p);
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
 const ESTADO_REAL = { planejado: 'Planejado', 'programado-no-painel': 'Programado no painel', preparando: 'Preparando', 'agendado-na-meta': 'Agendado na Meta', publicado: 'Publicado', falhou: 'Falhou', cancelado: 'Cancelado', 'cancelamento-pendente': 'Cancelamento pendente', 'precisa-conferir': 'Precisa conferir', bloqueado: 'Bloqueado' };
@@ -21,6 +25,21 @@ export function linkPublicado(valor) {
 // Somente apresentação. A identidade editorial e os registros reais nunca são gravados juntos.
 // "Agendar de verdade" só aparece com a fila real lida por inteiro e sem job ativo da peça: fora disso
 // (camada Planejado, leitura parcial ou indisponível) um agendamento real pode existir sem estar na tela.
+// Avisos da camada "Publicado na Meta": indisponível ou parcial nunca vira "nada publicado".
+export function avisosMeta(meta) {
+  if (meta?.status === 'falhou') return ['A leitura dos posts já publicados no Instagram e no Facebook falhou. Isso não quer dizer que nada foi publicado.'];
+  if (meta?.status !== 'ok') return [];
+  const avisos = [];
+  for (const [rede, e] of Object.entries(meta.redes || {})) {
+    const nome = ROTULO_REDE[rede] || rede;
+    if (e?.status === 'indisponivel') avisos.push(`Não foi possível ler os posts publicados no ${nome}${e.motivo ? ` (${e.motivo})` : ''}. Isso não quer dizer que nada foi publicado.`);
+    else if (e?.status === 'nao-configurado') avisos.push(`A leitura do ${nome} não está configurada, então os posts publicados lá não aparecem aqui.`);
+    else if (e && e.completo === false) avisos.push(`A leitura do ${nome} veio parcial. Pode haver posts publicados que não aparecem aqui.`);
+  }
+  if (!avisos.length && meta.completo === false) avisos.push('A leitura dos posts publicados veio parcial. Pode haver posts que não aparecem aqui.');
+  return avisos;
+}
+
 // Hoje em São Paulo, como AAAA-MM-DD, para saber se a data de um cartão planejado já passou.
 export function hojeSaoPaulo(agora = new Date()) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', dateStyle: 'short' }).format(agora);
@@ -90,6 +109,8 @@ export async function montar(raiz, ctx) {
   const conteudoPainel = h('div');
   let focoOrigem = null, controleReal = null, encerrada = false, dados = null, ocupado = false, geracao = 0;
   const acumulados = new Map();
+  let meta = { status: 'nao-consultado', posts: [], redes: {}, completo: false };
+  let geracaoMeta = 0;
   const referencias = new Map();
   let referenciasSequencia = new Map();
   let sequencia = new Map();
@@ -104,12 +125,71 @@ export async function montar(raiz, ctx) {
     if (controleReal.abrirCompositor(peca, data) === false) return;
     dialogo.showModal();
   };
+  const pubDe = (peca) => meta.posts.find((p) => p.vinculo && identidade(p.vinculo) === identidade(peca)) || null;
+  async function carregarMeta() {
+    const minha = ++geracaoMeta;
+    let r;
+    try { r = (await ctx.api(`/api/marketing/calendario/meta-publicados?mes=${mes}`)).dados; } catch (err) {
+      console.warn('[calendario-meta]', err.codigo || 'leitura-falhou');
+      if (minha === geracaoMeta) meta = { status: 'falhou', posts: [], redes: {}, completo: false };
+      return;
+    }
+    if (minha === geracaoMeta) meta = { status: 'ok', posts: Array.isArray(r?.posts) ? r.posts : [], redes: r?.redes || {}, completo: r?.completo === true };
+  }
+  // A janela que simula o post (Instagram ou Facebook) é do arquivo _previa-post.js. O formato do item está em coord-forge-prism.md.
+  async function abrirPrevia(item) {
+    try { (await import('./_previa-post.js')).abrirPreviaPost(item); } catch (err) {
+      console.warn('[calendario-previa]', err.codigo || 'indisponivel');
+      ctx.aviso('A janela de prévia do post ainda não está disponível nesta versão do painel.', 'info');
+    }
+  }
+  const abrirAoClicar = (item) => ({
+    tabindex: '0', role: 'group',
+    onclick: (e) => { if (!e.target.closest('button, a')) abrirPrevia(item); },
+    onkeydown: (e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); abrirPrevia(item); } },
+  });
+  // Item entregue a abrirPreviaPost (_previa-post.js, do Prism): { peca, formato, rede, jobs, publicado, data, origem }.
+  const FORMATO_PREVIA = { reel: 'reels', reels: 'reels', carrossel: 'carrossel', stories: 'stories', video: 'feed', imagem: 'feed', post: 'feed', feed: 'feed' };
+  const formatoPrevia = (peca, jobs, post) => FORMATO_PREVIA[jobs[0]?.destino?.formato] || FORMATO_PREVIA[post?.formato] || FORMATO_PREVIA[String(peca?.tipo || '').toLowerCase()] || 'feed';
+  // Peça completa (arquivos e legenda) do mesmo catálogo que a tela Feed usa; uma leitura por montagem, nenhuma rota nova.
+  let feedLido = null;
+  async function carregarPeca(id, versao) {
+    feedLido ||= ctx.api('/api/marketing/feed').then((r) => { const d = r.dados; return Array.isArray(d) ? d : (d && (d.pecas || d.itens)) || []; });
+    try { return (await feedLido).find((p) => p.id === id && p.versao === versao) || null; } catch (err) { console.warn('[calendario-feed]', err.codigo || 'leitura-falhou'); feedLido = null; return null; }
+  }
+  const itemPrevia = (i, pub) => { const jobs = i.jobs || []; return { carregarPeca, origem: jobs.length ? 'real' : 'planejado', peca: i.peca, data: i.data, jobs, publicado: pub || null, formato: formatoPrevia(i.peca, jobs, pub), rede: jobs[0]?.destino?.rede || pub?.rede || 'instagram' }; };
+  function cartaoMeta(post, compacto = false) {
+    const rede = ROTULO_REDE[post.rede] || post.rede;
+    const link = linkPublicado(post.link), miniatura = linkPublicado(post.miniatura);
+    return h('article', { class: `cal-item cal-unico-item cal-item-meta${compacto ? ' cal-compacto' : ''}`, draggable: 'false', dados: { chave: post.chave }, 'aria-label': `Post publicado no ${rede}`,
+      ...abrirAoClicar({ carregarPeca, origem: 'meta', peca: null, data: post.data, jobs: [], publicado: post, formato: FORMATO_PREVIA[post.formato] || 'feed', rede: post.rede }) },
+    !compacto && miniatura ? h('img', { class: 'cal-meta-miniatura', src: miniatura, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }) : null,
+    h('strong', { class: 'cal-item-titulo', texto: `${rede} · ${ROTULO_FORMATO[post.formato] || 'Post'}` }),
+    h('span', { class: 'cal-item-canal', texto: 'Publicado na Meta' }),
+    post.legenda ? h('span', { class: 'cal-meta-legenda', texto: post.legenda }) : null,
+    !compacto && link ? h('a', { href: link, target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação' }) : null);
+  }
+  function cartaoCompacto(i) {
+    const reais = i.jobs || [], pub = pubDe(i.peca);
+    const movel = !reais.length && !pub;
+    return h('article', { class: `cal-item cal-unico-item cal-compacto${reais.length ? ' cal-item-real' : ''}`, draggable: movel ? 'true' : 'false', dados: { peca: i.peca.id, versao: i.peca.versao }, 'aria-label': nomeDaPeca(i.peca),
+      ondragstart: (e) => { if (!movel) { e.preventDefault(); return; } e.dataTransfer.setData('text/x-grana-peca', i.peca.id); },
+      ...abrirAoClicar(itemPrevia(i, pub)) },
+    h('strong', { class: 'cal-item-titulo', texto: nomeDaPeca(i.peca) }),
+    h('span', { class: 'cal-item-canal', texto: reais.length ? 'Agendamento confirmado' : pub ? 'Publicado na Meta' : 'Planejado' }));
+  }
   function cartao(i, planejar) {
-    const reais = i.jobs || [];
-    return h('article', { class: `cal-item cal-unico-item${reais.length ? ' cal-item-real' : ''}`, draggable: reais.length ? 'false' : 'true', dados: { peca: i.peca.id, versao: i.peca.versao },
-      ondragstart: (e) => { if (reais.length) { e.preventDefault(); return; } e.dataTransfer.setData('text/x-grana-peca', i.peca.id); } },
-      h('strong', { class: 'cal-item-titulo', texto: i.marcador && !i.principal ? `Destino de ${i.peca.titulo || 'peça'}` : i.peca.titulo || 'Peça sem título' }),
-      h('span', { class: 'cal-item-canal', texto: reais.length ? i.marcador ? 'Mesma peça, destinos em dias diferentes' : 'Agendamento confirmado' : 'Planejado' }),
+    const reais = i.jobs || [], pub = pubDe(i.peca);
+    const movel = !reais.length && !pub;
+    return h('article', { class: `cal-item cal-unico-item${reais.length ? ' cal-item-real' : ''}`, draggable: movel ? 'true' : 'false', dados: { peca: i.peca.id, versao: i.peca.versao },
+      ondragstart: (e) => { if (!movel) { e.preventDefault(); return; } e.dataTransfer.setData('text/x-grana-peca', i.peca.id); },
+      ...abrirAoClicar(itemPrevia(i, pub)) },
+      h('strong', { class: 'cal-item-titulo', texto: i.marcador && !i.principal ? `Destino de ${nomeDaPeca(i.peca)}` : nomeDaPeca(i.peca) }),
+      h('span', { class: 'cal-item-canal', texto: reais.length ? i.marcador ? 'Mesma peça, destinos em dias diferentes' : 'Agendamento confirmado' : pub ? 'Publicado na Meta' : 'Planejado' }),
+      pub && !reais.length ? h('div', { class: 'cal-unico-destino' },
+        h('strong', { texto: `${ROTULO_REDE[pub.rede] || pub.rede} · ${ROTULO_FORMATO[pub.formato] || 'Post'}` }),
+        h('span', { texto: `Publicado em ${ctx.formatar.data(pub.data)}` }),
+        linkPublicado(pub.link) ? h('a', { href: linkPublicado(pub.link), target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação' }) : null) : null,
       ...reais.map((j) => h('div', { class: 'cal-unico-destino' },
         h('strong', { texto: `${j.destino.rede} · ${j.destino.formato} · ${ESTADO_REAL[j.estado] || `Estado desconhecido: ${j.estado}`}` }),
         h('span', { texto: new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }).format(new Date(j.destino.publicarEm)) + ' · São Paulo' }),
@@ -117,12 +197,12 @@ export async function montar(raiz, ctx) {
         j.estado === 'publicado' ? linkPublicado(j.permalink) ? h('a', { href: linkPublicado(j.permalink), target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação' }) : h('span', { texto: 'O link da publicação não está disponível nesta fonte. Consulte o ID e o recibo.' }) : null,
         h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Ver destino e recibos', onclick: () => { navegar({ visao: 'lista' }); } }))),
       ...(i.historico || []).map((j) => h('span', { class: 'campo-ajuda', texto: `${j.destino.rede}: ${ESTADO_REAL[j.estado] || j.estado}${j.codigoErro ? ` · ${j.codigoErro}` : ''}. Histórico na lista.` })),
-      !reais.length ? h('div', { class: 'bloco-acao' }, h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Mudar data', onclick: planejar }), dataPassou(i.data) ? h('span', { class: 'campo-ajuda cal-aviso-real', texto: 'Data passou' }) : leituraRealCompleta(camada, dados?.reais) ? h('button', { class: 'botao', type: 'button', texto: 'Agendar de verdade', onclick: (e) => abrir(i.peca, i.data, e.currentTarget) }) : h('span', { class: 'campo-ajuda cal-aviso-real', texto: AVISO_PODE_TER_REAL })) : null);
+      movel ? h('div', { class: 'bloco-acao' }, h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Mudar data', onclick: planejar }), dataPassou(i.data) ? h('span', { class: 'campo-ajuda cal-aviso-real', texto: 'Data passou' }) : leituraRealCompleta(camada, dados?.reais) ? h('button', { class: 'botao', type: 'button', texto: 'Agendar de verdade', onclick: (e) => abrir(i.peca, i.data, e.currentTarget) }) : h('span', { class: 'campo-ajuda cal-aviso-real', texto: AVISO_PODE_TER_REAL })) : null);
   }
   async function desenhar() {
     const minha = ++geracao;
     calendario.replaceChildren();
-    await montarEditorial(calendario, { ...ctx, params: { ...ctx.params, mes }, calendarioParcial: dados.reais && camada !== 'planejado' && !dados.reais.completo, cabecalho() {}, cartaoCalendario: cartao, agendarReal: abrir, leituraRealCompleta: leituraRealCompleta(camada, dados?.reais),
+    await montarEditorial(calendario, { ...ctx, params: { ...ctx.params, mes }, calendarioParcial: dados.reais && camada !== 'planejado' && !dados.reais.completo, cabecalho() {}, cartaoCalendario: cartao, cartaoCompacto, cartaoMeta, meta: { ...meta, mostrar: camada !== 'planejado' }, agendarReal: abrir, leituraRealCompleta: leituraRealCompleta(camada, dados?.reais),
       obsoleta: () => encerrada || ctx.obsoleta() || minha !== geracao,
       api: (url) => url.startsWith('/api/marketing/calendario?') ? Promise.resolve({ dados: projetarCalendario({ ...dados, vinculos: [...referencias.values()] }, [...acumulados.values()], camada) }) : ctx.api(url) });
   }
@@ -132,7 +212,9 @@ export async function montar(raiz, ctx) {
     const cursor = continuar ? dados?.reais?.proximoCursor : null;
     status.replaceChildren(h('p', { texto: 'Lendo o mês e os estados confirmados…' }));
     try {
+      const lendoMeta = continuar ? null : carregarMeta();
       const resposta = (await ctx.api(`/api/marketing/calendario?${new URLSearchParams({ mes, camada, ...(cursor ? { cursorReal: cursor } : {}) })}`)).dados;
+      await lendoMeta;
       if (encerrada || ctx.obsoleta()) return;
       if (!resposta || !Array.isArray(resposta.itens)) throw new Error('O calendário não devolveu os dados esperados.');
       const r = resposta.reais;
@@ -157,6 +239,7 @@ export async function montar(raiz, ctx) {
       const incompleto = r && r.status !== 'nao-consultado' && (!r.completo || r.status === 'indisponivel' || (!continuar && r.continuacao));
       status.replaceChildren(...[...(incompleto ? [ctx.alerta('atencao', `Leitura ${r.status === 'indisponivel' ? 'indisponível' : 'parcial'} dos agendamentos. Os dados já recebidos foram preservados. ${r.motivo || 'Há mais resultados para consultar.'}`)] : []),
         r?.consultadoEm ? h('p', { class: 'campo-ajuda', texto: `Consulta real: ${ctx.formatar.dataHora(r.consultadoEm)} · São Paulo` }) : null,
+        ...avisosMeta(meta).map((a) => ctx.alerta('atencao', a)),
         ...(resposta.pendenciasLegenda?.length ? [ctx.alerta('atencao', `${resposta.pendenciasLegenda.length} ${resposta.pendenciasLegenda.length === 1 ? 'peça já aprovada precisa' : 'peças já aprovadas precisam'} de legenda. Confira a Aprovação antes de agendar.`)] : [])].filter(Boolean));
       await desenhar();
       if (r?.proximoCursor) paginacao.appendChild(h('button', { class: 'botao', type: 'button', texto: 'Carregar mais agendamentos do mês', onclick: async () => { await carregar(true); controleReal?.atualizarLista?.(); } }));
@@ -236,15 +319,33 @@ async function montarEditorial(raiz, ctx) {
   const cartao = (i) => ctx.cartaoCalendario ? ctx.cartaoCalendario(i, () => planejar(i.peca, i.data)) : itemCalendario(ctx, i, () => planejar(i.peca, i.data));
 
   // --- grade do mês
-  const titulo = h('h2', { class: 'secao-titulo', texto: `${MESES[m - 1]} de ${ano}` });
+  const titulo = h('h2', { class: 'secao-titulo', texto: `${maiuscula(MESES[m - 1])} de ${ano}` });
   const grade = h('div', { class: 'calendario', role: 'grid', 'aria-label': `Calendário de ${MESES[m - 1]} de ${ano}` });
   grade.appendChild(h('div', { class: 'cal-cabecalho', role: 'row' }, DIAS_SEMANA.map((x) => h('span', { class: 'cal-dia-semana', role: 'columnheader', texto: x }))));
   const primeiro = new Date(ano, m - 1, 1);
   const inicio = new Date(primeiro);
   inicio.setDate(1 - ((primeiro.getDay() + 6) % 7)); // semana começa na segunda
   const hojeIso = ctx.formatar.isoLocal(hoje);
+  // Uma lista por dia com os cartões do planejamento/real e, na camada Real ou Ambos, os posts publicados que
+  // o servidor não casou com nenhuma peça (vinculo nulo). Nunca se cria vínculo aqui.
   const porDia = new Map();
-  for (const i of itens) { if (!porDia.has(i.data)) porDia.set(i.data, []); porDia.get(i.data).push(i); }
+  const somar = (data, e) => { if (!porDia.has(data)) porDia.set(data, []); porDia.get(data).push(e); };
+  for (const i of itens) somar(i.data, { item: i });
+  if (ctx.cartaoMeta && ctx.meta?.mostrar) for (const post of ctx.meta.posts) if (!post.vinculo && /^\d{4}-\d{2}-\d{2}$/.test(post.data || '')) somar(post.data, { post });
+  const compacto = !!ctx.cartaoCompacto;
+  const cartaoCheio = (e) => (e.item ? cartao(e.item) : ctx.cartaoMeta(e.post));
+  const cartaoNaCelula = (e) => (!compacto ? cartaoCheio(e) : e.item ? ctx.cartaoCompacto(e.item) : ctx.cartaoMeta(e.post, true));
+  const LIMITE_NA_CELULA = 2;
+  const dialogoDia = h('dialog', { class: 'cal-dia-dialogo', 'aria-labelledby': 'cal-dia-titulo' });
+  dialogoDia.addEventListener('click', (e) => { if (e.target === dialogoDia || e.target.closest('button, a, article')) setTimeout(() => dialogoDia.close?.(), 0); });
+  const abrirDia = (iso, lista) => {
+    const [a, mm, dd] = iso.split('-').map(Number);
+    dialogoDia.replaceChildren(
+      h('div', { class: 'cal-unico-painel-topo' }, h('h2', { id: 'cal-dia-titulo', texto: `${dd} de ${MESES[mm - 1]} de ${a}` }), h('button', { class: 'botao', type: 'button', texto: 'Fechar' })),
+      h('div', { class: 'cal-dia-lista' }, lista.map(cartaoCheio)));
+    dialogoDia.showModal?.();
+  };
+  corpo.appendChild(dialogoDia);
 
   let linha;
   for (let k = 0; k < 42; k++) {
@@ -253,12 +354,19 @@ async function montarEditorial(raiz, ctx) {
     dia.setDate(inicio.getDate() + k);
     const iso = ctx.formatar.isoLocal(dia);
     const fora = dia.getMonth() !== m - 1;
+    const lista = porDia.get(iso) || [];
     const celula = h('div', {
       class: `cal-dia${fora ? ' cal-fora-mes' : ''}${iso === hojeIso ? ' cal-hoje' : ''}`, role: 'gridcell',
-      'aria-label': `${dia.getDate()} de ${MESES[dia.getMonth()]}${porDia.has(iso) ? `, ${porDia.get(iso).length} publicação` : ''}`,
+      'aria-label': `${dia.getDate()} de ${MESES[dia.getMonth()]}${porDia.has(iso) ? `, ${porDia.get(iso).length} ${porDia.get(iso).length === 1 ? 'publicação' : 'publicações'}` : ''}`,
       dados: { data: iso },
-    }, h('span', { class: 'cal-num', texto: String(dia.getDate()) }),
-    (porDia.get(iso) || []).map((i) => cartao(i)));
+    }, h('div', { class: 'cal-dia-topo' },
+      compacto && lista.length
+        ? h('button', { class: 'cal-num cal-num-botao', type: 'button', texto: String(dia.getDate()), 'aria-label': `Abrir o dia ${dia.getDate()} de ${MESES[dia.getMonth()]}`, onclick: () => abrirDia(iso, lista) })
+        : h('span', { class: 'cal-num', texto: String(dia.getDate()) }),
+      compacto && lista.length > LIMITE_NA_CELULA
+        ? h('button', { class: 'cal-mais', type: 'button', texto: `+${lista.length - LIMITE_NA_CELULA}`, 'aria-label': `Ver os ${lista.length} itens de ${dia.getDate()} de ${MESES[dia.getMonth()]}`, onclick: () => abrirDia(iso, lista) })
+        : null),
+    (compacto ? lista.slice(0, LIMITE_NA_CELULA) : lista).map(cartaoNaCelula));
     // alvo de arrastar
     celula.addEventListener('dragover', (e) => { if (e.dataTransfer.types.includes('text/x-grana-peca')) { e.preventDefault(); celula.classList.add('cal-alvo'); } });
     celula.addEventListener('dragleave', () => celula.classList.remove('cal-alvo'));
@@ -275,23 +383,25 @@ async function montarEditorial(raiz, ctx) {
 
   // --- agenda (lista) para tela estreita
   const agenda = h('ol', { class: 'agenda', 'aria-label': `Publicações de ${MESES[m - 1]}` });
-  if (!itens.length) agenda.appendChild(h('li', { class: 'agenda-vazia', texto: ctx.calendarioParcial ? 'A leitura real ainda está incompleta. Continue a consulta para conferir o mês.' : 'Nenhuma publicação marcada neste mês.' }));
-  for (const i of itens) {
+  const agendaEntradas = [...porDia.entries()].sort(([x], [y]) => x.localeCompare(y)).flatMap(([data, lista]) => lista.map((e) => ({ data, e })));
+  if (!agendaEntradas.length) agenda.appendChild(h('li', { class: 'agenda-vazia', texto: ctx.calendarioParcial ? 'A leitura real ainda está incompleta. Continue a consulta para conferir o mês.' : 'Nenhuma publicação marcada neste mês.' }));
+  for (const { data, e } of agendaEntradas) {
     agenda.appendChild(h('li', { class: 'agenda-item' },
-      h('span', { class: 'agenda-data', texto: ctx.formatar.data(i.data) }), cartao(i)));
+      h('span', { class: 'agenda-data', texto: ctx.formatar.data(data) }), cartaoCheio(e)));
   }
 
   // --- coluna "Aprovados sem data"
   // "Sem data (N)": a lista cresce a cada aceite sem data, então começa recolhida, com a
   // contagem à vista. O atalho ?secao=sem-data (ou uma peça recém-aceita) abre o bloco.
-  const abrirSemData = ctx.params.secao === 'sem-data' || semData.some((p) => p.id === ctx.params.peca);
+  // A bandeja fica aberta: as peças aprovadas sem data são arrastadas daqui para um dia do mês.
+  const abrirSemData = true;
   const blocoSemData = h('details', { class: 'cal-sem-data-bloco', open: abrirSemData },
     h('summary', { class: 'secao-titulo cal-sem-data-resumo', id: 'cal-sem-data-titulo', texto: `Aprovados sem data (${semData.length})` }),
     semData.length
       ? h('ul', { class: 'lista-sem-data' }, semData.map((p) => {
         const li = h('div', { class: 'cal-item', draggable: 'true', title: p.titulo || p.id, dados: { id: p.id } },
           p.capa?.url && p.capa.tipo === 'imagem' ? h('img', { class: 'cal-item-capa', src: ctx.urlArquivo(p.capa.url), alt: '', loading: 'lazy' }) : null,
-          h('span', { class: 'cal-item-titulo', texto: p.titulo || 'Peça sem título' }),
+          h('span', { class: 'cal-item-titulo', texto: nomeDaPeca(p) }),
           h('div', { class: 'bloco-acao' },
             h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Escolher data', onclick: () => planejar(p) }),
             ctx.agendarReal ? ctx.leituraRealCompleta ? h('button', { class: 'botao', type: 'button', texto: 'Agendar de verdade', onclick: (e) => ctx.agendarReal(p, '', e.currentTarget) }) : h('span', { class: 'campo-ajuda cal-aviso-real', texto: AVISO_PODE_TER_REAL }) : null));
