@@ -14,6 +14,7 @@ import { useBreakpoint } from '@/lib/breakpoints';
 import { WalletProvider } from '@/lib/wallet-context';
 import AppPressable from '@/components/AppPressable';
 import Granabo3D from '@/components/Granabo3D';
+import GranaboFlutuante from '@/components/GranaboFlutuante';
 import SideNav, { type ItemNav } from '@/components/SideNav';
 import Granachat from '@/components/Granachat';
 import { useReducedMotion } from '@/lib/motion';
@@ -173,7 +174,7 @@ function FloatingTabBar({ state, descriptors, navigation, blurTarget, chatAberto
                ele apareceu solto acima da barra, com um vão no meio. Dentro da
                fileira, o próprio flex resolve em qualquer altura de barra. */
             const destaque =
-              posicao === 3 ? (
+              posicao === 3 && Platform.OS !== 'web' ? (
                 <BotaoGranabo key="granabo" ativo={chatAberto} onPress={onAlternarChat} discoRef={discoRef} />
               ) : null;
 
@@ -465,7 +466,7 @@ function AbasEmJavaScript() {
           tabBar={(props) =>
             temBarraLateral ? (
               <SideNav
-                itens={ITENS_LATERAIS}
+                itens={Platform.OS === 'web' ? ITENS_LATERAIS.filter(item => item.rota !== 'assistente') : ITENS_LATERAIS}
                 rodape={RODAPE_LATERAL}
                 rotaAtiva={props.state.routes[props.state.index]?.name ?? 'index'}
                 assistenteAtivo={chatAberto}
@@ -504,6 +505,9 @@ function AbasEmJavaScript() {
         {/* Irmão das abas, não filho de nenhuma tela: assim o Granachat
             sobrevive à troca de aba por baixo dele e some junto com o layout
             no logout, sem cada tela precisar saber que ele existe. */}
+        {Platform.OS === 'web' && (
+          <GranaboFlutuante ativo={chatAberto} onPress={() => setChatAberto(v => !v)} />
+        )}
         <Granachat
           visivel={chatAberto}
           onFechar={() => setChatAberto(false)}

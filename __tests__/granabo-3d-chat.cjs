@@ -92,6 +92,7 @@ function renderizarGranabo3D({ estado, variante, pulsoInteracao = 0, reduzirMovi
             Animated: {
               Value: ValorAnimado,
               View: 'Animated.View',
+              Image: 'Image',
               add: () => 'soma-animada',
               loop: () => ({ start() {}, stop() {} }),
               sequence: () => ({ start() {}, stop() {} }),
@@ -104,6 +105,9 @@ function renderizarGranabo3D({ estado, variante, pulsoInteracao = 0, reduzirMovi
             StyleSheet: { create: (s) => s },
             View: 'View',
           };
+        }
+        if (id === 'expo-asset') {
+          return { Asset: { fromModule: () => ({ downloadAsync: async () => {} }) } };
         }
         if (id === '@/lib/theme') {
           return {
