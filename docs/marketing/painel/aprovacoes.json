@@ -280,6 +280,57 @@
       "evidencia": "aceite pelo autor no painel local",
       "escopo": "arquivos e legenda desta versão",
       "indice": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/INDICE.md"
+    },
+    {
+      "id": "800217a3f6defb45",
+      "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/lumen-v8/olhar só o saldo engana o seu mês-*",
+      "versao": "ebc9256211cbb190dae9ddff2f84f05ba280295a",
+      "aprovadoEm": "2026-10-18T20:08:57-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos e legenda desta versão",
+      "indice": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/INDICE.md"
+    },
+    {
+      "id": "0c2f7a45bb3959ba",
+      "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/lumen-v8/olhar só o saldo engana o seu mês-*",
+      "versao": "ebc9256211cbb190dae9ddff2f84f05ba280295a",
+      "aprovadoEm": "2026-10-18T20:08:57-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos e legenda desta versão",
+      "promovidoEm": "2026-10-18T20:14:56-03:00",
+      "origem": {
+        "id": "800217a3f6defb45",
+        "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/lumen-v8/olhar só o saldo engana o seu mês-*",
+        "aprovadoEm": "2026-10-18T20:08:57-03:00"
+      },
+      "arquivosPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/lumen-v8/Olhar só o saldo engana o seu mês-1.png",
+          "destino": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/lumen-v8/Olhar só o saldo engana o seu mês-1.png",
+          "sha1": "baced99746d1f1b299b1957170bd3af615589ef3"
+        },
+        {
+          "origem": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/lumen-v8/Olhar só o saldo engana o seu mês-2.png",
+          "destino": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/lumen-v8/Olhar só o saldo engana o seu mês-2.png",
+          "sha1": "a36d996f0835ce590f8edd1f47b281191765d9f5"
+        },
+        {
+          "origem": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/lumen-v8/Olhar só o saldo engana o seu mês-3.png",
+          "destino": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/lumen-v8/Olhar só o saldo engana o seu mês-3.png",
+          "sha1": "30ba8955877a7ee5cc0959885a8b683f2743d061"
+        },
+        {
+          "origem": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/lumen-v8/Olhar só o saldo engana o seu mês-4.png",
+          "destino": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/lumen-v8/Olhar só o saldo engana o seu mês-4.png",
+          "sha1": "e99d649b1d54773295757364942055203340281a"
+        },
+        {
+          "origem": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/lumen-v8/Olhar só o saldo engana o seu mês-5.png",
+          "destino": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/lumen-v8/Olhar só o saldo engana o seu mês-5.png",
+          "sha1": "04c9c1890914503ff226f90ead21de43ec889418"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/INDICE.md"
     }
   ],
   "ajustes": [

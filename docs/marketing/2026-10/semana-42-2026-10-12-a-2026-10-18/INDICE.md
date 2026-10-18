@@ -55,3 +55,7 @@ Cada linha registra o aceite explícito do autor dado no painel local, para a ve
 ## Peças recusadas ou arquivadas
 
 - [grana-motion-desistiu-foto-da-nota-narrado-capa-v2.png](historico/pecas/reels/grana-motion-desistiu-foto-da-nota-narrado-capa-v2.png): capa do Reel narrado "Já desistiu de controlar seus gastos", que o autor recusou em 17/10/2026. Movida de `para-aprovacao/pecas/reels/` para `historico/pecas/reels/` em 18/10/2026 por decisão do Orquestrador Supremo (regra 25). O pedido de ajuste sobre ela fica sem peça vigente.
+- 18/10/2026 20:08 (-03:00): aceite pelo autor no painel local. Peça `para-aprovacao/pecas/lumen-v8/olhar só o saldo engana o seu mês-*`, versão `ebc9256211cb`. Registro em `docs/marketing/painel/aprovacoes.json`. Publicação pede passo próprio.
+
+<!-- promocao:0c2f7a45bb3959ba:ebc9256211cbb190dae9ddff2f84f05ba280295a -->
+- Promoção 2026-10-18T20:14:56-03:00: [peça em aprovados](aprovados/pecas/lumen-v8/Olhar só o saldo engana o seu mês-1.png); aceite do autor em 2026-10-18T20:08:57-03:00, versão `ebc9256211cbb190dae9ddff2f84f05ba280295a`. Origem `docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/lumen-v8/olhar só o saldo engana o seu mês-*`. Nada publicado ou agendado.
