@@ -46,6 +46,12 @@ Mudanças da v9: na tela 4 o notebook é grande e o celular fica à frente com c
 | [relatorios/relatorio-Beacon-copy-consentimento-pixel.md](apoio/relatorios/relatorio-Beacon-copy-consentimento-pixel.md) | Copy final para banner, preferências, estados do Pixel e configuração web; sem ativação | Beacon, 16/10/2026; Entrega 6 da ordem META; para Forge | Revisão M5 incorporada; aprovação jurídica/autor e QA de integração pendentes |
 | [relatorios/relatorio-Beacon-E7-contrato-analitico.md](apoio/relatorios/relatorio-Beacon-E7-contrato-analitico.md) | Contrato proposto de recomendações, experimentos, relatório semanal e exportações; sem dados de produção | Beacon, 16/10/2026; Entrega 7 da ordem META; para Harbor, Prism e Lumen | Revisão documental; implementação e fixtures pendentes |
 
+## Aceites registrados no painel local
+
+Cada linha registra o aceite explícito do autor dado no painel local, para a versão indicada. Versão diferente precisa de novo aceite.
+
+- 18/10/2026 15:12 (-03:00): aceite pelo autor no painel local. Peça `para-aprovacao/pecas/lumen-v8/olhar só o saldo engana o seu mês-*`, versão `6d88889bcc8f`. Registro em `docs/marketing/painel/aprovacoes.json`. Publicação pede passo próprio.
+
 ## Peças recusadas ou arquivadas
 
 - [grana-motion-desistiu-foto-da-nota-narrado-capa-v2.png](historico/pecas/reels/grana-motion-desistiu-foto-da-nota-narrado-capa-v2.png): capa do Reel narrado "Já desistiu de controlar seus gastos", que o autor recusou em 17/10/2026. Movida de `para-aprovacao/pecas/reels/` para `historico/pecas/reels/` em 18/10/2026 por decisão do Orquestrador Supremo (regra 25). O pedido de ajuste sobre ela fica sem peça vigente.
