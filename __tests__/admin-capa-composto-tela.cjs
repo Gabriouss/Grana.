@@ -57,7 +57,7 @@ async function tela() {
     api: async (url) => ({ dados: url.endsWith('/pecas') ? dto : { pedidos: [], remoto: { status: 'ativo' } } }),
     acao: () => assert.fail('nenhuma mutação pela tela'), formulario: () => assert.fail('nada abre sozinho'), contadorAprovacao() {} });
   const bloco = walk(r).find((n) => n.attrs.class === 'demanda-capa');
-  const botao = walk(r).find((n) => n.tag === 'button' && ['Aprovada nesta versão', 'Aprovar esta versão'].includes(n.attrs.texto));
+  const botao = walk(r).find((n) => n.tag === 'button' && ['Aprovada nesta versão', 'Aprovar'].includes(n.attrs.texto));
   return { reel, capa: text(bloco), botao: botao.attrs, revisar: walk(bloco).some((n) => n.attrs.texto === 'Revisar capa') };
 }
 

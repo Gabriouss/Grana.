@@ -251,11 +251,10 @@ export function secaoAjustesDaPeca(ctx, pedidos, pecaId, comparacao, peca) {
 function linhaPedido(ctx, p, { acoes, disponivel = true, aceitePermitido = true }) {
   const { h } = ctx;
   const quando = (v) => v ? ctx.formatar.dataHora(v) : 'não informado';
-  const aceitar = p.estado === 'corrigido-aguardando-aceite' && /^[a-f0-9]{40}$/.test(p.versaoCorrigida || '') && /^[a-f0-9]{40}$/.test(p.commit || '');
   const retry = p.estado === 'falha-de-envio' && Number.isInteger(p.tentativas) && p.tentativas < 3;
   const bloco = h('div', { class: 'bloco-acao' });
   if (acoes) {
-    for (const [permitida, tipo, rotulo] of [[aceitar, 'aceitar', 'Aceitar versão corrigida'], [retry, 'retry', 'Tentar entrega novamente'], [p.estado === 'precisa-de-atencao', 'reenviar', 'Reenviar pedido'], [p.estado === 'precisa-de-atencao', 'encerrar', 'Encerrar pedido']]) {
+    for (const [permitida, tipo, rotulo] of [[retry, 'retry', 'Tentar entrega novamente'], [p.estado === 'precisa-de-atencao', 'reenviar', 'Reenviar pedido'], [p.estado === 'precisa-de-atencao', 'encerrar', 'Encerrar pedido']]) {
       if (!permitida) continue;
       const botao = h('button', { class: 'botao', type: 'button', texto: rotulo, disabled: !disponivel || (tipo === 'aceitar' && !aceitePermitido), onclick: () => agir(ctx, p, tipo, botao) });
       bloco.appendChild(botao);
@@ -280,7 +279,7 @@ function linhaPedido(ctx, p, { acoes, disponivel = true, aceitePermitido = true 
         h('dt', { texto: 'Cotação usada' }), h('dd', { texto: Number.isFinite(p.custo.cotacao) ? String(p.custo.cotacao) : 'Não informada' }),
         h('dt', { texto: 'Motivo para não fazer localmente' }), h('dd', { texto: p.custo.motivoNaoLocal || 'Não informado' })) :
         h('p', { class: 'campo-ajuda', texto: 'Estimativa ainda não informada. Confira pela conversa antes de decidir.' })) : null,
-    p.estado === 'corrigido-aguardando-aceite' ? h('p', { class: 'campo-ajuda', texto: 'Revise a peça e a versão corrigida antes de aceitar. Correção pronta não é aceite nem publicação.' }) : null,
+    p.estado === 'corrigido-aguardando-aceite' ? h('p', { class: 'campo-ajuda', texto: 'Correção pronta. Confira e use Aprovar.' }) : null,
     p.aceite ? h('p', { class: 'campo-ajuda', texto: `Aceito em ${quando(p.aceite.em)}. O aceite não comprova publicação.` }) : null,
     bloco,
     // F4-1: id do pedido, versões e commit não viram texto na tela, nem recolhidos. O agente acha o pedido pelo nome da peça e pela data.

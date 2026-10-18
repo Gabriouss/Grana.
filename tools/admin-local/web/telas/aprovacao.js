@@ -363,17 +363,15 @@ export async function montar(raiz, ctx) {
     for (const a of situacaoDaFamilia({ pecas: [p] }, pedidos).alertas) {
       detalhe.appendChild(h('p', { class: 'demanda-atencao campo-ajuda', role: 'status', texto: [textoAlertaDemanda(a), a.proximoPasso].filter(Boolean).join(' ') }));
     }
-    if (!corrigido && pedidos?.some((r) => r.pecaId === p.id && r.estado === 'corrigido-aguardando-aceite')) {
-      detalhe.appendChild(ctx.alerta('atencao', 'A versão da peça não confere com a correção entregue. Atualize antes de comparar e dar o aceite.'));
-    }
     if (p.aceiteDeVersaoAnterior) detalhe.appendChild(ctx.alerta('atencao', 'Uma versão anterior desta peça foi aprovada, mas o arquivo mudou depois. O aceite antigo não vale para esta versão.'));
     if (p.recusa) detalhe.appendChild(h('section', { class: 'demanda-recusa' },
       h('h3', { texto: 'Motivo público da recusa' }),
       h('p', { class: 'campo-ajuda', texto: p.recusa.motivo }),
       h('p', { class: 'campo-ajuda', texto: ctx.formatar.dataHora(p.recusa.recusadoEm) })));
-    const temPedidoAberto = pedidos?.some((r) => r.pecaId === p.id && pedidoAberto(r));
+    // Só bloqueia o ajuste ainda em andamento; correção entregue é aprovada pelo mesmo botão Aprovar.
+    const temPedidoAberto = pedidos?.some((r) => r.pecaId === p.id && pedidoAberto(r) && r.estado !== 'corrigido-aguardando-aceite');
     const filaIndisponivel = !filaDisponivel(pedidos);
-    if (temPedidoAberto) detalhe.appendChild(ctx.alerta('atencao', 'Esta peça tem pedido aberto. Revise a correção e dê o aceite pelo pedido abaixo.'));
+    if (temPedidoAberto) detalhe.appendChild(h('p', { class: 'campo-ajuda', role: 'status', texto: 'Ajuste em andamento. O Aprovar libera quando a versão corrigida chegar.' }));
     if (filaIndisponivel) detalhe.appendChild(ctx.alerta('atencao', 'A fila não pôde ser conferida. Atualize antes de registrar aceite.'));
 
     // 4. Pedidos já feitos e a decisão.
@@ -391,7 +389,7 @@ export async function montar(raiz, ctx) {
       }));
     }
     if (faltaLegenda(p)) detalhe.appendChild(ctx.alerta('atencao', `Falta a legenda para publicar. ${localLegenda(p)}`));
-    const botaoAprovar = h('button', { class: 'botao botao-primario', type: 'button', texto: p.aprovada ? 'Aprovada nesta versão' : temPedidoAberto ? 'Aceite pela fila de ajustes' : 'Aprovar esta versão', disabled: faltaLegenda(p) || !!p.aprovada || temPedidoAberto || filaIndisponivel || arquivada(p) || !!pendencia,
+    const botaoAprovar = h('button', { class: 'botao botao-primario', type: 'button', texto: p.aprovada ? 'Aprovada nesta versão' : 'Aprovar', disabled: faltaLegenda(p) || !!p.aprovada || temPedidoAberto || filaIndisponivel || arquivada(p) || !!pendencia,
       onclick: () => aprovar(ctx, p, botaoAprovar) });
     const podePedir = !filaIndisponivel && !arquivada(p);
     const aberto = rascunhoAberto === chaveRascunho(p);
@@ -416,7 +414,7 @@ export async function montar(raiz, ctx) {
         }, 0);
       }
     }
-    const botaoRecusar = h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Recusar peça',
+    const botaoRecusar = h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Recusar',
       disabled: filaIndisponivel || temPedidoAberto || arquivada(p),
       onclick: () => recusarPeca(ctx, p, familiaAtual?.pecas || [p], pedidos, botaoRecusar) });
     const botaoMover = p.aprovada && p.estado === 'para-aprovacao' ? h('button', {
@@ -545,7 +543,7 @@ export function compararVersoes(ctx, p, pedido) {
   const antes = h('div', { class: 'demanda-comparacao-coluna' }, h('h3', { texto: 'Antes do ajuste' }));
   const depois = h('div', { class: 'demanda-comparacao-coluna' }, h('h3', { texto: 'Versão corrigida' }),
     p.tipo === 'texto' ? previaTexto(ctx, p) : ctx.midia(p, { grande: true }));
-  const recibo = h('p', { class: 'campo-ajuda', role: 'status', texto: 'Conferindo a versão anterior antes de liberar o aceite…' });
+  const recibo = h('p', { class: 'campo-ajuda', role: 'status', texto: 'Carregando a versão anterior…' });
   const elemento = h('section', { 'aria-label': 'Antes e depois do ajuste' },
     h('div', { class: 'demanda-comparacao' }, antes, depois), recibo);
   const urls = [];
@@ -561,7 +559,7 @@ export function compararVersoes(ctx, p, pedido) {
     const prazo = setTimeout(() => ctrl.abort(), 15000);
     const ativos = () => !encerrada && !ctx.obsoleta() && controlador === ctrl;
     antes.replaceChildren(h('h3', { texto: 'Antes do ajuste' }));
-    recibo.textContent = 'Conferindo a versão anterior antes de liberar o aceite…';
+    recibo.textContent = 'Carregando a versão anterior…';
     try {
       if (!arquivos.length) throw new Error('sem-arquivos');
       for (const arquivo of arquivos) {
@@ -587,15 +585,14 @@ export function compararVersoes(ctx, p, pedido) {
       }
       if (!ativos()) return;
       estado.pronta = true;
-      recibo.textContent = 'Versão anterior conferida. Compare os arquivos e revise a legenda atual antes de aceitar.';
+      recibo.textContent = 'Antes e depois do ajuste.';
       for (const redesenhar of estado.observadores) redesenhar();
     } catch (err) {
       if (!ativos()) return;
       console.warn('[aprovacao-anterior]', err.name === 'AbortError' ? 'prazo-esgotado' : 'previa-indisponivel');
-      recibo.textContent = 'Não foi possível conferir a versão anterior. O aceite permanece bloqueado; tente novamente ou atualize a peça.';
-      antes.replaceChildren(h('h3', { texto: 'Antes do ajuste' }), h('button', {
-        class: 'botao botao-fantasma', type: 'button', texto: 'Tentar comparação novamente', onclick: carregar,
-      }));
+      // Só informativa (autor, 18/10): sem a anterior, mostra a versão nova e não bloqueia o Aprovar.
+      recibo.textContent = 'Versão anterior indisponível';
+      antes.replaceChildren();
       for (const local of urls.splice(0)) URL.revokeObjectURL(local);
     } finally { clearTimeout(prazo); }
   }
@@ -674,7 +671,7 @@ export async function promoverPeca(ctx, p, botao) {
 async function aprovar(ctx, p, botao) {
   if (botao.disabled || ctx.obsoleta() || faltaLegenda(p)) return;
   const ok = await ctx.confirmar({
-    titulo: 'Aprovar esta versão',
+    titulo: 'Aprovar',
     texto: 'Isto registra o seu aceite desta peça e desta legenda, na versão que está na tela. Não publica, não agenda e não envia nada ao Instagram ou à Meta. Se o arquivo mudar depois, o aceite deixa de valer.',
     detalhes: [tituloPeca(p), p.modificadoEm ? `Arquivo de ${ctx.formatar.dataHora(p.modificadoEm)}` : 'Versão que está na tela agora', p.legenda ? `Legenda: ${p.legenda.slice(0, 140)}${p.legenda.length > 140 ? '…' : ''}` : 'Sem legenda registrada'],
     rotuloBotao: 'Aprovar',
@@ -684,7 +681,7 @@ async function aprovar(ctx, p, botao) {
   botao.textContent = 'Gravando aceite…';
   try {
     const r = await ctx.acao(`/api/marketing/pecas/${encodeURIComponent(p.id)}/aprovar`, { versao: p.versao, confirmacao: true });
-    ctx.aviso('Aceite gravado para esta versão. Confira a previsão e o recibo na tela de Calendário.', 'ok');
+    ctx.aviso(r.dados?.pedidosFechados ? 'Aprovado. O pedido de ajuste foi fechado junto.' : 'Aprovado.', 'ok');
     for (const a of r.dados?.avisos || []) ctx.aviso(a, 'info');
     ctx.navegar(`#/marketing/aprovacao?peca=${encodeURIComponent(p.id)}`);
   } catch (err) {
@@ -693,7 +690,7 @@ async function aprovar(ctx, p, botao) {
       : `O aceite não foi gravado: ${err.message}`;
     ctx.aviso(texto, 'erro');
     botao.disabled = false;
-    botao.textContent = 'Aprovar esta versão';
+    botao.textContent = 'Aprovar';
   }
 }
 

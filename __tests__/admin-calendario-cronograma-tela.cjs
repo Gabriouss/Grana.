@@ -159,7 +159,7 @@ function encontrar(root, predicado) {
   await aprovacao.montar(rootAprovacao,contexto);
   assert.equal(encontrar(rootAprovacao,n=>n.tag==='a' && n.attrs.texto==='Aprovados sem data').attrs.href,'#/marketing/calendario?secao=sem-data');
   assert.equal(achar(rootAprovacao,'Mover para aprovados'),undefined,'sem aceite não oferece promoção');
-  confirms.push(true);await achar(rootAprovacao,'Aprovar esta versão').attrs.onclick();
+  confirms.push(true);await achar(rootAprovacao,'Aprovar').attrs.onclick();
   assert.deepEqual(posts()[0].body,{versao:p.versao,confirmacao:true});
   p=c.obterPeca(dir,p.id);assert(p.aprovada);rootAprovacao.replaceChildren();
   await aprovacao.montar(rootAprovacao,contexto);

@@ -25,8 +25,8 @@ function carregarModulo(arquivo, sandbox) {
   Object.assign(sandbox,{pedidos,pecaId:raw.pecaId});
   root.appendChild(vm.runInNewContext('secaoAjustesDaPeca(ctx,pedidos,pecaId)',sandbox));
   assert.equal(JSON.stringify(root).includes(canario),false);
-  const botao=walk(root).find((x)=>x.attrs?.texto==='Aceitar versão corrigida');assert(botao);await botao.attrs.onclick();
-  assert.equal(calls.length,1);assert.equal(calls[0].body.versao,raw.versaoCorrigida);assert.equal(calls[0].body.pedidoId,raw.id);
+  assert.equal(walk(root).some((x)=>x.attrs?.texto==='Aceitar versão corrigida'),false,'18/10: o aceite é o Aprovar da peça');
+  assert.equal(calls.length,0);
   assert.equal(JSON.stringify(calls).includes(canario),false);
   // Aprovação real: o atalho reaproveita o formulário, com a versão do recibo
   // e texto novo explícito. Nenhuma leitura da fila pessoal ou POST real.
@@ -97,7 +97,7 @@ function carregarModulo(arquivo, sandbox) {
   assert.deepEqual(walk(alternativas).filter((x) => x.tag === 'button').map((x) => x.attrs.texto), [narrado.nomeExibicao], 'irmã narrada em Alternativas com nome legível; capa fora dela');
   // Recusar: motivo obrigatório, sucessora só da mesma família, confirmação explícita e POST com a versão exata.
   const recusa = await montarAprovacao(null, { motivo: '  Motivo AUDIT  ', sucessora: narrado.id }, acervo, familias);
-  const botaoRecusar = walk(recusa.raiz).find((x) => x.attrs?.texto === 'Recusar peça');
+  const botaoRecusar = walk(recusa.raiz).find((x) => x.attrs?.texto === 'Recusar');
   assert.equal(botaoRecusar.attrs.disabled, false, 'sem pedido aberto e com a fila conferida, a recusa fica disponível');
   await botaoRecusar.attrs.onclick();
   assert.deepEqual(Array.from(recusa.formularios[0].campos[1].opcoes, (o) => o.valor),['', narrado.id, capa.id], 'sucessoras: só as outras peças da mesma família');
@@ -106,11 +106,11 @@ function carregarModulo(arquivo, sandbox) {
   assert.deepEqual(JSON.parse(JSON.stringify(recusa.chamadas[0].body)), { versao: sem.versao, motivo: 'Motivo AUDIT', confirmacao: true, sucessora: narrado.id });
   for (const [resposta, caso] of [[null, 'cancelar o formulário'], [{ motivo: '   ' }, 'motivo vazio'], [{ motivo: 'x'.repeat(501) }, 'motivo acima de 500'], [{ motivo: 'Motivo AUDIT', sucessora: outra.id }, 'sucessora de outra família']]) {
     const t = await montarAprovacao(null, resposta, acervo, familias);
-    await walk(t.raiz).find((x) => x.attrs?.texto === 'Recusar peça').attrs.onclick();
+    await walk(t.raiz).find((x) => x.attrs?.texto === 'Recusar').attrs.onclick();
     assert.equal(t.chamadas.length, 0, caso + ' não recusa');
   }
   const aberta = await montarAprovacao({ ...dto, pecaId: sem.id, estado: 'em-correcao' }, { motivo: 'Motivo AUDIT' }, acervo, familias);
-  const bloqueado = walk(aberta.raiz).find((x) => x.attrs?.texto === 'Recusar peça');
+  const bloqueado = walk(aberta.raiz).find((x) => x.attrs?.texto === 'Recusar');
   assert.equal(bloqueado.attrs.disabled, true, 'pedido aberto bloqueia a recusa');
   await bloqueado.attrs.onclick(); assert.equal(aberta.chamadas.length, 0);
   console.log('admin-ajustes-tela-integracao: Fase 2 com módulos reais, três seções, famílias do servidor, alternativas e recusa com versão exata: OK');

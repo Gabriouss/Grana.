@@ -11,6 +11,16 @@
       "link": "https://www.facebook.com/reel/1419830199619383/",
       "peca": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/Fala o gasto, pronto.mp4",
       "evidencia": "Mesmo Reel publicado na Página do Facebook em 12/10/2026 20:48 UTC por API, com a mesma legenda 'Gastos pequenos não precisam ser difíceis' (conferido pelo Supremo na Graph em 18/10/2026)."
+    },
+    {
+      "link": "https://www.facebook.com/122126310099463849/posts/122124510807463849",
+      "peca": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/O café, o delivery, a corrida.png",
+      "evidencia": "Mídia real do post da Página de 12/10/2026 20:46:35 UTC lida pelo módulo meta-publicados/midia e comparada visualmente com o PNG por Pier em 18/10/2026. Título, texto, tela de setembro, aparelho inclinado, calendário e carrinho coincidem. Evidência local: pier/e40ebb6f02653300.jpg; diferença de compressão JPEG."
+    },
+    {
+      "link": "https://www.instagram.com/p/DeaA1M2Gtmv/",
+      "peca": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/O café, o delivery, a corrida.png",
+      "evidencia": "Mídia real do post DeaA1M2Gtmv de 12/10/2026 19:44:09 UTC lida pelo módulo meta-publicados/midia e comparada visualmente com o PNG por Spark em 18/10/2026 (relatorio-Spark-feed-confirmado.md). Título, texto, tela, aparelho e composição coincidem; diferença de compressão JPEG."
     }
   ]
 }

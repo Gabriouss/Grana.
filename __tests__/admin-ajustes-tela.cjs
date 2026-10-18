@@ -40,15 +40,10 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
     pedidos.splice(0, pedidos.length, { ...base, estado });
     const t = await render(); assert.ok(t.includes('Reel de teste · '), 'lista pelo nome da peca'); assert.ok(!t.includes('pedido-f') && !t.includes('aaaaaaaa') && !t.includes('bbbbbbbb') && !t.includes('cccccccc'), 'F4-1: nem id curto nem versão curta ao autor'); assert.ok(!t.includes('pedido-ficticio') && !t.includes('a'.repeat(40)) && !t.includes('b'.repeat(40)) && !t.includes('c'.repeat(40)), 'nem id nem SHA inteiros ao autor'); assert.equal(t.includes(base.textoOriginal), false);
     // Fase 2: precisa-de-atencao oferece Reenviar e Encerrar; os demais seguem com uma ação ou nenhuma.
-    assert.deepEqual(walk(root).filter((n) => n.tag === 'button').map((n) => n.attrs.texto), { 'corrigido-aguardando-aceite': ['Aceitar versão corrigida'], 'falha-de-envio': ['Tentar entrega novamente'], 'precisa-de-atencao': ['Reenviar pedido', 'Encerrar pedido'] }[estado] || [], estado);
+    assert.deepEqual(walk(root).filter((n) => n.tag === 'button').map((n) => n.attrs.texto), { 'corrigido-aguardando-aceite': [], 'falha-de-envio': ['Tentar entrega novamente'], 'precisa-de-atencao': ['Reenviar pedido', 'Encerrar pedido'] }[estado] || [], estado);
   }
-  pedidos.splice(0, pedidos.length, { ...base, estado: 'corrigido-aguardando-aceite' }); await render();
-  let b = walk(root).find((n) => n.tag === 'button'); confirmado = false; await b.attrs.onclick(); assert.equal(calls.filter((c) => c[0] === 'POST').length, 0);
-  confirmado = true; resolver = true; const first = b.attrs.onclick(); await Promise.resolve(); await Promise.resolve(); await b.attrs.onclick();
-  assert.equal(calls.filter((c) => c[0] === 'POST').length, 1, 'clique duplo não grava duas vezes');
-  const body = calls.find((c) => c[0] === 'POST')[2]; assert.equal(body.pedidoId, base.id); assert.equal(body.versao, base.versaoCorrigida); assert.equal(body.confirmacao, true);
-  resolver({}); await first; resolver = null;
-  pedidos.splice(0, pedidos.length, { ...base, estado: 'falha-de-envio' }); await render(); b = walk(root).find((n) => n.tag === 'button'); await b.attrs.onclick();
+  // 18/10: correção entregue não tem botão de aceite no pedido; o aceite é o Aprovar da peça (testado abaixo).
+  pedidos.splice(0, pedidos.length, { ...base, estado: 'falha-de-envio' }); await render(); let b = walk(root).find((n) => n.tag === 'button'); await b.attrs.onclick();
   assert.equal(calls.filter((c) => c[0] === 'POST').at(-1)[2].confirmacao, true);
   erro = true; assert.ok((await render()).includes('Falha com recibo')); erro = false; antigo = true; assert.equal((await render()).includes('Reel de teste · '), false);
   assert.equal(JSON.stringify([calls, avisos]).includes(base.textoOriginal), false);
@@ -69,8 +64,9 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   const botao = (t) => walk(root).find((n) => n.tag === 'button' && n.attrs.texto === t);
   const recibo = (t) => walk(root).some((n) => typeof n.textContent === 'string' && n.textContent.includes(t));
   root.replaceChildren(); await vm.runInNewContext('montar(root,ctx)', mesa);
-  assert.ok(botao('Aceite pela fila de ajustes')?.attrs.disabled, 'pedido aberto não é contornado pela aprovação genérica');
-  assert.equal(botao('Recusar peça')?.attrs.disabled, true, 'pedido aberto bloqueia a recusa');
+  assert.equal(botao('Aprovar')?.attrs.disabled, false, 'correção entregue: um botão Aprovar, habilitado');
+  assert.equal(botao('Aceite pela fila de ajustes'), undefined); assert.equal(botao('Aceitar versão corrigida'), undefined);
+  assert.ok(botao('Recusar') && botao('Pedir ajuste'), 'ao lado, só Pedir ajuste e Recusar');
   const mesaTexto = text(root);
   assert.ok(mesaTexto.includes('Precisa de você (1)') && mesaTexto.includes('Com os agentes (0)') && mesaTexto.includes('Resolvidas (0)'), 'toda demanda em exatamente uma das três seções');
   assert.ok(mesaTexto.includes('Corrigido, aguardando seu aceite') && mesaTexto.includes('Revise a correção antes de dar seu aceite.'), 'um selo de estado e o próximo passo');
@@ -79,15 +75,14 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   assert.equal(pedidosFetch.length, 1);
   assert.equal(pedidosFetch[0][0], '/api/marketing/ajustes/' + base.id + '/anterior?arquivo=peca-ficticia.png');
   assert.equal(pedidosFetch[0][1].headers['X-Grana-Admin'], '1', 'sem este cabeçalho o servidor responde 403 e o aceite nunca libera');
-  assert.equal(botao('Aceitar versão corrigida').attrs.disabled, true, 'aceite bloqueado enquanto a comparação não termina');
+  assert.equal(botao('Aprovar').attrs.disabled, false, 'a comparação é só informativa: não bloqueia o Aprovar');
   responderFetch({ ok: true, blob: async () => ({}) }); await assentar();
-  assert.equal(botao('Aceitar versão corrigida').attrs.disabled, false, 'comparação conferida libera o aceite');
-  assert.ok(recibo('Versão anterior conferida'));
+  assert.equal(botao('Aprovar').attrs.disabled, false); assert.ok(recibo('Antes e depois do ajuste.'));
   const postsAntes = calls.filter((c) => c[0] === 'POST').length;
   root.replaceChildren(); await vm.runInNewContext('montar(root,ctx)', mesa);
   responderFetch({ ok: false }); await assentar();
-  assert.equal(botao('Aceitar versão corrigida').attrs.disabled, true, 'comparação recusada mantém o aceite bloqueado');
-  assert.ok(recibo('O aceite permanece bloqueado') && botao('Tentar comparação novamente'), 'falha da comparação tem recibo e nova tentativa');
+  assert.equal(botao('Aprovar').attrs.disabled, false, 'versão anterior indisponível não bloqueia o Aprovar');
+  assert.ok(recibo('Versão anterior indisponível') && !botao('Tentar comparação novamente'), 'falha da comparação: uma linha discreta');
   assert.equal(calls.filter((c) => c[0] === 'POST').length, postsAntes, 'montar e comparar não gravam nada');
   // Nome com espaço e acento: o DTO traz `nome` literal e `url` já codificada por segmento. A comparação
   // manda o nome literal; tirar o nome da url codificaria duas vezes e o servidor recusaria com 400.
@@ -99,9 +94,9 @@ const source = fs.readFileSync('tools/admin-local/web/telas/ajustes.js', 'utf8')
   assert.equal(pedidoAnterior.pathname, '/api/marketing/ajustes/' + base.id + '/anterior');
   assert.equal(pedidoAnterior.searchParams.get('arquivo'), nomeLiteral, 'o servidor recebe o nome literal do DTO');
   assert.equal(pedidosFetch.at(-1)[1].headers['X-Grana-Admin'], '1');
-  assert.equal(botao('Aceitar versão corrigida').attrs.disabled, true, 'nome com espaço e acento: aceite bloqueado antes do sucesso');
+  assert.equal(botao('Aprovar').attrs.disabled, false);
   responderFetch({ ok: true, blob: async () => ({}) }); await assentar();
-  assert.equal(botao('Aceitar versão corrigida').attrs.disabled, false, 'nome com espaço e acento: aceite liberado só depois do sucesso');
+  assert.equal(botao('Aprovar').attrs.disabled, false);
   assert.equal(calls.filter((c) => c[0] === 'POST').length, postsAntes);
   // Toast de erro: texto humano, sem codigo interno cru; o codigo vai so para o console.
   pedidos.splice(0, pedidos.length, { ...base, estado: 'falha-de-envio', tentativas: 1 });

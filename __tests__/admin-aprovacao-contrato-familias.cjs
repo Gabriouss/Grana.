@@ -89,11 +89,11 @@ const grava = (rel, c) => { const f = path.join(raiz, rel); fs.mkdirSync(path.di
     assert.ok(text(bloco).includes('Revisão 1'));
     assert.equal(walk(bloco).filter((n) => n.tag === 'button' || n.tag === 'a').length, 0, 'revisão anterior sem botão nem link de ação');
     assert.ok(!text(r).includes('Outra versão na fila'), 'família registrada não dispara o aviso de duplicata');
-    assert.equal(botao(r, 'Aprovar esta versão').attrs.disabled, false);
+    assert.equal(botao(r, 'Aprovar').attrs.disabled, false);
     // P-05 por teclado: a decisão é filha do dialog, irmã da área que rola, e não fica dentro dela.
     const dialogo = walk(r).find((n) => n.tag === 'dialog');
     const decisao = dialogo.children.find((n) => n.attrs?.class === 'bloco-acao aprovacao-decisao');
-    assert.ok(decisao && walk(decisao).includes(botao(r, 'Aprovar esta versão')), 'decisão é filha direta do dialog e tem os botões');
+    assert.ok(decisao && walk(decisao).includes(botao(r, 'Aprovar')), 'decisão é filha direta do dialog e tem os botões');
     assert.ok(!walk(walk(r).find((n) => n.attrs.class === 'aprovacao-janela-conteudo demanda-detalhe')).includes(decisao), 'decisão fora da área que rola');
     // F-01 do Forge (F4-1): a linha do índice, mesmo recolhida, não mostra a chave do cronograma nem hash.
     assert.ok(v7.indice && v7.indice.includes('AUDIT-manifesto#AUDIT-item@2'), 'fixture: o DTO traz a linha íntegra do INDICE');
@@ -105,7 +105,7 @@ const grava = (rel, c) => { const f = path.join(raiz, rel); fs.mkdirSync(path.di
 
     // 2. Vigente guardada em historico/ (R13 final): aprovar e pedir ajuste funcionam, e ela precisa de você.
     r = await abrir(r13);
-    assert.equal(botao(r, 'Aprovar esta versão').attrs.disabled, false, 'R13 final aprovável');
+    assert.equal(botao(r, 'Aprovar').attrs.disabled, false, 'R13 final aprovável');
     assert.equal(botao(r, 'Pedir ajuste').attrs.disabled, false);
     const cardR13 = walk(r).find((n) => n.attrs.dados?.peca === r13.id);
     assert.equal(cardR13.attrs['data-secao'], 'voce', 'vigente em historico/ fica em Precisa de você, não em Resolvidas');
@@ -115,7 +115,7 @@ const grava = (rel, c) => { const f = path.join(raiz, rel); fs.mkdirSync(path.di
     r = await abrir(pend);
     assert.ok(text(r).includes('Falta escolher a revisão'), 'aviso no card');
     assert.ok(text(r).includes('Falta você escolher a revisão vigente de Peça AUDIT pendente: AUDIT, o autor ainda escolhe.'));
-    assert.equal(botao(r, 'Aprovar esta versão').attrs.disabled, true, 'pendente não se aprova');
+    assert.equal(botao(r, 'Aprovar').attrs.disabled, true, 'pendente não se aprova');
     assert.equal(botao(r, 'Pedir ajuste').attrs.disabled, false, 'pedir ajuste ajuda a decidir (contrato)');
     assert.ok(!/\b[0-9a-f]{16}\b/.test(text(r)), 'F4-1: nenhum id de 16 hex no texto');
 
