@@ -90,6 +90,34 @@ Em 08/10/2026, o autor confirmou que os cinco segredos incluídos no pacote envi
 O histórico e a evidência da exposição permanecem na seção datada de 16/09/2026 abaixo. A rotação resolve a pendência de validade dos valores expostos, sem apagar o fato histórico de que o pacote de projeto foi enviado ao EAS.
 
 ---
+# 18/10/2026 (M1, Quill): ALERTA de build, pacote EAS enxugado
+
+> **ALERTA, no topo da seção de build.** Pedido literal do autor, repassado pelo Orquestrador Supremo: "se a proxima build quebrar, foi por causa desse negocio de tirar coisa do pacote e precisa ser revisado".
+
+- **O que mudou:** os commits `101174f`, `b8d590f`, `9daac1e` e `dbcd752` enxugaram o `.easignore`. O pacote que o EAS recebe caiu de 581 MB para 9,1 MB (482 arquivos).
+- **O que já voltou ao pacote por ter faltado:** `landing-meta.json` (importado por `app/index.tsx`) e `scripts/ligar-hooks.cjs` (o `prepare` do npm depende dele).
+- **Provado:** `expo config` e `expo export android` funcionam numa cópia exata do pacote.
+- **NÃO provado:** `npm ci` e o Gradle no servidor do EAS. A build 1.10.8 (EAS `854214cd`) usou o pacote antigo, então ainda não houve build com o pacote novo.
+- **Primeira suspeita se a PRIMEIRA build depois de `dbcd752` falhar:** o `.easignore`. Comparar o log do EAS com o que saiu do pacote e devolver o que faltar. Não presumir bug de código antes disso.
+
+---
+# 17/10/2026 (M1, Quill, a partir do relatório da sessão "Claude Code #3"): credenciais Meta, conta de anúncios e Pixel
+
+Fonte: `E:\Grana-temporarios\2026-10-17-meta-token\relatorio-Claude3-meta-token-e-pixel.md`. Só nomes de variáveis, nunca valores (regras 12 e 15).
+
+- **Pedido do autor:** "me ajuda a pegar a API sem expiração da META?", depois "vamos publicar no facebook e instagram via token, também vamos utilizar ele para o quadro de métricas no painel admin". O autor manteve o token amplo ("eu criei o token assim porque eu quis") e pediu um token de leitura separado.
+- **Feito (sondado):** token de usuário do sistema "Admin" (SYSTEM_USER, expiração "Nunca", escopos amplos de publicação, comentários, mensagens, leads, WhatsApp e anúncios), em `META_ACCESS_TOKEN` no `.env`. Segundo usuário do sistema "grana-leitura", só `ads_read`, em `META_READ_ACCESS_TOKEN`; ele enxerga a conta de anúncios e NÃO enxerga Página nem Instagram. Conta de anúncios "Grana. Anúncios" criada (BRL, status 1).
+- **Ids:** Página "Grana.", Instagram @granaponto e conta de anúncios "Grana. Anúncios" ficam só nas variáveis `META_PAGE_ID`, `META_IG_USER_ID` e `META_AD_ACCOUNT_ID` do `.env` (o varredor de segredos barra o valor no git; consulte o `.env`). App "Grana App" `2006711500016518` (dataset do APP, não é Pixel de site); conjunto de dados do Pixel "Grana. LP" `1092831350327753` (lido de print, o autor foi orientado a conferir os 16 dígitos).
+- **Variáveis no `.env` local:** `META_ACCESS_TOKEN`, `META_READ_ACCESS_TOKEN`, `META_AD_ACCOUNT_ID`, `META_PAGE_ID`, `META_IG_USER_ID`, `META_GRAPH_API_VERSION` (v23.0), `EXPO_PUBLIC_META_PIXEL_ID` (valor público) e `MARKETING_SIM_EXECUTOR_SECRET` (aleatório, gerado sem imprimir). `EXPO_PUBLIC_META_PIXEL_ATIVO` continua ausente: Pixel desligado.
+- **Atualização posterior do Orquestrador (sobrepõe o "NÃO foram levados ao Supabase" do relatório):** os secrets `META_READ_ACCESS_TOKEN`, `META_AD_ACCOUNT_ID` e `META_GRAPH_API_VERSION` foram criados no Supabase e no `.env` local pelo Orquestrador. A correção do fuso Brazil/East, commit `12be6ce`, foi publicada em `admin-meta` e `admin-analytics`. Criar secret reinstancia todas as funções e soma 1 na versão de cada uma, sem mexer no `updated_at` (regra 11).
+- **Pixel em "configuração básica":** aviso da Meta por e-mail em 17/10/2026 (setor financeiro, categoria "Serviço financeiro"). Eventos personalizados, parâmetros, URL detalhada e correspondência avançada ficam restritos. Não tentar contornar. Código não instalado no site, API de Conversões desmarcada, correspondência avançada automática desligada.
+- **Sintoma e causa:** insight da Página falhou com erro 100 por nomes de métrica aposentados (`page_impressions_unique`, `page_fans`); válidas: `page_media_view`, `page_total_media_view_unique`, `page_post_engagements`, `page_follows`, `page_daily_follows_unique`, `page_views_total`, e exigem o token DA PÁGINA (via `/me/accounts`). Causa NÃO confirmada: "Nenhuma permissão disponível" ao gerar o token do grana-leitura; resolveu depois de reatribuir, sem saber qual passo foi decisivo.
+- **Descartado:** nova Edge Function de métricas/publicação (já existem `admin-meta`, `admin-publicacoes-simulacao`, `marketing-simulacao-executor`; o painel de marketing é LOCAL, `tools/admin-local`); usar o id do app como Pixel; ligar API de Conversões e "Configure para mim" (fora da rodada, risco LGPD); trocar o token amplo (o autor recusou).
+- **ARMADILHA e risco aceito:** respostas da Graph API com `paging` embutem o token inteiro na URL; NUNCA imprimir resposta crua. A sessão imprimiu uma e o valor do token amplo apareceu na saída da sessão (não foi a arquivo, commit nem vault). O autor decidiu não trocar o token: risco aceito, e o amplo segue sendo credencial exposta no histórico daquela conversa.
+- **Não verificado:** nada foi publicado nem escrito na Meta; insights de anúncios nunca tiveram dado real; v23.0 testada só com o token de leitura (demais sondas em v21.0, paginação apontou v26.0, versão vigente não conferida); o token de leitura NÃO enxerga insights orgânicos de Página/IG (decisão em aberto: terceiro token com `instagram_manage_insights` e `pages_read_engagement`, ou o amplo só no servidor).
+- **Pendências do autor:** decisão sobre o token de leitura orgânico; checar versão vigente do Graph; forma de pagamento na conta de anúncios; ativação do Pixel (copy, 180 dias de consentimento, domínio, payload, desligar coleta automática); reembolso/ledger Cakto; autoria de `docs/marketing/painel/historico.json` e `docs/marketing/solicitacoes-correcao/`.
+
+---
 # 17/10/2026 (M1, Antigravity): Granabô 3D no Granachat e na navegação + build 1.10.7 publicada
 
 > Nota de sessão no vault: `00 - Sessões/2026-10-17 - M1 - Granabô 3D no chat, navegação e build 1.10.7`. Nota correspondente criada também no fichário do workspace (`Fichário - Sessões`).
