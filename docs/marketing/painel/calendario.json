@@ -38,6 +38,25 @@
           "motivo": "v8-pop superado pela versão curta com notificação (decisão do autor, 13/10/2026)"
         }
       ]
+    },
+    {
+      "id": "0c2f7a45bb3959ba",
+      "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/lumen-v8/olhar só o saldo engana o seu mês-*",
+      "versao": "ebc9256211cbb190dae9ddff2f84f05ba280295a",
+      "data": "2026-10-18",
+      "hora": "20:30",
+      "canal": "instagram-feed",
+      "observacao": null,
+      "planejadoEm": "2026-10-18T20:28:08-03:00",
+      "recibos": [
+        {
+          "tipo": "data-marcada",
+          "em": "2026-10-18T20:28:08-03:00",
+          "data": "2026-10-18",
+          "hora": "20:30",
+          "canal": "instagram-feed"
+        }
+      ]
     }
   ],
   "referenciaFunilFonte": "FUNIL.md, seção 5 (Calendário único da campanha, após o dia D). Posições relativas em dias úteis; não autorizam publicar nem gastar.",
