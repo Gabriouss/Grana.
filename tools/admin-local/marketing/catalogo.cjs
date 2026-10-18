@@ -445,25 +445,14 @@ function limparTitulo(t) {
     .replace(/\s{2,}/g, ' ');
 }
 
-// Nome de apresentação não participa da versão nem substitui o título/legenda
-// aceitos. O caminho físico nunca é usado para inventar o assunto da peça.
-function nomeExibicaoPeca({ tituloPublicacao, tituloEditorial, primeiraLinhaLegenda, tipo, codigo, semana } = {}) {
+// Decisão do autor (18/10): o arquivo se chama como o título escrito na arte, e o painel mostra esse
+// nome (sem extensão) + formato. Sem título, legenda ou semana como nome. Não participa da versão.
+function nomeExibicaoPeca({ nomeArquivo, tipo, codigo } = {}) {
   const formato = tipo === 'stories' || /^S\d/i.test(codigo || '') ? 'Stories'
     : ['video', 'reels', 'reel'].includes(tipo) ? 'Reels'
       : tipo === 'carrossel' ? 'Carrossel' : tipo === 'texto' ? 'Texto' : 'Post';
-  const limpar = valor => {
-    if (typeof valor !== 'string') return '';
-    const texto = valor.split(/\r?\n/)[0].replace(/\*\*|`|^#+\s*/g, '').replace(/\b[CRES]\d{1,2}\b/gi, '')
-      .replace(/^[\s·,:;|\-–—]+|[\s·,:;|\-–—]+$/g, '').replace(/\s+/g, ' ').trim();
-    if (!texto || /[\\/]|\.(?:mp4|mov|webm|png|jpe?g|webp|gif|md|txt)\b/i.test(texto)
-      || /^(?:(?:card|post)(?: estático)?|estático|carrossel|reels?|stories|story|vídeo|texto|legenda|fixture|sem título|copy)(?:\s*[,·:|\-]\s*)?$/i.test(texto)) return '';
-    if (texto.length <= 96) return texto;
-    return texto.slice(0, 93).replace(/\s+\S*$/, '').trimEnd() + '…';
-  };
-  const assunto = limpar(tituloPublicacao) || limpar(tituloEditorial) || limpar(primeiraLinhaLegenda);
-  const numero = Number(semana?.numero);
-  return assunto ? `${assunto} · ${formato}`
-    : `${formato} · ${Number.isInteger(numero) && numero > 0 && numero <= 53 ? `Semana ${numero}` : 'Semana não informada'}`;
+  const base = String(nomeArquivo || '').replace(/^.*[\/]/, '').replace(/\.[A-Za-z0-9]{1,5}$/, '').replace(/\s+/g, ' ').trim();
+  return `${base || 'Sem nome'} · ${formato}`;
 }
 
 // Decisão editorial do autor: são variantes, não duplicatas a apagar. O
@@ -676,9 +665,8 @@ function montarCatalogo(raiz) {
             estado,
             tipo: ehCarrossel ? 'carrossel' : primeiro.tipo,
             titulo: copy && (estado !== 'historico' || revisao?.vigente) ?`${copy.codigo} · ${limparTitulo(copy.titulo)}` : nomeCurto,
-            nomeExibicao: nomeExibicaoPeca({ tituloPublicacao: !ehDocCopy && copy?.tituloPublicacao,
-              tituloEditorial: !ehDocCopy && copy?.titulo, primeiraLinhaLegenda: !ehDocCopy && copy?.primeiraLinhaLegenda,
-              tipo: ehCarrossel ? 'carrossel' : primeiro.tipo, codigo, semana }),
+            nomeExibicao: nomeExibicaoPeca({ nomeArquivo: ehCarrossel ? (/^(carrossel|card)$/i.test(primeiro.grupo || '') ? path.posix.basename(path.posix.dirname(relRepo(primeiro))) : primeiro.grupo) : primeiro.nome,
+              tipo: ehCarrossel ? 'carrossel' : primeiro.tipo, codigo }),
             nome: nomeCurto,
             codigo: codigo || null,
             legenda,

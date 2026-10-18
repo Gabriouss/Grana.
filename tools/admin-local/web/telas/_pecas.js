@@ -7,8 +7,8 @@ export function tituloPeca(p) {
   const formato = p.tipo === 'stories' || /^S\d/i.test(p.codigo || '') ? 'Stories'
     : ['video', 'reel', 'reels'].includes(p.tipo) ? 'Reels'
       : p.tipo === 'carrossel' ? 'Carrossel' : p.tipo === 'texto' ? 'Texto' : 'Post';
-  const numero = Number(p.semana?.numero);
-  return `${formato} · ${Number.isInteger(numero) && numero > 0 && numero <= 53 ? `Semana ${numero}` : 'Semana não informada'}`;
+  const base = String(p.nome || '').replace(/^.*[\\/]/, '').replace(/\.[A-Za-z0-9]{1,5}$/, '').trim();
+  return `${base || 'Sem nome'} · ${formato}`;
 }
 
 export function rotuloSemana(s) {
