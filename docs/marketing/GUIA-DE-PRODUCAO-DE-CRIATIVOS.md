@@ -59,6 +59,7 @@ Leia este guia **antes de produzir qualquer criativo**: estático, carrossel, St
 - **Nunca** falar de banco, conexão bancária ou Open Finance. Nenhum logo de banco ou marca real inventado.
 - **Marca bem visível:** existe um concorrente chamado "Grana Smart". O logotipo com o ponto e a paleta petróleo e menta precisam ser reconhecíveis.
 - **Referências de terceiros:** servem só para estilo visual (ver `2026-09/semana-39-2026-09-21-a-2026-09-27/apoio/referencias/`). Nunca copiar texto, marca ou layout.
+- **A legenda não repete a copy da arte (autor, 18/10/2026):** "a legenda não pode ser igual à copy do criativo [...] precisa ser diferente, ela precisa apenas contextualizar o que o criativo ali tá falando". Título, subtítulo e frases das telas já estão na arte; a legenda traz o que a arte não diz: a situação que a pessoa reconhece, o porquê de a função importar e o próximo passo. Fecha com uma chamada (por exemplo, "Link na bio") e o aviso de dado fictício quando houver tela. Antes de aprovar uma legenda, compare com o texto da arte: se uma frase se repete, reescreva. Peça paga, ou que cite preço, ainda leva os itens da seção de legenda obrigatória das copys da semana 42. Copy sem travessão e sem "não é X, é Y" continua valendo.
 
 ## 4. Custo
 

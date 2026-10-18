@@ -6,4 +6,4 @@ Escrita em 18/10/2026 para o Reel aprovado sem legenda. O aceite composto antigo
 
 **Título:** Já desistiu de controlar seus gastos porque anotar tudo cansa?
 
-**Legenda:** Anotar tudo toda hora cansa. Por isso, no Grana. para Android, você fala o gasto pelo widget de voz ou aponta a câmera para o QR code da nota fiscal. E, se esquecer, o lembrete da noite avisa. Confira sempre os valores antes de salvar. Telas recriadas com dados de exemplo.
+**Legenda:** Controlar gasto vira tarefa chata quando cada compra pede abrir o app, escolher categoria e digitar. A ideia aqui é tirar esse atrito: no Android, o widget de voz e a leitura do QR code da nota fiscal registram o gasto em poucos toques, e um lembrete no fim do dia ajuda a não deixar nada para depois. Confira o valor antes de salvar. Para testar, o link está na bio. Cenas recriadas com dados de exemplo.

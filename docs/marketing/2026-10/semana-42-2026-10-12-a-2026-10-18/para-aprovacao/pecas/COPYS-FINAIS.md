@@ -6,28 +6,28 @@ Escrita em 18/10/2026 para o Reel que estava aprovado sem legenda. O Reel foi pu
 
 **Título:** Pagou? É só falar.
 
-**Legenda:** Pagou a padaria? Fale o gasto pelo widget de voz e o Grana. lança por você, sem abrir o aplicativo. Widget de voz só no Android. Se algo ficar sem clareza, o Grana. pede confirmação antes de salvar. Cena com personagem fictícia e dados de exemplo.
+**Legenda:** Pagou, guardou o celular e esqueceu de anotar? É assim que o gasto pequeno some do controle. No Android, o widget de voz permite lançar o gasto falando, direto da tela inicial, e pede confirmação se algo não ficar claro. A cena mostra uma padaria, com personagem fictícia e dados de exemplo. Para experimentar, o link está na bio.
 
 ## Olhar só o saldo engana o seu mês
 
 **Título:** Olhar só o saldo engana o seu mês
 
-**Legenda:** Olhar só o saldo engana o seu mês. O Grana. mostra quantos dias faltam até virar o mês, quanto cabe no seu dia e deixa o mês inteiro claro, do começo ao fim. Confira no celular ou no computador. Organize os gastos no app e na web por menos de R$ 0,37 por dia: plano mensal de R$ 9,90 ou anual de R$ 97,90. Valores, periodicidade e renovação na página de planos, pelo link da bio. Sete dias para pedir o reembolso. Telas com dados de exemplo.
+**Legenda:** O mesmo saldo pesa diferente conforme a data, e é por isso que ele sozinho engana. Nesta sequência, a ideia é trocar o susto do fim do mês por uma conta simples de acompanhar: quanto já foi, quanto falta e o que cabe em cada dia. Passe as telas para ver como isso aparece no Grana. e, se fizer sentido, comece pelo link da bio. O Grana. custa menos de R$ 0,37 por dia (plano mensal de R$ 9,90 ou anual de R$ 97,90). Valores, periodicidade e renovação estão na página de planos. Sete dias para pedir o reembolso. Telas com dados de exemplo.
 
 ## Quanto dá pra gastar hoje
 
 **Título:** Quanto dá pra gastar hoje?
 
-**Legenda:** Veja na hora quanto cabe no seu dia. O Grana. usa o que você registrou no mês e divide o restante pelos dias que faltam, contando hoje. Tela com dados de exemplo. Salva para consultar quando o mês apertar.
+**Legenda:** Dividir o que sobrou do mês pelos dias que faltam é a conta que muita gente faz de cabeça e erra. O Livre para gastar do Grana. faz isso com os lançamentos que você registrou e atualiza a cada gasto, contando hoje. Serve de bússola antes de pedir o delivery ou passar o cartão. Tela com dados de exemplo. Link na bio.
 
 ## Passou na farmácia hoje
 
 **Título:** Passou na farmácia hoje?
 
-**Legenda:** Passou na farmácia e o cupom ficou no fundo da sacola? Registre o gasto no Grana. e veja quanto fica livre por dia. O cálculo usa os lançamentos que você registrou, desconta o que guardou nos cofrinhos e divide o restante pelos dias que faltam, contando hoje. Telas com dados de exemplo. Salva para consultar quando o mês apertar.
+**Legenda:** Compra pequena, daquelas de farmácia ou mercado, costuma ficar sem registro porque o cupom vai para o fundo da sacola. O truque do vídeo é lançar na hora e já ver o efeito no dia: o Livre para gastar considera o que você registrou e o que guardou nos cofrinhos e divide o resto pelos dias que faltam. Salve para lembrar de lançar o próximo cupom. Telas com dados de exemplo. Link na bio.
 
 ## Recebeu um Pix, só colar
 
 **Título:** Recebeu um Pix? Só colar.
 
-**Legenda:** Recebeu um Pix e não quer digitar tudo? Copie o comprovante, cole no Grana., confira o valor e salve. Antes de salvar, confira sempre o valor, a categoria e se o lançamento é uma entrada ou uma saída. Telas com dados de exemplo.
+**Legenda:** Digitar valor, data e descrição de cada Pix é o que faz muita gente desistir de anotar. Colar o texto do comprovante poupa essa etapa: o Grana. preenche os campos e você só revisa. Confira valor, categoria e se é entrada ou saída antes de salvar. Telas com dados de exemplo. Quer testar? Link na bio.

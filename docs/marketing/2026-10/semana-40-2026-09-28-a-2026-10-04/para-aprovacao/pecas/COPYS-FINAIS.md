@@ -169,7 +169,7 @@ terminar, contando hoje.
 
 **Fechamento:** Conheça o Grana.
 
-**Legenda:** Passou na farmácia e o cupom ficou no fundo da sacola? Registre o gasto no Grana. e veja quanto fica livre por dia até o fim do mês. O cálculo usa os lançamentos que você registrou, desconta o que guardou nos cofrinhos e divide o restante pelos dias que faltam, contando hoje. Telas com dados de exemplo. Salva para consultar quando o mês apertar.
+**Legenda:** Compra pequena, daquelas de farmácia ou mercado, costuma ficar sem registro porque o cupom vai para o fundo da sacola. O truque do vídeo é lançar na hora e já ver o efeito no dia: o Livre para gastar considera o que você registrou e o que guardou nos cofrinhos e divide o resto pelos dias que faltam. Salve para lembrar de lançar o próximo cupom. Telas com dados de exemplo. Link na bio.
 
 **Sobreposição durante as capturas do app, de 5 a 17 s:** Demonstração com
 dados fictícios. Posicionar fora da interface, sem cobrir controles.
