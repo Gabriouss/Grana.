@@ -47,6 +47,7 @@ Date.now = () => tempo;
   const base = '/api/marketing/publicacoes';
   const confirmar = { acao: 'confirmar', previaId: UUID, previaHash: 'a'.repeat(64), revisaoEsperada: 1, idempotencia: UUID, confirmacao: true };
   assert.equal((await pedir(base)).status, 401); assert.equal(chamadas.length, 0);
+  assert.equal((await pedir(base + '/miniatura?pecaId=' + 'a'.repeat(16))).status, 401, 'miniatura exige sessão');
   seg.novoCodigo();
   assert.equal((await pedir('/api/parear', { codigo: fs.readFileSync(seg.ARQUIVO_PAREAMENTO, 'utf8') })).status, 200);
   assert.equal((await pedir(base)).status, 401);

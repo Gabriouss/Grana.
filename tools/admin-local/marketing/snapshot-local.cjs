@@ -11,6 +11,17 @@ const { MAX_ARQUIVO, MAX_TOTAL, detectarMime } = require('./previa-conteudo.cjs'
 const hash = texto => crypto.createHash('sha256').update(texto).digest('hex');
 const falhar = (codigo, status = 409) => { throw new catalogo.ErroMarketing(codigo, 'Confira o aceite, a versão e as mídias da peça antes de continuar.', status); };
 
+// Predicado único de "peça agendável": o catálogo do agendamento real, a miniatura e a
+// captura usam o mesmo. null = aceite datado do autor válido para esta versão.
+function motivoSemAceite(raiz, q, agora = Date.now()) {
+  if (!q?.aprovada || q.recusada || q.revisao?.superada || q.revisao?.pendencia) return 'sem-aceite';
+  // Pasta "aprovados" sozinha não inventa registro datado do autor.
+  const aceites = q.aceite?.evidencia === catalogo.EVIDENCIA_DERIVADA
+    ? catalogo.lerJson(catalogo.caminhoPainel(raiz, 'aprovacoes.json'), { aprovacoes: [] }).aprovacoes : null;
+  if (!q.aceite || !catalogo.aceiteValido(q.aceite, q, agora, aceites)) return 'aceite-nao-sincronizado';
+  return null;
+}
+
 function criarCapturador({ obterPeca = catalogo.obterPeca, pastaTemporaria = os.tmpdir() } = {}) {
   let ativos = 0;
   const limpar = async pasta => {
@@ -30,12 +41,10 @@ function criarCapturador({ obterPeca = catalogo.obterPeca, pastaTemporaria = os.
     try {
       const p = await obterPeca(raiz, pecaId);
       const evidencia = q => {
-        if (!q?.aprovada || q.recusada || q.revisao?.superada || q.revisao?.pendencia) falhar('sem-aceite');
+        const motivo = motivoSemAceite(raiz, q);
+        if (motivo === 'sem-aceite') falhar(motivo);
         if (q.id !== pecaId || q.versao !== versao) falhar('versao-divergente');
-        // Pasta "aprovados" sozinha não inventa registro datado do autor.
-        const aceites = q.aceite?.evidencia === catalogo.EVIDENCIA_DERIVADA
-          ? catalogo.lerJson(catalogo.caminhoPainel(raiz, 'aprovacoes.json'), { aprovacoes: [] }).aprovacoes : null;
-        if (!q.aceite || !catalogo.aceiteValido(q.aceite, q, Date.now(), aceites)) falhar('aceite-nao-sincronizado');
+        if (motivo) falhar(motivo);
         catalogo.exigirItemAutonomo(q, 'O agendamento');
         return hash(JSON.stringify(q.aceite));
       };
@@ -102,4 +111,4 @@ function criarCapturador({ obterPeca = catalogo.obterPeca, pastaTemporaria = os.
     }
   };
 }
-module.exports = { criarCapturador };
+module.exports = { criarCapturador, motivoSemAceite };

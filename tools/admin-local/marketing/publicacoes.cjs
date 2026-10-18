@@ -1,6 +1,6 @@
 'use strict';
 // Contrato REAL fechado do browser. SQL, idempotência e Graph pertencem ao módulo remoto.
-const { ErroMarketing, listarPecas } = require('./catalogo.cjs');
+const { ErroMarketing, listarPecas, obterPeca: obterPecaCatalogo, caminhoSeguro } = require('./catalogo.cjs');
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const acoes = ['prever', 'confirmar', 'cancelar', 'reagendar', 'pausar', 'retomar', 'reconciliar'];
 function invalido() { throw new ErroMarketing('pedido-invalido', 'Confira os campos do pedido de publicação real.', 400); }
@@ -52,27 +52,79 @@ function validarPedido(p) {
   }
   return { ...r, jobId: uuid(p.jobId), ...(p.acao === 'reagendar' ? { publicarEm: horario(p), fuso: p.fuso } : {}) };
 }
-function criarPublicacoes({ remoto, catalogo = listarPecas } = {}) {
+function criarPublicacoes({ remoto, catalogo = listarPecas, obterPeca = obterPecaCatalogo, estado: estadoInjetado } = {}) {
+  let estadoLocal;
+  const estado = () => estadoInjetado || estadoLocal || (estadoLocal = require('./publicacoes-reais-estado.cjs').criarEstado());
   const fonte = () => {
     const r = remoto || require('../adaptadores/marketing-backend.cjs').backend().publicacoes;
     if (!r) throw new ErroMarketing('modulo-remoto-pendente', 'Integração de publicações reais ainda indisponível.', 503);
     return r;
   };
   const operar = p => fonte().executar({ recurso: 'publicacoes-reais', modo: 'real', ...p });
+  /* Confirmação com identidade persistida ANTES da chamada remota (achado C3 do Watchtower):
+     a primeira confirmação de uma prévia grava a chave no estado privado do PC; prazo
+     esgotado, reinício ou um segundo clique com outra chave repetem a MESMA chave e o MESMO
+     pedido, e o servidor devolve o mesmo lote (replay) em vez de criar outro. */
+  async function confirmar(p) {
+    const r = await estado().reservarConfirmacao({ previaId: p.previaId, previaHash: p.previaHash,
+      revisaoEsperada: p.revisaoEsperada, idempotencia: p.idempotencia });
+    const dados = await operar({ ...p, revisaoEsperada: r.revisaoEsperada, idempotencia: r.idempotencia });
+    await estado().concluirConfirmacao({ previaId: p.previaId, previaHash: p.previaHash, loteId: dados?.loteId ?? null });
+    return dados;
+  }
+  // Só peça com aceite datado válido desta versão é selecionável (mesmo predicado da captura).
+  const motivo = (raiz, p) => require('./snapshot-local.cjs').motivoSemAceite(raiz, p);
+  const MENSAGEM_SEM_ACEITE = 'A peça precisa de aceite datado desta versão.';
   return {
     catalogo(raiz, filtros = {}) {
       fechado(filtros, ['semana', 'tipo']);
-      const r = catalogo(raiz, filtros);
-      return { pecas: r.pecas.filter(p => !p.capaDe).map(p => ({ id: p.id, titulo: p.titulo, versao: p.versao,
-        tipo: p.tipo, aprovada: p.aprovada, miniaturaUrl: null,
-        bloqueios: p.aprovada && p.aceite ? [] : [{ codigo: 'sem-aceite', mensagem: 'A peça precisa de aceite datado desta versão.' }] })), total: r.pecas.filter(p => !p.capaDe).length };
+      const pecas = catalogo(raiz, filtros).pecas.filter(p => !p.capaDe && p.tipo !== 'texto' && p.aprovada);
+      return { pecas: pecas.map(p => {
+        const m = motivo(raiz, p);
+        const imagem = p.capa?.url || p.arquivos?.find(a => a.tipo === 'imagem')?.url;
+        return { id: p.id, titulo: p.titulo, versao: p.versao, tipo: p.tipo, aprovada: !m,
+          miniaturaUrl: !m && imagem ? `/api/marketing/publicacoes/miniatura?pecaId=${p.id}` : null,
+          bloqueios: m ? [{ codigo: m, mensagem: MENSAGEM_SEM_ACEITE }] : [] };
+      }), total: pecas.length };
+    },
+    // Miniatura autenticada (sessão + X-Grana-Admin pela rota), só de peça agendável, só imagem.
+    async miniatura(raiz, pecaId) {
+      if (!/^[0-9a-f]{16}$/.test(pecaId || '')) invalido();
+      const p = await obterPeca(raiz, pecaId);
+      if (!p || p.capaDe || motivo(raiz, p)) throw new ErroMarketing('sem-aceite', MENSAGEM_SEM_ACEITE, 409);
+      const a = p.capa?.url ? p.capa : p.arquivos?.find(x => x.tipo === 'imagem');
+      const rel = typeof a?.url === 'string' && a.url.startsWith('/') ? decodeURIComponent(a.url.slice(1)) : '';
+      if (!/^docs\/marketing\/\d{4}-\d{2}\/semana-[^/]+\/(?:para-aprovacao|aprovados|historico)\//.test(rel)) {
+        throw new ErroMarketing('midia-inexistente', 'Esta peça não tem imagem para miniatura.', 404);
+      }
+      const arquivo = caminhoSeguro(raiz, rel);
+      const fs = require('node:fs');
+      const { MAX_ARQUIVO, detectarMime } = require('./previa-conteudo.cjs');
+      const stat = fs.statSync(arquivo);
+      if (!stat.isFile() || stat.size < 1 || stat.size > MAX_ARQUIVO) throw new ErroMarketing('midia-grande', 'Imagem grande demais para miniatura.', 413);
+      const conteudo = fs.readFileSync(arquivo);
+      const mime = detectarMime(conteudo.subarray(0, 12));
+      if (mime !== 'image/png' && mime !== 'image/jpeg') throw new ErroMarketing('midia-invalida', 'A miniatura precisa ser PNG ou JPEG.', 415);
+      return { conteudo, mime };
     },
     contas: () => operar({ acao: 'contas' }),
-    listar(filtros = {}) {
+    // Cursor opaco para o browser; o servidor usa {id,criadoEm}.
+    async listar(filtros = {}) {
       fechado(filtros, ['cursor', 'limite']);
       if (filtros.limite !== undefined && (!Number.isInteger(filtros.limite) || filtros.limite < 1 || filtros.limite > 50)) invalido();
       if (filtros.cursor !== undefined && (typeof filtros.cursor !== 'string' || filtros.cursor.length < 1 || filtros.cursor.length > 512)) invalido();
-      return operar({ acao: 'listar', ...filtros });
+      const pedido = { acao: 'listar', ...(filtros.limite ? { limite: filtros.limite } : {}) };
+      if (filtros.cursor !== undefined) {
+        let c;
+        try { c = JSON.parse(Buffer.from(filtros.cursor, 'base64url').toString('utf8')); } catch { invalido(); }
+        fechado(c, ['id', 'criadoEm']); uuid(c.id);
+        if (typeof c.criadoEm !== 'string' || !Number.isFinite(Date.parse(c.criadoEm))) invalido();
+        pedido.cursor = { id: c.id, criadoEm: c.criadoEm };
+      }
+      const r = await operar(pedido);
+      const prox = r?.proximoCursor;
+      return { ...r, proximoCursor: prox && typeof prox === 'object'
+        ? Buffer.from(JSON.stringify({ id: prox.id, criadoEm: prox.criadoEm })).toString('base64url') : null };
     },
     detalhe(filtro) {
       fechado(filtro, ['jobId', 'loteId', 'idempotencia']);
@@ -82,7 +134,9 @@ function criarPublicacoes({ remoto, catalogo = listarPecas } = {}) {
     },
     executar(raiz, corpo) {
       const p = validarPedido(corpo);
-      return p.acao === 'previa' ? fonte().prever(raiz, p) : operar(p);
+      if (p.acao === 'previa') return fonte().prever(raiz, p);
+      if (p.acao === 'confirmar') return confirmar(p);
+      return operar(p);
     },
     midia(previaId, indice) {
       uuid(previaId);

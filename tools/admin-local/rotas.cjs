@@ -244,6 +244,16 @@ const GET = {
       res.end(req.method === 'HEAD' ? undefined : b.conteudo);
     } catch (e) { erroDeMarketing(res, e); }
   },
+  // Miniatura local de peça agendável: mesma sessão e X-Grana-Admin de toda rota /api.
+  '/api/marketing/publicacoes/miniatura': async (req, res, url) => {
+    try {
+      const f = filtrosPublicacoes(url, ['pecaId']);
+      const b = await marketing('publicacoes').miniatura(RAIZ_DADOS, f.pecaId);
+      res.writeHead(200, { 'Content-Type': b.mime, 'Content-Length': b.conteudo.length,
+        'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' });
+      res.end(req.method === 'HEAD' ? undefined : b.conteudo);
+    } catch (e) { erroDeMarketing(res, e); }
+  },
   '/api/visao-geral': async (req, res, url) => responderOk(res, await adaptador('visao-geral').resumo(comCache, forcar(url))),
   '/api/supabase/resumo': async (req, res, url) => responderOk(res, await comCache('sb-resumo', 30_000, () => adaptador('supabase').resumo(), forcar(url))),
   '/api/supabase/funcoes': async (req, res, url) => responderOk(res, await comCache('sb-funcoes', 30_000, () => adaptador('supabase').funcoes(), forcar(url))),

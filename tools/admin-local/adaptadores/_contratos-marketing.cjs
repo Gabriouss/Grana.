@@ -9,6 +9,7 @@ const permitidos = new Set([
   'supabase/functions/_shared/admin-analytics.ts', 'supabase/functions/_shared/admin-agregados.ts',
   'supabase/functions/_shared/request-body.ts', 'supabase/functions/_shared/admin-marketing.ts',
   'supabase/functions/_shared/admin-publicacoes-simulacao.ts', 'supabase/functions/_shared/marketing-simulacao.ts',
+  'supabase/functions/_shared/admin-publicacoes-reais.ts',
 ]);
 const cache = new Map();
 function carregar(relativo) {

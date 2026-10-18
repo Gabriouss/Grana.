@@ -49,8 +49,109 @@ function criarBackend({ configuracao = config, rede = fetch, cliente: criarClien
     analytics: (janela = 'semana-anterior') => executar(analytics, { recurso: 'analytics-leitura', janela }),
     simulacao: async p => ({ ...await executar(simulacao, p, true), modo: 'simulacao' }),
     notificacoes: p => executar(notificacoes, p, true),
+    publicacoes: criarPublicacoesReais({ env, remoto, cliente: () => cliente, relogio, log,
+      rede: (url, init) => rede(url, { ...init, redirect: 'error' }) }),
   };
+}
+
+/* Agendamento REAL. A operação e o importador são os do módulo remoto (mesmo código da
+   Edge Function), carregados aqui com service_role SÓ depois dos gates locais (sessão
+   pareada, TOTP recente, CSRF, Origin), como o contrato e5.real.v1 permite. Nunca cai
+   no simulador e nunca presume conta, capacidade ou sucesso. */
+const PRAZO_REAL_MS = 12_000;
+const PRAZO_PREVIA_MS = 120_000; // captura + upload privado de até 64 MB antes da prévia
+function criarPublicacoesReais({ env, remoto, cliente, relogio, log, rede, estado: estadoInjetado, capturar: capturarInjetado }) {
+  const modulo = () => carregar('supabase/functions/_shared/admin-publicacoes-reais.ts');
+  let op, importador, estadoLocal, capturador;
+  const operacao = () => op || (op = modulo().criarOperacaoPublicacoesReais());
+  const imp = () => importador || (importador = modulo().criarImportadorSnapshotReal({ rede }));
+  const estado = () => estadoInjetado || estadoLocal || (estadoLocal = require('../marketing/publicacoes-reais-estado.cjs').criarEstado());
+  const capturar = (...a) => (capturarInjetado || capturador || (capturador = require('../marketing/snapshot-local.cjs').criarCapturador()))(...a);
+
+  function exigirRemoto() {
+    const falta = remoto();
+    if (falta) throw new ErroMarketing('configuracao-remota-ausente', 'Publicação real indisponível: configuração remota ausente neste PC. Nada foi agendado.', 503);
+  }
+  // Preserva o código e o status do módulo remoto (409/404/415/422); o resto é fonte indisponível.
+  function traduzir(e, signal) {
+    if (e instanceof ErroMarketing) return e;
+    let t = null;
+    try { t = operacao().tratarErro?.(e) || null; } catch { t = null; }
+    if (t) return new ErroMarketing(t.codigo, t.mensagem, t.status);
+    if (signal?.aborted) return new ErroMarketing('prazo-esgotado', 'A operação passou do prazo. Consulte pela mesma chave antes de repetir.', 504);
+    log('[painel] publicacoes-reais-fonte-indisponivel');
+    return new ErroMarketing('fonte-indisponivel', 'Fonte indisponível. Nada foi presumido; confira configuração e aplicação da migration.', 503);
+  }
+  async function comPrazo(ms, fn) {
+    exigirRemoto();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+    const ctx = { userId: env('ADMIN_MARKETING_USER_ID'), agora: relogio(), signal: controller.signal };
+    try { return await fn(ctx); } catch (e) { throw traduzir(e, controller.signal); } finally { clearTimeout(timer); }
+  }
+  function validar(pedido) {
+    try { return operacao().validar(pedido); } catch (e) {
+      let t = null;
+      try { t = operacao().tratarErro?.(e) || null; } catch { t = null; }
+      throw t && t.status === 400 ? new ErroMarketing(t.codigo, t.mensagem, 400) : new ErroMarketing('pedido-invalido', 'Pedido inválido.', 400);
+    }
+  }
+  const executarOp = (pedido, ctx) => operacao().executar(cliente(), validar(pedido), ctx).then(r => r.dados);
+  const lerTudo = stream => new Promise((ok, falha) => {
+    const partes = []; stream.on('data', p => partes.push(p)); stream.on('error', falha);
+    stream.on('end', () => ok(new Uint8Array(Buffer.concat(partes))));
+  });
+
+  const api = {
+    executar(pedido) {
+      return comPrazo(PRAZO_REAL_MS, ctx => executarOp(pedido, ctx));
+    },
+    /* Prévia: captura os bytes aprovados, importa o snapshot no Storage privado, finaliza
+       (o servidor relê e confere), confere de novo o aceite local e só então pede a prévia.
+       Upload e verificação terminam ANTES de qualquer confirmação. */
+    prever(raiz, p) {
+      return comPrazo(PRAZO_PREVIA_MS, async ctx => {
+        const cap = await capturar(raiz, p.pecaId, p.versao, { signal: ctx.signal });
+        try {
+          const m = cap.manifesto;
+          const ini = await imp().iniciar(cliente(), {
+            pecaId: cap.pecaId, versao: cap.versao, aceiteId: cap.aceiteSha256, aceiteRevisao: 1,
+            legenda: m.legenda, legendaSha256: m.legendaSha256, titulo: String(cap.titulo || '').slice(0, 200),
+            midias: m.midias.map(({ ordem, sha256, tipo, mime, bytes }) => ({ ordem, sha256, tipo, mime, bytes })),
+            capa: m.capa ? { sha256: m.capa.sha256, mime: m.capa.mime, bytes: m.capa.bytes } : null,
+          }, ctx);
+          if (ini.estado === 'recebendo') {
+            for (const u of [...ini.uploads, ...(ini.capa ? [ini.capa] : [])]) {
+              const indice = u.indice === 'capa' ? 'capa' : Number(u.indice);
+              await imp().enviar(cliente(), { snapshotId: ini.snapshotId, indice: String(u.indice), bytes: await lerTudo(cap.abrir(indice)) }, ctx);
+            }
+          } else if (ini.estado !== 'pronto') {
+            throw new ErroMarketing('snapshot-indisponivel', 'O snapshot remoto desta peça não está disponível.', 409);
+          }
+          const snap = await imp().finalizar(cliente(), { snapshotId: ini.snapshotId, revisaoEsperada: ini.revisao }, ctx);
+          if (snap?.estado !== 'pronto') throw new ErroMarketing('snapshot-indisponivel', 'O servidor não confirmou o snapshot desta peça.', 409);
+          await cap.conferir(); // aceite e versão continuam os mesmos depois do upload
+          const dados = await executarOp({ recurso: 'publicacoes-reais', modo: 'real', acao: 'previa',
+            snapshotId: snap.snapshotId, snapshotRevisao: snap.revisao, destinos: p.destinos }, ctx);
+          await estado().registrarPrevia({ previaId: dados.previaId, snapshotId: snap.snapshotId,
+            midias: snap.midias.length, capa: !!snap.capa, expiraEm: dados.expiraEm });
+          const url = indice => `/api/marketing/publicacoes/midia?previaId=${encodeURIComponent(dados.previaId)}&indice=${indice}`;
+          return { ...dados, midiasLocais: snap.midias.map((x, i) => ({ ordem: x.ordem, tipo: x.tipo, mime: x.mime, url: url(i) })),
+            capaLocal: snap.capa ? { mime: snap.capa.mime, url: url('capa') } : null };
+        } finally { await cap.fechar(); }
+      });
+    },
+    async midia(previaId, indice) {
+      const p = estado().previa(previaId);
+      if (indice === 'capa' ? !p.capa : Number(indice) >= p.midias) throw new ErroMarketing('midia-inexistente', 'Mídia não encontrada nesta prévia.', 404);
+      return comPrazo(PRAZO_REAL_MS * 3, async ctx => {
+        const r = await imp().midia(cliente(), { snapshotId: p.snapshotId, indice: String(indice) }, ctx);
+        return { conteudo: Buffer.from(r.bytes), mime: r.mime };
+      });
+    },
+  };
+  return api;
 }
 let instancia;
 const backend = () => instancia || (instancia = criarBackend());
-module.exports = { criarBackend, backend, CONFIG_REMOTA };
+module.exports = { criarBackend, backend, criarPublicacoesReais, CONFIG_REMOTA };
