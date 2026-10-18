@@ -187,11 +187,30 @@ Os quatro criativos usam três arranjos. Para variar, escolha um arquétipo e tr
 
 Arranjos ainda não usados que respeitam o sistema: o espelho do A (celular à esquerda, texto alinhado à esquerda na coluna da direita) e o espelho do B (notebook em cima, texto embaixo). Peça do tipo D, com dois celulares, também cabe. Teste antes de considerar parte da série.
 
+## 10b. Arquétipo E: componentes em destaque (pedido do autor, 18/10/2026)
+
+O autor pediu telas de carrossel, cards únicos e capas de Reel que não sejam sempre o mockup de celular em 3D: "funções pontuais". A referência são três criativos de outro app, o Nossa Grana, vistos em anúncio. Eles não são do Grana. e servem só de exemplo de composição; as imagens recortadas ficam em `apoio/referencias/nossa-grana/` na M1 e não vão para o git, por serem arte de terceiros num repositório público (regra 15).
+
+Três jeitos, todos válidos:
+
+1. **Celular com rótulos pontilhados** (`ref-1`): o aparelho inteiro de um lado, e do outro cartões escuros com título e uma linha de apoio, ligados por linha pontilhada a um ponto sobre a parte da tela que explica. Serve para dizer "o que cada pedaço faz".
+2. **Componentes ampliados e isolados** (`ref-2`): sem aparelho. Botões e um cartão de lançamento recortados da tela, aumentados, em fileira e empilhados, com sombra suave. Serve para uma função só (por exemplo, a grade de lançar por voz, fotografar a nota, colar comprovante, importar extrato).
+3. **Cartões flutuantes inclinados** (`ref-3`): dois ou três cartões da tela, levemente girados e sobrepostos em degraus, mais uma etiqueta pequena (um aviso, uma notificação) fora do cartão. Serve para metas, cofrinhos, faturas.
+
+**Regras no Grana.:**
+- **Os componentes vêm sempre de print real do app**, recortados, com dado inventado (regra 23 e `PRODUCT.md`). Nada desenhado do zero nem gerado por IA.
+- **Mantêm o sistema:** moldura e painel, G de fundo, logotipo gradiente, RÁPIDO, FÁCIL, PRÁTICO, tipografia (H1 Ultrabold, H2 Regular), paleta e margens das seções 2 a 7. Não se copia o fundo claro quadriculado nem a tipografia da referência: o Grana. é escuro.
+- **Rótulo:** Regular, 24 px, fundo do painel um tom mais escuro, borda fina menta, linha pontilhada menta com 2 px e um ponto de 14 px sobre o elemento. Máximo de três rótulos por tela.
+- **Componente ampliado:** de 1,3× a 1,8× do tamanho no app, canto arredondado como no app, sombra de contato suave, nunca cortado pela margem de 31 px. Cartões flutuantes giram de 3° a 8°.
+- **Ícones do arsenal e G de fundo continuam**, mas em número menor (1 ou 2 ícones), para não competir com os componentes.
+- **Uso:** alterne com o mockup em 3D dentro do mesmo carrossel (no máximo duas telas seguidas no mesmo jeito) e use também em card único e em capa de Reel (versão 1080 × 1920 da seção 13).
+- **Fidelidade:** o componente mostrado precisa ser o que a função realmente é no app atual (por exemplo, a grade de lançamento só como existir na build). Peça de função nova só depois de build pública e QA.
+
 ## 11. Como gerar uma peça nova
 
 1. **Mensagem:** escreva o gancho em H1 (2 a 4 linhas, uma situação reconhecível ou uma pergunta), a virada em H2 e a assinatura. Sem preço, sem promessa de função que não está em build pública, sem travessão, sem "não é X, é Y", e "Grana." sempre com ponto.
 2. **Tela do app que prova a mensagem:** capture na versão atual, com dado inventado e na resolução mais alta possível.
-3. **Arquétipo:** escolha A, B ou C, e não repita o de uma peça vizinha no mesmo carrossel.
+3. **Arquétipo:** escolha A, B, C ou E (seção 10b), e não repita o de uma peça vizinha no mesmo carrossel.
 4. **Fundo:** moldura e painel com degradê (luz de cima). Depois o G, com escala de 1,1× a 1,6×, cobertura de ≈ 42%, contraste de 3 a 14 níveis e a barra saindo pela borda ou escondida atrás do aparelho.
 5. **Tipografia:** H1 de 72 px com entrelinha de 100% ou 110%, H2 de 31 px, assinatura de 24 px e rótulos de 15 px, nas margens de x 120 ou x 958.
 6. **Aparelho:** posição do arquétipo, celular com o topo 3° a 5° para fora, notebook em três quartos, sombra de contato e margem mínima de 31 px.
