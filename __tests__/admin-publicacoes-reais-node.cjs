@@ -88,7 +88,7 @@ function criarRemoto() {
     objetos.set(objeto, Buffer.from(init.body));
     return { status: 200, body: null };
   };
-  return { log, cliente, rede, snapshots, lotes,
+  return { log, cliente, rede, snapshots, lotes, objetos,
     falharConfirmar: c => { falharConfirmar = c; }, travarConfirmar: v => { travarConfirmar = v; } };
 }
 
@@ -96,7 +96,7 @@ function criarRemoto() {
 const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'grana-real-node-'));
 const estadoPasta = path.join(raiz, 'conta');
 const rel = 'docs/marketing/2026-10/semana-42/aprovados/foto.png';
-const bytes = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), Buffer.alloc(4096, 7)]);
+const bytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAABAAAAAUCAYAAACEYr13AAAAMElEQVR4AaXBAQEAAAiDMKR/5xuC7QYjkEgiiSSSSCKJJJJIIokkkkgiiSSSSCKJHoQXAiYb/t5AAAAAAElFTkSuQmCC', 'base64');
 fs.mkdirSync(path.dirname(path.join(raiz, rel)), { recursive: true });
 fs.writeFileSync(path.join(raiz, rel), bytes);
 const peca = { id: 'a'.repeat(16), versao: 'b'.repeat(40), titulo: 'Peça aprovada', caminho: rel, tipo: 'imagem',
@@ -139,18 +139,25 @@ const confirmacao = chave => ({ acao: 'confirmar', previaId: PREVIA, previaHash:
     const ini = r1.log.find(x => x[1] === 'snapshot_iniciar')[2].p_pedido;
     assert.equal(ini.aceiteRevisao, 1);
     assert.match(ini.aceiteId, /^[0-9a-f]{64}$/);
-    assert.equal(ini.midias[0].sha256, sha('sha256', bytes));
+    const enviado = [...r1.objetos.values()][0];
+    assert.equal(ini.midias[0].sha256, sha('sha256', enviado));
+    assert.notEqual(ini.midias[0].sha256, sha('sha256', bytes));
+    assert.deepEqual([ini.midias[0].largura, ini.midias[0].altura], [16, 20]);
+    assert.equal(ini.versao, peca.versao);
+    assert.deepEqual(fs.readFileSync(path.join(raiz, rel)), bytes, 'PNG aprovado permanece intacto');
     assert.equal(r1.log.find(x => x[1] === 'previa')[2].p_pedido.destinos[0].publicarEm, '2027-01-01T15:30:00.000Z');
     assert.equal(previa.previaId, PREVIA); assert.equal(previa.previaHash, HASH_PREVIA);
     assert.equal(previa.podeConfirmar, true);
-    assert.deepEqual(previa.midiasLocais, [{ ordem: 0, tipo: 'imagem', mime: 'image/png',
+    assert.deepEqual(previa.midiasLocais, [{ ordem: 0, tipo: 'imagem', mime: 'image/jpeg',
       url: `/api/marketing/publicacoes/midia?previaId=${PREVIA}&indice=0` }]);
     assert.equal(JSON.stringify(previa).includes(`snap/${SNAP}`), false, 'caminho privado do Storage não vai ao browser');
     assert.equal(fs.readdirSync(raiz).some(n => n.startsWith('grana-snapshot-')), false, 'captura limpa a cópia');
 
     // Mídia da prévia: lida pelo previaId gravado no estado local, nunca por snapshotId do browser.
     const m = await api.midia(PREVIA, '0');
-    assert.equal(m.mime, 'image/png'); assert.deepEqual(m.conteudo, bytes);
+    assert.equal(m.mime, 'image/jpeg'); assert.deepEqual(m.conteudo, enviado);
+    const decodificada = await require('jimp-compact').read(m.conteudo);
+    assert.deepEqual([decodificada.bitmap.width, decodificada.bitmap.height], [16, 20], 'sem recorte nem redimensionamento');
     await assert.rejects(api.midia(PREVIA, '1'), { codigo: 'midia-inexistente' });
     await assert.rejects(api.midia('99999999-9999-4999-8999-999999999999', '0'), { codigo: 'previa-inexistente' });
 

@@ -29,7 +29,7 @@ function criarCapturador({ obterPeca = catalogo.obterPeca, pastaTemporaria = os.
     if (path.dirname(destino) !== base || !path.basename(destino).startsWith('grana-snapshot-')) throw new Error('captura-limpeza-invalida');
     await fs.promises.rm(destino, { recursive: true, force: true });
   };
-  return async function capturar(raiz, pecaId, versao, { signal } = {}) {
+  return async function capturar(raiz, pecaId, versao, { signal, jpeg = false } = {}) {
     if (ativos >= 2) falhar('captura-ocupada', 429);
     ativos++;
     let pasta;
@@ -74,10 +74,26 @@ function criarCapturador({ obterPeca = catalogo.obterPeca, pastaTemporaria = os.
           const arquivo = path.join(fisica, String(indice));
           await pipeline(entrada.createReadStream({ autoClose: false, highWaterMark: 128 * 1024 }), medir,
             fs.createWriteStream(arquivo, { flags: 'wx', mode: 0o600 }), { signal: controller.signal });
-          const mime = detectarMime(inicio);
+          let mime = detectarMime(inicio);
           if (bytes !== stat.size || sha1.digest('hex') !== a.sha1) falhar('versao-divergente');
           if (!mime || (indice === 'capa' ? !mime.startsWith('image/') : (mime.startsWith('video/') ? 'video' : 'imagem') !== a.tipo)) falhar('midia-invalida', 415);
-          return { indice, arquivo, sha256: sha256.digest('hex'), mime, bytes, ...(indice === 'capa' ? {} : { ordem: indice, tipo: a.tipo }) };
+          let digest = sha256.digest('hex'), dimensoes = {};
+          if (jpeg && mime === 'image/png') {
+            // Derivado de transporte: a identidade/aceite continuam sendo dos originais.
+            // A prévia e o upload usam os MESMOS bytes JPEG, com hash próprio.
+            if (controller.signal.aborted) falhar('prazo-esgotado', 504);
+            let imagem;
+            try { imagem = await require('jimp-compact').read(arquivo); }
+            catch { falhar('midia-invalida', 415); }
+            dimensoes = { largura: imagem.bitmap.width, altura: imagem.bitmap.height };
+            const convertido = await imagem.background(0xffffffff).quality(95).getBufferAsync('image/jpeg');
+            if (controller.signal.aborted) falhar('prazo-esgotado', 504);
+            total += convertido.length - bytes;
+            if (convertido.length > MAX_ARQUIVO || total > MAX_TOTAL) falhar('midia-grande', 413);
+            await fs.promises.writeFile(arquivo, convertido, { mode: 0o600 });
+            digest = hash(convertido); bytes = convertido.length; mime = 'image/jpeg';
+          }
+          return { indice, arquivo, sha256: digest, mime, bytes, ...dimensoes, ...(indice === 'capa' ? {} : { ordem: indice, tipo: a.tipo }) };
         } finally { await entrada.close(); }
       };
       const midias = [];

@@ -277,7 +277,8 @@ async function main() {
   {
     const casos = [
       ['facebook', 'stories', [{ tipo: 'imagem', mime: 'image/jpeg' }], 'formato-sem-contrato-oficial'],
-      ['facebook', 'carrossel', [1, 2, 3].map(() => ({ tipo: 'imagem', mime: 'image/jpeg' })), 'carrossel-limite-nao-verificado'],
+      ['facebook', 'carrossel', [{ tipo: 'imagem', mime: 'image/jpeg' }], 'carrossel-invalido'],
+      ['facebook', 'carrossel', [{ tipo: 'imagem', mime: 'image/jpeg' }, { tipo: 'video', mime: 'video/mp4' }], 'carrossel-invalido'],
       ['instagram', 'feed', [{ tipo: 'imagem', mime: 'image/png' }], 'midia-incompativel'],
       ['instagram', 'feed', [{ tipo: 'video', mime: 'video/mp4' }], 'feed-video-nao-validado'],
     ];
@@ -288,6 +289,33 @@ async function main() {
         { legenda: 'x', midias: midias.map((m, i) => ({ ...m, objeto: 'o' + i, sha256: 'a'.repeat(64), bytes: 10 })) });
       eq([r.estado, r.codigo, g.chamadas.length], ['falhou', codigo, 0], `${rede} ${formato}: ${codigo}, sem nenhuma chamada`);
     }
+    // Cinco fotos seguem o mesmo contrato de lista; cada etapa prepara UMA foto
+    // privada e só depois um único /feed recebe todos os IDs, na ordem original.
+    const fotos = [0, 1, 2, 3, 4].map(i => ({ tipo: 'imagem', mime: 'image/jpeg', objeto: 'slide-' + i, sha256: 'a'.repeat(64), bytes: 10 }));
+    const g5 = graphFake(c => {
+      if (c.caminho === '123/photos') return { id: String(700 + Number(c.params.url.split('/').at(-1).replace('slide-', ''))) };
+      if (c.caminho === '123/feed') return { id: '123_999' };
+      if (c.caminho === '123_999') return { id: '123_999', is_published: true, permalink_url: 'https://www.facebook.com/123/posts/999' };
+      throw new Error('chamada inesperada');
+    });
+    const a5 = graphMod.criarAdaptadorGraphReal({ rede: g5.rede, versao: 'v25.0', token: TOKEN,
+      signal: new AbortController().signal, assinar: async m => 'https://fixture.invalid/' + m.objeto });
+    const j5 = { jobId: 'j5', rede: 'facebook', formato: 'carrossel', etapa: 'preparar', remotoContaId: '123', processamento: {} };
+    for (let i = 0; i < 5; i++) {
+      const r = await a5.executar(j5, { legenda: 'Legenda aceita.', midias: fotos });
+      eq(r.estado, i === 4 ? 'pronto' : 'preparo-parcial', 'uma foto por etapa');
+      j5.processamento = r.processamento;
+      eq(g5.chamadas.filter(c => c.caminho === '123/feed').length, 0, 'preparo não publica feed');
+    }
+    eq(g5.chamadas.map(c => [c.caminho, c.params.url, c.params.published]), fotos.map(m => ['123/photos', 'https://fixture.invalid/' + m.objeto, 'false']), 'cinco uploads privados preservam ordem');
+    const publicado5 = await a5.executar({ ...j5, etapa: 'publicar' }, { legenda: 'Legenda aceita.', midias: fotos });
+    eq(publicado5.estado, 'publicacao-aceita', 'um pedido de publicação do carrossel');
+    const feeds5 = g5.chamadas.filter(c => c.caminho === '123/feed');
+    eq(feeds5.length, 1, 'só um feed para cinco fotos');
+    eq(JSON.parse(feeds5[0].params.attached_media), [700, 701, 702, 703, 704].map(id => ({ media_fbid: String(id) })), 'feed leva os cinco IDs em ordem');
+    eq(feeds5[0].params.message, 'Legenda aceita.', 'legenda exata no feed');
+    const lido5 = await a5.executar({ ...j5, etapa: 'verificar-publicacao', processamento: publicado5.processamento }, { legenda: 'Legenda aceita.', midias: fotos });
+    eq(lido5.estado, 'publicado', 'publicado só após leitura de volta');
     const reel = async (status) => {
       const g = graphFake(() => ({ status }));
       const a = graphMod.criarAdaptadorGraphReal({ rede: g.rede, versao: 'v25.0', token: TOKEN, signal: new AbortController().signal, assinar: async () => '' });

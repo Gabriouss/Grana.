@@ -111,14 +111,14 @@ function criarPublicacoesReais({ env, remoto, cliente, relogio, log, rede, estad
        Upload e verificação terminam ANTES de qualquer confirmação. */
     prever(raiz, p) {
       return comPrazo(PRAZO_PREVIA_MS, async ctx => {
-        const cap = await capturar(raiz, p.pecaId, p.versao, { signal: ctx.signal });
+        const cap = await capturar(raiz, p.pecaId, p.versao, { signal: ctx.signal, jpeg: true });
         try {
           const m = cap.manifesto;
           const ini = await imp().iniciar(cliente(), {
             pecaId: cap.pecaId, versao: cap.versao, aceiteId: cap.aceiteSha256, aceiteRevisao: 1,
             legenda: m.legenda, legendaSha256: m.legendaSha256, titulo: String(cap.titulo || '').slice(0, 200),
-            midias: m.midias.map(({ ordem, sha256, tipo, mime, bytes }) => ({ ordem, sha256, tipo, mime, bytes })),
-            capa: m.capa ? { sha256: m.capa.sha256, mime: m.capa.mime, bytes: m.capa.bytes } : null,
+            midias: m.midias.map(({ ordem, sha256, tipo, mime, bytes, largura, altura }) => ({ ordem, sha256, tipo, mime, bytes, ...(largura ? { largura, altura } : {}) })),
+            capa: m.capa ? { sha256: m.capa.sha256, mime: m.capa.mime, bytes: m.capa.bytes, ...(m.capa.largura ? { largura: m.capa.largura, altura: m.capa.altura } : {}) } : null,
           }, ctx);
           if (ini.estado === 'recebendo') {
             for (const u of [...ini.uploads, ...(ini.capa ? [ini.capa] : [])]) {

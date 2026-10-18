@@ -109,8 +109,10 @@ export function criarAdaptadorGraphReal(deps:Deps){
    if(job.etapa==='preparar'){
     // Stories de Page sem contrato oficial de criacao/leitura (matriz Compass, 17/10).
     if(job.formato==='stories')return {estado:'falhou',codigo:'formato-sem-contrato-oficial'};
-    // Feed com varias fotos: a doc exemplifica duas e nao da limite. So 2 ate validar.
-    if(job.formato==='carrossel'&&(midias.length!==2||midias.some(x=>x.tipo!=='imagem')))return {estado:'falhou',codigo:'carrossel-limite-nao-verificado'};
+    // Meta SDK oficial: Page.create_feed aceita attached_media list<Object>, nao um par.
+    // 2..10 e o limite INTERNO do snapshot; nao representa um teto declarado pela Meta.
+    // https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/page.py
+    if(job.formato==='carrossel'&&(midias.length<2||midias.some(x=>x.tipo!=='imagem')))return {estado:'falhou',codigo:'carrossel-invalido'};
     if(job.formato==='feed'&&(video||midias.length!==1))return {estado:'falhou',codigo:'feed-video-nao-validado'};
     if(job.formato==='reels'){
      if(midias.length!==1||!video)return {estado:'falhou',codigo:'formato-invalido'};
