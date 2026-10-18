@@ -2957,6 +2957,10 @@ dialog.central::backdrop { background: var(--scrim); }
 .resultados-conta p { margin: 0 0 var(--s-md); color: var(--ink-soft); font-size: var(--t-nota); max-width: var(--medida); }
 .resultados-conta .botao { text-decoration: none; }
 .resultados-medidas { margin-bottom: var(--s-lg); }
+/* São sempre 4 medidas: 4 numa linha, ou 2 + 2, nunca 3 + 1 com um cartão sozinho embaixo. */
+.grade-cartoes.resultados-medidas { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 1023px) { .grade-cartoes.resultados-medidas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .grade-cartoes.resultados-medidas { grid-template-columns: 1fr; } }
 .resultados-fonte { color: var(--ink-faint); font-size: var(--t-legenda); text-transform: uppercase; letter-spacing: var(--tr-rotulo); text-align: right; }
 .resultados-sem-valor { color: var(--ink-faint); font-size: var(--t-destaque); }
 .resultados-serie { margin-bottom: var(--s-lg); }
