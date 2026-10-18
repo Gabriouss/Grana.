@@ -46,7 +46,46 @@ for(const storedValue of ['invalid','{"x":null,"y":15}','{"x":1e300,"y":-1e300}'
  hooks=[];stored=storedValue;storageFails=false;props=render();effects[0]();props=render();assert.ok(Number.isFinite(props.style.left) && props.style.left>=0 && props.style.left+104<=320,'storage inválido ou extremo limitado');
 }
 const layout=fs.readFileSync('app/(app)/_layout.tsx','utf8');
-assert.match(layout,/posicao === 3 && Platform.OS !== 'web'/,'Android preserva botão central');
-assert.match(layout,/Platform.OS === 'web' && \(\s*<GranaboFlutuante/,'flutuante só na web');
+assert.match(layout,/posicao === 3 \? \(\s*<BotaoGranabo/,'barra inferior mantém botão central no Android e na web compacta');
+assert.match(layout,/Platform.OS === 'web' && temBarraLateral && \(\s*<GranaboFlutuante/,'flutuante só na web com barra lateral');
+assert.match(layout,/temBarraLateral \? \(\s*<SideNav[\s\S]*?\) : \(\s*<FloatingTabBar/,'barra inferior e lateral usam o mesmo breakpoint');
 assert.match(layout,/Platform.OS === 'web' \? ITENS_LATERAIS.filter/,'Android preserva lateral');
+// Executa as duas ramificações do layout real ao cruzar o breakpoint, sem
+// reimplementar a decisão de onde montar o mascote.
+const layoutExports={};let lateral=false,plataforma='web';
+const jsx=(type,props)=>({type,props});
+vm.runInNewContext(ts.transpileModule(layout+'\nexport { AbasEmJavaScript };',{
+ compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022},
+}).outputText,{exports:layoutExports,require(id){
+ if(id==='react')return {useState:v=>[v,()=>{}],useRef:v=>({current:v}),useCallback:f=>f,useEffect:()=>{}};
+ if(id==='react/jsx-runtime')return {jsx,jsxs:jsx};
+ if(id==='react-native')return {Platform:{get OS(){return plataforma;}},StyleSheet:{create:v=>v},View:'View',useWindowDimensions:()=>({width:lateral?1440:390,height:900})};
+ if(id==='expo-router')return {Tabs:'Tabs'};
+ if(id==='@/lib/theme')return {theme:{},spacing:{},sombras:{},menta:()=>''};
+ if(id==='@/lib/breakpoints')return {useBreakpoint:()=>({temBarraLateral:lateral})};
+ if(id==='@/lib/tab-bar')return {useTabBarInset:()=>({margem:0})};
+ if(id==='@/lib/teclado')return {useKeyboardHeight:()=>0};
+ if(id.startsWith('@/components/'))return {__esModule:true,default:id.split('/').at(-1)};
+ if(id==='expo-linking'||id==='@/lib/deep-links'||id==='@/lib/wallet-context'||id==='@/lib/motion'||id==='@expo/vector-icons/Ionicons')return {};
+ throw Error('Import inesperado: '+id);
+}});
+const nos=n=>n&&typeof n==='object'?[n,...[n.props?.children].flat(Infinity).flatMap(nos)]:[];
+const routes=['index','lancamentos','credito','contas','graficos','desafios'].map(name=>({name,key:name}));
+const tabProps={state:{routes,index:0},descriptors:Object.fromEntries(routes.map(r=>[r.key,{options:{}}])),navigation:{}};
+for(const os of ['web','android'])for(const larga of [false,true,false,true]){
+ plataforma=os;lateral=larga;
+ const arvore=nos(layoutExports.AbasEmJavaScript());
+ const tabs=arvore.find(n=>n.type==='Tabs');
+ const barra=tabs.props.tabBar(tabProps);
+ const flutuantes=arvore.filter(n=>n.type==='GranaboFlutuante').length;
+ if(larga){
+  assert.equal(barra.type,'SideNav');
+  assert.equal(flutuantes,os==='web'?1:0);
+  assert.equal(barra.props.itens.filter(i=>i.rota==='assistente').length,os==='web'?0:1);
+ }else{
+  const botoes=nos(barra.type(barra.props)).filter(n=>typeof n.type==='function'&&n.type.name==='BotaoGranabo');
+  assert.equal(botoes.length,1,'compacto monta exatamente um Granabô na barra');
+  assert.equal(flutuantes,0,'compacto nunca monta flutuante');
+ }
+}
 console.log('Granabô web: gesto, limiar, clique, teclado, cancelamento, storage, resize, colisões e isolamento Android passaram.');

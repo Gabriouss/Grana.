@@ -174,7 +174,7 @@ function FloatingTabBar({ state, descriptors, navigation, blurTarget, chatAberto
                ele apareceu solto acima da barra, com um vão no meio. Dentro da
                fileira, o próprio flex resolve em qualquer altura de barra. */
             const destaque =
-              posicao === 3 && Platform.OS !== 'web' ? (
+              posicao === 3 ? (
                 <BotaoGranabo key="granabo" ativo={chatAberto} onPress={onAlternarChat} discoRef={discoRef} />
               ) : null;
 
@@ -505,7 +505,7 @@ function AbasEmJavaScript() {
         {/* Irmão das abas, não filho de nenhuma tela: assim o Granachat
             sobrevive à troca de aba por baixo dele e some junto com o layout
             no logout, sem cada tela precisar saber que ele existe. */}
-        {Platform.OS === 'web' && (
+        {Platform.OS === 'web' && temBarraLateral && (
           <GranaboFlutuante ativo={chatAberto} onPress={() => setChatAberto(v => !v)} />
         )}
         <Granachat
