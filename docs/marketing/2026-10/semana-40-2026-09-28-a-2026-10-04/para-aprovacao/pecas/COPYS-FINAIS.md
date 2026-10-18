@@ -169,8 +169,7 @@ terminar, contando hoje.
 
 **Fechamento:** Conheça o Grana.
 
-**Legenda:** Demonstração com dados fictícios. O cálculo considera os
-lançamentos registrados no Grana.
+**Legenda:** Passou na farmácia e o cupom ficou no fundo da sacola? Registre o gasto no Grana. e veja quanto fica livre por dia até o fim do mês. O cálculo usa os lançamentos que você registrou, desconta o que guardou nos cofrinhos e divide o restante pelos dias que faltam, contando hoje. Telas com dados de exemplo. Salva para consultar quando o mês apertar.
 
 **Sobreposição durante as capturas do app, de 5 a 17 s:** Demonstração com
 dados fictícios. Posicionar fora da interface, sem cobrir controles.
