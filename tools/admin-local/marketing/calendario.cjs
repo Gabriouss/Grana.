@@ -81,6 +81,8 @@ function resumoPeca(p, plano = null) {
     semana: p.semana,
     // Projecao do registro exato; nunca um novo aceite no calendario.json.
     reciboAceite: aceite ? { tipo: 'aceite-autor', versaoPeca: aceite.versao, aprovadoEm: aceite.aprovadoEm, evidencia: aceite.evidencia } : null,
+    // Em aprovados, mas a versão mudou depois do aceite (ex.: legenda nova): precisa de novo aceite para publicar.
+    precisaAceite: p.estado === 'aprovados' && !aceite && !!p.aceiteDeVersaoAnterior,
     ...detalhesPlano(plano),
   };
 }

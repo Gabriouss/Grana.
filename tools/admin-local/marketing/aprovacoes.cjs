@@ -117,7 +117,10 @@ function aprovar(raiz, id, corpo = {}) {
       throw new ErroMarketing('peca-no-historico', 'Peça do histórico foi substituída ou rejeitada e não recebe aceite.', 409);
     }
     // Reel em aprovados ainda sem aceite composto pode recebê-lo; o resto da pasta já está aceito.
-    if (peca.estado === 'aprovados' && (peca.aprovada || !peca.composicao)) {
+    // Exceção: versão nova já em aprovados (a legenda mudou a pedido do autor, 18/10) não tem aceite
+    // datado próprio e não publica; recebe aqui o aceite explícito do autor, nunca por herança.
+    if (peca.estado === 'aprovados' && (peca.aprovada || !peca.composicao)
+      && !require('./snapshot-local.cjs').motivoSemAceite(raiz, peca)) {
       throw new ErroMarketing('ja-aprovada', 'Esta peça já está na pasta de aprovados.', 409);
     }
     const dados = ler(raiz);
@@ -199,6 +202,21 @@ async function aprovarEFechar(raiz, id, corpo = {}, deps = {}) {
     avisos.push('O aceite foi gravado, mas a fila de ajustes não pôde ser conferida. Atualize antes de tentar novamente.');
   }
   let promocao = null;
+  // Reaceite em aprovados: a data marcada para a versão anterior passa para a versão aceita agora,
+  // se ainda não passou. Falha não desfaz o aceite: vira aviso e log.
+  if (peca.estado === 'aprovados' && !resultado.jaExistia) {
+    try {
+      const planejados = deps.planejados ? deps.planejados() : lerJson(caminhoPainel(raiz, 'calendario.json'), { planejados: [] }).planejados || [];
+      const antigo = planejados.find((r) => r.id === peca.id && r.versao !== peca.versao && r.data >= require('./catalogo.cjs').hojeLocal());
+      if (antigo) {
+        await (deps.planejar || require('./calendario.cjs').planejar)(raiz, { id: peca.id, versao: peca.versao, data: antigo.data, hora: antigo.hora, canal: antigo.canal, observacao: antigo.observacao });
+        avisos.push(`A data marcada (${antigo.data.split('-').reverse().join('/')}${antigo.hora ? ` ${antigo.hora}` : ''}) passou para esta versão.`);
+      }
+    } catch (e) {
+      console.error(`[painel] aprovar-levar-plano: ${e.codigo || 'falhou'}`);
+      avisos.push('O aceite foi gravado, mas a data marcada não passou para esta versão. Marque a data de novo no Calendário.');
+    }
+  }
   if (peca.estado === 'para-aprovacao') {
     try {
       const promovida = await (deps.promover || require('./promocao.cjs').promover)(raiz, id, { versao: corpo.versao, confirmacao: true });
