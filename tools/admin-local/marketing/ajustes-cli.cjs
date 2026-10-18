@@ -2,10 +2,15 @@
 // Agent completion tool: arguments are data, never shell commands. Only "ler" prints the
 // author's text, and only for the request whose lease the caller holds.
 const { fila } = require('./ajustes-fila.cjs');
-const USO = 'Uso: ajustes-cli.cjs ler|renovar|custo-consumir pedidoId leaseId | concluir|desatualizado pedidoId leaseId pecaId [sha1novo commit] | custo pedidoId leaseId pecaId --estimativa JSON | custo-autorizado pedidoId leaseId --evidencia texto | custo-recusado pedidoId leaseId [--seguir-local]';
+const USO = 'Uso: ajustes-cli.cjs encerrar pedidoId --motivo atendido|superado --evidencia texto | ler|renovar|custo-consumir pedidoId leaseId | concluir|desatualizado pedidoId leaseId pecaId [sha1novo commit] | custo pedidoId leaseId pecaId --estimativa JSON | custo-autorizado pedidoId leaseId --evidencia texto | custo-recusado pedidoId leaseId [--seguir-local]';
 const recibo = (r) => ({ id: r.id, estado: r.estado, versaoAlvo: r.versaoAlvo, versaoCorrigida: r.versaoCorrigida });
 async function main(args) {
   const [acao, pedidoId, leaseId, pecaId, versao, commit] = args;
+  if (acao === 'encerrar') {
+    if (args.length !== 6 || args[2] !== '--motivo' || args[4] !== '--evidencia') throw new Error(USO);
+    const r = await fila.encerrarPeloAgente(pedidoId, { motivo: args[3], evidencia: args[5] });
+    return { id: r.id, estado: r.estado, encerramento: r.encerramento };
+  }
   if (!pedidoId || !leaseId) throw new Error(USO);
   if (acao === 'ler') return fila.lerPedido(pedidoId, leaseId);
   if (acao === 'renovar') { const r = await fila.renovar(pedidoId, leaseId); return { id: r.id, estado: r.estado, expiraEm: r.lease.expiraEm }; }

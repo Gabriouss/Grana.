@@ -192,6 +192,23 @@ function criarFila(deps) {
       mudar(db, r, 'encerrado', 'encerrado-pelo-autor'); return r;
     });
   }
+  // Encerramento por agente (CLI): pedido que já não pode ser concluído porque a peça foi superada ou
+  // o ajuste já está atendido. Só 'desatualizado' (terminal sem lease, que a CLI não sabe concluir) e
+  // 'novo' ainda sem lease (decisão expressa do autor em 18/10). Grava recibo, não apaga o histórico.
+  async function encerrarPeloAgente(id, { motivo, evidencia } = {}) {
+    if (!['atendido', 'superado'].includes(motivo)) throw erro('motivo-invalido', 'Use motivo atendido ou superado.', 400);
+    const prova = textoObrigatorio(evidencia, 'evidencia-invalida', 300);
+    return deps.transacao((db) => {
+      const r = achar(db, id);
+      if (!(r.estado === 'desatualizado' || (r.estado === 'novo' && !r.lease))) throw erro('estado-invalido', 'Somente pedido desatualizado, ou novo ainda sem entrega, pode ser encerrado por aqui.');
+      const atual = deps.obterPeca(r.pecaId);
+      r.lease = null; r.motivoEncerramento = `${motivo}: ${prova}`;
+      r.encerramento = { por: 'agente-cli', em: deps.agora(), motivo, evidencia: prova, estadoAnterior: r.estado, versaoAlvo: r.versaoAlvo || null, versaoAtualDaPeca: atual?.versao || null };
+      if (r.custo) delete r.custo.autorizacao;
+      mudar(db, r, 'encerrado', `encerrado-por-agente-${motivo}`);
+      return r;
+    });
+  }
   // motivo = why the delivery failed. "entrega-incerta" = enviar.sh could not tell whether the
   // text reached the agent (exit 3, timeout, or text left in the box): the author must check the
   // agent before retrying, or the request may run twice. MOTIVOS_SEM_ENVIO = enviar.sh proved
@@ -328,7 +345,7 @@ function criarFila(deps) {
     } catch { deps.log('ajuste-vigia-falhou'); }
     finally { ticking = false; }
   }
-  return { solicitar, claim, renovar, lerPedido, marcar, autorizarCusto, recusarCusto, consumirAutorizacaoCusto, reenviar, encerrar, retry, conferirAceite, aceitar, tick, sincronizarRemoto,
+  return { solicitar, claim, renovar, lerPedido, marcar, autorizarCusto, recusarCusto, consumirAutorizacaoCusto, reenviar, encerrar, encerrarPeloAgente, retry, conferirAceite, aceitar, tick, sincronizarRemoto,
     listar: () => deps.ler().pedidos, eventos: () => deps.ler().eventos, remotoStatus: () => ({ ...remoto }) };
 }
 const MOTIVOS_SEM_ENVIO = new Set(['terminal-inacessivel', 'agente-fechado', 'caixa-ocupada']);
