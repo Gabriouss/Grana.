@@ -99,6 +99,7 @@ function aprovar(raiz, id, corpo = {}) {
     const peca = obterPeca(raiz, id);
     conferirVersao(peca, corpo.versao);
     exigirVigente(peca, 'O aceite');
+    require('./legenda-publicacao.cjs').exigirLegenda(peca);
     // Pedido de ajuste aberto sobre a peça, em QUALQUER versão: aprovar agora seria aceitar o que
     // o autor mandou corrigir. A versão não serve de filtro (legenda ou checkout mudam o hash sem
     // que ninguém tenha corrigido nada). Pedido já corrigido, aguardando aceite, não bloqueia.

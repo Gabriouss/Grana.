@@ -13,6 +13,7 @@ const modulo = (nome, imports = {}) => {
   const negar = () => { throw new Error('efeito externo proibido pelo harness'); };
   const permitidos = { fs: new Proxy({}, { get: () => negar }), path, os: { homedir: () => '/fixture' },
     crypto: { randomUUID: negar }, child_process: { execFile: negar },
+    './legenda-publicacao.cjs': require('../tools/admin-local/marketing/legenda-publicacao.cjs'),
     '../config.cjs': { RAIZ: '/fixture', RAIZ_DADOS: '/fixture' },
     './ajustes-remoto.cjs': { remotoDoEnv: () => ({ remoto: null, ausente: 'fixture' }) }, ...imports };
   const req = (id) => { assert.ok(Object.hasOwn(permitidos, id), 'import nao permitido no harness'); return permitidos[id]; };
@@ -30,7 +31,7 @@ const evidencia = 'Pessoa ficticia; 2026-10-09T12:00:00Z; conversa de teste; sim
 function setup(opts = {}) {
   let agora = Date.parse('2026-10-09T12:00:00Z'), contador = 0, serial = Promise.resolve();
   const db = { formato: 1, pedidos: [], eventos: [] }, calls = [], entregas = [];
-  const peca = { id: 'a'.repeat(16), caminho: 'docs/marketing/fixture/para-aprovacao/teste.txt', versao: 'b'.repeat(40), estado: 'para-aprovacao' };
+  const peca = { id: 'a'.repeat(16), legenda: 'Legenda valida da fixture.', caminho: 'docs/marketing/fixture/para-aprovacao/teste.txt', versao: 'b'.repeat(40), estado: 'para-aprovacao' };
   const deps = {
     agora: () => new Date(agora).toISOString(), id: () => '11111111-1111-4111-8111-' + String(++contador).padStart(12, '0'),
     ler: () => structuredClone(db),

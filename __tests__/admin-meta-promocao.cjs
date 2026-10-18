@@ -35,6 +35,7 @@ async function fixture(fn, nomes = ['E01.jpg']) {
   const indice = path.join(dir, semana, 'INDICE.md'); fs.writeFileSync(indice, '# Semana\n\n[Peça](para-aprovacao/pecas/' + nomes[0] + ')\n');
   const pastaPainel = path.join(dir, 'docs/marketing/painel'); fs.mkdirSync(pastaPainel, { recursive: true });
   fs.writeFileSync(path.join(pastaPainel, 'calendario.json'), JSON.stringify({ diaD: '2099-01-01', planejados: [] }));
+  fs.writeFileSync(path.join(dir, semana, 'para-aprovacao/pecas/COPYS-FINAIS.md'), '## E01 - Fixture\n\n**Legenda:** Texto de publicacao E01.\n\n## E02 - Fixture\n\n**Legenda:** Texto de publicacao E02.\n');
   const p = c.montarCatalogo(dir).find((p) => p.tipo === (nomes.length > 1 ? 'carrossel' : 'imagem'));
   assert(p);
   const h = { dir, semana, media, indice, p, apPath: path.join(pastaPainel, 'aprovacoes.json'),

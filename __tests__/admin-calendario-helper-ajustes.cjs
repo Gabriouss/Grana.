@@ -50,6 +50,7 @@ function render(helper, dto) {
     const semana = 'docs/marketing/2099-01/semana-01-2099-01-01-a-2099-01-07';
     const pasta = path.join(dir, semana, 'para-aprovacao/pecas');
     fs.mkdirSync(pasta, { recursive: true }); fs.writeFileSync(path.join(pasta, 'E01.jpg'), 'fixture');
+    fs.writeFileSync(path.join(pasta,'COPYS-FINAIS.md'),'## E01 - Fixture\n\n**Legenda:** Legenda de teste E01.\n');
     fs.writeFileSync(path.join(dir, semana, 'INDICE.md'), '# Semana\n\n| Peça | Cronograma ID |\n| --- | --- |\n| [Peça](para-aprovacao/pecas/E01.jpg) | |\n');
     fs.mkdirSync(path.join(dir, 'docs/marketing/painel'), { recursive: true });
     const c = load('catalogo.cjs'), cr = load('cronograma.cjs'), ap = load('aprovacoes.cjs'), cal = load('calendario.cjs');

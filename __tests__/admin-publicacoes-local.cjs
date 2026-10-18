@@ -231,7 +231,7 @@ async function montarCena({ apiResp, acaoResp, confirmar = true, formulario = nu
     const rotas = fs.readFileSync(path.join(ROOT, 'tools/admin-local/rotas.cjs'), 'utf8');
     ok(rotas.includes("'/api/marketing/publicacoes-simulacao'"), 'rota /api/marketing/publicacoes-simulacao registrada em rotas.cjs');
     ok(fs.readFileSync(path.join(ROOT, 'tools/admin-local/web/app.js'), 'utf8').includes("'marketing/publicacoes'"), 'rota marketing/publicacoes registrada em app.js');
-    ok(fs.readFileSync(path.join(ROOT, 'tools/admin-local/web/index.html'), 'utf8').includes('#/marketing/publicacoes'), 'link #/marketing/publicacoes presente em index.html');
+    ok(!fs.readFileSync(path.join(ROOT, 'tools/admin-local/web/index.html'), 'utf8').includes('#/marketing/publicacoes'), 'sem link proprio #/marketing/publicacoes em index.html (rota antiga so redireciona ao calendario)');
   }
 
   console.log(`admin-publicacoes-local: ${passou} checagens passaram — 0 falhas`);

@@ -21,6 +21,7 @@ const source=fs.readFileSync('tools/admin-local/web/telas/calendario.js','utf8')
  try {
   const semana='docs/marketing/2099-01/semana-01-2099-01-01-a-2099-01-07';
   const pasta=path.join(dir,semana,'para-aprovacao/pecas'); fs.mkdirSync(pasta,{recursive:true}); fs.writeFileSync(path.join(pasta,'E01.jpg'),'fixture');
+  fs.writeFileSync(path.join(pasta,'COPYS-FINAIS.md'),'## E01 - Fixture\n\n**Legenda:** Legenda de teste E01.\n');
   fs.writeFileSync(path.join(dir,semana,'INDICE.md'),'# Semana\n\n| Peça | Cronograma ID |\n| --- | --- |\n| [Peça](para-aprovacao/pecas/E01.jpg) | |\n');
   fs.mkdirSync(path.join(dir,'docs/marketing/painel'),{recursive:true});
   const c=load('catalogo.cjs'), cr=load('cronograma.cjs'), ap=load('aprovacoes.cjs'), cal=load('calendario.cjs');
@@ -42,7 +43,7 @@ const source=fs.readFileSync('tools/admin-local/web/telas/calendario.js','utf8')
    api:async(url)=>{calls.push(url); if(url.endsWith('/ensaio')) return {dados:{modo:'ensaio',realHabilitado:false,chamadasMeta:0,itens:[]}}; if (url === '/api/marketing/cronograma') return {dados: cr.ler(dir)}; if(reject) throw Error('falha de leitura');if(late)return new Promise((r)=>resolver=r);return {dados:dto};},
   };
   const sandbox={ctx,root,Date,Map,CANAIS:[{valor:'instagram-feed'}],rotuloCanal:(s)=>s||'sem canal',console}; vm.runInNewContext(source,sandbox);
-  const render=()=>vm.runInNewContext('montar(root,ctx)',sandbox);
+  const render=()=>vm.runInNewContext('montarEditorial(root,ctx)',sandbox);
   await render(); let t=text(root);
   assert.ok(t.includes('Aguardando dia D')); assert.ok(t.includes('D+4 dias úteis')); assert.ok(t.includes('campanha-teste')); assert.ok(t.includes('peca-teste'));
   assert.ok(t.includes('horário pendente')); assert.ok(t.includes('canal pendente'));

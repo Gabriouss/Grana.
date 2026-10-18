@@ -61,6 +61,7 @@ async function fixture(fn) {
     revisoes: [{ caminho: `${semana}/para-aprovacao/pecas/E01.jpg` }, { caminho: `${semana}/para-aprovacao/pecas/E02.jpg` }],
     vigente: `${semana}/para-aprovacao/pecas/${vigente}` }], capas: [] }));
   familia('E01.jpg');
+  fs.writeFileSync(path.join(dir, semana, 'para-aprovacao/pecas/COPYS-FINAIS.md'), '## E01 - Fixture\n\n**Legenda:** Texto de publicacao E01.\n\n## E02 - Fixture\n\n**Legenda:** Texto de publicacao E02.\n');
   const p = c.montarCatalogo(dir).find((x) => x.caminho.endsWith('E01.jpg'));
   const h = { dir, semana, media, p, familia, apPath: path.join(pastaPainel, 'aprovacoes.json'),
     aprovar: () => ap.aprovar(dir, p.id, { versao: p.versao, confirmacao: true }),
@@ -78,7 +79,7 @@ async function filaReal() {
     process: { pid: 99999, env: { APPDATA: 'X:/AUDIT-NAO-EXISTE' } },
     require: (id) => id === '../config.cjs' ? { RAIZ: 'X:/AUDIT', RAIZ_DADOS: 'X:/AUDIT', tem: () => false, ler: () => undefined }
       : id === 'child_process' ? { execFile() { throw Error('PROCESSO PROIBIDO'); } }
-      : id === './ajustes-remoto.cjs' ? { remotoDoEnv: () => ({ remoto: null, ausente: null }) } : require(id),
+      : id === './ajustes-remoto.cjs' ? { remotoDoEnv: () => ({ remoto: null, ausente: null }) } : id === './legenda-publicacao.cjs' ? require('../tools/admin-local/marketing/legenda-publicacao.cjs') : require(id),
   }, { filename: file });
   return m.exports.criarFila;
 }
@@ -186,10 +187,11 @@ async function filaReal() {
     const tmpRoot = path.resolve(os.tmpdir()), dir = fs.mkdtempSync(path.join(tmpRoot, 'grana-ciclos-'));
     try {
       const semana = 'docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11';
-      const reelRel = `${semana}/para-aprovacao/pecas/reels/audit-reel.mp4`, capaRel = `${semana}/aprovados/audit-reel-capa-1080x1920.png`;
+      const reelRel = `${semana}/para-aprovacao/pecas/reels/R01-audit-reel.mp4`, capaRel = `${semana}/aprovados/audit-reel-capa-1080x1920.png`;
       for (const [rel, txt] of [[reelRel, 'AUDIT-reel'], [capaRel, 'AUDIT-capa'], [`${semana}/INDICE.md`, '# AUDIT\n'], ['docs/marketing/painel/calendario.json', '{"planejados":[]}']]) {
         fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true }); fs.writeFileSync(path.join(dir, rel), txt);
       }
+      fs.writeFileSync(path.join(dir, semana, 'para-aprovacao/pecas/COPYS-FINAIS.md'), '## R01 - Fixture\n\n**Legenda:** Texto do Reel.\n');
       fs.writeFileSync(path.join(dir, 'docs/marketing/painel/familias.json'), JSON.stringify({ familias: [{ id: 'R', nome: 'Reel AUDIT', revisoes: [{ caminho: reelRel }], vigente: reelRel }], capas: [{ capa: capaRel, reel: reelRel }] }));
       const reel = c.montarCatalogo(dir).find((x) => x.caminho === reelRel);
       assert.ok(reel.composicao, 'Reel composto');

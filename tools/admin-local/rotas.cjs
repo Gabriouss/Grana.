@@ -277,9 +277,14 @@ const GET = {
   '/api/marketing/feed': (req, res) => rotaMarketingGet(res, 'catalogo', ['feed'], [], { pecas: [], total: 0 }),
   '/api/marketing/documento': (req, res) => rotaMarketingGet(res, 'catalogo', ['documento'], [], { markdown: '' }),
   '/api/marketing/calendario': (req, res, url) => {
-    const mes = url.searchParams.get('mes');
-    if (mes && !/^\d{4}-\d{2}$/.test(mes)) return responderErro(res, 400, 'mes-invalido', 'Use mes=AAAA-MM.');
-    return rotaMarketingGet(res, 'calendario', ['calendario', 'listarCalendario', 'listar', 'mes'], [mes || undefined], { itens: [], semData: [] });
+    const filtros = {};
+    for (const [chave, valor] of url.searchParams) {
+      if (!['mes', 'camada', 'cursorReal'].includes(chave) || Object.hasOwn(filtros, chave)) {
+        return responderErro(res, 400, 'pedido-invalido', 'Confira os filtros do calendário.');
+      }
+      filtros[chave] = valor;
+    }
+    return rotaMarketingGet(res, 'calendario-unico', ['calendario'], [filtros], { itens: [], reais: { status: 'indisponivel', itens: [], completo: false } });
   },
   '/api/marketing/calendario/ensaio': (req, res) => rotaMarketingGet(res, 'meta-ensaio', ['ensaiar'], [], { modo: 'ensaio', realHabilitado: false, itens: [] }),
   '/api/marketing/cronograma': (req, res) => rotaMarketingGet(res, 'cronograma', ['ler'], [], null),

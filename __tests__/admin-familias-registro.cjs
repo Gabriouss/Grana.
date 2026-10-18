@@ -47,14 +47,17 @@ async function recusaSemEscrita(acao, codigo, rotulo) {
 
 (async () => {
   try {
-    for (const s of [S39, S40, S41, S42]) grava(`${s}/INDICE.md`, '# AUDIT\n');
+    for (const s of [S39, S40, S41, S42]) {
+      grava(`${s}/INDICE.md`, '# AUDIT\n');
+      grava(`${s}/para-aprovacao/pecas/COPYS-FINAIS.md`, '## C14 - Fixture\n\n**Legenda:** Texto C14.\n\n## C01 - Fixture\n\n**Legenda:** Texto C01.\n\n## R01 - Fixture\n\n**Legenda:** Texto R01.\n\n## R13 - Fixture\n\n**Legenda:** Texto R13.\n');
+    }
     grava(`${S40}/para-aprovacao/pecas/lumen-v6/carrossel-1.png`, 'AUDIT-v6-1');
     grava(`${S40}/para-aprovacao/pecas/lumen-v6/carrossel-2.png`, 'AUDIT-v6-2');
     grava(`${S40}/para-aprovacao/pecas/lumen-v6/card.png`, 'AUDIT-card');
     grava(`${S40}/para-aprovacao/pecas/lumen-v7/carrossel-1.png`, 'AUDIT-v7-1');
     grava(`${S40}/para-aprovacao/pecas/lumen-v7/carrossel-2.png`, 'AUDIT-v7-2');
     grava(`${S39}/para-aprovacao/pecas/reels/audit-reel-v8.mp4`, 'AUDIT-v8');
-    grava(`${S42}/aprovados/pecas/reels/audit-reel-notificacao.mp4`, 'AUDIT-notif');
+    grava(`${S42}/aprovados/pecas/reels/R01-audit-reel-notificacao.mp4`, 'AUDIT-notif');
     grava(`${S41}/aprovados/audit-reel-capa-1080x1920.png`, 'AUDIT-capa');
     grava(`${S40}/para-aprovacao/pecas/r13-v3/audit-r13-v3.mp4`, 'AUDIT-r13-v3');
     grava(`${S40}/historico/pecas/r13/audit-r13-final.mp4`, 'AUDIT-r13-final');
@@ -65,16 +68,16 @@ async function recusaSemEscrita(acao, codigo, rotulo) {
     assert.equal(r.familias.filter((f) => /lumen-v[67]\/carrossel/.test(f.principal?.caminho || '')).length, 2, 'sem registro, v6 e v7 são duas famílias');
 
     const C14 = { id: 'C14', nome: 'C14, carrossel AUDIT', revisoes: [{ caminho: `${S40}/para-aprovacao/pecas/lumen-v6/carrossel-*` }, { caminho: `${S40}/para-aprovacao/pecas/lumen-v7/carrossel-*` }], vigente: `${S40}/para-aprovacao/pecas/lumen-v7/carrossel-*` };
-    const RP = { id: 'R-P', nome: 'Reel AUDIT', revisoes: [{ caminho: `${S39}/para-aprovacao/pecas/reels/audit-reel-v8.mp4` }, { caminho: `${S42}/aprovados/pecas/reels/audit-reel-notificacao.mp4` }], vigente: `${S42}/aprovados/pecas/reels/audit-reel-notificacao.mp4` };
+    const RP = { id: 'R-P', nome: 'Reel AUDIT', revisoes: [{ caminho: `${S39}/para-aprovacao/pecas/reels/audit-reel-v8.mp4` }, { caminho: `${S42}/aprovados/pecas/reels/R01-audit-reel-notificacao.mp4` }], vigente: `${S42}/aprovados/pecas/reels/R01-audit-reel-notificacao.mp4` };
     const R13 = { id: 'R13', nome: 'R13 AUDIT', revisoes: [{ caminho: `${S40}/para-aprovacao/pecas/r13-v3/audit-r13-v3.mp4` }, { caminho: `${S40}/historico/pecas/r13/audit-r13-final.mp4` }], vigente: `${S40}/historico/pecas/r13/audit-r13-final.mp4` };
-    const CAPAS = [{ capa: `${S41}/aprovados/audit-reel-capa-1080x1920.png`, reel: `${S42}/aprovados/pecas/reels/audit-reel-notificacao.mp4` }];
+    const CAPAS = [{ capa: `${S41}/aprovados/audit-reel-capa-1080x1920.png`, reel: `${S42}/aprovados/pecas/reels/R01-audit-reel-notificacao.mp4` }];
     registro({ formato: 1, familias: [RP, R13, C14], capas: CAPAS });
 
     r = cat.listarPecas(raiz);
     const todas = cat.enriquecer(raiz, cat.montarCatalogo(raiz));
     const por = (trecho) => todas.find((p) => p.caminho.includes(trecho));
     const v6 = por('lumen-v6/carrossel'), v7 = por('lumen-v7/carrossel'), card = por('lumen-v6/card.png');
-    const v8 = por('audit-reel-v8'), notif = por('audit-reel-notificacao'), capa = por('audit-reel-capa');
+    const v8 = por('audit-reel-v8'), notif = por('R01-audit-reel-notificacao'), capa = por('audit-reel-capa');
     const r13v3 = por('audit-r13-v3'), r13final = por('audit-r13-final');
 
     // Uma família por peça editorial; a vigente é a principal, a anterior fica em superadas.
@@ -145,7 +148,10 @@ async function recusaSemEscrita(acao, codigo, rotulo) {
     assert.notEqual(notifTroca.versao, notif.versao); assert.equal(notifTroca.aprovada, false);
     grava(`${S41}/aprovados/audit-reel-capa-1080x1920.png`, 'AUDIT-capa');
     fs.rmSync(path.join(PAINEL, 'aprovacoes.json')); fs.rmSync(path.join(PAINEL, 'calendario.json'), { force: true });
-    for (const s of [S39, S40, S41, S42]) grava(`${s}/INDICE.md`, '# AUDIT\n');
+    for (const s of [S39, S40, S41, S42]) {
+      grava(`${s}/INDICE.md`, '# AUDIT\n');
+      grava(`${s}/para-aprovacao/pecas/COPYS-FINAIS.md`, '## C14 - Fixture\n\n**Legenda:** Texto C14.\n\n## C01 - Fixture\n\n**Legenda:** Texto C01.\n\n## R01 - Fixture\n\n**Legenda:** Texto R01.\n\n## R13 - Fixture\n\n**Legenda:** Texto R13.\n');
+    }
 
     // Aceite antigo da superada fica no histórico e não vale.
     const aceiteV8 = { id: v8.id, caminho: v8.caminho, versao: v8.versao, aprovadoEm: '2026-10-07T10:31:32-03:00', evidencia: 'aceite pelo autor no painel local', nota: 'AUDIT aceite antigo' };

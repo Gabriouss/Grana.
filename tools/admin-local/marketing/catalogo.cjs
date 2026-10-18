@@ -797,6 +797,7 @@ function enriquecer(raiz, pecas) {
         ? historico.recusas.filter((r) => r.id === p.id && r.versao === p.versao).map((r) => ({ motivo: r.motivo, sucessora: r.sucessora, recusadoEm: r.recusadoEm, evidencia: r.evidencia })).at(-1) || null : null,
       // Aceite dado a uma versão anterior não vale para esta (Sentinel A07).
       aceiteDeVersaoAnterior: aceiteAntigo,
+      bloqueiosAprovacao: require('./legenda-publicacao.cjs').bloqueiosAprovacao(p),
       // Catalogo/feed tambem chegam ao navegador: nunca copiar o texto da fila.
       ajuste: ajuste ? {
         id: p.id, versao: p.versao,

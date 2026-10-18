@@ -5,6 +5,7 @@ const os = require('os');
 const crypto = require('crypto');
 const { execFile } = require('child_process');
 const cfg = require('../config.cjs');
+const { exigirLegenda } = require('./legenda-publicacao.cjs');
 
 // Estados finais do pedido; desconhecidos continuam bloqueando a promocao.
 const ESTADOS_TERMINAIS = Object.freeze(['aceito', 'desatualizado', 'encerrado', 'recusado-pelo-autor']);
@@ -89,6 +90,9 @@ function criarFila(deps) {
   // Checked before the acceptance is written to aprovacoes.json, so a stale request never
   // leaves an acceptance behind without the matching queue transition.
   function conferirAceite(peca, pedidoId) {
+    const atual = deps.obterPeca(peca.id);
+    if (!atual || atual.versao !== peca.versao) throw erro('versao-mudou', 'Revise a versao corrigida antes do aceite.');
+    exigirLegenda(atual);
     const r = achar(deps.ler(), pedidoId);
     if (r.pecaId !== peca.id || r.estado !== 'corrigido-aguardando-aceite' || r.versaoCorrigida !== peca.versao) throw erro('versao-mudou', 'Revise a versao corrigida antes do aceite.');
   }
@@ -97,11 +101,16 @@ function criarFila(deps) {
     const estimativa = estado === 'aguardando-aprovacao-de-custo' ? validarEstimativa(dados.estimativa) : null;
     if (estado === 'corrigido-aguardando-aceite' && deps.ler().pedidos.find((p) => p.id === id)?.somenteEstimativa) throw erro('somente-estimativa', 'Esta tarefa permite apenas estimativa.');
     if (['corrigido-aguardando-aceite', 'aguardando-aprovacao-de-custo'].includes(estado) && foraDeVigencia(atual)) throw erro('revisao-superada', 'Esta revisao deixou de ser a vigente da familia. O pedido nao pode ser concluido nela.');
-    if (estado === 'corrigido-aguardando-aceite') await deps.verificarCommit(dados.commit, atual?.caminho);
+    if (estado === 'corrigido-aguardando-aceite') {
+      exigirLegenda(atual);
+      await deps.verificarCommit(dados.commit, atual?.caminho);
+    }
     return deps.transacao((db) => {
       const r = leaseValido(db, id, leaseId);
       if (estado === 'corrigido-aguardando-aceite') {
-        if (!atual || atual.id !== r.pecaId || atual.versao !== dados.versao || !/^[0-9a-f]{40}$/.test(dados.versao) || !/^[0-9a-f]{40}$/.test(dados.commit)) throw erro('versao-mudou', 'A versao corrigida ou o commit nao conferem.');
+        const final = deps.obterPeca(dados.pecaId);
+        if (!final || final.id !== r.pecaId || final.versao !== dados.versao || !/^[0-9a-f]{40}$/.test(dados.versao) || !/^[0-9a-f]{40}$/.test(dados.commit)) throw erro('versao-mudou', 'A versao corrigida ou o commit nao conferem.');
+        exigirLegenda(final);
         r.versaoCorrigida = dados.versao; r.commit = dados.commit;
       } else if (!['falha-de-envio', 'desatualizado', 'aguardando-aprovacao-de-custo'].includes(estado)) throw erro('estado-invalido', 'Estado nao permitido.', 400);
       if (estimativa) {
@@ -213,6 +222,9 @@ function criarFila(deps) {
   }
   async function aceitar(peca, pedidoId) {
     return deps.transacao((db) => {
+      const atual = deps.obterPeca(peca.id);
+      if (!atual || atual.versao !== peca.versao) throw erro('versao-mudou', 'Revise a versao corrigida antes do aceite.');
+      exigirLegenda(atual);
       const r = achar(db, pedidoId);
       if (r.pecaId !== peca.id || r.estado !== 'corrigido-aguardando-aceite' || r.versaoCorrigida !== peca.versao) throw erro('versao-mudou', 'Revise a versao corrigida antes do aceite.');
       r.aceite = { versao: peca.versao, em: deps.agora() }; mudar(db, r, 'aceito', 'autor-aceitou'); return r;

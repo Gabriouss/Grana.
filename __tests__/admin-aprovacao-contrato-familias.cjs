@@ -41,6 +41,7 @@ const grava = (rel, c) => { const f = path.join(raiz, rel); fs.mkdirSync(path.di
 (async () => {
   try {
     grava(`${S40}/INDICE.md`, '| Peça | Cronograma | Parecer |\n| [C14](para-aprovacao/pecas/lumen-v7/) | `AUDIT-manifesto#AUDIT-item@2` | revisor AUDIT ok 0123456789abcdef0123 | Aceite AUDIT em 11/10/2026 23:07:05, versão `386a6fec7528`; sha 56f9822 |\n');
+    grava(`${S40}/para-aprovacao/pecas/COPYS-FINAIS.md`, '## C14 - Fixture\n\n**Legenda:** Texto C14.\n\n## R13 - Fixture\n\n**Legenda:** Texto R13.\n');
     grava(`${S40}/para-aprovacao/pecas/lumen-v6/carrossel-1.png`, 'AUDIT-v6-1');
     grava(`${S40}/para-aprovacao/pecas/lumen-v6/carrossel-2.png`, 'AUDIT-v6-2');
     grava(`${S40}/para-aprovacao/pecas/lumen-v7/carrossel-1.png`, 'AUDIT-v7-1');

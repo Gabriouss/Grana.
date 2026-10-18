@@ -153,7 +153,7 @@ assert.equal(_pecas.juntarCapasAoReel([{ chave: 'c', principal: capa, pecas: [ca
     const r = node('main');
     await load('aprovacao.js').montar(r, c);
     assert.equal(walk(r).filter((n) => n.attrs.class === 'demanda-familia').length, 2, 'Reel e roteiro; COPYS-FINAIS fora');
-    assert.ok(!text(r).includes('COPYS-FINAIS.md'));
+    assert.ok(!walk(r).some((n) => n.attrs.class === 'demanda-familia' && text(n).includes('COPYS-FINAIS.md')), 'o documento de copy nao vira card');
     assert.equal(conta.at(-1), 2);
     const appSrc = fs.readFileSync('tools/admin-local/web/app.js', 'utf8');
     const trecho = appSrc.slice(appSrc.indexOf('async function atualizarContadorAprovacao'), appSrc.indexOf('let timerContadorAprovacao'));

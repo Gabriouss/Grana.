@@ -10,7 +10,7 @@ vm.runInNewContext(source,{
  module:m,exports:m.exports,Date,Buffer,structuredClone,console,
  require:s=> s==='fs'? {readFileSync:f=>JSON.stringify(String(f).endsWith('aprovacoes.json')?{aprovacoes:[],ajustes:legados}:{planejados:[]})}
   :s==='./ajustes-fila.cjs'?{fila:{listar:()=>privados}}
-  :s==='./ajustes-dto.cjs'?require(root+'/tools/admin-local/marketing/ajustes-dto.cjs'): require(s),
+  :s==='./ajustes-dto.cjs'?require(root+'/tools/admin-local/marketing/ajustes-dto.cjs'):s==='./legenda-publicacao.cjs'?require(root+'/tools/admin-local/marketing/legenda-publicacao.cjs'): require(s),
 });
 const result=m.exports.enriquecer('/fixture',[p]);
 assert.ok(!JSON.stringify(result).includes('CANARIO_PRIVADO_CATALOGO'),'texto privado nao pode atravessar enriquecimento usado por GET pecas/feed');

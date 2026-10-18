@@ -9,12 +9,12 @@ vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../tools/admin-local
   module: m, exports: m.exports, process, Date, structuredClone, setTimeout, setInterval, clearInterval,
   require: (id) => id === '../config.cjs' ? { RAIZ: '/fixture', RAIZ_DADOS: '/fixture', tem: () => false, ler: () => undefined }
     : id === 'child_process' ? { execFile() { throw new Error('REAL PROCESS FORBIDDEN'); } }
-    : id === './ajustes-remoto.cjs' ? remotoMod : require(id),
+    : id === './ajustes-remoto.cjs' ? remotoMod : id === './legenda-publicacao.cjs' ? require('../tools/admin-local/marketing/legenda-publicacao.cjs') : require(id),
 });
 function setup(opts = {}) {
   let now = Date.parse('2026-10-08T17:00:00Z'), n = 0;
   const db = { formato: 1, pedidos: [], eventos: [] }; const calls = [];
-  const peca = { id: 'a'.repeat(16), caminho: 'docs/marketing/fixture/para-aprovacao/p', versao: 'a'.repeat(40), estado: 'para-aprovacao' };
+  const peca = { id: 'a'.repeat(16), legenda: 'Legenda de publicacao da fixture.', caminho: 'docs/marketing/fixture/para-aprovacao/p', versao: 'a'.repeat(40), estado: 'para-aprovacao' };
   let serial = Promise.resolve();
   const deps = {
     agora: () => new Date(now).toISOString(), id: () => 'fixture-' + (++n), ler: () => structuredClone(db),
@@ -109,7 +109,7 @@ async function test(name, fn) { await fn(); count++; console.log('OK ' + name); 
   });
   // ---- ponte com a tabela remota (painel web) ----
   const RID = '33333333-3333-4333-8333-333333333333';
-  const remotoNovo = (extra = {}) => ({ id: RID, peca_id: 'a'.repeat(16), caminho: 'docs/marketing/fixture/para-aprovacao/p', versao_alvo: 'a'.repeat(40), texto_original: ' TEXTO WEB PRIVADO ', criado_em: '2026-10-08T16:59:00Z', ...extra });
+  const remotoNovo = (extra = {}) => ({ id: RID, peca_id: 'a'.repeat(16), legenda: 'Legenda de publicacao da fixture.', caminho: 'docs/marketing/fixture/para-aprovacao/p', versao_alvo: 'a'.repeat(40), texto_original: ' TEXTO WEB PRIVADO ', criado_em: '2026-10-08T16:59:00Z', ...extra });
   function remotoFalso(opts = {}) {
     const chamadas = []; let lista = opts.lista ?? [remotoNovo()];
     return { chamadas, r: {

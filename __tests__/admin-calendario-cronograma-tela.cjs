@@ -149,9 +149,10 @@ function encontrar(root, predicado) {
  try {
   const semana='docs/marketing/2099-01/semana-01-2099-01-01-a-2099-01-07';
   const pasta=path.join(dir,semana,'para-aprovacao/pecas'); fs.mkdirSync(pasta,{recursive:true});
-  fs.writeFileSync(path.join(pasta,'AUDIT.jpg'),'AUDIT mídia fictícia');
+  fs.writeFileSync(path.join(pasta,'E01-AUDIT.jpg'),'AUDIT mídia fictícia');
+  fs.writeFileSync(path.join(pasta,'COPYS-FINAIS.md'),'## E01 - Fixture\n\n**Legenda:** Legenda de teste E01.\n');
   const indice=path.join(dir,semana,'INDICE.md');
-  fs.writeFileSync(indice,'# AUDIT\n\n| Peça | Cronograma ID |\n| --- | --- |\n| [AUDIT](para-aprovacao/pecas/AUDIT.jpg) | |\n');
+  fs.writeFileSync(indice,'# AUDIT\n\n| Peça | Cronograma ID |\n| --- | --- |\n| [AUDIT](para-aprovacao/pecas/E01-AUDIT.jpg) | |\n');
   fs.mkdirSync(path.join(dir,'docs/marketing/painel'),{recursive:true});
   let p=c.montarCatalogo(dir).find((p)=>p.tipo==='imagem'); assert(p);
   const rootAprovacao=elemento('main');contexto.params.peca=p.id;
@@ -176,10 +177,10 @@ function encontrar(root, predicado) {
   assert.deepEqual(posts()[1].body,{versao:p.versao,confirmacao:true});
   let nova=c.montarCatalogo(dir).find((p)=>p.estado==='aprovados' && p.tipo==='imagem'); assert(nova);assert.notEqual(nova.id,p.id);
   assert.equal(navegacoes.at(-1),`#/marketing/calendario?peca=${nova.id}`);
-  assert.match(fs.readFileSync(indice,'utf8'),/aprovados\/pecas\/AUDIT.jpg/);
+  assert.match(fs.readFileSync(indice,'utf8'),/aprovados\/pecas\/E01-AUDIT.jpg/);
   assert(fs.readFileSync(indice,'utf8').includes(`<!-- promocao:${nova.id}:${nova.versao} -->`),'recibo de promoção exato no índice');
   assert(avisos.some((a)=>a.t.includes('Promoção registrada em') && a.t.includes('INDICE.md')));
-  assert.equal(fs.existsSync(path.join(pasta,'AUDIT.jpg')),false,'limpeza apenas após prova');
+  assert.equal(fs.existsSync(path.join(pasta,'E01-AUDIT.jpg')),false,'limpeza apenas após prova');
   const provas=JSON.parse(fs.readFileSync(path.join(dir,'docs/marketing/painel/aprovacoes.json'),'utf8'));
   assert(provas.aprovacoes.some((a)=>a.id===nova.id && a.origem?.id===p.id && a.indice));
   // Retomada pelo ID original reaproveita prova sem inventar recibo.

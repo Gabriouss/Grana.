@@ -14,7 +14,7 @@ function load(nome) {
     const negar = () => { throw new Error('EFEITO EXTERNO PROIBIDO'); };
     const imports = { fs: new Proxy({}, { get: () => negar }), path,
       os: { homedir: () => '/fixture' }, crypto: { randomUUID: negar }, child_process: { execFile: negar },
-      '../config.cjs': {}, './ajustes-remoto.cjs': { remotoDoEnv: () => ({ remoto: null }) } };
+      '../config.cjs': {}, './legenda-publicacao.cjs': require('../tools/admin-local/marketing/legenda-publicacao.cjs'), './ajustes-remoto.cjs': { remotoDoEnv: () => ({ remoto: null }) } };
     vm.runInNewContext(fs.readFileSync(path.join(raizMod, nome), 'utf8'), {
       module: m, exports: m.exports, process: { pid: 123, env: Object.freeze({}) }, Date, structuredClone,
       console, setInterval: negar, fetch: negar,
@@ -58,6 +58,7 @@ async function fixture(fn, padaria = false, nomes = ['E01.jpg']) {
   const indice = path.join(dir, semana, 'INDICE.md');
   const link = nomes.length > 1 ? 'para-aprovacao/pecas/' : rel.slice(semana.length + 1);
   fs.writeFileSync(indice, '# Semana\n\n| Peça | Cronograma ID |\n| --- | --- |\n| [Peça](' + link + ') | |\n');
+  if (!padaria) fs.writeFileSync(path.join(dir, semana, 'para-aprovacao/pecas/COPYS-FINAIS.md'), '## E01 - Fixture\n\n**Legenda:** Texto de publicacao E01.\n\n## E02 - Fixture\n\n**Legenda:** Texto de publicacao E02.\n\n## E03 - Fixture\n\n**Legenda:** Texto de publicacao E03.\n');
   const p = c.montarCatalogo(dir).find((p) => p.tipo !== 'texto'); assert(p);
   const manifesto = { formato: 1, manifestoId: 'campanha-teste', versao: 1, fuso: 'America/Sao_Paulo', diaD: null,
     datasComAviso: [{ data: '2026-10-12', motivo: 'Feriado nacional: Nossa Senhora Aparecida' }],
@@ -123,18 +124,18 @@ async function test(nome, fn, padaria, nomes) {
   await test('ITEM-C índice ausente, links encoded e célula legada sem reformatar', async (h) => {
     fs.unlinkSync(h.indice);
     await h.iniciar(); assert.equal(cr.vinculo(h.dir, h.p).itemId, 'peca-teste');
-    const nome = 'Café (novo).jpg', rel = h.rel.replace('E01.jpg', nome);
+    const nome = 'E03-Café (novo).jpg', rel = h.rel.replace('E01.jpg', nome);
     fs.writeFileSync(path.join(h.dir, rel), 'encoded');
     const p = c.montarCatalogo(h.dir).find((p) => p.caminho === rel);
     const m = cr.ler(h.dir); await cr.salvarManifesto(h.dir, { manifesto: { ...m, versao: 2, itens: [...m.itens, { id: 'encoded', dataPrevista: { modo: 'diaD', diasUteis: 0 } }] }, versaoEsperada: 1 });
-    const original = '# Legado\r\n| Peça | Extra | Cronograma ID |\r\n| --- | --- | --- |\r\n| [x](para-aprovacao/pecas/Caf%C3%A9%20%28novo%29.jpg) |  INTATO  |   |\r\n';
+    const original = '# Legado\r\n| Peça | Extra | Cronograma ID |\r\n| --- | --- | --- |\r\n| [x](para-aprovacao/pecas/E03-Caf%C3%A9%20%28novo%29.jpg) |  INTATO  |   |\r\n';
     fs.writeFileSync(h.indice, original);
     await cr.registrarVinculo(h.dir, p.id, { versao: p.versao, versaoEsperada: 2, manifestoId: m.manifestoId, itemId: 'encoded' });
     assert.equal(fs.readFileSync(h.indice, 'utf8'), original.replace('|   |\r\n', '|   campanha-teste#encoded@2|\r\n'));
     assert.equal(cr.vinculo(h.dir, p).itemId, 'encoded');
     fs.writeFileSync(h.indice, '# Novo\n');
     await cr.registrarVinculo(h.dir, p.id, { versao: p.versao, versaoEsperada: 2, manifestoId: m.manifestoId, itemId: 'encoded' });
-    assert(fs.readFileSync(h.indice, 'utf8').includes('Caf%C3%A9%20%28novo%29.jpg'));
+    assert(fs.readFileSync(h.indice, 'utf8').includes('E03-Caf%C3%A9%20%28novo%29.jpg'));
     assert.equal(cr.vinculo(h.dir, p).itemId, 'encoded');
     await ap.aprovar(h.dir, p.id, { versao: p.versao, confirmacao: true });
     await promo.promover(h.dir, p.id, { versao: p.versao, confirmacao: true });
@@ -276,7 +277,10 @@ async function test(nome, fn, padaria, nomes) {
   await test('PADARIA aceite real07/10: aguardando D -> D+4 úteis automaticamente, sem fabricar aceite', async (h) => {
     assert.equal(h.p.id, '44f4151757801600'); assert.equal(h.p.versao, 'bc01c04e92badb8c64de75c15d46eb13e7a920cb');
     const aceiteAntes = fs.readFileSync(path.join(h.painel, 'aprovacoes.json'), 'utf8');
-    await h.iniciar(); const r = await h.aprovar(); assert.equal(r.jaExistia, true);
+    await h.iniciar();
+    // O aceite histórico não é revogado, mas repetir o aceite sem legenda agora é recusado.
+    await assert.rejects(h.aprovar(), (e) => e.codigo === 'legenda-obrigatoria');
+    cr.sincronizar(h.dir);
     let dto = cal.obterCalendario(h.dir, '2026-10');
     assert.equal(dto.aguardandoDiaD.length, 1); assert.equal(dto.aguardandoDiaD[0].estado, 'aguardando dia D'); assert.equal(dto.aguardandoDiaD[0].data, null);
     assert.equal(dto.itens.length, 0); assert.equal(fs.readFileSync(path.join(h.painel, 'aprovacoes.json'), 'utf8'), aceiteAntes);
@@ -286,9 +290,11 @@ async function test(nome, fn, padaria, nomes) {
     assert(dto.avisos.some((s) => s.includes('horário pendente') && s.includes('canal pendente')));
     assert(!dto.avisos.some((s) => /\b[0-9a-f]{16}\b/.test(s)), 'aviso visível sem id técnico (F4-1, V1 do Vigil)');
     const reciboAntes = en.ensaiar(h.dir).itens[0].recibo;
-    const promoted = await h.promover(); dto = cal.obterCalendario(h.dir, '2026-10');
-    assert.equal(dto.itens.length, 1); assert.equal(dto.itens[0].peca.id, promoted.promocao.id);
-    assert.equal(dto.itens[0].data, '2026-10-15'); assert.equal(cr.vinculo(h.dir, c.obterPeca(h.dir, promoted.promocao.id)).itemId, 'reels-widget-padaria');
+    await assert.rejects(h.promover(), (e) => e.codigo === 'legenda-obrigatoria');
+    dto = cal.obterCalendario(h.dir, '2026-10');
+    assert.equal(dto.itens.length, 1); assert.equal(dto.itens[0].peca.id, h.p.id);
+    assert.equal(dto.itens[0].data, '2026-10-15'); assert.equal(cr.vinculo(h.dir, c.obterPeca(h.dir, h.p.id)).itemId, 'reels-widget-padaria');
+    assert.equal(fs.readFileSync(path.join(h.painel, 'aprovacoes.json'), 'utf8'), aceiteAntes);
     assert.equal(h.raw().planejados.filter((r) => r.estado !== 'desatualizado').length, 1);
     const ensaio = en.ensaiar(h.dir); assert.equal(ensaio.itens.length, 1); assert.equal(ensaio.itens[0].recibo, reciboAntes); assert.equal(ensaio.itens[0].evidenciaEm, '2026-10-07T10:31:32-03:00'); assert.equal(ensaio.chamadasMeta, 0);
     assert.equal(ensaio.itens[0].estado, 'bloqueado'); assert(ensaio.itens[0].bloqueios.includes('data-ou-hora-invalida')); assert(ensaio.itens[0].bloqueios.includes('canal-invalido'));

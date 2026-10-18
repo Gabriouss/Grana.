@@ -42,7 +42,7 @@ const walk = (n) => [n, ...(n.children || []).filter((c) => typeof c === 'object
 const text = (n) => walk(n).map((x) => x.attrs.texto || '').join(' ');
 
 const S41 = 'docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11';
-const reelPath = `${S41}/para-aprovacao/pecas/reels/audit-reel.mp4`;
+const reelPath = `${S41}/para-aprovacao/pecas/reels/R01-audit-reel.mp4`;
 let capaPath;
 const grava = (rel, c) => { const f = path.join(raiz, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, c); };
 
@@ -68,6 +68,7 @@ async function tela() {
       fs.rmSync(path.join(raiz, 'docs'), { recursive: true, force: true });
       capaPath = `${S41}/${pasta}/pecas/reels/audit-capa.png`;
       grava(`${S41}/INDICE.md`, '# AUDIT\n');
+      grava(`${S41}/${pasta}/pecas/COPYS-FINAIS.md`, '## R01 - Fixture\n\n**Legenda:** Legenda de teste R01.\n');
       grava(reelPath, 'AUDIT-video-v1'); grava(capaPath, 'AUDIT-capa-v1');
       grava('docs/marketing/painel/familias.json', JSON.stringify({ formato: 1,
         familias: [{ id: 'AUDIT-F03', nome: 'Reel AUDIT F03', revisoes: [{ caminho: reelPath }], vigente: reelPath }],

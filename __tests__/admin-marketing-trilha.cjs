@@ -10,6 +10,7 @@ function modulo(nome, imports = {}) {
   const permitidos = { fs: new Proxy({}, { get: () => negar }), path,
     os: { homedir: () => '/fixture' }, 'node:os': { hostname: () => 'fixture' },
     crypto: { randomUUID: negar }, child_process: { execFile: negar },
+    './legenda-publicacao.cjs': require('../tools/admin-local/marketing/legenda-publicacao.cjs'),
     '../config.cjs': { RAIZ: '/fixture', RAIZ_DADOS: '/fixture' },
     './ajustes-remoto.cjs': { remotoDoEnv: () => ({ remoto: null }) }, ...imports };
   vm.runInNewContext(fs.readFileSync(path.join(base, nome), 'utf8'), {
@@ -22,7 +23,7 @@ function modulo(nome, imports = {}) {
 const dto = modulo('ajustes-dto.cjs'), real = modulo('ajustes-fila.cjs');
 const db = { formato: 1, pedidos: [], eventos: [] }, calls = [], logs = [];
 let contador = 0;
-const p = { id: 'a'.repeat(16), caminho: 'docs/marketing/fixture/para-aprovacao/peca.jpg', versao: 'b'.repeat(40), estado: 'para-aprovacao' };
+const p = { id: 'a'.repeat(16), legenda: 'Legenda valida da fixture.', caminho: 'docs/marketing/fixture/para-aprovacao/peca.jpg', versao: 'b'.repeat(40), estado: 'para-aprovacao' };
 const fila = real.criarFila({ agora: () => new Date(agora).toISOString(), id: () => '11111111-1111-4111-8111-' + String(++contador).padStart(12, '0'),
   ler: () => structuredClone(db), transacao: async (fn) => { const copia = structuredClone(db), r = fn(copia); Object.assign(db, copia); return structuredClone(r); },
   obterPeca: () => ({ ...p }), verificarCommit: async () => calls.push('commit'), entregar: async () => calls.push('entrega'), log: (v) => logs.push(v) });

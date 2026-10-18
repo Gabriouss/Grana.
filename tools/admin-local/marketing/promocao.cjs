@@ -71,6 +71,7 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
       const anterior = dados.aprovacoes.find((a) => a.origem?.id === id && a.versao === corpo.versao);
       if (anterior) {
         const p = pecas.find((v) => v.id === anterior.id);
+        if (p) require('./legenda-publicacao.cjs').exigirLegenda(p);
         if (!p || p.estado !== 'aprovados' || !aceiteValido(anterior, p, Date.now(), dados.aprovacoes)) throw new c.ErroMarketing('promocao-desatualizada', 'A peça promovida mudou; confira a versão.', 409);
         // Retomada não contorna a supersessão nem a recusa (H-01): confere a revisão atual do destino
         // antes de índice, limpeza de origem ou sincronização do calendário.
@@ -95,6 +96,7 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
       if (p.versao !== corpo.versao) throw new c.ErroMarketing('versao-mudou', 'A peça mudou; revise e aprove a versão atual.', 409);
       c.exigirVigente(c.obterPeca(raiz, p.id), 'A promoção');
       c.exigirItemAutonomo(p, 'A promoção');
+      require('./legenda-publicacao.cjs').exigirLegenda(p);
       if (p.estado !== 'para-aprovacao' || !PREFIXO.test(p.caminho)) throw new c.ErroMarketing('pasta-invalida', 'Só peça de para-aprovacao pode ser promovida.', 409);
       // A promoção move só o vídeo. Capa pareada pelo nome ficaria para trás e o aceite composto
       // deixaria de valer: o vínculo precisa estar no registro de famílias, que sobrevive à troca de pasta.
