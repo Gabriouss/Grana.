@@ -625,6 +625,12 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     - **Citar o revisor no commit é opcional; citar o que foi conferido não é.**
       "Achado do Codex confirmado no trecho X" é registro útil.
       "Corrigido conforme o Codex" não diz nada.
+    - **Achado de revisor, de qualquer um, só vale com `arquivo:linha`,
+      gravidade e um cenário concreto de falha** (a entrada ou o estado que
+      faz quebrar). Achado sem cenário é palpite e cai na síntese; o mesmo
+      problema apontado por revisores diferentes vira um achado só. Modelos
+      em `docs/modelos/relatorio-de-seguranca.md` e
+      `docs/modelos/passagem-de-tarefa.md`.
 
 17. **Verificação do app no emulador Android, depois de iniciada, vai até 100%
     do aplicativo: sem parar, sem perguntar e sem pausar.** Regra dada pelo
