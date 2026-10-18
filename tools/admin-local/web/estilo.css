@@ -304,7 +304,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .conteudo {
   min-width: 0;
   padding: var(--s-xxl) clamp(var(--s-lg), 3.2vw, 48px) 64px;
-  max-width: 1600px;
+  max-width: 1760px;
+  margin-inline: auto;
+  width: 100%;
 }
 
 .barra-topo { display: none; }
@@ -1695,7 +1697,8 @@ button.cal-item { cursor: pointer; }
   line-height: var(--lh-compacto);
 }
 .lista-sem-data .cal-item:not(:has(.cal-item-capa)) .cal-item-titulo { grid-column: 1 / -1; }
-.lista-sem-data .cal-item > .botao { grid-area: acao; justify-self: start; padding: 0 var(--s-sm); }
+.lista-sem-data .cal-item > .bloco-acao { grid-area: acao; justify-self: start; gap: var(--s-sm); }
+.lista-sem-data .cal-item > .bloco-acao > .botao { padding: 0 var(--s-sm); }
 .agenda { margin: 0; padding: 0; list-style: none; }
 .agenda-item {
   display: grid;
@@ -3062,7 +3065,8 @@ dialog.central::backdrop { background: var(--scrim); }
 /* Calendário único: dados no mês, operação em painel lateral, recibos em lista. */
 .cal-unico-filtros { display:flex; flex-wrap:wrap; justify-content:space-between; gap:16px; margin:16px 0; }
 .cal-unico-filtros [aria-pressed="true"] { background:var(--accent-2); color:var(--paper); }
-.cal-unico-status { margin:12px 0; }
+.cal-unico-status { display:flex; flex-direction:column; gap:var(--s-md); margin:0 0 var(--s-md); }
+.tela-calendario .lista-alertas { gap:var(--s-md); }
 .cal-unico-item { display:flex; flex-direction:column; gap:8px; width:100%; text-align:left; min-width:0; overflow-wrap:anywhere; padding:12px; }
 .cal-unico-item .bloco-acao { gap:8px; }
 .cal-unico-item .botao { white-space:normal; min-height:36px; }
