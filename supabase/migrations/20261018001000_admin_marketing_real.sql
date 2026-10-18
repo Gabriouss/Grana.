@@ -215,6 +215,15 @@ begin
   return to_jsonb(p);
 end $$;
 
+-- Alvo semantico = (snapshot, conta, formato, horario). Vale para confirmar e
+-- reagendar, que gravam chaves de formulas diferentes: so a chave nao basta (B3).
+create function public.admin_marketing_real_alvo_ocupado(p_snapshot uuid,p_conta uuid,p_formato text,p_publicar_em timestamptz,p_exceto uuid)
+returns boolean language sql stable security invoker set search_path='' as $$
+  select exists(select 1 from public.admin_marketing_agendamentos g join public.admin_marketing_autorizacoes a on a.id=g.autorizacao_id
+    where g.snapshot_id=p_snapshot and g.conta_id=p_conta and a.formato=p_formato and a.publicar_em=p_publicar_em
+      and g.estado<>'cancelado' and g.id is distinct from p_exceto)
+$$;
+
 create function public.admin_marketing_real_confirmar(p_admin uuid,p_previa uuid,p_hash text,p_revisao integer,p_idempotencia uuid)
 returns jsonb language plpgsql security invoker set search_path='' as $$
 declare p public.admin_marketing_real_previas; s public.admin_marketing_real_snapshots;
@@ -251,7 +260,9 @@ begin
       then raise exception 'capacidade-nao-comprovada'; end if;
     if (d->>'publicarEm')::timestamptz<=now() then raise exception 'horario-invalido'; end if;
     h:=encode(sha256(convert_to(jsonb_build_object('snapshot',s.identidade,'destino',d-'contaRevisao'-'capacidadeRevisao')::text,'UTF8')),'hex');
-    if exists(select 1 from public.admin_marketing_autorizacoes where chave=h) then raise exception 'agendamento-ja-existe'; end if;
+    if exists(select 1 from public.admin_marketing_autorizacoes where chave=h)
+      or public.admin_marketing_real_alvo_ocupado(s.id,c.id,d->>'formato',(d->>'publicarEm')::timestamptz,null)
+      then raise exception 'agendamento-ja-existe'; end if;
     insert into public.admin_marketing_autorizacoes(chave,admin_id,peca_id,versao,manifesto,rede,conta_destino,formato,publicar_em)
       values(h,p_admin,s.dados->>'pecaId',s.dados->>'versao',s.dados||jsonb_build_object('_destino',d),c.rede,c.remoto_id,d->>'formato',(d->>'publicarEm')::timestamptz) returning id into u;
     insert into public.admin_marketing_agendamentos(autorizacao_id,estrategia,estado,lote_id,snapshot_id,conta_id,proxima_verificacao_em)
@@ -359,12 +370,18 @@ begin
         then raise exception 'estado-incompativel'; end if;
       if (p_pedido->>'publicarEm')::timestamptz<=now() then raise exception 'horario-invalido'; end if;
       select * into a from public.admin_marketing_autorizacoes where id=g.autorizacao_id;
+      if public.admin_marketing_real_alvo_ocupado(g.snapshot_id,g.conta_id,a.formato,(p_pedido->>'publicarEm')::timestamptz,g.id)
+        then raise exception 'agendamento-ja-existe'; end if;
       h:=encode(sha256(convert_to(jsonb_build_object('anterior',a.chave,'horario',(p_pedido->>'publicarEm')::timestamptz)::text,'UTF8')),'hex');
+      -- O _destino acompanha o horario novo; o manifesto nao guarda horario velho (B3).
       insert into public.admin_marketing_autorizacoes(chave,admin_id,peca_id,versao,manifesto,rede,conta_destino,formato,publicar_em)
-        values(h,p_admin,a.peca_id,a.versao,a.manifesto,a.rede,a.conta_destino,a.formato,(p_pedido->>'publicarEm')::timestamptz) returning id into nova;
+        values(h,p_admin,a.peca_id,a.versao,jsonb_set(a.manifesto,'{_destino,publicarEm}',
+          to_jsonb(to_char((p_pedido->>'publicarEm')::timestamptz at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))),
+          a.rede,a.conta_destino,a.formato,(p_pedido->>'publicarEm')::timestamptz) returning id into nova;
       update public.admin_marketing_agendamentos set estado='cancelado',concluido_em=now(),revisao=revisao+1,atualizado_em=now() where id=g.id;
-      insert into public.admin_marketing_agendamentos(autorizacao_id,estrategia,estado,lote_id,snapshot_id,conta_id,proxima_verificacao_em)
-        values(nova,'executor-remoto','programado-no-painel',g.lote_id,g.snapshot_id,g.conta_id,greatest(now(),(p_pedido->>'publicarEm')::timestamptz-interval '30 minutes')) returning id into novo_job;
+      -- A pausa individual vai junto: reagendar nao e retomar (B2).
+      insert into public.admin_marketing_agendamentos(autorizacao_id,estrategia,estado,lote_id,snapshot_id,conta_id,pausado,proxima_verificacao_em)
+        values(nova,'executor-remoto','programado-no-painel',g.lote_id,g.snapshot_id,g.conta_id,g.pausado,greatest(now(),(p_pedido->>'publicarEm')::timestamptz-interval '30 minutes')) returning id into novo_job;
     else raise exception 'pedido-invalido'; end if;
     resultado:=public.admin_marketing_real_consultar(p_admin,jsonb_build_object('acao','consultar','jobId',coalesce(novo_job,g.id)));
   end if;
@@ -392,20 +409,24 @@ begin
     or controles.capacidade_validada_em<now()-interval '1 day' then return saida; end if;
   -- Orçamento interno de admissoes do Grana., NAO quota de publicacao Meta.
   if (select count(*) from public.admin_marketing_envios where iniciado_em>now()-interval '1 minute')>=12 then return saida; end if;
+  -- Quem espera (pausa, conta sem conexao, publicar antes do horario) sai no
+  -- WHERE: pulado dentro do loop ocupava o LIMIT e travava a fila inteira (B1).
+  -- Consultas/cancelamento sao permitidos durante pausa/revogacao; POST de
+  -- preparar/publicar nao. Nunca transformar a falta de token em sucesso.
   for g in select j.* from public.admin_marketing_agendamentos j
+    join public.admin_marketing_autorizacoes ja on ja.id=j.autorizacao_id
+    join public.admin_marketing_real_contas jc on jc.id=j.conta_id
     where j.snapshot_id is not null and j.lease_id is null and j.proxima_verificacao_em<=now()
       and j.estado in ('programado-no-painel','cancelamento-pendente')
-    order by j.proxima_verificacao_em,j.id for update skip locked limit p_limite loop
+      and not (j.etapa='publicar' and ja.publicar_em>now())
+      and not (j.etapa in ('preparar','publicar') and (controles.pausa_global or j.pausado or jc.pausada
+        or jc.conexao<>'verificada' or jc.valida_ate is null or jc.valida_ate<=now()
+        or (jc.rede='facebook' and controles.pausa_facebook) or (jc.rede='instagram' and controles.pausa_instagram)))
+    order by j.proxima_verificacao_em,j.id for update of j skip locked limit p_limite loop
     select * into a from public.admin_marketing_autorizacoes where id=g.autorizacao_id;
     select * into c from public.admin_marketing_real_contas where id=g.conta_id;
     select * into s from public.admin_marketing_real_snapshots where id=g.snapshot_id;
-    if g.etapa='publicar' and a.publicar_em>now() then continue; end if;
-    -- Consultas/cancelamento sao permitidos durante pausa/revogacao; POST de
-    -- preparar/publicar nao. Nunca transformar a falta de token em sucesso.
     if g.etapa in ('preparar','publicar') then
-      if controles.pausa_global or g.pausado or c.pausada or c.conexao<>'verificada' or c.valida_ate is null or c.valida_ate<=now()
-        or (c.rede='facebook' and controles.pausa_facebook) or (c.rede='instagram' and controles.pausa_instagram)
-        then continue; end if;
       if s.estado<>'pronto' or g.aceite_revogado_em is not null or a.publicar_em<now()-interval '15 minutes'
         or c.revisao<>(a.manifesto->'_destino'->>'contaRevisao')::integer
         or not exists(select 1 from jsonb_array_elements(c.capacidades) k where k->>'formato'=a.formato
@@ -508,6 +529,7 @@ revoke all on function public.admin_marketing_reservar(),
  public.admin_marketing_real_consultar(uuid,jsonb),public.admin_marketing_real_comando(uuid,jsonb),
  public.admin_marketing_real_admitir(uuid,uuid,uuid,integer),
  public.admin_marketing_real_confirmar(uuid,uuid,text,integer,uuid),
+ public.admin_marketing_real_alvo_ocupado(uuid,uuid,text,timestamptz,uuid),
  public.admin_marketing_real_claim(uuid,integer),public.admin_marketing_real_recibo(uuid,uuid,uuid,integer,jsonb) from public,anon,authenticated;
 grant execute on function public.admin_marketing_reservar(),
  public.admin_marketing_real_snapshot_iniciar(uuid,jsonb),public.admin_marketing_real_snapshot_finalizar(uuid,uuid,integer,jsonb),
@@ -515,5 +537,6 @@ grant execute on function public.admin_marketing_reservar(),
  public.admin_marketing_real_consultar(uuid,jsonb),public.admin_marketing_real_comando(uuid,jsonb),
  public.admin_marketing_real_admitir(uuid,uuid,uuid,integer),
  public.admin_marketing_real_confirmar(uuid,uuid,text,integer,uuid),
+ public.admin_marketing_real_alvo_ocupado(uuid,uuid,text,timestamptz,uuid),
  public.admin_marketing_real_claim(uuid,integer),public.admin_marketing_real_recibo(uuid,uuid,uuid,integer,jsonb) to service_role;
 commit;

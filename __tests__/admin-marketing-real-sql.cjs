@@ -55,6 +55,41 @@ async function main(){
   await assert.rejects(rpc('recibo',[worker,pub.jobId,pub.leaseId,pub.revisao,{estado:'publicacao-aceita',remotoId:'post-2'}]),/revisao-divergente/);checks++;
   ok((await db.query(`select count(*)::int as n from public.admin_marketing_envios where operacao='publicar'`)).rows[0].n===1,'publicar exatamente um intento');
   await assert.rejects(db.query(`update public.admin_marketing_real_snapshots set dados='{}' where id=$1`,[snap.id]),/permission denied/);checks++;
+  // Sondas do Lynx (B1-B3, 18/10/2026) viradas regressao.
+  const ig=randomUUID(),fb=randomUUID(),cap=[{formato:'feed',estado:'disponivel',revisao:1}];
+  await db.query(`insert into public.admin_marketing_real_contas(id,rede,remoto_id,rotulo,credencial_ref,conexao,valida_ate,pausada,capacidades)
+   values($1,'instagram','201','IG fixture','MARKETING_IG_TOKEN','verificada',now()+interval '1 day',false,$3),
+   ($2,'facebook','202','FB fixture','MARKETING_FB_TOKEN','verificada',now()+interval '1 day',false,$3)`,[ig,fb,cap]);
+  await db.exec('reset role');await db.query(`update public.admin_marketing_controles set pausa_facebook=false`);await db.exec('set role service_role');
+  const novoSnap=async i=>{const s=await rpc('snapshot_iniciar',[admin,{...pedido,midias:[{...pedido.midias[0],sha256:String(i).padStart(64,'e')}]}]);
+   return rpc('snapshot_finalizar',[admin,s.id,1,{identidade:s.identidade,midias:s.dados.midias,capa:null}]);};
+  const agendar=async(s,conta,quando)=>{const pv=await rpc('previa',[admin,{snapshotId:s.id,snapshotRevisao:2,destinos:[{contaId:conta,formato:'feed',publicarEm:quando,fuso:'America/Sao_Paulo'}]}]);
+   return rpc('confirmar',[admin,pv.id,pv.hash,1,randomUUID()]);};
+  const fila=[];for(const [i,conta] of [[1,ig],[2,ig],[3,ig],[4,fb]])fila.push((await agendar(await novoSnap(i),conta,future)).loteId);
+  await db.exec('reset role');
+  await db.query(`update public.admin_marketing_agendamentos g set proxima_verificacao_em=now()-case when c.rede='instagram' then interval '5 minutes' else interval '1 minute' end
+   from public.admin_marketing_real_contas c where c.id=g.conta_id and g.lote_id=any($1)`,[fila]);
+  await db.query(`update public.admin_marketing_controles set pausa_instagram=true`);await db.exec('set role service_role');
+  let fome=await rpc('claim',[worker,3]);
+  ok(fome.length===1&&fome[0].rede==='facebook','B1 jobs pausados no topo nao ocupam o limite do claim');
+  ok((await db.query(`select count(*)::int as n from public.admin_marketing_agendamentos where lote_id=any($1) and estado='programado-no-painel' and lease_id is null`,[fila.slice(0,3)])).rows[0].n===3,'B1 pausados seguem intactos na fila');
+  await db.exec('reset role');await db.query(`update public.admin_marketing_controles set pausa_instagram=false`);await db.exec('set role service_role');
+  fome=await rpc('claim',[worker,3]);ok(fome.length===3&&fome.every(x=>x.rede==='instagram'),'B1 retomar a rede devolve os jobs');
+  const T1=new Date(Date.now()+5400000).toISOString(),T2=new Date(Date.now()+7200000).toISOString(),T3=new Date(Date.now()+9000000).toISOString();
+  const s5=await novoSnap(5),job5=async()=>(await db.query(`select g.id,g.revisao,g.pausado,a.manifesto->'_destino'->>'publicarEm' as destino_em
+   from public.admin_marketing_agendamentos g join public.admin_marketing_autorizacoes a on a.id=g.autorizacao_id
+   where g.snapshot_id=$1 and g.estado<>'cancelado'`,[s5.id])).rows;
+  await agendar(s5,ig,T1);let [j5]=await job5();
+  await rpc('comando',[admin,{acao:'pausar',jobId:j5.id,revisaoEsperada:j5.revisao,idempotencia:randomUUID()}]);[j5]=await job5();
+  await rpc('comando',[admin,{acao:'reagendar',jobId:j5.id,revisaoEsperada:j5.revisao,idempotencia:randomUUID(),publicarEm:T2}]);
+  const reag=await job5();ok(reag.length===1&&reag[0].id!==j5.id&&reag[0].pausado===true,'B2 reagendar mantem a pausa do job');
+  ok(reag[0].destino_em===T2,'B3 manifesto do reagendado guarda o horario novo');
+  await assert.rejects(agendar(s5,ig,T2),/agendamento-ja-existe/);checks++;
+  ok((await job5()).length===1,'B3 previa nova no alvo reagendado nao cria segundo job');
+  await agendar(s5,ig,T3);[j5]=(await job5()).filter(x=>x.destino_em===T2);
+  await assert.rejects(rpc('comando',[admin,{acao:'reagendar',jobId:j5.id,revisaoEsperada:j5.revisao,idempotencia:randomUUID(),publicarEm:T3}]),/agendamento-ja-existe/);checks++;
+  await rpc('comando',[admin,{acao:'reagendar',jobId:j5.id,revisaoEsperada:j5.revisao,idempotencia:randomUUID(),publicarEm:T1}]);
+  ok((await job5()).map(x=>x.destino_em).sort().join()===[T1,T3].sort().join(),'B3 voltar ao horario de um job ja cancelado continua permitido');
   // Grants das colunas NOVAS sao exercidos com service_role durante todo teste.
   const grants=await db.query(`select has_column_privilege('service_role','public.admin_marketing_agendamentos','revisao','UPDATE') as revisao,
     has_column_privilege('service_role','public.admin_marketing_agendamentos','processamento','UPDATE') as processamento`);
