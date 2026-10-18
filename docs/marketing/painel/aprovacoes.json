@@ -299,7 +299,10 @@
       "versao": "1c398ea8564f05f9d8b97daa4bd77bb15c88a9de",
       "pedidoEm": "2026-10-07T10:25:35-03:00",
       "motivo": "Adicionar mais elementos de enfeite no criativo, deixando seu visual mais atrativo",
-      "origem": "pedido do autor no painel local"
+      "origem": "pedido do autor no painel local",
+      "estado": "desatualizado",
+      "encerradoEm": "2026-10-18T00:16:13.989Z",
+      "motivoEncerramento": "Reprovado pelo autor em 17/10/2026: tudo da secao Precisa de voce das semanas 39 e 40 vai para o acervo."
     },
     {
       "id": "1619d029006510a1",

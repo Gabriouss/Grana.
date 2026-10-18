@@ -1,0 +1,307 @@
+{
+  "recusas": [
+    {
+      "id": "64574675db17b0e9",
+      "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/funil/revisao-06/E01-feed-1080x1440.png",
+      "versao": "8bbccde0ba29b48985c5a3a34f2ae093cb2ec584",
+      "motivo": "Feio, refiz ela manualmente",
+      "sucessora": null,
+      "recusadoEm": "2026-10-11T23:05:00-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "ff257b914962c304",
+        "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/funil/revisao-06/E01-feed-1080x1440.png"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/funil/revisao-06/E01-feed-1080x1440.png",
+          "destino": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/funil/revisao-06/E01-feed-1080x1440.png",
+          "sha1": "4c012b536f3abedee5f262c4384cf6b7304f5c6b"
+        }
+      ],
+      "indice": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/INDICE.md"
+    },
+    {
+      "id": "7be1070e13947af6",
+      "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/funil/revisao-06/E02-feed-1080x1440.png",
+      "versao": "53a6ca4c3453c4842a3eb990a92f2b9a9bcf063d",
+      "motivo": "Feio, refiz ela manualmente",
+      "sucessora": null,
+      "recusadoEm": "2026-10-11T23:05:08-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "c83625656f013ebb",
+        "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/funil/revisao-06/E02-feed-1080x1440.png"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/funil/revisao-06/E02-feed-1080x1440.png",
+          "destino": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/funil/revisao-06/E02-feed-1080x1440.png",
+          "sha1": "69e85aafbe5b72337226b4c72f4cff62c0ed3009"
+        }
+      ],
+      "indice": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/INDICE.md"
+    },
+    {
+      "id": "2d10b333178f4f4f",
+      "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/funil/revisao-06/E06-feed-1080x1440.png",
+      "versao": "28965a90867fb6bf949099730761270883988449",
+      "motivo": "Feio, refiz ela manualmente",
+      "sucessora": null,
+      "recusadoEm": "2026-10-11T23:05:32-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "b1e6bd195df25b9f",
+        "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/funil/revisao-06/E06-feed-1080x1440.png"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/funil/revisao-06/E06-feed-1080x1440.png",
+          "destino": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/funil/revisao-06/E06-feed-1080x1440.png",
+          "sha1": "4d91764fd39f5f06fc0467addfa7ea838a723c0c"
+        }
+      ],
+      "indice": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/INDICE.md"
+    },
+    {
+      "id": "19d1dc3196af6f0f",
+      "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/funil/revisao-06/E05-feed-1080x1440.png",
+      "versao": "99d57eff3a7bbc51354fa5588b095d70a459dd51",
+      "motivo": "Reprovado pelo autor em 17/10/2026: tudo da secao Precisa de voce das semanas 39 e 40 vai para o acervo.",
+      "sucessora": null,
+      "recusadoEm": "2026-10-17T21:15:40-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "284932b96a3f2aef",
+        "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/funil/revisao-06/E05-feed-1080x1440.png",
+        "versao": "99d57eff3a7bbc51354fa5588b095d70a459dd51"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/funil/revisao-06/E05-feed-1080x1440.png",
+          "destino": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/funil/revisao-06/E05-feed-1080x1440.png",
+          "sha1": "a5e1c3f3e4658b1f9ddb278b555bacc2252e5559"
+        }
+      ],
+      "indice": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/INDICE.md"
+    },
+    {
+      "id": "798bb6295edc1ce0",
+      "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/reels/grana-motion-desistiu-foto-da-nota-narrado.mp4",
+      "versao": "5a02af1f7ca5e59eb3616f4dc3c5fb4b8c4ab9fa",
+      "motivo": "Reprovado pelo autor em 17/10/2026: tudo da secao Precisa de voce das semanas 39 e 40 vai para o acervo.",
+      "sucessora": null,
+      "recusadoEm": "2026-10-17T21:15:41-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "ec1707cfc370a4d0",
+        "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/reels/grana-motion-desistiu-foto-da-nota-narrado.mp4",
+        "versao": "b6d9b963cbc96f826f968ad488393fa81786585f"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/reels/grana-motion-desistiu-foto-da-nota-narrado.mp4",
+          "destino": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/reels/grana-motion-desistiu-foto-da-nota-narrado.mp4",
+          "sha1": "1859341b762ea2d627bad969dd02f7a470dd9177"
+        }
+      ],
+      "indice": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/INDICE.md"
+    },
+    {
+      "id": "687bf75943969195",
+      "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/reels/grana-motion-desistiu-foto-da-nota-narrado-capa.png",
+      "versao": "7b273bfd05684c9ec58a02e4df6a08810aa746ed",
+      "motivo": "Reprovado pelo autor em 17/10/2026: tudo da secao Precisa de voce das semanas 39 e 40 vai para o acervo.",
+      "sucessora": null,
+      "recusadoEm": "2026-10-17T21:15:41-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "d4cfc9882e3ac6f2",
+        "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/reels/grana-motion-desistiu-foto-da-nota-narrado-capa.png",
+        "versao": "7b273bfd05684c9ec58a02e4df6a08810aa746ed"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/reels/grana-motion-desistiu-foto-da-nota-narrado-capa.png",
+          "destino": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/reels/grana-motion-desistiu-foto-da-nota-narrado-capa.png",
+          "sha1": "c34c5d2eea37158015b3ad9b44dbd4f4ca945eba"
+        }
+      ],
+      "indice": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/INDICE.md"
+    },
+    {
+      "id": "c79d6fdd6c081a9f",
+      "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/reels/grana-r5-colar-pix-v6-narrado.mp4",
+      "versao": "1b303ca9e9b82935cceadb1b761a06e4aaa3e938",
+      "motivo": "Reprovado pelo autor em 17/10/2026: tudo da secao Precisa de voce das semanas 39 e 40 vai para o acervo.",
+      "sucessora": null,
+      "recusadoEm": "2026-10-17T21:15:42-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "b0da0d5bb6e08b43",
+        "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/reels/grana-r5-colar-pix-v6-narrado.mp4",
+        "versao": "fc3a3494dfd732a071156921307733be5ce663be"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/reels/grana-r5-colar-pix-v6-narrado.mp4",
+          "destino": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/reels/grana-r5-colar-pix-v6-narrado.mp4",
+          "sha1": "f2f3549f1f3e6157bb5fd4254c571127df59b86f"
+        }
+      ],
+      "indice": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/INDICE.md"
+    },
+    {
+      "id": "5e421b087de9bf48",
+      "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/reels/grana-r5-colar-pix-v6.mp4",
+      "versao": "a148e2d188220a19009148902fa321c376e671f0",
+      "motivo": "Reprovado pelo autor em 17/10/2026: tudo da secao Precisa de voce das semanas 39 e 40 vai para o acervo.",
+      "sucessora": null,
+      "recusadoEm": "2026-10-17T21:15:42-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "ed2066fd186ef1b1",
+        "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/reels/grana-r5-colar-pix-v6.mp4",
+        "versao": "d158cdad1f5ede02725261f03f86afe6de830c87"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/reels/grana-r5-colar-pix-v6.mp4",
+          "destino": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/reels/grana-r5-colar-pix-v6.mp4",
+          "sha1": "53e9a82858dc3fa69e734a4ff3e57bacb170c6c7"
+        }
+      ],
+      "indice": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/INDICE.md"
+    },
+    {
+      "id": "8248562f7ef5e97a",
+      "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/reels/grana-r5-colar-pix-v6-narrado-capa.png",
+      "versao": "c6002578ff1c1f3f74ab95645910db15d84648f8",
+      "motivo": "Reprovado pelo autor em 17/10/2026: tudo da secao Precisa de voce das semanas 39 e 40 vai para o acervo.",
+      "sucessora": null,
+      "recusadoEm": "2026-10-17T21:15:42-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "1bd36e61de947686",
+        "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/reels/grana-r5-colar-pix-v6-narrado-capa.png",
+        "versao": "c6002578ff1c1f3f74ab95645910db15d84648f8"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/reels/grana-r5-colar-pix-v6-narrado-capa.png",
+          "destino": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/reels/grana-r5-colar-pix-v6-narrado-capa.png",
+          "sha1": "646be9950a3347ecfbbc51383ee4a329c562f274"
+        }
+      ],
+      "indice": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/INDICE.md"
+    },
+    {
+      "id": "90105969ad02e108",
+      "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/reels/grana-r5-colar-pix-v6-capa.png",
+      "versao": "c6002578ff1c1f3f74ab95645910db15d84648f8",
+      "motivo": "Reprovado pelo autor em 17/10/2026: tudo da secao Precisa de voce das semanas 39 e 40 vai para o acervo.",
+      "sucessora": null,
+      "recusadoEm": "2026-10-17T21:15:42-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "f6b00dd471f9d619",
+        "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/reels/grana-r5-colar-pix-v6-capa.png",
+        "versao": "c6002578ff1c1f3f74ab95645910db15d84648f8"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/para-aprovacao/pecas/reels/grana-r5-colar-pix-v6-capa.png",
+          "destino": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/reels/grana-r5-colar-pix-v6-capa.png",
+          "sha1": "646be9950a3347ecfbbc51383ee4a329c562f274"
+        }
+      ],
+      "indice": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/INDICE.md"
+    },
+    {
+      "id": "c40c77191459029e",
+      "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/historico/pecas/lumen-v7/carrossel-*",
+      "versao": "fd157de7b2f20ee8236d321590b25b2228fe5359",
+      "motivo": "Reprovado pelo autor em 17/10/2026: tudo da secao Precisa de voce das semanas 39 e 40 vai para o acervo.",
+      "sucessora": null,
+      "recusadoEm": "2026-10-17T21:15:42-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "863e6fcfa5d4849f",
+        "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/lumen-v7/carrossel-*",
+        "versao": "fd157de7b2f20ee8236d321590b25b2228fe5359"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/lumen-v7/carrossel-1.png",
+          "destino": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/historico/pecas/lumen-v7/carrossel-1.png",
+          "sha1": "331a4bbaa5be54bf906b89cd1895ba8d23fae581"
+        },
+        {
+          "origem": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/lumen-v7/carrossel-2.png",
+          "destino": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/historico/pecas/lumen-v7/carrossel-2.png",
+          "sha1": "fd4507d7d28f04a3d63fdfdd0cde052821d847f9"
+        },
+        {
+          "origem": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/lumen-v7/carrossel-3.png",
+          "destino": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/historico/pecas/lumen-v7/carrossel-3.png",
+          "sha1": "70f4343fa406702cc5e02d579593645f6c616c6a"
+        },
+        {
+          "origem": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/lumen-v7/carrossel-4.png",
+          "destino": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/historico/pecas/lumen-v7/carrossel-4.png",
+          "sha1": "c96ccb1cd919b9e1cc1eed051df5bd407326b1e7"
+        },
+        {
+          "origem": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/lumen-v7/carrossel-5.png",
+          "destino": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/historico/pecas/lumen-v7/carrossel-5.png",
+          "sha1": "fae7925e79601b58ef36196cc5b750b98c4b1e59"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/INDICE.md"
+    },
+    {
+      "id": "48ee1547d4e23a19",
+      "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/historico/pecas/r13/reel-r13-final.mp4",
+      "versao": "ff913a438e6c528553386371c6832d098cf24a15",
+      "motivo": "Reprovado pelo autor em 17/10/2026: tudo da secao Precisa de voce das semanas 39 e 40 vai para o acervo.",
+      "sucessora": null,
+      "recusadoEm": "2026-10-17T21:15:42-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "5f4bf83d7a1ce13a",
+        "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/r13/reel-r13-final.mp4",
+        "versao": "ff913a438e6c528553386371c6832d098cf24a15"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/r13/reel-r13-final.mp4",
+          "destino": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/historico/pecas/r13/reel-r13-final.mp4",
+          "sha1": "f4b99fa66c77cd9c9a8ef3a684f55dbe18b1a618"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/INDICE.md"
+    },
+    {
+      "id": "3d6dd66dd7e0403c",
+      "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/historico/pecas/lumen-v6/card.png",
+      "versao": "1c398ea8564f05f9d8b97daa4bd77bb15c88a9de",
+      "motivo": "Reprovado pelo autor em 17/10/2026: tudo da secao Precisa de voce das semanas 39 e 40 vai para o acervo.",
+      "sucessora": null,
+      "recusadoEm": "2026-10-17T21:16:14-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "019d5b922cd94eb9",
+        "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/lumen-v6/card.png",
+        "versao": "1c398ea8564f05f9d8b97daa4bd77bb15c88a9de"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/lumen-v6/card.png",
+          "destino": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/historico/pecas/lumen-v6/card.png",
+          "sha1": "cdc20019442f2179afe2002c00cb119f4ef58e7e"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/INDICE.md"
+    }
+  ]
+}

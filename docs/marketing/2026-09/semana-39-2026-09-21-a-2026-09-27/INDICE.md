@@ -64,3 +64,24 @@ Correção pronta, aguardando aceite do autor. Os quatro pedidos de 07/10 sobre 
 - `para-aprovacao/pecas/reels/grana-reels-v8-pop.mp4` é **revisão superada** da família `R-P` em `docs/marketing/painel/familias.json`, por decisão do autor em 13/10/2026: a vigente é a versão curta com notificação, `2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/grana-reels-notificacao-1.mp4`. O aceite de 07/10/2026 10:31:32 (versão `bc01c04e92ba`) continua registrado acima e em `aprovacoes.json`, mas não vale mais para publicação: o painel recusa aprovar, planejar, vincular ou promover a superada. O arquivo fica nesta pasta até a mudança física para `historico`, que depende de nova autorização.
 - 14/10/2026: o arquivo foi movido com `git mv` para `historico/pecas/reels/grana-reels-v8-pop.mp4` (regra 25: substituída vai a historico), por decisão do Orquestrador Supremo aplicando a D1 do autor. Bytes iguais; o aceite de 07/10 segue só no histórico.
 - 14/10/2026: **aceite composto derivado de aceites separados** para `aprovados/pecas/reels/grana-motion-desistiu-foto-da-nota.mp4` com a capa `2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/grana-motion-desistiu-foto-da-nota-capa-1080x1920.png` (versão composta `c3f392ddc38a`): vídeo aceito em 25/09/2026 (linha acima) e capa aceita em 11/10/2026 23:20:52 (versão `6462e08da201`). Decisão do Orquestrador Supremo, 14/10/2026; registro em `docs/marketing/painel/aprovacoes.json`. Reel novo exige aceite composto explícito.
+
+<!-- recusa:284932b96a3f2aef:99d57eff3a7bbc51354fa5588b095d70a459dd51 -->
+- Recusa do autor em 2026-10-17T21:15:40-03:00: [peca em historico](historico/pecas/funil/revisao-06/E05-feed-1080x1440.png). Motivo registrado no painel; nada publicado ou agendado.
+
+<!-- recusa:ec1707cfc370a4d0:5a02af1f7ca5e59eb3616f4dc3c5fb4b8c4ab9fa -->
+- Recusa do autor em 2026-10-17T21:15:41-03:00: [peca em historico](historico/pecas/reels/grana-motion-desistiu-foto-da-nota-narrado.mp4). Motivo registrado no painel; nada publicado ou agendado.
+
+<!-- recusa:d4cfc9882e3ac6f2:7b273bfd05684c9ec58a02e4df6a08810aa746ed -->
+- Recusa do autor em 2026-10-17T21:15:41-03:00: [peca em historico](historico/pecas/reels/grana-motion-desistiu-foto-da-nota-narrado-capa.png). Motivo registrado no painel; nada publicado ou agendado.
+
+<!-- recusa:b0da0d5bb6e08b43:1b303ca9e9b82935cceadb1b761a06e4aaa3e938 -->
+- Recusa do autor em 2026-10-17T21:15:42-03:00: [peca em historico](historico/pecas/reels/grana-r5-colar-pix-v6-narrado.mp4). Motivo registrado no painel; nada publicado ou agendado.
+
+<!-- recusa:ed2066fd186ef1b1:a148e2d188220a19009148902fa321c376e671f0 -->
+- Recusa do autor em 2026-10-17T21:15:42-03:00: [peca em historico](historico/pecas/reels/grana-r5-colar-pix-v6.mp4). Motivo registrado no painel; nada publicado ou agendado.
+
+<!-- recusa:1bd36e61de947686:c6002578ff1c1f3f74ab95645910db15d84648f8 -->
+- Recusa do autor em 2026-10-17T21:15:42-03:00: [peca em historico](historico/pecas/reels/grana-r5-colar-pix-v6-narrado-capa.png). Motivo registrado no painel; nada publicado ou agendado.
+
+<!-- recusa:f6b00dd471f9d619:c6002578ff1c1f3f74ab95645910db15d84648f8 -->
+- Recusa do autor em 2026-10-17T21:15:42-03:00: [peca em historico](historico/pecas/reels/grana-r5-colar-pix-v6-capa.png). Motivo registrado no painel; nada publicado ou agendado.
