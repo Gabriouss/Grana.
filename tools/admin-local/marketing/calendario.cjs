@@ -128,7 +128,7 @@ function obterCalendario(raiz, mes) {
 
   const avisos = [...(dados.avisosCronograma || [])];
   if (aprovadosSemData.length) avisos.push(`${aprovadosSemData.length} ${aprovadosSemData.length === 1 ? 'peça aprovada está sem data válida' : 'peças aprovadas estão sem data válida'} no cronograma. Nenhuma data foi inferida.`);
-  if (desatualizados.length) avisos.push(`${desatualizados.length} ${desatualizados.length === 1 ? 'planejamento perdeu a validade porque a peça mudou ou perdeu' : 'planejamentos perderam a validade porque a peça mudou ou perdeu'} o aceite.`);
+  // O aviso de planejamento sem validade é da tela (alerta com o atalho para a lista); aqui ele só duplicava.
 
   return {
     mes: alvo,

@@ -320,6 +320,7 @@ async function test(nome, fn, padaria, nomes) {
   await test('conteúdo muda: calendário desatualizado e ensaio recusa', async (h) => {
     await h.iniciar(); await h.aprovar(); await h.declararD(); fs.writeFileSync(path.join(h.dir, h.rel), 'nova versão sem aceite');
     const r = cal.obterCalendario(h.dir, '2026-10'); assert.equal(r.itens.length, 0); assert.equal(r.desatualizados.length, 1);
+    assert(!r.avisos.some((s) => /perdeu a validade|perderam a validade/.test(s)), 'o aviso de planejamento sem validade é só da tela, sem duplicar no servidor');
     assert.equal(r.desatualizados[0].estadoCronograma, 'desatualizado'); assert(r.desatualizados[0].proximoPasso.includes('versão atual'));
     assert(en.ensaiar(h.dir).itens[0].bloqueios.includes('versao-ou-caminho-mudou'));
   });
