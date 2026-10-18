@@ -14,6 +14,13 @@ const FUSO = 'America/Sao_Paulo';
 const dataLocal = new Intl.DateTimeFormat('en-CA', { timeZone: FUSO, year: 'numeric', month: '2-digit', day: '2-digit' });
 const MAX_PAGINAS = 4;
 const VALIDADE_MS = 60_000;
+// Miniatura: o navegador nunca fala com a CDN (CSP img-src fica 'self'). Este processo busca, com lista
+// fechada de hosts, redirecionamento manual, tipo e tamanho limitados.
+const HOST_CDN = /^([a-z0-9-]+\.)+(fbcdn\.net|cdninstagram\.com)$/i;
+const TIPOS_IMAGEM = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const MAX_IMAGEM = 5 * 1024 * 1024, MAX_REDIRECIONAMENTOS = 2, PRAZO_IMAGEM_MS = 10_000, MAX_URLS = 500, VALIDADE_URL_MS = 30 * 60_000;
+const ROTA_MIDIA = '/api/marketing/calendario/meta-midia?chave=';
+const cdnPermitida = (v) => { try { const u = new URL(v); return u.protocol === 'https:' && !u.username && !u.password && (u.port === '' || u.port === '443') && HOST_CDN.test(u.hostname) ? u : null; } catch { return null; } };
 
 const diaLocal = (iso) => {
   const p = Object.fromEntries(dataLocal.formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
@@ -92,9 +99,56 @@ function vincular(posts, pecas) {
   });
 }
 
-function criarMetaPublicados({ ler = config.ler, catalogo = listarPecas, agora = () => new Date() } = {}) {
+function criarMetaPublicados({ ler = config.ler, catalogo = listarPecas, agora = () => new Date(), buscar = (...a) => fetch(...a) } = {}) {
   const cache = new Map();
-  return async function publicados(raiz, filtros = {}) {
+  const urls = new Map(); // chave -> { url, ate }: o cliente só conhece a chave, nunca a URL da CDN
+  function lembrar(posts) {
+    for (const p of posts) {
+      const url = cdnPermitida(p.miniatura);
+      if (url) {
+        urls.delete(p.chave);
+        urls.set(p.chave, { url: url.href, ate: agora().getTime() + VALIDADE_URL_MS });
+        p.miniatura = `${ROTA_MIDIA}${p.chave}`;
+      } else p.miniatura = null; // host fora da lista: sem miniatura, legenda e link seguem
+    }
+    while (urls.size > MAX_URLS) urls.delete(urls.keys().next().value);
+  }
+  async function midia(chaveMidia) {
+    if (typeof chaveMidia !== 'string' || !/^[0-9a-f]{16}$/.test(chaveMidia)) throw new ErroMarketing('pedido-invalido', 'Miniatura inválida.', 400);
+    const guardada = urls.get(chaveMidia);
+    if (!guardada || guardada.ate < agora().getTime()) throw new ErroMarketing('midia-indisponivel', 'Atualize o calendário para recarregar a miniatura.', 404);
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), PRAZO_IMAGEM_MS);
+    try {
+      let alvo = guardada.url;
+      for (let salto = 0; ; salto++) {
+        const u = cdnPermitida(alvo);
+        if (!u) throw new ErroMarketing('midia-recusada', 'Origem da miniatura não permitida.', 502);
+        const r = await buscar(u.href, { method: 'GET', redirect: 'manual', signal: ctl.signal, headers: { Accept: 'image/*' } });
+        if (r.status >= 300 && r.status < 400) {
+          if (salto >= MAX_REDIRECIONAMENTOS) throw new ErroMarketing('midia-recusada', 'Redirecionamentos demais.', 502);
+          alvo = new URL(r.headers.get('location') || '', u).href;
+          continue;
+        }
+        if (r.status !== 200) throw new ErroMarketing('midia-indisponivel', 'A Meta não entregou a miniatura.', 502);
+        const mime = String(r.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+        if (!TIPOS_IMAGEM.has(mime)) throw new ErroMarketing('midia-recusada', 'Tipo de miniatura não permitido.', 502);
+        if (Number(r.headers.get('content-length')) > MAX_IMAGEM) throw new ErroMarketing('midia-recusada', 'Miniatura grande demais.', 502);
+        // Leitura em pedaços dentro do prazo: corpo pendurado ou maior que o limite aborta.
+        const partes = []; let total = 0;
+        for await (const parte of r.body) {
+          total += parte.length;
+          if (total > MAX_IMAGEM) { ctl.abort(); throw new ErroMarketing('midia-recusada', 'Miniatura grande demais.', 502); }
+          partes.push(Buffer.from(parte));
+        }
+        return { mime, conteudo: Buffer.concat(partes) };
+      }
+    } catch (e) {
+      if (e instanceof ErroMarketing) throw e;
+      throw new ErroMarketing('midia-indisponivel', 'A miniatura não pôde ser carregada.', 502);
+    } finally { clearTimeout(timer); }
+  }
+  async function publicados(raiz, filtros = {}) {
     if (!filtros || typeof filtros !== 'object' || Array.isArray(filtros) || Object.keys(filtros).some((k) => k !== 'mes')) {
       throw new ErroMarketing('pedido-invalido', 'Confira os filtros do calendário.', 400);
     }
@@ -141,15 +195,19 @@ function criarMetaPublicados({ ler = config.ler, catalogo = listarPecas, agora =
       }
     }
     const ordem = lidos.sort((a, b) => Date.parse(b.publicadoEm) - Date.parse(a.publicadoEm));
+    const posts = vincular(ordem, catalogo(raiz).pecas);
+    lembrar(posts);
     const dados = {
       mes, redes, completo: Object.values(redes).every((r) => r.status === 'disponivel' && r.completo),
-      consultadoEm: agora().toISOString(), posts: vincular(ordem, catalogo(raiz).pecas),
+      consultadoEm: agora().toISOString(), posts,
     };
     // Cache só do resultado inteiro: falha parcial é consultada de novo no próximo pedido.
     if (dados.completo) cache.set(mes, { em: agora().getTime(), dados });
     return dados;
-  };
+  }
+  publicados.midia = midia;
+  return publicados;
 }
 
 const padrao = criarMetaPublicados();
-module.exports = { criarMetaPublicados, publicados: padrao, vincular };
+module.exports = { criarMetaPublicados, publicados: padrao, midia: padrao.midia, vincular };

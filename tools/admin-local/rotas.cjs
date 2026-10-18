@@ -294,6 +294,18 @@ const GET = {
     }
     return rotaMarketingGet(res, 'meta-publicados', ['publicados'], [filtros], { posts: [], redes: {}, completo: false });
   },
+  // Miniatura de post publicado: o navegador só conhece a chave; a CDN é lida aqui, com lista fechada de hosts.
+  '/api/marketing/calendario/meta-midia': async (req, res, url) => {
+    try {
+      if ([...url.searchParams.keys()].some((k) => k !== 'chave') || url.searchParams.getAll('chave').length !== 1) {
+        return responderErro(res, 400, 'pedido-invalido', 'Miniatura inválida.');
+      }
+      const b = await marketing('meta-publicados').midia(url.searchParams.get('chave'));
+      res.writeHead(200, { 'Content-Type': b.mime, 'Content-Length': b.conteudo.length,
+        'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' });
+      res.end(req.method === 'HEAD' ? undefined : b.conteudo);
+    } catch (e) { erroDeMarketing(res, e); }
+  },
   '/api/marketing/calendario/ensaio': (req, res) => rotaMarketingGet(res, 'meta-ensaio', ['ensaiar'], [], { modo: 'ensaio', realHabilitado: false, itens: [] }),
   '/api/marketing/cronograma': (req, res) => rotaMarketingGet(res, 'cronograma', ['ler'], [], null),
   '/api/marketing/resultados': async (req, res, url) => responderOk(res, await adaptador('meta-leitura').ler({ incluirHoje: url.searchParams.get('incluirHoje') === '1' })),
