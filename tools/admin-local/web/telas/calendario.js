@@ -158,12 +158,25 @@ export async function montar(raiz, ctx) {
     try { return (await feedLido).find((p) => p.id === id && p.versao === versao) || null; } catch (err) { console.warn('[calendario-feed]', err.codigo || 'leitura-falhou'); feedLido = null; return null; }
   }
   const itemPrevia = (i, pub) => { const jobs = i.jobs || []; return { carregarPeca, origem: jobs.length ? 'real' : 'planejado', peca: i.peca, data: i.data, jobs, publicado: pub || null, formato: formatoPrevia(i.peca, jobs, pub), rede: jobs[0]?.destino?.rede || pub?.rede || 'instagram' }; };
+  // A miniatura vem de uma rota local autenticada (a CSP só aceita self, data e blob): busca com o cabeçalho do painel e exibe como blob.
+  const ROTA_MINIATURA = '/api/marketing/calendario/meta-midia?chave=';
+  function miniaturaDoPost(src) {
+    if (typeof src !== 'string' || !src.startsWith(ROTA_MINIATURA)) return null;
+    const img = h('img', { class: 'cal-meta-miniatura', alt: '', decoding: 'async' });
+    const sem = h('span', { class: 'campo-ajuda', texto: 'Sem miniatura' });
+    const caixa = h('div', { class: 'cal-meta-miniatura-caixa' }, img);
+    fetch(src, { headers: { Accept: 'image/*', 'X-Grana-Admin': '1' }, credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(`status-${r.status}`))))
+      .then((b) => { const url = URL.createObjectURL(b); img.addEventListener('load', () => URL.revokeObjectURL(url), { once: true }); img.src = url; })
+      .catch((err) => { console.warn('[calendario-miniatura]', err.message || 'falhou'); caixa.replaceChildren(sem); });
+    return caixa;
+  }
   function cartaoMeta(post, compacto = false) {
     const rede = ROTULO_REDE[post.rede] || post.rede;
-    const link = linkPublicado(post.link), miniatura = linkPublicado(post.miniatura);
+    const link = linkPublicado(post.link), miniatura = !compacto ? miniaturaDoPost(post.miniatura) : null;
     return h('article', { class: `cal-item cal-unico-item cal-item-meta${compacto ? ' cal-compacto' : ''}`, draggable: 'false', dados: { chave: post.chave }, 'aria-label': `Post publicado no ${rede}`,
       ...abrirAoClicar({ carregarPeca, origem: 'meta', peca: null, data: post.data, jobs: [], publicado: post, formato: FORMATO_PREVIA[post.formato] || 'feed', rede: post.rede }) },
-    !compacto && miniatura ? h('img', { class: 'cal-meta-miniatura', src: miniatura, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }) : null,
+    miniatura,
     h('strong', { class: 'cal-item-titulo', texto: `${rede} · ${ROTULO_FORMATO[post.formato] || 'Post'}` }),
     h('span', { class: 'cal-item-canal', texto: 'Publicado na Meta' }),
     post.legenda ? h('span', { class: 'cal-meta-legenda', texto: post.legenda }) : null,
@@ -176,7 +189,7 @@ export async function montar(raiz, ctx) {
       ondragstart: (e) => { if (!movel) { e.preventDefault(); return; } e.dataTransfer.setData('text/x-grana-peca', i.peca.id); },
       ...abrirAoClicar(itemPrevia(i, pub)) },
     h('strong', { class: 'cal-item-titulo', texto: nomeDaPeca(i.peca) }),
-    h('span', { class: 'cal-item-canal', texto: reais.length ? 'Agendamento confirmado' : pub ? 'Publicado na Meta' : 'Planejado' }));
+    h('span', { class: 'cal-item-canal', texto: reais.length ? 'Agendado' : pub ? 'Publicado' : 'Planejado' }));
   }
   function cartao(i, planejar) {
     const reais = i.jobs || [], pub = pubDe(i.peca);
@@ -197,7 +210,7 @@ export async function montar(raiz, ctx) {
         j.estado === 'publicado' ? linkPublicado(j.permalink) ? h('a', { href: linkPublicado(j.permalink), target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação' }) : h('span', { texto: 'O link da publicação não está disponível nesta fonte. Consulte o ID e o recibo.' }) : null,
         h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Ver destino e recibos', onclick: () => { navegar({ visao: 'lista' }); } }))),
       ...(i.historico || []).map((j) => h('span', { class: 'campo-ajuda', texto: `${j.destino.rede}: ${ESTADO_REAL[j.estado] || j.estado}${j.codigoErro ? ` · ${j.codigoErro}` : ''}. Histórico na lista.` })),
-      movel ? h('div', { class: 'bloco-acao' }, h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Mudar data', onclick: planejar }), dataPassou(i.data) ? h('span', { class: 'campo-ajuda cal-aviso-real', texto: 'Data passou' }) : leituraRealCompleta(camada, dados?.reais) ? h('button', { class: 'botao', type: 'button', texto: 'Agendar de verdade', onclick: (e) => abrir(i.peca, i.data, e.currentTarget) }) : h('span', { class: 'campo-ajuda cal-aviso-real', texto: AVISO_PODE_TER_REAL })) : null);
+      movel ? h('div', { class: 'bloco-acao' }, h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Mudar data', onclick: planejar }), dataPassou(i.data) ? h('span', { class: 'campo-ajuda cal-aviso-real', texto: 'Data passou' }) : leituraRealCompleta(camada, dados?.reais) ? h('button', { class: 'botao', type: 'button', texto: 'Agendar de verdade', onclick: (e) => abrir(i.peca, i.data, e.currentTarget) }) : null) : null);
   }
   async function desenhar() {
     const minha = ++geracao;
@@ -333,6 +346,8 @@ async function montarEditorial(raiz, ctx) {
   for (const i of itens) somar(i.data, { item: i });
   if (ctx.cartaoMeta && ctx.meta?.mostrar) for (const post of ctx.meta.posts) if (!post.vinculo && /^\d{4}-\d{2}-\d{2}$/.test(post.data || '')) somar(post.data, { post });
   const compacto = !!ctx.cartaoCompacto;
+  // O aviso de leitura real incompleta aparece uma vez por superfície (bandeja, janela do dia, agenda), nunca em cada cartão.
+  const notaReal = () => (ctx.agendarReal && !ctx.leituraRealCompleta ? h('p', { class: 'campo-ajuda cal-aviso-real', texto: AVISO_PODE_TER_REAL }) : null);
   const cartaoCheio = (e) => (e.item ? cartao(e.item) : ctx.cartaoMeta(e.post));
   const cartaoNaCelula = (e) => (!compacto ? cartaoCheio(e) : e.item ? ctx.cartaoCompacto(e.item) : ctx.cartaoMeta(e.post, true));
   const LIMITE_NA_CELULA = 2;
@@ -342,7 +357,7 @@ async function montarEditorial(raiz, ctx) {
     const [a, mm, dd] = iso.split('-').map(Number);
     dialogoDia.replaceChildren(
       h('div', { class: 'cal-unico-painel-topo' }, h('h2', { id: 'cal-dia-titulo', texto: `${dd} de ${MESES[mm - 1]} de ${a}` }), h('button', { class: 'botao', type: 'button', texto: 'Fechar' })),
-      h('div', { class: 'cal-dia-lista' }, lista.map(cartaoCheio)));
+      notaReal(), h('div', { class: 'cal-dia-lista' }, lista.map(cartaoCheio)));
     dialogoDia.showModal?.();
   };
   corpo.appendChild(dialogoDia);
@@ -383,6 +398,7 @@ async function montarEditorial(raiz, ctx) {
 
   // --- agenda (lista) para tela estreita
   const agenda = h('ol', { class: 'agenda', 'aria-label': `Publicações de ${MESES[m - 1]}` });
+  if (notaReal) { const n = notaReal(); if (n) agenda.appendChild(h('li', { class: 'agenda-nota' }, n)); }
   const agendaEntradas = [...porDia.entries()].sort(([x], [y]) => x.localeCompare(y)).flatMap(([data, lista]) => lista.map((e) => ({ data, e })));
   if (!agendaEntradas.length) agenda.appendChild(h('li', { class: 'agenda-vazia', texto: ctx.calendarioParcial ? 'A leitura real ainda está incompleta. Continue a consulta para conferir o mês.' : 'Nenhuma publicação marcada neste mês.' }));
   for (const { data, e } of agendaEntradas) {
@@ -397,18 +413,24 @@ async function montarEditorial(raiz, ctx) {
   const abrirSemData = true;
   const blocoSemData = h('details', { class: 'cal-sem-data-bloco', open: abrirSemData },
     h('summary', { class: 'secao-titulo cal-sem-data-resumo', id: 'cal-sem-data-titulo', texto: `Aprovados sem data (${semData.length})` }),
+    // Um aviso só, no topo da bandeja, em vez de um por cartão.
+    semData.length && ctx.agendarReal && !ctx.leituraRealCompleta ? h('p', { class: 'campo-ajuda cal-aviso-real', texto: AVISO_PODE_TER_REAL }) : null,
     semData.length
       ? h('ul', { class: 'lista-sem-data' }, semData.map((p) => {
-        const li = h('div', { class: 'cal-item', draggable: 'true', title: p.titulo || p.id, dados: { id: p.id } },
+        const li = h('div', { class: 'cal-item', draggable: 'true', title: nomeDaPeca(p), dados: { id: p.id } },
           p.capa?.url && p.capa.tipo === 'imagem' ? h('img', { class: 'cal-item-capa', src: ctx.urlArquivo(p.capa.url), alt: '', loading: 'lazy' }) : null,
           h('span', { class: 'cal-item-titulo', texto: nomeDaPeca(p) }),
+          p.tipo ? h('span', { class: 'cal-item-canal', texto: maiuscula(String(p.tipo)) }) : null,
           h('div', { class: 'bloco-acao' },
             h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Escolher data', onclick: () => planejar(p) }),
-            ctx.agendarReal ? ctx.leituraRealCompleta ? h('button', { class: 'botao', type: 'button', texto: 'Agendar de verdade', onclick: (e) => ctx.agendarReal(p, '', e.currentTarget) }) : h('span', { class: 'campo-ajuda cal-aviso-real', texto: AVISO_PODE_TER_REAL }) : null));
-        const item = h('li', {}, li, h('div', { class: 'bloco-acao' }, botaoVinculo(ctx, p)), detalhesCronograma(ctx, p));
-        if (ctx.params.peca === p.id) {
-          item.appendChild(h('p', { class: 'campo-ajuda', role: 'status', texto: 'Peça selecionada após o aceite. Ligue ao cronograma para receber a previsão.' }));
-        }
+            ctx.agendarReal && ctx.leituraRealCompleta ? h('button', { class: 'botao', type: 'button', texto: 'Agendar de verdade', onclick: (e) => ctx.agendarReal(p, '', e.currentTarget) }) : null));
+        // Tudo da peça fica no próprio cartão: nome, formato e botões à vista; o detalhe longo do cronograma só ao abrir.
+        const vinculo = botaoVinculo(ctx, p), detalhe = detalhesCronograma(ctx, p);
+        const item = h('li', { class: 'cal-sem-cartao' }, li,
+          vinculo || detalhe ? h('details', { class: 'cal-sem-detalhe', open: ctx.params.peca === p.id },
+            h('summary', { texto: 'Detalhes do cronograma' }),
+            ctx.params.peca === p.id ? h('p', { class: 'campo-ajuda', role: 'status', texto: 'Peça selecionada após o aceite. Ligue ao cronograma para receber a previsão.' }) : null,
+            vinculo ? h('div', { class: 'bloco-acao' }, vinculo) : null, detalhe) : null);
         li.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/x-grana-peca', p.id); e.dataTransfer.effectAllowed = 'move'; });
         return item;
       }))
@@ -429,13 +451,13 @@ async function montarEditorial(raiz, ctx) {
     contexto.appendChild(recolhido(`Previsões e entradas no calendário (${entradas.length})`,
       h('p', { class: 'nota-explicativa', texto: 'A previsão vem do cronograma. Uma alteração manual preserva essa origem; o recibo do calendário não comprova publicação na Meta.' }),
       ...entradas.map((i) => h('article', { class: 'secao' },
-        h('h3', { class: 'secao-titulo quebra', texto: i.peca?.titulo || 'Peça sem título' }), detalhesCronograma(ctx, i), botaoVinculo(ctx, i.peca)))));
+        h('h3', { class: 'secao-titulo quebra', texto: nomeDaPeca(i.peca) }), detalhesCronograma(ctx, i), botaoVinculo(ctx, i.peca)))));
   }
 
   if ((d.desatualizados || []).length) {
     contexto.appendChild(recolhido(`Planejamentos que perderam a validade (${invalidos})`,
       ctx.tabela([
-        { titulo: 'Peça', valor: (x) => x.titulo || x.id, classe: 'mono' },
+        { titulo: 'Peça', valor: (x) => nomeDaPeca(x) || x.id, classe: 'mono' },
         { titulo: 'Data marcada', valor: (x) => ctx.formatar.data(x.data) },
         { titulo: 'Motivo', valor: (x) => [x.motivo, x.proximoPasso].filter(Boolean).join(' ') },
       ], d.desatualizados, { legenda: 'Planejamentos inválidos' })));
@@ -564,13 +586,13 @@ export async function ligarCronograma(ctx, p, botao) {
     const m = (await ctx.api('/api/marketing/cronograma')).dados;
     if (ctx.obsoleta()) return;
     if (!manifestoValido(m) || !m.itens.length) throw new Error('Crie o cronograma e adicione um item antes de ligar a peça');
-    const v = await ctx.formulario({ titulo: 'Ligar ao cronograma', texto: `${p.titulo || 'Peça aceita'}. O vínculo será registrado no INDICE.md da semana.`,
+    const v = await ctx.formulario({ titulo: 'Ligar ao cronograma', texto: `${nomeDaPeca(p)}. O vínculo será registrado no INDICE.md da semana.`,
       campos: [{ nome: 'itemId', rotulo: 'Item do cronograma', tipo: 'select', obrigatorio: true, valor: m.itens[0].id,
         opcoes: m.itens.map((i) => ({ valor: i.id, rotulo: i.id })) }], rotuloBotao: 'Conferir vínculo' });
     if (!v || ctx.obsoleta()) return;
     if (!m.itens.some((i) => i.id === v.itemId)) throw new Error('Escolha um item da lista atual');
     const ok = await ctx.confirmar({ titulo: 'Confirmar vínculo', texto: 'Liga esta versão aceita à previsão local. Nenhuma ação real da Meta será habilitada.',
-      detalhes: [p.titulo || 'Peça aceita', `Item ${v.itemId} do cronograma`], rotuloBotao: 'Ligar ao cronograma' });
+      detalhes: [nomeDaPeca(p), `Item ${v.itemId} do cronograma`], rotuloBotao: 'Ligar ao cronograma' });
     if (ok !== true || ctx.obsoleta()) return;
     const r = await ctx.acao('/api/marketing/cronograma/vinculo', { pecaId: p.id, versao: p.versao, versaoEsperada: m.versao, manifestoId: m.manifestoId, itemId: v.itemId });
     if (ctx.obsoleta()) return;
@@ -654,9 +676,9 @@ export function montarEnsaioCalendario(raiz, ctx) {
 
 function itemCalendario(ctx, i, aoClicar) {
   const { h } = ctx;
-  const el = h('button', { class: 'cal-item', type: 'button', draggable: 'true', title: `${i.peca.titulo || 'Peça sem título'}, ${rotuloCanal(i.canal)}`, onclick: aoClicar },
+  const el = h('button', { class: 'cal-item', type: 'button', draggable: 'true', title: `${nomeDaPeca(i.peca)}, ${rotuloCanal(i.canal)}`, onclick: aoClicar },
     i.hora ? h('span', { class: 'cal-item-hora', texto: i.hora }) : null,
-    h('span', { class: 'cal-item-titulo', texto: i.peca.titulo || 'Peça sem título' }),
+    h('span', { class: 'cal-item-titulo', texto: nomeDaPeca(i.peca) }),
     h('span', { class: 'cal-item-canal', texto: rotuloCanal(i.canal) }));
   el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/x-grana-peca', i.peca.id); e.dataTransfer.effectAllowed = 'move'; });
   return el;
@@ -724,7 +746,7 @@ export async function escolherData(ctx, peca, dataInicial, canais) {
   try {
     const v = await ctx.formulario({
       titulo: 'Data de publicação',
-      texto: `${peca.titulo || 'Peça sem título'}. Isto só marca no calendário do painel. Ninguém publica nada por aqui.`,
+      texto: `${nomeDaPeca(peca)}. Isto só marca no calendário do painel. Ninguém publica nada por aqui.`,
       campos: [
         { nome: 'data', rotulo: 'Dia', tipo: 'date', obrigatorio: true, valor: dataInicial || '' },
         { nome: 'hora', rotulo: 'Horário (opcional)', tipo: 'time', valor: '' },

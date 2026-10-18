@@ -7,6 +7,8 @@ import {
   horarioUtcParaLocal, previaConfirmavel, resumirLote, rotuloDataHorario,
 } from './_publicacoes-reais.js';
 
+const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
+
 const REDES = { instagram: 'Instagram', facebook: 'Facebook' };
 const FORMATOS = { feed: 'Feed', carrossel: 'Carrossel', reels: 'Reels', stories: 'Stories' };
 const ESTADOS_ATIVOS = new Set(['planejado', 'programado-no-painel', 'preparando', 'agendado-na-meta']);
@@ -237,7 +239,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
         return !!conta && capacidadeDaConta(conta, formato).disponivel;
       }));
       disponibilidade.replaceChildren(
-        h('p', { class: 'pub-real-dado-real', texto: `CONTRATO REAL · ${cap.contas.length} conta(s) · ${catalogo.pecas.length} peça(s) aprovada(s) · fila ${page1.limitado ? 'parcial' : 'consultada'}` }),
+        h('p', { class: 'pub-real-dado-real', texto: `CONTRATO REAL · ${plural(cap.contas.length, 'conta', 'contas')} · ${plural(catalogo.pecas.length, 'peça aprovada', 'peças aprovadas')} · fila ${page1.limitado ? 'parcial' : 'consultada'}` }),
         h('p', { class: 'campo-ajuda', texto: 'O navegador não envia IDs de conta digitados, URLs remotas ou dados de autorização.' }));
       desenharControles();
       desenharCompositor();
@@ -317,7 +319,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
         const cursor = pilhaCursor.pop();
         await carregarPagina(cursor, false);
       }, { disabled: !pilhaCursor.length }),
-      h('span', { class: 'campo-ajuda', texto: `Até ${jobs.length} job(s) · ${pagina.limitado ? 'consulta limitada' : 'fim da fila'}` }),
+      h('span', { class: 'campo-ajuda', texto: `Até ${plural(jobs.length, 'job', 'jobs')} · ${pagina.limitado ? 'consulta limitada' : 'fim da fila'}` }),
       botao('Próxima página', async () => {
         if (!pagina.proximoCursor || ocupado) return;
         pilhaCursor.push(pagina.cursorAtual || '');
@@ -341,7 +343,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
       detalhe = null;
       detalheEl.hidden = true;
       desenharLista();
-      avisar(`Página recebida: ${jobs.length} job(s).`);
+      avisar(`Página recebida: ${plural(jobs.length, 'job', 'jobs')}.`);
     } catch (err) { if (!encerrada && !ctx.obsoleta()) erroLegivel(err, 'A consulta da próxima página'); }
     finally { busy(false); }
   }
@@ -549,7 +551,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
       intencoes.delete(chaveIntencao);
       liberarPreview();
       const resumo = resumirLote(lote.jobs);
-      avisar(`${resumo.rotulo} · ${resumo.total} destino(s) recebido(s) · lote ${lote.loteId}.`);
+      avisar(`${resumo.rotulo} · ${resumo.total} ${resumo.total === 1 ? 'destino recebido' : 'destinos recebidos'} · lote ${lote.loteId}.`);
       await atualizarFilaSemBloquear();
       recibo.focus();
     } catch (err) {
@@ -642,7 +644,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
       avisar(`${metadata.rotulo}: resposta real recebida. Confira o estado e os recibos por destino.`);
       if (Array.isArray(resultado.jobs)) {
         const resumo = resumirLote(resultado.jobs);
-        avisar(`${metadata.rotulo}: ${resumo.rotulo} · ${resumo.total} destino(s).`);
+        avisar(`${metadata.rotulo}: ${resumo.rotulo} · ${plural(resumo.total, 'destino', 'destinos')}.`);
       }
       await atualizarTudo();
     } catch (err) {
@@ -670,11 +672,11 @@ export async function montarReal(raiz, ctx, integracao = null) {
       const resumo = resumirLote(loteJobs);
       detalheEl.hidden = false;
       detalheEl.replaceChildren(h('h2', { class: 'secao-titulo', tabindex: '-1', texto: `Detalhe do lote · ${resumo.rotulo}` }),
-        h('p', { class: 'campo-ajuda', texto: `${loteJobs.length} destino(s) · um estado e recibos independentes por job.` }),
+        h('p', { class: 'campo-ajuda', texto: `${plural(loteJobs.length, 'destino', 'destinos')} · um estado e recibos independentes por job.` }),
         ...loteJobs.map((j) => cartaoJob(j, true)),
         botao('Fechar detalhe', () => { detalheEl.hidden = true; detalheEl.replaceChildren(); detalhe = null; }, { operacao: false }));
       detalheEl.querySelector('h2').focus();
-      avisar(`Detalhe real carregado: ${loteJobs.length} destino(s).`);
+      avisar(`Detalhe real carregado: ${plural(loteJobs.length, 'destino', 'destinos')}.`);
     } catch (err) { if (!encerrada && !ctx.obsoleta()) erroLegivel(err, 'A consulta dos recibos'); }
     finally { busy(false); }
   }
