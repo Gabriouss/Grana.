@@ -57,6 +57,34 @@ async function test(name, fn) { await fn(); count++; console.log('OK ' + name); 
     assert.equal(h.db.pedidos[0].estado, 'falha-de-envio'); await assert.rejects(() => h.fila.retry(r.id));
     assert.equal(JSON.stringify(h.calls).includes('TEXTO PRIVADO'), false);
   });
+  // 18/10: o Aprovar da peça fecha o pedido corrigido na fila (persistido), uma ação só.
+  await test('Aprovar fecha o pedido corrigido na fila; falha ao fechar vira aviso sem desfazer o aceite', async () => {
+    const { aprovarEFechar } = require('../tools/admin-local/marketing/aprovacoes.cjs');
+    const h = setup(); await h.fila.solicitar(h.peca, { versao: h.peca.versao, motivo: 'ajuste' }); const r = await h.fila.claim(); h.peca.versao = 'b'.repeat(40);
+    await h.fila.marcar(r.id, r.lease.id, 'corrigido-aguardando-aceite', { pecaId: h.peca.id, versao: h.peca.versao, commit: 'c'.repeat(40) });
+    const aceites = [];
+    const deps = { fila: h.fila, obterPeca: () => ({ ...h.peca }), aprovar: async (_raiz, id, corpo) => { aceites.push([id, corpo.versao]); return { aprovacao: { id }, avisos: [] }; } };
+    const res = await aprovarEFechar('/fixture', h.peca.id, { versao: h.peca.versao, confirmacao: true }, deps);
+    assert.deepEqual(aceites, [[h.peca.id, h.peca.versao]], 'um aceite, da versão exibida');
+    assert.equal(res.pedidosFechados, 1); assert.equal(h.db.pedidos[0].estado, 'aceito', 'pedido fechado gravado na fila');
+    assert.equal(h.db.pedidos[0].aceite.versao, h.peca.versao);
+    const de_novo = await aprovarEFechar('/fixture', h.peca.id, { versao: h.peca.versao, confirmacao: true }, deps);
+    assert.equal(de_novo.pedidosFechados, 0, 'pedido já aceito não fecha duas vezes');
+    // Fila recusa o fechamento (versão mudou no meio): aceite fica, aviso aparece.
+    const h2 = setup(); await h2.fila.solicitar(h2.peca, { versao: h2.peca.versao, motivo: 'ajuste' }); const r2 = await h2.fila.claim(); h2.peca.versao = 'b'.repeat(40);
+    await h2.fila.marcar(r2.id, r2.lease.id, 'corrigido-aguardando-aceite', { pecaId: h2.peca.id, versao: h2.peca.versao, commit: 'c'.repeat(40) });
+    const erroOriginal = console.error; console.error = () => {};
+    try {
+      const falha = await aprovarEFechar('/fixture', h2.peca.id, { versao: h2.peca.versao, confirmacao: true }, { ...deps, fila: { listar: () => h2.fila.listar(), aceitar: async () => { throw Object.assign(new Error('x'), { codigo: 'versao-mudou' }); } } });
+      assert.equal(falha.pedidosFechados, 0); assert.ok(falha.avisos.some((t) => /não fechou/.test(t)), 'recibo visível');
+    } finally { console.error = erroOriginal; }
+    assert.equal(h2.db.pedidos[0].estado, 'corrigido-aguardando-aceite');
+    // Peça cuja versão não é a corrigida: nada fecha.
+    const h3 = setup(); await h3.fila.solicitar(h3.peca, { versao: h3.peca.versao, motivo: 'ajuste' }); const r3 = await h3.fila.claim(); h3.peca.versao = 'b'.repeat(40);
+    await h3.fila.marcar(r3.id, r3.lease.id, 'corrigido-aguardando-aceite', { pecaId: h3.peca.id, versao: 'b'.repeat(40), commit: 'c'.repeat(40) }); h3.peca.versao = 'a'.repeat(40);
+    const outra = await aprovarEFechar('/fixture', h3.peca.id, { versao: h3.peca.versao, confirmacao: true }, { ...deps, fila: h3.fila, obterPeca: () => ({ ...h3.peca }) });
+    assert.equal(outra.pedidosFechados, 0); assert.equal(h3.db.pedidos[0].estado, 'corrigido-aguardando-aceite');
+  });
   await test('versao mudou antes envio: desatualizado e zero entrega', async () => {
     const h = setup(); await h.fila.solicitar(h.peca, { versao: h.peca.versao, motivo: 'ajuste' }); h.peca.versao = 'b'.repeat(40);
     await h.fila.tick(); assert.equal(h.db.pedidos[0].estado, 'desatualizado'); assert(!h.calls.some((c) => c[0] === 'entregar'));

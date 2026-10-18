@@ -164,4 +164,22 @@ async function pedirAjuste(raiz, id, corpo = {}) {
   return { ajuste, avisos: ['Pedido recebido na fila privada. Ninguem pegou ainda; o vigia tenta entregar automaticamente. Nada foi aprovado, publicado ou agendado.'] };
 }
 
-module.exports = { listarAprovacoes, aprovar, pedirAjuste };
+// Aprovar é UMA ação (autor, 18/10): grava o aceite desta versão e fecha junto o pedido de ajuste
+// que entregou exatamente esta versão. As travas reais continuam no aprovar (legenda, versão).
+// Falha ao fechar o pedido não desfaz o aceite: vira aviso visível e log.
+async function aprovarEFechar(raiz, id, corpo = {}, deps = {}) {
+  const resultado = await (deps.aprovar || aprovar)(raiz, id, corpo);
+  const avisos = [...(resultado.avisos || [])];
+  let pedidosFechados = 0;
+  const fila = deps.fila || require('./ajustes-fila.cjs').fila;
+  const peca = (deps.obterPeca || obterPeca)(raiz, id);
+  for (const r of fila.listar().filter((x) => x.pecaId === id && x.estado === 'corrigido-aguardando-aceite' && x.versaoCorrigida === peca.versao)) {
+    try { await fila.aceitar(peca, r.id); pedidosFechados++; } catch (e) {
+      console.error(`[painel] aprovar-fechar-pedido: ${e.codigo || 'falhou'}`);
+      avisos.push('O aceite foi gravado, mas o pedido de ajuste desta peça não fechou. Atualize a tela.');
+    }
+  }
+  return { ...resultado, pedidosFechados, avisos };
+}
+
+module.exports = { listarAprovacoes, aprovar, pedirAjuste, aprovarEFechar };

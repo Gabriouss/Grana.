@@ -187,23 +187,9 @@ async function rotaMarketingGet(res, nomeModulo, nomesFuncao, args, vazio) {
   try { responderOk(res, await fn(RAIZ_DADOS, ...args)); } catch (e) { erroDeMarketing(res, e); }
 }
 
-// Aprovar é UMA ação (autor, 18/10): grava o aceite desta versão e fecha junto o pedido de ajuste
-// que entregou exatamente esta versão. As travas reais continuam no aprovar (legenda, versão).
+// Aprovar é UMA ação (autor, 18/10): aprovacoes.aprovarEFechar grava o aceite e fecha o pedido corrigido.
 async function aprovarEFecharPedido(res, id, corpo) {
-  try {
-    const resultado = await marketing('aprovacoes').aprovar(RAIZ_DADOS, id, corpo);
-    const avisos = [...(resultado.avisos || [])];
-    let pedidosFechados = 0;
-    const fila = marketing('ajustes-fila').fila;
-    const peca = marketing('catalogo').obterPeca(RAIZ_DADOS, id);
-    for (const r of fila.listar().filter((x) => x.pecaId === id && x.estado === 'corrigido-aguardando-aceite' && x.versaoCorrigida === peca.versao)) {
-      try { await fila.aceitar(peca, r.id); pedidosFechados++; } catch (e) {
-        console.error(`[painel] aprovar-fechar-pedido: ${e.codigo || 'falhou'}`);
-        avisos.push('O aceite foi gravado, mas o pedido de ajuste desta peça não fechou. Atualize a tela.');
-      }
-    }
-    responderOk(res, { ...resultado, pedidosFechados, avisos });
-  } catch (e) { erroDeMarketing(res, e); }
+  try { responderOk(res, await marketing('aprovacoes').aprovarEFechar(RAIZ_DADOS, id, corpo)); } catch (e) { erroDeMarketing(res, e); }
 }
 
 async function rotaMarketingPost(res, nomeModulo, nomesFuncao, args) {
