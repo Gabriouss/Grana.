@@ -201,7 +201,8 @@ function criarFila(deps) {
     return deps.transacao((db) => {
       const r = achar(db, id);
       if (!(r.estado === 'desatualizado' || (r.estado === 'novo' && !r.lease))) throw erro('estado-invalido', 'Somente pedido desatualizado, ou novo ainda sem entrega, pode ser encerrado por aqui.');
-      const atual = deps.obterPeca(r.pecaId);
+      let atual = null;
+      try { atual = deps.obterPeca(r.pecaId); } catch (e) { if (e?.codigo !== 'peca-inexistente') throw e; } // peça no histórico ou sumida: recibo com versão nula
       r.lease = null; r.motivoEncerramento = `${motivo}: ${prova}`;
       r.encerramento = { por: 'agente-cli', em: deps.agora(), motivo, evidencia: prova, estadoAnterior: r.estado, versaoAlvo: r.versaoAlvo || null, versaoAtualDaPeca: atual?.versao || null };
       if (r.custo) delete r.custo.autorizacao;

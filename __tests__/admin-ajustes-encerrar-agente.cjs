@@ -62,6 +62,14 @@ async function test(name, fn) { await fn(); count++; console.log('OK ' + name); 
     const comLease = setup(); const id2 = await pedidoEm(comLease, 'novo'); comLease.db.pedidos[0].lease = { id: 'l', expiraEm: 'x' };
     await assert.rejects(() => comLease.fila.encerrarPeloAgente(id2, { motivo: 'superado', evidencia: 'x' }), (e) => e.codigo === 'estado-invalido', 'novo com lease nao encerra');
   });
+  await test('peca que sumiu do catalogo (historico) nao impede o encerramento; recibo com versao nula', async () => {
+    const h = setup(); const id = await pedidoEm(h, 'desatualizado');
+    h.deps.obterPeca = () => { throw Object.assign(new Error('x'), { codigo: 'peca-inexistente' }); };
+    const r = await m.exports.criarFila(h.deps).encerrarPeloAgente(id, { motivo: 'superado', evidencia: 'peca em historico' });
+    assert.equal(r.encerramento.versaoAtualDaPeca, null);
+    const h2 = setup(); const id2 = await pedidoEm(h2, 'desatualizado'); h2.deps.obterPeca = () => { throw new Error('outro erro'); };
+    await assert.rejects(() => m.exports.criarFila(h2.deps).encerrarPeloAgente(id2, { motivo: 'superado', evidencia: 'x' }), /outro erro/);
+  });
   await test('CLI: sintaxe fechada e sem lease', async () => {
     const fonte = fs.readFileSync(path.resolve(__dirname, '../tools/admin-local/marketing/ajustes-cli.cjs'), 'utf8');
     assert.ok(/acao === 'encerrar'/.test(fonte) && /--motivo/.test(fonte) && /--evidencia/.test(fonte));
