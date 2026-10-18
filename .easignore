@@ -70,3 +70,7 @@ supabase/email-templates/
 supabase/*.sql
 supabase/functions/*
 !supabase/functions/_shared/
+scripts/
+.github/
+deno.lock
+vercel.json
