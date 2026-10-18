@@ -7,7 +7,155 @@ import { CANAIS, rotuloCanal } from './_pecas.js';
 const DIAS_SEMANA = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
+const ESTADO_REAL = { planejado: 'Planejado', 'programado-no-painel': 'Programado no painel', preparando: 'Preparando', 'agendado-na-meta': 'Agendado na Meta', publicado: 'Publicado', falhou: 'Falhou', cancelado: 'Cancelado', 'cancelamento-pendente': 'Cancelamento pendente', 'precisa-conferir': 'Precisa conferir', bloqueado: 'Bloqueado' };
+const identidade = (p) => JSON.stringify([p?.pecaId || p?.id, p?.versao]);
+export function diaReal(job) {
+  const data = new Date(job?.destino?.publicarEm);
+  if (!Number.isFinite(data.getTime())) return null;
+  const partes = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(data).map((p) => [p.type, p.value]));
+  return `${partes.year}-${partes.month}-${partes.day}`;
+}
+export function linkPublicado(valor) {
+  try { const u = new URL(valor); return u.protocol === 'https:' && !u.username && !u.password ? u.href : null; } catch { return null; }
+}
+// Somente apresentação. A identidade editorial e os registros reais nunca são gravados juntos.
+export function projetarCalendario(d, jobs, camada = 'ambos') {
+  const grupos = new Map();
+  for (const job of jobs) {
+    if (!Number.isFinite(Date.parse(job.confirmadoEm || '')) || !diaReal(job)) continue;
+    const k = identidade(job.peca);
+    if (!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push(job);
+  }
+  const itens = [];
+  const editoriais = [...(d.itens || []), ...(d.aprovadosSemData || d.semData || []).map((p) => ({ peca: p }))];
+  const vistos = new Set();
+  for (const i of editoriais) {
+    const p = i.peca || { id: i.id, versao: i.versao, titulo: i.titulo, tipo: i.tipo };
+    const k = identidade(p);
+    if (vistos.has(k)) continue;
+    vistos.add(k);
+    const todos = grupos.get(k) || [];
+    const ativos = camada === 'real' ? todos : todos.filter((j) => !['cancelado', 'falhou'].includes(j.estado));
+    if (camada !== 'planejado' && ativos.length) {
+      const dias = [...new Set(ativos.map(diaReal))].sort();
+      for (const dia of dias) itens.push({ ...i, peca: p, data: dia, jobs: ativos.filter((j) => diaReal(j) === dia), historico: todos.filter((j) => ['cancelado', 'falhou'].includes(j.estado)), marcador: dias.length > 1, principal: dia === dias[0] });
+    } else if (camada !== 'real' && i.data) itens.push({ ...i, peca: p, historico: todos });
+  }
+  // Sem vínculo exato, o job permanece na lista. Não cria uma peça editorial fictícia.
+  const semData = (d.aprovadosSemData || d.semData || []).filter((p) => camada !== 'real' && (camada === 'planejado' || !(grupos.get(identidade(p)) || []).some((j) => !['cancelado', 'falhou'].includes(j.estado))));
+  return { ...d, itens: itens.sort((a, b) => a.data.localeCompare(b.data)), aprovadosSemData: semData, semData };
+}
+
 export async function montar(raiz, ctx) {
+  const { h } = ctx;
+  const agora = new Date();
+  const mes = /^\d{4}-(?:0[1-9]|1[0-2])$/.test(ctx.params.mes || '') ? ctx.params.mes : `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
+  const camada = ['planejado', 'real', 'ambos'].includes(ctx.params.camada) ? ctx.params.camada : 'ambos';
+  const visao = ctx.params.visao === 'lista' ? 'lista' : 'calendario';
+  const navegar = (campos = {}) => ctx.navegar(`#/marketing/calendario?${new URLSearchParams({ mes, camada, visao, ...campos })}`);
+  const moverMes = (delta) => { const [a, m] = mes.split('-').map(Number); const d = new Date(a, m - 1 + delta, 1); navegar({ mes: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` }); };
+  ctx.cabecalho(raiz, 'Calendário', 'Planejamento editorial, agendamentos confirmados e recibos por destino. Horários em São Paulo.', [
+    h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Mês anterior', onclick: () => moverMes(-1) }),
+    h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Hoje', onclick: () => navegar({ mes: `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}` }) }),
+    h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Próximo mês', onclick: () => moverMes(1) }),
+  ]);
+  const barra = h('div', { class: 'cal-unico-filtros' },
+    h('div', { class: 'bloco-acao', role: 'group', 'aria-label': 'Camada do calendário' }, ['planejado', 'real', 'ambos'].map((v) => h('button', { class: 'botao', type: 'button', texto: { planejado: 'Planejado', real: 'Real', ambos: 'Ambos' }[v], 'aria-pressed': String(camada === v), onclick: () => navegar({ camada: v }) }))),
+    h('div', { class: 'bloco-acao', role: 'group', 'aria-label': 'Visão do calendário' }, ['calendario', 'lista'].map((v) => h('button', { class: 'botao', type: 'button', texto: v === 'lista' ? 'Lista e recibos' : 'Calendário', 'aria-pressed': String(visao === v), onclick: () => navegar({ visao: v }) }))));
+  const topoReal = h('div', { class: 'cal-unico-pausas' });
+  const status = h('div', { class: 'cal-unico-status', role: 'status', 'aria-live': 'polite' });
+  const calendario = h('div', { hidden: visao === 'lista' });
+  const fila = h('div', { hidden: visao !== 'lista' || camada === 'planejado' });
+  const paginacao = h('div', { class: 'bloco-acao' });
+  const dialogo = h('dialog', { class: 'cal-unico-painel', 'aria-labelledby': 'cal-unico-painel-titulo' });
+  const conteudoPainel = h('div');
+  let focoOrigem = null, controleReal = null, encerrada = false, dados = null, ocupado = false, geracao = 0;
+  const acumulados = new Map();
+  let sequencia = new Map();
+  const fechar = () => dialogo.close?.();
+  dialogo.appendChild(h('div', { class: 'cal-unico-painel-topo' }, h('h2', { id: 'cal-unico-painel-titulo', texto: 'Agendar de verdade' }), h('button', { class: 'botao', type: 'button', texto: 'Fechar painel', onclick: fechar })));
+  dialogo.appendChild(conteudoPainel);
+  dialogo.addEventListener('close', () => focoOrigem?.focus?.());
+  raiz.appendChild(barra); raiz.appendChild(topoReal); raiz.appendChild(status); raiz.appendChild(calendario); raiz.appendChild(fila); raiz.appendChild(paginacao); raiz.appendChild(dialogo);
+  const abrir = (peca, data, origem) => {
+    if (!controleReal?.abrirCompositor) { ctx.aviso('O agendamento real ainda não está disponível. Atualize os dados.', 'erro'); return; }
+    focoOrigem = origem;
+    if (controleReal.abrirCompositor(peca, data) === false) return;
+    dialogo.showModal();
+  };
+  function cartao(i, planejar) {
+    const reais = i.jobs || [];
+    return h('article', { class: `cal-item cal-unico-item${reais.length ? ' cal-item-real' : ''}`, draggable: reais.length ? 'false' : 'true', dados: { peca: i.peca.id, versao: i.peca.versao },
+      ondragstart: (e) => { if (reais.length) { e.preventDefault(); return; } e.dataTransfer.setData('text/x-grana-peca', i.peca.id); } },
+      h('strong', { class: 'cal-item-titulo', texto: i.marcador && !i.principal ? `Destino de ${i.peca.titulo || 'peça'}` : i.peca.titulo || 'Peça sem título' }),
+      h('span', { class: 'cal-item-canal', texto: reais.length ? i.marcador ? 'Mesma peça, destinos em dias diferentes' : 'Agendamento confirmado' : 'Planejado' }),
+      ...reais.map((j) => h('div', { class: 'cal-unico-destino' },
+        h('strong', { texto: `${j.destino.rede} · ${j.destino.formato} · ${ESTADO_REAL[j.estado] || `Estado desconhecido: ${j.estado}`}` }),
+        h('span', { texto: new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }).format(new Date(j.destino.publicarEm)) + ' · São Paulo' }),
+        j.codigoErro ? h('span', { texto: `Motivo: ${j.codigoErro}` }) : null,
+        j.estado === 'publicado' ? linkPublicado(j.permalink) ? h('a', { href: linkPublicado(j.permalink), target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação' }) : h('span', { texto: 'O link da publicação não está disponível nesta fonte. Consulte o ID e o recibo.' }) : null,
+        h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Ver destino e recibos', onclick: () => { navegar({ visao: 'lista' }); } }))),
+      ...(i.historico || []).map((j) => h('span', { class: 'campo-ajuda', texto: `${j.destino.rede}: ${ESTADO_REAL[j.estado] || j.estado}${j.codigoErro ? ` · ${j.codigoErro}` : ''}. Histórico na lista.` })),
+      !reais.length ? h('div', { class: 'bloco-acao' }, h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Mudar data', onclick: planejar }), h('button', { class: 'botao', type: 'button', texto: 'Agendar de verdade', onclick: (e) => abrir(i.peca, i.data, e.currentTarget) })) : null);
+  }
+  async function desenhar() {
+    const minha = ++geracao;
+    calendario.replaceChildren();
+    await montarEditorial(calendario, { ...ctx, params: { ...ctx.params, mes }, calendarioParcial: dados.reais && camada !== 'planejado' && !dados.reais.completo, cabecalho() {}, cartaoCalendario: cartao, agendarReal: abrir,
+      obsoleta: () => encerrada || ctx.obsoleta() || minha !== geracao,
+      api: (url) => url.startsWith('/api/marketing/calendario?') ? Promise.resolve({ dados: projetarCalendario(dados, [...acumulados.values()], camada) }) : ctx.api(url) });
+  }
+  async function carregar(continuar = false) {
+    if (ocupado || encerrada || ctx.obsoleta()) return;
+    ocupado = true; paginacao.replaceChildren();
+    const cursor = continuar ? dados?.reais?.proximoCursor : null;
+    status.replaceChildren(h('p', { texto: 'Lendo o mês e os estados confirmados…' }));
+    try {
+      const resposta = (await ctx.api(`/api/marketing/calendario?${new URLSearchParams({ mes, camada, ...(cursor ? { cursorReal: cursor } : {}) })}`)).dados;
+      if (encerrada || ctx.obsoleta()) return;
+      if (!resposta || !Array.isArray(resposta.itens)) throw new Error('O calendário não devolveu os dados esperados.');
+      const r = resposta.reais;
+      if (!continuar) sequencia = new Map();
+      for (const j of r?.itens || []) {
+        const antes = acumulados.get(j.jobId);
+        if (!antes || j.revisao >= antes.revisao) acumulados.set(j.jobId, j);
+        const visto = sequencia.get(j.jobId);
+        if (!visto || j.revisao >= visto.revisao) sequencia.set(j.jobId, j);
+      }
+      if (r?.completo && r.status === 'disponivel') {
+        for (const id of acumulados.keys()) if (!sequencia.has(id)) acumulados.delete(id);
+      }
+      dados = resposta;
+      const incompleto = r && r.status !== 'nao-consultado' && (!r.completo || r.status === 'indisponivel' || (!continuar && r.continuacao));
+      status.replaceChildren(...(incompleto ? [ctx.alerta('atencao', `Leitura ${r.status === 'indisponivel' ? 'indisponível' : 'parcial'} dos agendamentos. Os dados já recebidos foram preservados. ${r.motivo || 'Há mais resultados para consultar.'}`)] : []),
+        r?.consultadoEm ? h('p', { class: 'campo-ajuda', texto: `Consulta real: ${ctx.formatar.dataHora(r.consultadoEm)} · São Paulo` }) : null,
+        ...(resposta.pendenciasLegenda?.length ? [ctx.alerta('atencao', `${resposta.pendenciasLegenda.length} peças já aprovadas precisam de legenda. Confira a Aprovação antes de agendar.`)] : []));
+      await desenhar();
+      if (r?.proximoCursor) paginacao.appendChild(h('button', { class: 'botao', type: 'button', texto: 'Carregar mais agendamentos do mês', onclick: async () => { await carregar(true); controleReal?.atualizarLista?.(); } }));
+      paginacao.appendChild(h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Atualizar mês', onclick: async () => { await carregar(); controleReal?.atualizarLista?.(); } }));
+      if (camada === 'planejado' && visao === 'lista') fila.replaceChildren(h('p', { texto: 'Selecione Real ou Ambos para consultar a fila e os recibos.' }));
+    } catch (err) {
+      console.warn('[calendario-unico]', err.codigo || 'leitura-falhou');
+      status.replaceChildren(ctx.alerta('atencao', 'A leitura do mês falhou. Os estados já recebidos continuam na tela; nenhuma falha ou exclusão foi presumida.'), h('button', { class: 'botao', type: 'button', texto: 'Tentar novamente', onclick: () => carregar(continuar) }));
+    } finally { ocupado = false; }
+  }
+  await carregar();
+  if (!dados || encerrada || ctx.obsoleta()) return;
+  // Compatibilidade com fontes editoriais anteriores, sem fingir uma fila real vazia.
+  if (dados.reais) {
+    const { montarReal } = await import('./_publicacoes-reais-ui.js');
+    if (ctx.obsoleta()) return;
+    controleReal = await montarReal(raiz, ctx, { topo: topoReal, painel: conteudoPainel, fila,
+      vinculado: (job) => [...(dados.itens || []), ...(dados.aprovadosSemData || dados.semData || []).map((p) => ({ peca: p }))].some((i) => identidade(i.peca || i) === identidade(job.peca)),
+      listar: async (atualizar = true) => { if (atualizar) await carregar(); return { jobs: [...acumulados.values()], limitado: !dados?.reais?.completo, proximoCursor: null }; },
+      aposConfirmar: () => carregar(),
+    });
+  }
+  return () => { encerrada = true; geracao++; controleReal?.(); dialogo.close?.(); };
+}
+
+async function montarEditorial(raiz, ctx) {
   const { h } = ctx;
   const hoje = new Date();
   const mes = /^\d{4}-\d{2}$/.test(ctx.params.mes || '') ? ctx.params.mes : `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
@@ -58,6 +206,7 @@ export async function montar(raiz, ctx) {
   if (avisos.length) corpo.appendChild(h('div', { class: 'lista-alertas' }, avisos));
 
   const planejar = (peca, dataInicial) => escolherData(ctx, peca, dataInicial, canais);
+  const cartao = (i) => ctx.cartaoCalendario ? ctx.cartaoCalendario(i, () => planejar(i.peca, i.data)) : itemCalendario(ctx, i, () => planejar(i.peca, i.data));
 
   // --- grade do mês
   const titulo = h('h2', { class: 'secao-titulo', texto: `${MESES[m - 1]} de ${ano}` });
@@ -82,7 +231,7 @@ export async function montar(raiz, ctx) {
       'aria-label': `${dia.getDate()} de ${MESES[dia.getMonth()]}${porDia.has(iso) ? `, ${porDia.get(iso).length} publicação` : ''}`,
       dados: { data: iso },
     }, h('span', { class: 'cal-num', texto: String(dia.getDate()) }),
-    (porDia.get(iso) || []).map((i) => itemCalendario(ctx, i, () => planejar(i.peca, i.data))));
+    (porDia.get(iso) || []).map((i) => cartao(i)));
     // alvo de arrastar
     celula.addEventListener('dragover', (e) => { if (e.dataTransfer.types.includes('text/x-grana-peca')) { e.preventDefault(); celula.classList.add('cal-alvo'); } });
     celula.addEventListener('dragleave', () => celula.classList.remove('cal-alvo'));
@@ -90,7 +239,7 @@ export async function montar(raiz, ctx) {
       e.preventDefault();
       celula.classList.remove('cal-alvo');
       const id = e.dataTransfer.getData('text/x-grana-peca');
-      const peca = semData.find((p) => p.id === id) || itens.find((i) => i.peca.id === id)?.peca;
+      const peca = semData.find((p) => p.id === id) || itens.find((i) => !i.jobs?.length && i.peca.id === id)?.peca;
       if (peca) planejar(peca, iso);
     });
     linha.appendChild(celula);
@@ -99,13 +248,10 @@ export async function montar(raiz, ctx) {
 
   // --- agenda (lista) para tela estreita
   const agenda = h('ol', { class: 'agenda', 'aria-label': `Publicações de ${MESES[m - 1]}` });
-  if (!itens.length) agenda.appendChild(h('li', { class: 'agenda-vazia', texto: 'Nenhuma publicação marcada neste mês.' }));
+  if (!itens.length) agenda.appendChild(h('li', { class: 'agenda-vazia', texto: ctx.calendarioParcial ? 'A leitura real ainda está incompleta. Continue a consulta para conferir o mês.' : 'Nenhuma publicação marcada neste mês.' }));
   for (const i of itens) {
     agenda.appendChild(h('li', { class: 'agenda-item' },
-      h('span', { class: 'agenda-data', texto: `${ctx.formatar.data(i.data)}${i.hora ? ` às ${i.hora}` : ''}` }),
-      h('span', { class: 'agenda-titulo', texto: i.peca.titulo || 'Peça sem título' }),
-      h('span', { class: 'agenda-canal', texto: rotuloCanal(i.canal) }),
-      h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Mudar data', onclick: () => planejar(i.peca, i.data) })));
+      h('span', { class: 'agenda-data', texto: ctx.formatar.data(i.data) }), cartao(i)));
   }
 
   // --- coluna "Aprovados sem data"
@@ -119,7 +265,8 @@ export async function montar(raiz, ctx) {
         const li = h('div', { class: 'cal-item', draggable: 'true', title: p.titulo || p.id, dados: { id: p.id } },
           p.capa?.url && p.capa.tipo === 'imagem' ? h('img', { class: 'cal-item-capa', src: ctx.urlArquivo(p.capa.url), alt: '', loading: 'lazy' }) : null,
           h('span', { class: 'cal-item-titulo', texto: p.titulo || 'Peça sem título' }),
-          h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Escolher data', onclick: () => planejar(p) }));
+          h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Escolher data', onclick: () => planejar(p) }),
+          ctx.agendarReal ? h('button', { class: 'botao', type: 'button', texto: 'Agendar de verdade', onclick: (e) => ctx.agendarReal(p, '', e.currentTarget) }) : null);
         const item = h('li', {}, li, h('div', { class: 'bloco-acao' }, botaoVinculo(ctx, p)), detalhesCronograma(ctx, p));
         if (ctx.params.peca === p.id) {
           item.appendChild(h('p', { class: 'campo-ajuda', role: 'status', texto: 'Peça selecionada após o aceite. Ligue ao cronograma para receber a previsão.' }));

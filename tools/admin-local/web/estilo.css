@@ -3059,3 +3059,26 @@ dialog.central::backdrop { background: var(--scrim); }
 .pub-real-previa-corpo { display: grid; gap: var(--s-md); min-width: 0; }
 .pub-real-previa-corpo .feed-post-midia { width: 100%; max-width: 100%; max-height: min(70vh, 560px); }
 .pub-real-previa-corpo .feed-trilho, .pub-real-previa-corpo .feed-slide { min-width: 0; max-width: 100%; }
+/* Calendário único: dados no mês, operação em painel lateral, recibos em lista. */
+.cal-unico-filtros { display:flex; flex-wrap:wrap; justify-content:space-between; gap:16px; margin:16px 0; }
+.cal-unico-filtros [aria-pressed="true"] { background:var(--accent-2); color:var(--paper); }
+.cal-unico-status { margin:12px 0; }
+.cal-unico-item { display:flex; flex-direction:column; gap:8px; width:100%; text-align:left; min-width:0; overflow-wrap:anywhere; padding:12px; }
+.cal-unico-item .bloco-acao { gap:8px; }
+.cal-unico-item .botao { white-space:normal; min-height:36px; }
+.cal-unico-destino { display:flex; flex-direction:column; gap:6px; border-top:1px solid var(--rule-strong); padding-top:8px; line-height:1.5; }
+.cal-item-real { cursor:default; }
+.cal-unico-painel { position:fixed; inset:0 0 0 auto; margin:0; box-sizing:border-box; width:min(820px, 88vw); max-width:100vw; height:100dvh; max-height:100dvh; overflow:auto; border:0; border-left:1px solid var(--rule-strong); background:var(--paper); color:var(--ink); padding:24px; }
+.cal-unico-painel::backdrop { background:rgba(0,0,0,.55); }
+.cal-unico-painel-topo { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:20px; }
+.cal-unico-painel .pub-real-compositor { margin:0; }
+.cal-unico-painel .pub-real-pecas { max-height:240px; overflow:auto; }
+.cal-unico-painel .pub-real-contas { grid-template-columns:1fr; }
+.cal-unico-painel .pub-real-previa-grid { grid-template-columns:1fr; }
+.cal-unico-painel .secao { min-width:0; }
+.cal-unico-pausas:empty, .cal-unico-status:empty { display:none; }
+.tela-calendario [hidden] { display:none !important; }
+.tela-calendario .agenda-item { grid-template-columns:100px minmax(0,1fr); align-items:start; }
+.tela-calendario .cal-dia { min-width:0; }
+@media (max-width:899px) { .cal-unico-painel { width:94vw; padding:20px; } }
+@media (max-width:480px) { .cal-unico-painel { width:100vw; padding:16px; } .tela-calendario .agenda-item { grid-template-columns:1fr; gap:8px; } .cal-unico-filtros { gap:12px; } .cal-unico-filtros .bloco-acao { flex-wrap:wrap; gap:6px; } }

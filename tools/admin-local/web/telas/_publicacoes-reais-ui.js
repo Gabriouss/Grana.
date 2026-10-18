@@ -13,7 +13,7 @@ const ESTADOS_ATIVOS = new Set(['planejado', 'programado-no-painel', 'preparando
 const ESTADOS_TERMINAIS = new Set(['publicado', 'cancelado']);
 const MIME_OK = new Set(['image/png', 'image/jpeg', 'video/mp4']);
 
-export async function montarReal(raiz, ctx) {
+export async function montarReal(raiz, ctx, integracao = null) {
   const { h } = ctx;
   const cliente = criarClientePublicacoes(ctx);
   let capacidades = null;
@@ -43,6 +43,7 @@ export async function montarReal(raiz, ctx) {
 
   const corpo = h('div', { class: 'tela-corpo publicacoes pub-real' });
   const recibo = h('p', { class: 'publicacoes-recibo', role: 'status', 'aria-live': 'polite', tabindex: '-1' });
+  const reciboPainel = h('p', { class: 'publicacoes-recibo-painel', role: 'status', 'aria-live': 'polite' });
   const disponibilidade = h('div', { class: 'pub-real-disponibilidade', role: 'status', 'aria-live': 'polite' });
   const controles = h('div', { class: 'pub-real-controles' });
   const compositor = h('section', { class: 'secao pub-real-compositor', 'aria-labelledby': 'pub-real-compor-titulo' });
@@ -53,8 +54,12 @@ export async function montarReal(raiz, ctx) {
     h('a', { class: 'botao botao-fantasma', href: '#/marketing/publicacoes?modo=simulacao', texto: 'Abrir simulação isolada' }),
     h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Atualizar estado real', onclick: () => atualizarTudo() }),
   ];
-  ctx.cabecalho(raiz, 'Agendamento real', 'Uma confirmação autoriza execução futura no serviço remoto. Calendário editorial e Dia D são referências; não autorizam publicação.', acoesTopo);
-  raiz.append(corpo, recibo, disponibilidade, controles, compositor, previewEl, lista, detalheEl);
+  if (!integracao) ctx.cabecalho(raiz, 'Agendamento real', 'Uma confirmação autoriza execução futura no serviço remoto. Calendário editorial e Dia D são referências; não autorizam publicação.', acoesTopo);
+  if (integracao) {
+    integracao.topo.append(disponibilidade, controles, recibo, h('div', { class: 'bloco-acao' }, acoesTopo));
+    integracao.painel.append(reciboPainel, compositor, previewEl);
+    integracao.fila.append(lista, detalheEl);
+  } else raiz.append(corpo, recibo, disponibilidade, controles, compositor, previewEl, lista, detalheEl);
 
   const botao = (texto, onclick, opcoes = {}) => h('button', {
     class: `botao ${opcoes.primario ? 'botao-primario' : 'botao-fantasma'}`,
@@ -65,6 +70,8 @@ export async function montarReal(raiz, ctx) {
   function avisar(texto, erro = false) {
     recibo.textContent = texto;
     recibo.setAttribute('role', erro ? 'alert' : 'status');
+    reciboPainel.textContent = texto;
+    reciboPainel.setAttribute('role', erro ? 'alert' : 'status');
   }
 
   function erroLegivel(err, acao = 'A operação') {
@@ -200,7 +207,7 @@ export async function montarReal(raiz, ctx) {
           hora, h('small', { id: 'pub-real-fuso-ajuda', class: 'campo-ajuda', texto: 'O instante será convertido para UTC pelo fuso fixo; não depende do fuso do computador.' }),
           resumoHora)),
       h('div', { class: 'pub-real-acoes' }, previaBtn,
-        h('span', { class: 'campo-ajuda', texto: 'A data do calendário editorial e o Dia D nunca são copiados para cá.' })));
+        h('span', { class: 'campo-ajuda', texto: 'A data editorial é uma sugestão. Revise horário e destinos antes de gerar a prévia.' })));
     hora.id = 'pub-real-agendar-para';
     atualizarResumoHorario();
   }
@@ -212,7 +219,7 @@ export async function montarReal(raiz, ctx) {
     try {
       const [cap, cat, feed, page1] = await Promise.all([
         cliente.capacidades(), cliente.catalogo(),
-        ctx.api('/api/marketing/feed'), cliente.listar({ limite: 20 }),
+        ctx.api('/api/marketing/feed'), integracao ? integracao.listar() : cliente.listar({ limite: 20 }),
       ]);
       if (encerrada || ctx.obsoleta()) return;
       capacidades = cap;
@@ -298,8 +305,8 @@ export async function montarReal(raiz, ctx) {
     const paginacao = h('div', { class: 'pub-real-paginacao' });
     const filtrado = () => jobs.filter((j) => (!estado.value || j.estado === estado.value)
       && (!rede.value || j.destino.rede === rede.value)
-      && (!de.value || j.destino.publicarEm.slice(0, 10) >= de.value)
-      && (!ate.value || j.destino.publicarEm.slice(0, 10) <= ate.value));
+      && (!de.value || horarioUtcParaLocal(j.destino.publicarEm).slice(0, 10) >= de.value)
+      && (!ate.value || horarioUtcParaLocal(j.destino.publicarEm).slice(0, 10) <= ate.value));
     function filtrarPagina() { montarResultados(filtrado()); }
     function montarResultados(itens) {
       resultados.replaceChildren(...(itens.length ? itens.map((j) => cartaoJob(j, false)) : [h('p', { class: 'texto-fraco', texto: jobs.length ? 'Nenhum registro desta página corresponde aos filtros.' : 'A consulta real retornou zero jobs nesta página.' })]));
@@ -362,6 +369,7 @@ export async function montarReal(raiz, ctx) {
         r.remotoId ? h('span', { texto: `Referência remota: ${r.remotoId}` }) : null))
       : h('li', { texto: job.recibosLimitados ? 'Este detalhe não contém recibos; recarregue o detalhe para conferir.' : 'Nenhum recibo registrado.' })) : null;
     return h('article', { class: `cartao pub-real-job estado-${job.estado}` },
+      integracao && !integracao.vinculado(job) ? h('p', { class: 'campo-ajuda', texto: 'Sem vínculo editorial exato com peça e versão deste mês. O destino e os recibos reais foram preservados.' }) : null,
       h('div', { class: 'pub-real-job-topo' },
         h('div', null, h('span', { class: `pub-real-rede pub-real-${job.destino.rede}`, texto: REDES[job.destino.rede] || job.destino.rede }),
           h('h3', { texto: nome }), h('p', { texto: `${FORMATOS[job.destino.formato]} · ${resumoHora}` })),
@@ -370,7 +378,8 @@ export async function montarReal(raiz, ctx) {
       h('p', { class: 'pub-real-atualizado', texto: `Atualizado ${job.atualizadoEm} · revisão ${job.revisao}` }),
       job.codigoErro ? h('p', { class: 'pub-real-erro', role: 'alert', texto: `Código de erro: ${job.codigoErro}` }) : null,
       job.estado === 'publicado' ? h('p', { class: 'pub-real-publicado', texto: job.remotoId ? `Publicado · ID confirmado ${job.remotoId}` : 'Publicado segundo o recibo remoto.' }) : null,
-      job.permalink ? h('a', { class: 'botao botao-fantasma', href: job.permalink, target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação confirmada' }) : null,
+      linkSeguro(job.permalink) ? h('a', { class: 'botao botao-fantasma', href: linkSeguro(job.permalink), target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação confirmada' }) : null,
+      job.estado === 'publicado' && !linkSeguro(job.permalink) ? h('p', { class: 'campo-ajuda', texto: 'O link da publicação não está disponível nesta fonte. Consulte o ID e o recibo.' }) : null,
       job.recibosLimitados && !emDetalhe ? h('p', { class: 'campo-ajuda', texto: 'A lista mostra somente os recibos recentes. Abra o detalhe para conferir até 50.' }) : null,
       emDetalhe ? recibos : null,
       h('div', { class: 'pub-real-job-acoes' }, acoes));
@@ -560,9 +569,10 @@ export async function montarReal(raiz, ctx) {
   function resultadoIncerto(err) { return ['resultado-desconhecido', 'prazo-esgotado', 'rede', 'prazo'].includes(err?.codigo) || !err?.status; }
 
   function desenharConsultaPendente() {
-    const anterior = disponibilidade.querySelector('.pub-real-consulta-pendente');
+    const anterior = raiz.querySelector('.pub-real-consulta-pendente');
     anterior?.remove();
-    disponibilidade.appendChild(h('div', { class: 'pub-real-consulta-pendente', role: 'alert' },
+    const caixa = integracao && pendencia?.tipo === 'confirmar' ? integracao.painel : disponibilidade;
+    caixa.appendChild(h('div', { class: 'pub-real-consulta-pendente', role: 'alert' },
       h('p', { texto: 'A resposta se perdeu. Consulte pela mesma chave antes de tentar qualquer operação.' }),
       botao('Consultar resultado pendente', () => consultarPendente(), { operacao: false })));
   }
@@ -575,7 +585,7 @@ export async function montarReal(raiz, ctx) {
       if (encerrada || ctx.obsoleta()) return;
       jobs = d.jobs;
       pendencia = null;
-      disponibilidade.querySelector('.pub-real-consulta-pendente')?.remove();
+      raiz.querySelector('.pub-real-consulta-pendente')?.remove();
       desenharLista();
       avisar(d.jobs.length ? `Resultado conferido pela chave idempotente: ${resumirLote(d.jobs).rotulo}.` : 'A chave ainda não tem recibo consultável. Não repita a confirmação; atualize e aguarde a fonte responder.', !d.jobs.length);
       if (d.jobs.length) await atualizarFilaSemBloquear();
@@ -671,7 +681,7 @@ export async function montarReal(raiz, ctx) {
 
   async function atualizarFilaSemBloquear() {
     try {
-      const novo = await cliente.listar({ limite: 20 });
+      const novo = await (integracao ? integracao.listar() : cliente.listar({ limite: 20 }));
       if (encerrada || ctx.obsoleta()) return;
       pagina = novo; jobs = novo.jobs; pilhaCursor = [];
       desenharLista();
@@ -698,9 +708,32 @@ export async function montarReal(raiz, ctx) {
   }
 
   await atualizarTudo();
-  return () => {
+  const limpar = () => {
     encerrada = true;
     for (const controller of controladores) controller.abort();
     liberarPreview();
   };
+  limpar.abrirCompositor = (peca, data) => {
+    const exata = catalogo?.pecas.find((p) => p.id === peca.id && p.versao === peca.versao);
+    if (!exata) { ctx.aviso('A versão selecionada não está no catálogo real vigente. Atualize e confira o aceite.', 'erro'); return false; }
+    selecaoPeca = exata.id;
+    selecaoDestinos.clear();
+    liberarPreview();
+    desenharCompositor();
+    const input = compositor.querySelector('[name="agendarParaLocal"]');
+    if (input) input.value = /^\d{4}-\d{2}-\d{2}$/.test(data || '') ? `${data}T09:00` : '';
+    atualizarResumoHorario();
+    return true;
+  };
+  limpar.atualizarLista = async () => {
+    if (!integracao || encerrada) return;
+    const nova = await integracao.listar(false);
+    pagina = nova; jobs = nova.jobs; pilhaCursor = [];
+    desenharLista();
+  };
+  return limpar;
+}
+
+function linkSeguro(valor) {
+  try { const u = new URL(valor); return u.protocol === 'https:' && !u.username && !u.password ? u.href : null; } catch { return null; }
 }

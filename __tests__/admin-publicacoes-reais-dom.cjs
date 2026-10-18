@@ -81,6 +81,10 @@ const job = (contaId, rede, estado, extra = {}) => ({
       if (p === '/api/sessao') return route.fulfill(envelope({ etapa: 'ok', restanteSeg: 3600, csrfToken: 'qa-sem-credencial' }));
       if (p === '/api/marketing/notificacoes') return route.fulfill(envelope({ status: 'indisponivel', fonte: 'indisponivel', naoLidas: null }));
       if (p === '/api/marketing/feed') return route.fulfill(envelope({ pecas: [{ id: PECA.id, data: '2026-10-20', hora: '12:00' }] }));
+      if (p === '/api/marketing/cronograma') return route.fulfill(envelope(null));
+      if (p === '/api/marketing/calendario/ensaio') return route.fulfill(envelope({ modo: 'ensaio', realHabilitado: false, chamadasMeta: 0, itens: [] }));
+      if (p === '/api/marketing/calendario') return route.fulfill(envelope({ itens: [{ peca: PECA, data: '2026-10-20', canal: 'instagram-feed' }, { peca: { id: 'd'.repeat(16), versao: 'a'.repeat(40), titulo: 'Post com destinos confirmados' }, data: '2026-10-19' }], aprovadosSemData: [],
+        reais: { status: 'disponivel', completo: true, proximoCursor: null, itens: jobs.map((j) => ({ ...j, confirmadoEm: '2026-10-18T12:00:00Z', peca: { pecaId: 'd'.repeat(16), versao: 'a'.repeat(40) } })) } }));
       if (p === '/api/marketing/publicacoes/capacidades') {
         return route.fulfill(envelope(real({ contas: CONTAS, controles: { revisao: 2, pausaGlobal: false, pausaFacebook: false, pausaInstagram: false, habilitado: true } })));
       }
@@ -109,9 +113,15 @@ const job = (contaId, rede, estado, extra = {}) => ({
       return route.fulfill(envelope({}, 503));
     });
 
-    await page.goto('http://127.0.0.1:4399/#/marketing/publicacoes');
+    await page.goto('http://127.0.0.1:4399/#/marketing/publicacoes?mes=2026-10');
     await page.waitForLoadState('networkidle');
-    await page.getByRole('heading', { name: 'Agendamento real' }).waitFor({ timeout: 15000 });
+    await page.getByRole('heading', { name: 'Calendário', exact: true }).waitFor({ timeout: 15000 });
+    ok(page.url().includes('visao=lista'), `${width}px: rota antiga redireciona para lista do calendário`);
+    await page.screenshot({ path: path.join(OUT, `calendario-lista-${width}.png`), fullPage: true });
+    await page.getByRole('button', { name: 'Calendário', exact: true }).click();
+    await page.getByRole('button', { name: 'Agendar de verdade', exact: true }).waitFor();
+    await page.screenshot({ path: path.join(OUT, `calendario-mes-${width}.png`), fullPage: true });
+    await page.getByRole('button', { name: 'Agendar de verdade', exact: true }).click();
     await page.locator('.pub-real-compositor .pub-real-peca').first().waitFor({ timeout: 15000 });
     const semOverflow = () => page.evaluate('document.documentElement.scrollWidth <= innerWidth');
     ok(await semOverflow(), `${width}px: sem overflow horizontal na fila real`);

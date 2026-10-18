@@ -1,0 +1,31 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const fonte = fs.readFileSync('tools/admin-local/web/telas/calendario.js', 'utf8').replace(/^import .*\r?\n/m, '').replace(/export (async )?function /g, '$1function ');
+const sandbox = { console, Date, Intl, URL, URLSearchParams };
+vm.runInNewContext(fonte, sandbox);
+const p = { id: 'a'.repeat(16), versao: 'b'.repeat(40), titulo: 'Peça audit' };
+const d = { itens: [{ peca: p, data: '2026-10-19' }], aprovadosSemData: [] };
+const job = (id, estado, dia = '2026-10-21T01:00:00Z', extra = {}) => ({ jobId: id, revisao: 1, peca: { pecaId: p.id, versao: p.versao }, confirmadoEm: '2026-10-18T12:00:00Z', estado, destino: { rede: 'instagram', formato: 'feed', publicarEm: dia }, ...extra });
+const projetar = (jobs, camada = 'ambos') => sandbox.projetarCalendario(d, jobs, camada);
+assert.equal(sandbox.diaReal(job('a', 'publicado')), '2026-10-20', 'dia é São Paulo, não UTC');
+assert.equal(projetar([job('a', 'programado-no-painel')]).itens.length, 1);
+assert.equal(projetar([job('a', 'programado-no-painel')]).itens[0].data, '2026-10-20');
+assert.equal(projetar([job('a', 'publicado'), job('b', 'precisa-conferir')]).itens[0].jobs.length, 2);
+const separados = projetar([job('a', 'publicado'), job('b', 'precisa-conferir', '2026-10-22T15:00:00Z')]).itens;
+assert.equal(separados.length, 2);
+assert.equal(separados.filter((i) => i.principal).length, 1, 'uma identidade principal, outro dia é marcador de destino');
+assert.equal(new Set(separados.flatMap((i) => i.jobs.map((j) => j.jobId))).size, 2);
+for (const estado of ['precisa-conferir', 'cancelamento-pendente', 'estado-futuro']) assert.equal(projetar([job('a', estado)]).itens[0].jobs[0].estado, estado);
+for (const estado of ['cancelado', 'falhou']) {
+  const item = projetar([job('a', estado)]).itens[0];
+  assert.equal(item.data, '2026-10-19'); assert.equal(item.historico[0].estado, estado);
+}
+assert.equal(projetar([job('a', 'publicado', undefined, { confirmadoEm: null })]).itens[0].data, '2026-10-19', 'prévia não move o cartão');
+assert.equal(projetar([job('a', 'publicado', undefined, { peca: { pecaId: p.id, versao: 'c'.repeat(40) } })]).itens[0].data, '2026-10-19', 'não vincula outra versão');
+assert.equal(projetar([job('a', 'publicado')], 'planejado').itens[0].data, '2026-10-19');
+assert.equal(projetar([], 'real').itens.length, 0);
+for (const url of [null, 'javascript:alert(1)', 'http://example.org', 'https://user:password@example.org']) assert.equal(sandbox.linkPublicado(url), null);
+assert.equal(sandbox.linkPublicado('https://example.org/post/1'), 'https://example.org/post/1');
+assert.equal(JSON.stringify(d), JSON.stringify({ itens: [{ peca: p, data: '2026-10-19' }], aprovadosSemData: [] }), 'projeção não muda os dados de origem');
+console.log('admin-calendario-unico-tela: identidade, confirmação, estados independentes, fuso, marcadores, cancelamento/falha, links seguros e imutabilidade OK');

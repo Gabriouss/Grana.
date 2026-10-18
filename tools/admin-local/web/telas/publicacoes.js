@@ -202,6 +202,7 @@ async function montarSimulacao(raiz, ctx) {
 // escolhe explicitamente o modo de demonstração na URL.
 export async function montar(raiz, ctx) {
   if (ctx.params?.modo === 'simulacao') return montarSimulacao(raiz, ctx);
-  const { montarReal } = await import('./_publicacoes-reais-ui.js');
-  return montarReal(raiz, ctx);
+  const params = new URLSearchParams({ ...ctx.params, visao: 'lista' });
+  params.delete('modo');
+  ctx.navegar(`#/marketing/calendario?${params}`);
 }
