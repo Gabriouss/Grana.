@@ -19,6 +19,13 @@ export function linkPublicado(valor) {
   try { const u = new URL(valor); return u.protocol === 'https:' && !u.username && !u.password ? u.href : null; } catch { return null; }
 }
 // Somente apresentação. A identidade editorial e os registros reais nunca são gravados juntos.
+// "Agendar de verdade" só aparece com a fila real lida por inteiro e sem job ativo da peça: fora disso
+// (camada Planejado, leitura parcial ou indisponível) um agendamento real pode existir sem estar na tela.
+export function leituraRealCompleta(camada, reais) {
+  return camada !== 'planejado' && reais?.status === 'disponivel' && reais.completo === true;
+}
+const AVISO_PODE_TER_REAL = 'Pode já ter agendamento real. Veja em Ambos.';
+
 export function projetarCalendario(d, jobs, camada = 'ambos') {
   const grupos = new Map();
   for (const job of jobs) {
@@ -102,12 +109,12 @@ export async function montar(raiz, ctx) {
         j.estado === 'publicado' ? linkPublicado(j.permalink) ? h('a', { href: linkPublicado(j.permalink), target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação' }) : h('span', { texto: 'O link da publicação não está disponível nesta fonte. Consulte o ID e o recibo.' }) : null,
         h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Ver destino e recibos', onclick: () => { navegar({ visao: 'lista' }); } }))),
       ...(i.historico || []).map((j) => h('span', { class: 'campo-ajuda', texto: `${j.destino.rede}: ${ESTADO_REAL[j.estado] || j.estado}${j.codigoErro ? ` · ${j.codigoErro}` : ''}. Histórico na lista.` })),
-      !reais.length ? h('div', { class: 'bloco-acao' }, h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Mudar data', onclick: planejar }), h('button', { class: 'botao', type: 'button', texto: 'Agendar de verdade', onclick: (e) => abrir(i.peca, i.data, e.currentTarget) })) : null);
+      !reais.length ? h('div', { class: 'bloco-acao' }, h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Mudar data', onclick: planejar }), leituraRealCompleta(camada, dados?.reais) ? h('button', { class: 'botao', type: 'button', texto: 'Agendar de verdade', onclick: (e) => abrir(i.peca, i.data, e.currentTarget) }) : h('span', { class: 'campo-ajuda cal-aviso-real', texto: AVISO_PODE_TER_REAL })) : null);
   }
   async function desenhar() {
     const minha = ++geracao;
     calendario.replaceChildren();
-    await montarEditorial(calendario, { ...ctx, params: { ...ctx.params, mes }, calendarioParcial: dados.reais && camada !== 'planejado' && !dados.reais.completo, cabecalho() {}, cartaoCalendario: cartao, agendarReal: abrir,
+    await montarEditorial(calendario, { ...ctx, params: { ...ctx.params, mes }, calendarioParcial: dados.reais && camada !== 'planejado' && !dados.reais.completo, cabecalho() {}, cartaoCalendario: cartao, agendarReal: abrir, leituraRealCompleta: leituraRealCompleta(camada, dados?.reais),
       obsoleta: () => encerrada || ctx.obsoleta() || minha !== geracao,
       api: (url) => url.startsWith('/api/marketing/calendario?') ? Promise.resolve({ dados: projetarCalendario({ ...dados, vinculos: [...referencias.values()] }, [...acumulados.values()], camada) }) : ctx.api(url) });
   }
@@ -278,7 +285,7 @@ async function montarEditorial(raiz, ctx) {
           p.capa?.url && p.capa.tipo === 'imagem' ? h('img', { class: 'cal-item-capa', src: ctx.urlArquivo(p.capa.url), alt: '', loading: 'lazy' }) : null,
           h('span', { class: 'cal-item-titulo', texto: p.titulo || 'Peça sem título' }),
           h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Escolher data', onclick: () => planejar(p) }),
-          ctx.agendarReal ? h('button', { class: 'botao', type: 'button', texto: 'Agendar de verdade', onclick: (e) => ctx.agendarReal(p, '', e.currentTarget) }) : null);
+          ctx.agendarReal ? ctx.leituraRealCompleta ? h('button', { class: 'botao', type: 'button', texto: 'Agendar de verdade', onclick: (e) => ctx.agendarReal(p, '', e.currentTarget) }) : h('span', { class: 'campo-ajuda cal-aviso-real', texto: AVISO_PODE_TER_REAL }) : null);
         const item = h('li', {}, li, h('div', { class: 'bloco-acao' }, botaoVinculo(ctx, p)), detalhesCronograma(ctx, p));
         if (ctx.params.peca === p.id) {
           item.appendChild(h('p', { class: 'campo-ajuda', role: 'status', texto: 'Peça selecionada após o aceite. Ligue ao cronograma para receber a previsão.' }));

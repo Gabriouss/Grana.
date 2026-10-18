@@ -62,7 +62,7 @@ const job = (contaId, rede, estado, extra = {}) => ({
   for (const width of [390, 768, 1440]) {
     const page = await browser.newPage({ viewport: { width, height: 960 } });
     const posts = [];
-    let confirmarTentativas = 0;
+    let confirmarTentativas = 0; let leituraParcial = false;
     const jobs = [job('ig-1', 'instagram', 'agendado-na-meta'), job('fb-1', 'facebook', 'precisa-conferir')];
     const envelope = (dados, status = 200) => ({ status, contentType: 'application/json',
       body: JSON.stringify({ ok: status === 200, dados, atualizadoEm: new Date().toISOString(), erro: { codigo: 'qa', mensagem: 'QA' } }) });
@@ -84,7 +84,7 @@ const job = (contaId, rede, estado, extra = {}) => ({
       if (p === '/api/marketing/cronograma') return route.fulfill(envelope(null));
       if (p === '/api/marketing/calendario/ensaio') return route.fulfill(envelope({ modo: 'ensaio', realHabilitado: false, chamadasMeta: 0, itens: [] }));
       if (p === '/api/marketing/calendario') return route.fulfill(envelope({ itens: [{ peca: PECA, data: '2026-10-20', canal: 'instagram-feed' }, { peca: { id: 'd'.repeat(16), versao: 'a'.repeat(40), titulo: 'Post com destinos confirmados' }, data: '2026-10-19' }], aprovadosSemData: [],
-        reais: { status: 'disponivel', completo: true, proximoCursor: null, itens: jobs.map((j) => ({ ...j, confirmadoEm: '2026-10-18T12:00:00Z', peca: { pecaId: 'd'.repeat(16), versao: 'a'.repeat(40) } })) } }));
+        reais: { status: leituraParcial ? 'parcial' : 'disponivel', completo: !leituraParcial, proximoCursor: leituraParcial ? 'cursor-qa' : null, itens: jobs.map((j) => ({ ...j, confirmadoEm: '2026-10-18T12:00:00Z', peca: { pecaId: 'd'.repeat(16), versao: 'a'.repeat(40) } })) } }));
       if (p === '/api/marketing/publicacoes/capacidades') {
         return route.fulfill(envelope(real({ contas: CONTAS, controles: { revisao: 2, pausaGlobal: false, pausaFacebook: false, pausaInstagram: false, habilitado: true } })));
       }
@@ -121,6 +121,25 @@ const job = (contaId, rede, estado, extra = {}) => ({
     await page.getByRole('button', { name: 'Calendário', exact: true }).click();
     await page.getByRole('button', { name: 'Agendar de verdade', exact: true }).waitFor();
     await page.screenshot({ path: path.join(OUT, `calendario-mes-${width}.png`), fullPage: true });
+    // F1 (Lynx): sem leitura real completa o botão some e o aviso toma o lugar, para não abrir um segundo agendamento
+    const AVISO = 'Pode já ter agendamento real. Veja em Ambos.';
+    const abrirCalendario = async (hash) => {
+      await page.goto(`http://127.0.0.1:4399/#/marketing/calendario?mes=2026-10${hash}`);
+      await page.reload();
+      await page.getByRole('heading', { name: 'outubro de 2026' }).waitFor({ timeout: 15000 });
+      await page.locator('.cal-unico-item:visible').first().waitFor({ timeout: 15000 });
+    };
+    await abrirCalendario('&camada=planejado');
+    ok(await page.getByRole('button', { name: 'Agendar de verdade', exact: true }).count() === 0, `${width}px: camada Planejado não oferece Agendar de verdade`);
+    ok(await page.locator('.cal-aviso-real:visible', { hasText: AVISO }).count() >= 1, `${width}px: camada Planejado mostra o aviso de possível agendamento real`);
+    leituraParcial = true;
+    await abrirCalendario('&camada=ambos');
+    ok(await page.getByRole('button', { name: 'Agendar de verdade', exact: true }).count() === 0, `${width}px: leitura parcial não oferece Agendar de verdade`);
+    ok(await page.locator('.cal-aviso-real:visible', { hasText: AVISO }).count() >= 1, `${width}px: leitura parcial mostra o aviso de possível agendamento real`);
+    leituraParcial = false;
+    await abrirCalendario('&camada=ambos');
+    await page.getByRole('button', { name: 'Agendar de verdade', exact: true }).waitFor();
+    ok(await page.locator('.cal-aviso-real', { hasText: AVISO }).count() === 0, `${width}px: leitura completa sem job ativo volta a oferecer o botão, sem aviso`);
     await page.getByRole('button', { name: 'Agendar de verdade', exact: true }).click();
     await page.locator('.pub-real-compositor .pub-real-peca').first().waitFor({ timeout: 15000 });
     const semOverflow = () => page.evaluate('document.documentElement.scrollWidth <= innerWidth');

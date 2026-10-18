@@ -28,4 +28,13 @@ assert.equal(projetar([], 'real').itens.length, 0);
 for (const url of [null, 'javascript:alert(1)', 'http://example.org', 'https://user:password@example.org']) assert.equal(sandbox.linkPublicado(url), null);
 assert.equal(sandbox.linkPublicado('https://example.org/post/1'), 'https://example.org/post/1');
 assert.equal(JSON.stringify(d), JSON.stringify({ itens: [{ peca: p, data: '2026-10-19' }], aprovadosSemData: [] }), 'projeção não muda os dados de origem');
+// F1 (Lynx): sem leitura real completa, o botão "Agendar de verdade" não pode aparecer (risco de segundo agendamento)
+assert.equal(sandbox.leituraRealCompleta('planejado', { status: 'disponivel', completo: true }), false, 'camada Planejado nem consulta a fila real');
+assert.equal(sandbox.leituraRealCompleta('ambos', { status: 'parcial', completo: false }), false, 'leitura parcial');
+assert.equal(sandbox.leituraRealCompleta('ambos', { status: 'disponivel', completo: false }), false, 'ainda há páginas');
+assert.equal(sandbox.leituraRealCompleta('ambos', { status: 'indisponivel', completo: false }), false);
+assert.equal(sandbox.leituraRealCompleta('ambos', { status: 'nao-consultado' }), false);
+assert.equal(sandbox.leituraRealCompleta('ambos', undefined), false);
+assert.equal(sandbox.leituraRealCompleta('ambos', { status: 'disponivel', completo: true }), true);
+assert.equal(sandbox.leituraRealCompleta('real', { status: 'disponivel', completo: true }), true);
 console.log('admin-calendario-unico-tela: identidade, confirmação, estados independentes, fuso, marcadores, cancelamento/falha, links seguros e imutabilidade OK');
