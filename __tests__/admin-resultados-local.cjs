@@ -69,6 +69,33 @@ assert.deepEqual(copia(r.periodos.anterior), { desde: '2026-08-17', ateExclusivo
 assert.equal((await ad.meta({ incluirHoje: true })).periodos.hoje.parcial, true);
 assert.deepEqual(copia(r.meta.faltantes), ['META_READ_ACCESS_TOKEN', 'META_AD_ACCOUNT_ID', 'META_GRAPH_API_VERSION']);
 
+// ---- medidas da Cakto, módulo real, pedidos inventados
+const { medidasCakto } = require('../tools/admin-local/adaptadores/cakto.cjs');
+const per = { atual: { desde: '2026-09-17', ateExclusivo: '2026-10-17' }, anterior: { desde: '2026-08-18', ateExclusivo: '2026-09-17' } };
+const pedidosCakto = [
+  { subscription: 'A', status: 'paid', amount: '39.90', paidAt: '2026-09-10T12:00:00-03:00' }, // A começa no período anterior
+  { subscription: 'A', status: 'paid', amount: '39.90', paidAt: '2026-10-10T12:00:00-03:00' }, // renovação de A: receita, não assinatura nova
+  { subscription: 'B', status: 'paid', amount: '119.90', paidAt: '2026-09-20T09:00:00-03:00' }, // B nova no atual
+  { subscription: 'C', status: 'refunded', amount: '39.90', paidAt: '2026-09-25T09:00:00-03:00', refundedAt: '2026-09-28T09:00:00-03:00' }, // estornada
+  { subscription: 'D', status: 'chargedback', amount: '19.90', paidAt: '2026-09-01T09:00:00-03:00', chargedbackAt: '2026-09-18T09:00:00-03:00' }, // venda no anterior, reversão no atual
+  { subscription: 'E', status: 'canceled', amount: '39.90', paidAt: null }, // nunca pago
+  { subscription: 'F', status: 'paid', amount: '39.90', paidAt: '2026-10-17T00:00:00-03:00' }, // meia-noite do fim: fora (fim exclusivo)
+  { subscription: 'G', status: 'paid', amount: '39.90', paidAt: '2026-09-17T02:59:59Z' }, // 23:59:59 de 16/09 em SP: anterior
+];
+const mc = medidasCakto(pedidosCakto, per, true);
+assert.equal(mc.estado, 'completo');
+assert.equal(mc.novasAssinaturas, 1, 'só B: renovação de A não conta e C estornada fica de fora');
+assert.equal(mc.receitaConfirmadaCentavos, 3990 + 11990 + 3990, 'A renovada + B + C antes da reversão');
+assert.equal(mc.reembolsosCentavos, 3990 + 1990, 'C reembolsada e D com chargeback no atual');
+assert.deepEqual(copia(mc.anterior), { novasAssinaturas: 2, receitaConfirmadaCentavos: 3990 + 1990 + 3990, reembolsosCentavos: 0 }, 'A e G novas; D paga no anterior mas estornada');
+const inc = medidasCakto(pedidosCakto, per, false);
+assert.equal(inc.estado, 'parcial');
+assert.equal(inc.receitaConfirmadaCentavos, null, 'lista incompleta nunca vira número');
+const ruim = medidasCakto([{ subscription: 'X', status: 'paid', amount: '39,90', paidAt: '2026-09-20T09:00:00-03:00' }], per, true);
+assert.equal(ruim.estado, 'indisponivel');
+assert.equal(ruim.novasAssinaturas, null, 'valor ilegível invalida a leitura inteira');
+assert.equal(medidasCakto([], per, true).novasAssinaturas, 0, 'lista completa e vazia é zero comprovado');
+
 // ---- fiação e segurança do texto
 const rotas = fs.readFileSync('tools/admin-local/rotas.cjs', 'utf8');
 assert.ok(rotas.includes("'/api/marketing/resultados'") && rotas.includes("adaptador('meta-leitura')"), 'rota GET registrada');

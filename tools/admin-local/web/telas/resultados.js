@@ -56,7 +56,7 @@ export function montarMedidas(d) {
       valor: inteiro(cakto.novasAssinaturas), anterior: inteiro(caktoAnt.novasAssinaturas),
       variacao: textoVariacao(cakto.novasAssinaturas, caktoAnt.novasAssinaturas, null),
       indisponivel: `Cakto: ${rotCakto.toLowerCase()}, sem prova de completude`, rodape: atualizada(cakto.atualizadoEm || null),
-      nota: 'Primeiras cobranças aprovadas, contadas por assinatura (não por pessoa).' },
+      nota: 'Primeiras cobranças aprovadas, contadas por assinatura (não por pessoa). Estornadas ficam de fora.' },
     { id: 'receita', titulo: 'Receita bruta confirmada', fonte: 'Cakto', intervalo: rotuloIntervalo(d.periodos && d.periodos.atual),
       valor: reais(cakto.receitaConfirmadaCentavos), anterior: reais(caktoAnt.receitaConfirmadaCentavos),
       variacao: textoVariacao(cakto.receitaConfirmadaCentavos, caktoAnt.receitaConfirmadaCentavos, null),
@@ -65,7 +65,7 @@ export function montarMedidas(d) {
     { id: 'reversoes', titulo: 'Reembolsos e chargebacks', fonte: 'Cakto', intervalo: rotuloIntervalo(d.periodos && d.periodos.atual),
       valor: reais(cakto.reembolsosCentavos), anterior: reais(caktoAnt.reembolsosCentavos), variacao: null,
       indisponivel: `Cakto: ${rotCakto.toLowerCase()}, sem prova de completude`, rodape: atualizada(cakto.atualizadoEm || null),
-      nota: 'Reversões no intervalo em que ocorreram. A regra de estorno de assinatura aguarda decisão.' },
+      nota: 'Reversões no intervalo em que ocorreram, também quando a venda foi antes.' },
   ];
 }
 
