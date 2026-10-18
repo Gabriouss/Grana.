@@ -37,13 +37,16 @@ export function projetarCalendario(d, jobs, camada = 'ambos') {
     vistos.add(k);
     const todos = grupos.get(k) || [];
     const ativos = camada === 'real' ? todos : todos.filter((j) => !['cancelado', 'falhou'].includes(j.estado));
+    const foraDoMes = (d.vinculos || []).filter((v) => identidade(v) === k).flatMap((v) => v.destinos || [])
+      .filter((v) => v.data?.slice(0, 7) !== d.mes && !['cancelado', 'falhou'].includes(v.estado));
+    if (camada !== 'planejado' && foraDoMes.length && !ativos.length) continue;
     if (camada !== 'planejado' && ativos.length) {
-      const dias = [...new Set(ativos.map(diaReal))].sort();
-      for (const dia of dias) itens.push({ ...i, peca: p, data: dia, jobs: ativos.filter((j) => diaReal(j) === dia), historico: todos.filter((j) => ['cancelado', 'falhou'].includes(j.estado)), marcador: dias.length > 1, principal: dia === dias[0] });
+      const dias = [...new Set([...ativos.map(diaReal), ...foraDoMes.map((v) => v.data)])].sort();
+      for (const dia of dias.filter((v) => ativos.some((j) => diaReal(j) === v))) itens.push({ ...i, peca: p, data: dia, jobs: ativos.filter((j) => diaReal(j) === dia), historico: todos.filter((j) => ['cancelado', 'falhou'].includes(j.estado)), marcador: dias.length > 1, principal: dia === dias[0] });
     } else if (camada !== 'real' && i.data) itens.push({ ...i, peca: p, historico: todos });
   }
   // Sem vínculo exato, o job permanece na lista. Não cria uma peça editorial fictícia.
-  const semData = (d.aprovadosSemData || d.semData || []).filter((p) => camada !== 'real' && (camada === 'planejado' || !(grupos.get(identidade(p)) || []).some((j) => !['cancelado', 'falhou'].includes(j.estado))));
+  const semData = (d.aprovadosSemData || d.semData || []).filter((p) => camada !== 'real' && (camada === 'planejado' || (!(grupos.get(identidade(p)) || []).some((j) => !['cancelado', 'falhou'].includes(j.estado)) && !(d.vinculos || []).some((v) => identidade(v) === identidade(p) && v.destinos?.some((j) => !['cancelado', 'falhou'].includes(j.estado))))));
   return { ...d, itens: itens.sort((a, b) => a.data.localeCompare(b.data)), aprovadosSemData: semData, semData };
 }
 
@@ -72,6 +75,8 @@ export async function montar(raiz, ctx) {
   const conteudoPainel = h('div');
   let focoOrigem = null, controleReal = null, encerrada = false, dados = null, ocupado = false, geracao = 0;
   const acumulados = new Map();
+  const referencias = new Map();
+  let referenciasSequencia = new Map();
   let sequencia = new Map();
   const fechar = () => dialogo.close?.();
   dialogo.appendChild(h('div', { class: 'cal-unico-painel-topo' }, h('h2', { id: 'cal-unico-painel-titulo', texto: 'Agendar de verdade' }), h('button', { class: 'botao', type: 'button', texto: 'Fechar painel', onclick: fechar })));
@@ -104,7 +109,7 @@ export async function montar(raiz, ctx) {
     calendario.replaceChildren();
     await montarEditorial(calendario, { ...ctx, params: { ...ctx.params, mes }, calendarioParcial: dados.reais && camada !== 'planejado' && !dados.reais.completo, cabecalho() {}, cartaoCalendario: cartao, agendarReal: abrir,
       obsoleta: () => encerrada || ctx.obsoleta() || minha !== geracao,
-      api: (url) => url.startsWith('/api/marketing/calendario?') ? Promise.resolve({ dados: projetarCalendario(dados, [...acumulados.values()], camada) }) : ctx.api(url) });
+      api: (url) => url.startsWith('/api/marketing/calendario?') ? Promise.resolve({ dados: projetarCalendario({ ...dados, vinculos: [...referencias.values()] }, [...acumulados.values()], camada) }) : ctx.api(url) });
   }
   async function carregar(continuar = false) {
     if (ocupado || encerrada || ctx.obsoleta()) return;
@@ -116,7 +121,13 @@ export async function montar(raiz, ctx) {
       if (encerrada || ctx.obsoleta()) return;
       if (!resposta || !Array.isArray(resposta.itens)) throw new Error('O calendário não devolveu os dados esperados.');
       const r = resposta.reais;
-      if (!continuar) sequencia = new Map();
+      if (!continuar) { sequencia = new Map(); referenciasSequencia = new Map(); }
+      for (const v of resposta.vinculos || []) for (const dest of v.destinos || []) {
+        const ref = { pecaId: v.pecaId, versao: v.versao, destinos: [dest] };
+        const anterior = referencias.get(dest.jobId);
+        if (!anterior || dest.revisao >= anterior.destinos[0].revisao) referencias.set(dest.jobId, ref);
+        referenciasSequencia.set(dest.jobId, ref);
+      }
       for (const j of r?.itens || []) {
         const antes = acumulados.get(j.jobId);
         if (!antes || j.revisao >= antes.revisao) acumulados.set(j.jobId, j);
@@ -125,12 +136,13 @@ export async function montar(raiz, ctx) {
       }
       if (r?.completo && r.status === 'disponivel') {
         for (const id of acumulados.keys()) if (!sequencia.has(id)) acumulados.delete(id);
+        for (const id of referencias.keys()) if (!referenciasSequencia.has(id)) referencias.delete(id);
       }
       dados = resposta;
       const incompleto = r && r.status !== 'nao-consultado' && (!r.completo || r.status === 'indisponivel' || (!continuar && r.continuacao));
-      status.replaceChildren(...(incompleto ? [ctx.alerta('atencao', `Leitura ${r.status === 'indisponivel' ? 'indisponível' : 'parcial'} dos agendamentos. Os dados já recebidos foram preservados. ${r.motivo || 'Há mais resultados para consultar.'}`)] : []),
+      status.replaceChildren(...[...(incompleto ? [ctx.alerta('atencao', `Leitura ${r.status === 'indisponivel' ? 'indisponível' : 'parcial'} dos agendamentos. Os dados já recebidos foram preservados. ${r.motivo || 'Há mais resultados para consultar.'}`)] : []),
         r?.consultadoEm ? h('p', { class: 'campo-ajuda', texto: `Consulta real: ${ctx.formatar.dataHora(r.consultadoEm)} · São Paulo` }) : null,
-        ...(resposta.pendenciasLegenda?.length ? [ctx.alerta('atencao', `${resposta.pendenciasLegenda.length} peças já aprovadas precisam de legenda. Confira a Aprovação antes de agendar.`)] : []));
+        ...(resposta.pendenciasLegenda?.length ? [ctx.alerta('atencao', `${resposta.pendenciasLegenda.length} peças já aprovadas precisam de legenda. Confira a Aprovação antes de agendar.`)] : [])].filter(Boolean));
       await desenhar();
       if (r?.proximoCursor) paginacao.appendChild(h('button', { class: 'botao', type: 'button', texto: 'Carregar mais agendamentos do mês', onclick: async () => { await carregar(true); controleReal?.atualizarLista?.(); } }));
       paginacao.appendChild(h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Atualizar mês', onclick: async () => { await carregar(); controleReal?.atualizarLista?.(); } }));

@@ -3080,5 +3080,17 @@ dialog.central::backdrop { background: var(--scrim); }
 .tela-calendario [hidden] { display:none !important; }
 .tela-calendario .agenda-item { grid-template-columns:100px minmax(0,1fr); align-items:start; }
 .tela-calendario .cal-dia { min-width:0; }
+.tela-calendario .calendario-layout { grid-template-columns:minmax(0,1fr); }
+.tela-calendario .calendario-layout > .cal-sem-data { grid-column:1; grid-row:3; position:static; margin-top:16px; }
+.tela-calendario .cal-unico-item { font-size:13px; line-height:1.5; padding:8px; align-items:stretch; }
+.tela-calendario .cal-unico-item span, .tela-calendario .cal-unico-item .cal-item-titulo { white-space:normal; overflow:visible; text-overflow:clip; }
+.tela-calendario .cal-dia .cal-unico-item .cal-item-canal { display:block; }
+.tela-calendario .cal-unico-item .botao { padding:6px; font-size:12px; line-height:1.4; overflow-wrap:normal; word-break:normal; }
+.cal-unico-pausas .pub-real-pausas-grid { grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; }
+.cal-unico-pausas .pub-real-pausa { padding:12px; gap:8px; }
+.cal-unico-pausas .pub-real-pausa { flex-direction:column !important; align-items:flex-start; }
+.cal-unico-pausas .pub-real-pausa > div { overflow-wrap:normal; }
+.cal-unico-pausas .pub-real-pausa h3 { font-size:14px; }
+.cal-unico-pausas .pub-real-pausa p { font-size:12px; }
 @media (max-width:899px) { .cal-unico-painel { width:94vw; padding:20px; } }
 @media (max-width:480px) { .cal-unico-painel { width:100vw; padding:16px; } .tela-calendario .agenda-item { grid-template-columns:1fr; gap:8px; } .cal-unico-filtros { gap:12px; } .cal-unico-filtros .bloco-acao { flex-wrap:wrap; gap:6px; } }
