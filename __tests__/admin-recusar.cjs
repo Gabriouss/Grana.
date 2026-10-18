@@ -49,6 +49,21 @@ function setup(f, opts) {
     const p2 = f2.catalogo.montarCatalogo(f.dir).find((p) => p.nome === 'outra.png');
     await assert.rejects(f2.load('historico.cjs').recusar(f.dir, p2.id, { ...h.corpo, versao: p2.versao }), (e) => e.codigo === 'fila-indisponivel');
   });
+  // 18/10 (autor: "a arte retorna para aprovação"): registro de ajuste de antes da fila
+  // (aprovacoes.json, 07/10, sem estado) travava a recusa com 409 para sempre.
+  await test('ajuste legado sem estado nao trava a recusa nem aparece como pedido', async (f) => {
+    const h = setup(f), arq = path.join(f.painel, 'aprovacoes.json');
+    fs.writeFileSync(arq, JSON.stringify({ aprovacoes: [], ajustes: [{ id: h.p.id, versao: h.p.versao, pedidoEm: '2026-10-07T10:24:54-03:00', motivo: 'legado' }] }));
+    assert.equal(h.catalogo.obterPeca(f.dir, h.p.id).ajuste, null, 'legado sem estado nao vira pedido aberto');
+    const r = await h.hist.recusar(f.dir, h.p.id, h.corpo);
+    assert.equal(h.catalogo.obterPeca(f.dir, r.recusa.id).estado, 'historico');
+    assert.ok(!h.catalogo.montarCatalogo(f.dir).some((p) => p.id === h.p.id && p.estado !== 'historico'), 'recusada nao volta');
+  });
+  await test('ajuste legado com estado aberto continua travando', async (f) => {
+    const h = setup(f);
+    fs.writeFileSync(path.join(f.painel, 'aprovacoes.json'), JSON.stringify({ aprovacoes: [], ajustes: [{ id: h.p.id, versao: h.p.versao, estado: 'novo' }] }));
+    await assert.rejects(h.hist.recusar(f.dir, h.p.id, h.corpo), (e) => e.codigo === 'ajuste-aberto');
+  });
   await test('sucessora precisa pertencer a mesma familia e preserva aceite independente', async (f) => {
     const h = setup(f), pecas = h.catalogo.montarCatalogo(f.dir), p = pecas.find((p) => p.nome === 'reel.mp4'), s = pecas.find((p) => p.nome === 'reel-v2.mp4');
     await assert.rejects(h.hist.recusar(f.dir, p.id, { ...h.corpo, versao: p.versao, sucessora: pecas.find((p) => p.nome === 'outra.png').id }));

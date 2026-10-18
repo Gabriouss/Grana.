@@ -111,7 +111,7 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
       }
       catch { log('promocao-fila-indisponivel'); throw new c.ErroMarketing('fila-indisponivel', 'Confira a fila de ajustes antes de promover.', 503); }
       if (pedidos.some((r) => r.pecaId === p.id && !estadoTerminal(r.estado)) ||
-        (dados.ajustes || []).some((r) => r.id === p.id && r.versao === p.versao && !estadoTerminal(r.estado))) {
+        (dados.ajustes || []).some((r) => r.id === p.id && r.versao === p.versao && typeof r.estado === 'string' && !estadoTerminal(r.estado)) /* legado sem estado é histórico (18/10) */) {
         throw new c.ErroMarketing('ajuste-aberto', 'Há pedido de ajuste aberto. Conclua ou confira o pedido antes de promover a peça.', 409);
       }
       const novoCaminho = p.caminho.replace('/para-aprovacao/', '/aprovados/');

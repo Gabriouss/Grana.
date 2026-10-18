@@ -5,6 +5,8 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const c = require('./catalogo.cjs');
 const TERMINAIS = new Set(['aceito', 'desatualizado', 'encerrado', 'recusado-pelo-autor']);
+// Registro de ajuste de antes da fila (07/10) não tem estado: é histórico, não pedido aberto (autor, 18/10).
+const legadoAberto = (r) => typeof r.estado === 'string' && !TERMINAIS.has(r.estado);
 const PREFIXO = /^docs\/marketing\/\d{4}-\d{2}\/semana-\d{2}-\d{4}-\d{2}-\d{2}-a-\d{4}-\d{2}-\d{2}\/(para-aprovacao|aprovados)\//;
 function criarHistorico(io = fs, log = (codigo) => console.error(JSON.stringify({ codigo }))) {
   const seguro = (raiz, rel) => c.caminhoSeguro(raiz, rel, io);
@@ -61,7 +63,7 @@ function criarHistorico(io = fs, log = (codigo) => console.error(JSON.stringify(
       } catch { throw new c.ErroMarketing('fila-indisponivel', 'Confira a fila antes de recusar a peca.', 503); }
       const aprov = c.lerJson(seguro(raiz, 'docs/marketing/painel/aprovacoes.json'), { ajustes: [] });
       if (pedidos.some((r) => r.pecaId === id && !TERMINAIS.has(r.estado))
-        || (aprov.ajustes || []).some((r) => r.id === id && !TERMINAIS.has(r.estado))) throw new c.ErroMarketing('ajuste-aberto', 'Conclua o pedido aberto antes de recusar a peca.', 409);
+        || (aprov.ajustes || []).some((r) => r.id === id && legadoAberto(r))) throw new c.ErroMarketing('ajuste-aberto', 'Conclua o pedido aberto antes de recusar a peca.', 409);
       const anterior = dados.recusas.find((r) => r.origem?.id === id && r.versao === corpo.versao);
       if (anterior) {
         const destino = pecas.find((p) => p.id === anterior.id && p.estado === 'historico' && p.versao === anterior.versao);

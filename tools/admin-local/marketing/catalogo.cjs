@@ -795,7 +795,8 @@ function enriquecer(raiz, pecas) {
   const cal = lerJson(caminhoPainel(raiz, 'calendario.json'), { planejados: [] });
   const historico = lerJson(caminhoPainel(raiz, 'historico.json'), { recusas: [] });
   const aprovacoes = Array.isArray(ap.aprovacoes) ? ap.aprovacoes : [];
-  const ajustes = Array.isArray(ap.ajustes) ? ap.ajustes : [];
+  // Registro de ajuste de antes da fila (07/10) não tem estado: é histórico, não pedido aberto (autor, 18/10).
+  const ajustes = Array.isArray(ap.ajustes) ? ap.ajustes.filter((a) => typeof a?.estado === 'string' && !['aceito', 'desatualizado', 'encerrado', 'recusado-pelo-autor'].includes(a.estado)) : [];
   // Pedidos novos vivem na fila privada (fora do repositório), não em ajustes[]. Pedido
   // ainda aberto para a versão na tela mantém o selo "Ajuste pedido".
   let fila = [], eventos = [], vigia;

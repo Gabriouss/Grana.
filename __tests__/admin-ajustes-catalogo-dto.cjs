@@ -15,6 +15,9 @@ vm.runInNewContext(source,{
 const result=m.exports.enriquecer('/fixture',[p]);
 assert.ok(!JSON.stringify(result).includes('CANARIO_PRIVADO_CATALOGO'),'texto privado nao pode atravessar enriquecimento usado por GET pecas/feed');
 assert.equal(result[0].estadoEfetivo,'ajuste-pedido');assert.equal(result[0].ajuste.pedidoId,pedido.id);assert.equal(result[0].ajuste.motivo,undefined);assert.equal(result[0].ajuste.versao,p.versao);
+// 18/10: legado sem estado (antes da fila) não vira pedido aberto; com estado aberto, DTO fechado.
 privados=[];legados=[{id:p.id,versao:p.versao,motivo:'CANARIO_PRIVADO_LEGADO',pedidoEm:'CANARIO_PRIVADO_DATA',extra:{token:'CANARIO_PRIVADO_EXTRA'}}];
+assert.equal(m.exports.enriquecer('/fixture',[p])[0].ajuste,null,'legado sem estado e historico');
+legados[0].estado='novo';
 const legado=m.exports.enriquecer('/fixture',[p]);assert.ok(!JSON.stringify(legado).includes('CANARIO_'));assert.equal(legado[0].ajuste.pedidoEm,null);assert.equal(legado[0].ajuste.extra,undefined);
 console.log('catalogo C: modulo real sem texto privado, zero rede/disco/env real');
