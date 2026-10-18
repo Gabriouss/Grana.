@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 import { Alert } from '@/lib/alerta';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -30,7 +30,10 @@ const AVISO_POR_MOTIVO = {
   ok: 'Valor lido da foto. Confira com o cupom antes de salvar.',
   sem_total: 'Não achei o valor total na foto. Digite o valor impresso no cupom.',
   ambiguo: 'Achei mais de um total na foto. Digite o valor certo, conforme o cupom.',
-  indisponivel: 'A leitura por foto não está disponível nesta versão do app. Digite o valor impresso no cupom.',
+  // No navegador a leitura não existe (ML Kit é do aparelho): o aviso diz onde ela funciona.
+  indisponivel: Platform.OS === 'web'
+    ? 'No navegador, o valor não é lido da foto. Digite o valor impresso no cupom. No app Android ele é lido sozinho.'
+    : 'A leitura por foto não está disponível nesta versão do app. Digite o valor impresso no cupom.',
   falhou: 'Não consegui ler a foto. Digite o valor impresso no cupom ou tente fotografar de novo.',
   sem_texto: 'Não encontrei texto na foto. Ela pode ter saído escura ou tremida. Digite o valor ou fotografe de novo.',
 } as const;

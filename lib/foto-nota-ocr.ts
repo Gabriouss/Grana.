@@ -98,6 +98,8 @@ export async function lerTotalDaFoto(uri: string): Promise<LeituraDaFoto> {
  * Watchtower: antes a exclusão corria solta e o erro era engolido).
  */
 export async function apagarFoto(uri: string): Promise<void> {
+  // Na web a foto vem em `data:` (memória), sem arquivo no cache para apagar.
+  if (uri.startsWith('data:')) return;
   try {
     await FileSystem.deleteAsync(uri, { idempotent: true });
     if ((await FileSystem.getInfoAsync(uri)).exists) {
@@ -120,6 +122,8 @@ export async function apagarFoto(uri: string): Promise<void> {
  * apagado na próxima abertura.
  */
 export async function limparFotosEsquecidas(): Promise<number> {
+  // Sem pasta de cache (web), não há foto esquecida.
+  if (!FileSystem.cacheDirectory) return 0;
   const pasta = `${FileSystem.cacheDirectory}Camera/`;
   try {
     if (!(await FileSystem.getInfoAsync(pasta)).exists) return 0;

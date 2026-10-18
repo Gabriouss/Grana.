@@ -48,7 +48,7 @@ const imports = {
     jsx: (type, props) => (typeof type === 'function' ? type(props) : { type, props }),
     jsxs: (type, props) => (typeof type === 'function' ? type(props) : { type, props }),
   },
-  'react-native': { ActivityIndicator: 'ActivityIndicator', StyleSheet: { create: (s) => s }, Text: 'Text', TextInput: 'TextInput', View: 'View' },
+  'react-native': { ActivityIndicator: 'ActivityIndicator', Platform: { OS: 'android' }, StyleSheet: { create: (s) => s }, Text: 'Text', TextInput: 'TextInput', View: 'View' },
   '@/lib/alerta': { Alert: { alert: (...a) => registro.alertas.push(a) } },
   'expo-camera': { CameraView: 'CameraView', useCameraPermissions: () => [{ granted: true }, async () => ({ granted: true })] },
   '@expo/vector-icons/Ionicons': 'Ionicons',
