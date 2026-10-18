@@ -1751,7 +1751,7 @@ details.secao-recolhida > .secao { margin: 0; padding: 0; border: 0; background:
 .grade-campanhas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr)); gap: var(--s-md); }
 .campanha .cartao-topo { flex-wrap: wrap; }
 .campanha .cartao-topo > .selo { flex: none; }
-.campanha .cartao-titulo { flex: 1 1 12ch; min-width: 0; overflow-wrap: anywhere; }
+.campanha .cartao-titulo { flex: 1 1 12ch; min-width: 0; overflow-wrap: anywhere; text-wrap: balance; }
 .campanha-campos {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
@@ -1762,7 +1762,12 @@ details.secao-recolhida > .secao { margin: 0; padding: 0; border: 0; background:
 .campanha-campo { display: flex; flex-direction: column; gap: var(--s-fio); min-width: 0; }
 .campanha-campo-longo { grid-column: 1 / -1; }
 .campanha-campo dt { color: var(--ink-faint); font-weight: 300; }
-.campanha-campo dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; min-width: 0; }
+.campanha-campo dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; min-width: 0; text-wrap: pretty; }
+.campanha-campo .campanha-periodo-valor { display: flex; flex-wrap: wrap; gap: 0 0.4em; }
+.campanha-duracao { white-space: nowrap; }
+.valor-uma-linha { white-space: nowrap; }
+.campanha-periodo-valor > span:first-child { overflow-wrap: normal; }
+.campanha-campo dd.num { white-space: nowrap; }
 .campanha {
   display: flex;
   flex-direction: column;
@@ -1773,7 +1778,7 @@ details.secao-recolhida > .secao { margin: 0; padding: 0; border: 0; background:
   border-radius: var(--r-lg);
   background: var(--paper-raised);
 }
-.campanha .cartao-detalhe { overflow-wrap: anywhere; }
+.campanha .cartao-detalhe { overflow-wrap: anywhere; text-wrap: pretty; }
 .campanha-campos + .botao, .campanha > .botao { margin-top: var(--s-sm); }
 .grade-cartoes + .nota-explicativa, .estado-bloco + .nota-explicativa { margin-top: var(--s-md); }
 .campanha-campo dd { font-variant-numeric: tabular-nums; }
