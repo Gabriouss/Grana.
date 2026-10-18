@@ -401,7 +401,7 @@ export async function montar(raiz, ctx) {
       }));
     }
     if (faltaLegenda(p)) detalhe.appendChild(ctx.alerta('atencao', `Falta a legenda para publicar. ${localLegenda(p)}`));
-    const botaoAprovar = h('button', { class: 'botao botao-primario', type: 'button', texto: p.aprovada ? 'Aprovada nesta versão' : 'Aprovar', disabled: faltaLegenda(p) || !!p.aprovada || temPedidoAberto || filaIndisponivel || arquivada(p) || !!pendencia,
+    const botaoAprovar = h('button', { class: 'botao botao-primario', type: 'button', texto: p.aprovada && p.estado !== 'para-aprovacao' ? 'Aprovada nesta versão' : 'Aprovar', disabled: faltaLegenda(p) || (!!p.aprovada && p.estado !== 'para-aprovacao') || temPedidoAberto || filaIndisponivel || arquivada(p) || !!pendencia,
       onclick: () => aprovar(ctx, p, botaoAprovar) });
     const podePedir = !filaIndisponivel && !arquivada(p);
     const aberto = rascunhoAberto === chaveRascunho(p);
@@ -429,11 +429,7 @@ export async function montar(raiz, ctx) {
     const botaoRecusar = h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Recusar',
       disabled: filaIndisponivel || temPedidoAberto || arquivada(p),
       onclick: () => recusarPeca(ctx, p, familiaAtual?.pecas || [p], pedidos, botaoRecusar) });
-    const botaoMover = p.aprovada && p.estado === 'para-aprovacao' ? h('button', {
-      class: 'botao', type: 'button', texto: 'Mover para aprovados', disabled: faltaLegenda(p) || filaIndisponivel || temPedidoAberto || !!pendencia,
-      onclick: () => promoverPeca(ctx, p, botaoMover),
-    }) : null;
-    [botaoAprovar, botaoAjuste, botaoRecusar, botaoMover,
+    [botaoAprovar, botaoAjuste, botaoRecusar,
       p.aprovada && p.estado === 'aprovados' ? h('a', { class: 'botao botao-fantasma', href: `#/marketing/calendario?secao=sem-data&peca=${encodeURIComponent(p.id)}`, texto: 'Marcar data no calendário' }) : null,
     ].filter(Boolean).forEach((b) => decisao.appendChild(b));
 
@@ -650,59 +646,37 @@ export async function recusarPeca(ctx, p, familia, pedidos, botao) {
   } finally { if (!ctx.obsoleta()) botao.disabled = false; }
 }
 
-export async function promoverPeca(ctx, p, botao) {
-  if (botao.disabled || faltaLegenda(p) || !p.aprovada || p.estado !== 'para-aprovacao' || ctx.obsoleta()) return;
+export async function aprovar(ctx, p, botao) {
+  if (botao.disabled || ctx.obsoleta() || faltaLegenda(p)) return;
   botao.disabled = true;
   try {
-    const ok = await ctx.confirmar({ titulo: 'Mover para aprovados',
-      texto: 'Move os arquivos desta versão aceita para aprovados e registra a prova no índice da semana. Depois, escolha o item do cronograma no Calendário. Nada será publicado ou agendado na Meta.',
-      detalhes: [tituloPeca(p)], rotuloBotao: 'Mover para aprovados' });
+    const ok = await ctx.confirmar({
+      titulo: 'Aprovar',
+      texto: 'Aprova esta peça e esta legenda, fecha as correções entregues e move os arquivos para aprovados. Depois, abre o Calendário da peça. Não publica, não agenda e não envia nada ao Instagram ou à Meta. Se o arquivo mudar depois, o aceite deixa de valer.',
+      detalhes: [tituloPeca(p), p.modificadoEm ? `Arquivo de ${ctx.formatar.dataHora(p.modificadoEm)}` : 'Versão que está na tela agora', p.legenda ? `Legenda: ${p.legenda.slice(0, 140)}${p.legenda.length > 140 ? '…' : ''}` : 'Sem legenda registrada'],
+      rotuloBotao: 'Aprovar',
+    });
     if (ok !== true || ctx.obsoleta()) return;
-    botao.textContent = 'Movendo…';
-    const r = await ctx.acao(`/api/marketing/pecas/${encodeURIComponent(p.id)}/promover`, { versao: p.versao, confirmacao: true });
+    botao.textContent = 'Aprovando…';
+    const r = await ctx.acao(`/api/marketing/pecas/${encodeURIComponent(p.id)}/aprovar`, { versao: p.versao, confirmacao: true });
     if (ctx.obsoleta()) return;
-    for (const aviso of r.dados?.avisos || []) ctx.aviso(aviso, 'info');
+    for (const a of r.dados?.avisos || []) ctx.aviso(a, 'info');
     const recibo = r.dados?.promocao;
     if (!/^[a-f0-9]{16}$/.test(recibo?.id || '') || recibo.versao !== p.versao) {
-      ctx.aviso('A resposta não confirmou a peça promovida. Atualize e confira o índice antes de repetir.', 'erro');
+      ctx.aviso('A movimentação para aprovados não foi confirmada. Confira os avisos e tente Aprovar novamente.', 'erro');
       return;
     }
     ctx.aviso(recibo.indice ? `Promoção registrada em ${recibo.indice}. Confira o vínculo e a data no Calendário.`
       : 'Promoção registrada, mas o recibo no índice está pendente. Confira o índice da semana antes de seguir.', recibo.indice ? 'ok' : 'info');
     ctx.navegar(`#/marketing/calendario?peca=${encodeURIComponent(recibo.id)}`);
   } catch (err) {
-    console.warn('[aprovacao-promover]', err.codigo || 'falha');
-    if (!ctx.obsoleta()) ctx.aviso(err.codigo === 'versao-mudou' || err.codigo === 'sem-aceite'
-      ? 'A versão precisa de novo aceite. Atualize e revise a peça antes de mover.'
-      : `A promoção não foi confirmada: ${err.message}. Atualize e confira os recibos antes de repetir.`, 'erro');
-  } finally {
-    if (!ctx.obsoleta()) { botao.disabled = false; botao.textContent = 'Mover para aprovados'; }
-  }
-}
-
-async function aprovar(ctx, p, botao) {
-  if (botao.disabled || ctx.obsoleta() || faltaLegenda(p)) return;
-  const ok = await ctx.confirmar({
-    titulo: 'Aprovar',
-    texto: 'Isto registra o seu aceite desta peça e desta legenda, na versão que está na tela. Não publica, não agenda e não envia nada ao Instagram ou à Meta. Se o arquivo mudar depois, o aceite deixa de valer.',
-    detalhes: [tituloPeca(p), p.modificadoEm ? `Arquivo de ${ctx.formatar.dataHora(p.modificadoEm)}` : 'Versão que está na tela agora', p.legenda ? `Legenda: ${p.legenda.slice(0, 140)}${p.legenda.length > 140 ? '…' : ''}` : 'Sem legenda registrada'],
-    rotuloBotao: 'Aprovar',
-  });
-  if (!ok) return;
-  botao.disabled = true;
-  botao.textContent = 'Gravando aceite…';
-  try {
-    const r = await ctx.acao(`/api/marketing/pecas/${encodeURIComponent(p.id)}/aprovar`, { versao: p.versao, confirmacao: true });
-    ctx.aviso(r.dados?.pedidosFechados ? 'Aprovado. O pedido de ajuste foi fechado junto.' : 'Aprovado.', 'ok');
-    for (const a of r.dados?.avisos || []) ctx.aviso(a, 'info');
-    ctx.navegar(`#/marketing/aprovacao?peca=${encodeURIComponent(p.id)}`);
-  } catch (err) {
+    console.warn('[aprovacao-aprovar]', err.codigo || 'falha');
     const texto = err.codigo === 'versao-mudou'
       ? 'A peça mudou depois que você abriu esta tela. Atualize e revise de novo antes de aprovar.'
-      : `O aceite não foi gravado: ${err.message}`;
-    ctx.aviso(texto, 'erro');
-    botao.disabled = false;
-    botao.textContent = 'Aprovar';
+      : `A aprovação não foi confirmada: ${String(err.message || 'Falha ao aprovar').replace(/[.\s]+$/u, '')}. Atualize e confira os recibos antes de repetir.`;
+    if (!ctx.obsoleta()) ctx.aviso(texto, 'erro');
+  } finally {
+    if (!ctx.obsoleta()) { botao.disabled = false; botao.textContent = 'Aprovar'; }
   }
 }
 

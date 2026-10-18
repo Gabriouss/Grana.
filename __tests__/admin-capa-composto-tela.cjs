@@ -88,7 +88,9 @@ async function tela() {
       assert.equal(t.reel.capa.aprovada, true, `${pasta}: DTO, capa coberta pelo composto`);
       assert.ok(t.capa.includes('Capa aprovada junto com o Reel: o aceite desta versão cobre vídeo, capa e legenda.'), `${pasta}: ${t.capa}`);
       assert.ok(!t.capa.includes('aceite próprio') && !t.capa.includes('não vale para ela'), `${pasta}: nem exige nem inventa aceite próprio`);
-      assert.equal(t.botao.texto, 'Aprovada nesta versão'); assert.equal(t.botao.disabled, true);
+      const faltaPromover = t.reel.estado === 'para-aprovacao';
+      assert.equal(t.botao.texto, faltaPromover ? 'Aprovar' : 'Aprovada nesta versão');
+      assert.equal(t.botao.disabled, !faltaPromover, 'aceite preservado pode concluir a promoção pelo Aprovar');
 
       // 3. Capa alterada: a versão do Reel muda e o aceite deixa de valer.
       grava(capaPath, 'AUDIT-capa-v2');

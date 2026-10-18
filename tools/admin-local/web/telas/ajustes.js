@@ -53,7 +53,7 @@ export function situacaoDaFamilia(grupo, pedidos) {
   const situacoes = grupo.pecas.map((p) => {
     const s = situacaoDaDemanda(p, pedidos);
     return p.aprovada && p.estado === 'para-aprovacao' && s.secao === 'resolvidas'
-      ? { ...s, secao: 'voce', proximo: 'Mova a versão aceita para aprovados e siga ao Calendário.' } : s;
+      ? { ...s, secao: 'voce', proximo: 'Conclua pelo botão Aprovar para seguir ao Calendário.' } : s;
   });
   return situacoes.find((s) => s.secao === 'voce') || situacoes.find((s) => s.secao === 'agentes') || situacoes[0];
 }

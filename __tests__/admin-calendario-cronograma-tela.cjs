@@ -133,7 +133,7 @@ function encontrar(root, predicado) {
    if (url === '/api/marketing/cronograma') dados=await cr.salvarManifesto(dir,body);
    else if (url === '/api/marketing/cronograma/vinculo') dados=await cr.registrarVinculo(dir,body.pecaId,body);
    else if (url.endsWith('/promover')) dados=await pr.promover(dir,url.split('/')[4],body);
-   else if (url.endsWith('/aprovar')) dados=await ap.aprovar(dir,url.split('/')[4],body);
+   else if (url.endsWith('/aprovar')) dados=await ap.aprovarEFechar(dir,url.split('/')[4],body);
    else if (url === '/api/marketing/calendario') dados=await cal.planejar(dir,body);
    else throw Error('POST inesperado '+url);
    return {dados};
@@ -159,23 +159,21 @@ function encontrar(root, predicado) {
   await aprovacao.montar(rootAprovacao,contexto);
   assert.equal(encontrar(rootAprovacao,n=>n.tag==='a' && n.attrs.texto==='Aprovados sem data').attrs.href,'#/marketing/calendario?secao=sem-data');
   assert.equal(achar(rootAprovacao,'Mover para aprovados'),undefined,'sem aceite não oferece promoção');
-  confirms.push(true);await achar(rootAprovacao,'Aprovar').attrs.onclick();
-  assert.deepEqual(posts()[0].body,{versao:p.versao,confirmacao:true});
-  p=c.obterPeca(dir,p.id);assert(p.aprovada);rootAprovacao.replaceChildren();
-  await aprovacao.montar(rootAprovacao,contexto);
-  assert(achar(rootAprovacao,'Mover para aprovados'));assert.equal(achar(rootAprovacao,'Mover para aprovados').disabled,false);
-  assert.match(text(rootAprovacao),/Mova a versão aceita para aprovados/);
-
-  // Cancelar promoção não faz POST; confirmação verdadeira carrega ID novo e recibo real.
-  confirms.push(false); await aprovacao.promoverPeca(contexto,p,botao()); assert.equal(posts().length,1);
-  confirms.push('sim'); await aprovacao.promoverPeca(contexto,p,botao()); assert.equal(posts().length,1,'exige clique booleano');
+  confirms.push(false);await aprovacao.aprovar(contexto,p,botao());assert.equal(posts().length,0);
+  confirms.push('sim');await aprovacao.aprovar(contexto,p,botao());assert.equal(posts().length,0,'confirmação exige booleano');
   let resolverConfirmacao, contaConfirmacao=0;const bDuplo=botao();
   const duplo={...contexto,confirmar:()=>{contaConfirmacao++;return new Promise((r)=>resolverConfirmacao=r);}};
-  const pendente=aprovacao.promoverPeca(duplo,p,bDuplo);await aprovacao.promoverPeca(duplo,p,bDuplo);
-  assert.equal(contaConfirmacao,1,'duplo clique não abre outro diálogo');resolverConfirmacao(false);await pendente;assert.equal(posts().length,1);
-  confirms.push(true); await achar(rootAprovacao,'Mover para aprovados').attrs.onclick();
-  assert.deepEqual(posts()[1].body,{versao:p.versao,confirmacao:true});
+  const pendente=aprovacao.aprovar(duplo,p,bDuplo);await aprovacao.aprovar(duplo,p,bDuplo);
+  assert.equal(contaConfirmacao,1,'duplo clique não abre outro diálogo');resolverConfirmacao(false);await pendente;assert.equal(posts().length,0);
+  confirms.push(true);await achar(rootAprovacao,'Aprovar').attrs.onclick();
+  assert.deepEqual(posts()[0].body,{versao:p.versao,confirmacao:true});
+  assert.equal(posts().length,1,'Aprovar faz um unico POST');
+  rootAprovacao.replaceChildren();
+  await aprovacao.montar(rootAprovacao,contexto);
+  assert.equal(achar(rootAprovacao,'Mover para aprovados'),undefined,'nao oferece mover depois de aprovar');
   let nova=c.montarCatalogo(dir).find((p)=>p.estado==='aprovados' && p.tipo==='imagem'); assert(nova);assert.notEqual(nova.id,p.id);
+  contexto.params.peca=nova.id;await aprovacao.montar(rootAprovacao,contexto);
+  assert.equal(achar(rootAprovacao,'Mover para aprovados'),undefined,'peça aprovada não oferece botão Mover');
   assert.equal(navegacoes.at(-1),`#/marketing/calendario?peca=${nova.id}`);
   assert.match(fs.readFileSync(indice,'utf8'),/aprovados\/pecas\/E01-AUDIT.jpg/);
   assert(fs.readFileSync(indice,'utf8').includes(`<!-- promocao:${nova.id}:${nova.versao} -->`),'recibo de promoção exato no índice');
@@ -183,9 +181,9 @@ function encontrar(root, predicado) {
   assert.equal(fs.existsSync(path.join(pasta,'E01-AUDIT.jpg')),false,'limpeza apenas após prova');
   const provas=JSON.parse(fs.readFileSync(path.join(dir,'docs/marketing/painel/aprovacoes.json'),'utf8'));
   assert(provas.aprovacoes.some((a)=>a.id===nova.id && a.origem?.id===p.id && a.indice));
-  // Retomada pelo ID original reaproveita prova sem inventar recibo.
-  confirms.push(true);await aprovacao.promoverPeca(contexto,p,botao());assert.equal(navegacoes.at(-1),`#/marketing/calendario?peca=${nova.id}`);
-
+  const repetida=await ap.aprovarEFechar(dir,p.id,{versao:p.versao,confirmacao:true});
+  assert.equal(repetida.promocao.id,nova.id,'resposta perdida retoma promoção pelo ID original');
+  assert.equal(ap.listarAprovacoes(dir).aprovacoes.length,provas.aprovacoes.length,'retomada não duplica aceite');
   const root=elemento('main'); await calendario.montarCronograma(root,contexto);
   assert(achar(root,'Criar cronograma'));assert.match(text(root),/Cronograma ausente/);
   forms.push({manifestoId:'campanha-audit'}); confirms.push(true);
@@ -229,13 +227,13 @@ function encontrar(root, predicado) {
    falhar=codigo; forms.push({itemId:'audit-reel'});confirms.push(true);const b=botao();const antes=recargas;
    await calendario.ligarCronograma(contexto,nova,b);assert.equal(avisos.at(-1).tipo,'erro');assert.equal(b.disabled,false);assert.equal(recargas,antes);
   }
-  falhar='versao-mudou';confirms.push(true);await aprovacao.promoverPeca(contexto,p,botao());assert.match(avisos.at(-1).t,/novo aceite/);
+  falhar='versao-mudou';confirms.push(true);await aprovacao.aprovar(contexto,p,botao());assert.match(avisos.at(-1).t,/revise de novo/);
   falhar=null;n=posts().length;await calendario.ligarCronograma(contexto,{...nova,reciboAceite:null},botao());assert.equal(posts().length,n);
   // Resposta perdida/incompleta não vira sucesso; aviso secundário continua visível.
   const parcial={...contexto,acao:async()=>({dados:{promocao:{id:nova.id,versao:nova.versao,indice:null},avisos:['AUDIT calendário pendente']}})};
-  confirms.push(true);await aprovacao.promoverPeca(parcial,p,botao());assert(avisos.some((a)=>a.t==='AUDIT calendário pendente'));assert.match(avisos.at(-1).t,/recibo no índice está pendente/);
+  confirms.push(true);await aprovacao.aprovar(parcial,p,botao());assert(avisos.some((a)=>a.t==='AUDIT calendário pendente'));assert.match(avisos.at(-1).t,/recibo no índice está pendente/);
   const incompleta={...contexto,acao:async()=>({dados:{avisos:[]}})};const navAntes=navegacoes.length;
-  confirms.push(true);await aprovacao.promoverPeca(incompleta,p,botao());assert.equal(navegacoes.length,navAntes);assert.equal(avisos.at(-1).tipo,'erro');
+  confirms.push(true);await aprovacao.aprovar(incompleta,p,botao());assert.equal(navegacoes.length,navAntes);assert.equal(avisos.at(-1).tipo,'erro');
   let resolverPost;const tardia={...contexto,acao:()=>new Promise((r)=>resolverPost=r)};
   forms.push({diaD:'2099-02-01'});confirms.push(true);const salvarTardio=calendario.editarCronograma(tardia,m,'diaD',botao());
   for (let i = 0; i < 50 && typeof resolverPost !== 'function'; i++) await new Promise((r) => setImmediate(r));
@@ -243,7 +241,7 @@ function encontrar(root, predicado) {
   const antesAvisos=avisos.length,antesRecarga=recargas;
   obsoleta=true;resolverPost({dados:{manifesto:{...m,versao:4,diaD:'2099-02-01'},avisos:['não exibir']}});await salvarTardio;
   assert.equal(avisos.length,antesAvisos);assert.equal(recargas,antesRecarga);obsoleta=false;
-  obsoleta=true;await calendario.editarCronograma(contexto,m,'diaD',botao());await aprovacao.promoverPeca(contexto,p,botao());assert.equal(posts().length,n);obsoleta=false;
+  obsoleta=true;await calendario.editarCronograma(contexto,m,'diaD',botao());await aprovacao.aprovar(contexto,p,botao());assert.equal(posts().length,n);obsoleta=false;
   // Marcação manual pela UI real: recibo conferido, bloqueio de duplicata e navegação antiga.
   const dataManual={data:'2099-01-20',hora:'20:00',canal:'reels',observacao:''};
   n=posts().length;forms.push(dataManual);await calendario.escolherData(contexto,nova,undefined,['reels']);
