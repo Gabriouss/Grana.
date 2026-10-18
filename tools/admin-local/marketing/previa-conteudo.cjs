@@ -76,4 +76,4 @@ function criarResolvedor({ obterPeca = catalogo.obterPeca } = {}) {
     } finally {clearTimeout(timer);ativos--;}
   };
 }
-module.exports = { criarResolvedor, MAX_ARQUIVO, MAX_TOTAL };
+module.exports = { criarResolvedor, MAX_ARQUIVO, MAX_TOTAL, detectarMime: mime };

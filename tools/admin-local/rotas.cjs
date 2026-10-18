@@ -207,7 +207,43 @@ function filtrosDeFeedbacks(url) {
   return f;
 }
 
+function filtrosPublicacoes(url, permitidos) {
+  const f = {};
+  for (const [k, v] of url.searchParams) {
+    if (!permitidos.includes(k) || Object.hasOwn(f, k)) throw Object.assign(new Error('Pedido inválido.'), { codigo: 'pedido-invalido', status: 400 });
+    f[k] = k === 'limite' ? (/^[1-9]\d?$/.test(v) ? Number(v) : NaN) : v;
+  }
+  return f;
+}
+async function leituraPublicacoes(req, res, url, metodo, campos = []) {
+  try {
+    const filtros = filtrosPublicacoes(url, campos), modulo = marketing('publicacoes');
+    if (!modulo) return responderErro(res, 503, 'modulo-remoto-pendente', 'Publicações reais indisponíveis.');
+    const dados = metodo === 'catalogo' ? modulo.catalogo(RAIZ_DADOS, filtros)
+      : modulo[metodo](filtros);
+    responderOk(res, await dados);
+  } catch (e) { erroDeMarketing(res, e); }
+}
+
 const GET = {
+  '/api/marketing/publicacoes': (req, res, url) => leituraPublicacoes(req, res, url, 'listar', ['cursor', 'limite']),
+  '/api/marketing/publicacoes/catalogo': (req, res, url) => leituraPublicacoes(req, res, url, 'catalogo', ['semana', 'tipo']),
+  '/api/marketing/publicacoes/capacidades': (req, res, url) => leituraPublicacoes(req, res, url, 'contas'),
+  '/api/marketing/publicacoes/contas': (req, res, url) => leituraPublicacoes(req, res, url, 'contas'),
+  '/api/marketing/publicacoes/detalhe': (req, res, url) => leituraPublicacoes(req, res, url, 'detalhe', ['jobId', 'loteId', 'idempotencia']),
+  '/api/marketing/publicacoes/midia': async (req, res, url) => {
+    try {
+      const f = filtrosPublicacoes(url, ['previaId', 'indice']);
+      const b = await marketing('publicacoes').midia(f.previaId, f.indice);
+      if (!Buffer.isBuffer(b?.conteudo) || b.conteudo.length > 45 * 1024 * 1024
+        || !['image/png', 'image/jpeg', 'video/mp4'].includes(b.mime)) {
+        return responderErro(res, 503, 'midia-indisponivel', 'Mídia remota não pôde ser verificada.');
+      }
+      res.writeHead(200, { 'Content-Type': b.mime, 'Content-Length': b.conteudo.length,
+        'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' });
+      res.end(req.method === 'HEAD' ? undefined : b.conteudo);
+    } catch (e) { erroDeMarketing(res, e); }
+  },
   '/api/visao-geral': async (req, res, url) => responderOk(res, await adaptador('visao-geral').resumo(comCache, forcar(url))),
   '/api/supabase/resumo': async (req, res, url) => responderOk(res, await comCache('sb-resumo', 30_000, () => adaptador('supabase').resumo(), forcar(url))),
   '/api/supabase/funcoes': async (req, res, url) => responderOk(res, await comCache('sb-funcoes', 30_000, () => adaptador('supabase').funcoes(), forcar(url))),
@@ -276,6 +312,18 @@ const DESTRUTIVAS = new Set(['/api/vercel/redeploy', ...Object.keys(ACOES_BUILD)
 
 async function tratarAcao(req, res, url, corpo, sessao) {
   const p = url.pathname;
+  if (p === '/api/marketing/publicacoes') {
+    if (req.method !== 'POST') return responderErro(res, 405, 'metodo-recusado', 'Use POST para operações de publicação real.');
+    if (!seg.stepUpValido(sessao.s)) return responderErro(res, 403, 'reautenticar', 'Confirme o código do autenticador para continuar.');
+    if (!seg.dentroDoLimite('publicacoes-reais', 30, 60_000)) return responderErro(res, 429, 'limite', 'Espere antes de repetir a operação.', null, { tentarEmSeg: 60 });
+    try {
+      const modulo = marketing('publicacoes');
+      if (!modulo) return responderErro(res, 503, 'modulo-remoto-pendente', 'Publicações reais indisponíveis.');
+      responderOk(res, await modulo.executar(RAIZ_DADOS, corpo));
+    } catch (e) { erroDeMarketing(res, e); }
+    registrar('acao', { rota: p, resultado: res.statusCode, sessao: sessao.id });
+    return;
+  }
   const ehMarketing = ID_PECA.test(p) || MARKETING_POST.has(p);
 
   if (ehMarketing) {

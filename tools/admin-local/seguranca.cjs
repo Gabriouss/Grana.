@@ -29,7 +29,7 @@ const HOST_CANONICO = `127.0.0.1:${PORTA}`;
 const HOSTS = new Set([`localhost:${PORTA}`, HOST_CANONICO]);
 const ORIGENS = new Set([`http://localhost:${PORTA}`, ORIGEM_CANONICA]);
 
-const CSP = "default-src 'self'; script-src 'self'; img-src 'self' data: blob:; media-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'";
+const CSP = "default-src 'self'; script-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'";
 
 // Documentos vindos do repositório: nenhum script, nunca.
 const CSP_SVG = "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'";
