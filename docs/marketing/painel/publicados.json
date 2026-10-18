@@ -1,0 +1,16 @@
+{
+  "formato": 1,
+  "descricao": "Posts publicados na Meta fora da fila do painel, ligados à peça do catálogo por vínculo explícito (link público do post + caminho do arquivo + evidência). O calendário usa isto para marcar a peça como Publicado. Sem vínculo registrado aqui nem legenda idêntica, o post fica solto no dia.",
+  "vinculos": [
+    {
+      "link": "https://www.instagram.com/reel/DeaCxq2jLwU/",
+      "peca": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/Fala o gasto, pronto.mp4",
+      "evidencia": "calendario.json (registro retroativo de 13/10) cita a mídia 18132974281756527 do Instagram, publicada em 12/10/2026 20:01 UTC por API; a Graph devolve esse mesmo id para este link (conferido em 18/10/2026)."
+    },
+    {
+      "link": "https://www.facebook.com/reel/1419830199619383/",
+      "peca": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/Fala o gasto, pronto.mp4",
+      "evidencia": "Mesmo Reel publicado na Página do Facebook em 12/10/2026 20:48 UTC por API, com a mesma legenda 'Gastos pequenos não precisam ser difíceis' (conferido pelo Supremo na Graph em 18/10/2026)."
+    }
+  ]
+}

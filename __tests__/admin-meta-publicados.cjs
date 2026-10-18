@@ -66,7 +66,22 @@ const mk = (e = env) => criarMetaPublicados({ ler: (n) => e[n] || null, catalogo
   const sem = await mk({})('.', { mes: '2026-10' });
   assert.equal(chamadas.length, antes); assert.equal(sem.redes.instagram.status, 'nao-configurado'); assert.equal(sem.completo, false);
   for (const f of [{ mes: '2026-13' }, { mes: '2026-10', x: 1 }, []]) await assert.rejects(() => mk()('.', f), (e) => e.status === 400);
-    // ---- proxy de miniatura ----
+    // Registro explícito (publicados.json): vincula pelo caminho atual do arquivo e sobrepõe a legenda; caminho sumido não vincula.
+  const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'grana-publicados-'));
+  try {
+    fs.mkdirSync(path.join(tmp, 'docs/marketing/painel'), { recursive: true });
+    const grava = (v) => fs.writeFileSync(path.join(tmp, 'docs/marketing/painel/publicados.json'), JSON.stringify({ formato: 1, vinculos: v }));
+    const comPecas = (lista) => criarMetaPublicados({ ler: (n) => env[n] || null, agora: () => new Date('2026-10-18T12:00:00Z'), catalogo: () => ({ pecas: lista }) });
+    const peca = { id: 'a'.repeat(16), versao: 'b'.repeat(40), caminho: 'docs/x/Fala o gasto, pronto.mp4', legenda: '' };
+    grava([{ link: 'https://www.instagram.com/reel/AAA/', peca: peca.caminho, evidencia: 'teste' },
+      { link: 'https://www.facebook.com/p/1', peca: 'docs/x/sumiu.mp4', evidencia: 'teste' }, { link: 'https://www.instagram.com/p/SEM/', peca: peca.caminho, evidencia: '' }]);
+    modo = 'ok';
+    const reg = await comPecas([peca])(tmp, { mes: '2026-10' });
+    assert.deepEqual(reg.posts.find((p) => p.link === 'https://www.instagram.com/reel/AAA/').vinculo, { pecaId: peca.id, versao: peca.versao, criterio: 'registro' });
+    assert.equal(reg.posts.find((p) => p.link === 'https://www.facebook.com/p/1').vinculo, null, 'caminho que não existe mais não vincula');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+  // ---- proxy de miniatura ----
   const cdn = [];
   const corpo = (bytes) => ({ async *[Symbol.asyncIterator]() { yield bytes; } });
   const cab = (o) => ({ get: (k) => o[k.toLowerCase()] ?? null });

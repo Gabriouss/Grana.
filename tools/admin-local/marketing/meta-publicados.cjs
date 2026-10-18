@@ -7,7 +7,7 @@
 const crypto = require('node:crypto');
 const config = require('../config.cjs');
 const { pedirJson } = require('../adaptadores/_http.cjs');
-const { ErroMarketing, hojeLocal, listarPecas } = require('./catalogo.cjs');
+const { ErroMarketing, hojeLocal, listarPecas, lerJson, caminhoPainel } = require('./catalogo.cjs');
 const { temLegenda } = require('./legenda-publicacao.cjs');
 
 const FUSO = 'America/Sao_Paulo';
@@ -76,7 +76,21 @@ async function tokenDaPagina(pagina, versao, usuario) {
   return r.dados.access_token;
 }
 
-function vincular(posts, pecas) {
+// Registro explícito de posts publicados fora da fila do painel: docs/marketing/painel/publicados.json
+// { vinculos: [{ link, peca: <caminho do arquivo no repositório>, evidencia }] }. O vínculo resolve a
+// peça pelo caminho ATUAL do arquivo (id e versão vêm do catálogo), então sobrevive a renomeação
+// desde que o registro acompanhe o caminho. Caminho que não existe mais não vincula nada.
+function registroDePublicados(raiz) {
+  const dados = lerJson(caminhoPainel(raiz, 'publicados.json'), { vinculos: [] });
+  const mapa = new Map();
+  for (const v of Array.isArray(dados.vinculos) ? dados.vinculos : []) {
+    const link = https(v?.link);
+    if (link && typeof v.peca === 'string' && typeof v.evidencia === 'string' && v.evidencia.trim()) mapa.set(link, v.peca);
+  }
+  return mapa;
+}
+
+function vincular(posts, pecas, registro = new Map()) {
   const porLegenda = new Map();
   for (const p of pecas) {
     if (!temLegenda(p)) continue;
@@ -95,6 +109,8 @@ function vincular(posts, pecas) {
   return posts.map((post, i) => {
     const p = candidatos[i];
     const { legendaCompleta, ...publico } = post;
+    const doRegistro = registro.has(post.link) ? pecas.find((x) => x.caminho === registro.get(post.link)) : null;
+    if (doRegistro) return { ...publico, vinculo: { pecaId: doRegistro.id, versao: doRegistro.versao, criterio: 'registro' } };
     return { ...publico, vinculo: p && usos.get(`${post.rede}:${p.id}`) === 1 ? { pecaId: p.id, versao: p.versao, criterio: 'mesma-legenda' } : null };
   });
 }
@@ -195,7 +211,7 @@ function criarMetaPublicados({ ler = config.ler, catalogo = listarPecas, agora =
       }
     }
     const ordem = lidos.sort((a, b) => Date.parse(b.publicadoEm) - Date.parse(a.publicadoEm));
-    const posts = vincular(ordem, catalogo(raiz).pecas);
+    const posts = vincular(ordem, catalogo(raiz).pecas, registroDePublicados(raiz));
     lembrar(posts);
     const dados = {
       mes, redes, completo: Object.values(redes).every((r) => r.status === 'disponivel' && r.completo),
