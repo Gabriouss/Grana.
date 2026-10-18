@@ -5,4 +5,7 @@
 - Always run the Orquestrador Supremo terminal on Opus 5.5 at medium effort; check and correct it at session start if it is on another model.
 - Always run the Codex orchestrator on model Sol 6.1 with medium effort, never Luna.
 - Do not let any post move to approval unless it has a caption ready to publish.
+- Treat 9:16 images as possible Reels covers as well as Stories when classifying GranaPonto pieces.
+- Keep realistic device proportions in mockups; a phone must never be drawn larger than a notebook.
+- Write captions that differ from the creative's copy; captions should only contextualize what the creative says, never repeat it.
 <!-- end claude-reflect -->
