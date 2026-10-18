@@ -16,7 +16,7 @@ class FalhaGraph extends Error{constructor(public codigo:string,public incerto:b
 // GET que nao chegou a resposta (rede, prazo, corpo): sem efeito, a etapa so espera.
 class ConsultaIndisponivel extends Error{}
 // O corpo inteiro, inclusive leitura do stream, esta sob o signal do worker.
-async function jsonLimitado(r:Response):Promise<Record<string,unknown>>{
+export async function jsonLimitado(r:Response):Promise<Record<string,unknown>>{
  const reader=r.body?.getReader();if(!reader)throw new Error('corpo-ausente');const partes:Uint8Array[]=[];let tamanho=0;
  try{for(;;){const x=await reader.read();if(x.done)break;tamanho+=x.value.length;if(tamanho>262144)throw new Error('corpo-grande');partes.push(x.value);}}
  finally{await reader.cancel().catch(()=>{});}

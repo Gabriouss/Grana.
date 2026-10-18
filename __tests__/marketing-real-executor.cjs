@@ -47,6 +47,7 @@ const ARGS = {
   confirmar: ['p_admin', 'p_previa', 'p_hash', 'p_revisao', 'p_idempotencia'], consultar: ['p_admin', 'p_filtro'],
   comando: ['p_admin', 'p_pedido'], snapshot_iniciar: ['p_admin', 'p_pedido'],
   snapshot_finalizar: ['p_admin', 'p_snapshot', 'p_revisao', 'p_verificacao'],
+  renovacao_iniciar: ['p_worker'], renovacao_registrar: ['p_worker', 'p_renovacao', 'p_lease', 'p_resultado'],
 };
 
 async function novoBanco() {
@@ -58,7 +59,7 @@ async function novoBanco() {
     alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
     alter default privileges in schema public grant all on functions to anon,authenticated,service_role;
     create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);`);
-  for (const f of ['20261015190000_admin_marketing_fundacao.sql', '20261016140000_admin_marketing_operacoes.sql', '20261018001000_admin_marketing_real.sql']) {
+  for (const f of ['20261015190000_admin_marketing_fundacao.sql', '20261016140000_admin_marketing_operacoes.sql', '20261018001000_admin_marketing_real.sql', '20261018230000_admin_marketing_renovacao.sql']) {
     await db.exec(fs.readFileSync(path.join(raiz, 'supabase/migrations', f), 'utf8'));
   }
   return db;
