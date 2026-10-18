@@ -3003,3 +3003,59 @@ dialog.central::backdrop { background: var(--scrim); }
   body.imprimindo-relatorio * { color: #111 !important; background: transparent !important; border-color: #888 !important; box-shadow: none !important; }
   body.imprimindo-relatorio .aprendizado-recomendacao, body.imprimindo-relatorio .secao { break-inside: avoid; }
 }
+
+/* ── Agendamento real (publicacoes: _publicacoes-reais-ui.js) ─────────────
+   Tudo no fluxo e em grade que quebra sozinha: nada de medida copiada a mão,
+   nada de largura fixa que estoure em 390px. */
+
+.pub-real-disponibilidade, .pub-real-controles, .pub-real-compositor, .pub-real-previa, .pub-real-lista, .pub-real-detalhe { min-width: 0; }
+.pub-real-dado-real { font-size: var(--t-micro); letter-spacing: var(--tr-rotulo); text-transform: uppercase; color: var(--accent-2); }
+.pub-real-aviso { color: var(--ink-soft); font-size: var(--t-nota); }
+.pub-real fieldset, .pub-real-compositor fieldset { min-width: 0; border: 1px solid var(--rule); border-radius: var(--r-md); padding: var(--s-lg); margin: 0; display: grid; gap: var(--s-md); }
+.pub-real-compositor legend, .pub-real-conta legend { padding-inline: var(--s-sm); font-size: var(--t-legenda); color: var(--ink-soft); }
+.pub-real-compositor-conteudo { display: grid; gap: var(--s-lg); }
+.pub-real-pecas { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: var(--s-md); }
+.pub-real-peca { display: grid; grid-template-columns: auto 64px minmax(0, 1fr); align-items: center; gap: var(--s-md); padding: var(--s-md); border: 1px solid var(--rule); border-radius: var(--r-md); cursor: pointer; min-width: 0; }
+.pub-real-peca:hover { background: var(--hover); }
+.pub-real-peca.selecionada { border-color: var(--accent-2); background: var(--paper-selected); }
+.pub-real-peca-texto { display: grid; gap: var(--s-xs); min-width: 0; overflow-wrap: anywhere; }
+.pub-real-peca-texto small { color: var(--ink-faint); font-size: var(--t-micro); line-height: var(--lh-compacto); }
+.pub-real-miniatura { width: 64px; height: 64px; object-fit: cover; border-radius: var(--r-sm); background: var(--paper-deep); }
+.pub-real-miniatura-vazia { display: grid; place-items: center; text-align: center; font-size: var(--t-micro); color: var(--ink-faint); padding: var(--s-xs); }
+.pub-real-contas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: var(--s-md); }
+.pub-real-conta legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-sm); }
+.pub-real-conta legend small { color: var(--ink-faint); font-size: var(--t-micro); }
+.pub-real-rede { font-size: var(--t-micro); letter-spacing: var(--tr-rotulo); text-transform: uppercase; color: var(--accent-2); }
+.pub-real-formatos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr)); gap: var(--s-sm); }
+.pub-real-formato { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s-sm); align-items: start; padding: var(--s-sm) var(--s-md); border: 1px solid var(--rule); border-radius: var(--r-sm); min-width: 0; }
+.pub-real-formato span { display: grid; gap: var(--s-fio); min-width: 0; }
+.pub-real-formato small { color: var(--ink-faint); font-size: var(--t-micro); line-height: var(--lh-compacto); overflow-wrap: anywhere; }
+.pub-real-formato.indisponivel { opacity: 0.6; }
+.pub-real-horario { max-width: 100%; }
+.pub-real-horario input[type="datetime-local"] { max-width: 100%; }
+.pub-real-horario-resumo[data-valido="false"] { color: var(--danger); }
+.pub-real-acoes { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-md); }
+.pub-real-pausas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: var(--s-md); }
+.pub-real-pausa { flex-direction: row !important; align-items: center; justify-content: space-between; gap: var(--s-md); }
+.pub-real-pausa > div { min-width: 0; overflow-wrap: anywhere; }
+.pub-real-filtros { display: flex; flex-wrap: wrap; align-items: end; gap: var(--s-md); }
+.pub-real-filtros label { display: grid; gap: var(--s-xs); font-size: var(--t-legenda); color: var(--ink-soft); min-width: 0; }
+.pub-real-jobs { grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+.pub-real-job-topo { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: var(--s-md); }
+.pub-real-job-topo > div { min-width: 0; overflow-wrap: anywhere; }
+.pub-real-estado { font-size: var(--t-legenda); color: var(--accent-2); }
+.estado-falhou .pub-real-estado, .estado-precisa-conferir .pub-real-estado { color: var(--atencao); }
+.pub-real-job-acoes, .pub-real-paginacao { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-sm); }
+.pub-real-erro { color: var(--danger); overflow-wrap: anywhere; }
+.pub-real-recibos { display: grid; gap: var(--s-sm); padding-left: var(--s-lg); font-size: var(--t-legenda); overflow-wrap: anywhere; }
+.pub-real-previews { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: var(--s-lg); }
+.pub-real-previa-destino { min-width: 0; }
+.pub-real-previa-destino img, .pub-real-previa-destino video { max-width: 100%; height: auto; }
+.pub-real-legenda { white-space: pre-wrap; overflow-wrap: anywhere; }
+.pub-real-declaracao { display: flex; align-items: start; gap: var(--s-sm); }
+.pub-real-consulta-pendente { display: grid; gap: var(--s-sm); padding: var(--s-md); border: 1px solid rgba(211, 184, 105, 0.35); border-radius: var(--r-md); background: var(--atencao-fundo); }
+.pub-real ~ :not([hidden]) { margin-top: var(--s-lg); }
+.pub-real ~ .pub-real-compositor, .pub-real ~ .pub-real-lista { margin-top: var(--s-xl); }
+.pub-real-previa-corpo { display: grid; gap: var(--s-md); min-width: 0; }
+.pub-real-previa-corpo .feed-post-midia { width: 100%; max-width: 100%; max-height: min(70vh, 560px); }
+.pub-real-previa-corpo .feed-trilho, .pub-real-previa-corpo .feed-slide { min-width: 0; max-width: 100%; }
