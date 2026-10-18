@@ -7,14 +7,14 @@
       "nome": "Reel da padaria (widget de voz)",
       "revisoes": [
         { "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/historico/pecas/reels/grana-reels-v8-pop.mp4", "nota": "v8-pop, 24,7 s. Aceite de 07/10/2026 10:31:32 dado por engano; publicado por erro em 12/10/2026 16:52 e arquivado pelo autor. Movido para historico/pecas/reels/ em 14/10/2026 (regra 25)." },
-        { "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/grana-reels-notificacao-1.mp4", "nota": "Versão curta com a notificação na tela, 16,8 s, SHA-1 95eee60e. Cópia do vault. Publicada em 12/10/2026 ~17:01 (mídia 18132974281756527)." }
+        { "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/Fala o gasto, pronto.mp4", "nota": "Versão curta com a notificação na tela, 16,8 s, SHA-1 95eee60e. Cópia do vault. Publicada em 12/10/2026 ~17:01 (mídia 18132974281756527)." }
       ],
-      "vigente": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/grana-reels-notificacao-1.mp4",
+      "vigente": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/Fala o gasto, pronto.mp4",
       "decisao": { "autor": "Gabriel", "data": "2026-10-13", "evidencia": "Autor em 12/10/2026 16:59 (\"o correto é esse aqui\") e em 13/10/2026 ~20h25: a versão curta com notificação é a correta; o v8-pop é superado. Registro em E:/Grana-temporarios/2026-10-13-marketing-ph/PARA-O-CODEX-AO-VOLTAR.md e no INDICE da semana 42." }
     },
     {
       "id": "R13",
-      "nome": "R13, Reel",
+      "nome": "Passou na farmácia hoje (Reel)",
       "revisoes": [
         { "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/historico/pecas/r13-v3/reel-r13-v3.mp4", "nota": "v3, 08/10/2026. Movida para historico/pecas/r13-v3/ em 14/10/2026 (regra 25: substituída vai a historico)." },
         { "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/r13/reel-r13-final.mp4", "nota": "Final. Movida de historico/pecas/r13/ para para-aprovacao/pecas/r13/ em 14/10/2026 (decisão do Supremo). Vigente; aguarda o aceite do autor no painel." }
@@ -24,7 +24,7 @@
     },
     {
       "id": "C14",
-      "nome": "C14, carrossel Lumen",
+      "nome": "Olhar só o saldo engana o seu mês (carrossel)",
       "revisoes": [
         { "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/lumen-v6/carrossel-*", "nota": "v6, 04/10/2026. O card.png da mesma pasta é a peça C01, outra família." },
         { "caminho": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/para-aprovacao/pecas/lumen-v7/carrossel-*", "nota": "v7, 12/10/2026, com ajuste pedido pelo autor (fila do painel)." }
@@ -34,7 +34,7 @@
     }
   ],
   "capas": [
-    { "capa": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/grana-reels-v8-pop-capa-1080x1920.png", "reel": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/grana-reels-notificacao-1.mp4", "nota": "Feita para o v8-pop, usada pelo autor no Reel publicado em 12/10 (decisão de 13/10/2026: a capa passa a ser do notificacao-1)." },
-    { "capa": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/grana-motion-desistiu-foto-da-nota-capa-1080x1920.png", "reel": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/aprovados/pecas/reels/grana-motion-desistiu-foto-da-nota.mp4", "nota": "INDICE da semana 41: capa do Reel motion base." }
+    { "capa": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/Fala o gasto, pronto-capa.png", "reel": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/Fala o gasto, pronto.mp4", "nota": "Feita para o v8-pop, usada pelo autor no Reel publicado em 12/10 (decisão de 13/10/2026: a capa passa a ser do notificacao-1)." },
+    { "capa": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/Já desistiu de controlar seus gastos-capa.png", "reel": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/aprovados/pecas/reels/Já desistiu de controlar seus gastos.mp4", "nota": "INDICE da semana 41: capa do Reel motion base." }
   ]
 }

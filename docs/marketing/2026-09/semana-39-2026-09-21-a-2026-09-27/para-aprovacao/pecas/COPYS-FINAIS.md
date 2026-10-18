@@ -2,7 +2,7 @@
 
 Escrita em 18/10/2026 para o Reel aprovado sem legenda. O aceite composto antigo (vídeo, capa e legenda) deixa de valer e o autor aprova de novo no painel.
 
-## R21 · Já desistiu de controlar seus gastos?
+## Já desistiu de controlar seus gastos?
 
 **Título:** Já desistiu de controlar seus gastos porque anotar tudo cansa?
 
