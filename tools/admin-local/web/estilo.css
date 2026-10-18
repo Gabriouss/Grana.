@@ -573,6 +573,9 @@ a.cartao:hover { border-color: var(--rule-strong); }
   border-bottom: 1px solid var(--rule);
   vertical-align: top;
 }
+/* Célula nunca parte palavra no meio: a quebra é só entre palavras. Código e hash (mono) continuam quebrando. */
+.tabela td, .tabela th { overflow-wrap: normal; word-break: normal; hyphens: none; }
+.tabela td.mono { overflow-wrap: anywhere; }
 .tabela tbody tr:last-child td { border-bottom: 0; }
 .tabela tbody tr:hover td { background: var(--hover); }
 .tabela .num, .tabela td.num, .tabela th.num { text-align: right; font-variant-numeric: tabular-nums; }
@@ -1829,6 +1832,10 @@ details.secao-recolhida > .secao { margin: 0; padding: 0; border: 0; background:
 .documento pre { max-width: 100%; overflow-x: auto; }
 /* A rolagem é do .tabela-rolagem (o markdown já embrulha); a tabela fica tabela e ocupa a moldura. */
 .documento table { display: table; width: 100%; }
+/* Tabela de documento não esmaga colunas: tem largura mínima e rola na horizontal dentro do próprio bloco (.tabela-rolagem). */
+.documento .tabela { min-width: 44rem; }
+.documento .tabela th:first-child, .documento .tabela td:first-child { min-width: 11rem; }
+.documento .tabela td, .documento .tabela th { min-width: 8rem; }
 .documento :not(.tabela-rolagem) > table { display: block; width: fit-content; max-width: 100%; overflow-x: auto; }
 .documento img { max-width: 100%; height: auto; }
 .documento [id^="doc-"] { scroll-margin-top: var(--s-xl); }
