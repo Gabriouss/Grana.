@@ -189,13 +189,13 @@ Arranjos ainda não usados que respeitam o sistema: o espelho do A (celular à e
 
 ## 10b. Arquétipo E: componentes em destaque (pedido do autor, 18/10/2026)
 
-O autor pediu telas de carrossel, cards únicos e capas de Reel que não sejam sempre o mockup de celular em 3D: "funções pontuais". A referência são três criativos de outro app, o Nossa Grana, vistos em anúncio. Eles não são do Grana. e servem só de exemplo de composição; as imagens recortadas ficam em `apoio/referencias/nossa-grana/` na M1 e não vão para o git, por serem arte de terceiros num repositório público (regra 15).
+O autor pediu telas de carrossel, cards únicos e capas de Reel que não sejam sempre o mockup de celular em 3D: "funções pontuais". A referência são três criativos de outro app, o Nossa Grana, vistos em anúncio. Eles não são do Grana. e servem só de exemplo de composição; as imagens recortadas ficam só em `E:\Grana-temporarioseferencias-nossa-grana\` (M1) e não vão para o git, por serem arte de terceiros num repositório público (regra 15). O guia descreve os três jeitos abaixo, sem depender dos arquivos.
 
 Três jeitos, todos válidos:
 
-1. **Celular com rótulos pontilhados** (`ref-1`): o aparelho inteiro de um lado, e do outro cartões escuros com título e uma linha de apoio, ligados por linha pontilhada a um ponto sobre a parte da tela que explica. Serve para dizer "o que cada pedaço faz".
-2. **Componentes ampliados e isolados** (`ref-2`): sem aparelho. Botões e um cartão de lançamento recortados da tela, aumentados, em fileira e empilhados, com sombra suave. Serve para uma função só (por exemplo, a grade de lançar por voz, fotografar a nota, colar comprovante, importar extrato).
-3. **Cartões flutuantes inclinados** (`ref-3`): dois ou três cartões da tela, levemente girados e sobrepostos em degraus, mais uma etiqueta pequena (um aviso, uma notificação) fora do cartão. Serve para metas, cofrinhos, faturas.
+1. **Celular com rótulos pontilhados** (referência 1): o aparelho inteiro de um lado, e do outro cartões escuros com título e uma linha de apoio, ligados por linha pontilhada a um ponto sobre a parte da tela que explica. Serve para dizer "o que cada pedaço faz".
+2. **Componentes ampliados e isolados** (referência 2): sem aparelho. Botões e um cartão de lançamento recortados da tela, aumentados, em fileira e empilhados, com sombra suave. Serve para uma função só (por exemplo, a grade de lançar por voz, fotografar a nota, colar comprovante, importar extrato).
+3. **Cartões flutuantes inclinados** (referência 3): dois ou três cartões da tela, levemente girados e sobrepostos em degraus, mais uma etiqueta pequena (um aviso, uma notificação) fora do cartão. Serve para metas, cofrinhos, faturas.
 
 **Regras no Grana.:**
 - **Os componentes vêm sempre de print real do app**, recortados, com dado inventado (regra 23 e `PRODUCT.md`). Nada desenhado do zero nem gerado por IA.
