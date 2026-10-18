@@ -189,7 +189,7 @@ Arranjos ainda não usados que respeitam o sistema: o espelho do A (celular à e
 
 ## 10b. Arquétipo E: componentes em destaque (pedido do autor, 18/10/2026)
 
-O autor pediu telas de carrossel, cards únicos e capas de Reel que não sejam sempre o mockup de celular em 3D: "funções pontuais". A referência são três criativos de outro app, o Nossa Grana, vistos em anúncio. Eles não são do Grana. e servem só de exemplo de composição; as imagens recortadas ficam só em `E:\Grana-temporarioseferencias-nossa-grana\` (M1) e não vão para o git, por serem arte de terceiros num repositório público (regra 15). O guia descreve os três jeitos abaixo, sem depender dos arquivos.
+O autor pediu telas de carrossel, cards únicos e capas de Reel que não sejam sempre o mockup de celular em 3D: "funções pontuais". A referência são três criativos de outro app, o Nossa Grana, vistos em anúncio. Eles não são do Grana. e servem só de exemplo de composição; as imagens recortadas ficam só em `E:/Grana-temporarios/referencias-nossa-grana/` (M1) e não vão para o git, por serem arte de terceiros num repositório público (regra 15). O guia descreve os três jeitos abaixo, sem depender dos arquivos.
 
 Três jeitos, todos válidos:
 
