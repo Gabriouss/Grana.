@@ -3,6 +3,7 @@ import type { OperacaoAdmin } from './admin-autorizacao.ts';
 import { consultaComPrazo } from './admin-agregados.ts';
 
 export const CONTRATO_REAL = 'e5.real.v1';
+export const CONTRATO_REAL_V2 = 'e5.real.v2';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HASH=/^[0-9a-f]{64}$/;
 const FORMATOS=['feed','carrossel','reels','stories'];
@@ -22,7 +23,9 @@ const CODIGOS=new Set(['pedido-invalido','previa-inexistente','previa-expirada',
  'snapshot-inexistente','snapshot-indisponivel','snapshot-invalido','midia-divergente','midia-invalida','conta-indisponivel',
  'capacidade-nao-comprovada','horario-invalido','destino-duplicado','operacao-bloqueada','operacao-pausada','agendamento-ja-existe',
  'agendamento-inexistente','lote-inexistente','estado-incompativel','ja-publicado','operacao-em-andamento','destino-invalido',
- 'midia-incompativel','midia-grande','midia-inexistente','nao-autorizado']);
+ 'midia-incompativel','midia-grande','midia-inexistente','nao-autorizado',
+ 'atualizar-cliente','geracao-divergente','revisao-editorial-pendente','revisao-nao-iniciada','versao-divergente',
+ 'identidade-ambigua','antecedencia-insuficiente']);
 export async function rpcReal<T>(cliente:SupabaseClient,nome:string,args:Objeto,signal:AbortSignal):Promise<T>{
  const r=await consultaComPrazo(s=>cliente.rpc('admin_marketing_real_'+nome,args).abortSignal(s),signal);
  if(r.error){const codigo=CODIGOS.has(r.error.message)?r.error.message:'fonte-indisponivel';
@@ -32,6 +35,11 @@ export async function rpcReal<T>(cliente:SupabaseClient,nome:string,args:Objeto,
 export type PedidoPublicacaoReal={recurso:'publicacoes-reais';modo:'real';acao:string}&Objeto;
 export function validarPublicacaoReal(v:unknown):PedidoPublicacaoReal{
  const p=objeto(v);if(p.recurso!=='publicacoes-reais'||p.modo!=='real')falhar('pedido-invalido');
+ if(p.contractVersion!==undefined){
+  if(p.contractVersion===CONTRATO_REAL_V2)return validarPublicacaoRealV2(p);
+  if(p.contractVersion!==CONTRATO_REAL)falhar('atualizar-cliente',409);
+  const {contractVersion:_v,...legado}=p;return validarPublicacaoReal(legado);
+ }
  const base=['recurso','modo','acao'];
  switch(p.acao){
   case 'contas':campos(p,base);break;
@@ -65,12 +73,45 @@ export function validarPublicacaoReal(v:unknown):PedidoPublicacaoReal{
  }
  return p as PedidoPublicacaoReal;
 }
+
+// Negociação explícita: o cliente atual continua v1 sem depender da migration v2.
+function validarPublicacaoRealV2(p:Objeto):PedidoPublicacaoReal{
+ const base=['recurso','modo','acao','contractVersion'];
+ if(p.acao==='saude')campos(p,base);
+ else if(p.acao==='acompanhar'){
+  campos(p,[...base,'conteudoId','pecaId']);
+  if((p.conteudoId!==undefined)===(p.pecaId!==undefined))falhar('pedido-invalido');
+  if(p.conteudoId!==undefined)uuid(p.conteudoId);
+  else if(typeof p.pecaId!=='string'||!/^[0-9a-f]{16}$/.test(p.pecaId))falhar('pedido-invalido');
+ }else if(p.acao==='editorial'){
+  campos(p,[...base,'pedido']);const d=objeto(p.pedido);
+  campos(d,['operacao','conteudoId','geracaoEsperada','pecaId','versao','aliases','idempotencia']);
+  uuid(d.conteudoId);uuid(d.idempotencia);inteiro(d.geracaoEsperada,0);
+  if(!['iniciarRevisao','registrarVersao','registrarAceite'].includes(String(d.operacao))
+    ||typeof d.pecaId!=='string'||!/^[0-9a-f]{16}$/.test(d.pecaId)
+    ||typeof d.versao!=='string'||!/^[0-9a-f]{40}$/.test(d.versao))falhar('pedido-invalido');
+  if(d.aliases!==undefined&&(!Array.isArray(d.aliases)||d.aliases.length>100
+    ||d.aliases.some(a=>typeof a!=='string'||!/^[0-9a-f]{16}$/.test(a))))falhar('pedido-invalido');
+ }else if(p.acao==='previa'&&p.jobId!==undefined){
+  campos(p,[...base,'jobId','destinos']);uuid(p.jobId);
+  const {contractVersion:_v,jobId:_j,...d}=p;
+  validarPublicacaoReal({...d,snapshotId:p.jobId,snapshotRevisao:1});
+ }else{
+  const {contractVersion:_v,previaId,previaHash,...d}=p;
+  if(p.acao==='reagendar'){
+   uuid(previaId);if(typeof previaHash!=='string'||!HASH.test(previaHash))falhar('pedido-invalido');
+   validarPublicacaoReal(d);
+  }else validarPublicacaoReal({...d,...(previaId!==undefined?{previaId}:{}),...(previaHash!==undefined?{previaHash}:{})});
+ }
+ return p as PedidoPublicacaoReal;
+}
 type SnapshotRow={id:string;admin_id:string;identidade:string;estado:string;revisao:number;dados:Objeto};
 function snapshotPublico(s:SnapshotRow){
  const d=s.dados;const midias=(d.midias as Objeto[]).map(({objeto:_privado,...m})=>m);
  const capa=d.capa?Object.fromEntries(Object.entries(objeto(d.capa)).filter(([k])=>k!=='objeto')):null;
  return {snapshotId:s.id,revisao:s.revisao,estado:s.estado,pecaId:d.pecaId,versao:d.versao,manifestoSha256:s.identidade,
-   aceiteId:d.aceiteId,aceiteRevisao:d.aceiteRevisao,legenda:d.legenda,legendaSha256:d.legendaSha256,midias,capa,motivos:[]};
+   aceiteId:d.aceiteId,aceiteRevisao:d.aceiteRevisao,legenda:d.legenda,legendaSha256:d.legendaSha256,midias,capa,motivos:[],
+   ...(d.conteudoId?{conteudoId:d.conteudoId,geracaoEditorial:d.geracaoEditorial}:{})};
 }
 async function lerSnapshot(cliente:SupabaseClient,id:string,signal:AbortSignal):Promise<SnapshotRow>{
  const r=await consultaComPrazo(s=>cliente.from('admin_marketing_real_snapshots').select('id,admin_id,identidade,estado,revisao,dados').eq('id',uuid(id)).abortSignal(s).maybeSingle(),signal);
@@ -81,7 +122,33 @@ export function criarOperacaoPublicacoesReais(_deps:unknown={}):OperacaoAdmin<Pe
   tratarErro:e=>e instanceof ErroPublicacaoReal&&CODIGOS.has(e.codigo)?{
     status:e.status as 400|403|404|409|413|415|422|503,codigo:e.codigo,mensagem:'Não foi possível concluir esta operação. Confira o estado e a versão antes de tentar novamente.'}:null,
   executar:async(cliente,p,{userId,signal,agora})=>{
-  uuid(userId);const base={contractVersion:CONTRATO_REAL,modo:'real'};
+  uuid(userId);const v2=p.contractVersion===CONTRATO_REAL_V2;
+  const base={contractVersion:v2?CONTRATO_REAL_V2:CONTRATO_REAL,modo:'real'};
+  if(v2){
+   if(p.acao==='editorial')return {dados:{...base,...await rpcReal<Objeto>(cliente,'editorial_v2',{p_admin:userId,p_pedido:p.pedido},signal)}};
+   if(p.acao==='saude')return {dados:{...base,...await rpcReal<Objeto>(cliente,'saude_v2',{p_admin:userId},signal)}};
+   if(p.acao==='acompanhar')return {dados:{...base,...await rpcReal<Objeto>(cliente,'acompanhar_v2',{p_admin:userId,
+    p_filtro:p.conteudoId?{conteudoId:p.conteudoId}:{pecaId:p.pecaId}},signal)}};
+   if(p.acao==='previa'){
+    const row=await rpcReal<{id:string;hash:string;expira_em:string;snapshot_id:string;destinos:Objeto[]}>(cliente,'previa_v2',
+     {p_admin:userId,p_pedido:p.jobId?{jobId:p.jobId,destinos:p.destinos}:{snapshotId:p.snapshotId,snapshotRevisao:p.snapshotRevisao,destinos:p.destinos}},signal);
+    const snapshot=await lerSnapshot(cliente,row.snapshot_id,signal);
+    if(snapshot.admin_id!==userId)falhar('nao-autorizado',403);
+    const bloqueios=[...new Set(row.destinos.flatMap(d=>d.motivos as string[]))];
+    return {dados:{...base,previaId:row.id,previaHash:row.hash,revisao:1,expiraEm:row.expira_em,
+     snapshot:snapshotPublico(snapshot),destinos:row.destinos,podeConfirmar:row.destinos.every(d=>d.estado==='pronto'),bloqueios}};
+   }
+   if(p.acao==='confirmar'){
+    const r=await rpcReal<{loteId:string;replay:boolean}>(cliente,'confirmar_v2',{p_admin:userId,p_previa:p.previaId,
+     p_hash:p.previaHash,p_revisao:p.revisaoEsperada,p_idempotencia:p.idempotencia},signal);
+    const lote=await rpcReal<Objeto>(cliente,'consultar_v2',{p_admin:userId,p_filtro:{acao:'consultar',loteId:r.loteId,limite:50}},signal);
+    return {dados:{...base,...lote,...r,idempotencia:p.idempotencia}};
+   }
+   const {recurso:_r,modo:_m,contractVersion:_v,...filtro}=p;
+   const consulta=['contas','consultar','listar'].includes(p.acao);
+   return {dados:{...base,...await rpcReal<Objeto>(cliente,consulta?'consultar_v2':'comando_v2',
+    {p_admin:userId,[consulta?'p_filtro':'p_pedido']:filtro},signal)}};
+  }
   if(p.acao==='previa'){
    const row=await rpcReal<{id:string;hash:string;expira_em:string;destinos:unknown[]}>(cliente,'previa',{p_admin:userId,p_pedido:{snapshotId:p.snapshotId,snapshotRevisao:p.snapshotRevisao,destinos:p.destinos}},signal);
    const snapshot=await lerSnapshot(cliente,String(p.snapshotId),signal);
@@ -112,7 +179,8 @@ function mime(bytes:Uint8Array){
 }
 async function hash(bytes:Uint8Array){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(bytes).buffer)),x=>x.toString(16).padStart(2,'0')).join('');}
 export function validarSnapshotReal(v:unknown):Objeto{
- const d=objeto(v);campos(d,['pecaId','versao','aceiteId','aceiteRevisao','legenda','legendaSha256','midias','capa','titulo']);
+ const d=objeto(v);campos(d,['pecaId','versao','aceiteId','aceiteRevisao','legenda','legendaSha256','midias','capa','titulo','conteudoId','geracaoEditorial']);
+ if(d.conteudoId!==undefined||d.geracaoEditorial!==undefined){uuid(d.conteudoId);inteiro(d.geracaoEditorial);}
  if(typeof d.pecaId!=='string'||!/^[0-9a-f]{16}$/.test(d.pecaId)||typeof d.versao!=='string'||!/^[0-9a-f]{40}$/.test(d.versao)
   ||typeof d.aceiteId!=='string'||d.aceiteId.length<1||d.aceiteId.length>200||typeof d.legenda!=='string'||!d.legenda.trim()
   ||new TextEncoder().encode(d.legenda).length>64000||typeof d.legendaSha256!=='string'||!HASH.test(d.legendaSha256))falhar('snapshot-invalido');
@@ -134,7 +202,8 @@ export function criarImportadorSnapshotReal(deps:{rede?:typeof fetch}={}){
  const rede=deps.rede??fetch;
  async function iniciar(cliente:SupabaseClient,pedido:unknown,ctx:Contexto){
   const d=validarSnapshotReal(pedido);if(await hash(new TextEncoder().encode(String(d.legenda)))!==d.legendaSha256)falhar('midia-divergente',409);
-  const r=await rpcReal<SnapshotRow>(cliente,'snapshot_iniciar',{p_admin:uuid(ctx.userId),p_pedido:d},ctx.signal);
+  const r=await rpcReal<SnapshotRow>(cliente,d.conteudoId?'snapshot_iniciar_v2':'snapshot_iniciar',{p_admin:uuid(ctx.userId),p_pedido:d},ctx.signal);
+  if(r.admin_id!==ctx.userId)falhar('nao-autorizado',403);
   return {snapshotId:r.id,revisao:r.revisao,estado:r.estado,uploads:(r.dados.midias as Objeto[]).map((_,i)=>({indice:String(i),uploadRef:r.id+':'+i})),capa:r.dados.capa?{indice:'capa',uploadRef:r.id+':capa'}:null};
  }
  async function enviar(cliente:SupabaseClient,p:{snapshotId:string;indice:string;bytes:Uint8Array},ctx:Contexto){

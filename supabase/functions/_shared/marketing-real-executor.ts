@@ -7,7 +7,8 @@ import { lerCorpoLimitado } from './request-body.ts';
 import { timingSafeEqual } from './seguranca.ts';
 type Claim=JobGraph&{leaseId:string;revisao:number;envioId:string;snapshotId:string;credencialRef:string};
 /* Orcamento somado, nao chutado: claim 4 s + trabalho 14 s + recibo 5 s =
-   23 s, dentro do total de 25 s e bem antes da lease de 2 min. Os jobs rodam
+   23 s, dentro do total de 25 s e bem antes da lease de 2 min. V2 reserva
+   mais 1 s para saúde e 1 s de folga. Os jobs rodam
    em paralelo. O recibo tem prazo PROPRIO, fora do sinal do trabalho: etapa que
    estourou ainda deixa recibo, em vez de esperar a lease vencer.
    A renovacao da capacidade corre em paralelo aos jobs, com conta propria:
@@ -39,10 +40,16 @@ export function criarExecutorReal(deps:Deps){
    let corpo:unknown;try{corpo=JSON.parse(new TextDecoder().decode(lido.bytes));}catch{return responder(400,'pedido-invalido');}
    if(!corpo||typeof corpo!=='object'||Array.isArray(corpo)||Object.keys(corpo).length)return responder(400,'pedido-invalido');
    const client=deps.cliente(controller.signal),worker=crypto.randomUUID();
+   // Opt-in server-side: nunca envia RPC v2 para o servidor anterior por padrão.
+   const contrato=deps.env('MARKETING_REAL_EXECUTOR_CONTRATO')??'e5.real.v1';
+   if(!['e5.real.v1','e5.real.v2'].includes(contrato))return responder(503,'contrato-invalido');
+   const v2=contrato==='e5.real.v2';
+   const rpc=<T>(nome:string,args:Record<string,unknown>,s:AbortSignal)=>rpcReal<T>(client,
+    v2&&['claim','admitir','recibo'].includes(nome)?nome+'_v2':nome,args,s);
    // Nunca rejeita: cada desfecho vira um codigo no log, e o banco guarda o recibo.
    const renovando=(async()=>{
     let inicio:{renovacaoId:string;lease:string;contas:ContaRenovacao[]}|null;
-    try{inicio=await rpcReal(client,'renovacao_iniciar',{p_worker:worker},comPrazo(controller.signal,prazo.renovacaoInicio));}
+    try{inicio=await rpc('renovacao_iniciar',{p_worker:worker},comPrazo(controller.signal,prazo.renovacaoInicio));}
     catch{return 'inicio-indisponivel';}
     if(!inicio)return 'nao-devida';
     let resultados:ResultadoRenovacao[];
@@ -51,12 +58,12 @@ export function criarExecutorReal(deps:Deps){
     try{resultados=await consultaComPrazo(s=>criarRenovacao({rede:deps.rede??fetch,versao,env:deps.env,signal:s})(inicio.contas),
      controller.signal,prazo.renovacaoLeitura);}
     catch{resultados=inicio.contas.map(c=>({contaId:c.contaId,resultado:'inconclusivo',motivo:'leitura-interrompida'}));}
-    try{return (await rpcReal<{resultado:string}>(client,'renovacao_registrar',{p_worker:worker,p_renovacao:inicio.renovacaoId,
+    try{return (await rpc<{resultado:string}>('renovacao_registrar',{p_worker:worker,p_renovacao:inicio.renovacaoId,
      p_lease:inicio.lease,p_resultado:{contas:resultados}},AbortSignal.timeout(prazo.renovacaoRegistro))).resultado;}
     catch{return 'registro-pendente';}
    })().then(r=>{renovacao=r;});
    try{
-   const claims=await rpcReal<Claim[]>(client,'claim',{p_worker:worker,p_limite:3},comPrazo(controller.signal,prazo.claim));
+   const claims=await rpc<Claim[]>('claim',{p_worker:worker,p_limite:3},comPrazo(controller.signal,prazo.claim));
    const execucoes=await Promise.allSettled(claims.map(async job=>{
     /* Todo POST passa por `admitir` no banco antes de sair. Sem admissao neste
        intento nao houve POST, e a etapa pode ser repetida ("adiado"). Depois de
@@ -74,7 +81,7 @@ export function criarExecutorReal(deps:Deps){
      // O adaptador nasce com o sinal da ETAPA: o prazo aborta o transporte, nao so a espera.
      resultado=await consultaComPrazo(s=>criarAdaptadorGraphReal({rede:async(input,init)=>{
       if(init?.method==='POST'){
-       const ok=await rpcReal<boolean>(client,'admitir',{p_worker:worker,p_job:job.jobId,p_lease:job.leaseId,p_revisao:job.revisao},s);
+       const ok=await rpc<boolean>('admitir',{p_worker:worker,p_job:job.jobId,p_lease:job.leaseId,p_revisao:job.revisao},s);
        if(!ok)throw new Error('efeito-bloqueado');
        admitido=true;
       }
@@ -101,13 +108,20 @@ export function criarExecutorReal(deps:Deps){
       :job.etapa==='publicar'?{estado:'incerto',codigo:'resultado-nao-confirmado'}:{estado:'adiado',codigo:motivo};
     }
     if(resultado.estado==='incerto')incertos++;
-    await rpcReal(client,'recibo',{p_worker:worker,p_job:job.jobId,p_lease:job.leaseId,p_revisao:job.revisao,p_resultado:resultado},
+    await rpc('recibo',{p_worker:worker,p_job:job.jobId,p_lease:job.leaseId,p_revisao:job.revisao,p_resultado:resultado},
       AbortSignal.timeout(prazo.recibo));
     processados++;
    }));
    if(execucoes.some(x=>x.status==='rejected'))return responder(503,'recibo-pendente');
    return responder(200,'execucao-concluida');
-   }finally{await renovando;}
+   }catch(e){status=controller.signal.aborted?504:503;throw e;}finally{
+    await renovando;
+    if(v2){
+     try{await consultaComPrazo(s=>rpcReal(client,'worker_concluido_v2',
+      {p_resultado:{http:status,processados,incertos}},s),controller.signal,1000);}
+     catch{deps.log(JSON.stringify({codigo:'saude-executor-pendente'}));}
+    }
+   }
   }catch{return responder(controller.signal.aborted?504:503,controller.signal.aborted?'prazo':'executor-indisponivel');}
   finally{clearTimeout(timer);deps.log(JSON.stringify({codigo:'executor-real',status,processados,incertos,renovacao}));}
  };
