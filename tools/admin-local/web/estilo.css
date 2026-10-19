@@ -981,7 +981,7 @@ dialog.modal[open] { animation: modal-entra 220ms var(--ease-saida); }
 }
 .cal-dia:nth-child(7n) { border-right: 0; }
 .cal-dia.cal-fora-mes { background: rgba(2, 20, 26, 0.55); }
-.cal-dia.cal-fora-mes .cal-num { color: rgba(127, 169, 160, 0.5); }
+.cal-dia.cal-fora-mes .cal-num { color: var(--ink-faint); }
 .cal-dia[data-soltar="sim"], .cal-dia.cal-alvo { background: var(--hover); box-shadow: inset 0 0 0 1px var(--accent-2); }
 .cal-num { font-size: var(--t-legenda); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .cal-hoje .cal-num {
@@ -2884,7 +2884,7 @@ details.cartao > summary { min-height: var(--alvo); cursor: pointer; }
 .cal-legenda-item { display: inline-flex; align-items: center; gap: var(--s-xs); }
 .cal-legenda-disco { width: 14px; height: 14px; border-radius: 50%; box-sizing: border-box; }
 .tela-calendario .cal-dia-icones { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-.cal-icone { position: relative; display: inline-grid; place-items: center; box-sizing: border-box; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--accent-2); background: transparent; color: var(--accent-2); cursor: pointer; }
+.cal-icone { position: relative; display: inline-grid; place-items: center; box-sizing: border-box; flex-shrink:0; min-width:44px; min-height:44px; width:44px; height:44px; border-radius:50%; border:1.5px solid var(--accent-2); background:transparent; color:var(--accent-2); cursor:pointer; }
 .cal-icone > svg { width: 16px; height: 16px; }
 .cal-icone:hover { background: var(--hover); }
 .cal-icone:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
@@ -3136,10 +3136,10 @@ dialog.central::backdrop { background: var(--scrim); }
 /* Todas as células do mês têm a mesma altura; o que não cabe vai para o "+N" e para a janela do dia. */
 .tela-calendario .cal-dia { height:160px; min-height:160px; overflow:hidden; }
 .cal-dia-topo { display:flex; align-items:center; justify-content:space-between; gap:var(--s-xs); min-height:26px; }
-.cal-num-botao { padding:0; border:0; background:none; font:inherit; cursor:pointer; }
+.cal-num-botao { min-width:44px; min-height:44px; padding:0; border:0; background:none; font:inherit; cursor:pointer; }
 .cal-num-botao:hover { text-decoration:underline; }
 .cal-hoje .cal-num-botao { padding:0; }
-.cal-mais { padding:2px var(--s-sm); border:1px solid var(--rule-strong); border-radius:var(--r-sm); background:var(--paper-raised); color:var(--accent-2); font:inherit; font-size:var(--t-micro); cursor:pointer; }
+.cal-mais { min-width:44px; min-height:44px; padding:2px var(--s-sm); border:1px solid var(--rule-strong); border-radius:var(--r-sm); background:var(--paper-raised); color:var(--accent-2); font:inherit; font-size:var(--t-micro); cursor:pointer; }
 .tela-calendario .cal-dia { padding:6px; }
 .tela-calendario .cal-unico-item.cal-compacto { height:54px; min-height:0; padding:4px 5px; gap:0; justify-content:center; cursor:pointer; }
 .tela-calendario .cal-unico-item.cal-compacto .cal-item-titulo { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; flex:none; white-space:normal; overflow:hidden; font-size:12px; line-height:1.3; letter-spacing:-0.01em; }
@@ -3205,3 +3205,17 @@ dialog.central::backdrop { background: var(--scrim); }
 .feed-proximas > h3 { margin: 0 0 var(--s-xs); }
 .feed-proximas > p { margin: 0 0 var(--s-xl); text-wrap: pretty; }
 .feed-proximas-grade { width: 100%; }
+
+/* Acompanhar antes de operar: os estados por rede abrem o Calendário. */
+.cal-operacao { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--s-xl); margin-bottom:var(--s-xl); }
+.cal-operacao-secao { min-width:0; }
+.cal-operacao-lista { list-style:none; margin:0; padding:0; }
+.cal-operacao-lista > li { display:flex; flex-direction:column; align-items:flex-start; gap:var(--s-xs); padding:var(--s-md) 0; border-bottom:1px solid var(--rule); }
+.cal-operacao p, .cal-operacao strong, .pub-real p, .feed p { text-wrap:pretty; overflow-wrap:anywhere; }
+.cal-operacao h2, .pub-real h2, .feed h2 { text-wrap:balance; }
+.tela-calendario .botao, .pub-real .botao, .feed .botao, .pub-real-tecnico > summary { min-height:44px; }
+.pub-real-formato, .pub-real-peca { min-height:44px; }
+.pub-real-tecnico { margin-top:var(--s-sm); overflow-wrap:anywhere; }
+.pub-real-tecnico > summary, .pub-real-ferramentas > summary { min-height:44px; display:list-item; align-content:center; cursor:pointer; color:var(--ink-soft); }
+.cal-num-botao:focus-visible, .cal-mais:focus-visible, .pub-real-tecnico > summary:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
+@media (max-width:700px) { .cal-operacao { grid-template-columns:minmax(0,1fr); } }

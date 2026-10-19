@@ -19,6 +19,7 @@ const post = (peca, rede, data = '2026-10-12') => ({ chave: peca.id + rede + dat
 const posts = [post(feed, 'instagram'), post(feed, 'facebook'), post(reel, 'instagram'), post(reel, 'facebook')];
 const dados = { mes: '2026-10', itens: [], aprovadosSemData: [feed], reais: { status: 'disponivel', completo: true, itens: [] } };
 const origem = JSON.stringify({ dados, posts });
+assert.equal(sandbox.estadoDoIcone({ jobs: [{ estado: 'publicado', destino: { rede: 'facebook' } }, { estado: 'precisa-conferir', destino: { rede: 'instagram' } }] }, posts[0]).chave, 'atencao', 'publicado em uma rede não esconde o resultado incerto na outra');
 const projetar = (camada = 'ambos', jobs = [], recibos = posts, catalogo = [reel]) => sandbox.projetarCalendario(dados, jobs, camada, recibos, catalogo);
 for (const camada of ['ambos', 'real']) {
   const r = projetar(camada);
@@ -83,8 +84,9 @@ const texto = (n) => todos(n).map((e) => e.attrs.texto || '').join(' ');
       assert.equal(links.length, 4, 'job+recibo usa só um link por publicação');
       assert(posts.every((p) => links.includes(p.link)));
       assert(texto(raiz).includes('Aprovados sem data (0)'));
-      const compactos = todos(raiz).filter((n) => n.tag === 'article' && n.attrs.class.includes('cal-icone'));
+      const compactos = todos(raiz).filter((n) => n.tag === 'button' && (n.attrs.class || '').includes('cal-icone'));
       assert.equal(compactos.length, 2);
+      assert(compactos.every((n) => n.attrs.type === 'button'), 'ícones acionáveis usam botões nativos');
       assert(compactos.every((n) => String(n.attrs['aria-label']).includes('Publicado')), 'o ícone diz o estado no aria-label');
       assert(compactos.some((n) => String(n.attrs['aria-label']).includes(feed.nomeExibicao)) && compactos.some((n) => String(n.attrs['aria-label']).includes(reel.nomeExibicao)), 'e o nome da peça');
     }

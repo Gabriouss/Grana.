@@ -10,7 +10,7 @@ const DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 const maiuscula = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const ROTULO_REDE = { instagram: 'Instagram', facebook: 'Facebook' };
 const ROTULO_FORMATO = { reel: 'Reels', carrossel: 'Carrossel', video: 'Vídeo', imagem: 'Imagem', post: 'Post' };
-const nomeDaPeca = (p) => p?.nomeExibicao || tituloPeca(p);
+const nomeDaPeca = (p) => p?.nomeExibicao || p?.titulo || tituloPeca(p);
 // O formato já aparece em outra linha do cartão: no título curto ele só gasta espaço.
 const SUFIXO_FORMATO = /\s·\s(Carrossel|Reels?|Post|Stories|Texto|Imagem|Vídeo)$/u;
 const nomeCurto = (p) => nomeDaPeca(p).replace(SUFIXO_FORMATO, '');
@@ -18,6 +18,15 @@ const formatoDoNome = (p) => SUFIXO_FORMATO.exec(nomeDaPeca(p))?.[1] || null;
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
 const identidade = (p) => JSON.stringify([p?.pecaId || p?.id, p?.versao]);
+export function resumirOperacaoCalendario(jobs) {
+  const ativos = new Set(['planejado', 'programado-no-painel', 'preparando', 'agendado-na-meta']);
+  const atencao = new Set(['precisa-conferir', 'falhou', 'cancelamento-pendente', 'suspenso-para-revisao']);
+  const confirmados = jobs.filter((j) => j.confirmadoEm);
+  return {
+    proximas: confirmados.filter((j) => ativos.has(j.estado)).sort((a, b) => Date.parse(a.destino?.publicarEm) - Date.parse(b.destino?.publicarEm)),
+    atencao: confirmados.filter((j) => atencao.has(j.estado)),
+  };
+}
 export function diaReal(job) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(job?.dataPublicacaoMeta || '')) return job.dataPublicacaoMeta;
   const data = new Date(job?.destino?.publicarEm);
@@ -114,14 +123,14 @@ export function projetarCalendario(d, jobs, camada = 'ambos', posts = [], catalo
 // --- Ícones do dia: o post vira um disco com o glifo do formato; a cor e o traço dizem o estado.
 const FORMATO_ICONE = { carrossel: ['carrossel', 'Carrossel'], reel: ['reels', 'Reels'], reels: ['reels', 'Reels'], video: ['reels', 'Reels'], stories: ['grade', 'Stories'] };
 const formatoDoIcone = (tipo, formatoJob) => FORMATO_ICONE[String(formatoJob || '').toLowerCase()] || FORMATO_ICONE[String(tipo || '').toLowerCase()] || ['grade', 'Feed'];
-const ESTADOS_ATENCAO = new Set(['precisa-conferir', 'falhou', 'cancelamento-pendente']);
+const ESTADOS_ATENCAO = new Set(['precisa-conferir', 'falhou', 'cancelamento-pendente', 'suspenso-para-revisao']);
 const ESTADOS_CONHECIDOS = new Set(['planejado', 'programado-no-painel', 'preparando', 'agendado-na-meta', 'publicado', 'cancelado', ...ESTADOS_ATENCAO]);
 export function estadoDoIcone(item, publicado) {
   const reais = (item.jobs || []).filter((j) => j.estado !== 'cancelado');
-  if (publicado || reais.some((j) => j.estado === 'publicado')) return { chave: 'publicado', texto: 'Publicado' };
   const textos = (lista) => lista.map((j) => { const d = descreverJobReal(j); return `${d.rede}: ${d.texto}`; }).join('; ');
   const atencao = reais.filter((j) => ESTADOS_ATENCAO.has(j.estado) || !ESTADOS_CONHECIDOS.has(j.estado));
   if (atencao.length) return { chave: 'atencao', texto: textos(atencao) };
+  if ((publicado || reais.length) && reais.every((j) => j.estado === 'publicado')) return { chave: 'publicado', texto: 'Publicado' };
   const preparando = reais.filter((j) => j.estado === 'preparando');
   if (preparando.length) return { chave: 'preparando', texto: textos(reais) };
   if (reais.length) return { chave: 'agendado', texto: textos(reais) };
@@ -164,8 +173,9 @@ export async function montar(raiz, ctx) {
   const barra = h('div', { class: 'cal-unico-filtros' },
     h('div', { class: 'bloco-acao', role: 'group', 'aria-label': 'Camada do calendário' }, ['planejado', 'real', 'ambos'].map((v) => h('button', { class: 'botao', type: 'button', texto: { planejado: 'Planejado', real: 'Real', ambos: 'Ambos' }[v], 'aria-pressed': String(camada === v), onclick: () => navegar({ camada: v }) }))),
     h('div', { class: 'bloco-acao', role: 'group', 'aria-label': 'Visão do calendário' }, ['calendario', 'lista'].map((v) => h('button', { class: 'botao', type: 'button', texto: v === 'lista' ? 'Lista e recibos' : 'Calendário', 'aria-pressed': String(visao === v), onclick: () => navegar({ visao: v }) }))));
+  const resumoOperacional = h('section', { class: 'cal-operacao', 'aria-label': 'Acompanhamento das publicações do mês' });
   const legendaIcones = h('p', { class: 'cal-legenda', hidden: visao === 'lista', 'aria-label': 'Legenda dos ícones do calendário' },
-    ...[['publicado', 'Publicado'], ['agendado', 'Agendado na Meta'], ['preparando', 'Preparando'], ['planejado', 'Planejado'], ['atencao', 'Atenção']]
+    ...[['publicado', 'Publicado'], ['agendado', 'Agendado no painel'], ['preparando', 'Preparando'], ['planejado', 'Planejado'], ['atencao', 'Atenção']]
       .map(([k, t]) => h('span', { class: 'cal-legenda-item' }, h('span', { class: `cal-legenda-disco cal-icone-${k}`, 'aria-hidden': 'true' }), t)));
   const topoReal = h('div', { class: 'cal-unico-pausas' });
   const status = h('div', { class: 'cal-unico-status', role: 'status', 'aria-live': 'polite' });
@@ -185,7 +195,7 @@ export async function montar(raiz, ctx) {
   dialogo.appendChild(h('div', { class: 'cal-unico-painel-topo' }, h('h2', { id: 'cal-unico-painel-titulo', texto: 'Agendar de verdade' }), h('button', { class: 'botao', type: 'button', texto: 'Fechar painel', onclick: fechar })));
   dialogo.appendChild(conteudoPainel);
   dialogo.addEventListener('close', () => focoOrigem?.focus?.());
-  raiz.appendChild(barra); raiz.appendChild(legendaIcones); raiz.appendChild(topoReal); raiz.appendChild(status); raiz.appendChild(calendario); raiz.appendChild(fila); raiz.appendChild(paginacao); raiz.appendChild(dialogo);
+  raiz.appendChild(resumoOperacional); raiz.appendChild(barra); raiz.appendChild(legendaIcones); raiz.appendChild(topoReal); raiz.appendChild(status); raiz.appendChild(calendario); raiz.appendChild(fila); raiz.appendChild(paginacao); raiz.appendChild(dialogo);
   const abrir = (peca, data, origem) => {
     if (!controleReal?.abrirCompositor) { ctx.aviso('O agendamento real ainda não está disponível. Atualize os dados.', 'erro'); return; }
     focoOrigem = origem;
@@ -211,9 +221,7 @@ export async function montar(raiz, ctx) {
     }
   }
   const abrirAoClicar = (item) => ({
-    tabindex: '0', role: 'group',
     onclick: (e) => { if (!e.target.closest('button, a')) abrirPrevia(item); },
-    onkeydown: (e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); abrirPrevia(item); } },
   });
   // Item entregue a abrirPreviaPost (_previa-post.js, do Prism): { peca, formato, rede, jobs, publicado, data, origem }.
   const FORMATO_PREVIA = { reel: 'reels', reels: 'reels', carrossel: 'carrossel', stories: 'stories', video: 'feed', imagem: 'feed', post: 'feed', feed: 'feed' };
@@ -281,8 +289,8 @@ export async function montar(raiz, ctx) {
     if (compacto) {
       const [glifo, rotuloFormato] = formatoDoIcone(post.formato);
       const nome = `${rede} · ${rotuloFormato} · Publicado na Meta`;
-      const el = h('article', { class: 'cal-icone cal-icone-publicado', draggable: 'false', dados: { chave: post.chave }, 'aria-label': nome,
-        ...abrirAoClicar({ carregarPeca, origem: 'meta', peca: null, data: post.data, jobs: [], publicado: post, formato: FORMATO_PREVIA[post.formato] || 'feed', rede: post.rede }) },
+      const el = h('button', { type: 'button', class: 'cal-icone cal-icone-publicado', draggable: 'false', dados: { chave: post.chave }, 'aria-label': nome,
+        onclick: () => abrirPrevia({ carregarPeca, origem: 'meta', peca: null, data: post.data, jobs: [], publicado: post, formato: FORMATO_PREVIA[post.formato] || 'feed', rede: post.rede }) },
       typeof document !== 'undefined' ? iconeSvg(glifo) : null);
       ligarDica(el, nome);
       return el;
@@ -292,6 +300,7 @@ export async function montar(raiz, ctx) {
       ...abrirAoClicar({ carregarPeca, origem: 'meta', peca: null, data: post.data, jobs: [], publicado: post, formato: FORMATO_PREVIA[post.formato] || 'feed', rede: post.rede }) },
     miniatura,
     h('strong', { class: 'cal-item-titulo', texto: `${rede} · ${ROTULO_FORMATO[post.formato] || 'Post'}` }),
+    h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Abrir prévia', onclick: () => abrirPrevia({ carregarPeca, origem: 'meta', peca: null, data: post.data, jobs: [], publicado: post, formato: FORMATO_PREVIA[post.formato] || 'feed', rede: post.rede }) }),
     h('span', { class: 'cal-item-canal', texto: 'Publicado na Meta' }),
     post.legenda ? h('span', { class: 'cal-meta-legenda', texto: post.legenda }) : null,
     !compacto && link ? h('a', { href: link, target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação' }) : null);
@@ -302,9 +311,9 @@ export async function montar(raiz, ctx) {
     const estado = estadoDoIcone(i, pub);
     const [glifo, rotuloFormato] = formatoDoIcone(i.peca.tipo, reais[0]?.destino?.formato || pub?.formato);
     const nome = `${nomeCurto(i.peca)} · ${rotuloFormato} · ${estado.texto}`;
-    const el = h('article', { class: `cal-icone cal-icone-${estado.chave}`, draggable: movel ? 'true' : 'false', dados: { peca: i.peca.id, versao: i.peca.versao }, 'aria-label': nome,
+    const el = h('button', { type: 'button', class: `cal-icone cal-icone-${estado.chave}`, draggable: movel ? 'true' : 'false', dados: { peca: i.peca.id, versao: i.peca.versao }, 'aria-label': nome,
       ondragstart: (e) => { if (!movel) { e.preventDefault(); return; } e.dataTransfer.setData('text/x-grana-peca', i.peca.id); },
-      ...abrirAoClicar(itemPrevia(i, pub)) },
+      onclick: () => abrirPrevia(itemPrevia(i, pub)) },
     typeof document !== 'undefined' ? iconeSvg(glifo) : null);
     ligarDica(el, nome);
     return el;
@@ -316,6 +325,7 @@ export async function montar(raiz, ctx) {
       ondragstart: (e) => { if (!movel) { e.preventDefault(); return; } e.dataTransfer.setData('text/x-grana-peca', i.peca.id); },
       ...abrirAoClicar(itemPrevia(i, pub)) },
       h('strong', { class: 'cal-item-titulo', texto: i.marcador && !i.principal ? `Destino de ${nomeDaPeca(i.peca)}` : nomeDaPeca(i.peca) }),
+      h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Abrir prévia', onclick: () => abrirPrevia(itemPrevia(i, pub)) }),
       h('span', { class: 'cal-item-canal', texto: pub ? 'Publicado na Meta' : reais.length ? i.marcador ? 'Mesma peça, destinos em dias diferentes' : 'Agendamento confirmado' : 'Planejado' }),
       ...(i.publicacoes || []).filter((p) => !reais.some((j) => j.estado === 'publicado' && j.destino.rede === p.rede && linkPublicado(p.link) && linkPublicado(p.link) === linkPublicado(j.permalink))).map((p) => h('div', { class: 'cal-unico-destino' },
         h('strong', { texto: `${ROTULO_REDE[p.rede] || p.rede} · ${ROTULO_FORMATO[p.formato] || 'Post'} · Publicado` }),
@@ -336,6 +346,23 @@ export async function montar(raiz, ctx) {
     const faltantes = new Map(meta.posts.filter((p) => p.vinculo && !conhecidos.has(identidade(p.vinculo))).map((p) => [identidade(p.vinculo), p.vinculo]));
     const pecasPublicadas = camada === 'planejado' ? [] : (await Promise.all([...faltantes.values()].map((p) => carregarPeca(p.pecaId, p.versao)))).filter(Boolean);
     if (encerrada || ctx.obsoleta() || minha !== geracao) return;
+    const resumo = resumirOperacaoCalendario([...acumulados.values()]);
+    const completa = leituraRealCompleta(camada, dados?.reais);
+    const blocoResumo = (titulo, lista) => h('section', { class: 'cal-operacao-secao' },
+      h('h2', { class: 'secao-titulo', texto: titulo }),
+      h('p', { class: 'campo-ajuda', texto: 'Neste mês · um resultado por rede.' }),
+      lista.length ? h('ul', { class: 'cal-operacao-lista' }, lista.slice(0, 5).map((j) => {
+        const d = descreverJobReal(j);
+        const p = [...(dados.itens || []).map((i) => i.peca), ...(dados.aprovadosSemData || [])]
+          .find((p) => identidade(p) === identidade(j.peca));
+        return h('li', null, h('strong', { texto: `${nomeDaPeca(p) || 'Publicação'} · ${d.rede}` }),
+          h('span', { texto: d.texto }),
+          d.motivo ? h('p', { class: 'campo-ajuda', texto: d.motivo }) : null,
+          d.acao ? h('p', { class: 'campo-ajuda', texto: d.acao }) : null,
+          h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Ver destinos e recibos', onclick: () => navegar({ visao: 'lista' }) }));
+      })) : h('p', { class: 'campo-ajuda', texto: completa ? 'Nenhuma publicação nesta situação no mês consultado.' : 'Consulta incompleta. Atualize ou carregue os demais agendamentos para conferir.' }),
+      lista.length > 5 ? h('p', { class: 'campo-ajuda', texto: `Mostrando 5 de ${lista.length}. Abra Lista e recibos para ver todas.` }) : null);
+    resumoOperacional.replaceChildren(blocoResumo('Próximas publicações', resumo.proximas), blocoResumo('Precisam de atenção', resumo.atencao));
     calendario.replaceChildren();
     await montarEditorial(calendario, { ...ctx, params: { ...ctx.params, mes }, calendarioParcial: dados.reais && camada !== 'planejado' && !dados.reais.completo, cabecalho() {}, cartaoCalendario: cartao, cartaoCompacto, cartaoMeta, meta: { ...meta, mostrar: camada !== 'planejado' }, agendarReal: abrir, leituraRealCompleta: leituraRealCompleta(camada, dados?.reais), motivoAgendar, botaoAgendar,
       obsoleta: () => encerrada || ctx.obsoleta() || minha !== geracao,
