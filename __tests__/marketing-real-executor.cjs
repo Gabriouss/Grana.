@@ -465,7 +465,10 @@ async function main() {
       eq(g.chamadas.length, 0, 'origem divergente: nenhuma chamada à Graph');
       const j = await job(db);
       eq(j.estado, 'programado-no-painel', 'origem divergente: segue na fila (adiado), nunca falhou');
-      ok(j.codigo_erro, 'origem divergente: recibo com código');
+      // origem-midia-invalida nasce dentro do adaptador Graph (assinar), cujo catch devolve incerto sem admissão;
+      // o executor converte em adiado efeito-nao-admitido. O código exato é este até o adaptador repassar o motivo.
+      eq([j.codigo_erro, (await envios(db)).map((x) => [x.estado, x.codigo_erro, x.admitido])],
+        ['efeito-nao-admitido', [['falhou', 'efeito-nao-admitido', false]]], 'origem divergente: adiado com código, sem admissão');
     } finally { ENV.SUPABASE_URL = guardado; await db.close(); }
   }
 
