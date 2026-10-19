@@ -24,7 +24,7 @@ Escritas em 18/10/2026 para as quatro peças de feed que estavam aprovadas sem l
 
 **Título:** Salário caiu? Você já sabe quanto dele está comprometido?
 
-**Legenda:** O salário cai e dá a sensação de dinheiro sobrando, até as contas do mês aparecerem. Antes de gastar, vale olhar o que já tem destino. Na tela inicial, o Grana. reúne o que vence no mês, o que está reservado nos cofrinhos e o que ainda sobra por dia, para a decisão sair com número na mão. Tela com dados de exemplo. Link na bio.
+**Legenda:** O salário cai e dá a sensação de dinheiro sobrando, até as contas do mês aparecerem. Antes de gastar, vale olhar o que já tem destino. Na tela inicial, o Grana. reúne o que vence no mês, o que está reservado nos cofrinhos e o que ainda sobra por dia, para a decisão sair com número na mão. Link na bio.
 
 ## Fala o gasto, pronto
 

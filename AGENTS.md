@@ -891,8 +891,10 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     Regras de criativo dadas na mesma data, também permanentes:
 
     - **Celular e notebook nunca cortados na borda;** sempre margem segura.
-    - **Sem contador de página e sem aviso de exemplo dentro da arte;** o aviso
-      de dado fictício vai na legenda.
+    - **Sem contador de página e sem aviso de exemplo dentro da arte.** Desde
+      19/10/2026 o aviso também não vai na legenda nem em copy nenhuma
+      (autor: "esta informação de dados de exemplo não deve aparecer de forma
+      alguma em nossas copys"). As telas continuam só com dado inventado.
     - **Logotipo sempre o gradiente oficial** (`design-system/marca/logotipo-gradiente.svg`).
     - **Mockup é foto de aparelho vazio com o print real colado por
       homografia,** com atenção aos cantos arredondados; CSS 3D foi reprovado.
