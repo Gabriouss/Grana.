@@ -430,6 +430,45 @@ async function main() {
     } finally { await db.close(); }
   }
 
+  /* ── 7b2. Lynx A1: credencial ausente DEPOIS de publicar nunca vira "falhou" (o post pode estar no ar) ── */
+  for (const [etapa, estadoJob, esperado] of [
+    ['verificar-publicacao', 'programado-no-painel', 'programado-no-painel'],
+    ['reconciliar', 'programado-no-painel', 'programado-no-painel'],
+    ['cancelar', 'cancelamento-pendente', 'precisa-conferir'],
+  ]) {
+    const db = await novoBanco();
+    const guardado = ENV.MARKETING_IG_TOKEN;
+    try {
+      await agendar(db);
+      await comoDono(db, `update public.admin_marketing_agendamentos set estado='${estadoJob}',etapa='${etapa}',remoto_id='9100',
+        processamento='{"publicacaoId":"9100","container":"9001","itens":["9001"]}'::jsonb,proxima_verificacao_em=now()`);
+      delete ENV.MARKETING_IG_TOKEN;
+      const g = graphFake(() => { throw new Error('não deveria chamar a Graph'); });
+      await rodarExecutor(db, g.rede);
+      eq(g.chamadas.length, 0, `${etapa}: zero chamadas à Graph sem credencial`);
+      const j = await job(db);
+      ok(j.estado !== 'falhou', `${etapa}: post possivelmente no ar não vira falhou`);
+      eq([j.estado, j.codigo_erro], [esperado, 'credencial-ausente'], `${etapa}: segue ${esperado} com o motivo real`);
+      eq((await envios(db)).map((x) => x.codigo_erro), ['credencial-ausente'], `${etapa}: o recibo guarda credencial-ausente`);
+    } finally { ENV.MARKETING_IG_TOKEN = guardado; await db.close(); }
+  }
+
+  /* ── 7b3. Lynx A2: origem da URL assinada fora do projeto é configuração, não falha permanente ── */
+  {
+    const db = await novoBanco();
+    const guardado = ENV.SUPABASE_URL;
+    try {
+      await agendar(db);
+      ENV.SUPABASE_URL = 'https://outro-projeto.supabase.co';
+      const g = graphFake(() => { throw new Error('não deveria chamar a Graph'); });
+      await rodarExecutor(db, g.rede);
+      eq(g.chamadas.length, 0, 'origem divergente: nenhuma chamada à Graph');
+      const j = await job(db);
+      eq(j.estado, 'programado-no-painel', 'origem divergente: segue na fila (adiado), nunca falhou');
+      ok(j.codigo_erro, 'origem divergente: recibo com código');
+    } finally { ENV.SUPABASE_URL = guardado; await db.close(); }
+  }
+
   /* ── 7c. Preparando n/m: a consulta conta os itens já criados no carrossel FB ── */
   {
     const db = await novoBanco();

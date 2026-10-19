@@ -18,8 +18,11 @@ export const PRAZOS_EXECUTOR={total:25_000,claim:4_000,trabalho:14_000,recibo:5_
 type Deps={env:(n:string)=>string|undefined;cliente:(signal:AbortSignal)=>SupabaseClient;rede?:typeof fetch;log:(linha:string)=>void;
  prazos?:Partial<typeof PRAZOS_EXECUTOR>};
 // Erros lancados antes de qualquer POST, com nome proprio e sem segredo no texto.
-const PERMANENTES_SEM_POST=new Set(['credencial-invalida','credencial-ausente','midia-invalida','origem-midia-invalida']);
-const MOTIVOS_SEM_POST=new Set([...PERMANENTES_SEM_POST,'snapshot-indisponivel','midia-indisponivel','efeito-bloqueado']);
+const PERMANENTES_SEM_POST=new Set(['credencial-invalida','credencial-ausente','midia-invalida']);
+const MOTIVOS_SEM_POST=new Set([...PERMANENTES_SEM_POST,'snapshot-indisponivel','midia-indisponivel','origem-midia-invalida','efeito-bloqueado']);
+// So antes de existir post: depois de publicar (verificar, reconciliar, cancelar) o post pode estar NO AR,
+// e "falhou" ali mentiria sobre ele. Nessas etapas o motivo vai ao recibo como adiado.
+const ETAPAS_QUE_PODEM_FALHAR=new Set(['preparar','consultar-preparo','publicar']);
 const comPrazo=(pai:AbortSignal,ms:number)=>AbortSignal.any([pai,AbortSignal.timeout(ms)]);
 export function criarExecutorReal(deps:Deps){
  const prazo={...PRAZOS_EXECUTOR,...deps.prazos};
@@ -94,7 +97,7 @@ export function criarExecutorReal(deps:Deps){
         a autorizacao morrer. Nada saiu para a Meta, entao falhar e seguro. */
      const motivo=e instanceof Error&&MOTIVOS_SEM_POST.has(e.message)?e.message:'sem-efeito';
      resultado=admitido?{estado:'incerto',codigo:'resultado-nao-confirmado'}
-      :PERMANENTES_SEM_POST.has(motivo)?{estado:'falhou',codigo:motivo}
+      :PERMANENTES_SEM_POST.has(motivo)&&ETAPAS_QUE_PODEM_FALHAR.has(job.etapa)?{estado:'falhou',codigo:motivo}
       :job.etapa==='publicar'?{estado:'incerto',codigo:'resultado-nao-confirmado'}:{estado:'adiado',codigo:motivo};
     }
     if(resultado.estado==='incerto')incertos++;
