@@ -276,3 +276,139 @@ export function criarClientePublicacoes(ctx) {
     },
   };
 }
+
+// ---------------------------------------------------------------------------------------------
+// O que o autor lê (19/10): toda tela do fluxo diz o que acontece, por que não dá e o que fazer.
+
+// Antecedência mínima para o executor preparar antes da hora. O executor dá um passo por job por
+// minuto: um carrossel de 5 imagens no Instagram leva ~14 passos (plano 18/10, seção 2).
+export const ANTECEDENCIA_MIN = { carrossel: 30, reels: 30, stories: 15, feed: 15 };
+export function antecedenciaMinima(destinos = [], peca = null) {
+  const porFormato = destinos.map((d) => ANTECEDENCIA_MIN[d?.formato] || 15);
+  const porPeca = /carrossel|reel|video/i.test(String(peca?.tipo || '')) ? 30 : 15;
+  return Math.max(porPeca, ...porFormato);
+}
+
+const DIA_HORA = new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO_PUBLICACAO, weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+const SO_HORA = new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO_PUBLICACAO, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+const SO_DIA = new Intl.DateTimeFormat('en-CA', { timeZone: FUSO_PUBLICACAO, year: 'numeric', month: '2-digit', day: '2-digit' });
+// "às 21:30" no mesmo dia; "em dom., 19/10, 21:30" em outro dia. desde: "a partir das 21:30".
+export function quandoCurto(ms, agora = Date.now(), desde = false) {
+  const d = new Date(ms);
+  if (SO_DIA.format(d) === SO_DIA.format(new Date(agora))) return `${desde ? 'a partir das' : 'às'} ${SO_HORA.format(d)}`;
+  return `${desde ? 'a partir de' : 'em'} ${DIA_HORA.format(d)}`;
+}
+const CINCO_MIN = 5 * 60000;
+const arredondar = (ms) => Math.ceil(ms / CINCO_MIN) * CINCO_MIN;
+export function sugestaoHorario(minutos, agora = Date.now()) {
+  return horarioUtcParaLocal(new Date(arredondar(agora + minutos * 60000)).toISOString());
+}
+export function conferirHorario(utcIso, minutos, agora = Date.now()) {
+  const ms = Date.parse(utcIso);
+  const minimo = arredondar(agora + minutos * 60000);
+  if (!Number.isFinite(ms)) return { ok: false, texto: 'Informe data e hora.' };
+  if (ms <= agora) return { ok: false, texto: `Esse horário já passou. Marque ${quandoCurto(minimo, agora, true)}.` };
+  if (ms < agora + minutos * 60000) {
+    return { ok: false, texto: `Muito em cima da hora: o Grana. precisa de ${minutos} min para preparar a publicação. Para sair na hora, marque ${quandoCurto(minimo, agora, true)}.` };
+  }
+  return { ok: true, texto: `O Grana. começa a preparar ${quandoCurto(ms - minutos * 60000, agora)} e publica ${quandoCurto(ms, agora)}.` };
+}
+
+const FORMATO_ESTRANHO = 'O servidor respondeu num formato que o painel não reconhece. Nada foi confirmado. Recarregue a página (F5); se continuar, avise o suporte com o código abaixo.';
+const SEM_RESPOSTA = 'A resposta não chegou. Não repita: use "Consultar resultado pendente" para saber se foi feito.';
+const PREVIA_DE_NOVO = 'As imagens ou a legenda recebidas para conferência não batem com a peça aprovada. Nada foi confirmado. Gere outra prévia.';
+const MENSAGENS = {
+  'operacao-pausada': 'A pausa está ligada. Clique em Retomar no topo desta janela e gere a prévia de novo.',
+  'conta-pausada': 'Esta conta está pausada. Clique em Retomar no topo desta janela.',
+  'previa-expirada': 'A prévia venceu (ela vale 10 minutos). Clique em "Gerar outra prévia".',
+  'previa-inexistente': 'Essa prévia não existe mais no servidor. Clique em "Gerar outra prévia".',
+  'revisao-divergente': 'Algo mudou desde que a janela abriu (conta, pausa ou prévia). Gere outra prévia.',
+  'idempotencia-divergente': 'Este pedido já foi usado com outros dados. Recarregue a página antes de tentar de novo.',
+  'snapshot-inexistente': 'As imagens preparadas para conferência não estão mais disponíveis. Gere outra prévia.',
+  'snapshot-indisponivel': 'As imagens ainda estão sendo preparadas. Espere alguns segundos e gere outra prévia.',
+  'snapshot-invalido': 'As imagens preparadas para conferência vieram incompletas. Gere outra prévia.',
+  'midia-divergente': 'As imagens mudaram depois da conferência. Gere outra prévia.',
+  'midia-invalida': 'Uma imagem ou vídeo não está num formato aceito. Peça o arquivo no formato certo e gere outra prévia.',
+  'midia-incompativel': 'Uma imagem ou vídeo não está num formato aceito por esta rede. Peça o arquivo no formato certo e gere outra prévia.',
+  'midia-grande': 'Uma imagem ou vídeo passou do tamanho aceito pela rede. Peça um arquivo menor.',
+  'midia-inexistente': 'Uma imagem da peça não foi encontrada. Confira a peça na Aprovação.',
+  'midia-indisponivel': 'O painel não conseguiu baixar as imagens para conferir. Gere outra prévia.',
+  'conta-indisponivel': 'A conexão desta conta venceu ou foi revogada. Peça a revalidação da conta antes de agendar.',
+  'conta-expirada': 'A conexão desta conta venceu. Peça a revalidação da conta antes de agendar.',
+  'conta-revogada': 'A conexão desta conta foi revogada. Peça a revalidação da conta antes de agendar.',
+  'conta-nao-verificada': 'A conexão desta conta ainda não foi verificada.',
+  'capacidade-nao-comprovada': 'Este formato ainda não foi verificado para esta conta. Escolha outro formato.',
+  'formato-nao-verificado': 'Este formato ainda não foi verificado para esta conta. Escolha outro formato.',
+  'formato-nao-suportado': 'Este formato não está disponível nesta rede.',
+  'sem-leitura-de-volta': 'A rede não deixa conferir o resultado deste formato automaticamente.',
+  'horario-invalido': 'O horário não é válido. Escolha um horário no futuro.',
+  'destino-duplicado': 'O mesmo destino foi marcado duas vezes. Desmarque um e gere outra prévia.',
+  'destino-invalido': 'Uma conta ou formato deixou de estar disponível. Clique em "Atualizar estado real" e escolha de novo.',
+  'operacao-bloqueada': 'A publicação real está desligada no servidor. Nada foi enviado; avise quem cuida do servidor.',
+  'agendamento-ja-existe': 'Esta peça já tem agendamento neste destino. Confira no Calendário antes de criar outro.',
+  'agendamento-inexistente': 'Esse agendamento não existe mais. Atualize o Calendário.',
+  'lote-inexistente': 'Ainda não há registro desse pedido no servidor. Não repita: atualize em instantes.',
+  'estado-incompativel': 'O agendamento mudou de estado e esta ação não vale mais. Atualize e confira.',
+  'ja-publicado': 'Já foi publicado. Abra a publicação em vez de repetir.',
+  'operacao-em-andamento': 'Outra ação está em andamento neste agendamento. Espere um minuto e atualize.',
+  'pedido-invalido': 'O pedido saiu incompleto. Recarregue a página e tente de novo.',
+  'confirmacao-invalida': 'Confirme a ação para continuar.',
+  'confirmacao-bloqueada': 'A prévia não está pronta para confirmar. Gere outra prévia.',
+  'nao-autorizado': 'O servidor não reconheceu este painel. Entre de novo.',
+  'fonte-indisponivel': 'O servidor de publicação não respondeu. Tente de novo em instantes; nada foi confirmado.',
+  'nao-configurado': 'A publicação real não está configurada no servidor. Nada foi enviado.',
+  'modulo-remoto-pendente': 'A publicação real não está configurada neste painel. Nada foi enviado.',
+  'sem-aceite': 'A peça precisa do seu aceite nesta versão. Aprove antes de agendar.',
+  'aceite-nao-sincronizado': 'A peça precisa do seu aceite nesta versão. Clique em "Aprovar esta versão" no Calendário.',
+  'nao-pareado': 'Este navegador não está pareado com o painel. Abra pelo atalho "Grana. Admin".',
+  'cabecalho-ausente': 'O pedido saiu sem a identificação do painel. Recarregue a página (F5).',
+  reautenticar: 'Confirme o código do autenticador para continuar.',
+  cancelado: 'Ação cancelada: o código do autenticador não foi confirmado. Nada foi feito.',
+  'nao-autenticado': 'Sua sessão acabou. Entre de novo.',
+  'sessao-expirada': 'Sua sessão acabou. Entre de novo.',
+  limite: 'Muitas ações seguidas. Espere um minuto e tente de novo.',
+  'credencial-ausente': 'A chave de acesso desta conta não está no servidor. Nada foi publicado; avise quem cuida do servidor.',
+  'meta-recusou': 'A Meta recusou o envio. Nada foi publicado neste destino; confira a conta e o formato antes de agendar de novo.',
+  rede: SEM_RESPOSTA, prazo: SEM_RESPOSTA, 'prazo-esgotado': SEM_RESPOSTA, 'resultado-desconhecido': SEM_RESPOSTA,
+};
+for (const c of ['previa-invalida', 'contrato-invalido', 'contrato-real-invalido', 'contrato-incompativel', 'lote-invalido', 'lista-invalida',
+  'detalhe-invalido', 'capacidades-invalidas', 'catalogo-invalido', 'resposta-invalida', 'referencia-midia-invalida', 'acao-invalida']) MENSAGENS[c] = FORMATO_ESTRANHO;
+for (const c of ['legenda-divergente', 'hash-de-midia-divergente', 'hash-de-capa-divergente', 'mime-de-midia-divergente', 'mime-de-midia-invalido',
+  'mime-de-capa-invalido', 'ordem-de-midia-invalida', 'snapshot-incompleto', 'verificacao-de-midia-indisponivel']) MENSAGENS[c] = PREVIA_DE_NOVO;
+
+const CODIGO = /^[a-z0-9-]{1,64}$/;
+// Frase com causa e ação; o código vai à parte, pequeno, para o suporte. Nunca devolve frase vazia.
+export function mensagemHumana(err) {
+  const codigo = CODIGO.test(err?.codigo || '') ? err.codigo : CODIGO.test(err?.message || '') ? err.message : '';
+  const frase = MENSAGENS[codigo]
+    || (typeof err?.message === 'string' && /\s/.test(err.message) && err.message.trim())
+    || 'Não foi possível concluir. Nada foi confirmado; atualize e tente de novo.';
+  return { frase, codigo: codigo || (err?.status ? `http-${err.status}` : 'sem-codigo') };
+}
+export function fraseDoMotivo(codigo) { return MENSAGENS[codigo] || null; }
+
+const NOME_REDE = { instagram: 'Instagram', facebook: 'Facebook' };
+const ATIVOS_REAIS = new Set(['planejado', 'programado-no-painel', 'preparando', 'agendado-na-meta', 'cancelamento-pendente']);
+export const jobAtivo = (job) => ATIVOS_REAIS.has(job?.estado);
+// Estado real de UM destino, em palavras do autor. Nunca usa "Planejado" (essa palavra é do editorial).
+export function descreverJobReal(job, agora = Date.now()) {
+  const rede = NOME_REDE[job?.destino?.rede] || 'rede';
+  const quando = Date.parse(job?.destino?.publicarEm || '');
+  const sai = Number.isFinite(quando) ? quandoCurto(quando, agora) : 'no horário marcado';
+  const link = /^https:\/\//.test(job?.permalink || '') ? job.permalink : null;
+  const motivo = job?.codigoErro ? (fraseDoMotivo(job.codigoErro) || `Motivo informado pela rede: ${job.codigoErro}.`) : null;
+  switch (job?.estado) {
+    case 'planejado':
+    case 'programado-no-painel': return { rede, texto: `Agendado, sai ${sai}`, atencao: false };
+    case 'preparando': return { rede, texto: `Preparando na rede, sai ${sai}`, atencao: false };
+    case 'agendado-na-meta': return { rede, texto: `Pronto, sai ${sai}`, atencao: false };
+    case 'publicado': return { rede, texto: 'Publicado', atencao: false, link, linkRotulo: `Abrir no ${rede}`,
+      acao: link ? null : `Confira no ${rede}: o link ainda não veio da rede.` };
+    case 'cancelamento-pendente': return { rede, texto: 'Cancelamento pedido', atencao: true, acao: 'Aguarde a confirmação do cancelamento antes de agendar de novo.' };
+    case 'cancelado': return { rede, texto: 'Cancelado', atencao: true, motivo, acao: 'Nada sai neste destino. Para publicar, agende de novo.' };
+    case 'falhou': return { rede, texto: 'Não saiu', atencao: true, motivo, acao: 'Nada foi publicado neste destino. Resolva o motivo e agende de novo.' };
+    case 'precisa-conferir': return { rede, texto: 'Não confirmamos se saiu', atencao: true, motivo,
+      acao: `Abra o ${rede} antes de tentar de novo. Não agende outra vez sem conferir.` };
+    default: return { rede, texto: 'Estado não reconhecido', atencao: true, acao: 'Atualize o Calendário e confira os recibos.' };
+  }
+}
