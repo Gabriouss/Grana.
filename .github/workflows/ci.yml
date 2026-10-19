@@ -43,7 +43,10 @@ jobs:
 
       - uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.x
+          deno-version: 2.9.6
+
+      - name: Marketing real - testes e tipos
+        run: npm run test:marketing-real
 
       - name: Verificação das Edge Functions alteradas
         run: |
