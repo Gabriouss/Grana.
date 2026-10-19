@@ -72,3 +72,4 @@ Cada linha registra o aceite explícito do autor dado no painel local, para a ve
 - `aprovados/Fala o gasto, pronto-capa.png` passa a ser a capa do Reel vigente da família `R-P`, `2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/grana-reels-notificacao-1.mp4`, por decisão do autor em 13/10/2026 (foi a capa usada na publicação de 12/10). O v8-pop é revisão superada.
 - `aprovados/Já desistiu de controlar seus gastos-capa.png` fica vinculada a `2026-09/semana-39-2026-09-21-a-2026-09-27/aprovados/pecas/reels/grana-motion-desistiu-foto-da-nota.mp4`, como diz a tabela acima.
 - Os dois vínculos estão em `docs/marketing/painel/familias.json` (`capas`); a capa vinculada não aparece como post no Feed simulado.
+- 19/10/2026 00:20 (-03:00): aceite pelo autor no painel local. Peça `aprovados/Já desistiu de controlar seus gastos-capa.png`, versão `7761e586731d`. Registro em `docs/marketing/painel/aprovacoes.json`. Publicação pede passo próprio.

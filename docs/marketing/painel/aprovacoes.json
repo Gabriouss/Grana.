@@ -331,6 +331,117 @@
         }
       ],
       "indice": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/INDICE.md"
+    },
+    {
+      "id": "0c2f7a45bb3959ba",
+      "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/lumen-v8/olhar só o saldo engana o seu mês-*",
+      "versao": "c70eeea435d184cb50308e1b69b8d53e58d81696",
+      "aprovadoEm": "2026-10-18T20:47:20-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos e legenda desta versão",
+      "indice": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/INDICE.md"
+    },
+    {
+      "id": "9194a5418231c082",
+      "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/Já desistiu de controlar seus gastos-capa.png",
+      "versao": "7761e586731df72813e40495d51babd7980a518d",
+      "aprovadoEm": "2026-10-19T00:20:40-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos e legenda desta versão",
+      "indice": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/INDICE.md"
+    },
+    {
+      "id": "65d80425f831af51",
+      "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/lumen-v8/Quanto dá pra gastar hoje.png",
+      "versao": "a9f38fbaf252aac92f8f20f8bfd0b9e8ebbe31e2",
+      "aprovadoEm": "2026-10-19T00:23:18-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos e legenda desta versão",
+      "indice": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/INDICE.md"
+    },
+    {
+      "id": "d56f097f03d86707",
+      "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/lumen-v8/Quanto dá pra gastar hoje.png",
+      "versao": "a9f38fbaf252aac92f8f20f8bfd0b9e8ebbe31e2",
+      "aprovadoEm": "2026-10-19T00:23:18-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos e legenda desta versão",
+      "promovidoEm": "2026-10-19T00:23:19-03:00",
+      "origem": {
+        "id": "65d80425f831af51",
+        "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/lumen-v8/Quanto dá pra gastar hoje.png",
+        "aprovadoEm": "2026-10-19T00:23:18-03:00"
+      },
+      "arquivosPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/lumen-v8/Quanto dá pra gastar hoje.png",
+          "destino": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/lumen-v8/Quanto dá pra gastar hoje.png",
+          "sha1": "a236ec81a991b884d1cf25c62f19f2da9f80020a"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/INDICE.md"
+    },
+    {
+      "id": "4ae9d7cd9741e754",
+      "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/reels/Passou na farmácia hoje-capa.png",
+      "versao": "1901af0752fc353705a4457486d1189fa1cf3c43",
+      "aprovadoEm": "2026-10-19T00:23:41-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos e legenda desta versão",
+      "indice": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/INDICE.md"
+    },
+    {
+      "id": "0a110de1d2b23176",
+      "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/Passou na farmácia hoje-capa.png",
+      "versao": "1901af0752fc353705a4457486d1189fa1cf3c43",
+      "aprovadoEm": "2026-10-19T00:23:41-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos e legenda desta versão",
+      "promovidoEm": "2026-10-19T00:23:41-03:00",
+      "origem": {
+        "id": "4ae9d7cd9741e754",
+        "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/reels/Passou na farmácia hoje-capa.png",
+        "aprovadoEm": "2026-10-19T00:23:41-03:00"
+      },
+      "arquivosPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/reels/Passou na farmácia hoje-capa.png",
+          "destino": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/Passou na farmácia hoje-capa.png",
+          "sha1": "4e541cf3f647b19f88c29f26ad114bc4bdb1f756"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/INDICE.md"
+    },
+    {
+      "id": "766d9ad030412cc3",
+      "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/reels/Recebeu um Pix, só colar-capa.png",
+      "versao": "155bf65552710ce910d98f77682924d6dab8e94a",
+      "aprovadoEm": "2026-10-19T00:24:00-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos e legenda desta versão",
+      "indice": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/INDICE.md"
+    },
+    {
+      "id": "0a1059ea191a0cb7",
+      "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/Recebeu um Pix, só colar-capa.png",
+      "versao": "155bf65552710ce910d98f77682924d6dab8e94a",
+      "aprovadoEm": "2026-10-19T00:24:00-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos e legenda desta versão",
+      "promovidoEm": "2026-10-19T00:24:00-03:00",
+      "origem": {
+        "id": "766d9ad030412cc3",
+        "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/reels/Recebeu um Pix, só colar-capa.png",
+        "aprovadoEm": "2026-10-19T00:24:00-03:00"
+      },
+      "arquivosPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/reels/Recebeu um Pix, só colar-capa.png",
+          "destino": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/Recebeu um Pix, só colar-capa.png",
+          "sha1": "37833acbab43bd46462c839dd12eeb65ccdb05fe"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/INDICE.md"
     }
   ],
   "ajustes": [

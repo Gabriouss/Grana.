@@ -302,6 +302,28 @@
         }
       ],
       "indice": "docs/marketing/2026-10/semana-40-2026-09-28-a-2026-10-04/INDICE.md"
+    },
+    {
+      "id": "f0dea02e9bac463f",
+      "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/historico/pecas/reels/Fala o gasto, pronto.mp4",
+      "versao": "40419fb1ab2b16eb8c23ac20bee8512fba739114",
+      "motivo": "Reels já publicado",
+      "sucessora": null,
+      "recusadoEm": "2026-10-19T00:21:34-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "12c0619f5a59fa78",
+        "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/Fala o gasto, pronto.mp4",
+        "versao": "417c4358636f317c8256fc80edfbb42c90a197f5"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/reels/Fala o gasto, pronto.mp4",
+          "destino": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/historico/pecas/reels/Fala o gasto, pronto.mp4",
+          "sha1": "95eee60e2de891b8ac83043f16c7d275aef1b1b3"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/INDICE.md"
     }
   ]
 }

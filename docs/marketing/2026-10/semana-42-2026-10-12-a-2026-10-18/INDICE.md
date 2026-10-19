@@ -59,3 +59,19 @@ Cada linha registra o aceite explícito do autor dado no painel local, para a ve
 
 <!-- promocao:0c2f7a45bb3959ba:ebc9256211cbb190dae9ddff2f84f05ba280295a -->
 - Promoção 2026-10-18T20:14:56-03:00: [peça em aprovados](aprovados/pecas/lumen-v8/Olhar só o saldo engana o seu mês-1.png); aceite do autor em 2026-10-18T20:08:57-03:00, versão `ebc9256211cbb190dae9ddff2f84f05ba280295a`. Origem `docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/lumen-v8/olhar só o saldo engana o seu mês-*`. Nada publicado ou agendado.
+- 18/10/2026 20:47 (-03:00): aceite pelo autor no painel local. Peça `aprovados/pecas/lumen-v8/olhar só o saldo engana o seu mês-*`, versão `c70eeea435d1`. Registro em `docs/marketing/painel/aprovacoes.json`. Publicação pede passo próprio.
+
+<!-- recusa:12c0619f5a59fa78:40419fb1ab2b16eb8c23ac20bee8512fba739114 -->
+- Recusa do autor em 2026-10-19T00:21:34-03:00: [peca em historico](historico/pecas/reels/Fala o gasto, pronto.mp4). Motivo registrado no painel; nada publicado ou agendado.
+- 19/10/2026 00:23 (-03:00): aceite pelo autor no painel local. Peça `para-aprovacao/pecas/lumen-v8/Quanto dá pra gastar hoje.png`, versão `a9f38fbaf252`. Registro em `docs/marketing/painel/aprovacoes.json`. Publicação pede passo próprio.
+
+<!-- promocao:d56f097f03d86707:a9f38fbaf252aac92f8f20f8bfd0b9e8ebbe31e2 -->
+- Promoção 2026-10-19T00:23:19-03:00: [peça em aprovados](aprovados/pecas/lumen-v8/Quanto dá pra gastar hoje.png); aceite do autor em 2026-10-19T00:23:18-03:00, versão `a9f38fbaf252aac92f8f20f8bfd0b9e8ebbe31e2`. Origem `docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/lumen-v8/Quanto dá pra gastar hoje.png`. Nada publicado ou agendado.
+- 19/10/2026 00:23 (-03:00): aceite pelo autor no painel local. Peça `para-aprovacao/pecas/reels/Passou na farmácia hoje-capa.png`, versão `1901af0752fc`. Registro em `docs/marketing/painel/aprovacoes.json`. Publicação pede passo próprio.
+
+<!-- promocao:0a110de1d2b23176:1901af0752fc353705a4457486d1189fa1cf3c43 -->
+- Promoção 2026-10-19T00:23:41-03:00: [peça em aprovados](aprovados/pecas/reels/Passou na farmácia hoje-capa.png); aceite do autor em 2026-10-19T00:23:41-03:00, versão `1901af0752fc353705a4457486d1189fa1cf3c43`. Origem `docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/reels/Passou na farmácia hoje-capa.png`. Nada publicado ou agendado.
+- 19/10/2026 00:24 (-03:00): aceite pelo autor no painel local. Peça `para-aprovacao/pecas/reels/Recebeu um Pix, só colar-capa.png`, versão `155bf6555271`. Registro em `docs/marketing/painel/aprovacoes.json`. Publicação pede passo próprio.
+
+<!-- promocao:0a1059ea191a0cb7:155bf65552710ce910d98f77682924d6dab8e94a -->
+- Promoção 2026-10-19T00:24:00-03:00: [peça em aprovados](aprovados/pecas/reels/Recebeu um Pix, só colar-capa.png); aceite do autor em 2026-10-19T00:24:00-03:00, versão `155bf65552710ce910d98f77682924d6dab8e94a`. Origem `docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/reels/Recebeu um Pix, só colar-capa.png`. Nada publicado ou agendado.

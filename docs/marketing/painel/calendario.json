@@ -42,18 +42,44 @@
     {
       "id": "0c2f7a45bb3959ba",
       "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/lumen-v8/olhar só o saldo engana o seu mês-*",
-      "versao": "ebc9256211cbb190dae9ddff2f84f05ba280295a",
-      "data": "2026-10-18",
-      "hora": "20:30",
+      "versao": "c70eeea435d184cb50308e1b69b8d53e58d81696",
+      "data": "2026-10-19",
+      "hora": "09:00",
       "canal": "instagram-feed",
       "observacao": null,
-      "planejadoEm": "2026-10-18T20:28:08-03:00",
+      "planejadoEm": "2026-10-19T00:04:21-03:00",
       "recibos": [
         {
           "tipo": "data-marcada",
-          "em": "2026-10-18T20:28:08-03:00",
+          "em": "2026-10-18T20:45:14-03:00",
           "data": "2026-10-18",
-          "hora": "20:30",
+          "hora": "20:55",
+          "canal": "instagram-feed"
+        },
+        {
+          "tipo": "data-marcada",
+          "em": "2026-10-19T00:04:21-03:00",
+          "data": "2026-10-19",
+          "hora": "09:00",
+          "canal": "instagram-feed"
+        }
+      ]
+    },
+    {
+      "id": "d56f097f03d86707",
+      "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/lumen-v8/Quanto dá pra gastar hoje.png",
+      "versao": "a9f38fbaf252aac92f8f20f8bfd0b9e8ebbe31e2",
+      "data": "2026-10-20",
+      "hora": "09:00",
+      "canal": "instagram-feed",
+      "observacao": null,
+      "planejadoEm": "2026-10-19T00:29:09-03:00",
+      "recibos": [
+        {
+          "tipo": "data-marcada",
+          "em": "2026-10-19T00:29:09-03:00",
+          "data": "2026-10-20",
+          "hora": "09:00",
           "canal": "instagram-feed"
         }
       ]
