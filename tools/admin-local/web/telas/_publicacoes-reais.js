@@ -7,7 +7,7 @@ export const FORMATOS_PUBLICACAO = ['feed', 'carrossel', 'reels', 'stories'];
 
 export const ROTULOS_ESTADO = {
   planejado: 'Planejado',
-  'programado-no-painel': 'Programado',
+  'programado-no-painel': 'Agendado no painel',
   preparando: 'Preparando',
   'agendado-na-meta': 'Agendado na Meta',
   publicado: 'Publicado',
@@ -15,6 +15,7 @@ export const ROTULOS_ESTADO = {
   cancelado: 'Cancelado',
   falhou: 'Falhou',
   'precisa-conferir': 'Precisa conferir',
+  'suspenso-para-revisao': 'Suspenso para revisão',
 };
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -137,7 +138,7 @@ export function rotuloDataHorario(iso, fuso = FUSO_PUBLICACAO) {
     timeZone: fuso, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     hour: '2-digit', minute: '2-digit', timeZoneName: 'short', hourCycle: 'h23',
   }).format(data);
-  return `${local} · ${data.toISOString()} UTC`;
+  return local;
 }
 
 export function validarDestino(destino, contas) {
@@ -318,6 +319,14 @@ const FORMATO_ESTRANHO = 'O servidor respondeu num formato que o painel não rec
 const SEM_RESPOSTA = 'A resposta não chegou. Não repita: use "Consultar resultado pendente" para saber se foi feito.';
 const PREVIA_DE_NOVO = 'As imagens ou a legenda recebidas para conferência não batem com a peça aprovada. Nada foi confirmado. Gere outra prévia.';
 const MENSAGENS = {
+  'atualizar-cliente': 'O servidor usa uma versão mais recente. Recarregue o painel antes de agendar.',
+  'geracao-divergente': 'O conteúdo mudou em outra sessão. Atualize e revise a versão atual antes de agendar.',
+  'revisao-editorial-pendente': 'Esta peça está em revisão. Aprove a nova versão antes de agendar.',
+  'revisao-nao-iniciada': 'A revisão desta peça ainda não começou. Atualize e solicite a revisão antes de alterar.',
+  'versao-divergente': 'A versão da peça mudou. Atualize a lista e gere outra prévia da versão aprovada.',
+  'identidade-ambigua': 'Não foi possível vincular esta peça ao agendamento com segurança. Peça a conferência do vínculo antes de continuar.',
+  'antecedencia-insuficiente': 'Não há tempo para preparar a publicação neste horário. Escolha um horário mais distante e gere outra prévia.',
+  'suspenso-para-revisao': 'O conteúdo mudou e o agendamento foi suspenso. Revise e aprove a nova versão antes de agendar.',
   'operacao-pausada': 'A pausa está ligada. Clique em Retomar no topo desta janela e gere a prévia de novo.',
   'conta-pausada': 'Esta conta está pausada. Clique em Retomar no topo desta janela.',
   'previa-expirada': 'A prévia venceu (ela vale 10 minutos). Clique em "Gerar outra prévia".',
@@ -399,19 +408,20 @@ export function descreverJobReal(job, agora = Date.now()) {
   const motivo = job?.codigoErro ? (fraseDoMotivo(job.codigoErro) || `Motivo informado pela rede: ${job.codigoErro}.`) : null;
   switch (job?.estado) {
     case 'planejado':
-    case 'programado-no-painel': return { rede, texto: `Agendado, sai ${sai}`, atencao: false };
+    case 'programado-no-painel': return { rede, texto: `Agendado no painel, sai ${sai}`, atencao: false };
     case 'preparando': {
       // preparo {itens, total} vem do consultar desde 2fb8582; servidor antigo não manda, e aí fica sem contagem.
       const pr = job?.preparo, conta = Number.isInteger(pr?.itens) && Number.isInteger(pr?.total) && pr.total > 1 && pr.itens >= 0 && pr.itens <= pr.total;
       return { rede, texto: `Preparando${conta ? ` ${pr.itens}/${pr.total}` : ''} na rede, sai ${sai}`, atencao: false };
     }
-    case 'agendado-na-meta': return { rede, texto: `Pronto, sai ${sai}`, atencao: false };
+    case 'agendado-na-meta': return { rede, texto: `Agendado na Meta, sai ${sai}`, atencao: false };
     case 'publicado': return { rede, texto: 'Publicado', atencao: false, link, linkRotulo: `Abrir no ${rede}`,
       acao: link ? null : `Confira no ${rede}: o link ainda não veio da rede.` };
     case 'cancelamento-pendente': return { rede, texto: 'Cancelamento pedido', atencao: true, acao: 'Aguarde a confirmação do cancelamento antes de agendar de novo.' };
     case 'cancelado': return { rede, texto: 'Cancelado', atencao: true, motivo, acao: 'Nada sai neste destino. Para publicar, agende de novo.' };
     case 'falhou': return { rede, texto: 'Não saiu', atencao: true, motivo, acao: 'Nada foi publicado neste destino. Resolva o motivo e agende de novo.' };
-    case 'precisa-conferir': return { rede, texto: 'Não confirmamos se saiu', atencao: true, motivo,
+    case 'suspenso-para-revisao': return { rede, texto: 'Suspenso para revisão', atencao: true, motivo, acao: 'Revise e aprove a nova versão. Depois, gere outra prévia para agendar.' };
+    case 'precisa-conferir': return { rede, texto: 'Precisa conferir: não confirmamos se saiu', atencao: true, motivo,
       acao: `Abra o ${rede} antes de tentar de novo. Não agende outra vez sem conferir.` };
     default: return { rede, texto: 'Estado não reconhecido', atencao: true, acao: 'Atualize o Calendário e confira os recibos.' };
   }

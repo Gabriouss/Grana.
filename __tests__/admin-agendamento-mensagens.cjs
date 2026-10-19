@@ -46,7 +46,7 @@ const { pathToFileURL } = require('node:url');
     assert.ok(!/Planejado/i.test(d.texto), `${estado}: não usa a palavra do editorial`);
     if (d.atencao) assert.ok(d.acao && !/tente (de novo|novamente) agora|reenvi/i.test(d.acao), `${estado}: ação sem repetir envio`);
   }
-  assert.equal(m.descreverJobReal(job('agendado-na-meta'), agora).texto, 'Pronto, sai às 01:00');
+  assert.equal(m.descreverJobReal(job('agendado-na-meta'), agora).texto, 'Agendado na Meta, sai às 01:00');
   // Preparando n/m (Keel, 2fb8582): só com contagem íntegra; servidor antigo sem preparo continua sem número.
   assert.equal(m.descreverJobReal(job('preparando', { preparo: { itens: 3, total: 5, container: false } }), agora).texto, 'Preparando 3/5 na rede, sai às 01:00');
   for (const preparo of [undefined, null, { itens: 1, total: 1 }, { itens: 6, total: 5 }, { itens: '3', total: 5 }, { itens: -1, total: 5 }])
@@ -55,7 +55,9 @@ const { pathToFileURL } = require('node:url');
   assert.deepEqual([pub.texto, pub.link, pub.linkRotulo], ['Publicado', 'https://www.instagram.com/p/x/', 'Abrir no Instagram']);
   assert.equal(m.descreverJobReal(job('publicado', { permalink: 'javascript:alert(1)' }), agora).link, null, 'link só https');
   const conferir = m.descreverJobReal(job('precisa-conferir'), agora);
-  assert.equal(conferir.texto, 'Não confirmamos se saiu'); assert.match(conferir.acao, /Abra o Instagram antes de tentar de novo/);
+  assert.equal(conferir.texto, 'Precisa conferir: não confirmamos se saiu'); assert.match(conferir.acao, /Abra o Instagram antes de tentar de novo/);
+  assert.equal(m.ROTULOS_ESTADO['programado-no-painel'], 'Agendado no painel');
+  assert.equal(m.descreverJobReal(job('suspenso-para-revisao'), agora).texto, 'Suspenso para revisão');
   assert.match(m.descreverJobReal(job('falhou', { codigoErro: 'credencial-ausente' }), agora).motivo, /chave de acesso/);
   assert.equal(m.jobAtivo(job('agendado-na-meta')), true); assert.equal(m.jobAtivo(job('precisa-conferir')), false);
 
