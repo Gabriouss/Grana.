@@ -1,6 +1,6 @@
 // Prévia de leitura do calendário. Mídia, carrossel e fechamento são os mesmos do Feed.
 import { montarMidia, midiasDaPeca, topoDaPrevia, ligarDialogo, iconeSvg } from './_previa-publicacao.js';
-import { ROTULOS_ESTADO, rotuloDataHorario } from './_publicacoes-reais.js';
+import { descreverJobReal, rotuloDataHorario } from './_publicacoes-reais.js';
 
 const FORMATOS = { feed: 'Post', carrossel: 'Carrossel', reels: 'Reels', stories: 'Stories', video: 'Vídeo' };
 const REDES = { instagram: 'Instagram', facebook: 'Facebook' };
@@ -59,18 +59,19 @@ function estilos() {
   document.head.appendChild(h('link', { id: 'previa-post-estilo', rel: 'stylesheet', href: '/telas/_previa-post.css' }));
 }
 
+// Estado real de um destino em palavras do autor (R9, 19/10): com ícones na célula do Calendário,
+// o detalhe por rede mora aqui. Atenção traz motivo e ação; o código fica pequeno, à parte.
 function estadoDestino(job) {
   const d = job.destino || {};
-  const estado = ROTULOS_ESTADO[job.estado] || `Estado não reconhecido: ${job.estado || 'não informado'}`;
-  const link = job.estado === 'publicado' ? urlSegura(job.permalink) : null;
-  let horario = 'Horário não informado';
-  if (typeof d.publicarEm === 'string' && Number.isFinite(Date.parse(d.publicarEm))) horario = rotuloDataHorario(d.publicarEm);
-  return h('li', { class: 'previa-post-destino' },
+  const e = descreverJobReal(job);
+  const link = job.estado === 'publicado' ? urlSegura(e.link) : null;
+  return h('li', { class: `previa-post-destino${e.atencao ? ' previa-post-destino-atencao' : ''}` },
     h('strong', { texto: `${REDES[d.rede] || 'Rede não informada'} · ${FORMATOS[d.formato] || 'Formato não informado'}` }),
-    h('span', { texto: estado }), h('span', { class: 'campo-ajuda', texto: horario }),
-    job.codigoErro ? h('span', { class: 'campo-ajuda', texto: `Motivo: ${job.codigoErro}` }) : null,
-    link ? h('a', { class: 'botao botao-fantasma', href: link, target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação confirmada' })
-      : job.estado === 'publicado' ? h('span', { class: 'campo-ajuda', texto: 'O link não foi informado pela fonte.' }) : null);
+    h('span', { role: e.atencao ? 'alert' : null, texto: e.texto }),
+    e.motivo ? h('span', { class: 'campo-ajuda', texto: e.motivo }) : null,
+    e.acao ? h('span', { class: 'campo-ajuda', texto: e.acao }) : null,
+    job.codigoErro ? h('small', { class: 'campo-ajuda', texto: `Código: ${job.codigoErro}` }) : null,
+    link ? h('a', { class: 'botao botao-fantasma', href: link, target: '_blank', rel: 'noopener noreferrer', texto: e.linkRotulo }) : null);
 }
 
 // item={peca:DTO, formato, rede, jobs:destinos[], publicado:postMeta|null}.

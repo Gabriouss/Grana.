@@ -55,7 +55,9 @@ assert.equal(spawnSync('ffmpeg', ['-y', '-i', videoPath, '-frames:v', '1', thumb
       const dialog = page.locator('dialog.previa-post[open]');
       await dialog.waitFor();
       assert.equal(await dialog.getByText('@granaponto', { exact: true }).count(), 2);
-      assert(await dialog.innerText().then((t) => t.includes('Precisa conferir') && t.includes('Agendado na Meta') && t.includes('20 de outubro')), 'destinos mantêm estado e data de São Paulo mesmo com navegador no Japão');
+      // 19/10: estado por rede em palavras do autor (R9); 01:00Z do dia 21 é 22:00 do dia 20 em São Paulo, 10:00 no Japão.
+      assert(await dialog.innerText().then((t) => t.includes('Não confirmamos se saiu') && t.includes('Abra o Facebook antes de tentar de novo')
+        && /Pronto, sai (às|em .*20\/10,) 22:00/.test(t) && !/10:00/.test(t) && t.includes('Código: conferir-recibo')), 'destinos mantêm estado e horário de São Paulo mesmo com navegador no Japão');
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'página sem overflow');
       assert(await dialog.evaluate((d) => d.scrollWidth <= d.clientWidth), 'janela sem overflow horizontal');
       await page.screenshot({ path: path.join(OUT, `previa-carrossel-${width}.png`), fullPage: true });
@@ -73,7 +75,7 @@ assert.equal(spawnSync('ffmpeg', ['-y', '-i', videoPath, '-frames:v', '1', thumb
         await page.getByRole('button', { name: 'Abrir prévia', exact: true }).click();
         await dialog.waitFor();
         await page.waitForLoadState('networkidle');
-        assert.equal(await dialog.getByRole('link', { name: 'Abrir publicação confirmada' }).getAttribute('href'), 'https://www.instagram.com/p/audit/');
+        assert.equal(await dialog.getByRole('link', { name: 'Abrir no Instagram' }).getAttribute('href'), 'https://www.instagram.com/p/audit/');
         if (formato !== 'feed') assert(await dialog.locator('.feed-post-midia').evaluate((e) => { const [a, b = 1] = getComputedStyle(e).aspectRatio.split('/').map(Number); const r = e.getBoundingClientRect(); return Math.abs(a / b - 9 / 16) < 0.001 && Math.abs(r.width / r.height - 9 / 16) < 0.01; }), 'mídia ocupa de fato um retângulo 9:16');
         if (formato === 'reels') {
           await page.waitForFunction(() => { const v = document.querySelector('dialog video'); return v && !v.paused && v.currentTime > 0.1; }, null, { timeout: 10000 });
