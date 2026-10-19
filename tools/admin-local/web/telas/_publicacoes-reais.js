@@ -400,7 +400,11 @@ export function descreverJobReal(job, agora = Date.now()) {
   switch (job?.estado) {
     case 'planejado':
     case 'programado-no-painel': return { rede, texto: `Agendado, sai ${sai}`, atencao: false };
-    case 'preparando': return { rede, texto: `Preparando na rede, sai ${sai}`, atencao: false };
+    case 'preparando': {
+      // preparo {itens, total} vem do consultar desde 2fb8582; servidor antigo não manda, e aí fica sem contagem.
+      const pr = job?.preparo, conta = Number.isInteger(pr?.itens) && Number.isInteger(pr?.total) && pr.total > 1 && pr.itens >= 0 && pr.itens <= pr.total;
+      return { rede, texto: `Preparando${conta ? ` ${pr.itens}/${pr.total}` : ''} na rede, sai ${sai}`, atencao: false };
+    }
     case 'agendado-na-meta': return { rede, texto: `Pronto, sai ${sai}`, atencao: false };
     case 'publicado': return { rede, texto: 'Publicado', atencao: false, link, linkRotulo: `Abrir no ${rede}`,
       acao: link ? null : `Confira no ${rede}: o link ainda não veio da rede.` };

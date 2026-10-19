@@ -47,6 +47,10 @@ const { pathToFileURL } = require('node:url');
     if (d.atencao) assert.ok(d.acao && !/tente (de novo|novamente) agora|reenvi/i.test(d.acao), `${estado}: ação sem repetir envio`);
   }
   assert.equal(m.descreverJobReal(job('agendado-na-meta'), agora).texto, 'Pronto, sai às 01:00');
+  // Preparando n/m (Keel, 2fb8582): só com contagem íntegra; servidor antigo sem preparo continua sem número.
+  assert.equal(m.descreverJobReal(job('preparando', { preparo: { itens: 3, total: 5, container: false } }), agora).texto, 'Preparando 3/5 na rede, sai às 01:00');
+  for (const preparo of [undefined, null, { itens: 1, total: 1 }, { itens: 6, total: 5 }, { itens: '3', total: 5 }, { itens: -1, total: 5 }])
+    assert.equal(m.descreverJobReal(job('preparando', { preparo }), agora).texto, 'Preparando na rede, sai às 01:00', JSON.stringify(preparo));
   const pub = m.descreverJobReal(job('publicado', { permalink: 'https://www.instagram.com/p/x/' }), agora);
   assert.deepEqual([pub.texto, pub.link, pub.linkRotulo], ['Publicado', 'https://www.instagram.com/p/x/', 'Abrir no Instagram']);
   assert.equal(m.descreverJobReal(job('publicado', { permalink: 'javascript:alert(1)' }), agora).link, null, 'link só https');
