@@ -715,9 +715,24 @@ export async function montarReal(raiz, ctx, integracao = null) {
     for (const controller of controladores) controller.abort();
     liberarPreview();
   };
+  const achar = (peca) => catalogo?.pecas.find((p) => p.id === peca.id && p.versao === peca.versao);
+  // O catálogo é lido quando a tela monta. Um aceite dado depois, na mesma tela ("Aprovar esta versão",
+  // 18/10), não estava nele: relê uma vez antes de recusar, com a janela já aberta mostrando a espera.
   limpar.abrirCompositor = (peca, data) => {
-    const exata = catalogo?.pecas.find((p) => p.id === peca.id && p.versao === peca.versao);
-    if (!exata) { ctx.aviso('A versão selecionada não está no catálogo real vigente. Atualize e confira o aceite.', 'erro'); return false; }
+    const exata = achar(peca);
+    if (exata) return abrirCom(exata, data);
+    compositor.replaceChildren(h('p', { class: 'campo-ajuda', role: 'status', texto: 'Conferindo o catálogo aprovado com o aceite mais recente…' }));
+    (async () => {
+      await atualizarTudo();
+      if (encerrada || ctx.obsoleta()) return;
+      const relida = achar(peca);
+      if (relida) { abrirCom(relida, data); return; }
+      ctx.aviso('A versão selecionada não está no catálogo real vigente. Atualize e confira o aceite.', 'erro');
+      compositor.closest?.('dialog')?.close?.();
+    })().catch((err) => { console.warn('[publicacoes-reais-reler]', err?.codigo || 'falha'); ctx.aviso('Não foi possível reler o catálogo aprovado. Atualize a página e tente de novo.', 'erro'); });
+    return true;
+  };
+  function abrirCom(exata, data) {
     selecaoPeca = exata.id;
     selecaoDestinos.clear();
     liberarPreview();
@@ -726,7 +741,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     if (input) input.value = /^\d{4}-\d{2}-\d{2}$/.test(data || '') ? `${data}T09:00` : '';
     atualizarResumoHorario();
     return true;
-  };
+  }
   limpar.atualizarLista = async () => {
     if (!integracao || encerrada) return;
     const nova = await integracao.listar(false);

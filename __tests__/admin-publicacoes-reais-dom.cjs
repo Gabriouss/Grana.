@@ -62,7 +62,7 @@ const job = (contaId, rede, estado, extra = {}) => ({
   for (const width of [390, 768, 1440]) {
     const page = await browser.newPage({ viewport: { width, height: 960 } });
     const posts = [];
-    let confirmarTentativas = 0; let leituraParcial = false;
+    let confirmarTentativas = 0; let leituraParcial = false; let catalogoDesatualizado = false; let leiturasCatalogo = 0;
     const jobs = [job('ig-1', 'instagram', 'agendado-na-meta'), job('fb-1', 'facebook', 'precisa-conferir')];
     const envelope = (dados, status = 200) => ({ status, contentType: 'application/json',
       body: JSON.stringify({ ok: status === 200, dados, atualizadoEm: new Date().toISOString(), erro: { codigo: 'qa', mensagem: 'QA' } }) });
@@ -91,7 +91,7 @@ const job = (contaId, rede, estado, extra = {}) => ({
       if (p === '/api/marketing/publicacoes/capacidades') {
         return route.fulfill(envelope(real({ contas: CONTAS, controles: { revisao: 2, pausaGlobal: false, pausaFacebook: false, pausaInstagram: false, habilitado: true } })));
       }
-      if (p === '/api/marketing/publicacoes/catalogo') return route.fulfill(envelope({ pecas: [PECA], total: 1 }));
+      if (p === '/api/marketing/publicacoes/catalogo') { leiturasCatalogo++; const pecas = catalogoDesatualizado ? [] : [PECA]; catalogoDesatualizado = false; return route.fulfill(envelope({ pecas, total: pecas.length })); }
       if (p === '/api/marketing/publicacoes/midia') return route.fulfill({ status: 200, headers: { 'content-type': 'image/png', 'cache-control': 'private, no-store' }, body: PNG });
       if (p === '/api/marketing/publicacoes/detalhe') return route.fulfill(envelope(real({ loteId: LOTE, jobs })));
       if (p === '/api/marketing/publicacoes' && req.method() === 'GET') return route.fulfill(envelope(real({ jobs, proximoCursor: null, limitado: false })));
@@ -146,18 +146,21 @@ const job = (contaId, rede, estado, extra = {}) => ({
       await abrirDia20();
     };
     await abrirCalendario('&camada=planejado');
-    ok(await page.getByRole('button', { name: 'Agendar de verdade', exact: true }).count() === 0, `${width}px: camada Planejado não oferece Agendar de verdade`);
+    ok(await page.getByRole('button', { name: 'Agendar de verdade', exact: true }).evaluateAll((bs) => bs.every((b) => b.disabled)), `${width}px: camada Planejado impede Agendar de verdade`);
     ok(await page.locator('.cal-aviso-real:visible', { hasText: AVISO }).count() >= 1, `${width}px: camada Planejado mostra o aviso de possível agendamento real`);
     leituraParcial = true;
     await abrirCalendario('&camada=ambos');
-    ok(await page.getByRole('button', { name: 'Agendar de verdade', exact: true }).count() === 0, `${width}px: leitura parcial não oferece Agendar de verdade`);
+    ok(await page.getByRole('button', { name: 'Agendar de verdade', exact: true }).evaluateAll((bs) => bs.every((b) => b.disabled)), `${width}px: leitura parcial impede Agendar de verdade`);
     ok(await page.locator('.cal-aviso-real:visible', { hasText: AVISO }).count() >= 1, `${width}px: leitura parcial mostra o aviso de possível agendamento real`);
     leituraParcial = false;
+    catalogoDesatualizado = true;
     await abrirCalendario('&camada=ambos');
     await page.getByRole('button', { name: 'Agendar de verdade', exact: true }).waitFor();
     ok(await page.locator('.cal-aviso-real', { hasText: AVISO }).count() === 0, `${width}px: leitura completa sem job ativo volta a oferecer o botão, sem aviso`);
+    const leiturasAntesDeAbrir = leiturasCatalogo;
     await page.getByRole('button', { name: 'Agendar de verdade', exact: true }).click();
     await page.locator('.pub-real-compositor .pub-real-peca').first().waitFor({ timeout: 15000 });
+    ok(leiturasCatalogo > leiturasAntesDeAbrir, `${width}px: catálogo desatualizado é relido ao abrir compositor`);
     const semOverflow = () => page.evaluate('document.documentElement.scrollWidth <= innerWidth');
     ok(await semOverflow(), `${width}px: sem overflow horizontal na fila real`);
 
