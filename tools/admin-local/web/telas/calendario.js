@@ -195,7 +195,7 @@ export async function montar(raiz, ctx) {
   dialogo.appendChild(h('div', { class: 'cal-unico-painel-topo' }, h('h2', { id: 'cal-unico-painel-titulo', texto: 'Agendar de verdade' }), h('button', { class: 'botao', type: 'button', texto: 'Fechar painel', onclick: fechar })));
   dialogo.appendChild(conteudoPainel);
   dialogo.addEventListener('close', () => focoOrigem?.focus?.());
-  raiz.appendChild(resumoOperacional); raiz.appendChild(barra); raiz.appendChild(legendaIcones); raiz.appendChild(topoReal); raiz.appendChild(status); raiz.appendChild(calendario); raiz.appendChild(fila); raiz.appendChild(paginacao); raiz.appendChild(dialogo);
+  raiz.appendChild(barra); raiz.appendChild(legendaIcones); raiz.appendChild(topoReal); raiz.appendChild(status); raiz.appendChild(calendario); raiz.appendChild(fila); raiz.appendChild(resumoOperacional); raiz.appendChild(paginacao); raiz.appendChild(dialogo);
   const abrir = (peca, data, origem) => {
     if (!controleReal?.abrirCompositor) { ctx.aviso('O agendamento real ainda não está disponível. Atualize os dados.', 'erro'); return; }
     focoOrigem = origem;

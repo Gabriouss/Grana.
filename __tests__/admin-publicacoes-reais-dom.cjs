@@ -122,7 +122,7 @@ const job = (contaId, rede, estado, extra = {}) => ({
     await page.goto('http://127.0.0.1:4399/#/marketing/publicacoes?mes=2026-10');
     await page.waitForLoadState('networkidle');
     await page.getByRole('heading', { name: 'Calendário', exact: true }).waitFor({ timeout: 15000 });
-    ok(await page.locator('.cal-operacao').evaluate((el) => !!(el.compareDocumentPosition(document.querySelector('.cal-unico-filtros')) & Node.DOCUMENT_POSITION_FOLLOWING)), `${width}px: acompanhamento vem antes dos controles`);
+    ok(await page.locator('.cal-operacao').evaluate((el) => !!(el.compareDocumentPosition(document.querySelector('.cal-unico-filtros')) & Node.DOCUMENT_POSITION_PRECEDING)), `${width}px: acompanhamento vem depois da grade`);
     ok(page.url().includes('visao=lista'), `${width}px: rota antiga redireciona para lista do calendário`);
     await page.screenshot({ path: path.join(OUT, `calendario-lista-${width}.png`), fullPage: true });
     // na grade (largura >= 900) os cartões são compactos: as ações ficam na janela do dia
