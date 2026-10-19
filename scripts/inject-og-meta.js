@@ -19,9 +19,9 @@ const META_POR_ROTA = {
   },
   '/baixar': {
     title: 'Baixar o Grana. para Android',
-    description: 'Baixe o aplicativo Android do Grana. e registre seus gastos por voz, por texto ou pelo QR Code da nota fiscal.',
+    description: 'Baixe o aplicativo Android do Grana. e registre seus gastos por voz, por texto ou fotografando a nota fiscal, com leitura no aparelho e revisão antes de salvar.',
     ogTitle: 'Baixar o Grana. para Android',
-    ogDescription: 'Leve o controle financeiro para o bolso: registre gastos por voz, por texto ou pelo QR Code da nota fiscal.',
+    ogDescription: 'Leve o controle financeiro para o bolso: registre gastos por voz, por texto ou fotografando a nota fiscal, com leitura no aparelho e revisão antes de salvar.',
   },
   '/termos': {
     title: 'Termos de serviço | Grana.',
