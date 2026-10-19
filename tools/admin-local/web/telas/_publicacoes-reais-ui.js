@@ -32,7 +32,6 @@ export async function montarReal(raiz, ctx, integracao = null) {
   let selecaoPeca = ctx.params?.peca || '';
   let selecaoDestinos = new Set();
   let previa = null;
-  let previaVistas = false;
   let previewBlobs = [];
   let ocupado = false;
   let encerrada = false;
@@ -55,6 +54,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
   const reciboPainel = h('p', { class: 'publicacoes-recibo-painel', role: 'status', 'aria-live': 'polite' });
   const disponibilidade = h('div', { class: 'pub-real-disponibilidade', role: 'status', 'aria-live': 'polite' });
   const controles = h('div', { class: 'pub-real-controles' });
+  const pausasVisiveis = h('div', { class: 'pub-real-pausas-visiveis' });
   const compositor = h('section', { class: 'secao pub-real-compositor', 'aria-labelledby': 'pub-real-compor-titulo' });
   const lista = h('section', { class: 'secao pub-real-lista', 'aria-labelledby': 'pub-real-lista-titulo' });
   const detalheEl = h('section', { class: 'secao publicacoes-detalhe pub-real-detalhe', 'aria-label': 'Detalhe e recibos', hidden: true });
@@ -65,7 +65,9 @@ export async function montarReal(raiz, ctx, integracao = null) {
   ];
   if (!integracao) ctx.cabecalho(raiz, 'Agendamento real', 'Uma confirmação autoriza execução futura no serviço remoto. O calendário editorial é referência; só a confirmação autoriza publicação.', acoesTopo);
   if (integracao) {
-    integracao.topo.append(disponibilidade, controles, recibo, h('div', { class: 'bloco-acao' }, acoesTopo));
+    integracao.topo.append(pausasVisiveis, recibo,
+      h('div', { class: 'bloco-acao' }, acoesTopo[1]),
+      h('details', { class: 'pub-real-ferramentas' }, h('summary', { texto: 'Ferramentas de publicação' }), disponibilidade, controles, acoesTopo[0]));
     integracao.painel.append(reciboPainel, compositor, previewEl);
     integracao.fila.append(lista, detalheEl);
   } else raiz.append(corpo, recibo, disponibilidade, controles, compositor, previewEl, lista, detalheEl);
@@ -79,9 +81,14 @@ export async function montarReal(raiz, ctx, integracao = null) {
   // A frase vem primeiro; o código, quando houver, fica pequeno e depois (útil para o suporte).
   function avisar(texto, erro = false, codigo = null) {
     for (const el of [recibo, reciboPainel]) {
-      el.replaceChildren(texto, ...(codigo ? [' ', h('small', { class: 'pub-real-codigo', texto: `Código: ${codigo}` })] : []));
+      el.replaceChildren(texto, ...(codigo ? [detalhesTecnicos(`Código: ${codigo}`)] : []));
       el.setAttribute('role', erro ? 'alert' : 'status');
     }
+  }
+
+  function detalhesTecnicos(...linhas) {
+    return h('details', { class: 'pub-real-tecnico' }, h('summary', { texto: 'Detalhes técnicos' }),
+      ...linhas.map((texto) => h('p', { class: 'campo-ajuda', texto })));
   }
 
   function erroLegivel(err, acao = 'A operação') {
@@ -100,15 +107,17 @@ export async function montarReal(raiz, ctx, integracao = null) {
     for (const url of previewBlobs) URL.revokeObjectURL(url);
     previewBlobs = [];
     previa = null;
-    previaVistas = false;
     previewEl.hidden = true;
     previewEl.replaceChildren();
   }
 
   function invalidaSelecao() {
+    const ativo = globalThis.document?.activeElement;
+    const foco = ativo && compositor.contains(ativo) ? { name: ativo.name, value: ativo.value } : null;
     liberarPreview();
     avisar('Seleção alterada. Gere uma nova prévia antes de confirmar.');
     desenharCompositor();
+    if (foco) [...compositor.querySelectorAll('input')].find((i) => i.name === foco.name && i.value === foco.value)?.focus();
   }
 
   function pecaSelecionada() { return catalogo?.pecas.find((p) => p.id === selecaoPeca) || null; }
@@ -276,6 +285,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
         h('p', { class: 'pub-real-dado-real', texto: `CONTRATO REAL · ${plural(cap.contas.length, 'conta', 'contas')} · ${plural(catalogo.pecas.length, 'peça aprovada', 'peças aprovadas')} · fila ${page1.limitado ? 'parcial' : 'consultada'}` }),
         h('p', { class: 'campo-ajuda', texto: 'O navegador não envia IDs de conta digitados, URLs remotas ou dados de autorização.' }));
       desenharControles();
+      pausasVisiveis.replaceChildren(estadoDaPausa());
       desenharCompositor();
       desenharLista();
       if (!feedPorPeca.size && catalogo.pecas.length) avisar('O catálogo foi carregado, mas a fonte de miniaturas do Feed está indisponível. Não confirme sem uma prévia visual completa.', true);
@@ -289,6 +299,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
         h('p', { texto: 'O servidor não confirmou todos os contratos reais necessários. A tela não presumiu contas, capacidades nem fila vazia.' }),
         botao('Tentar novamente', () => atualizarTudo())));
       compositor.replaceChildren(); controles.replaceChildren(); lista.replaceChildren();
+      pausasVisiveis.replaceChildren();
       erroLegivel(err, 'A leitura do agendamento real');
     } finally { busy(false); }
   }
@@ -389,7 +400,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     const acoes = [];
     acoes.push(botao('Ver recibos', () => consultarDetalhe(job.jobId)));
     if (job.estado === 'precisa-conferir' || job.estado === 'cancelamento-pendente') {
-      acoes.push(botao('Reconciliar estado', () => confirmarComando(job, 'reconciliar')));
+      acoes.push(botao('Conferir publicação', () => confirmarComando(job, 'reconciliar')));
     }
     if (ESTADOS_ATIVOS.has(job.estado) && job.estado !== 'agendado-na-meta' && job.estado !== 'preparando') {
       acoes.push(botao('Reagendar horário', () => abrirReagendamento(job)));
@@ -411,14 +422,16 @@ export async function montarReal(raiz, ctx, integracao = null) {
           h('h3', { texto: nome }), h('p', { texto: `${FORMATOS[job.destino.formato]} · ${resumoHora}` })),
         h('strong', { class: 'pub-real-estado', texto: ROTULOS_ESTADO[job.estado] || 'Estado não reconhecido' })),
       h('p', { class: 'pub-real-parcial', texto: resumo.parcial ? `${resumo.rotulo} · lote ${resumo.total} destinos` : `${resumo.rotulo} · 1 destino` }),
-      h('p', { class: 'pub-real-atualizado', texto: `Atualizado ${quandoCurto(Date.parse(job.atualizadoEm))} · revisão ${job.revisao}` }),
+      h('p', { class: 'pub-real-atualizado', texto: `Atualizado ${quandoCurto(Date.parse(job.atualizadoEm))}` }),
+      detalhesTecnicos(`Agendamento: ${job.jobId} · revisão ${job.revisao}`, ...(job.remotoId ? [`Referência na rede: ${job.remotoId}`] : [])),
       (() => {
         const d = descreverJobReal(job);
         const frase = [d.atencao ? `${d.texto}.` : null, d.motivo, d.atencao ? d.acao : null].filter(Boolean).join(' ');
-        return frase || job.codigoErro ? h('p', { class: d.atencao ? 'pub-real-erro' : 'campo-ajuda', role: d.atencao ? 'alert' : null },
-          frase || 'A rede informou um código.', job.codigoErro ? [' ', h('small', { class: 'pub-real-codigo', texto: `Código: ${job.codigoErro}` })] : null) : null;
+        return frase || job.codigoErro ? h('div', null,
+          h('p', { class: d.atencao ? 'pub-real-erro' : 'campo-ajuda', role: d.atencao ? 'alert' : null, texto: frase || 'A rede informou um código. Confira os recibos antes de continuar.' }),
+          job.codigoErro ? detalhesTecnicos(`Código: ${job.codigoErro}`) : null) : null;
       })(),
-      job.estado === 'publicado' ? h('p', { class: 'pub-real-publicado', texto: job.remotoId ? `Publicado · ID confirmado ${job.remotoId}` : 'Publicado segundo o recibo remoto.' }) : null,
+      job.estado === 'publicado' ? h('p', { class: 'pub-real-publicado', texto: 'Publicado segundo o recibo remoto.' }) : null,
       linkSeguro(job.permalink) ? h('a', { class: 'botao botao-fantasma', href: linkSeguro(job.permalink), target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação confirmada' }) : null,
       job.estado === 'publicado' && !linkSeguro(job.permalink) ? h('p', { class: 'campo-ajuda', texto: 'O link da publicação não está disponível nesta fonte. Consulte o ID e o recibo.' }) : null,
       job.recibosLimitados && !emDetalhe ? h('p', { class: 'campo-ajuda', texto: 'A lista mostra somente os recibos recentes. Abra o detalhe para conferir até 50.' }) : null,
@@ -444,9 +457,8 @@ export async function montarReal(raiz, ctx, integracao = null) {
       const dadosMidia = await lerSnapshotVerificado(resultado);
       if (encerrada || ctx.obsoleta()) { dadosMidia.urls.forEach((x) => URL.revokeObjectURL(x)); return; }
       previewBlobs = dadosMidia.urls;
-      previaVistas = false;
       desenharPrevia(resultado, dadosMidia);
-      avisar(previaConfirmavel(resultado) ? 'Prévia real carregada e mídia/legenda verificadas. Revise todos os destinos para habilitar a confirmação.' : 'A prévia real está bloqueada por estado, capacidade, revisão ou expiração. Confira os motivos abaixo.', !previaConfirmavel(resultado));
+      avisar(previaConfirmavel(resultado) ? 'Prévia carregada e conferida. Revise as imagens, a legenda e os destinos; depois clique em Agendar.' : 'A prévia está bloqueada. Confira os motivos e as ações abaixo.', !previaConfirmavel(resultado));
     } catch (err) {
       if (!encerrada && !ctx.obsoleta()) {
         liberarPreview();
@@ -528,7 +540,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     const coerente = p.snapshot?.pecaId === peca?.id && p.snapshot?.versao === peca?.versao
       && p.destinos?.length === alvos.length && p.destinos.every((d, i) => d.contaId === alvos[i].contaId && d.rede === alvos[i].rede && d.formato === alvos[i].formato);
     const botaoConfirmar = h('button', { class: 'botao botao-primario', type: 'button', 'data-operacao': true,
-      texto: 'Confirmar agendamento real', disabled: true, 'data-bloqueado': 'true',
+      texto: 'Agendar', disabled: true, 'data-bloqueado': 'true',
       'aria-describedby': 'pub-real-bloqueio-confirmacao', onclick: () => confirmarPrevia(p) });
     const prazo = h('div', { class: 'pub-real-prazo', 'aria-live': 'polite' });
     previaElRevisao(p, detalhePrevia);
@@ -539,16 +551,13 @@ export async function montarReal(raiz, ctx, integracao = null) {
       h('p', { class: 'pub-real-versao', texto: `${peca?.titulo || 'Peça'} · versão aprovada` }),
       h('div', { class: 'pub-real-previews' }, cards),
       ...(motivo.length ? [h('div', { class: 'alerta alerta-atencao', role: 'alert' }, h('strong', { texto: 'Esta prévia não pode ser confirmada' }),
-        h('ul', null, [...new Set(motivo)].map((m) => h('li', null, motivos([m]), ' ', h('small', { class: 'pub-real-codigo', texto: `Código: ${typeof m === 'string' ? m : m?.codigo || 'sem-codigo'}` })))))] : []),
+        h('ul', null, [...new Set(motivo)].map((m) => h('li', null, motivos([m]), detalhesTecnicos(`Código: ${typeof m === 'string' ? m : m?.codigo || 'sem-codigo'}`)))))] : []),
       ...(coerente ? [] : [h('p', { class: 'pub-real-erro', role: 'alert', texto: 'A resposta não corresponde a todos os destinos e versões escolhidos. Atualize a lista antes de confirmar.' })]),
       h('div', { class: 'pub-real-confirmacao-resumo' },
         h('h3', { texto: 'Resumo exato da autorização' }),
         h('ul', null, alvos.map((a, i) => h('li', { texto: `${nomeDestino(a)} · ${REDES[a.rede]} · ${FORMATOS[a.formato]} · ${rotuloDataHorario(p.destinos?.[i]?.publicarEm || p.agendarPara)}` }))),
         h('p', { texto: 'Esta legenda e estas imagens serão publicadas automaticamente no horário escolhido, somente após confirmar.' })),
-      h('label', { class: 'pub-real-declaracao' }, h('input', { type: 'checkbox', name: 'confirmacaoVisual', checked: previaVistas,
-        disabled: !coerente || !previaConfirmavel(p), onchange: (e) => { previaVistas = e.target.checked; atualizarBotaoConfirmar(); } }),
-        'Revisei a mídia, a legenda e cada destino acima.'),
-      h('p', { id: 'pub-real-bloqueio-confirmacao', class: 'campo-ajuda', texto: 'A confirmação só libera quando a prévia estiver válida, vigente e todos os destinos estiverem revisados.' }),
+      h('p', { id: 'pub-real-bloqueio-confirmacao', class: 'campo-ajuda', texto: 'Ao clicar em Agendar, você autoriza a publicação destas imagens e desta legenda nos destinos e horários acima.' }),
       prazo,
       botaoConfirmar);
     previewEl.querySelector('h2').focus();
@@ -566,13 +575,12 @@ export async function montarReal(raiz, ctx, integracao = null) {
       prazo.replaceChildren(h('span', { role: 'alert', texto: 'A prévia venceu. Gere outra para confirmar; a seleção e o horário continuam os mesmos.' }),
         botao('Gerar outra prévia', () => gerarPrevia(), { primario: true }));
       atualizarBotaoConfirmar();
-      previewEl.querySelector('[name="confirmacaoVisual"]')?.setAttribute('disabled', '');
     }
     tique();
     relogioPrevia = setInterval(tique, 5000);
     // data-bloqueado sobrevive ao busy(false), que reabilita os demais botões de operação.
     function atualizarBotaoConfirmar() {
-      const bloqueado = !coerente || !previaConfirmavel(p) || !previaVistas;
+      const bloqueado = !coerente || !previaConfirmavel(p);
       botaoConfirmar.dataset.bloqueado = String(bloqueado);
       botaoConfirmar.disabled = ocupado || bloqueado;
     }
@@ -587,26 +595,18 @@ export async function montarReal(raiz, ctx, integracao = null) {
     previewEl.hidden = false;
     const { frase, codigo } = mensagemHumana(err);
     previewEl.replaceChildren(h('h2', { class: 'secao-titulo', texto: 'Não foi possível gerar a prévia' }),
-      h('p', { class: 'pub-real-erro', role: 'alert' }, frase, ' ', h('small', { class: 'pub-real-codigo', texto: `Código: ${codigo}` })),
+      h('p', { class: 'pub-real-erro', role: 'alert', texto: frase }),
+      detalhesTecnicos(`Código: ${codigo}`),
       h('p', { class: 'campo-ajuda', texto: 'Nada foi agendado. Depois de resolver, gere a prévia de novo.' }),
       botao('Gerar outra prévia', () => gerarPrevia(), { primario: true }));
   }
 
   async function confirmarPrevia(p) {
-    if (!previaVistas || p !== previa || !previaConfirmavel(p) || ocupado) return;
+    if (p !== previa || !previaConfirmavel(p) || ocupado) return;
     const destinos = destinosSelecionados();
     const { k: chaveIntencao, idempotencia } = chaveDe('confirmar', p.previaId, p.previaHash, p.revisao);
     const data = p.destinos?.[0]?.publicarEm || p.agendarPara;
-    const sumario = [
-      `Peça: ${pecaSelecionada()?.titulo || 'indisponível'} · versão aprovada`,
-      ...destinos.map((d) => `${nomeDestino(d)} · ${REDES[d.rede]} · ${FORMATOS[d.formato]}`),
-      `Publica ${quandoCurto(Date.parse(data))}. Cada destino segue independente: se um falhar, o outro continua.`,
-      `A prévia vale até ${quandoCurto(Date.parse(p.expiraEm)).replace(/^às /, '')}.`,
-    ];
-    const ok = await ctx.confirmar({ titulo: 'Confirmar publicação real?',
-      texto: 'Esta confirmação cria um job para cada destino e autoriza execução futura. Ações reais exigem MFA local recente e validação do servidor.',
-      detalhes: sumario, rotuloBotao: 'Autorizar agendamento real' });
-    if (!ok || ctx.obsoleta() || ocupado || p !== previa) return;
+    if (ctx.obsoleta() || ocupado || p !== previa) return;
     pendencia = { idempotencia, previaId: p.previaId, tipo: 'confirmar' };
     busy(true);
     try {
@@ -629,7 +629,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     } catch (err) {
       if (encerrada || ctx.obsoleta()) return;
       if (resultadoIncerto(err)) {
-        avisar(`Resultado da confirmação desconhecido. A chave idempotente ${idempotencia} foi preservada. Consulte o resultado antes de repetir; nenhuma nova chave será criada automaticamente.`, true);
+        avisar('A resposta da confirmação não chegou. Consulte o resultado pendente antes de tentar outra vez.', true);
         desenharConsultaPendente();
       } else {
         pendencia = null;
@@ -647,7 +647,8 @@ export async function montarReal(raiz, ctx, integracao = null) {
     anterior?.remove();
     const caixa = integracao && pendencia?.tipo === 'confirmar' ? integracao.painel : disponibilidade;
     caixa.appendChild(h('div', { class: 'pub-real-consulta-pendente', role: 'alert' },
-      h('p', { texto: 'A resposta se perdeu. Consulte pela mesma chave antes de tentar qualquer operação.' }),
+      h('p', { texto: 'A resposta se perdeu. Consulte o resultado antes de repetir a operação.' }),
+      detalhesTecnicos(`Chave de consulta: ${pendencia?.idempotencia || 'indisponível'}`),
       botao('Consultar resultado pendente', () => consultarPendente(), { operacao: false })));
   }
 
@@ -722,7 +723,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     } catch (err) {
       if (encerrada || ctx.obsoleta()) return;
       if (resultadoIncerto(err)) {
-        avisar(`${metadata.rotulo}: resultado desconhecido. A chave ${metadata.idempotencia} foi preservada. Consulte antes de repetir.`, true);
+        avisar(`${metadata.rotulo}: a resposta não chegou. Consulte o resultado pendente antes de repetir.`, true);
         desenharConsultaPendente();
       } else {
         pendencia = null;

@@ -56,8 +56,8 @@ assert.equal(spawnSync('ffmpeg', ['-y', '-i', videoPath, '-frames:v', '1', thumb
       await dialog.waitFor();
       assert.equal(await dialog.getByText('@granaponto', { exact: true }).count(), 2);
       // 19/10: estado por rede em palavras do autor (R9); 01:00Z do dia 21 é 22:00 do dia 20 em São Paulo, 10:00 no Japão.
-      assert(await dialog.innerText().then((t) => t.includes('Não confirmamos se saiu') && t.includes('Abra o Facebook antes de tentar de novo')
-        && /Pronto, sai (às|em .*20\/10,) 22:00/.test(t) && !/10:00/.test(t) && t.includes('Código: conferir-recibo')), 'destinos mantêm estado e horário de São Paulo mesmo com navegador no Japão');
+      assert(await dialog.innerText().then((t) => t.includes('Precisa conferir: não confirmamos se saiu') && t.includes('Abra o Facebook antes de tentar de novo')
+        && /Agendado na Meta, sai (às|em .*20\/10,) 22:00/.test(t) && !/10:00/.test(t) && t.includes('Código: conferir-recibo')), 'destinos mantêm estado e horário de São Paulo mesmo com navegador no Japão');
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'página sem overflow');
       assert(await dialog.evaluate((d) => d.scrollWidth <= d.clientWidth), 'janela sem overflow horizontal');
       await page.screenshot({ path: path.join(OUT, `previa-carrossel-${width}.png`), fullPage: true });

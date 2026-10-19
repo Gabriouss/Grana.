@@ -55,7 +55,8 @@ function envelope(dados) { return { ok: true, dados, atualizadoEm: '2026-10-17T2
   equal(m.FUSO_PUBLICACAO, 'America/Sao_Paulo', 'fuso fixo da operação');
   equal(m.horarioLocalParaUtc('2026-10-18T15:30'), '2026-10-18T18:30:00.000Z', 'converte São Paulo para UTC sem fuso do navegador');
   equal(m.horarioUtcParaLocal('2026-10-18T18:30:00.000Z'), '2026-10-18T15:30', 'converte UTC para o campo de entrada São Paulo');
-  ok(m.rotuloDataHorario('2026-10-18T18:30:00.000Z').includes('UTC'), 'resumo exibe UTC junto do horário do destino');
+  ok(/18 de outubro de 2026.*15:30/.test(m.rotuloDataHorario('2026-10-18T18:30:00.000Z'))
+    && !m.rotuloDataHorario('2026-10-18T18:30:00.000Z').includes('18:30:00.000Z'), 'resumo apresenta horário do destino em São Paulo, sem duplicar ISO técnico');
   assert.throws(() => m.horarioLocalParaUtc('2026-02-30T12:00'), /data ou a hora/);
   checks++;
   assert.throws(() => m.horarioLocalParaUtc('18/10/2026 15:30'), /data e hora/);

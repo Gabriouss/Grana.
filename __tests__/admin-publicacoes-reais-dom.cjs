@@ -64,6 +64,7 @@ const job = (contaId, rede, estado, extra = {}) => ({
     const posts = [];
     let confirmarTentativas = 0; let leituraParcial = false; let catalogoDesatualizado = false; let leiturasCatalogo = 0;
     const jobs = [job('ig-1', 'instagram', 'agendado-na-meta'), job('fb-1', 'facebook', 'precisa-conferir')];
+    let falhaEditorial = false, falhaPerfil = false;
     const envelope = (dados, status = 200) => ({ status, contentType: 'application/json',
       body: JSON.stringify({ ok: status === 200, dados, atualizadoEm: new Date().toISOString(), erro: { codigo: 'qa', mensagem: 'QA' } }) });
     const real = (d) => ({ contractVersion: 'e5.real.v1', modo: 'real', ...d });
@@ -80,7 +81,9 @@ const job = (contaId, rede, estado, extra = {}) => ({
       if (p === '/api/saude') return route.fulfill(envelope({ painel: 'grana-admin' }));
       if (p === '/api/sessao') return route.fulfill(envelope({ etapa: 'ok', restanteSeg: 3600, csrfToken: 'qa-sem-credencial' }));
       if (p === '/api/marketing/notificacoes') return route.fulfill(envelope({ status: 'indisponivel', fonte: 'indisponivel', naoLidas: null }));
-      if (p === '/api/marketing/feed') return route.fulfill(envelope({ pecas: [{ id: PECA.id, data: '2026-10-20', hora: '12:00' }] }));
+      if (p === '/api/marketing/feed') return route.fulfill(envelope({ pecas: [{ ...PECA, legenda: LEGENDA, data: '2026-10-20', hora: '12:00' }] }, falhaEditorial ? 503 : 200));
+      if (p === '/api/marketing/feed-real') return route.fulfill(envelope({ status: 'disponivel', perfil: { usuario: 'granaponto', posts: 1 }, vinculadas: [],
+        posts: [{ formato: 'imagem', legenda: 'Publicação comprovada', link: 'https://www.instagram.com/p/qa/', chave: 'e'.repeat(16), data: '2026-10-19' }] }, falhaPerfil ? 503 : 200));
       if (p === '/api/marketing/cronograma') return route.fulfill(envelope(null));
       if (p === '/api/marketing/calendario/meta-publicados') return route.fulfill(envelope({ mes: '2026-10', completo: false, consultadoEm: new Date().toISOString(),
         redes: { instagram: { status: 'disponivel', completo: true }, facebook: { status: 'indisponivel', completo: false, motivo: 'token expirado' } },
@@ -119,11 +122,17 @@ const job = (contaId, rede, estado, extra = {}) => ({
     await page.goto('http://127.0.0.1:4399/#/marketing/publicacoes?mes=2026-10');
     await page.waitForLoadState('networkidle');
     await page.getByRole('heading', { name: 'Calendário', exact: true }).waitFor({ timeout: 15000 });
+    ok(await page.locator('.cal-operacao').evaluate((el) => !!(el.compareDocumentPosition(document.querySelector('.cal-unico-filtros')) & Node.DOCUMENT_POSITION_FOLLOWING)), `${width}px: acompanhamento vem antes dos controles`);
     ok(page.url().includes('visao=lista'), `${width}px: rota antiga redireciona para lista do calendário`);
     await page.screenshot({ path: path.join(OUT, `calendario-lista-${width}.png`), fullPage: true });
     // na grade (largura >= 900) os cartões são compactos: as ações ficam na janela do dia
     const abrirDia20 = async () => { if (width >= 900) await page.locator('.cal-dia[data-data="2026-10-20"] .cal-num-botao').click(); };
     await page.getByRole('button', { name: 'Calendário', exact: true }).click();
+    if (width >= 900) {
+      await page.locator('button.cal-icone:visible').first().waitFor();
+      const alvos = await page.locator('button.cal-icone, .cal-num-botao, .cal-mais').evaluateAll((els) => els.filter((el) => el.getBoundingClientRect().width).map((el) => { const r = el.getBoundingClientRect(); return [r.width, r.height]; }));
+      ok(alvos.length > 0 && alvos.every(([w,h]) => w >= 43.99 && h >= 43.99), `${width}px: ícones e dias acionáveis têm alvo mínimo de 44px (${JSON.stringify(alvos)})`);
+    }
     await abrirDia20();
     await page.getByRole('button', { name: 'Agendar de verdade', exact: true }).waitFor();
     await page.screenshot({ path: path.join(OUT, `calendario-mes-${width}.png`), fullPage: true });
@@ -142,7 +151,7 @@ const job = (contaId, rede, estado, extra = {}) => ({
       await page.goto(`http://127.0.0.1:4399/#/marketing/calendario?mes=2026-10${hash}`);
       await page.reload();
       await page.getByRole('heading', { name: 'Outubro de 2026', exact: true }).waitFor({ timeout: 15000 });
-      await page.locator('.cal-unico-item:visible').first().waitFor({ timeout: 15000 });
+      await page.locator('.cal-unico-item:visible, .cal-icone:visible').first().waitFor({ timeout: 15000 });
       await abrirDia20();
     };
     await abrirCalendario('&camada=planejado');
@@ -171,6 +180,7 @@ const job = (contaId, rede, estado, extra = {}) => ({
 
     await page.getByLabel('Instagram @grana.app, Feed').check();
     await page.getByLabel('Facebook Grana. (Página), Feed').check();
+    ok(await page.getByLabel('Facebook Grana. (Página), Feed').evaluate((el) => el === document.activeElement), `${width}px: seleção preserva foco do teclado`);
     await page.locator('[name="agendarParaLocal"]').fill('2026-12-01T10:30');
     const resumo = await page.locator('.pub-real-horario-resumo').innerText();
     // 19/10: o autor lê quando o Grana. começa a preparar e quando publica (horário de Brasília), sem ISO/UTC na cara.
@@ -196,19 +206,22 @@ const job = (contaId, rede, estado, extra = {}) => ({
     const imgs = await page.locator('.pub-real-previa-destino img').evaluateAll((l) => l.map((i) => [i.complete, i.naturalWidth]));
     if (process.env.DEPURA) console.log(await page.locator('.pub-real-previa-destino img').evaluateAll((l) => l.map((i) => i.outerHTML.slice(0, 220))));
     ok(imgs.length >= 2 && imgs.every(([c, w]) => c && w > 0), `${width}px: mídia da prévia decodificada (${JSON.stringify(imgs)})`);
-    const botaoConfirmar = page.getByRole('button', { name: 'Confirmar agendamento real' });
-    ok(await botaoConfirmar.isDisabled(), `${width}px: confirmar bloqueado até revisar os destinos`);
+    const botaoConfirmar = page.getByRole('button', { name: 'Agendar', exact: true });
+    ok(await page.locator('[name="confirmacaoVisual"]').count() === 0, `${width}px: prévia sem checkbox de confirmação repetida`);
+    ok(await botaoConfirmar.isEnabled(), `${width}px: prévia válida libera a confirmação final`);
+    await page.evaluate(() => { window.qaDateNow = Date.now; Date.now = () => window.qaDateNow() + 11 * 60000; });
+    await botaoConfirmar.click();
+    ok(posts.filter((b) => b.acao === 'confirmar').length === 0, `${width}px: prévia expirada não autoriza pedido, mesmo antes do próximo tique`);
+    await page.evaluate(() => { Date.now = window.qaDateNow; });
     await page.screenshot({ path: path.join(OUT, `real-previa-${width}.png`), fullPage: true });
-    await page.getByLabel('Revisei a mídia, a legenda e cada destino acima.').check();
-    ok(await botaoConfirmar.isEnabled(), `${width}px: confirmar liberado só depois da revisão`);
 
     // 1ª tentativa perde a resposta; a repetição tem de usar a MESMA chave idempotente (C3)
     await botaoConfirmar.click();
-    await page.locator('dialog[open]').getByRole('button', { name: 'Autorizar agendamento real' }).click();
     await page.locator('.pub-real-consulta-pendente').waitFor({ timeout: 15000 });
+    ok(await page.getByRole('button', { name: 'Autorizar agendamento real' }).count() === 0, `${width}px: nenhum segundo modal de autorização`);
+    ok(await page.locator('.pub-real-consulta-pendente details').getAttribute('open') === null, `${width}px: chave de consulta fica em detalhes recolhidos`);
     ok(posts.filter((b) => b.acao === 'confirmar').length === 1, `${width}px: timeout não dispara reenvio automático`);
     await botaoConfirmar.click();
-    await page.locator('dialog[open]').getByRole('button', { name: 'Autorizar agendamento real' }).click();
     // R9: fecha a janela, avisa "Agendado: Instagram e Facebook, ..." e leva ao mês da publicação (dezembro).
     await page.waitForFunction(() => [...document.querySelectorAll('.avisos .aviso')].some((a) => /^Agendado: Instagram e Facebook, em .*01\/12.*10:30\. Acompanhe/.test(a.textContent)), null, { timeout: 15000 });
     await page.waitForFunction(() => location.hash.includes('mes=2026-12'), null, { timeout: 15000 });
@@ -221,6 +234,16 @@ const job = (contaId, rede, estado, extra = {}) => ({
 
     await page.screenshot({ path: path.join(OUT, `real-fila-${width}.png`), fullPage: true });
     ok(await semOverflow(), `${width}px: sem overflow depois de confirmar`);
+    falhaEditorial = true;
+    await page.goto('http://127.0.0.1:4399/#/marketing/feed');
+    await page.getByRole('heading', { name: '@granaponto', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Atualizar próximas peças' }).waitFor();
+    ok(await page.locator('[aria-label="Publicações do perfil"] > li').count() === 1, `${width}px: falha editorial preserva publicação comprovada`);
+    falhaEditorial = false; falhaPerfil = true;
+    await page.reload();
+    await page.getByRole('heading', { name: 'Próximas, ainda não publicadas' }).waitFor();
+    await page.locator('.feed-proximas-grade .feed-celula').first().waitFor();
+    ok(await page.locator('.feed-real [role="alert"]').count() === 1, `${width}px: falha no perfil não impede próximas peças e deixa aviso`);
     await page.close();
   }
   await browser.close();

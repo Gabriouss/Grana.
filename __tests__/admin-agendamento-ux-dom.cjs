@@ -132,7 +132,7 @@ const FASES = [
     });
     await page.goto('http://127.0.0.1:4399/#/marketing/calendario?mes=2026-10&camada=ambos');
     await page.getByRole('heading', { name: 'Outubro de 2026', exact: true }).waitFor({ timeout: 15000 });
-    await page.locator('.cal-unico-item:visible').first().waitFor({ timeout: 15000 });
+    await page.locator('.cal-unico-item:visible, .cal-icone:visible').first().waitFor({ timeout: 15000 });
     if (width >= 900) await page.locator('.cal-dia[data-data="2026-10-20"] .cal-num-botao').click();
     await page.getByRole('button', { name: 'Agendar de verdade', exact: true }).first().click();
     const comp = page.locator('.pub-real-compositor');
@@ -161,7 +161,8 @@ const FASES = [
     await comp.getByRole('button', { name: 'Gerar prévia dos destinos' }).click();
     const previa = page.locator('.pub-real-previa');
     await previa.getByText('A pausa está ligada. Clique em Retomar no topo desta janela').waitFor({ timeout: 15000 });
-    ok(await previa.locator('.pub-real-codigo', { hasText: 'Código: operacao-pausada' }).count() === 1, `${width}px: código pequeno depois da frase`);
+    const tecnico = previa.locator('details', { hasText: 'Código: operacao-pausada' });
+    ok(await tecnico.count() === 1 && await tecnico.getAttribute('open') === null, `${width}px: código fica em Detalhes técnicos recolhidos depois da frase`);
     ok(!/Mensagem crua do servidor|HTTP 409/.test(await previa.innerText()), `${width}px: sem mensagem crua nem HTTP para o autor`);
     await page.screenshot({ path: path.join(OUT, `erro-pausa-${width}.png`), fullPage: true });
 
@@ -171,7 +172,7 @@ const FASES = [
     ok(/A prévia vale por mais (9|10) min\./.test(await previa.locator('.pub-real-prazo').innerText()), `${width}px: contagem regressiva da prévia`);
     await page.clock.runFor(10 * 60000 + 6000);
     await previa.getByText('A prévia venceu.').waitFor({ timeout: 15000 });
-    ok(await previa.getByRole('button', { name: 'Confirmar agendamento real' }).isDisabled(), `${width}px: prévia vencida trava Confirmar`);
+    ok(await previa.getByRole('button', { name: 'Agendar', exact: true }).isDisabled(), `${width}px: prévia vencida trava Agendar`);
     await page.screenshot({ path: path.join(OUT, `previa-vencida-${width}.png`), fullPage: true });
     await previa.getByRole('button', { name: 'Gerar outra prévia' }).click();
     await previa.getByText(/A prévia vale por mais (9|10) min\./).waitFor({ timeout: 15000 });
@@ -180,16 +181,14 @@ const FASES = [
       `${width}px: gerar outra prévia repete a mesma seleção e horário`);
 
     // 4. Confirmar fecha a janela, avisa e leva ao Calendário; depois relê a cada 30 s até ficar final.
-    await previa.getByLabel('Revisei a mídia, a legenda e cada destino acima.').check();
-    await previa.getByRole('button', { name: 'Confirmar agendamento real' }).click();
-    await page.locator('dialog[open]').getByRole('button', { name: 'Autorizar agendamento real' }).click();
+    await previa.getByRole('button', { name: 'Agendar', exact: true }).click();
     await page.waitForFunction(() => [...document.querySelectorAll('.avisos .aviso')].some((a) => /^Agendado: Instagram e Facebook, hoje às 01:00\. Acompanhe/.test(a.textContent)), null, { timeout: 15000 });
     ok(await page.locator('.pub-real-compositor:visible').count() === 0, `${width}px: compositor fecha depois de confirmar`);
     const leiturasDepoisConfirmar = leiturasCalendario;
     await page.screenshot({ path: path.join(OUT, `agendado-${width}.png`), fullPage: true });
 
     await page.clock.runFor(30000);
-    await page.waitForFunction(() => [...document.querySelectorAll('.avisos .aviso-erro')].some((a) => a.textContent.includes('Facebook: Não confirmamos se saiu.') && a.textContent.includes('Abra o Facebook antes de tentar de novo')), null, { timeout: 15000 });
+    await page.waitForFunction(() => [...document.querySelectorAll('.avisos .aviso-erro')].some((a) => a.textContent.includes('Facebook: Precisa conferir: não confirmamos se saiu.') && a.textContent.includes('Abra o Facebook antes de tentar de novo')), null, { timeout: 15000 });
     ok(leiturasCalendario === leiturasDepoisConfirmar + 1, `${width}px: uma releitura a cada 30 s (${leiturasDepoisConfirmar} -> ${leiturasCalendario})`);
     const avisoFb = await page.locator('.avisos .aviso-erro').last().innerText();
     ok(!/tente de novo agora|reenvi|repita o envio/i.test(avisoFb), `${width}px: atenção não sugere repetir o envio`);

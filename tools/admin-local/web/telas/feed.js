@@ -25,17 +25,13 @@ export async function montar(raiz, ctx) {
 
   const carregar = async () => {
     ctx.estado.carregando(area, 'Lendo o perfil no Instagram…');
-    let resposta, real;
-    try {
-      [resposta, real] = await Promise.all([ctx.api('/api/marketing/feed'), ctx.api('/api/marketing/feed-real')]);
-    } catch (err) {
-      if (ctx.obsoleta && ctx.obsoleta()) return;
-      ctx.estado.erro(area, err, carregar);
-      return;
-    }
+    const [editorial, publicado] = await Promise.allSettled([
+      ctx.api('/api/marketing/feed'), ctx.api('/api/marketing/feed-real'),
+    ]);
     if (ctx.obsoleta && ctx.obsoleta()) return;
-    const dados = resposta && resposta.dados;
-    if (dados && dados.status === 'ausente') { ctx.estado.ausente(area, 'marketing', dados.motivo); return; }
+    const dados = editorial.status === 'fulfilled' ? editorial.value?.dados : null;
+    const real = publicado.status === 'fulfilled' ? publicado.value : null;
+    const editorialAusente = editorial.status === 'rejected' || !dados || dados.status === 'ausente';
     const rd = (real && real.dados) || {};
     const publicadas = new Set(Array.isArray(rd.vinculadas) ? rd.vinculadas : []);
     const todas = normalizar(Array.isArray(dados) ? dados : (dados && (dados.pecas || dados.itens)) || [], ctx);
@@ -50,6 +46,11 @@ export async function montar(raiz, ctx) {
         h('h3', { texto: 'Próximas, ainda não publicadas' }),
         h('p', { class: 'fraco', texto: 'Peças aprovadas que ainda não aparecem no perfil. Aprovar não publica nada.' }),
         alvo));
+    if (editorialAusente) {
+      alvo.append(h('p', { role: 'alert', texto: 'Não foi possível ler as próximas peças. Atualize para tentar de novo; as publicações do perfil continuam disponíveis.' }),
+        h('button', { class: 'botao', type: 'button', texto: 'Atualizar próximas peças', onclick: carregar }));
+      return;
+    }
     desenhar(alvo, pecas, ctx, (dados && !Array.isArray(dados) && dados.perfil) || {}, ui);
   };
 
