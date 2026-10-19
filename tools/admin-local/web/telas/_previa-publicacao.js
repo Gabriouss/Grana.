@@ -23,12 +23,17 @@ export function midiasDaPeca(p, urlArquivo) {
 
 // Área de mídia do post. `p` = { titulo, midias[], capa: { url } | null, ehVideo, legenda }.
 // Devolve { elemento, pausar }: quem abre chama pausar ao fechar ou trocar de peça.
+function slideAvisoMidia(h, el) {
+  const aviso = h('p', { class: 'feed-midia-aviso', role: 'alert', texto: 'Não foi possível abrir este arquivo de mídia. Confira se o arquivo ainda está na pasta da peça e atualize a página.' });
+  el.replaceWith(aviso);
+}
+
 export function montarMidia(h, p) {
   const midiaEl = h('div', { class: 'feed-post-midia' });
   // A área toma a proporção da peça (como o Instagram abre o post) e a mídia aparece
   // inteira (contain). Reel nasce 9:16; o resto lê a proporção natural ao carregar.
   const proporcaoDaPeca = (w, hh) => { if (w > 0 && hh > 0) midiaEl.style.aspectRatio = `${w} / ${hh}`; };
-  if (p.ehVideo) proporcaoDaPeca(9, 16);
+  if (p.ehVideo || p.capaOrfa) proporcaoDaPeca(9, 16); // capa de Reel nasce 9:16 mesmo sem o vídeo
   let pausar = () => {};
   if (!p.midias.length) {
     midiaEl.appendChild(h('div', { class: 'feed-celula-texto', texto: p.legenda || p.titulo }));
@@ -43,6 +48,8 @@ export function montarMidia(h, p) {
     const el = ehVideoItem
       ? h('video', { src: arq, controls: true, preload: 'metadata', playsinline: true, 'aria-label': alt, ...(p.capa ? { poster: p.capa.url } : {}) })
       : h('img', { src: arq, alt, decoding: 'async' });
+    // Arquivo que não abre nunca deixa a área em branco: a frase diz o que houve.
+    el.addEventListener('error', () => { slideAvisoMidia(h, el); }, { once: true });
     Object.assign(el.style, { width: '100%', height: '100%', objectFit: 'contain' });
     if (i === 0) {
       if (el.tagName === 'VIDEO') el.addEventListener('loadedmetadata', () => proporcaoDaPeca(el.videoWidth, el.videoHeight), { once: true });
@@ -56,6 +63,7 @@ export function montarMidia(h, p) {
   });
   trilho.append(...slides);
   midiaEl.appendChild(trilho);
+  if (p.capaOrfa) midiaEl.appendChild(h('p', { class: 'feed-midia-aviso', role: 'note', texto: 'Só a capa chegou. O vídeo deste Reel não está no acervo desta versão, então não dá para publicar nem ver o Reel completo.' }));
   midiaEl.style.justifySelf = 'center'; // coluna larga: a mídia fica centrada na proporção dela
   pausar = () => trilho.querySelectorAll('video').forEach((v) => v.pause());
 

@@ -91,6 +91,7 @@ function normalizar(lista, ctx) {
       } : null,
       editorial,
       tipo,
+      capaOrfa: !!p.capaOrfa,
       ehVideo: tipo === 'video' || tipo === 'reels' || (midias.length === 1 && temVideo),
       data: pub && pub.data ? pub.data : null,
       hora: pub && pub.hora ? pub.hora : null,
