@@ -73,3 +73,6 @@ Cada linha registra o aceite explícito do autor dado no painel local, para a ve
 - `aprovados/Já desistiu de controlar seus gastos-capa.png` fica vinculada a `2026-09/semana-39-2026-09-21-a-2026-09-27/aprovados/pecas/reels/grana-motion-desistiu-foto-da-nota.mp4`, como diz a tabela acima.
 - Os dois vínculos estão em `docs/marketing/painel/familias.json` (`capas`); a capa vinculada não aparece como post no Feed simulado.
 - 19/10/2026 00:20 (-03:00): aceite pelo autor no painel local. Peça `aprovados/Já desistiu de controlar seus gastos-capa.png`, versão `7761e586731d`. Registro em `docs/marketing/painel/aprovacoes.json`. Publicação pede passo próprio.
+- 19/10/2026 10:55 (-03:00): aceite pelo autor no painel local. Peça `aprovados/Salário caiu.png`, versão `e4e6521a2bb4`. Registro em `docs/marketing/painel/aprovacoes.json`. Publicação pede passo próprio.
+- 19/10/2026 10:57 (-03:00): aceite pelo autor no painel local. Peça `aprovados/O mês que vem já começou nas parcelas desse mês.png`, versão `8798b177d3b4`. Registro em `docs/marketing/painel/aprovacoes.json`. Publicação pede passo próprio.
+- 19/10/2026 11:00 (-03:00): aceite pelo autor no painel local. Peça `aprovados/Fala o gasto, pronto-capa.png`, versão `2823aafda252`. Registro em `docs/marketing/painel/aprovacoes.json`. Publicação pede passo próprio.

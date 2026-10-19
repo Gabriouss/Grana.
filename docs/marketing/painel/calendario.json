@@ -83,6 +83,96 @@
           "canal": "instagram-feed"
         }
       ]
+    },
+    {
+      "id": "3128ff5fb6809313",
+      "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/Organize no computador, acompanhe pelo celular.png",
+      "versao": "699a671d442890bbd312df749001e8119ff5f4c3",
+      "data": "2026-10-23",
+      "hora": "09:00",
+      "canal": "instagram-feed",
+      "observacao": null,
+      "planejadoEm": "2026-10-19T10:51:47-03:00",
+      "recibos": [
+        {
+          "tipo": "data-marcada",
+          "em": "2026-10-19T10:51:47-03:00",
+          "data": "2026-10-23",
+          "hora": "09:00",
+          "canal": "instagram-feed"
+        }
+      ]
+    },
+    {
+      "id": "a8163352aef99dbe",
+      "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/aprovados/pecas/reels/Já desistiu de controlar seus gastos.mp4",
+      "versao": "9a91f55a20a15eb932ae3bdfdd10749985ae0391",
+      "data": "2026-10-20",
+      "hora": "09:00",
+      "canal": "reels",
+      "observacao": null,
+      "planejadoEm": "2026-10-19T10:56:59-03:00",
+      "recibos": [
+        {
+          "tipo": "data-marcada",
+          "em": "2026-10-19T10:56:37-03:00",
+          "data": "2026-10-21",
+          "hora": "09:00",
+          "canal": "reels"
+        },
+        {
+          "tipo": "data-marcada",
+          "em": "2026-10-19T10:56:59-03:00",
+          "data": "2026-10-20",
+          "hora": "09:00",
+          "canal": "reels"
+        }
+      ]
+    },
+    {
+      "id": "f749dd027cd74f27",
+      "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/Salário caiu.png",
+      "versao": "e4e6521a2bb40d71568e717fbceab26e03e6b58e",
+      "data": "2026-10-21",
+      "hora": "09:00",
+      "canal": "instagram-feed",
+      "observacao": null,
+      "planejadoEm": "2026-10-19T10:57:13-03:00",
+      "recibos": [
+        {
+          "tipo": "data-marcada",
+          "em": "2026-10-19T10:55:42-03:00",
+          "data": "2026-10-22",
+          "hora": "09:00",
+          "canal": "instagram-feed"
+        },
+        {
+          "tipo": "data-marcada",
+          "em": "2026-10-19T10:57:13-03:00",
+          "data": "2026-10-21",
+          "hora": "09:00",
+          "canal": "instagram-feed"
+        }
+      ]
+    },
+    {
+      "id": "5f48c03ee755a609",
+      "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/O mês que vem já começou nas parcelas desse mês.png",
+      "versao": "8798b177d3b42cc0b717dd271ef7be50702897f3",
+      "data": "2026-10-22",
+      "hora": "09:00",
+      "canal": "instagram-feed",
+      "observacao": null,
+      "planejadoEm": "2026-10-19T10:58:03-03:00",
+      "recibos": [
+        {
+          "tipo": "data-marcada",
+          "em": "2026-10-19T10:58:03-03:00",
+          "data": "2026-10-22",
+          "hora": "09:00",
+          "canal": "instagram-feed"
+        }
+      ]
     }
   ],
   "referenciaFunilFonte": "FUNIL.md, seção 5 (Calendário único da campanha, após o dia D). Posições relativas em dias úteis; não autorizam publicar nem gastar.",
