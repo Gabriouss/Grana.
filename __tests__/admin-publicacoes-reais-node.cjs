@@ -7,6 +7,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const vm = require('node:vm');
 const { criarPublicacoesReais } = require('../tools/admin-local/adaptadores/marketing-backend.cjs');
 const { criarPublicacoes } = require('../tools/admin-local/marketing/publicacoes.cjs');
 const { criarEstado } = require('../tools/admin-local/marketing/publicacoes-reais-estado.cjs');
@@ -15,16 +16,24 @@ const sha = (alg, v) => crypto.createHash(alg).update(v).digest('hex');
 
 const ADMIN = '22222222-2222-4222-8222-222222222222';
 const CONTA = '33333333-3333-4333-8333-333333333333';
+const CONTA_FB = '99999999-9999-4999-8999-999999999999';
 const PREVIA = '44444444-4444-4444-8444-444444444444';
 const LOTE = '55555555-5555-4555-8555-555555555555';
 const CHAVE_1 = '66666666-6666-4666-8666-666666666666';
 const CHAVE_2 = '77777777-7777-4777-8777-777777777777';
 const SNAP = '88888888-8888-4888-8888-888888888888';
 const HASH_PREVIA = 'c'.repeat(64);
+const browser = { Date, Intl, URLSearchParams };
+vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../tools/admin-local/web/telas/_publicacoes-reais.js'), 'utf8')
+  .replace(/^export /gm, ''), browser);
+const json = v => JSON.parse(JSON.stringify(v));
 
 // ---------- dublê do Supabase (só a fronteira) ----------
 function criarRemoto() {
   const log = [], snapshots = new Map(), objetos = new Map(), lotes = new Map();
+  const controles = { habilitado: true, recuperacaoPendente: false, pausaGlobal: false, pausaFacebook: false,
+    pausaInstagram: false, margemValidaAte: '2099-01-01T00:00:00Z' };
+  let alterarDestinos = d => d;
   let falharConfirmar = null, travarConfirmar = false;
   const resposta = (data, error = null) => ({ data, error });
   const rpcs = {
@@ -41,10 +50,11 @@ function criarRemoto() {
       assert.equal(r.revisao, a.p_revisao);
       Object.assign(r, { estado: 'pronto', revisao: r.revisao + 1 }); return resposta(r);
     },
-    previa: a => resposta({ id: PREVIA, hash: HASH_PREVIA, expira_em: '2027-01-01T15:00:00.000Z', destinos: a.p_pedido.destinos }),
+    // Formato da RPC publicada: revisões de conta/capacidade, SEM estado ou motivos.
+    previa: a => resposta({ id: PREVIA, hash: HASH_PREVIA, expira_em: '2027-01-01T15:00:00.000Z',
+      destinos: alterarDestinos(a.p_pedido.destinos.map(d => ({ ...d, contaRevisao: 2, capacidadeRevisao: 3 }))) }),
     consultar: a => a.p_filtro.acao === 'contas'
-      ? resposta({ controles: { habilitado: true, recuperacaoPendente: false, pausaGlobal: false, pausaFacebook: false,
-        pausaInstagram: false, margemValidaAte: '2099-01-01T00:00:00Z' }, contas: [{ contaId: CONTA, pausada: false }] })
+      ? resposta({ controles, contas: [{ contaId: CONTA, pausada: false }, { contaId: CONTA_FB, pausada: false }] })
       : resposta({ lote: { id: a.p_filtro.loteId }, jobs: [] }),
     confirmar: a => {
       // O servidor guarda a chave: a mesma chave devolve o mesmo lote (replay).
@@ -88,7 +98,7 @@ function criarRemoto() {
     objetos.set(objeto, Buffer.from(init.body));
     return { status: 200, body: null };
   };
-  return { log, cliente, rede, snapshots, lotes, objetos,
+  return { log, cliente, rede, snapshots, lotes, objetos, controles, alterarDestinos: fn => { alterarDestinos = fn; },
     falharConfirmar: c => { falharConfirmar = c; }, travarConfirmar: v => { travarConfirmar = v; } };
 }
 
@@ -128,7 +138,22 @@ const confirmacao = chave => ({ acao: 'confirmar', previaId: PREVIA, previaHash:
     // 1. Prévia: upload privado e finalização ANTES da prévia; nenhuma confirmação.
     const r1 = criarRemoto();
     const { api } = montar(r1);
-    const previa = await api.executar(raiz, pedidoPrevia);
+    const posts = [];
+    const cliente = browser.criarClientePublicacoes({ acao: async (url, corpo) => {
+      assert.equal(url, '/api/marketing/publicacoes'); posts.push(json(corpo));
+      return json({ ok: true, dados: await api.executar(raiz, json(corpo)) });
+    } });
+    const entradaCliente = { peca, destinos: pedidoPrevia.destinos, horarioLocal: '2027-01-01T12:30',
+      contas: [{ contaId: CONTA, rede: 'instagram', rotulo: 'Conta de teste', revisao: 2, conexao: 'verificada', pausada: false,
+        capacidades: [{ formato: 'feed', revisao: 3, estado: 'disponivel', motivos: [] }] }] };
+    const previa = await cliente.prever(entradaCliente);
+    assert.equal(posts.length, 1, 'gerar prévia não confirma nem publica');
+    assert.equal(posts[0].acao, 'prever');
+    assert.equal(browser.previaConfirmavel(previa), true, 'resposta SQL passa pelo cliente real');
+    assert.equal(previa.revisao, 1, 'revisão da prévia não é a revisão do snapshot');
+    assert.equal(previa.snapshot.revisao, 2);
+    assert.deepEqual(previa.destinos, [{ ...pedidoPrevia.destinos[0], publicarEm: '2027-01-01T15:30:00.000Z',
+      fuso: 'America/Sao_Paulo', contaRevisao: 2, capacidadeRevisao: 3, estado: 'pronto', motivos: [] }]);
     const ordem = r1.log.map(x => x[0] === 'rpc' ? x[1] : x[0]);
     const i = nome => ordem.indexOf(nome);
     assert.ok(i('snapshot_iniciar') >= 0 && i('snapshot_iniciar') < i('put'), 'iniciar antes do upload');
@@ -152,6 +177,72 @@ const confirmacao = chave => ({ acao: 'confirmar', previaId: PREVIA, previaHash:
       url: `/api/marketing/publicacoes/midia?previaId=${PREVIA}&indice=0` }]);
     assert.equal(JSON.stringify(previa).includes(`snap/${SNAP}`), false, 'caminho privado do Storage não vai ao browser');
     assert.equal(fs.readdirSync(raiz).some(n => n.startsWith('grana-snapshot-')), false, 'captura limpa a cópia');
+
+    const doisDestinos = { ...entradaCliente,
+      destinos: [{ contaId: CONTA_FB, rede: 'facebook', formato: 'feed' }, ...entradaCliente.destinos],
+      contas: [...entradaCliente.contas, { ...entradaCliente.contas[0], contaId: CONTA_FB, rede: 'facebook' }] };
+    const dupla = await cliente.prever(doisDestinos);
+    assert.equal(browser.previaConfirmavel(dupla), true, 'Facebook e Instagram passam juntos');
+    assert.deepEqual(dupla.destinos.map(d => [d.contaId, d.rede, d.estado, d.motivos]),
+      [[CONTA_FB, 'facebook', 'pronto', []], [CONTA, 'instagram', 'pronto', []]], 'ordem e identidade dos destinos preservadas');
+    r1.controles.pausaFacebook = true;
+    assert.equal(browser.previaConfirmavel(await cliente.prever(doisDestinos)), false, 'pausa Facebook também bloqueia o lote');
+    r1.controles.pausaFacebook = false;
+
+    // O estado de cada destino herda as travas reais, nunca uma promessa de publicação.
+    const controlesAtivos = { ...r1.controles };
+    for (const trava of [{ pausaGlobal: true }, { pausaInstagram: true }, { habilitado: false },
+      { recuperacaoPendente: true }, { margemValidaAte: '2000-01-01T00:00:00Z' }]) {
+      Object.assign(r1.controles, controlesAtivos, trava);
+      const bloqueada = await cliente.prever(entradaCliente);
+      assert.equal(browser.previaConfirmavel(bloqueada), false);
+      assert.equal(bloqueada.destinos[0].estado, 'bloqueado');
+      assert.deepEqual(bloqueada.destinos[0].motivos, bloqueada.bloqueios);
+      const antes = posts.length;
+      await assert.rejects(cliente.confirmar(bloqueada, CHAVE_2), { codigo: 'confirmacao-bloqueada' });
+      assert.equal(posts.length, antes, 'prévia bloqueada não envia confirmação');
+      r1.alterarDestinos(ds => ds.map(d => ({ ...d, estado: 'pronto', motivos: [] })));
+      await assert.rejects(cliente.prever(entradaCliente), { codigo: 'previa-invalida', status: 502 },
+        'estado pronto explícito não sobrepõe bloqueios globais');
+      r1.alterarDestinos(ds => ds);
+    }
+    Object.assign(r1.controles, controlesAtivos);
+    r1.alterarDestinos(ds => { r1.snapshots.get(SNAP).estado = 'revogado'; return ds; });
+    const revogada = await cliente.prever(entradaCliente);
+    assert.equal(revogada.snapshot.estado, 'revogado', 'revogação após a finalização chega ao browser');
+    assert.equal(revogada.destinos[0].estado, 'bloqueado');
+    assert.equal(browser.previaConfirmavel(revogada), false, 'snapshot revogado nunca vira confirmação');
+    await assert.rejects(cliente.confirmar(revogada, CHAVE_2), { codigo: 'confirmacao-bloqueada' });
+    r1.snapshots.get(SNAP).estado = 'pronto';
+    for (const campos of [{ estado: 'desconhecido', motivos: [] }, { estado: 'pronto' }, { motivos: [] },
+      { estado: 'pronto', motivos: ['operacao-pausada'] }, { estado: 'bloqueado', motivos: [null] }]) {
+      r1.alterarDestinos(ds => ds.map(d => ({ ...d, ...campos })));
+      await assert.rejects(cliente.prever(entradaCliente), { codigo: 'previa-invalida' });
+    }
+    r1.alterarDestinos(ds => ds.map(d => ({ ...d, estado: 'bloqueado', motivos: ['capacidade-nao-comprovada'] })));
+    const explicita = await cliente.prever(entradaCliente);
+    assert.equal(browser.previaConfirmavel(explicita), false, 'estado bloqueado explícito nunca vira pronto');
+    assert.deepEqual(explicita.destinos[0].motivos, ['capacidade-nao-comprovada']);
+    for (const campos of [{ contaId: CHAVE_2 }, { rede: 'facebook' }, { formato: 'reels' },
+      { publicarEm: '2027-01-01T16:00:00.000Z' }, { fuso: 'UTC' }, { contaRevisao: 0 }, { capacidadeRevisao: null },
+      { contaRevisao: undefined }, { capacidadeRevisao: undefined }]) {
+      for (const estado of [null, 'pronto', 'bloqueado']) {
+        r1.alterarDestinos(ds => ds.map(d => ({ ...d, ...(estado ? { estado, motivos: [] } : {}), ...campos })));
+        await assert.rejects(cliente.prever(entradaCliente), { codigo: 'previa-invalida', status: 502 },
+          'identidade/horário/revisões são obrigatórios também com estado explícito');
+      }
+    }
+    r1.alterarDestinos(ds => ds.map(d => ({ ...d, estado: 'pronto', motivos: [] })));
+    assert.equal(browser.previaConfirmavel(await cliente.prever(entradaCliente)), true,
+      'estado explícito coerente continua aceito após todas as validações');
+    r1.alterarDestinos(ds => ds);
+    const antesDeExpirada = posts.length;
+    await assert.rejects(cliente.confirmar({ ...previa, expiraEm: '2000-01-01T00:00:00Z' }, CHAVE_2),
+      { codigo: 'confirmacao-bloqueada' });
+    assert.equal(posts.length, antesDeExpirada, 'prévia expirada não envia confirmação');
+    assert.equal(r1.log.some(x => x[1] === 'confirmar'), false, 'todas as prévias mantêm zero confirmação');
+    assert.equal(r1.lotes.size, 0, 'nenhum lote criado durante a prévia ou nas negativas');
+    assert.equal(fs.readdirSync(raiz).some(n => n.startsWith('grana-snapshot-')), false, 'negativas também limpam captura');
 
     // Mídia da prévia: lida pelo previaId gravado no estado local, nunca por snapshotId do browser.
     const m = await api.midia(PREVIA, '0');
@@ -240,7 +331,7 @@ const confirmacao = chave => ({ acao: 'confirmar', previaId: PREVIA, previaHash:
     await c3.api.listar({ cursor: pag.proximoCursor });
     assert.deepEqual(r3.log.at(-1)[2].p_filtro.cursor, proximo);
     await assert.rejects(c3.api.listar({ cursor: Buffer.from('{"id":"x"}').toString('base64url') }), { codigo: 'pedido-invalido' });
-    console.log('admin-publicacoes-reais-node: upload antes da prévia, chave C3 persistida (reinício e prazo), miniatura só aprovada, cursor OK');
+    console.log('admin-publicacoes-reais-node: cliente real/RPC sem estado, bloqueios e destinos divergentes, zero confirmação nas negativas, upload, chave C3 (reinício e prazo), miniatura, cursor OK');
   } finally {
     const alvo = path.resolve(raiz);
     assert.equal(path.dirname(alvo), path.resolve(os.tmpdir()));
