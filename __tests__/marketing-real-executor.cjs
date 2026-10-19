@@ -59,7 +59,7 @@ async function novoBanco() {
     alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
     alter default privileges in schema public grant all on functions to anon,authenticated,service_role;
     create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);`);
-  for (const f of ['20261015190000_admin_marketing_fundacao.sql', '20261016140000_admin_marketing_operacoes.sql', '20261018001000_admin_marketing_real.sql', '20261018230000_admin_marketing_renovacao.sql']) {
+  for (const f of ['20261015190000_admin_marketing_fundacao.sql', '20261016140000_admin_marketing_operacoes.sql', '20261018001000_admin_marketing_real.sql', '20261018230000_admin_marketing_renovacao.sql', '20261019120000_admin_marketing_consultar_preparo.sql']) {
     await db.exec(fs.readFileSync(path.join(raiz, 'supabase/migrations', f), 'utf8'));
   }
   return db;
@@ -187,6 +187,7 @@ async function main() {
       eq([j.estado, j.remoto_id], ['publicado', '9100'], 'publicado só com o ID do post e o readback');
       ok(new URL(g.chamadas.at(-1).url).searchParams.get('fields').split(',').includes('permalink'), 'o link vem na mesma leitura de volta (GET)');
       eq((await rpc('consultar', [admin, { acao: 'listar' }])).jobs[0].permalink, 'https://www.instagram.com/p/AbC123/', 'consulta devolve o link do post publicado');
+      eq((await rpc('consultar', [admin, { acao: 'listar' }])).jobs[0].preparo, { itens: 1, total: 1, container: true }, 'consulta conta os itens preparados contra o total do snapshot');
       eq(g.chamadas.map((c) => c.metodo + ' ' + c.caminho), ['POST 123/media', 'GET 9001', 'POST 123/media_publish', 'GET 9100'], 'uma chamada por etapa, na ordem do protocolo');
       eq(g.chamadas.filter((c) => c.caminho.endsWith('media_publish')).length, 1, 'media_publish exatamente uma vez');
       ok(g.chamadas.every((c) => c.auth === 'Bearer ' + TOKEN && !c.url.includes(TOKEN)), 'token só no cabeçalho, nunca na URL');
@@ -426,6 +427,22 @@ async function main() {
       const j = await job(db);
       eq([j.estado, j.codigo_erro], ['programado-no-painel', 'snapshot-indisponivel'], 'passageiro: segue na fila, com o motivo no recibo');
       eq((await envios(db)).map((x) => [x.estado, x.codigo_erro]), [['falhou', 'snapshot-indisponivel']], 'envio adiado guarda o motivo');
+    } finally { await db.close(); }
+  }
+
+  /* ── 7c. Preparando n/m: a consulta conta os itens já criados no carrossel FB ── */
+  {
+    const db = await novoBanco();
+    try {
+      const m = { bytes: JPEG, mime: 'image/jpeg', tipo: 'imagem' };
+      const { admin, rpc } = await agendar(db, { rede: 'facebook', formato: 'carrossel', midias: [m, m, m] });
+      let n = 0;
+      const g = graphFake((c) => { if (c.metodo === 'POST' && c.caminho === '123/photos') return { id: String(7000 + ++n) }; throw new Error('rota inesperada ' + c.caminho); });
+      eq((await rpc('consultar', [admin, { acao: 'listar' }])).jobs[0].preparo, { itens: 0, total: 3, container: false }, 'antes do executor: 0 de 3');
+      await rodarExecutor(db, g.rede);
+      const dto = (await rpc('consultar', [admin, { acao: 'listar' }])).jobs[0];
+      eq(dto.preparo, { itens: 1, total: 3, container: false }, 'depois de uma rodada: 1 de 3');
+      ok(!JSON.stringify(dto.preparo).includes('7001'), 'a contagem não expõe o id remoto do item');
     } finally { await db.close(); }
   }
 
