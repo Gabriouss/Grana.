@@ -16201,3 +16201,13 @@ Registro de consolidação das 24h (Antigravity). Fonte: commits `351c2d5` até 
 - [x] Lote `db37d937`: recibo Keel de 19/10 confirma `publicado` e permalink em Facebook/Instagram; QA visual do painel continua pendente. Demais agendamentos exigem acompanhamento próprio.
 - [ ] QA visual em dispositivos de larguras variadas para a aba Feed e o Calendário.
 - [ ] Gate Deno congelado e demais gates de produção (regra 11) seguem sob observação.
+
+---
+# 19/10/2026 (M1, sessão Claude "Claude Code #2"): defeitos vistos nas capturas web, NÃO corrigidos agora
+
+Pedido do autor: "o texto da carteira tá quebrado [...] precisa ser corrigido em código, documente isso, não será corrigido agora". Nada foi alterado no código.
+
+1. **Seletor de carteira (web, 1440×900): bloco de valor desalinhado.** No modal "Selecionar carteira", em cada linha (`Principal`, `Dia a dia`) o valor (`R$ 7.060,70`) e o subtítulo `entradas no período` aparecem centralizados um sob o outro, e não alinhados à direita junto dos ícones de editar/excluir; o nome fica à esquerda sem alinhamento com o bloco. Sintoma visto em `E:/Grana-temporarios/2026-10-19-agendamento-meta/capturas-web/carteiras__acervo.png`. Causa NÃO investigada (hipótese não verificada: `textAlign` do contêiner do valor no modal da carteira). Corrigir em código, com commit próprio de layout (regra 14), e refazer o print depois.
+2. **Gráficos com um único mês de dados parecem vazios.** Com a base fictícia só de outubro, "Mês a Mês" e "Ano a Ano" mostram um ponto solto no gráfico de linha (`graficos__acervo.png`, `graficos-ano-a-ano__teste.png`). Não é bug de código; falta histórico na base. Para um print de marketing interessante, a base fictícia (dono: Harbor) precisa de vários meses de lançamentos. Capturas de teste ficam fora da entrega.
+
+Sem verificação: causa do item 1 e se o desalinhamento aparece no app Android.
