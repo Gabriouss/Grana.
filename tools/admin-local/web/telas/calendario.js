@@ -4,6 +4,7 @@
 
 import { CANAIS, rotuloCanal, tituloPeca } from './_pecas.js';
 import { descreverJobReal } from './_publicacoes-reais.js';
+import { iconeSvg } from './_previa-publicacao.js';
 
 const DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 const maiuscula = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -110,6 +111,43 @@ export function projetarCalendario(d, jobs, camada = 'ambos', posts = [], catalo
   return { ...d, itens: itens.sort((a, b) => a.data.localeCompare(b.data)), aprovadosSemData: restantes, semData: restantes };
 }
 
+// --- Ícones do dia: o post vira um disco com o glifo do formato; a cor e o traço dizem o estado.
+const FORMATO_ICONE = { carrossel: ['carrossel', 'Carrossel'], reel: ['reels', 'Reels'], reels: ['reels', 'Reels'], video: ['reels', 'Reels'], stories: ['grade', 'Stories'] };
+const formatoDoIcone = (tipo, formatoJob) => FORMATO_ICONE[String(formatoJob || '').toLowerCase()] || FORMATO_ICONE[String(tipo || '').toLowerCase()] || ['grade', 'Feed'];
+const ESTADOS_ATENCAO = new Set(['precisa-conferir', 'falhou', 'cancelamento-pendente']);
+const ESTADOS_CONHECIDOS = new Set(['planejado', 'programado-no-painel', 'preparando', 'agendado-na-meta', 'publicado', 'cancelado', ...ESTADOS_ATENCAO]);
+export function estadoDoIcone(item, publicado) {
+  const reais = (item.jobs || []).filter((j) => j.estado !== 'cancelado');
+  if (publicado || reais.some((j) => j.estado === 'publicado')) return { chave: 'publicado', texto: 'Publicado' };
+  const textos = (lista) => lista.map((j) => { const d = descreverJobReal(j); return `${d.rede}: ${d.texto}`; }).join('; ');
+  const atencao = reais.filter((j) => ESTADOS_ATENCAO.has(j.estado) || !ESTADOS_CONHECIDOS.has(j.estado));
+  if (atencao.length) return { chave: 'atencao', texto: textos(atencao) };
+  const preparando = reais.filter((j) => j.estado === 'preparando');
+  if (preparando.length) return { chave: 'preparando', texto: textos(reais) };
+  if (reais.length) return { chave: 'agendado', texto: textos(reais) };
+  if (item.peca?.precisaAceite) return { chave: 'atencao', texto: 'Precisa de aceite' };
+  return { chave: 'planejado', texto: item.hora ? `Planejado para ${item.hora}` : 'Planejado' };
+}
+// Dica única em posição fixa: a célula do dia corta o que passa da borda, uma dica filha seria cortada.
+let dicaEl = null;
+function mostrarDica(alvo, texto) {
+  if (typeof document === 'undefined') return;
+  if (!dicaEl) { dicaEl = document.createElement('div'); dicaEl.className = 'cal-dica'; dicaEl.setAttribute('aria-hidden', 'true'); document.body.appendChild(dicaEl); }
+  dicaEl.textContent = texto;
+  dicaEl.hidden = false;
+  const r = alvo.getBoundingClientRect(), w = dicaEl.offsetWidth, hh = dicaEl.offsetHeight;
+  const esquerda = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2));
+  const topo = r.top - hh - 8 >= 8 ? r.top - hh - 8 : r.bottom + 8;
+  dicaEl.style.left = `${esquerda}px`; dicaEl.style.top = `${topo}px`;
+}
+const esconderDica = () => { if (dicaEl) dicaEl.hidden = true; };
+function ligarDica(el, texto) {
+  const ligar = () => mostrarDica(el, texto);
+  el.addEventListener('mouseenter', ligar); el.addEventListener('focus', ligar);
+  el.addEventListener('mouseleave', esconderDica); el.addEventListener('blur', esconderDica);
+  el.addEventListener('dragstart', esconderDica);
+}
+
 export async function montar(raiz, ctx) {
   const { h } = ctx;
   const agora = new Date();
@@ -126,6 +164,9 @@ export async function montar(raiz, ctx) {
   const barra = h('div', { class: 'cal-unico-filtros' },
     h('div', { class: 'bloco-acao', role: 'group', 'aria-label': 'Camada do calendário' }, ['planejado', 'real', 'ambos'].map((v) => h('button', { class: 'botao', type: 'button', texto: { planejado: 'Planejado', real: 'Real', ambos: 'Ambos' }[v], 'aria-pressed': String(camada === v), onclick: () => navegar({ camada: v }) }))),
     h('div', { class: 'bloco-acao', role: 'group', 'aria-label': 'Visão do calendário' }, ['calendario', 'lista'].map((v) => h('button', { class: 'botao', type: 'button', texto: v === 'lista' ? 'Lista e recibos' : 'Calendário', 'aria-pressed': String(visao === v), onclick: () => navegar({ visao: v }) }))));
+  const legendaIcones = h('p', { class: 'cal-legenda', hidden: visao === 'lista', 'aria-label': 'Legenda dos ícones do calendário' },
+    ...[['publicado', 'Publicado'], ['agendado', 'Agendado na Meta'], ['preparando', 'Preparando'], ['planejado', 'Planejado'], ['atencao', 'Atenção']]
+      .map(([k, t]) => h('span', { class: 'cal-legenda-item' }, h('span', { class: `cal-legenda-disco cal-icone-${k}`, 'aria-hidden': 'true' }), t)));
   const topoReal = h('div', { class: 'cal-unico-pausas' });
   const status = h('div', { class: 'cal-unico-status', role: 'status', 'aria-live': 'polite' });
   const calendario = h('div', { hidden: visao === 'lista' });
@@ -144,7 +185,7 @@ export async function montar(raiz, ctx) {
   dialogo.appendChild(h('div', { class: 'cal-unico-painel-topo' }, h('h2', { id: 'cal-unico-painel-titulo', texto: 'Agendar de verdade' }), h('button', { class: 'botao', type: 'button', texto: 'Fechar painel', onclick: fechar })));
   dialogo.appendChild(conteudoPainel);
   dialogo.addEventListener('close', () => focoOrigem?.focus?.());
-  raiz.appendChild(barra); raiz.appendChild(topoReal); raiz.appendChild(status); raiz.appendChild(calendario); raiz.appendChild(fila); raiz.appendChild(paginacao); raiz.appendChild(dialogo);
+  raiz.appendChild(barra); raiz.appendChild(legendaIcones); raiz.appendChild(topoReal); raiz.appendChild(status); raiz.appendChild(calendario); raiz.appendChild(fila); raiz.appendChild(paginacao); raiz.appendChild(dialogo);
   const abrir = (peca, data, origem) => {
     if (!controleReal?.abrirCompositor) { ctx.aviso('O agendamento real ainda não está disponível. Atualize os dados.', 'erro'); return; }
     focoOrigem = origem;
@@ -237,6 +278,15 @@ export async function montar(raiz, ctx) {
   }
   function cartaoMeta(post, compacto = false) {
     const rede = ROTULO_REDE[post.rede] || post.rede;
+    if (compacto) {
+      const [glifo, rotuloFormato] = formatoDoIcone(post.formato);
+      const nome = `${rede} · ${rotuloFormato} · Publicado na Meta`;
+      const el = h('article', { class: 'cal-icone cal-icone-publicado', draggable: 'false', dados: { chave: post.chave }, 'aria-label': nome,
+        ...abrirAoClicar({ carregarPeca, origem: 'meta', peca: null, data: post.data, jobs: [], publicado: post, formato: FORMATO_PREVIA[post.formato] || 'feed', rede: post.rede }) },
+      typeof document !== 'undefined' ? iconeSvg(glifo) : null);
+      ligarDica(el, nome);
+      return el;
+    }
     const link = linkPublicado(post.link), miniatura = !compacto ? miniaturaDoPost(post.miniatura) : null;
     return h('article', { class: `cal-item cal-unico-item cal-item-meta${compacto ? ' cal-compacto' : ''}`, draggable: 'false', dados: { chave: post.chave }, 'aria-label': `Post publicado no ${rede}`,
       ...abrirAoClicar({ carregarPeca, origem: 'meta', peca: null, data: post.data, jobs: [], publicado: post, formato: FORMATO_PREVIA[post.formato] || 'feed', rede: post.rede }) },
@@ -249,13 +299,15 @@ export async function montar(raiz, ctx) {
   function cartaoCompacto(i) {
     const reais = i.jobs || [], pub = pubDe(i);
     const movel = !reais.length && !pub;
-    return h('article', { class: `cal-item cal-unico-item cal-compacto${reais.length ? ' cal-item-real' : ''}`, draggable: movel ? 'true' : 'false', dados: { peca: i.peca.id, versao: i.peca.versao }, 'aria-label': nomeDaPeca(i.peca),
+    const estado = estadoDoIcone(i, pub);
+    const [glifo, rotuloFormato] = formatoDoIcone(i.peca.tipo, reais[0]?.destino?.formato || pub?.formato);
+    const nome = `${nomeCurto(i.peca)} · ${rotuloFormato} · ${estado.texto}`;
+    const el = h('article', { class: `cal-icone cal-icone-${estado.chave}`, draggable: movel ? 'true' : 'false', dados: { peca: i.peca.id, versao: i.peca.versao }, 'aria-label': nome,
       ondragstart: (e) => { if (!movel) { e.preventDefault(); return; } e.dataTransfer.setData('text/x-grana-peca', i.peca.id); },
       ...abrirAoClicar(itemPrevia(i, pub)) },
-    h('strong', { class: 'cal-item-titulo', title: nomeDaPeca(i.peca), texto: nomeCurto(i.peca) }),
-    ...(reais.length
-      ? reais.map((j) => { const d = descreverJobReal(j); return h('span', { class: `cal-item-canal${d.atencao ? ' cal-item-atencao' : ''}`, texto: `${d.rede}: ${d.texto}` }); })
-      : [h('span', { class: `cal-item-canal${!pub && i.peca.precisaAceite ? ' cal-item-atencao' : ''}`, texto: pub ? 'Publicado' : i.peca.precisaAceite ? 'Precisa de aceite' : [formatoDoNome(i.peca), 'Planejado'].filter(Boolean).join(' · ') })]));
+    typeof document !== 'undefined' ? iconeSvg(glifo) : null);
+    ligarDica(el, nome);
+    return el;
   }
   function cartao(i, planejar) {
     const reais = i.jobs || [], pub = pubDe(i);
@@ -420,7 +472,7 @@ async function montarEditorial(raiz, ctx) {
   const notaReal = () => (ctx.agendarReal && !ctx.leituraRealCompleta ? h('p', { class: 'campo-ajuda cal-aviso-real', texto: AVISO_PODE_TER_REAL }) : null);
   const cartaoCheio = (e) => (e.item ? cartao(e.item) : ctx.cartaoMeta(e.post));
   const cartaoNaCelula = (e) => (!compacto ? cartaoCheio(e) : e.item ? ctx.cartaoCompacto(e.item) : ctx.cartaoMeta(e.post, true));
-  const LIMITE_NA_CELULA = 2;
+  const LIMITE_NA_CELULA = 4;
   const dialogoDia = h('dialog', { class: 'cal-dia-dialogo', 'aria-labelledby': 'cal-dia-titulo' });
   dialogoDia.addEventListener('click', (e) => { if (e.target === dialogoDia || e.target.closest('button, a, article')) setTimeout(() => dialogoDia.close?.(), 0); });
   const abrirDia = (iso, lista) => {
@@ -451,7 +503,7 @@ async function montarEditorial(raiz, ctx) {
       compacto && lista.length > LIMITE_NA_CELULA
         ? h('button', { class: 'cal-mais', type: 'button', texto: `+${lista.length - LIMITE_NA_CELULA}`, 'aria-label': `Ver os ${lista.length} itens de ${dia.getDate()} de ${MESES[dia.getMonth()]}`, onclick: () => abrirDia(iso, lista) })
         : null),
-    (compacto ? lista.slice(0, LIMITE_NA_CELULA) : lista).map(cartaoNaCelula));
+    compacto ? h('div', { class: 'cal-dia-icones' }, lista.slice(0, LIMITE_NA_CELULA).map(cartaoNaCelula)) : lista.map(cartaoNaCelula));
     // alvo de arrastar
     celula.addEventListener('dragover', (e) => { if (e.dataTransfer.types.includes('text/x-grana-peca')) { e.preventDefault(); celula.classList.add('cal-alvo'); } });
     celula.addEventListener('dragleave', () => celula.classList.remove('cal-alvo'));

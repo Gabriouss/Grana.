@@ -83,9 +83,10 @@ const texto = (n) => todos(n).map((e) => e.attrs.texto || '').join(' ');
       assert.equal(links.length, 4, 'job+recibo usa só um link por publicação');
       assert(posts.every((p) => links.includes(p.link)));
       assert(texto(raiz).includes('Aprovados sem data (0)'));
-      const compactos = todos(raiz).filter((n) => n.tag === 'article' && n.attrs.class.includes('cal-compacto'));
+      const compactos = todos(raiz).filter((n) => n.tag === 'article' && n.attrs.class.includes('cal-icone'));
       assert.equal(compactos.length, 2);
-      assert(compactos.every((n) => texto(n).includes('Publicado')));
+      assert(compactos.every((n) => String(n.attrs['aria-label']).includes('Publicado')), 'o ícone diz o estado no aria-label');
+      assert(compactos.some((n) => String(n.attrs['aria-label']).includes(feed.nomeExibicao)) && compactos.some((n) => String(n.attrs['aria-label']).includes(reel.nomeExibicao)), 'e o nome da peça');
     }
     limpar();
   }
