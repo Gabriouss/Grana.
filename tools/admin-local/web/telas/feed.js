@@ -347,6 +347,17 @@ const MOTIVOS_REAL = {
   'resposta-invalida': 'A Meta respondeu de um jeito que o painel não entendeu.',
 };
 
+// A rota de miniatura é autenticada (cabeçalho do painel): <img src> direto não manda o cabeçalho e a
+// imagem vem negada (retângulo preto). Busca com o cabeçalho e exibe como blob, como o Calendário.
+const ROTA_MINIATURA = '/api/marketing/calendario/meta-midia?chave=';
+function carregarMiniatura(src, img, aoFalhar) {
+  if (typeof src !== 'string' || !src.startsWith(ROTA_MINIATURA)) { aoFalhar(); return; }
+  fetch(src, { headers: { Accept: 'image/*', 'X-Grana-Admin': '1' }, credentials: 'same-origin' })
+    .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(`status-${r.status}`))))
+    .then((b) => { img.src = URL.createObjectURL(b); })
+    .catch((err) => { console.warn('[feed-miniatura]', err.message || 'falhou'); aoFalhar(); });
+}
+
 function blocoReal(ctx, rd, recarregar) {
   const h = ctx.h;
   const bloco = h('section', { class: 'feed-real', 'aria-label': 'Perfil real do Instagram' });
@@ -380,8 +391,10 @@ function blocoReal(ctx, rd, recarregar) {
     const tipo = TIPOS_REAL[post.formato] || 'Feed';
     const data = post.data ? dataCurta(post.data) : '';
     const legenda = resumo(post.legenda || '', 140);
-    const midia = post.miniatura ? h('img', { src: post.miniatura, alt: '', loading: 'lazy', decoding: 'async' })
-      : h('span', { class: 'feed-celula-texto', texto: legenda || tipo });
+    const sem = h('span', { class: 'feed-celula-texto', texto: legenda || tipo });
+    const img = h('img', { alt: '', decoding: 'async' });
+    const midia = h('span', { class: 'feed-celula-miniatura' }, img);
+    carregarMiniatura(post.miniatura, img, () => midia.replaceChildren(sem));
     const a = h('a', { class: 'feed-celula', href: post.link || '#', target: '_blank', rel: 'noopener noreferrer',
       'aria-label': `${tipo} de ${data}. ${legenda || 'Sem legenda'}.${post.link ? ' Abrir no Instagram.' : ''}` },
       midia,
