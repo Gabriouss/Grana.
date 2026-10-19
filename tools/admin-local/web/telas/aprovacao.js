@@ -613,6 +613,23 @@ export function compararVersoes(ctx, p, pedido) {
   } };
 }
 
+const MOTIVOS_RECUSA = {
+  'pasta-invalida': 'Esta peça já está no histórico. Não há nada a fazer.',
+  'versao-mudou': 'A peça mudou desde que a tela abriu. A tela foi atualizada: revise a versão nova antes de recusar.',
+  'ajuste-aberto': 'Há um pedido de ajuste aberto para esta peça. Conclua ou encerre o pedido e recuse depois.',
+  'sucessora-invalida': 'A sucessora escolhida não serve: precisa ser outra peça da mesma família, fora do histórico. Escolha outra ou recuse sem sucessora.',
+  'prova-invalida': 'A recusa anterior desta peça não confere com os arquivos do histórico. Nada foi apagado; peça aos agentes para conferir antes de repetir.',
+  'destino-existente': 'Já existe um arquivo com o mesmo nome no histórico. Nada foi movido; peça aos agentes para conferir a pasta.',
+  'recusa-falhou': 'A recusa não terminou e os arquivos originais foram preservados. Atualize a tela e confira se a peça continua aqui antes de repetir.',
+  'fila-indisponivel': 'A fila de pedidos não pôde ser lida, e sem ela a recusa não é segura. Tente de novo em instantes.',
+  'historico-invalido': 'O registro de recusas não pôde ser lido. Nada foi movido; peça aos agentes para conferir o histórico.',
+  'peca-inexistente': 'Esta peça não está mais no acervo. A tela foi atualizada.',
+  'sem-arquivos': 'A peça não tem arquivos para arquivar. Peça aos agentes para conferir.',
+  'motivo-invalido': 'Escreva um motivo público de 1 a 500 caracteres.',
+  'marketing-trava-falhou': 'Outra ação do painel está gravando no acervo. Espere alguns segundos e tente de novo.',
+};
+const ATUALIZAR_APOS_RECUSA = new Set(['pasta-invalida', 'versao-mudou', 'peca-inexistente']);
+
 export async function recusarPeca(ctx, p, familia, pedidos, botao) {
   if (botao.disabled || ctx.obsoleta() || !filaDisponivel(pedidos) || pedidos.some((r) => r.pecaId === p.id && pedidoAberto(r))) return;
   botao.disabled = true;
@@ -631,20 +648,27 @@ export async function recusarPeca(ctx, p, familia, pedidos, botao) {
     if (!motivo || Array.from(motivo).length > 500 || (sucessora && !sucessoras.some((a) => a.id === sucessora))) {
       ctx.aviso('Informe um motivo público de 1 a 500 caracteres e escolha uma sucessora da lista, se desejar.', 'erro'); return;
     }
+    const redes = Array.isArray(p.publicadaEm) ? p.publicadaEm : [];
+    const capas = familia.filter((a) => a.capaDe === p.id && !arquivada(a));
     const confirmado = await ctx.confirmar({ titulo: 'Confirmar recusa',
-      texto: 'Este motivo será registrado no histórico público da peça. Confirme que ele pode ser público. Nenhum conteúdo será publicado ou agendado em redes sociais.',
-      detalhes: [tituloPeca(p), motivo, sucessora ? `Sucessora: ${tituloPeca(sucessoras.find((a) => a.id === sucessora))}` : 'Sem sucessora'], rotuloBotao: 'Recusar e arquivar' });
+      texto: `${redes.length ? `Isto só tira a peça do painel. O post continua no ${redes.join(' e no ')}; apagar lá é no app da Meta. ` : ''}Este motivo será registrado no histórico público da peça. Confirme que ele pode ser público. Nenhum conteúdo será publicado ou agendado em redes sociais.`,
+      detalhes: [tituloPeca(p), motivo, sucessora ? `Sucessora: ${tituloPeca(sucessoras.find((a) => a.id === sucessora))}` : 'Sem sucessora',
+        ...capas.map((a) => `A capa ${tituloPeca(a)} vai junto para o histórico.`)], rotuloBotao: 'Recusar e arquivar' });
     if (confirmado !== true || ctx.obsoleta()) return;
     const r = await ctx.acao(`/api/marketing/pecas/${encodeURIComponent(p.id)}/recusar`, {
       versao: p.versao, motivo, confirmacao: true, ...(sucessora ? { sucessora } : {}),
     });
     if (ctx.obsoleta()) return;
-    ctx.aviso('Recusa registrada. Confira o histórico e os avisos do arquivamento.', 'ok');
+    ctx.aviso('Recusa registrada. A peça foi para o histórico.', 'ok');
     for (const aviso of r.dados?.avisos || []) ctx.aviso(aviso, 'info');
     ctx.recarregar();
   } catch (err) {
     console.warn('[aprovacao-recusar]', err.codigo || 'falha');
-    if (!ctx.obsoleta()) ctx.aviso(err.codigo === 'versao-mudou' ? 'A peça mudou. Atualize e revise antes de recusar.' : 'A recusa não foi confirmada. Atualize a peça e confira os recibos antes de repetir.', 'erro');
+    if (ctx.obsoleta()) return;
+    // "já está no histórico" vem do servidor com a hora da recusa; os demais ganham causa e ação.
+    const frase = err.codigo === 'pasta-invalida' && err.message ? err.message : MOTIVOS_RECUSA[err.codigo];
+    ctx.aviso(frase || 'A recusa não foi confirmada. Atualize a peça e confira os recibos antes de repetir.', err.codigo === 'pasta-invalida' ? 'info' : 'erro');
+    if (ATUALIZAR_APOS_RECUSA.has(err.codigo)) ctx.recarregar();
   } finally { if (!ctx.obsoleta()) botao.disabled = false; }
 }
 
