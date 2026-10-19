@@ -3220,3 +3220,5 @@ dialog.central::backdrop { background: var(--scrim); }
 .cal-num-botao:focus-visible, .cal-mais:focus-visible, .pub-real-tecnico > summary:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
 @media (max-width:700px) { .cal-operacao { grid-template-columns:minmax(0,1fr); } }
 .feed-midia-aviso { margin:0; padding:var(--s-xl); color:var(--ink-soft); text-wrap:pretty; overflow-wrap:anywhere; }
+.feed-post-midia { aspect-ratio: 4 / 5; }
+.feed-midia-carregando::after { content:'Carregando…'; position:absolute; inset:auto 0 var(--s-xl) 0; text-align:center; font-size:var(--t-micro); color:var(--ink-faint); pointer-events:none; }

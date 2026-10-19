@@ -33,7 +33,8 @@ export function montarMidia(h, p) {
   // A área toma a proporção da peça (como o Instagram abre o post) e a mídia aparece
   // inteira (contain). Reel nasce 9:16; o resto lê a proporção natural ao carregar.
   const proporcaoDaPeca = (w, hh) => { if (w > 0 && hh > 0) midiaEl.style.aspectRatio = `${w} / ${hh}`; };
-  if (p.ehVideo || p.capaOrfa) proporcaoDaPeca(9, 16); // capa de Reel nasce 9:16 mesmo sem o vídeo
+  // A área tem proporção ANTES de a mídia carregar (sem isso ela colapsa a zero): 9:16 para Reel, 4:5 para o feed.
+  if (p.ehVideo || p.capaOrfa) proporcaoDaPeca(9, 16); else proporcaoDaPeca(4, 5);
   let pausar = () => {};
   if (!p.midias.length) {
     midiaEl.appendChild(h('div', { class: 'feed-celula-texto', texto: p.legenda || p.titulo }));
@@ -47,10 +48,12 @@ export function montarMidia(h, p) {
     const alt = p.midias.length > 1 ? `${p.titulo}, ${i + 1} de ${p.midias.length}` : p.titulo;
     const el = ehVideoItem
       ? h('video', { src: arq, controls: true, preload: 'metadata', playsinline: true, 'aria-label': alt, ...(p.capa ? { poster: p.capa.url } : {}) })
-      : h('img', { src: arq, alt, decoding: 'async' });
+      : h('img', { src: arq, alt: '', decoding: 'async' }); // alt só depois do load: antes ele aparecia solto no meio da área
     // Arquivo que não abre nunca deixa a área em branco: a frase diz o que houve.
     el.addEventListener('error', () => { slideAvisoMidia(h, el); }, { once: true });
     Object.assign(el.style, { width: '100%', height: '100%', objectFit: 'contain' });
+    midiaEl.classList.add('feed-midia-carregando');
+    el.addEventListener(el.tagName === 'VIDEO' ? 'loadeddata' : 'load', () => { if (el.tagName === 'IMG') el.alt = alt; midiaEl.classList.remove('feed-midia-carregando'); }, { once: true });
     if (i === 0) {
       if (el.tagName === 'VIDEO') el.addEventListener('loadedmetadata', () => proporcaoDaPeca(el.videoWidth, el.videoHeight), { once: true });
       else if (el.complete && el.naturalWidth) proporcaoDaPeca(el.naturalWidth, el.naturalHeight);
@@ -64,7 +67,6 @@ export function montarMidia(h, p) {
   trilho.append(...slides);
   midiaEl.appendChild(trilho);
   if (p.capaOrfa) midiaEl.appendChild(h('p', { class: 'feed-midia-aviso', role: 'note', texto: 'Só a capa chegou. O vídeo deste Reel não está no acervo desta versão, então não dá para publicar nem ver o Reel completo.' }));
-  midiaEl.style.justifySelf = 'center'; // coluna larga: a mídia fica centrada na proporção dela
   pausar = () => trilho.querySelectorAll('video').forEach((v) => v.pause());
 
   if (slides.length > 1) {
