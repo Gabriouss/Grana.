@@ -143,6 +143,16 @@ Pedido do autor, pela ordem `E:/Grana-temporarios/2026-10-19-agendamento-meta/00
 - **Etapa 5 continua aberta:** recebidos Keel, Forge, triagem e arquivamento Anvil, e R0 Harbor; [ ] receber QA Vigil/recibo integrado final; [ ] consolidar o estado final por hash, distinguindo testes simulados de painel autenticado e produção. Esta rodada não declara todos os gates aprovados.
 
 ---
+# 19/10/2026 (M1, Ledger): baseline Sentinel b107c52 verde; R0 separado ainda sem gate
+
+Recibo `E:/Grana-temporarios/2026-10-19-agendamento-meta/relatorio-sentinel-baseline-b107c52.md` lido por Ledger: `test:admin`, `test:admin-real-node` e `test:marketing-real` integrais, exit 0, no snapshot **b107c52**. Inclui 156+120+36+39 verificações de marketing e Deno, cinco scripts real-node e estilo-final pelo admin. O snapshot **não contém R0**: `ed5565c` segue em execução separada pelo Sentinel, ainda sem gate nesta comunicação. Não transportar o passe da baseline para o R0, HEAD atual, WIP v2 ou navegador.
+
+- **Proveniência:** cópia externa extraída por `git archive`; inventário final 2.580 rastreados, zero ausentes, conteúdo dos caminhos comparado ao commit; `context.md` restaurado do archive para excluir documentação posterior. `node_modules` por junção local, sem instalação. Sem branch/worktree/stash, alteração de asserção ou código/Git por Sentinel.
+- **Intercorrências preservadas:** primeiras rodadas admin falharam por cópia incompleta de artes e dois recursos do mascote; não são falhas da baseline final. Archive integral inicial interrompido por lentidão; tar Git Bash interpretou `E:` como host, corrigido usando tar nativo Windows. Deno 2.9.6 do cache npx entrou somente no PATH do processo; descoberta automática do executável não foi testada. `NativeCommandError` de stderr no PowerShell coexistiu com exit 0 e não deve ser classificado como falha da suíte.
+- **Limites:** módulos reais, SQL PGlite, Graph/Storage simulados; sem publicação Meta, produção, migration, deploy ou build. QA de navegador 390/1440 fica para a entrega final; Ledger não repetiu as suítes. Logs finais nomeados no relatório Sentinel são a referência, não logs intermediários.
+- **Fato posterior independente:** `2c41886` corrige QR→foto nos metadados de `/baixar`, superando o achado residual da revisão de perenes acima. O commit não faz parte da baseline Sentinel e não recebeu gate dela; HTML servido/export não validado por Ledger.
+
+---
 # 18/10/2026 (M1, Ledger): contrato da prévia pelo calendário admin — focal verificado, operação pendente
 
 > Atualização documental de 19/10: a correção Forge foi incorporada em `99bfd80` (18/10 às 23h55 BRT), com os dois arquivos descritos abaixo; o commit já está em `origin/main`. As frases sobre aguardar sinal/commit e a checklist operacional são o estado histórico de 18/10, não novas instruções. O recibo posterior de publicação do lote `db37d937` está na seção pós-9h acima; não comprova que Ledger executou cada passo daquela checklist.
