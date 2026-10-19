@@ -65,6 +65,8 @@ const cal = require('../tools/admin-local/marketing/calendario.cjs').obterCalend
 for (const a of derivados) {
   const p = enr.find((x) => x.id === a.id);
   if (!p && recusas.some((r) => r.origem?.id === a.id)) continue; // recusado pelo autor (19/10)
+  // Aceite DIRETO do autor para a versao atual (19/10, Reel com legenda aceito no painel): o derivado deixa de valer, de proposito.
+  if (p && aceites.some((x) => x.id === a.id && x.versao === p.versao && x.evidencia !== EVIDENCIA_DERIVADA)) continue;
   if (p.legenda) {
     assert.equal(p.aprovada, false, `${a.id}: legenda ligada, Reel volta para o aceite do autor`);
     assert.equal(p.aceite, null);
