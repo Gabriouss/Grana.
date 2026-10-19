@@ -17,6 +17,9 @@ export const PRAZOS_EXECUTOR={total:25_000,claim:4_000,trabalho:14_000,recibo:5_
  renovacaoInicio:4_000,renovacaoLeitura:8_000,renovacaoRegistro:5_000};
 type Deps={env:(n:string)=>string|undefined;cliente:(signal:AbortSignal)=>SupabaseClient;rede?:typeof fetch;log:(linha:string)=>void;
  prazos?:Partial<typeof PRAZOS_EXECUTOR>};
+// Erros lancados antes de qualquer POST, com nome proprio e sem segredo no texto.
+const PERMANENTES_SEM_POST=new Set(['credencial-invalida','credencial-ausente','midia-invalida','origem-midia-invalida']);
+const MOTIVOS_SEM_POST=new Set([...PERMANENTES_SEM_POST,'snapshot-indisponivel','midia-indisponivel','efeito-bloqueado']);
 const comPrazo=(pai:AbortSignal,ms:number)=>AbortSignal.any([pai,AbortSignal.timeout(ms)]);
 export function criarExecutorReal(deps:Deps){
  const prazo={...PRAZOS_EXECUTOR,...deps.prazos};
@@ -84,8 +87,15 @@ export function criarExecutorReal(deps:Deps){
      // Efeito barrado pelo fence (pausa, cancelamento, lease) antes de sair volta incerto do adaptador.
      if(resultado.estado==='incerto'&&resultado.codigo==='resultado-nao-confirmado'&&!admitido&&job.etapa!=='publicar')
       resultado={estado:'adiado',codigo:'efeito-nao-admitido',processamento:resultado.processamento};
-    }catch{
-     resultado=admitido||job.etapa==='publicar'?{estado:'incerto',codigo:'resultado-nao-confirmado'}:{estado:'adiado',codigo:'sem-efeito'};
+    }catch(e){
+     /* Regra 9: o motivo conhecido vai ao recibo, em vez de um "sem-efeito" mudo.
+        Causa permanente sem POST admitido (credencial ou midia fora do snapshot)
+        nao se cura repetindo: vira "falhou" com o codigo, sem girar adiada ate
+        a autorizacao morrer. Nada saiu para a Meta, entao falhar e seguro. */
+     const motivo=e instanceof Error&&MOTIVOS_SEM_POST.has(e.message)?e.message:'sem-efeito';
+     resultado=admitido?{estado:'incerto',codigo:'resultado-nao-confirmado'}
+      :PERMANENTES_SEM_POST.has(motivo)?{estado:'falhou',codigo:motivo}
+      :job.etapa==='publicar'?{estado:'incerto',codigo:'resultado-nao-confirmado'}:{estado:'adiado',codigo:motivo};
     }
     if(resultado.estado==='incerto')incertos++;
     await rpcReal(client,'recibo',{p_worker:worker,p_job:job.jobId,p_lease:job.leaseId,p_revisao:job.revisao,p_resultado:resultado},

@@ -394,6 +394,41 @@ async function main() {
     } finally { await db.close(); }
   }
 
+  /* ── 7b. Regra 9: falha antes do POST deixa o motivo real no recibo ── */
+  {
+    // Credencial ausente é permanente: falha na primeira rodada, com código, e nada sai para a Meta.
+    const db = await novoBanco();
+    const guardado = ENV.MARKETING_IG_TOKEN;
+    try {
+      await agendar(db);
+      delete ENV.MARKETING_IG_TOKEN;
+      const g = graphFake(() => { throw new Error('não deveria chamar a Graph'); });
+      eq((await rodarExecutor(db, g.rede)).status, 200, 'credencial ausente: executor responde 200 com recibo');
+      eq(g.chamadas.length, 0, 'credencial ausente: zero chamadas à Graph');
+      const j = await job(db);
+      eq([j.estado, j.codigo_erro], ['falhou', 'credencial-ausente'], 'credencial ausente vira falhou com o motivo, não adiado mudo');
+      eq((await envios(db)).map((x) => [x.estado, x.codigo_erro, x.admitido]), [['falhou', 'credencial-ausente', false]], 'o envio guarda o motivo e nenhuma admissão');
+      await proximoTique(db);
+      eq((await rodarExecutor(db, g.rede)).corpo.processados, 0, 'job falhado não volta à fila');
+    } finally { ENV.MARKETING_IG_TOKEN = guardado; await db.close(); }
+  }
+  {
+    // Falha passageira antes do POST (leitura do snapshot falhou) segue adiada, mas com o motivo real.
+    const db = await novoBanco();
+    try {
+      await agendar(db);
+      const base = clienteDb(db);
+      const falha = { select: () => falha, eq: () => falha, abortSignal: () => falha, single: async () => ({ data: null, error: { message: 'fora' } }) };
+      const cliente = new Proxy(base, { get: (t, k) => k === 'from' ? (tabela) => (tabela === 'admin_marketing_real_snapshots' ? falha : t.from(tabela)) : t[k] });
+      const g = graphFake(() => { throw new Error('não deveria chamar a Graph'); });
+      await rodarExecutor(db, g.rede, cliente);
+      eq(g.chamadas.length, 0, 'snapshot ilegível: zero chamadas à Graph');
+      const j = await job(db);
+      eq([j.estado, j.codigo_erro], ['programado-no-painel', 'snapshot-indisponivel'], 'passageiro: segue na fila, com o motivo no recibo');
+      eq((await envios(db)).map((x) => [x.estado, x.codigo_erro]), [['falhou', 'snapshot-indisponivel']], 'envio adiado guarda o motivo');
+    } finally { await db.close(); }
+  }
+
   /* ── 8. Operação: código de negócio preservado ── */
   {
     const op = reais.criarOperacaoPublicacoesReais();
