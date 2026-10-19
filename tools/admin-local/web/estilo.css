@@ -2878,6 +2878,33 @@ details.cartao > summary { min-height: var(--alvo); cursor: pointer; }
   overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
 }
 
+/* Calendário (19/10): posts do dia são ícones. Forma do disco = estado; glifo = formato. Nome e estado no aria-label e na dica. */
+.cal-legenda { display: flex; flex-wrap: wrap; gap: var(--s-xs) var(--s-lg); margin: 0 0 var(--s-md); font-size: 12px; color: var(--ink-soft); }
+.cal-legenda[hidden] { display: none; }
+.cal-legenda-item { display: inline-flex; align-items: center; gap: var(--s-xs); }
+.cal-legenda-disco { width: 14px; height: 14px; border-radius: 50%; box-sizing: border-box; }
+.tela-calendario .cal-dia-icones { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.cal-icone { position: relative; display: inline-grid; place-items: center; box-sizing: border-box; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--accent-2); background: transparent; color: var(--accent-2); cursor: pointer; }
+.cal-icone > svg { width: 16px; height: 16px; }
+.cal-icone:hover { background: var(--hover); }
+.cal-icone:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.cal-icone-publicado { background: var(--accent-2); color: var(--paper); }
+.cal-icone-publicado:hover { background: var(--accent-2); opacity: .88; }
+.cal-icone-agendado { background: transparent; }
+.cal-icone-preparando { border-style: solid; border-top-color: transparent; }
+.cal-icone-planejado { border-style: dashed; border-color: var(--ink-faint); color: var(--ink-soft); }
+.cal-icone-atencao { border-color: var(--atencao); color: var(--atencao); background: var(--atencao-fundo); }
+.cal-legenda-disco.cal-icone-publicado { border: 1.5px solid var(--accent-2); }
+.cal-legenda-disco.cal-icone-agendado { border: 1.5px solid var(--accent-2); }
+.cal-legenda-disco.cal-icone-preparando { border: 1.5px solid var(--accent-2); border-top-color: transparent; }
+.cal-legenda-disco.cal-icone-planejado { border: 1.5px dashed var(--ink-faint); }
+.cal-legenda-disco.cal-icone-atencao { border: 1.5px solid var(--atencao); background: var(--atencao-fundo); }
+@media (prefers-reduced-motion: no-preference) { .cal-icone-preparando { animation: cal-gira 1.6s linear infinite; } .cal-icone-preparando > svg { animation: cal-gira-inverso 1.6s linear infinite; } }
+@keyframes cal-gira { to { transform: rotate(360deg); } }
+@keyframes cal-gira-inverso { to { transform: rotate(-360deg); } }
+.cal-dica { position: fixed; z-index: 60; max-width: 260px; padding: 6px 10px; border: 1px solid var(--rule-strong); border-radius: var(--r-sm); background: var(--paper-raised); color: var(--ink); font-size: 12px; line-height: 1.4; pointer-events: none; box-shadow: var(--sombra-painel); text-wrap: pretty; }
+.cal-dica[hidden] { display: none; }
+
 /* ── Sino global e central de notificações (M6, docs/admin/m6-prism) ───────
    O sino vive na casca: faixa de 44 px no topo do conteúdo no largo, barra móvel no estreito.
    A central é um <dialog> modal (foco preso, fundo inerte, Esc e retorno do foco nativos).
@@ -3178,30 +3205,3 @@ dialog.central::backdrop { background: var(--scrim); }
 .feed-proximas > h3 { margin: 0 0 var(--s-xs); }
 .feed-proximas > p { margin: 0 0 var(--s-xl); text-wrap: pretty; }
 .feed-proximas-grade { width: 100%; }
-
-/* Calendário (19/10): posts do dia são ícones. Forma do disco = estado; glifo = formato. Nome e estado no aria-label e na dica. */
-.cal-legenda { display: flex; flex-wrap: wrap; gap: var(--s-xs) var(--s-lg); margin: 0 0 var(--s-md); font-size: 12px; color: var(--ink-soft); }
-.cal-legenda[hidden] { display: none; }
-.cal-legenda-item { display: inline-flex; align-items: center; gap: var(--s-xs); }
-.cal-legenda-disco { width: 14px; height: 14px; border-radius: 50%; box-sizing: border-box; }
-.tela-calendario .cal-dia-icones { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-.cal-icone { position: relative; display: inline-grid; place-items: center; box-sizing: border-box; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--accent-2); background: transparent; color: var(--accent-2); cursor: pointer; }
-.cal-icone > svg { width: 16px; height: 16px; }
-.cal-icone:hover { background: var(--hover); }
-.cal-icone:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-.cal-icone-publicado { background: var(--accent-2); color: var(--paper); }
-.cal-icone-publicado:hover { background: var(--accent-2); opacity: .88; }
-.cal-icone-agendado { background: transparent; }
-.cal-icone-preparando { border-style: solid; border-top-color: transparent; }
-.cal-icone-planejado { border-style: dashed; border-color: var(--ink-faint); color: var(--ink-soft); }
-.cal-icone-atencao { border-color: var(--atencao); color: var(--atencao); background: var(--atencao-fundo); }
-.cal-legenda-disco.cal-icone-publicado { border: 1.5px solid var(--accent-2); }
-.cal-legenda-disco.cal-icone-agendado { border: 1.5px solid var(--accent-2); }
-.cal-legenda-disco.cal-icone-preparando { border: 1.5px solid var(--accent-2); border-top-color: transparent; }
-.cal-legenda-disco.cal-icone-planejado { border: 1.5px dashed var(--ink-faint); }
-.cal-legenda-disco.cal-icone-atencao { border: 1.5px solid var(--atencao); background: var(--atencao-fundo); }
-@media (prefers-reduced-motion: no-preference) { .cal-icone-preparando { animation: cal-gira 1.6s linear infinite; } .cal-icone-preparando > svg { animation: cal-gira-inverso 1.6s linear infinite; } }
-@keyframes cal-gira { to { transform: rotate(360deg); } }
-@keyframes cal-gira-inverso { to { transform: rotate(-360deg); } }
-.cal-dica { position: fixed; z-index: 60; max-width: 260px; padding: 6px 10px; border: 1px solid var(--rule-strong); border-radius: var(--r-sm); background: var(--paper-raised); color: var(--ink); font-size: 12px; line-height: 1.4; pointer-events: none; box-shadow: var(--sombra-painel); text-wrap: pretty; }
-.cal-dica[hidden] { display: none; }
