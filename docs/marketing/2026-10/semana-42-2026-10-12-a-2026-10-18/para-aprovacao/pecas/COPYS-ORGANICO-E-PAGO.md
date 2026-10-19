@@ -11,7 +11,7 @@
 - **Sem banco, conexão bancária ou Open Finance.** O Grana. é autodeclarado. Não entra como argumento.
 - **Preço só como "menos de R$ 0,37 por dia".** E só em peça paga, com a legenda da seção 4.
 - **Plataforma correta.** Voz, widget e foto da nota são Android. Outras funções são web (computador e celular). Nada de app de iPhone.
-- **Dados de exemplo sempre declarados** na legenda. Nunca mostrar valor de conta real.
+- **Sem aviso de dados de exemplo** na legenda (autor, 19/10/2026). Nunca mostrar valor de conta real.
 - **Valores de exemplo sem cara de arredondados.** Nada de R$ 20, R$ 50 ou R$ 100 na tela ou no texto. Usar R$ 23,90, R$ 38,70, R$ 103,05.
 - **Sem travessão e sem a estrutura "não é X, é Y"** no texto final.
 - **Tom:** conversa de amigo que já passou por isso. Empatia sem culpa, humor leve, sem jargão.
@@ -21,7 +21,7 @@
 | Peça | Problema | Ajuste proposto |
 |---|---|---|
 | C01 Livre para gastar | Apoio correto, mas burocrático. | "Quanto sobra por dia até o fim do mês? O Grana. faz a conta com o que você registrou, desconta o que guardou nos cofrinhos e inclui hoje." |
-| C02 Colar comprovante | Título bom. Legenda "Texto e valores de exemplo" é vaga. | Legenda: "Demonstração com dados de exemplo." |
+| C02 Colar comprovante | Título bom. Legenda "Texto e valores de exemplo" é vaga. | Legenda sem aviso de exemplo (regra de 19/10/2026). |
 | C03 Importar extrato | "CSV ou OFX" é jargão. "Importe" soa técnico. | "Envie o arquivo do extrato e confira cada lançamento antes de salvar." |
 | C04 Contas do mês | A legenda usa "passa a ser uma saída no saldo". | "A conta só entra no mês quando você marca como paga." |
 | C05 Cartão e fatura | Ok. | Manter. |
@@ -114,14 +114,14 @@ Objetivo: levar a pessoa à página de planos. Toda peça paga usa a legenda da 
 - **Gancho:** "Você sabe quanto gastou com comida esse mês?"
 - **Virada:** "Pergunta pro Granabô. Ele responde com os seus lançamentos."
 - **Fecho:** "Menos de R$ 0,37 por dia." Logo.
-- **Legenda:** "Demonstração com dados de exemplo. Valores e renovação na página de planos."
+- **Legenda:** "Valores e renovação na página de planos."
 
 ## 4. Legenda obrigatória da peça paga (e gates)
 
 Toda peça paga que cita preço, reembolso ou assinatura precisa:
 1. Apontar para a página de planos, onde aparecem o **valor total**, a **periodicidade** e a **renovação**. A legenda não pode dizer só "menos de R$ 0,37 por dia".
 2. Dizer "**Sete dias para pedir o reembolso**". Nunca "garantia", que pode ser lido como garantia de resultado.
-3. Declarar "Demonstração com dados de exemplo" quando houver tela.
+3. Não declarar "dados de exemplo": a tela já usa só dado inventado (autor, 19/10/2026).
 4. Antes de publicar: conferir o preço vigente na Cakto, porque a nota de preço é de 13/09 e pode ter mudado.
 
 **Não usar em peça paga, sem o gate do Lynx e um QA novo:** "grátis", "teste grátis", "sem compromisso" e qualquer frase sobre cobrança automática.

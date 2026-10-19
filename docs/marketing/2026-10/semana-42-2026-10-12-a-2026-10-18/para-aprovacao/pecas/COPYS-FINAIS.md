@@ -6,7 +6,7 @@ Escrita em 18/10/2026 para o Reel que estava aprovado sem legenda. O Reel foi pu
 
 **Título:** Pagou? É só falar.
 
-**Legenda:** Pagou, guardou o celular e esqueceu de anotar? É assim que o gasto pequeno some do controle. No Android, o widget de voz permite lançar o gasto falando, direto da tela inicial, e pede confirmação se algo não ficar claro. A cena mostra uma padaria, com personagem fictícia e dados de exemplo. Para experimentar, o link está na bio.
+**Legenda:** Pagou, guardou o celular e esqueceu de anotar? É assim que o gasto pequeno some do controle. No Android, o widget de voz permite lançar o gasto falando, direto da tela inicial, e pede confirmação se algo não ficar claro. Para experimentar, o link está na bio.
 
 ## Olhar só o saldo engana o seu mês
 
@@ -18,16 +18,16 @@ Escrita em 18/10/2026 para o Reel que estava aprovado sem legenda. O Reel foi pu
 
 **Título:** Quanto dá pra gastar hoje?
 
-**Legenda:** Dividir o que sobrou do mês pelos dias que faltam é a conta que muita gente faz de cabeça e erra. O Livre para gastar do Grana. faz isso com os lançamentos que você registrou e atualiza a cada gasto, contando hoje. Serve de bússola antes de pedir o delivery ou passar o cartão. Tela com dados de exemplo. Link na bio.
+**Legenda:** Dividir o que sobrou do mês pelos dias que faltam é a conta que muita gente faz de cabeça e erra. O Livre para gastar do Grana. faz isso com os lançamentos que você registrou e atualiza a cada gasto, contando hoje. Serve de bússola antes de pedir o delivery ou passar o cartão. Link na bio.
 
 ## Passou na farmácia hoje
 
 **Título:** Passou na farmácia hoje?
 
-**Legenda:** Compra pequena, daquelas de farmácia ou mercado, costuma ficar sem registro porque o cupom vai para o fundo da sacola. O truque do vídeo é lançar na hora e já ver o efeito no dia: o Livre para gastar considera o que você registrou e o que guardou nos cofrinhos e divide o resto pelos dias que faltam. Salve para lembrar de lançar o próximo cupom. Telas com dados de exemplo. Link na bio.
+**Legenda:** Compra pequena, daquelas de farmácia ou mercado, costuma ficar sem registro porque o cupom vai para o fundo da sacola. O truque do vídeo é lançar na hora e já ver o efeito no dia: o Livre para gastar considera o que você registrou e o que guardou nos cofrinhos e divide o resto pelos dias que faltam. Salve para lembrar de lançar o próximo cupom. Link na bio.
 
 ## Recebeu um Pix, só colar
 
 **Título:** Recebeu um Pix? Só colar.
 
-**Legenda:** Digitar valor, data e descrição de cada Pix é o que faz muita gente desistir de anotar. Colar o texto do comprovante poupa essa etapa: o Grana. preenche os campos e você só revisa. Confira valor, categoria e se é entrada ou saída antes de salvar. Telas com dados de exemplo. Quer testar? Link na bio.
+**Legenda:** Digitar valor, data e descrição de cada Pix é o que faz muita gente desistir de anotar. Colar o texto do comprovante poupa essa etapa: o Grana. preenche os campos e você só revisa. Confira valor, categoria e se é entrada ou saída antes de salvar. Quer testar? Link na bio.

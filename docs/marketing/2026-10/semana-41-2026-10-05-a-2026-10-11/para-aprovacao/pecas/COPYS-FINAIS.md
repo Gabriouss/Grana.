@@ -6,19 +6,19 @@ Escritas em 18/10/2026 para as quatro peças de feed que estavam aprovadas sem l
 
 **Título:** O café, o delivery, a corrida
 
-**Legenda:** Gasto pequeno costuma passar batido porque, na hora, ninguém soma. Quando o mês fecha, é ele que explica boa parte da diferença entre o que entrou e o que sobrou. A lista de lançamentos do Grana. deixa tudo junto, com categoria e data, para você olhar o mês de uma vez e perceber o que se repete. Tela com dados de exemplo. Quer experimentar? Link na bio.
+**Legenda:** Gasto pequeno costuma passar batido porque, na hora, ninguém soma. Quando o mês fecha, é ele que explica boa parte da diferença entre o que entrou e o que sobrou. A lista de lançamentos do Grana. deixa tudo junto, com categoria e data, para você olhar o mês de uma vez e perceber o que se repete. Quer experimentar? Link na bio.
 
 ## O mês que vem já começou nas parcelas desse mês
 
 **Título:** O mês que vem já começou nas parcelas desse mês
 
-**Legenda:** Parcelar alivia hoje e cobra depois: cada compra dividida já deixa uma parte do próximo mês ocupada. Na tela de Crédito, no navegador, você vê as faturas e as parcelas de cada cartão e consegue se planejar antes de a fatura chegar. Tela com dados de exemplo. Link na bio para conhecer.
+**Legenda:** Parcelar alivia hoje e cobra depois: cada compra dividida já deixa uma parte do próximo mês ocupada. Na tela de Crédito, no navegador, você vê as faturas e as parcelas de cada cartão e consegue se planejar antes de a fatura chegar. Link na bio para conhecer.
 
 ## Organize no computador, acompanhe pelo celular
 
 **Título:** Organize no computador, acompanhe pelo celular
 
-**Legenda:** Tem gente que prefere a tela grande para organizar e o celular para conferir no dia a dia. O Grana. atende os dois jeitos com uma única conta: no computador, pelo navegador; no celular, pelo navegador ou pelo aplicativo para Android. Telas com dados de exemplo. Link na bio.
+**Legenda:** Tem gente que prefere a tela grande para organizar e o celular para conferir no dia a dia. O Grana. atende os dois jeitos com uma única conta: no computador, pelo navegador; no celular, pelo navegador ou pelo aplicativo para Android. Link na bio.
 
 ## Salário caiu
 
@@ -30,10 +30,10 @@ Escritas em 18/10/2026 para as quatro peças de feed que estavam aprovadas sem l
 
 **Título:** Fala o gasto. Pronto.
 
-**Legenda:** Pagou, guardou o celular e esqueceu de anotar? É assim que o gasto pequeno some do controle. No Android, o widget de voz permite lançar o gasto falando, direto da tela inicial, e pede confirmação se algo não ficar claro. A cena mostra uma padaria, com personagem fictícia e dados de exemplo. Para experimentar, o link está na bio.
+**Legenda:** Pagou, guardou o celular e esqueceu de anotar? É assim que o gasto pequeno some do controle. No Android, o widget de voz permite lançar o gasto falando, direto da tela inicial, e pede confirmação se algo não ficar claro. Para experimentar, o link está na bio.
 
 ## Já desistiu de controlar seus gastos
 
 **Título:** Já desistiu de controlar seus gastos?
 
-**Legenda:** Controlar gasto vira tarefa chata quando cada compra pede abrir o app, escolher categoria e digitar. A ideia aqui é tirar esse atrito: no Android, o widget de voz e a leitura do QR code da nota fiscal registram o gasto em poucos toques, e um lembrete no fim do dia ajuda a não deixar nada para depois. Confira o valor antes de salvar. Para testar, o link está na bio. Cenas recriadas com dados de exemplo.
+**Legenda:** Controlar gasto vira tarefa chata quando cada compra pede abrir o app, escolher categoria e digitar. A ideia aqui é tirar esse atrito: no Android, o widget de voz e a foto da nota fiscal registram o gasto em poucos toques, e um lembrete no fim do dia ajuda a não deixar nada para depois. Confira o valor antes de salvar. Para testar, o link está na bio.

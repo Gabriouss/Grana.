@@ -57,7 +57,7 @@ Fontes: `FUNIL.md` seção 2, `AGENTS.md`, memória do projeto sobre copy.
 - Sem travessão e sem a construção "não é X, é Y".
 - Sem escassez inventada, contagem regressiva falsa ou prova social sem origem verificável.
 - Tela do app é sempre captura real, com conta de teste e dados inventados. IA nunca desenha tela do app.
-- Dado fictício é avisado na legenda. Não inserir aviso de exemplo dentro da arte ou do vídeo.
+- Nenhum aviso de dado fictício ou de exemplo, nem na arte, nem no vídeo, nem na legenda (autor, 19/10/2026). As telas continuam só com dado inventado.
 
 ## 6. Regras de criativo (regras 21 a 25 do AGENTS.md)
 

@@ -16,7 +16,7 @@
 
 **Apoio:** Cole o texto do comprovante no Grana., confira o valor e salve.
 
-**Legenda:** Antes de salvar, confira o valor, a categoria e se o lançamento é uma entrada ou uma saída. Texto e valores de exemplo.
+**Legenda:** Antes de salvar, confira o valor, a categoria e se o lançamento é uma entrada ou uma saída.
 
 **CTA:** Ver como funciona
 
@@ -26,7 +26,7 @@
 
 **Apoio:** Importe o arquivo CSV ou OFX, confira os lançamentos e escolha a categoria dos que ficarem sem uma.
 
-**Legenda:** Confira os lançamentos antes de importar. Arquivo de exemplo com oito lançamentos fictícios.
+**Legenda:** Confira os lançamentos antes de importar.
 
 **CTA:** Conhecer o Grana.
 
@@ -36,7 +36,7 @@
 
 **Apoio:** Veja as contas que vencem neste mês e marque cada uma como paga depois do pagamento.
 
-**Legenda:** A conta passa a ser uma saída no saldo quando é marcada como paga. Contas de exemplo.
+**Legenda:** A conta passa a ser uma saída no saldo quando é marcada como paga.
 
 **CTA:** Ver os planos
 
@@ -48,7 +48,7 @@
 
 **Apoio (celular):** As compras no crédito e a fatura de cada cartão, no navegador do seu celular.
 
-**Legenda:** Acompanhe as compras e a fatura de cada cartão. Telas com dados de exemplo.
+**Legenda:** Acompanhe as compras e a fatura de cada cartão.
 
 **CTA:** Conhecer o Grana.
 
@@ -58,7 +58,7 @@
 
 **Apoio:** Pergunte ao Granabô sobre os gastos do mês. Ele consulta os lançamentos registrados no Grana. para responder.
 
-**Legenda:** As respostas usam os lançamentos registrados no Grana. Confira sempre os valores. A demonstração usa dados de exemplo.
+**Legenda:** As respostas usam os lançamentos registrados no Grana. Confira sempre os valores.
 
 **CTA:** Conhecer o Granabô
 
@@ -78,7 +78,7 @@
 
 **Apoio:** No Android, o widget de voz permite registrar o gasto sem abrir o aplicativo. Quando algo não fica claro, o Grana. pede a confirmação antes de salvar.
 
-**Legenda:** O widget de voz está disponível no aplicativo de Android. Demonstração com dados de exemplo.
+**Legenda:** O widget de voz está disponível no aplicativo de Android.
 
 **CTA:** Ver os planos
 
@@ -88,7 +88,7 @@
 
 **Apoio:** No Android, o widget tem atalhos para entrada, Débito e Pix, crédito e boleto. Toque na opção para abrir o formulário correspondente.
 
-**Legenda:** Widgets disponíveis no aplicativo de Android. Demonstração com dados de exemplo.
+**Legenda:** Widgets disponíveis no aplicativo de Android.
 
 **CTA:** Conhecer o Grana.
 
@@ -98,7 +98,7 @@
 
 **Apoio:** No aplicativo de Android, fotografe a nota fiscal para o Grana. ler o total. Confira o valor antes de salvar.
 
-**Legenda:** Se o total não for identificado, informe o valor. Confira sempre antes de salvar. Demonstração com nota de exemplo.
+**Legenda:** Se o total não for identificado, informe o valor. Confira sempre antes de salvar.
 
 **CTA:** Conhecer o Grana.
 
@@ -169,7 +169,7 @@ terminar, contando hoje.
 
 **Fechamento:** Conheça o Grana.
 
-**Legenda:** Compra pequena, daquelas de farmácia ou mercado, costuma ficar sem registro porque o cupom vai para o fundo da sacola. O truque do vídeo é lançar na hora e já ver o efeito no dia: o Livre para gastar considera o que você registrou e o que guardou nos cofrinhos e divide o resto pelos dias que faltam. Salve para lembrar de lançar o próximo cupom. Telas com dados de exemplo. Link na bio.
+**Legenda:** Compra pequena, daquelas de farmácia ou mercado, costuma ficar sem registro porque o cupom vai para o fundo da sacola. O truque do vídeo é lançar na hora e já ver o efeito no dia: o Livre para gastar considera o que você registrou e o que guardou nos cofrinhos e divide o resto pelos dias que faltam. Salve para lembrar de lançar o próximo cupom. Link na bio.
 
 **Sobreposição durante as capturas do app, de 5 a 17 s:** Demonstração com
 dados fictícios. Posicionar fora da interface, sem cobrir controles.

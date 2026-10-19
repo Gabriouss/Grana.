@@ -31,7 +31,7 @@ Fontes: `E:/Grana-temporarios/2026-10-08-painel/relatorio-compass-frente-c-ciclo
 
 1. O painel confirma recebimento somente depois da gravação na fila privada. Só após autorização da ponte e recibo de estado `ativo`, usar fixture controlada. Se a ponte remota estiver ausente, com erro ou sem sincronização recente, mostrar isso; não dizer que o pedido chegou ao outro dispositivo.
 2. O vigia reclama um pedido por vez, consulta o texto original pela ferramenta específica e confere o SHA1 antes de editar. Se a versão mudou, marca `desatualizado` e para.
-3. Correção gratuita segue as regras de criativo 23 e 25. Celular e notebook inteiros dentro da margem, logotipo oficial em gradiente e aviso de dado fictício somente na legenda. ElevenLabs exige autorização nova do autor antes de cada geração, com custo estimado em créditos e dólares.
+3. Correção gratuita segue as regras de criativo 23 e 25. Celular e notebook inteiros dentro da margem, logotipo oficial em gradiente e nenhum aviso de dado fictício, nem na arte nem na legenda (autor, 19/10/2026). ElevenLabs exige autorização nova do autor antes de cada geração, com custo estimado em créditos e dólares.
 4. Ao concluir, calcular SHA1, comparar visualmente e deixar a versão em `para-aprovacao`. Registrar o recibo datado no `INDICE.md` semanal. Não inserir a versão em `aprovacoes[]`, não inventar campo `estado` e não mover para `aprovados` sem o aceite exato do autor.
 5. O agente confirma o resultado depois do commit publicado e da verificação do caminho. O sistema aceita somente a versão corrigida indicada. Em um pedido novo, criar novo ID e preservar a solicitação anterior.
 
