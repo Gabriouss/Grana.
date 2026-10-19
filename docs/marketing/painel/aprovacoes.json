@@ -442,6 +442,23 @@
         }
       ],
       "indice": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/INDICE.md"
+    },
+    {
+      "id": "a8163352aef99dbe",
+      "caminho": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/aprovados/pecas/reels/Já desistiu de controlar seus gastos.mp4",
+      "versao": "669f8e98bef2b267279b1fca6d4b8876a9cb2deb",
+      "aprovadoEm": "2026-10-19T10:21:27-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "vídeo, capa e legenda desta versão (aceite composto)",
+      "composicao": {
+        "video": [
+          "1d28de9a3bca5c4a7db009ef74aa50b1e976032b"
+        ],
+        "capa": "39505dcd9db5eaa082c5e8aa0d12ed1597509d9b",
+        "capaPecaId": "9194a5418231c082",
+        "legenda": "incluida"
+      },
+      "indice": "docs/marketing/2026-09/semana-39-2026-09-21-a-2026-09-27/INDICE.md"
     }
   ],
   "ajustes": [

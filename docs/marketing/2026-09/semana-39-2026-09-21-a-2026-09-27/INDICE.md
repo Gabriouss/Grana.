@@ -85,3 +85,4 @@ Correção pronta, aguardando aceite do autor. Os quatro pedidos de 07/10 sobre 
 
 <!-- recusa:f6b00dd471f9d619:c6002578ff1c1f3f74ab95645910db15d84648f8 -->
 - Recusa do autor em 2026-10-17T21:15:42-03:00: [peca em historico](historico/pecas/reels/grana-r5-colar-pix-v6-capa.png). Motivo registrado no painel; nada publicado ou agendado.
+- 19/10/2026 10:21 (-03:00): aceite pelo autor no painel local. Peça `aprovados/pecas/reels/Já desistiu de controlar seus gastos.mp4`, versão `669f8e98bef2`. Registro em `docs/marketing/painel/aprovacoes.json`. Publicação pede passo próprio.
