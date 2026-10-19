@@ -10,5 +10,5 @@
 - Write captions that differ from the creative's copy; captions should only contextualize what the creative says, never repeat it.
 - In the GranaPonto admin panel, approving an item should automatically move it to the approved list, with no separate manual move step.
 - Keep the mobile web layout identical to the native app: the Granabô mascot stays in the bottom bar on phone web, floating only on tablets and desktop.
-- Do not modify the carousel POST scheduling route; it was verified as successful and must stay untouched.
+- The carousel POST scheduling route (panel → RPC → executor v4 → Graph, carousel v9 on 19/10) is the proven reference: plan improvements are allowed, but they must keep that path working, backed by a regression test of it and a ready rollback to v4.
 <!-- end claude-reflect -->

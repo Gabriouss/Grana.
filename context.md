@@ -119,6 +119,17 @@ O histórico e a evidência da exposição permanecem na seção datada de 16/09
 - **Próximo gate:** [ ] receber `relatorio-anvil-triagem-wip-v2.md`, `relatorio-forge-test-marketing-real.md` e relatório do Vigil; [ ] consolidar os quatro relatórios, atualizar a nota de sessão no vault e rodar `scripts/verificar-vault.mjs`; [ ] conferir no painel autenticado o estado Publicado e os destinos. Relatório recebido não equivale a QA visual nem a deploy concluído.
 
 ---
+# 19/10/2026 (M1, Ledger): decisão posterior do autor — rota v9 como referência para melhorias
+
+Fato novo comunicado pelo Orquestrador: a alteração posterior de `CLAUDE.md` foi feita por ele, por ordem do autor às ~10h. Fonte conferida: adendo “Trava do autor (19/10, ~10h): a rota do v9 é a referência” ao fim de `E:/Grana-temporarios/2026-10-19-agendamento-meta/00-ordem-geral.md`. O autor autorizou aprimorar o caminho que publicou o v9. Esta decisão supera o congelamento da rota registrado em `c5a9a21` a partir daquele momento; o registro anterior permanece histórico, sem correção retroativa.
+
+- **Melhorias v2 liberadas, com regressão protegida:** primeira entrega, antes das demais mudanças, é o teste do caminho atual: cinco PNGs convertidos em JPEG, Instagram + Facebook, prévia → confirmação → executor até `publicado`, Graph simulada. Deve passar no código atual e continuar verde a cada mudança; proibido afrouxar asserções para acomodar implementação nova. A autorização não comprova que esse teste já foi entregue.
+- **Compatibilidade:** manter leitura de `e5.real.v1` enquanto houver jobs criados por ele, inclusive lote `e1206cca`, previsto para 20/10 às 11h30Z (08h30 BRT).
+- **Retorno pronto:** preservar ESZIP v4 em `E:/Grana-temporarios/2026-10-18-producao/` e fonte de `6ad786a`; Ledger não revalidou o backup nesta etapa.
+- **Produção continua condicionada:** deploy e migration só com ok do autor na hora, após revisão Lynx. Deploy a partir de cópia limpa do commit (`git archive` + `--workdir`), nunca da árvore com WIP. Não houve ação de produção por Ledger.
+- **Consolidação documental:** incluir a alteração do Orquestrador em `CLAUDE.md` sem editar sua redação, junto deste fato novo; sem push. `65d66e2` já entrou no histórico local com assunto de testes/CI, mas os relatórios finais de Anvil/Forge/Vigil ainda não estavam na pasta ao registrar esta decisão; não declarar a etapa 5 encerrada nem gates aprovados pelo assunto do commit.
+
+---
 # 18/10/2026 (M1, Ledger): contrato da prévia pelo calendário admin — focal verificado, operação pendente
 
 > Atualização documental de 19/10: a correção Forge foi incorporada em `99bfd80` (18/10 às 23h55 BRT), com os dois arquivos descritos abaixo; o commit já está em `origin/main`. As frases sobre aguardar sinal/commit e a checklist operacional são o estado histórico de 18/10, não novas instruções. O recibo posterior de publicação do lote `db37d937` está na seção pós-9h acima; não comprova que Ledger executou cada passo daquela checklist.
