@@ -348,14 +348,21 @@ export async function montar(raiz, ctx) {
     if (encerrada || ctx.obsoleta() || minha !== geracao) return;
     const resumo = resumirOperacaoCalendario([...acumulados.values()]);
     const completa = leituraRealCompleta(camada, dados?.reais);
+    // Peça do job fora do mês carregado: busca pelo id (sem a versão) e, se faltar, carrega; sem nome nenhum, não inventa "Peça".
+    const conhecidasPeca = [...(dados.itens || []).map((i) => i.peca), ...(dados.aprovadosSemData || []), ...pecasPublicadas];
+    const doJob = (j) => conhecidasPeca.find((p) => identidade(p) === identidade(j.peca)) || conhecidasPeca.find((p) => (p?.pecaId || p?.id) === (j.peca?.pecaId || j.peca?.id));
+    const extras = new Map();
+    await Promise.all([...resumo.proximas.slice(0, 5), ...resumo.atencao.slice(0, 5)].filter((j) => !doJob(j) && j.peca).map(async (j) => {
+      try { const p = await carregarPeca(j.peca.pecaId || j.peca.id, j.peca.versao); if (p) extras.set(identidade(j.peca), p); } catch { /* sem nome: cai no texto genérico */ }
+    }));
+    if (encerrada || ctx.obsoleta() || minha !== geracao) return;
     const blocoResumo = (titulo, lista) => h('section', { class: 'cal-operacao-secao' },
       h('h2', { class: 'secao-titulo', texto: titulo }),
       h('p', { class: 'campo-ajuda', texto: 'Neste mês · um resultado por rede.' }),
       lista.length ? h('ul', { class: 'cal-operacao-lista' }, lista.slice(0, 5).map((j) => {
         const d = descreverJobReal(j);
-        const p = [...(dados.itens || []).map((i) => i.peca), ...(dados.aprovadosSemData || [])]
-          .find((p) => identidade(p) === identidade(j.peca));
-        return h('li', null, h('strong', { texto: `${nomeDaPeca(p) || 'Publicação'} · ${d.rede}` }),
+        const p = doJob(j) || extras.get(identidade(j.peca));
+        return h('li', null, h('strong', { texto: `${p ? nomeDaPeca(p) : 'Publicação sem título'} · ${d.rede}` }),
           h('span', { texto: d.texto }),
           d.motivo ? h('p', { class: 'campo-ajuda', texto: d.motivo }) : null,
           d.acao ? h('p', { class: 'campo-ajuda', texto: d.acao }) : null,
