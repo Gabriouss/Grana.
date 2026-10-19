@@ -5,7 +5,11 @@ import {
   API_PUBLICACOES, FORMATOS_PUBLICACAO, FUSO_PUBLICACAO, ROTULOS_ESTADO,
   capacidadeDaConta, caminhoMidia, criarClientePublicacoes, horarioLocalParaUtc,
   horarioUtcParaLocal, previaConfirmavel, resumirLote, rotuloDataHorario,
+  antecedenciaMinima, conferirHorario, sugestaoHorario, mensagemHumana, fraseDoMotivo, descreverJobReal, jobAtivo, quandoCurto,
 } from './_publicacoes-reais.js';
+
+// Enquanto houver job ativo e a aba estiver visível, o estado real é relido neste intervalo.
+export const INTERVALO_VIGIA_MS = 30000;
 
 const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
 
@@ -33,6 +37,9 @@ export async function montarReal(raiz, ctx, integracao = null) {
   let ocupado = false;
   let encerrada = false;
   let pendencia = null;
+  let relogioPrevia = null;
+  let relogioFila = null;
+  const estadosVistos = new Map();
   const controladores = new Set();
   // Uma chave por INTENÇÃO, não por clique: depois de timeout ou perda de resposta o mesmo
   // pedido reutiliza a chave (achado C3). Só sai daqui quando o resultado é definitivo.
@@ -69,18 +76,17 @@ export async function montarReal(raiz, ctx, integracao = null) {
     'data-operacao': opcoes.operacao === false ? undefined : 'true',
   });
 
-  function avisar(texto, erro = false) {
-    recibo.textContent = texto;
-    recibo.setAttribute('role', erro ? 'alert' : 'status');
-    reciboPainel.textContent = texto;
-    reciboPainel.setAttribute('role', erro ? 'alert' : 'status');
+  // A frase vem primeiro; o código, quando houver, fica pequeno e depois (útil para o suporte).
+  function avisar(texto, erro = false, codigo = null) {
+    for (const el of [recibo, reciboPainel]) {
+      el.replaceChildren(texto, ...(codigo ? [' ', h('small', { class: 'pub-real-codigo', texto: `Código: ${codigo}` })] : []));
+      el.setAttribute('role', erro ? 'alert' : 'status');
+    }
   }
 
   function erroLegivel(err, acao = 'A operação') {
-    const codigo = /^[a-z0-9-]{1,64}$/i.test(err?.codigo || '') ? err.codigo : 'resposta-invalida';
-    const status = err?.status ? `HTTP ${err.status}` : 'sem resposta válida';
-    const detalheErro = typeof err?.message === 'string' ? err.message : 'Atualize para conferir o estado.';
-    avisar(`${acao} não confirmada · ${status} · ${codigo}. ${detalheErro}`, true);
+    const { frase, codigo } = mensagemHumana(err);
+    avisar(`${acao} não foi concluída. ${frase}`, true, codigo);
   }
 
   function busy(valor) {
@@ -90,6 +96,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
   }
 
   function liberarPreview() {
+    clearInterval(relogioPrevia); relogioPrevia = null;
     for (const url of previewBlobs) URL.revokeObjectURL(url);
     previewBlobs = [];
     previa = null;
@@ -117,19 +124,27 @@ export async function montarReal(raiz, ctx, integracao = null) {
   function contaPorId(id, rede) { return capacidades?.contas.find((c) => c.contaId === id && c.rede === rede) || null; }
   function nomeDestino(d) { return contaPorId(d?.contaId, d?.rede)?.rotulo || `${REDES[d?.rede] || 'Conta'} indisponível`; }
 
+  // Horário bom = existe no fuso, está no futuro e deixa tempo para o executor preparar (R7).
+  const minimoAtual = () => antecedenciaMinima(destinosSelecionados(), pecaSelecionada());
+  function horarioConferido(valorLocal) {
+    let utc;
+    try { utc = horarioLocalParaUtc(valorLocal); } catch (err) { return { ok: false, texto: valorLocal ? err.message : 'Escolha a data e a hora da publicação.' }; }
+    return conferirHorario(utc, minimoAtual());
+  }
+  function horarioInicial(data) {
+    const editorial = /^\d{4}-\d{2}-\d{2}$/.test(data || '') ? `${data}T09:00` : '';
+    return editorial && horarioConferido(editorial).ok ? editorial : sugestaoHorario(minimoAtual());
+  }
+
   function atualizarResumoHorario() {
     const input = compositor.querySelector('[name="agendarParaLocal"]');
     const saida = compositor.querySelector('.pub-real-horario-resumo');
     const acaoPrevia = compositor.querySelector('[data-acao-previa]');
     if (!input || !saida) return;
-    try {
-      const utc = horarioLocalParaUtc(input.value);
-      saida.textContent = `${rotuloDataHorario(utc)} · fuso fixo ${FUSO_PUBLICACAO}`;
-      saida.dataset.valido = 'true';
-    } catch (err) {
-      saida.textContent = err.message || `Informe a hora no fuso ${FUSO_PUBLICACAO}.`;
-      saida.dataset.valido = 'false';
-    }
+    const r = horarioConferido(input.value);
+    saida.textContent = r.texto;
+    saida.dataset.valido = String(r.ok);
+    saida.setAttribute('role', r.ok ? 'status' : 'alert');
     if (acaoPrevia) acaoPrevia.disabled = ocupado || !pecaSelecionada() || !destinosSelecionados().length || saida.dataset.valido !== 'true';
   }
 
@@ -188,7 +203,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     });
 
     const anterior = compositor.querySelector('.pub-real-compositor-conteudo');
-    const valorHorario = anterior?.querySelector('[name="agendarParaLocal"]')?.value || '';
+    const valorHorario = anterior?.querySelector('[name="agendarParaLocal"]')?.value || horarioInicial('');
     const hora = h('input', { type: 'datetime-local', name: 'agendarParaLocal', required: true, value: valorHorario,
       'aria-describedby': 'pub-real-fuso-ajuda pub-real-horario-resumo', onchange: () => { liberarPreview(); atualizarResumoHorario(); }, oninput: atualizarResumoHorario });
     const resumoHora = h('p', { class: 'pub-real-horario-resumo', id: 'pub-real-horario-resumo', role: 'status', 'aria-live': 'polite' });
@@ -198,6 +213,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     compositor.replaceChildren(
       h('h2', { class: 'secao-titulo', id: 'pub-real-compor-titulo', texto: 'Preparar publicação' }),
       h('p', { class: 'pub-real-aviso', texto: 'Escolha onde e quando publicar. Depois, confira as imagens e a legenda antes de confirmar o agendamento.' }),
+      estadoDaPausa(),
       h('div', { class: 'pub-real-compositor-conteudo' },
         h('fieldset', { class: 'pub-real-selecao' }, h('legend', { texto: '1 · Peça aprovada vigente' }), cardsPecas),
         h('fieldset', { class: 'pub-real-selecao' }, h('legend', { texto: '2 · Contas e formatos disponíveis' }),
@@ -212,6 +228,22 @@ export async function montarReal(raiz, ctx, integracao = null) {
         h('span', { class: 'campo-ajuda', texto: 'A data editorial é uma sugestão. Revise horário e destinos antes de gerar a prévia.' })));
     hora.id = 'pub-real-agendar-para';
     atualizarResumoHorario();
+  }
+
+  // Pausa visível ANTES da prévia (não só depois do erro), com Retomar ali mesmo.
+  function estadoDaPausa() {
+    const c = capacidades.controles;
+    const ligadas = [
+      c.pausaGlobal ? ['global', null, 'Pausa geral', c.revisao] : null,
+      c.pausaInstagram ? ['instagram', null, 'Pausa do Instagram', c.revisao] : null,
+      c.pausaFacebook ? ['facebook', null, 'Pausa do Facebook', c.revisao] : null,
+      ...capacidades.contas.filter((a) => a.pausada).map((a) => ['conta', a.contaId, `Pausa da conta ${a.rotulo}`, a.revisao]),
+    ].filter(Boolean);
+    if (!ligadas.length) return h('p', { class: 'pub-real-pausa-estado campo-ajuda', role: 'status', texto: 'Publicação ativa: nenhuma pausa ligada.' });
+    return h('div', { class: 'alerta alerta-atencao pub-real-pausa-estado', role: 'alert' },
+      h('p', { texto: `${ligadas.map((l) => l[2]).join(', ')} ${ligadas.length === 1 ? 'está ligada' : 'estão ligadas'}: nada é preparado nem publicado enquanto houver pausa. Retome para agendar.` }),
+      h('div', { class: 'bloco-acao' }, ligadas.map(([escopo, contaId, rotulo, revisao]) =>
+        botao(`Retomar ${rotulo.replace(/^Pausa (d[aoe] )?/, '').replace(/^geral$/, 'tudo')}`, () => mudarPausa(escopo, contaId, true, revisao, rotulo), { disabled: !c.habilitado }))));
   }
 
   async function atualizarTudo() {
@@ -231,6 +263,8 @@ export async function montarReal(raiz, ctx, integracao = null) {
       pagina = page1;
       pilhaCursor = [];
       jobs = page1.jobs;
+      notarMudancas(jobs);
+      vigiar();
       const validos = new Set(catalogo.pecas.map((p) => p.id));
       if (!validos.has(selecaoPeca)) selecaoPeca = catalogo.pecas[0]?.id || '';
       selecaoDestinos = new Set([...selecaoDestinos].filter((key) => {
@@ -377,8 +411,13 @@ export async function montarReal(raiz, ctx, integracao = null) {
           h('h3', { texto: nome }), h('p', { texto: `${FORMATOS[job.destino.formato]} · ${resumoHora}` })),
         h('strong', { class: 'pub-real-estado', texto: ROTULOS_ESTADO[job.estado] || 'Estado não reconhecido' })),
       h('p', { class: 'pub-real-parcial', texto: resumo.parcial ? `${resumo.rotulo} · lote ${resumo.total} destinos` : `${resumo.rotulo} · 1 destino` }),
-      h('p', { class: 'pub-real-atualizado', texto: `Atualizado ${job.atualizadoEm} · revisão ${job.revisao}` }),
-      job.codigoErro ? h('p', { class: 'pub-real-erro', role: 'alert', texto: `Código de erro: ${job.codigoErro}` }) : null,
+      h('p', { class: 'pub-real-atualizado', texto: `Atualizado ${quandoCurto(Date.parse(job.atualizadoEm))} · revisão ${job.revisao}` }),
+      (() => {
+        const d = descreverJobReal(job);
+        const frase = [d.atencao ? `${d.texto}.` : null, d.motivo, d.atencao ? d.acao : null].filter(Boolean).join(' ');
+        return frase || job.codigoErro ? h('p', { class: d.atencao ? 'pub-real-erro' : 'campo-ajuda', role: d.atencao ? 'alert' : null },
+          frase || 'A rede informou um código.', job.codigoErro ? [' ', h('small', { class: 'pub-real-codigo', texto: `Código: ${job.codigoErro}` })] : null) : null;
+      })(),
       job.estado === 'publicado' ? h('p', { class: 'pub-real-publicado', texto: job.remotoId ? `Publicado · ID confirmado ${job.remotoId}` : 'Publicado segundo o recibo remoto.' }) : null,
       linkSeguro(job.permalink) ? h('a', { class: 'botao botao-fantasma', href: linkSeguro(job.permalink), target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação confirmada' }) : null,
       job.estado === 'publicado' && !linkSeguro(job.permalink) ? h('p', { class: 'campo-ajuda', texto: 'O link da publicação não está disponível nesta fonte. Consulte o ID e o recibo.' }) : null,
@@ -392,6 +431,9 @@ export async function montarReal(raiz, ctx, integracao = null) {
     const destinos = destinosSelecionados();
     const input = compositor.querySelector('[name="agendarParaLocal"]');
     if (!peca || !destinos.length || !input?.value || ocupado) return;
+    // O relógio anda: o horário é conferido de novo no clique, não só quando foi digitado.
+    const horario = horarioConferido(input.value);
+    if (!horario.ok) { atualizarResumoHorario(); avisar(horario.texto, true); return; }
     liberarPreview();
     busy(true);
     avisar('Validando aceite, mídia, destinos e horário no servidor…');
@@ -481,13 +523,14 @@ export async function montarReal(raiz, ctx, integracao = null) {
         h('div', { class: 'pub-real-previa-corpo' }, media,
           h('div', { class: 'feed-legenda' }, h('b', { texto: conta?.rotulo || 'grana.' }), h('p', { class: 'pub-real-legenda', texto: p.snapshot.legenda }))),
         retorno?.estado === 'pronto' ? h('p', { class: 'pub-real-pronto', texto: 'Este destino passou pela validação.' })
-          : h('p', { class: 'pub-real-erro', role: 'alert', texto: `Destino bloqueado: ${motivos(retorno?.motivos || ['estado-nao-pronto'])}` }));
+          : h('p', { class: 'pub-real-erro', role: 'alert', texto: `Este destino não pode ser agendado: ${motivos(retorno?.motivos || ['estado-nao-pronto'])}` }));
     });
     const coerente = p.snapshot?.pecaId === peca?.id && p.snapshot?.versao === peca?.versao
       && p.destinos?.length === alvos.length && p.destinos.every((d, i) => d.contaId === alvos[i].contaId && d.rede === alvos[i].rede && d.formato === alvos[i].formato);
     const botaoConfirmar = h('button', { class: 'botao botao-primario', type: 'button', 'data-operacao': true,
       texto: 'Confirmar agendamento real', disabled: true, 'data-bloqueado': 'true',
       'aria-describedby': 'pub-real-bloqueio-confirmacao', onclick: () => confirmarPrevia(p) });
+    const prazo = h('div', { class: 'pub-real-prazo', 'aria-live': 'polite' });
     previaElRevisao(p, detalhePrevia);
     previewEl.hidden = false;
     previewEl.replaceChildren(
@@ -495,7 +538,8 @@ export async function montarReal(raiz, ctx, integracao = null) {
       h('p', { class: 'pub-real-aviso', texto: 'Confira como a publicação deve aparecer em cada rede. Revise as imagens, a ordem e a legenda antes de confirmar.' }),
       h('p', { class: 'pub-real-versao', texto: `${peca?.titulo || 'Peça'} · versão aprovada` }),
       h('div', { class: 'pub-real-previews' }, cards),
-      ...(motivo.length ? [h('div', { class: 'alerta alerta-atencao', role: 'alert' }, h('strong', { texto: 'Prévia bloqueada' }), h('ul', null, motivo.map((m) => h('li', { texto: m }))))] : []),
+      ...(motivo.length ? [h('div', { class: 'alerta alerta-atencao', role: 'alert' }, h('strong', { texto: 'Esta prévia não pode ser confirmada' }),
+        h('ul', null, [...new Set(motivo)].map((m) => h('li', null, motivos([m]), ' ', h('small', { class: 'pub-real-codigo', texto: `Código: ${typeof m === 'string' ? m : m?.codigo || 'sem-codigo'}` })))))] : []),
       ...(coerente ? [] : [h('p', { class: 'pub-real-erro', role: 'alert', texto: 'A resposta não corresponde a todos os destinos e versões escolhidos. Atualize a lista antes de confirmar.' })]),
       h('div', { class: 'pub-real-confirmacao-resumo' },
         h('h3', { texto: 'Resumo exato da autorização' }),
@@ -505,8 +549,27 @@ export async function montarReal(raiz, ctx, integracao = null) {
         disabled: !coerente || !previaConfirmavel(p), onchange: (e) => { previaVistas = e.target.checked; atualizarBotaoConfirmar(); } }),
         'Revisei a mídia, a legenda e cada destino acima.'),
       h('p', { id: 'pub-real-bloqueio-confirmacao', class: 'campo-ajuda', texto: 'A confirmação só libera quando a prévia estiver válida, vigente e todos os destinos estiverem revisados.' }),
+      prazo,
       botaoConfirmar);
     previewEl.querySelector('h2').focus();
+    // R6: a prévia vale 10 min no servidor. Contagem visível; vencida, Confirmar trava e "Gerar outra prévia"
+    // refaz com a mesma seleção e horário.
+    const expira = Date.parse(p.expiraEm || '');
+    function tique() {
+      const restante = expira - Date.now();
+      if (Number.isFinite(restante) && restante > 0) {
+        const min = Math.ceil(restante / 60000);
+        prazo.replaceChildren(h('span', { texto: min <= 1 ? 'A prévia vale por menos de 1 minuto.' : `A prévia vale por mais ${min} min.` }));
+        return;
+      }
+      clearInterval(relogioPrevia); relogioPrevia = null;
+      prazo.replaceChildren(h('span', { role: 'alert', texto: 'A prévia venceu. Gere outra para confirmar; a seleção e o horário continuam os mesmos.' }),
+        botao('Gerar outra prévia', () => gerarPrevia(), { primario: true }));
+      atualizarBotaoConfirmar();
+      previewEl.querySelector('[name="confirmacaoVisual"]')?.setAttribute('disabled', '');
+    }
+    tique();
+    relogioPrevia = setInterval(tique, 5000);
     // data-bloqueado sobrevive ao busy(false), que reabilita os demais botões de operação.
     function atualizarBotaoConfirmar() {
       const bloqueado = !coerente || !previaConfirmavel(p) || !previaVistas;
@@ -522,9 +585,11 @@ export async function montarReal(raiz, ctx, integracao = null) {
 
   function desenharErroPrevia(err) {
     previewEl.hidden = false;
-    previewEl.replaceChildren(h('h2', { class: 'secao-titulo', texto: 'Prévia real indisponível' }),
-      h('p', { class: 'pub-real-erro', role: 'alert', texto: `${err?.codigo || 'prévia-inválida'} · ${err?.message || 'Não foi possível verificar mídia, legenda e versão.'}` }),
-      h('p', { class: 'campo-ajuda', texto: 'Confirmação bloqueada. Gere outra prévia após corrigir a fonte ou a conexão.' }));
+    const { frase, codigo } = mensagemHumana(err);
+    previewEl.replaceChildren(h('h2', { class: 'secao-titulo', texto: 'Não foi possível gerar a prévia' }),
+      h('p', { class: 'pub-real-erro', role: 'alert' }, frase, ' ', h('small', { class: 'pub-real-codigo', texto: `Código: ${codigo}` })),
+      h('p', { class: 'campo-ajuda', texto: 'Nada foi agendado. Depois de resolver, gere a prévia de novo.' }),
+      botao('Gerar outra prévia', () => gerarPrevia(), { primario: true }));
   }
 
   async function confirmarPrevia(p) {
@@ -533,10 +598,10 @@ export async function montarReal(raiz, ctx, integracao = null) {
     const { k: chaveIntencao, idempotencia } = chaveDe('confirmar', p.previaId, p.previaHash, p.revisao);
     const data = p.destinos?.[0]?.publicarEm || p.agendarPara;
     const sumario = [
-      `Peça: ${pecaSelecionada()?.titulo || 'indisponível'} · versão ${p.snapshot.versao}`,
+      `Peça: ${pecaSelecionada()?.titulo || 'indisponível'} · versão aprovada`,
       ...destinos.map((d) => `${nomeDestino(d)} · ${REDES[d.rede]} · ${FORMATOS[d.formato]}`),
-      `Agendado para: ${rotuloDataHorario(data)} · todos os destinos serão autorizados de forma independente.`,
-      `Revisão da prévia: ${p.revisao} · expira: ${p.expiraEm}`,
+      `Publica ${quandoCurto(Date.parse(data))}. Cada destino segue independente: se um falhar, o outro continua.`,
+      `A prévia vale até ${quandoCurto(Date.parse(p.expiraEm)).replace(/^às /, '')}.`,
     ];
     const ok = await ctx.confirmar({ titulo: 'Confirmar publicação real?',
       texto: 'Esta confirmação cria um job para cada destino e autoriza execução futura. Ações reais exigem MFA local recente e validação do servidor.',
@@ -550,10 +615,17 @@ export async function montarReal(raiz, ctx, integracao = null) {
       pendencia = null;
       intencoes.delete(chaveIntencao);
       liberarPreview();
-      const resumo = resumirLote(lote.jobs);
-      avisar(`${resumo.rotulo} · ${resumo.total} ${resumo.total === 1 ? 'destino recebido' : 'destinos recebidos'} · lote ${lote.loteId}.`);
+      // R9: fecha a janela, diz em uma linha o que foi agendado e leva ao mês da publicação no Calendário.
+      const redes = [...new Set(destinos.map((d) => REDES[d.rede]))].join(' e ');
+      const texto = `Agendado: ${redes}, ${quandoCurto(Date.parse(data)).replace(/^às /, 'hoje às ')}. Acompanhe o andamento no Calendário.`;
+      avisar(texto);
+      ctx.aviso?.(texto, 'ok');
+      estadosVistos.clear(); for (const j of lote.jobs) estadosVistos.set(j.jobId, j.estado);
+      compositor.closest?.('dialog')?.close?.();
+      const mesAlvo = horarioUtcParaLocal(data).slice(0, 7);
+      if (integracao && ctx.params?.mes && ctx.params.mes !== mesAlvo) ctx.navegar?.(`#/marketing/calendario?mes=${mesAlvo}`);
       await atualizarFilaSemBloquear();
-      recibo.focus();
+      recibo.focus?.();
     } catch (err) {
       if (encerrada || ctx.obsoleta()) return;
       if (resultadoIncerto(err)) {
@@ -687,8 +759,38 @@ export async function montarReal(raiz, ctx, integracao = null) {
       if (encerrada || ctx.obsoleta()) return;
       pagina = novo; jobs = novo.jobs; pilhaCursor = [];
       desenharLista();
+      notarMudancas(jobs);
     } catch (err) { if (!encerrada && !ctx.obsoleta()) erroLegivel(err, 'A atualização da fila após a ação'); }
+    finally { vigiar(); }
   }
+
+  // R9: o autor acompanha o job sem recarregar. A primeira leitura só registra; mudanças depois
+  // viram aviso. Estado de atenção traz motivo e ação, e nunca sugere repetir o envio.
+  function notarMudancas(lista) {
+    for (const j of lista || []) {
+      const antes = estadosVistos.get(j.jobId);
+      estadosVistos.set(j.jobId, j.estado);
+      if (!antes || antes === j.estado) continue;
+      const d = descreverJobReal(j);
+      if (j.estado === 'publicado') ctx.aviso?.(`${d.rede}: publicado.${d.link ? '' : ` ${d.acao}`}`, 'ok');
+      else if (d.atencao) ctx.aviso?.(`${d.rede}: ${d.texto}. ${[d.motivo, d.acao].filter(Boolean).join(' ')}`, 'erro');
+    }
+  }
+  function vigiar() {
+    clearTimeout(relogioFila); relogioFila = null;
+    if (encerrada || !jobs.some(jobAtivo) || globalThis.document?.visibilityState === 'hidden') return;
+    relogioFila = setTimeout(async () => {
+      relogioFila = null;
+      if (encerrada || ctx.obsoleta()) return;
+      if (ocupado) { vigiar(); return; }
+      await atualizarFilaSemBloquear();
+    }, INTERVALO_VIGIA_MS);
+  }
+  const aoMudarVisibilidade = () => {
+    if (globalThis.document?.visibilityState === 'hidden') { clearTimeout(relogioFila); relogioFila = null; }
+    else if (!encerrada && jobs.some(jobAtivo)) atualizarFilaSemBloquear();
+  };
+  globalThis.document?.addEventListener?.('visibilitychange', aoMudarVisibilidade);
 
   function motivos(itens) {
     if (!Array.isArray(itens) || !itens.length) return 'Motivo de bloqueio indisponível; não selecionar';
@@ -698,7 +800,8 @@ export async function montarReal(raiz, ctx, integracao = null) {
       'capacidade-nao-comprovada': 'Este formato ainda não foi verificado para esta conta.',
       'formato-nao-suportado': 'Este formato não está disponível nesta rede.',
     };
-    return itens.map((x) => typeof x === 'string' ? rotulos[x] || x : x?.mensagem || rotulos[x?.codigo] || x?.codigo || 'motivo não identificado').join(' · ');
+    const frase = (c) => rotulos[c] || fraseDoMotivo(c) || `Motivo informado pelo servidor: ${c}.`;
+    return itens.map((x) => typeof x === 'string' ? frase(x) : x?.mensagem || (x?.codigo ? frase(x.codigo) : 'motivo não identificado')).join(' · ');
   }
 
   function rotuloConexao(conexao, pausada) {
@@ -720,6 +823,8 @@ export async function montarReal(raiz, ctx, integracao = null) {
     encerrada = true;
     for (const controller of controladores) controller.abort();
     liberarPreview();
+    clearTimeout(relogioFila); relogioFila = null;
+    globalThis.document?.removeEventListener?.('visibilitychange', aoMudarVisibilidade);
   };
   const achar = (peca) => catalogo?.pecas.find((p) => p.id === peca.id && p.versao === peca.versao);
   // O catálogo é lido quando a tela monta. Um aceite dado depois, na mesma tela ("Aprovar esta versão",
@@ -744,7 +849,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     liberarPreview();
     desenharCompositor();
     const input = compositor.querySelector('[name="agendarParaLocal"]');
-    if (input) input.value = /^\d{4}-\d{2}-\d{2}$/.test(data || '') ? `${data}T09:00` : '';
+    if (input) input.value = horarioInicial(data);
     atualizarResumoHorario();
     return true;
   }

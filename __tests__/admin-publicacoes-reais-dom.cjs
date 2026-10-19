@@ -173,7 +173,9 @@ const job = (contaId, rede, estado, extra = {}) => ({
     await page.getByLabel('Facebook Grana. (Página), Feed').check();
     await page.locator('[name="agendarParaLocal"]').fill('2026-12-01T10:30');
     const resumo = await page.locator('.pub-real-horario-resumo').innerText();
-    ok(/America\/Sao_Paulo/.test(resumo) && /UTC/.test(resumo), `${width}px: horário mostra São Paulo e UTC (${resumo.slice(0, 60)}...)`);
+    // 19/10: o autor lê quando o Grana. começa a preparar e quando publica (horário de Brasília), sem ISO/UTC na cara.
+    ok(/começa a preparar em .*01\/12.*10:00 e publica em .*01\/12.*10:30/.test(resumo) && !/UTC|Z\b/.test(resumo), `${width}px: horário diz quando prepara e publica (${resumo.slice(0, 90)}...)`);
+    ok(await page.getByText('Use o horário de Brasília', { exact: false }).count() >= 1, `${width}px: fuso explicado ao autor`);
     await page.screenshot({ path: path.join(OUT, `real-compositor-${width}.png`), fullPage: true });
 
     await page.getByRole('button', { name: 'Gerar prévia dos destinos' }).click();
@@ -207,7 +209,10 @@ const job = (contaId, rede, estado, extra = {}) => ({
     ok(posts.filter((b) => b.acao === 'confirmar').length === 1, `${width}px: timeout não dispara reenvio automático`);
     await botaoConfirmar.click();
     await page.locator('dialog[open]').getByRole('button', { name: 'Autorizar agendamento real' }).click();
-    await page.waitForFunction(() => /destino\(s\) recebido|Parcial|Agendado/.test(document.querySelector('.publicacoes-recibo')?.textContent || ''), null, { timeout: 15000 });
+    // R9: fecha a janela, avisa "Agendado: Instagram e Facebook, ..." e leva ao mês da publicação (dezembro).
+    await page.waitForFunction(() => [...document.querySelectorAll('.avisos .aviso')].some((a) => /^Agendado: Instagram e Facebook, em .*01\/12.*10:30\. Acompanhe/.test(a.textContent)), null, { timeout: 15000 });
+    await page.waitForFunction(() => location.hash.includes('mes=2026-12'), null, { timeout: 15000 });
+    ok(await page.locator('.pub-real-compositor:visible').count() === 0, `${width}px: compositor fecha depois de confirmar`);
     const conf = posts.filter((b) => b.acao === 'confirmar');
     ok(conf.length === 2 && conf[0].idempotencia === conf[1].idempotencia && /^[0-9a-f-]{36}$/.test(conf[0].idempotencia),
       `${width}px: repetição após timeout reutiliza a mesma chave idempotente`);
