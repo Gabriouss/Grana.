@@ -3,6 +3,7 @@
 // Arrastar da coluna para o dia abre o mesmo formulário do botão "Escolher data".
 
 import { CANAIS, rotuloCanal, tituloPeca } from './_pecas.js';
+import { descreverJobReal } from './_publicacoes-reais.js';
 
 const DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 const maiuscula = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -15,7 +16,6 @@ const nomeCurto = (p) => nomeDaPeca(p).replace(SUFIXO_FORMATO, '');
 const formatoDoNome = (p) => SUFIXO_FORMATO.exec(nomeDaPeca(p))?.[1] || null;
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
-const ESTADO_REAL = { planejado: 'Planejado', 'programado-no-painel': 'Programado no painel', preparando: 'Preparando', 'agendado-na-meta': 'Agendado na Meta', publicado: 'Publicado', falhou: 'Falhou', cancelado: 'Cancelado', 'cancelamento-pendente': 'Cancelamento pendente', 'precisa-conferir': 'Precisa conferir', bloqueado: 'Bloqueado' };
 const identidade = (p) => JSON.stringify([p?.pecaId || p?.id, p?.versao]);
 export function diaReal(job) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(job?.dataPublicacaoMeta || '')) return job.dataPublicacaoMeta;
@@ -253,7 +253,9 @@ export async function montar(raiz, ctx) {
       ondragstart: (e) => { if (!movel) { e.preventDefault(); return; } e.dataTransfer.setData('text/x-grana-peca', i.peca.id); },
       ...abrirAoClicar(itemPrevia(i, pub)) },
     h('strong', { class: 'cal-item-titulo', title: nomeDaPeca(i.peca), texto: nomeCurto(i.peca) }),
-    h('span', { class: `cal-item-canal${!pub && !reais.length && i.peca.precisaAceite ? ' cal-item-atencao' : ''}`, texto: pub || reais.some((j) => j.estado === 'publicado') ? 'Publicado' : reais.length ? 'Agendado' : i.peca.precisaAceite ? 'Precisa de aceite' : [formatoDoNome(i.peca), 'Planejado'].filter(Boolean).join(' · ') }));
+    ...(reais.length
+      ? reais.map((j) => { const d = descreverJobReal(j); return h('span', { class: `cal-item-canal${d.atencao ? ' cal-item-atencao' : ''}`, texto: `${d.rede}: ${d.texto}` }); })
+      : [h('span', { class: `cal-item-canal${!pub && i.peca.precisaAceite ? ' cal-item-atencao' : ''}`, texto: pub ? 'Publicado' : i.peca.precisaAceite ? 'Precisa de aceite' : [formatoDoNome(i.peca), 'Planejado'].filter(Boolean).join(' · ') })]));
   }
   function cartao(i, planejar) {
     const reais = i.jobs || [], pub = pubDe(i);
@@ -267,13 +269,13 @@ export async function montar(raiz, ctx) {
         h('strong', { texto: `${ROTULO_REDE[p.rede] || p.rede} · ${ROTULO_FORMATO[p.formato] || 'Post'} · Publicado` }),
         h('span', { texto: `Publicado em ${ctx.formatar.data(p.data)}` }),
         linkPublicado(p.link) ? h('a', { href: linkPublicado(p.link), target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação' }) : null)),
-      ...reais.map((j) => h('div', { class: 'cal-unico-destino' },
-        h('strong', { texto: `${j.destino.rede} · ${j.destino.formato} · ${ESTADO_REAL[j.estado] || `Estado desconhecido: ${j.estado}`}` }),
+      ...reais.map((j) => { const d = descreverJobReal(j); return h('div', { class: `cal-unico-destino${d.atencao ? ' cal-item-atencao' : ''}` },
+        h('strong', { texto: `${d.rede}: ${d.texto}` }),
         h('span', { texto: j.dataPublicacaoMeta ? `Publicado em ${ctx.formatar.data(j.dataPublicacaoMeta)}` : new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }).format(new Date(j.destino.publicarEm)) + ' · São Paulo' }),
-        j.codigoErro ? h('span', { texto: `Motivo: ${j.codigoErro}` }) : null,
-        j.estado === 'publicado' ? linkPublicado(j.permalink) ? h('a', { href: linkPublicado(j.permalink), target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação' }) : h('span', { texto: 'O link da publicação não está disponível nesta fonte. Consulte o ID e o recibo.' }) : null,
-        h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Ver destino e recibos', onclick: () => { navegar({ visao: 'lista' }); } }))),
-      ...(i.historico || []).map((j) => h('span', { class: 'campo-ajuda', texto: `${j.destino.rede}: ${ESTADO_REAL[j.estado] || j.estado}${j.codigoErro ? ` · ${j.codigoErro}` : ''}. Histórico na lista.` })),
+        d.motivo ? h('span', { class: 'campo-ajuda', texto: d.motivo }) : null,
+        d.link && linkPublicado(d.link) ? h('a', { href: linkPublicado(d.link), target: '_blank', rel: 'noopener noreferrer', texto: d.linkRotulo }) : d.acao ? h('span', { class: 'campo-ajuda', texto: d.acao }) : null,
+        h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Ver destino e recibos', onclick: () => { navegar({ visao: 'lista' }); } })); }),
+      ...(i.historico || []).map((j) => h('span', { class: 'campo-ajuda', texto: `${descreverJobReal(j).rede}: ${descreverJobReal(j).texto}. Histórico na lista.` })),
       movel ? h('div', { class: 'bloco-acao' }, h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Mudar data', onclick: planejar }), botaoAgendar(i.peca, i.data)) : null);
   }
   async function desenhar() {
@@ -425,7 +427,7 @@ async function montarEditorial(raiz, ctx) {
     const [a, mm, dd] = iso.split('-').map(Number);
     dialogoDia.replaceChildren(
       h('div', { class: 'cal-unico-painel-topo' }, h('h2', { id: 'cal-dia-titulo', texto: `${dd} de ${MESES[mm - 1]} de ${a}` }), h('button', { class: 'botao', type: 'button', texto: 'Fechar' })),
-      notaReal(), h('div', { class: 'cal-dia-lista' }, lista.map(cartaoCheio)));
+      ...[notaReal(), h('div', { class: 'cal-dia-lista' }, lista.map(cartaoCheio))].filter(Boolean));
     dialogoDia.showModal?.();
   };
   corpo.appendChild(dialogoDia);

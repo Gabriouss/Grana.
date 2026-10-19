@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const fonte = fs.readFileSync('tools/admin-local/web/telas/calendario.js', 'utf8').replace(/^import .*\r?\n/m, '').replace(/export (async )?function /g, '$1function ');
+const fonte = fs.readFileSync('tools/admin-local/web/telas/calendario.js', 'utf8').replace(/^import .*\r?\n/gm, '').replace(/export (async )?function /g, '$1function ');
 const sandbox = { console, Date, Intl, URL, URLSearchParams };
 vm.runInNewContext(fonte, sandbox);
 const p = { id: 'a'.repeat(16), versao: 'b'.repeat(40), titulo: 'Peça audit' };

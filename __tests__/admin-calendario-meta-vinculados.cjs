@@ -3,10 +3,13 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const fonte = fs.readFileSync('tools/admin-local/web/telas/calendario.js', 'utf8')
-  .replace(/^import .*\r?\n/m, '').replace(/export (async )?function /g, '$1function ')
+  .replace(/^import .*\r?\n/gm, '').replace(/export (async )?function /g, '$1function ')
   .replace("await import('./_publicacoes-reais-ui.js')", '({ montarReal: async () => () => {} })');
 const sandbox = { console, Date, Intl, URL, URLSearchParams, Map, Set, CANAIS: [], tituloPeca: (p) => p.nomeExibicao || p.nome || 'Peça', setTimeout };
-vm.runInNewContext(fonte, sandbox);
+// O módulo real de estado por rede entra no mesmo escopo (sem import no vm).
+const reais = fs.readFileSync('tools/admin-local/web/telas/_publicacoes-reais.js', 'utf8').replace(/^export /gm, '');
+vm.runInNewContext(`${reais}
+${fonte}`, sandbox);
 // Subtelas fora do escopo; projeção, carregamento e renderização do calendário são reais.
 sandbox.montarCronograma = () => {};
 sandbox.montarEnsaioCalendario = () => {};

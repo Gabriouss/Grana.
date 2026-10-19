@@ -30,7 +30,7 @@ vm.runInNewContext(codigoPecas.replace(/export (const|function) /g, '$1 ') + '\n
 const codigo = fs.readFileSync(path.join(repo, 'tools/admin-local/web/telas/calendario.js'), 'utf8');
 function carregarTela(source) {
   const tela = { rotuloCanal: pecas.rotuloCanal };
-  vm.runInNewContext(source.replace(/^import .*\r?\n/m, '').replace(/export (async )?function /g, '$1function '), tela);
+  vm.runInNewContext(source.replace(/^import .*\r?\n/gm, '').replace(/export (async )?function /g, '$1function '), tela);
   return tela.detalhesCronograma;
 }
 const telas = [carregarTela(codigo.replace(/\r?\n/g, '\n')), carregarTela(codigo.replace(/\r?\n/g, '\r\n'))];

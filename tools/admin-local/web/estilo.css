@@ -3164,3 +3164,6 @@ dialog.central::backdrop { background: var(--scrim); }
 .tela-calendario .cal-unico-item.cal-compacto .cal-item-titulo { -webkit-line-clamp:3; text-wrap:balance; overflow-wrap:break-word; }
 .tela-calendario .cal-dia .cal-item-atencao { color:var(--accent-2); }
 .tela-calendario .lista-sem-data .cal-item > .bloco-acao > .botao:not(.botao-fantasma) { border-color:var(--accent-2); color:var(--accent-2); }
+/* Estado real por rede: o âmbar chama a atenção sem gritar; o motivo e a ação ficam em texto pequeno. */
+.tela-calendario .cal-item-atencao, .tela-calendario .cal-unico-destino.cal-item-atencao > strong { color:var(--atencao); }
+.tela-calendario .cal-unico-destino .campo-ajuda { font-size:12px; text-wrap:pretty; }
