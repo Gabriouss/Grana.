@@ -45,8 +45,37 @@ function criarHistorico(io = fs, log = (codigo) => console.error(JSON.stringify(
     }
     return { recusa: registro, avisos: [...avisos, 'Nada foi publicado ou agendado.'] };
   }
-  return function recusar(raiz, id, corpo = {}) {
+  // A capa pareada por nome é componente do Reel: recusar o Reel leva a capa junto, senão ela fica
+  // sozinha em aprovados e aparece como próxima no Feed (19/10). Falha na capa não desfaz o Reel.
+  function levarCapas(raiz, caminhos, motivo, resultado) {
+    const capas = [], avisos = [];
+    for (const caminho of caminhos) {
+      const capa = c.montarCatalogo(raiz).find((x) => x.caminho === caminho);
+      const nome = caminho.split('/').pop();
+      try {
+        if (!capa) throw new c.ErroMarketing('peca-inexistente', 'Capa não encontrada.', 404);
+        const r = recusarUma(raiz, capa.id, { confirmacao: true, motivo, versao: capa.versao });
+        capas.push({ id: r.recusa.id, caminho: r.recusa.caminho });
+        avisos.push(`A capa ${nome} foi junto para o histórico.`);
+      } catch (e) {
+        log('recusa-capa-pendente');
+        avisos.push(`A capa ${nome} ficou onde estava (${e.codigo || 'recusa-falhou'}). Recuse a capa à parte.`);
+      }
+    }
+    return { ...resultado, capas, avisos: [...avisos, ...resultado.avisos] };
+  }
+  function recusar(raiz, id, corpo = {}) {
     return c.serializar(raiz, () => {
+      const catalogo = c.montarCatalogo(raiz);
+      const capas = catalogo.some((p) => p.id === id && p.estado !== 'historico')
+        ? catalogo.filter((p) => p.capaDe === id && p.estado !== 'historico' && PREFIXO.test(p.caminho)).map((p) => p.caminho) : [];
+      const r = recusarUma(raiz, id, corpo);
+      return capas.length ? levarCapas(raiz, capas, corpo.motivo.trim(), r) : r;
+    });
+  }
+  return recusar;
+  function recusarUma(raiz, id, corpo = {}) {
+    {
       if (corpo.confirmacao !== true) throw new c.ErroMarketing('confirmacao-invalida', 'Confirme a recusa para continuar.', 400);
       if (typeof corpo.motivo !== 'string' || !corpo.motivo.trim() || [...corpo.motivo.trim()].length > 500) throw new c.ErroMarketing('motivo-invalido', 'Informe motivo de 1 a 500 caracteres.', 400);
       if (!/^[0-9a-f]{16}$/.test(id || '') || !/^[0-9a-f]{40}$/.test(corpo.versao || '')) throw new c.ErroMarketing('versao-invalida', 'Peca ou versao invalida.', 400);
@@ -77,7 +106,12 @@ function criarHistorico(io = fs, log = (codigo) => console.error(JSON.stringify(
       }
       const p = pecas.find((p) => p.id === id);
       if (!p) throw new c.ErroMarketing('peca-inexistente', 'Peca nao encontrada.', 404);
-      if (!PREFIXO.test(p.caminho) || p.estado === 'historico') throw new c.ErroMarketing('pasta-invalida', 'Peca ja esta no historico ou fora da semana.', 409);
+      if (p.estado === 'historico') {
+        const r = c.recusaDaPeca(dados.recusas, p);
+        const hora = /T(\d{2}:\d{2})/.exec(r?.recusadoEm || '')?.[1];
+        throw new c.ErroMarketing('pasta-invalida', `Esta peça já está no histórico${hora ? ` (recusada às ${hora})` : ''}. Não há nada a fazer.`, 409);
+      }
+      if (!PREFIXO.test(p.caminho)) throw new c.ErroMarketing('pasta-invalida', 'Esta peça está fora das pastas de uma semana e não pode ser recusada pelo painel.', 409);
       if (p.versao !== corpo.versao) throw new c.ErroMarketing('versao-mudou', 'A peca mudou; recarregue antes de recusar.', 409);
       const sucessora = corpo.sucessora == null || corpo.sucessora === '' ? null : corpo.sucessora;
       if (sucessora) {
@@ -129,7 +163,7 @@ function criarHistorico(io = fs, log = (codigo) => console.error(JSON.stringify(
         if (e instanceof c.ErroMarketing) throw e;
         throw new c.ErroMarketing('recusa-falhou', 'A recusa nao foi concluida; originais preservados para conferencia.', 503);
       }
-    });
-  };
+    }
+  }
 }
 module.exports = { recusar: criarHistorico(), criarHistorico };

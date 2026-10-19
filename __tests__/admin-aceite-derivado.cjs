@@ -16,8 +16,12 @@ assert.equal(derivados.length, 2, 'os dois derivados autorizados existem no regi
 assert.deepEqual(derivados.map((a) => a.id).sort(), DERIVACOES_AUTORIZADAS.map((d) => d.id).sort());
 const copia = (o) => structuredClone(o);
 
+const recusas = cat.lerJson(cat.caminhoPainel(raiz, 'historico.json'), { recusas: [] }).recusas;
 for (const a of derivados) {
   const real = pecas.find((x) => x.id === a.id);
+  // 19/10: o autor recusou o Reel "Fala o gasto, pronto" (já publicado) e ele saiu de aprovados com outro id.
+  // Peça recusada pelo autor não tem mais cadeia a conferir no acervo; o registro do aceite continua.
+  if (!real && recusas.some((r) => r.origem?.id === a.id)) { console.log(`${a.id}: recusado pelo autor, fora do acervo vivo`); continue; }
   // 18/10: a legenda do Reel passou a entrar no catálogo (ligada pelo nome do arquivo) e a versão dela muda, então o aceite
   // derivado do Reel real lapsa de propósito até o autor aprovar de novo. A cadeia continua travada no estado em que a
   // derivação foi autorizada (sem legenda); isso prova que o renome só trocou id e caminho.
@@ -60,6 +64,7 @@ const enr = cat.enriquecer(raiz, pecas);
 const cal = require('../tools/admin-local/marketing/calendario.cjs').obterCalendario(raiz, '2026-10');
 for (const a of derivados) {
   const p = enr.find((x) => x.id === a.id);
+  if (!p && recusas.some((r) => r.origem?.id === a.id)) continue; // recusado pelo autor (19/10)
   if (p.legenda) {
     assert.equal(p.aprovada, false, `${a.id}: legenda ligada, Reel volta para o aceite do autor`);
     assert.equal(p.aceite, null);

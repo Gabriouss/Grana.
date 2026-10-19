@@ -7,7 +7,7 @@
 const crypto = require('node:crypto');
 const config = require('../config.cjs');
 const { pedirJson } = require('../adaptadores/_http.cjs');
-const { ErroMarketing, hojeLocal, listarPecas, lerJson, caminhoPainel } = require('./catalogo.cjs');
+const { ErroMarketing, hojeLocal, listarPecas, lerJson, caminhoPainel, NA_PASTA_HISTORICO } = require('./catalogo.cjs');
 const { temLegenda } = require('./legenda-publicacao.cjs');
 
 const FUSO = 'America/Sao_Paulo';
@@ -109,7 +109,10 @@ function vincular(posts, pecas, registro = new Map()) {
   return posts.map((post, i) => {
     const p = candidatos[i];
     const { legendaCompleta, ...publico } = post;
-    const doRegistro = registro.has(post.link) ? pecas.find((x) => x.caminho === registro.get(post.link)) : null;
+    // Peça recusada depois de publicada continua ligada ao post: o arquivo só mudou para historico (19/10).
+    const caminho = registro.get(post.link);
+    const doRegistro = registro.has(post.link) ? pecas.find((x) => x.caminho === caminho)
+      || pecas.find((x) => x.caminho === NA_PASTA_HISTORICO(caminho)) : null;
     if (doRegistro) return { ...publico, vinculo: { pecaId: doRegistro.id, versao: doRegistro.versao, criterio: 'registro' } };
     return { ...publico, vinculo: p && usos.get(`${post.rede}:${p.id}`) === 1 ? { pecaId: p.id, versao: p.versao, criterio: 'mesma-legenda' } : null };
   });

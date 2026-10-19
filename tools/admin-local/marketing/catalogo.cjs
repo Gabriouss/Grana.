@@ -300,8 +300,28 @@ function predicadoRecusa(recusas) {
   const lista = (Array.isArray(recusas) ? recusas : []).filter((r) => r && r.id && r.versao);
   const mesmosBytes = (r, p) => Array.isArray(r.arquivos) && Array.isArray(p.arquivos) && r.arquivos.length === p.arquivos.length
     && r.arquivos.every((a, i) => a?.sha1 === p.arquivos[i].sha1);
-  return (p) => lista.some((r) => (r.id === p.id && r.versao === p.versao)
+  // A versão do Reel inclui a capa pareada por nome: gravada no meio da mudança, ela não bate com a
+  // de depois (19/10, "Fala o gasto, pronto" voltou à Aprovação). No mesmo caminho, os bytes decidem.
+  return (p) => lista.some((r) => (r.id === p.id && (r.versao === p.versao || mesmosBytes(r, p)))
     || (r.origem?.id === p.id && (typeof r.origem.versao === 'string' ? r.origem.versao === p.versao : mesmosBytes(r, p))));
+}
+// O registro de publicados guarda o caminho de quando o post saiu; a recusa só troca a pasta por historico.
+const NA_PASTA_HISTORICO = (caminho) => caminho.replace(/\/(para-aprovacao|aprovados)\//, '/historico/');
+function redesDoRegistroPublicado(raiz) {
+  const dados = lerJson(caminhoPainel(raiz, 'publicados.json'), { vinculos: [] });
+  const porCaminho = new Map();
+  for (const v of Array.isArray(dados.vinculos) ? dados.vinculos : []) {
+    if (typeof v?.peca !== 'string' || typeof v.link !== 'string') continue;
+    const rede = /^https:\/\/(www\.)?instagram\.com\//.test(v.link) ? 'Instagram' : /^https:\/\/(www\.)?facebook\.com\//.test(v.link) ? 'Facebook' : null;
+    if (!rede) continue;
+    for (const c of new Set([v.peca, NA_PASTA_HISTORICO(v.peca)])) porCaminho.set(c, [...new Set([...(porCaminho.get(c) || []), rede])]);
+  }
+  return (caminho) => porCaminho.get(caminho) || [];
+}
+// Recusa registrada que corresponde a esta peça do histórico (mesmo critério do predicado).
+function recusaDaPeca(recusas, p) {
+  return (Array.isArray(recusas) ? recusas : []).filter((r) => r && r.id === p.id && r.versao
+    && predicadoRecusa([{ id: r.id, versao: r.versao, arquivos: r.arquivos }])(p)).at(-1) || null;
 }
 function recusasDoPainel(raiz) {
   return predicadoRecusa(lerJson(caminhoPainel(raiz, 'historico.json'), { recusas: [] }).recusas);
@@ -825,6 +845,7 @@ function enriquecer(raiz, pecas) {
     return !!cp && (capasEmComposto.has(cp.id) || aprovacoes.some((a) => valido(a, cp)));
   };
   const foiRecusada = predicadoRecusa(historico.recusas);
+  const redesPublicadas = redesDoRegistroPublicado(raiz);
   return pecas.map((p) => {
     const superada = superadas.has(p.id) || (!!p.capaDe && superadas.has(p.capaDe));
     const pendente = !superada && !!p.revisao?.pendencia;
@@ -859,8 +880,10 @@ function enriquecer(raiz, pecas) {
       estadoEfetivo,
       aceite,
       aceiteSuperado: superada ? aceiteDaVersao : null,
+      // Já saiu na Meta (vínculo explícito em publicados.json): recusar só tira do painel.
+      publicadaEm: redesPublicadas(p.caminho),
       recusa: p.estado === 'historico' && Array.isArray(historico.recusas)
-        ? historico.recusas.filter((r) => r.id === p.id && r.versao === p.versao).map((r) => ({ motivo: r.motivo, sucessora: r.sucessora, recusadoEm: r.recusadoEm, evidencia: r.evidencia })).at(-1) || null : null,
+        ? [recusaDaPeca(historico.recusas, p)].filter(Boolean).map((r) => ({ motivo: r.motivo, sucessora: r.sucessora, recusadoEm: r.recusadoEm, evidencia: r.evidencia }))[0] || null : null,
       // Aceite dado a uma versão anterior não vale para esta (Sentinel A07).
       aceiteDeVersaoAnterior: aceiteAntigo,
       bloqueiosAprovacao: require('./legenda-publicacao.cjs').bloqueiosAprovacao(p),
@@ -1031,6 +1054,8 @@ module.exports = {
   exigirVigente,
   exigirItemAutonomo,
   recusasDoPainel,
+  recusaDaPeca,
+  NA_PASTA_HISTORICO,
   EVIDENCIAS_AUTOR,
   EVIDENCIA_DERIVADA,
   DERIVACOES_AUTORIZADAS,
