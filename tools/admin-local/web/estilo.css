@@ -3152,9 +3152,15 @@ dialog.central::backdrop { background: var(--scrim); }
 /* Calendário: títulos e avisos inteiros; ações completas ficam na prévia do dia. */
 .tela-calendario .cal-unico-item.cal-compacto { height:76px; justify-content:flex-start; gap:3px; }
 .tela-calendario .cal-unico-item.cal-compacto .cal-item-titulo { text-wrap:balance; }
-.tela-calendario .cal-dia .cal-compacto .cal-item-canal { white-space:normal; text-overflow:clip; overflow:visible; font-size:11px; }
+.tela-calendario .cal-dia .cal-compacto .cal-item-canal { white-space:normal; text-overflow:clip; overflow:visible; font-size:12px; }
 .tela-calendario .lista-sem-data .cal-item { grid-template-areas:'capa titulo' 'formato formato' 'acao acao' 'aviso aviso'; }
 .tela-calendario .lista-sem-data .cal-item-titulo { display:block; -webkit-line-clamp:unset; white-space:normal; overflow:visible; text-wrap:pretty; }
 .tela-calendario .lista-sem-data .cal-aviso-real { grid-area:aviso; white-space:normal; overflow:visible; text-overflow:clip; text-wrap:pretty; }
 .tela-calendario .cal-sem-data-bloco[open] .lista-sem-data { max-height:none; overflow:visible; }
 .cal-unico-painel .pub-real-aviso { color:var(--ink-soft); line-height:var(--lh-corpo); }
+
+/* Calendário (18/10 noite): célula legível sem botão; bandeja com um destaque por cartão. */
+.tela-calendario .cal-unico-item.cal-compacto { height:auto; min-height:64px; max-height:100%; justify-content:flex-start; gap:3px; }
+.tela-calendario .cal-unico-item.cal-compacto .cal-item-titulo { -webkit-line-clamp:3; text-wrap:balance; overflow-wrap:break-word; }
+.tela-calendario .cal-dia .cal-item-atencao { color:var(--accent-2); }
+.tela-calendario .lista-sem-data .cal-item > .bloco-acao > .botao:not(.botao-fantasma) { border-color:var(--accent-2); color:var(--accent-2); }

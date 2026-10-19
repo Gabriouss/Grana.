@@ -9,6 +9,10 @@ const maiuscula = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const ROTULO_REDE = { instagram: 'Instagram', facebook: 'Facebook' };
 const ROTULO_FORMATO = { reel: 'Reels', carrossel: 'Carrossel', video: 'Vídeo', imagem: 'Imagem', post: 'Post' };
 const nomeDaPeca = (p) => p?.nomeExibicao || tituloPeca(p);
+// O formato já aparece em outra linha do cartão: no título curto ele só gasta espaço.
+const SUFIXO_FORMATO = /\s·\s(Carrossel|Reels?|Post|Stories|Texto|Imagem|Vídeo)$/u;
+const nomeCurto = (p) => nomeDaPeca(p).replace(SUFIXO_FORMATO, '');
+const formatoDoNome = (p) => SUFIXO_FORMATO.exec(nomeDaPeca(p))?.[1] || null;
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
 const ESTADO_REAL = { planejado: 'Planejado', 'programado-no-painel': 'Programado no painel', preparando: 'Preparando', 'agendado-na-meta': 'Agendado na Meta', publicado: 'Publicado', falhou: 'Falhou', cancelado: 'Cancelado', 'cancelamento-pendente': 'Cancelamento pendente', 'precisa-conferir': 'Precisa conferir', bloqueado: 'Bloqueado' };
@@ -205,7 +209,7 @@ export async function montar(raiz, ctx) {
   // Botão sempre visível onde a peça planejada aparece; desabilitado com o motivo quando não pode agendar.
   const botaoAgendar = (peca, data, comMotivo = true) => {
     if (peca?.precisaAceite) {
-      const b = h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Aprovar esta versão', title: MOTIVO_REACEITE,
+      const b = h('button', { class: 'botao', type: 'button', texto: 'Aprovar esta versão', title: MOTIVO_REACEITE,
         onclick: (e) => { e.stopPropagation(); reaceitar(peca, e.currentTarget); } });
       return comMotivo ? [b, h('span', { class: 'campo-ajuda cal-aviso-real', texto: MOTIVO_REACEITE })] : [b];
     }
@@ -248,8 +252,8 @@ export async function montar(raiz, ctx) {
     return h('article', { class: `cal-item cal-unico-item cal-compacto${reais.length ? ' cal-item-real' : ''}`, draggable: movel ? 'true' : 'false', dados: { peca: i.peca.id, versao: i.peca.versao }, 'aria-label': nomeDaPeca(i.peca),
       ondragstart: (e) => { if (!movel) { e.preventDefault(); return; } e.dataTransfer.setData('text/x-grana-peca', i.peca.id); },
       ...abrirAoClicar(itemPrevia(i, pub)) },
-    h('strong', { class: 'cal-item-titulo', texto: nomeDaPeca(i.peca) }),
-    h('span', { class: 'cal-item-canal', texto: pub || reais.some((j) => j.estado === 'publicado') ? 'Publicado' : reais.length ? 'Agendado' : i.peca.precisaAceite ? 'Precisa de aceite' : 'Planejado' }));
+    h('strong', { class: 'cal-item-titulo', title: nomeDaPeca(i.peca), texto: nomeCurto(i.peca) }),
+    h('span', { class: `cal-item-canal${!pub && !reais.length && i.peca.precisaAceite ? ' cal-item-atencao' : ''}`, texto: pub || reais.some((j) => j.estado === 'publicado') ? 'Publicado' : reais.length ? 'Agendado' : i.peca.precisaAceite ? 'Precisa de aceite' : [formatoDoNome(i.peca), 'Planejado'].filter(Boolean).join(' · ') }));
   }
   function cartao(i, planejar) {
     const reais = i.jobs || [], pub = pubDe(i);
@@ -483,8 +487,8 @@ async function montarEditorial(raiz, ctx) {
       ? h('ul', { class: 'lista-sem-data' }, semData.map((p) => {
         const li = h('div', { class: 'cal-item', draggable: 'true', title: nomeDaPeca(p), dados: { id: p.id } },
           p.capa?.url && p.capa.tipo === 'imagem' ? h('img', { class: 'cal-item-capa', src: ctx.urlArquivo(p.capa.url), alt: '', loading: 'lazy' }) : null,
-          h('span', { class: 'cal-item-titulo', texto: nomeDaPeca(p) }),
-          p.tipo ? h('span', { class: 'cal-item-canal', texto: maiuscula(String(p.tipo)) }) : null,
+          h('span', { class: 'cal-item-titulo', texto: nomeCurto(p) }),
+          p.tipo || formatoDoNome(p) ? h('span', { class: 'cal-item-canal', texto: maiuscula(String(p.tipo || formatoDoNome(p))) }) : null,
           h('div', { class: 'bloco-acao' },
             h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Escolher data', onclick: () => planejar(p) }),
             ctx.botaoAgendar ? ctx.botaoAgendar(p, '', false) : null),
