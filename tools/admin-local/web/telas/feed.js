@@ -19,7 +19,7 @@ try { proporcaoSalva = localStorage.getItem('grana-admin-feed-proporcao') || '4/
 
 export async function montar(raiz, ctx) {
   const h = ctx.h;
-  ctx.cabecalho(raiz, 'Feed', 'O que está publicado de verdade no perfil do Instagram, lido da Meta (só leitura). Abaixo, as peças aprovadas que ainda não saíram. Aprovar não publica nada.');
+  ctx.cabecalho(raiz, 'Feed', 'O que já está publicado no perfil do Instagram, lido da Meta, só leitura.');
   const area = h('div', { class: 'feed' });
   raiz.appendChild(area);
 
@@ -41,13 +41,16 @@ export async function montar(raiz, ctx) {
     const todas = normalizar(Array.isArray(dados) ? dados : (dados && (dados.pecas || dados.itens)) || [], ctx);
     const pecas = todas.filter((p) => !publicadas.has(p.id));
     while (area.firstChild) area.removeChild(area.firstChild);
-    area.appendChild(blocoReal(ctx, rd, carregar));
-    const alvo = h('div', { class: 'feed' });
-    area.appendChild(h('section', { class: 'feed-proximas', 'aria-label': 'Próximas, ainda não publicadas' },
-      h('h3', { texto: 'Próximas, ainda não publicadas' }),
-      h('p', { class: 'fraco', texto: 'Peças aprovadas no painel que não aparecem no perfil acima. Não estão no Instagram.' }),
-      alvo));
-    desenhar(alvo, pecas, ctx, (dados && !Array.isArray(dados) && dados.perfil) || {});
+    // Ordem de um perfil: cabeçalho, abas e proporção, grade real. As próximas são outra seção, com texto próprio.
+    const ui = controles(ctx);
+    const perfilReal = blocoReal(ctx, rd, carregar, ui);
+    const alvo = h('div', { class: 'feed-proximas-grade' });
+    area.append(perfilReal.perfil, ui.elemento, perfilReal.grade,
+      h('section', { class: 'feed-proximas', 'aria-label': 'Próximas, ainda não publicadas' },
+        h('h3', { texto: 'Próximas, ainda não publicadas' }),
+        h('p', { class: 'fraco', texto: 'Peças aprovadas que ainda não aparecem no perfil. Aprovar não publica nada.' }),
+        alvo));
+    desenhar(alvo, pecas, ctx, (dados && !Array.isArray(dados) && dados.perfil) || {}, ui);
   };
 
   let dialogo = null;
@@ -123,62 +126,21 @@ function nomeDoArquivo(c) {
 // ---------------------------------------------------------------------------
 // Perfil e grade
 
-function desenhar(area, pecas, ctx, perfilDados) {
+function desenhar(area, pecas, ctx, perfilDados, ui) {
   const h = ctx.h;
   while (area.firstChild) area.removeChild(area.firstChild);
   area.dataset.perfil = perfilDados.nome || 'grana.';
 
-  const comData = pecas.filter((p) => p.data).length;
   const reels = pecas.filter((p) => p.ehVideo);
+  const grade = h('ul', { class: 'feed-grade', 'aria-label': 'Próximas publicações' });
+  const painel = h('div');
+  area.append(painel);
 
-  const perfil = h('header', { class: 'feed-perfil' },
-    h('div', { class: 'feed-avatar' }, h('img', { src: perfilDados.avatar || AVATAR, alt: 'Ícone circular do Grana.', width: 150, height: 150 })),
-    h('div', { class: 'feed-identidade' },
-      h('div', { class: 'feed-nome-linha' },
-        h('h2', { class: 'feed-nome', texto: perfilDados.nome || 'grana.' }),
-        h('span', { class: 'selo selo-neutro', texto: 'Perfil simulado' })),
-      h('ul', { class: 'feed-contadores', 'aria-label': 'Resumo do perfil simulado' },
-        h('li', null, h('b', { texto: String(pecas.length) }), pecas.length === 1 ? 'publicação' : 'publicações'),
-        h('li', null, h('b', { texto: String(comData) }), 'com data'),
-        h('li', null, h('b', { texto: String(pecas.length - comData) }), 'sem data')),
-      h('div', { class: 'feed-bio' },
-        h('span', { class: 'feed-bio-nome', texto: 'Grana.' }),
-        // a bio não é inventada: nenhum material a define ainda (o Flare devolve bio null e bioPendente)
-        perfilDados.bio
-          ? h('span', { class: 'feed-bio-texto', texto: perfilDados.bio })
-          : h('span', { class: 'fraco', texto: perfilDados.bioPendente || 'Bio ainda não definida em nenhum material de marketing.' }),
-        perfilDados.observacao ? h('span', { class: 'fraco', texto: perfilDados.observacao }) : null)));
-
-  void perfil; // o perfil real vem de blocoReal; aqui só a grade das aprovadas
-
-  // abas: publicações e reels, como no perfil
-  let aba = 'publicacoes';
-  const grade = h('ul', { class: 'feed-grade', dados: { proporcao: proporcaoSalva === '1/1' ? '1' : '45' }, 'aria-label': 'Grade do perfil' });
-  const abaPub = h('button', { class: 'feed-aba', type: 'button', role: 'tab', 'aria-selected': 'true', id: 'feed-aba-pub', 'aria-controls': 'feed-painel' },
-    iconeSvg('grade'), 'PUBLICAÇÕES');
-  const abaReels = h('button', { class: 'feed-aba', type: 'button', role: 'tab', 'aria-selected': 'false', id: 'feed-aba-reels', 'aria-controls': 'feed-painel' },
-    iconeSvg('reels'), 'REELS');
-  const proporcao = h('div', { class: 'filtros', role: 'group', 'aria-label': 'Proporção da grade' },
-    h('button', { class: 'chip', type: 'button', 'aria-pressed': String(proporcaoSalva !== '1/1'), texto: 'Grade 4:5', dados: { valor: '4/5' } }),
-    h('button', { class: 'chip', type: 'button', 'aria-pressed': String(proporcaoSalva === '1/1'), texto: 'Grade 1:1', dados: { valor: '1/1' } }));
-  proporcao.addEventListener('click', (e) => {
-    const b = e.target.closest('button');
-    if (!b) return;
-    proporcaoSalva = b.dataset.valor;
-    try { localStorage.setItem('grana-admin-feed-proporcao', proporcaoSalva); } catch { /* opcional */ }
-    for (const x of proporcao.children) x.setAttribute('aria-pressed', String(x === b));
-    grade.dataset.proporcao = proporcaoSalva === '1/1' ? '1' : '45';
-  });
-
-  const abas = h('div', { class: 'feed-abas', role: 'tablist', 'aria-label': 'Conteúdo do perfil' }, abaPub, abaReels);
-  const painel = h('div', { id: 'feed-painel', role: 'tabpanel', 'aria-labelledby': 'feed-aba-pub' });
-  area.append(abas, painel);
-
-  const preencher = () => {
+  const preencher = ({ aba, proporcao }) => {
     while (painel.firstChild) painel.removeChild(painel.firstChild);
     while (grade.firstChild) grade.removeChild(grade.firstChild);
+    grade.dataset.proporcao = proporcao;
     const lista = aba === 'reels' ? reels : pecas;
-    painel.setAttribute('aria-labelledby', aba === 'reels' ? 'feed-aba-reels' : 'feed-aba-pub');
     if (!lista.length) {
       painel.appendChild(h('div', { class: 'estado estado-vazio', role: 'status' },
         h('p', { class: 'estado-texto', texto: aba === 'reels'
@@ -190,24 +152,48 @@ function desenhar(area, pecas, ctx, perfilDados) {
     lista.forEach((p, i) => grade.appendChild(h('li', null, celula(h, p, () => abrirPost(area, lista, i, ctx)))));
     painel.appendChild(grade);
   };
+  ui.aoMudar(preencher);
+}
+
+// Abas e proporção são do perfil inteiro: valem para a grade real e para as próximas.
+function controles(ctx) {
+  const h = ctx.h;
+  const estado = { aba: 'publicacoes', proporcao: proporcaoSalva === '1/1' ? '1' : '45' };
+  const ouvintes = [];
+  const avisar = () => ouvintes.forEach((f) => f(estado));
+  const abaPub = h('button', { class: 'feed-aba', type: 'button', role: 'tab', 'aria-selected': 'true', id: 'feed-aba-pub', 'aria-controls': 'feed-painel-real' },
+    iconeSvg('grade'), 'PUBLICAÇÕES');
+  const abaReels = h('button', { class: 'feed-aba', type: 'button', role: 'tab', 'aria-selected': 'false', id: 'feed-aba-reels', 'aria-controls': 'feed-painel-real' },
+    iconeSvg('reels'), 'REELS');
+  const proporcao = h('div', { class: 'filtros', role: 'group', 'aria-label': 'Proporção da grade' },
+    h('button', { class: 'chip', type: 'button', 'aria-pressed': String(proporcaoSalva !== '1/1'), texto: 'Grade 4:5', dados: { valor: '4/5' } }),
+    h('button', { class: 'chip', type: 'button', 'aria-pressed': String(proporcaoSalva === '1/1'), texto: 'Grade 1:1', dados: { valor: '1/1' } }));
+  proporcao.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    proporcaoSalva = b.dataset.valor;
+    try { localStorage.setItem('grana-admin-feed-proporcao', proporcaoSalva); } catch { /* opcional */ }
+    for (const x of proporcao.children) x.setAttribute('aria-pressed', String(x === b));
+    estado.proporcao = proporcaoSalva === '1/1' ? '1' : '45';
+    avisar();
+  });
+  const abas = h('div', { class: 'feed-abas', role: 'tablist', 'aria-label': 'Conteúdo do perfil' }, abaPub, abaReels);
   const trocar = (nova) => {
-    aba = nova;
+    estado.aba = nova;
     abaPub.setAttribute('aria-selected', String(nova === 'publicacoes'));
     abaReels.setAttribute('aria-selected', String(nova === 'reels'));
-    preencher();
+    avisar();
   };
   abaPub.addEventListener('click', () => trocar('publicacoes'));
   abaReels.addEventListener('click', () => trocar('reels'));
   abas.addEventListener('keydown', (e) => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
     e.preventDefault();
-    const proxima = aba === 'publicacoes' ? 'reels' : 'publicacoes';
+    const proxima = estado.aba === 'publicacoes' ? 'reels' : 'publicacoes';
     trocar(proxima);
     (proxima === 'reels' ? abaReels : abaPub).focus();
   });
-
-  area.insertBefore(proporcao, abas);
-  preencher();
+  return { elemento: h('div', { class: 'feed-controles' }, proporcao, abas), aoMudar: (f) => { ouvintes.push(f); f(estado); } };
 }
 
 function celula(h, p, abrir) {
@@ -348,7 +334,7 @@ const MOTIVOS_REAL = {
 };
 
 // A rota de miniatura é autenticada (cabeçalho do painel): <img src> direto não manda o cabeçalho e a
-// imagem vem negada (retângulo preto). Busca com o cabeçalho e exibe como blob, como o Calendário.
+// imagem vem negada. Busca com o cabeçalho e exibe como blob, como o Calendário.
 const ROTA_MINIATURA = '/api/marketing/calendario/meta-midia?chave=';
 function carregarMiniatura(src, img, aoFalhar) {
   if (typeof src !== 'string' || !src.startsWith(ROTA_MINIATURA)) { aoFalhar(); return; }
@@ -358,19 +344,19 @@ function carregarMiniatura(src, img, aoFalhar) {
     .catch((err) => { console.warn('[feed-miniatura]', err.message || 'falhou'); aoFalhar(); });
 }
 
-function blocoReal(ctx, rd, recarregar) {
+function blocoReal(ctx, rd, recarregar, ui) {
   const h = ctx.h;
-  const bloco = h('section', { class: 'feed-real', 'aria-label': 'Perfil real do Instagram' });
+  const painel = h('div', { id: 'feed-painel-real', role: 'tabpanel', 'aria-labelledby': 'feed-aba-pub' });
   if (rd.status !== 'disponivel') {
     const motivo = MOTIVOS_REAL[rd.motivo] || 'Não foi possível ler o perfil na Meta agora.';
-    bloco.appendChild(h('div', { class: 'estado estado-erro', role: 'alert' },
-      h('p', { class: 'estado-texto', texto: motivo }),
-      h('button', { class: 'botao', type: 'button', texto: 'Tentar de novo', onclick: recarregar })));
-    return bloco;
+    return { perfil: h('section', { class: 'feed-real', 'aria-label': 'Perfil real do Instagram' },
+      h('div', { class: 'estado estado-erro', role: 'alert' },
+        h('p', { class: 'estado-texto', texto: motivo }),
+        h('button', { class: 'botao', type: 'button', texto: 'Tentar de novo', onclick: recarregar }))), grade: painel };
   }
   const p = rd.perfil || {};
   const n = (v) => (v === null || v === undefined ? '—' : new Intl.NumberFormat('pt-BR').format(v));
-  bloco.appendChild(h('header', { class: 'feed-perfil' },
+  const perfil = h('header', { class: 'feed-perfil' },
     h('div', { class: 'feed-avatar' }, h('img', { src: AVATAR, alt: 'Ícone circular do Grana.', width: 150, height: 150 })),
     h('div', { class: 'feed-identidade' },
       h('div', { class: 'feed-nome-linha' },
@@ -379,30 +365,71 @@ function blocoReal(ctx, rd, recarregar) {
       h('ul', { class: 'feed-contadores', 'aria-label': 'Contadores do perfil' },
         h('li', null, h('b', { texto: n(p.posts) }), 'publicações'),
         h('li', null, h('b', { texto: n(p.seguidores) }), 'seguidores'),
-        h('li', null, h('b', { texto: n(p.seguindo) }), 'seguindo')))));
+        h('li', null, h('b', { texto: n(p.seguindo) }), 'seguindo'))));
   const posts = Array.isArray(rd.posts) ? rd.posts : [];
-  if (!rd.completo) bloco.appendChild(h('p', { class: 'fraco', texto: `Mostrando as ${posts.length} publicações mais recentes.` }));
-  if (!posts.length) {
-    bloco.appendChild(h('div', { class: 'estado estado-vazio', role: 'status' }, h('p', { class: 'estado-texto', texto: 'A Meta não devolveu nenhuma publicação para este perfil.' })));
-    return bloco;
-  }
-  const grade = h('ul', { class: 'feed-grade', dados: { proporcao: '45' }, 'aria-label': 'Publicações do perfil' });
-  for (const post of posts) {
-    const tipo = TIPOS_REAL[post.formato] || 'Feed';
-    const data = post.data ? dataCurta(post.data) : '';
-    const legenda = resumo(post.legenda || '', 140);
-    const sem = h('span', { class: 'feed-celula-texto', texto: legenda || tipo });
-    const img = h('img', { alt: '', decoding: 'async' });
-    const midia = h('span', { class: 'feed-celula-miniatura' }, img);
-    carregarMiniatura(post.miniatura, img, () => midia.replaceChildren(sem));
-    const a = h('a', { class: 'feed-celula', href: post.link || '#', target: '_blank', rel: 'noopener noreferrer',
-      'aria-label': `${tipo} de ${data}. ${legenda || 'Sem legenda'}.${post.link ? ' Abrir no Instagram.' : ''}` },
-      midia,
-      h('span', { class: 'feed-celula-selo', 'aria-hidden': 'true', texto: `${tipo} · ${data}` }),
-      h('span', { class: 'feed-celula-veu', 'aria-hidden': 'true', texto: legenda || 'Abrir no Instagram' }));
-    if (!post.link) a.removeAttribute('href');
-    grade.appendChild(h('li', null, a));
-  }
-  bloco.appendChild(grade);
-  return bloco;
+  const grade = h('ul', { class: 'feed-grade', 'aria-label': 'Publicações do perfil' });
+  const celulas = posts.map((post) => celulaReal(ctx, post, () => abrirPostReal(ctx, post, p.usuario)));
+  ui.aoMudar(({ aba, proporcao }) => {
+    painel.replaceChildren();
+    grade.replaceChildren();
+    grade.dataset.proporcao = proporcao;
+    painel.setAttribute('aria-labelledby', aba === 'reels' ? 'feed-aba-reels' : 'feed-aba-pub');
+    const lista = celulas.filter((c, i) => aba !== 'reels' || posts[i].formato === 'reel');
+    if (!lista.length) {
+      painel.appendChild(h('div', { class: 'estado estado-vazio', role: 'status' }, h('p', { class: 'estado-texto',
+        texto: !posts.length ? 'A Meta não devolveu nenhuma publicação para este perfil.' : 'Nenhum Reel entre as publicações lidas.' })));
+      return;
+    }
+    if (!rd.completo && aba !== 'reels') painel.appendChild(h('p', { class: 'fraco', texto: `Mostrando as ${posts.length} publicações mais recentes.` }));
+    for (const c of lista) grade.appendChild(h('li', null, c));
+    painel.appendChild(grade);
+  });
+  return { perfil, grade: painel };
+}
+
+function celulaReal(ctx, post, abrir) {
+  const h = ctx.h;
+  const tipo = TIPOS_REAL[post.formato] || 'Feed';
+  const data = post.data ? dataCurta(post.data) : '';
+  const legenda = resumo(post.legenda || '', 140);
+  const sem = h('span', { class: 'feed-celula-texto', texto: legenda || tipo });
+  const img = h('img', { alt: '', decoding: 'async' });
+  const caixa = h('span', { class: 'feed-celula-miniatura' }, img);
+  carregarMiniatura(post.miniatura, img, () => caixa.replaceChildren(sem));
+  return h('button', { class: 'feed-celula', type: 'button', onclick: abrir,
+    'aria-label': `${tipo} de ${data}. ${legenda || 'Sem legenda'}. Abrir a prévia.` },
+    caixa,
+    h('span', { class: 'feed-celula-selo', 'aria-hidden': 'true', texto: `${tipo} · ${data}` }),
+    h('span', { class: 'feed-celula-veu', 'aria-hidden': 'true', texto: legenda || 'Abrir a prévia' }));
+}
+
+// Post real: legenda inteira, data e o link para o Instagram, na mesma janela das peças.
+function abrirPostReal(ctx, post, usuario) {
+  const h = ctx.h;
+  document.querySelectorAll('dialog.feed-post').forEach((d) => d.remove());
+  const devolverFoco = document.activeElement;
+  const tipo = TIPOS_REAL[post.formato] || 'Feed';
+  const nome = usuario ? `@${usuario}` : 'Instagram';
+  const dlg = h('dialog', { class: 'feed-post', 'aria-label': `${tipo} de ${post.data ? dataCurta(post.data) : 'data desconhecida'}` });
+  const img = h('img', { alt: 'Miniatura da publicação', class: 'feed-post-real-img' });
+  const midia = h('div', { class: 'feed-post-midia' }, img);
+  carregarMiniatura(post.miniatura, img, () => midia.replaceChildren(h('p', { class: 'fraco', texto: 'Sem miniatura. A legenda e o link continuam ao lado.' })));
+  const topo = h('div', { class: 'feed-post-topo' },
+    h('img', { src: AVATAR, alt: '' }),
+    h('div', null, h('span', { texto: nome }), h('small', { texto: `Publicado no Instagram · ${tipo}` })),
+    h('button', { class: 'feed-fechar', type: 'button', 'aria-label': 'Fechar', onclick: () => dlg.close() }, iconeSvg('fechar')));
+  const legenda = post.legenda
+    ? h('div', { class: 'feed-legenda' }, h('b', { texto: nome }), post.legenda)
+    : h('div', { class: 'feed-legenda feed-legenda-vazia', texto: 'Sem legenda.' });
+  const quando = post.publicadoEm ? new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }).format(new Date(post.publicadoEm)) : null;
+  const meta = h('div', { class: 'feed-post-meta' },
+    h('div', { class: 'feed-post-dados' },
+      h('span', { texto: quando ? `Publicado em ${quando} · São Paulo` : post.data ? `Publicado em ${ctx.formatar.data(post.data)}` : 'Data não informada' })),
+    post.link ? h('div', { class: 'fileira' },
+      h('a', { class: 'botao', href: post.link, target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir no Instagram' })) : null);
+  dlg.appendChild(h('div', { class: 'feed-post-corpo' }, midia, h('div', { class: 'feed-post-lado' }, topo, legenda, meta)));
+  ligarDialogo(dlg, { devolverFoco });
+  document.body.appendChild(dlg);
+  dlg.showModal();
+  topo.querySelector('.feed-fechar').focus();
 }
