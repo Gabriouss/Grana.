@@ -91,7 +91,13 @@ function anotarNoIndice(raiz, peca, registro) {
 }
 
 // POST /api/marketing/pecas/:id/aprovar  { versao, confirmacao: true }
-function aprovar(raiz, id, corpo = {}) {
+async function aprovar(raiz, id, corpo = {}) {
+  const resultado = await aprovarLocal(raiz, id, corpo);
+  const editorial = require('./editorial-publicacao.cjs');
+  if (editorial.ativo(raiz, { id })) await editorial.registrarAceite(raiz, obterPeca(raiz, id));
+  return resultado;
+}
+function aprovarLocal(raiz, id, corpo = {}) {
   return serializar(raiz, () => {
     if (corpo.confirmacao !== true) {
       throw new ErroMarketing('confirmacao-invalida', 'Confirme o aceite desta versão.', 400);

@@ -12,7 +12,15 @@ async function main(args) {
     return { id: r.id, estado: r.estado, encerramento: r.encerramento };
   }
   if (!pedidoId || !leaseId) throw new Error(USO);
-  if (acao === 'ler') return fila.lerPedido(pedidoId, leaseId);
+  if (acao === 'ler') {
+    const pedido = fila.lerPedido(pedidoId, leaseId);
+    const editorial = require('./editorial-publicacao.cjs'), cfg = require('../config.cjs');
+    if (editorial.ativo(cfg.RAIZ_DADOS, { id: pedido.pecaId })) {
+      const r = await editorial.iniciarRevisao(cfg.RAIZ_DADOS, require('./catalogo.cjs').obterPeca(cfg.RAIZ_DADOS, pedido.pecaId), 'ajuste');
+      if (r) pedido.revisaoEditorial = { conteudoId: r.conteudoId, geracaoEditorial: r.geracaoEditorial, estadoEditorial: r.estadoEditorial };
+    }
+    return pedido;
+  }
   if (acao === 'renovar') { const r = await fila.renovar(pedidoId, leaseId); return { id: r.id, estado: r.estado, expiraEm: r.lease.expiraEm }; }
   if (acao === 'custo-autorizado') {
     if (args.length !== 5 || args[3] !== '--evidencia') throw new Error(USO);

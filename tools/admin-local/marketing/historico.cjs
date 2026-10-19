@@ -8,7 +8,7 @@ const TERMINAIS = new Set(['aceito', 'desatualizado', 'encerrado', 'recusado-pel
 // Registro de ajuste de antes da fila (07/10) não tem estado: é histórico, não pedido aberto (autor, 18/10).
 const legadoAberto = (r) => typeof r.estado === 'string' && !TERMINAIS.has(r.estado);
 const PREFIXO = /^docs\/marketing\/\d{4}-\d{2}\/semana-\d{2}-\d{4}-\d{2}-\d{2}-a-\d{4}-\d{2}-\d{2}\/(para-aprovacao|aprovados)\//;
-function criarHistorico(io = fs, log = (codigo) => console.error(JSON.stringify({ codigo }))) {
+function criarHistorico(io = fs, log = (codigo) => console.error(JSON.stringify({ codigo })), editorialInjetado) {
   const seguro = (raiz, rel) => c.caminhoSeguro(raiz, rel, io);
   const sha = (abs) => crypto.createHash('sha1').update(io.readFileSync(abs)).digest('hex');
   function gravar(arq, dados) {
@@ -64,7 +64,17 @@ function criarHistorico(io = fs, log = (codigo) => console.error(JSON.stringify(
     }
     return { ...resultado, capas, avisos: [...avisos, ...resultado.avisos] };
   }
-  function recusar(raiz, id, corpo = {}) {
+  async function recusar(raiz, id, corpo = {}) {
+    const editorial = editorialInjetado || require('./editorial-publicacao.cjs');
+    if (editorial.ativo(raiz, { id })) {
+      if (corpo.confirmacao !== true) throw new c.ErroMarketing('confirmacao-invalida', 'Confirme a recusa para continuar.', 400);
+      if (typeof corpo.motivo !== 'string' || !corpo.motivo.trim() || [...corpo.motivo.trim()].length > 500) throw new c.ErroMarketing('motivo-invalido', 'Informe motivo de 1 a 500 caracteres.', 400);
+      const p = c.montarCatalogo(raiz).find(x => x.id === id);
+      if (p) {
+        if (p.versao !== corpo.versao) throw new c.ErroMarketing('versao-mudou', 'A peca mudou; recarregue antes de recusar.', 409);
+        await editorial.iniciarRevisao(raiz, c.obterPeca(raiz, id), 'recusa');
+      }
+    }
     return c.serializar(raiz, () => {
       const catalogo = c.montarCatalogo(raiz);
       const capas = catalogo.some((p) => p.id === id && p.estado !== 'historico')

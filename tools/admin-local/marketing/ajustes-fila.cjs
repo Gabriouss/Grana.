@@ -38,6 +38,7 @@ function criarFila(deps) {
     if (peca.estado === 'historico' && !peca.revisao?.vigente) throw erro('peca-no-historico', 'Peca do historico nao recebe ajuste.');
     if (peca.versao !== corpo.versao) throw erro('versao-mudou', 'A peca mudou. Recarregue antes de pedir o ajuste.');
     if (typeof corpo.motivo !== 'string' || !corpo.motivo.trim() || caracteres(corpo.motivo.trim()) > 2000) throw erro('motivo-invalido', 'Descreva o ajuste em ate 2000 caracteres.', 400);
+    await deps.iniciarRevisao?.(peca, 'ajuste');
     return deps.transacao((db) => {
       if (db.pedidos.length >= 1000) throw erro('fila-cheia', 'A fila atingiu o limite. Preserve o historico e revise a retencao.', 503);
       const anterior = db.pedidos.filter((p) => p.pecaId === peca.id).at(-1);
@@ -104,6 +105,7 @@ function criarFila(deps) {
     if (estado === 'corrigido-aguardando-aceite') {
       exigirLegenda(atual);
       await deps.verificarCommit(dados.commit, atual?.caminho);
+      await deps.registrarVersao?.(atual);
     }
     return deps.transacao((db) => {
       const r = leaseValido(db, id, leaseId);
@@ -452,6 +454,8 @@ function classificarSaida(e, stderr) {
 const AGENTE = process.env.GRANA_AJUSTES_AGENTE || 'Beacon';
 const ponte = require('./ajustes-remoto.cjs').remotoDoEnv(cfg);
 const fila = criarFila({ ...repo,
+  iniciarRevisao: (peca, motivo) => require('./editorial-publicacao.cjs').iniciarRevisao(cfg.RAIZ_DADOS, peca, motivo),
+  registrarVersao: peca => require('./editorial-publicacao.cjs').registrarVersao(cfg.RAIZ_DADOS, peca),
   remoto: ponte.remoto || null, remotoAusente: ponte.ausente || null,
   agora: () => new Date().toISOString(), id: () => crypto.randomUUID(),
   obterPeca: (id) => require('./catalogo.cjs').obterPeca(cfg.RAIZ_DADOS, id),

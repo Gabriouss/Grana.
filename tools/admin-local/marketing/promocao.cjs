@@ -60,8 +60,8 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
       if (!relida || JSON.stringify(relida) !== JSON.stringify(registro)) throw new Error('indice-sem-prova');
     } catch { registro.indice = null; log('promocao-indice-pendente'); avisos.push('Evidência salva no JSON; origem preservada. Confira a linha e os links do índice semanal e retome a promoção.'); }
   }
-  return function promover(raiz, id, corpo = {}) {
-    return c.serializar(raiz, () => {
+  return async function promover(raiz, id, corpo = {}) {
+    const resultado = await c.serializar(raiz, () => {
       if (corpo.confirmacao !== true) throw new c.ErroMarketing('confirmacao-invalida', 'Confirme a promoção.', 400);
       if (!/^[a-f0-9]{16}$/.test(id) || !/^[a-f0-9]{40}$/.test(corpo.versao)) throw new c.ErroMarketing('versao-invalida', 'Informe a peça e a versão atual.', 400);
       const arq = c.caminhoPainel(raiz, 'aprovacoes.json');
@@ -85,6 +85,8 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
           if (sha(para) !== a.sha1) throw new c.ErroMarketing('prova-invalida', 'O destino mudou; preserve a origem e confira a promoção.', 409);
           return { de: seguro(raiz, origem), sha1: a.sha1 };
         });
+        const identidades = require('./identidade-publicacao.cjs');
+        if (identidades.buscar(raiz, anterior.origem.id)) identidades.vincularNaTransacao(raiz, p, [anterior.origem.id]);
         const avisos = [];
         if (!anterior.indice) indicePromocao(raiz, anterior, dados, avisos);
         if (anterior.indice) avisos.push(...limparOrigem(arquivos));
@@ -156,6 +158,9 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
         c.gravarJsonAtomico(arq, dados); persistido = true;
         const relida = c.lerJson(arq, {}).aprovacoes?.find((a) => a.id === nova.id && a.versao === nova.versao);
         if (!relida || !aceiteValido(relida, nova, Date.now(), dados.aprovacoes) || JSON.stringify(relida) !== JSON.stringify(registro)) throw new Error('prova-nao-confirmada');
+        // Vincular antes de limpar a origem; a prova persistida torna o alias inequivoco.
+        const identidades = require('./identidade-publicacao.cjs');
+        if (identidades.buscar(raiz, p.id)) identidades.vincularNaTransacao(raiz, nova, [p.id]);
         const avisos = [];
         indicePromocao(raiz, registro, dados, avisos);
         if (registro.indice) avisos.push(...limparOrigem(arquivos));
@@ -173,6 +178,11 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
         throw new c.ErroMarketing('promocao-falhou', 'A promoção falhou. Os arquivos originais foram preservados; confira o acervo antes de repetir.', 503);
       }
     });
+    const editorial = require('./editorial-publicacao.cjs');
+    if (editorial.ativo(raiz, { id: resultado.promocao.id })) {
+      await editorial.registrarVersao(raiz, c.obterPeca(raiz, resultado.promocao.id));
+    }
+    return resultado;
   };
 }
 module.exports = { promover: criarPromocao(), criarPromocao };
