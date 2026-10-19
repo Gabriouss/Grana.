@@ -8,4 +8,7 @@
 - Treat 9:16 images as possible Reels covers as well as Stories when classifying GranaPonto pieces.
 - Keep realistic device proportions in mockups; a phone must never be drawn larger than a notebook.
 - Write captions that differ from the creative's copy; captions should only contextualize what the creative says, never repeat it.
+- In the GranaPonto admin panel, approving an item should automatically move it to the approved list, with no separate manual move step.
+- Keep the mobile web layout identical to the native app: the Granabô mascot stays in the bottom bar on phone web, floating only on tablets and desktop.
+- Do not modify the carousel POST scheduling route; it was verified as successful and must stay untouched.
 <!-- end claude-reflect -->
