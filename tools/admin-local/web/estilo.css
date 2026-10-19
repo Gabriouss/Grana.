@@ -3148,3 +3148,13 @@ dialog.central::backdrop { background: var(--scrim); }
 .cal-unico-pausas .pub-real-pausa p { font-size:12px; }
 @media (max-width:899px) { .cal-unico-painel { width:94vw; padding:20px; } }
 @media (max-width:480px) { .cal-unico-painel { width:100vw; padding:16px; } .tela-calendario .agenda-item { grid-template-columns:1fr; gap:8px; } .cal-unico-filtros { gap:12px; } .cal-unico-filtros .bloco-acao { flex-wrap:wrap; gap:6px; } }
+
+/* Calendário: títulos e avisos inteiros; ações completas ficam na prévia do dia. */
+.tela-calendario .cal-unico-item.cal-compacto { height:76px; justify-content:flex-start; gap:3px; }
+.tela-calendario .cal-unico-item.cal-compacto .cal-item-titulo { text-wrap:balance; }
+.tela-calendario .cal-dia .cal-compacto .cal-item-canal { white-space:normal; text-overflow:clip; overflow:visible; font-size:11px; }
+.tela-calendario .lista-sem-data .cal-item { grid-template-areas:'capa titulo' 'formato formato' 'acao acao' 'aviso aviso'; }
+.tela-calendario .lista-sem-data .cal-item-titulo { display:block; -webkit-line-clamp:unset; white-space:normal; overflow:visible; text-wrap:pretty; }
+.tela-calendario .lista-sem-data .cal-aviso-real { grid-area:aviso; white-space:normal; overflow:visible; text-overflow:clip; text-wrap:pretty; }
+.tela-calendario .cal-sem-data-bloco[open] .lista-sem-data { max-height:none; overflow:visible; }
+.cal-unico-painel .pub-real-aviso { color:var(--ink-soft); line-height:var(--lh-corpo); }

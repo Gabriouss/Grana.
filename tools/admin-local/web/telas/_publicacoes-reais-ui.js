@@ -161,7 +161,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
             : h('span', { class: 'pub-real-miniatura pub-real-miniatura-vazia', 'aria-label': 'Miniatura indisponível', texto: 'Sem miniatura' }),
           h('span', { class: 'pub-real-peca-texto' },
             h('strong', { texto: item.titulo }),
-            h('small', { texto: `${item.tipo || 'Peça'} · versão ${item.versao}` }),
+            h('small', { texto: `${item.tipo || 'Peça'} · versão aprovada` }),
             feed?.data ? h('small', { texto: `Calendário editorial: ${feed.data}${feed.hora ? ` às ${feed.hora}` : ''} · referência sem autorização` }) : null));
       })) : h('p', { class: 'texto-fraco', texto: 'Nenhuma peça com aceite vigente foi retornada pelo catálogo real.' });
 
@@ -197,7 +197,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
       onclick: () => gerarPrevia() });
     compositor.replaceChildren(
       h('h2', { class: 'secao-titulo', id: 'pub-real-compor-titulo', texto: 'Preparar publicação' }),
-      h('p', { class: 'pub-real-aviso', texto: 'Aprovação e previsão editorial identificam o conteúdo. Esta tela exige uma confirmação independente, com MFA local recente; o servidor valida sessão, CSRF, revisão, aceite e idempotência.' }),
+      h('p', { class: 'pub-real-aviso', texto: 'Escolha onde e quando publicar. Depois, confira as imagens e a legenda antes de confirmar o agendamento.' }),
       h('div', { class: 'pub-real-compositor-conteudo' },
         h('fieldset', { class: 'pub-real-selecao' }, h('legend', { texto: '1 · Peça aprovada vigente' }), cardsPecas),
         h('fieldset', { class: 'pub-real-selecao' }, h('legend', { texto: '2 · Contas e formatos disponíveis' }),
@@ -206,7 +206,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
         h('fieldset', { class: 'pub-real-selecao pub-real-horario' },
           h('legend', { texto: '3 · Data e hora' }),
           h('label', { for: 'pub-real-agendar-para', texto: `Agendar em ${FUSO_PUBLICACAO}` }),
-          hora, h('small', { id: 'pub-real-fuso-ajuda', class: 'campo-ajuda', texto: 'O instante será convertido para UTC pelo fuso fixo; não depende do fuso do computador.' }),
+          hora, h('small', { id: 'pub-real-fuso-ajuda', class: 'campo-ajuda', texto: 'Use o horário de Brasília, mesmo se o seu computador estiver em outro fuso.' }),
           resumoHora)),
       h('div', { class: 'pub-real-acoes' }, previaBtn,
         h('span', { class: 'campo-ajuda', texto: 'A data editorial é uma sugestão. Revise horário e destinos antes de gerar a prévia.' })));
@@ -492,15 +492,15 @@ export async function montarReal(raiz, ctx, integracao = null) {
     previewEl.hidden = false;
     previewEl.replaceChildren(
       h('h2', { class: 'secao-titulo', tabindex: '-1', texto: 'Prévia estimada por destino' }),
-      h('p', { class: 'pub-real-aviso', texto: 'Prévia estimada, não é captura oficial da rede. Legenda, ordem, capa, versão e bytes foram lidos do snapshot e conferidos localmente.' }),
-      h('p', { class: 'pub-real-versao', texto: `${peca?.titulo || 'Peça'} · versão ${p.snapshot?.versao || 'indisponível'} · snapshot ${p.snapshot?.snapshotId || 'indisponível'} · revisão ${p.revisao}` }),
+      h('p', { class: 'pub-real-aviso', texto: 'Confira como a publicação deve aparecer em cada rede. Revise as imagens, a ordem e a legenda antes de confirmar.' }),
+      h('p', { class: 'pub-real-versao', texto: `${peca?.titulo || 'Peça'} · versão aprovada` }),
       h('div', { class: 'pub-real-previews' }, cards),
       ...(motivo.length ? [h('div', { class: 'alerta alerta-atencao', role: 'alert' }, h('strong', { texto: 'Prévia bloqueada' }), h('ul', null, motivo.map((m) => h('li', { texto: m }))))] : []),
       ...(coerente ? [] : [h('p', { class: 'pub-real-erro', role: 'alert', texto: 'A resposta não corresponde a todos os destinos e versões escolhidos. Atualize a lista antes de confirmar.' })]),
       h('div', { class: 'pub-real-confirmacao-resumo' },
         h('h3', { texto: 'Resumo exato da autorização' }),
         h('ul', null, alvos.map((a, i) => h('li', { texto: `${nomeDestino(a)} · ${REDES[a.rede]} · ${FORMATOS[a.formato]} · ${rotuloDataHorario(p.destinos?.[i]?.publicarEm || p.agendarPara)}` }))),
-        h('p', { texto: `Legenda e mídia da versão ${p.snapshot?.versao || 'indisponível'}; publicação automática futura somente após confirmar.` })),
+        h('p', { texto: 'Esta legenda e estas imagens serão publicadas automaticamente no horário escolhido, somente após confirmar.' })),
       h('label', { class: 'pub-real-declaracao' }, h('input', { type: 'checkbox', name: 'confirmacaoVisual', checked: previaVistas,
         disabled: !coerente || !previaConfirmavel(p), onchange: (e) => { previaVistas = e.target.checked; atualizarBotaoConfirmar(); } }),
         'Revisei a mídia, a legenda e cada destino acima.'),
@@ -692,7 +692,13 @@ export async function montarReal(raiz, ctx, integracao = null) {
 
   function motivos(itens) {
     if (!Array.isArray(itens) || !itens.length) return 'Motivo de bloqueio indisponível; não selecionar';
-    return itens.map((x) => typeof x === 'string' ? x : x?.mensagem || x?.codigo || 'motivo não identificado').join(' · ');
+    const rotulos = {
+      'midia-incompativel': 'O formato de uma imagem ou vídeo não é aceito por esta rede. Peça a preparação do arquivo no formato compatível e gere a prévia novamente.',
+      'sem-leitura-de-volta': 'A rede não permite conferir o resultado deste formato automaticamente.',
+      'capacidade-nao-comprovada': 'Este formato ainda não foi verificado para esta conta.',
+      'formato-nao-suportado': 'Este formato não está disponível nesta rede.',
+    };
+    return itens.map((x) => typeof x === 'string' ? rotulos[x] || x : x?.mensagem || rotulos[x?.codigo] || x?.codigo || 'motivo não identificado').join(' · ');
   }
 
   function rotuloConexao(conexao, pausada) {

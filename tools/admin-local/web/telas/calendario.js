@@ -205,7 +205,7 @@ export async function montar(raiz, ctx) {
   // Botão sempre visível onde a peça planejada aparece; desabilitado com o motivo quando não pode agendar.
   const botaoAgendar = (peca, data, comMotivo = true) => {
     if (peca?.precisaAceite) {
-      const b = h('button', { class: 'botao botao-primario', type: 'button', texto: 'Aprovar esta versão', title: MOTIVO_REACEITE,
+      const b = h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Aprovar esta versão', title: MOTIVO_REACEITE,
         onclick: (e) => { e.stopPropagation(); reaceitar(peca, e.currentTarget); } });
       return comMotivo ? [b, h('span', { class: 'campo-ajuda cal-aviso-real', texto: MOTIVO_REACEITE })] : [b];
     }
@@ -249,8 +249,7 @@ export async function montar(raiz, ctx) {
       ondragstart: (e) => { if (!movel) { e.preventDefault(); return; } e.dataTransfer.setData('text/x-grana-peca', i.peca.id); },
       ...abrirAoClicar(itemPrevia(i, pub)) },
     h('strong', { class: 'cal-item-titulo', texto: nomeDaPeca(i.peca) }),
-    h('span', { class: 'cal-item-canal', texto: pub || reais.some((j) => j.estado === 'publicado') ? 'Publicado' : reais.length ? 'Agendado' : 'Planejado' }),
-    movel ? botaoAgendar(i.peca, i.data, false) : null);
+    h('span', { class: 'cal-item-canal', texto: pub || reais.some((j) => j.estado === 'publicado') ? 'Publicado' : reais.length ? 'Agendado' : i.peca.precisaAceite ? 'Precisa de aceite' : 'Planejado' }));
   }
   function cartao(i, planejar) {
     const reais = i.jobs || [], pub = pubDe(i);

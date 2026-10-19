@@ -59,7 +59,7 @@ const job = (contaId, rede, estado, extra = {}) => ({
   let falhas = 0;
   const ok = (c, m) => { if (!c) { falhas++; console.error('FALHOU:', m); } else console.log('ok:', m); };
 
-  for (const width of [390, 768, 1440]) {
+  for (const width of [390, 768, 1024, 1280, 1440]) {
     const page = await browser.newPage({ viewport: { width, height: 960 } });
     const posts = [];
     let confirmarTentativas = 0; let leituraParcial = false; let catalogoDesatualizado = false; let leiturasCatalogo = 0;
@@ -161,6 +161,7 @@ const job = (contaId, rede, estado, extra = {}) => ({
     await page.getByRole('button', { name: 'Agendar de verdade', exact: true }).click();
     await page.locator('.pub-real-compositor .pub-real-peca').first().waitFor({ timeout: 15000 });
     ok(leiturasCatalogo > leiturasAntesDeAbrir, `${width}px: catálogo desatualizado é relido ao abrir compositor`);
+    ok(!await page.locator('.pub-real-compositor').innerText().then((t) => t.includes(PECA.versao)), `${width}px: compositor não mostra hash ao autor`);
     const semOverflow = () => page.evaluate('document.documentElement.scrollWidth <= innerWidth');
     ok(await semOverflow(), `${width}px: sem overflow horizontal na fila real`);
 
