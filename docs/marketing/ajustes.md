@@ -26,6 +26,13 @@ Quando o autor fizer um pedido de ajuste novo, a lição entra aqui na hora.
 - **Não use voz com sotaque carioca.** A voz é escolhida e aprovada pelo autor; na ElevenLabs, só com aprovação de custo antes (regra 24).
 - **Não entregue vídeo parado.** Ritmo dinâmico, imagem de apoio onde a fala pede (R13: "Vídeo pouco dinâmico. Falta imagem de apoio").
 - **Não emende vídeo novo em cima do anterior quando o autor pede para refazer.** "Refazer completamente" é nova narração, novos prints e nova montagem. Aconteceu no Reel do Pix de 19/10.
+- **Não entregue vídeo sem música e sem narração.** Reels com tela do app leva narração (aprovada pelo autor, regra 24) e trilha baixa, que abaixa sozinha quando a voz fala. Aconteceu no Reels do Granabô de 19/10: "Tá sem música e sem narração".
+- **Não deixe espaço morto entre as falas.** Cada frase da narração entra logo depois da anterior; a tela preenche o intervalo, sem pausa longa. Aconteceu no Granabô v3: "muito espaço entre as falas".
+- **Não mostre digitação em tempo real.** Acelere a digitação (6× a 7× funcionou) e corte a espera do "pensando" para 0,3 s, com corte seco até a resposta. Aconteceu no Granabô v3.
+- **Não dê zoom dentro da tela do celular.** O zoom é sempre no aparelho inteiro, de leve (cerca de 7%), quando a informação importante aparece. Aconteceu no Granabô v2: "Muito ruim esse zoom dentro da moldura do celular".
+- **Não deixe o celular pequeno em vídeo de demonstração.** Quando o que importa é a tela (por exemplo, o Granachat), o celular fica grande, baixo, e pode ser cortado na borda de baixo do quadro. Esta é a exceção à regra do aparelho inteiro, e vale só para vídeo de demonstração de tela. Aconteceu no Granabô v1 e v4: "quase não é possível visualizar o que está acontecendo na tela", "pode cortar a parte inferior do celular".
+- **Não cole o título no celular nem no topo do quadro.** O título fica perto de y 290 em 1080×1920, com uns 90 px de folga até o celular. Aconteceu no Granabô v4: "A legenda tá ficando muito grudada no celular".
+- **Não mostre o cronômetro vermelho do gravador.** Suba a gravação dentro da tela do mockup até a barra de status sumir sob a moldura (cerca de 70 px na tela do mockup). Na capa, corte a barra antes de aplicar o print. Aconteceu no Granabô v5.
 
 ## Visual e acabamento
 
@@ -33,8 +40,21 @@ Quando o autor fizer um pedido de ajuste novo, a lição entra aqui na hora.
 - **Não repita a capa de outro Reel.** Cada capa é diferente da anterior.
 - **Não use logotipo grande disputando com a tela.** Na capa do Pix v6 o pedido foi logotipo menor, no topo, e o celular maior.
 - **Não produza fora do manual.** Peça nova segue as instruções oficiais de produção de materiais (`GUIA-DE-PRODUCAO-DE-CRIATIVOS.md` e o guia de design estático).
+- **Não use o Granabô do modelo "chapado" (sprites do gerador) em capa ou estático.** Use o render do app, com brilho no visor: `assets/granabo/granabo-*.png` ou os quadros do Blender do vídeo. Aconteceu na capa do Granabô de 19/10: "O do vídeo tá muito melhor, mais brilhoso".
 
 ## Legenda
 
 - **Não repita a copy da arte na legenda.** A legenda contextualiza o que a arte diz (18/10/2026).
 - **Não mande peça para aprovação sem legenda pronta.**
+
+## Receita que funcionou: Reels com telas reais do app (Granabô, 19/10/2026)
+
+Aprovada pelo autor ao fim de seis versões. Vale para os próximos vídeos de demonstração de tela.
+
+1. **Gravação:** o autor grava no próprio celular, com o app de verdade. Teclado, aviso do sistema e dado da conta de teste podem aparecer ("vamos usar os vídeos como estão"); só a barra de status sai, escondida sob a moldura.
+2. **Edição na Editonny** (skill instalada em 18/10), com uma cena HyperFrames própria: título palavra por palavra no instante em que a narração diz cada palavra (tempos tirados da transcrição local), mascote, celular e logo no fim. Modelo pronto: `2026-10/semana-43-2026-10-19-a-2026-10-25/apoio/reels-granabo-v3/` (`preparar.py`, `granabo.html`, `project.json`).
+3. **Narração da ElevenLabs** gerada inteira numa só chamada e cortada nos silêncios medidos, para cada frase cair na cena dela.
+4. **Ritmo:** cerca de 17 s no total. Gancho em duas telas com ícones derivando, mascote entrando, celular subindo, troca de tela com clarão menta e tranco de escala, celular descendo e logo.
+5. **Celular grande e baixo**, cortado na borda de baixo, com zoom leve no aparelho inteiro quando a resposta aparece. Título em y ≈ 290, solto do celular.
+6. **Som:** voz em −14 LUFS no total, trilha pop local por baixo com compressão lateral (abaixa quando a voz fala), "plim" quando o lançamento é confirmado. O silêncio curto no fim, do fade da música, é intencional.
+7. **Capa:** gerador do guia de design estático (arquétipo A), com print do próprio vídeo e o Granabô do app. Fica ao lado do vídeo com o nome `<vídeo>-capa.png`.
