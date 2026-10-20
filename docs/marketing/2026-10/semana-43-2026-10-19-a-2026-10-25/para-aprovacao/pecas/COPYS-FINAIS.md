@@ -6,4 +6,4 @@ Escrita em 19/10/2026. Aguarda aceite do autor no painel.
 
 **Título:** Conheça o Granabô
 
-**Legenda:** Muita gente deixa de anotar porque abrir o app, escolher categoria e digitar parece trabalho demais. O Granabô, assistente do Grana., entra para encurtar esse caminho: você pergunta como estão suas contas do mês ou conta um gasto em uma frase, e ele responde com base nos lançamentos que você já registrou. Antes de confiar em qualquer número, vale conferir o lançamento na lista. Salve para testar na próxima compra. Link na bio.
+**Legenda:** Muita gente desiste de anotar porque abrir o app, escolher categoria e digitar valor parece trabalho demais. O Granabô é o assistente que mora dentro do Grana.: ele responde com base nos lançamentos que você já registrou e também lança um gasto a partir de uma frase sua, sem formulário. Se o registro sair diferente do que você quis, dá para desfazer na hora. Salve para testar na próxima compra. Link na bio.
