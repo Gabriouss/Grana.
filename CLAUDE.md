@@ -11,4 +11,8 @@
 - In the GranaPonto admin panel, approving an item should automatically move it to the approved list, with no separate manual move step.
 - Keep the mobile web layout identical to the native app: the Granabô mascot stays in the bottom bar on phone web, floating only on tablets and desktop.
 - The carousel POST scheduling route (panel → RPC → executor v4 → Graph, carousel v9 on 19/10) is the proven reference: plan improvements are allowed, but they must keep that path working, backed by a regression test of it and a ready rollback to v4.
+- Record Grana creative adjustment requests as do-not-do items in ajustes.md and remove them from the request list.
+- Never include sample or placeholder data in post copy; captions must use only real, verified information.
+- Whenever a deliverable is finished, add it to the approval panel (para-aprovacao) without being asked.
+- Never break existing working behavior; every change must avoid regressions and keep current passing functionality green.
 <!-- end claude-reflect -->
