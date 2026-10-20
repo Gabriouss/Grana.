@@ -90,6 +90,15 @@ Em 08/10/2026, o autor confirmou que os cinco segredos incluídos no pacote envi
 O histórico e a evidência da exposição permanecem na seção datada de 16/09/2026 abaixo. A rotação resolve a pendência de validade dos valores expostos, sem apagar o fato histórico de que o pacote de projeto foi enviado ao EAS.
 
 ---
+# 20/10/2026 (M1, Claude Code): regra 27 (trava de 75% da conta PH) revogada
+
+Pedido do autor: "exclui pra mim a regra de bloqueio de 75%". A regra 27 do `AGENTS.md` virou registro de revogação (`326bfaa`); o número fica reservado.
+
+- **M1:** os ganchos `PreToolUse`/`PostToolUse` de `.claude/limite/guarda.cjs` saíram do `.claude/settings.local.json`. A linha de status (`statusline.cjs`) ficou, só para mostrar o uso. Também saiu `"disableAllHooks": true`, que desligava todos os ganchos, inclusive o `Stop` que espelha `context.md`, `AGENTS.md` e `PRODUCT.md` no vault (regra 12): o espelhamento volta a rodar.
+- **Rotina "Retomada-PH" do Maestri:** já não existia no workspace "Grana." (`maestri routine list` vazio em 20/10).
+- **Pendente na M2 (ação da próxima sessão lá):** abrir o `.claude/settings.local.json` da M2 e apagar os blocos `PreToolUse` e `PostToolUse` que chamam `.claude/limite/guarda.cjs`, se existirem, e apagar a rotina "Retomada-PH" do Maestri de lá, se existir. Não confirmado daqui: a M2 não é acessível desta máquina.
+
+---
 # 19/10/2026 (M1, Claude Code maestro, noite): capturas, Reels "Conheça o Granabô" com capa e regras de edição de vídeo
 
 > Nota de sessão no vault e no fichário (`Fichário - Sessões`): `2026-10-19 - M1 - Capturas, Reels do Granabô e capa`. Continua a rodada de capturas aberta pelo Ledger à tarde (entrada abaixo). O autor mandou este terminal executar direto (exceção pedida à regra 19).
