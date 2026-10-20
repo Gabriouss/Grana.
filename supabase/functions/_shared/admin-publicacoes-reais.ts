@@ -44,7 +44,9 @@ export function validarPublicacaoReal(v:unknown):PedidoPublicacaoReal{
  switch(p.acao){
   case 'contas':campos(p,base);break;
   case 'previa':{
-   campos(p,[...base,'snapshotId','snapshotRevisao','destinos']);uuid(p.snapshotId);inteiro(p.snapshotRevisao);
+   campos(p,[...base,'snapshotId','snapshotRevisao','jobId','destinos']);
+   if(p.jobId!==undefined){uuid(p.jobId);if(p.snapshotId!==undefined||p.snapshotRevisao!==undefined)falhar('pedido-invalido');}
+   else{uuid(p.snapshotId);inteiro(p.snapshotRevisao);}
    if(!Array.isArray(p.destinos)||p.destinos.length<1||p.destinos.length>8)falhar('destino-invalido');
    p.destinos=(p.destinos as unknown[]).map(x=>{const d=objeto(x);campos(d,['contaId','rede','formato','publicarEm','fuso']);uuid(d.contaId);
     if(!FORMATOS.includes(String(d.formato))||d.fuso!=='America/Sao_Paulo'||(d.rede!==undefined&&!['facebook','instagram'].includes(String(d.rede))))falhar('destino-invalido');
@@ -61,13 +63,15 @@ export function validarPublicacaoReal(v:unknown):PedidoPublicacaoReal{
    campos(p,[...base,'limite','cursor']);if(p.limite!==undefined)inteiro(p.limite,1,50);
    if(p.cursor!==undefined){const c=objeto(p.cursor);campos(c,['id','criadoEm']);uuid(c.id);horario(c.criadoEm);}break;
   case 'cancelar':case 'reconciliar':case 'reagendar':case 'pausar':case 'retomar':{
-   campos(p,[...base,'jobId','revisaoEsperada','idempotencia','confirmado','escopo','contaId','publicarEm','fuso']);
+   campos(p,[...base,'jobId','revisaoEsperada','idempotencia','confirmado','escopo','contaId','publicarEm','fuso','previaId','previaHash']);
    uuid(p.idempotencia);inteiro(p.revisaoEsperada);if(p.confirmado!==true)falhar('pedido-invalido');
    if(p.escopo!==undefined){if(!['pausar','retomar'].includes(String(p.acao))||!['conta','global','facebook','instagram'].includes(String(p.escopo))||p.jobId!==undefined)falhar('pedido-invalido');
     if(p.escopo==='conta')uuid(p.contaId);else if(p.contaId!==undefined)falhar('pedido-invalido');
    }else uuid(p.jobId);
-   if(p.acao==='reagendar'){p.publicarEm=horario(p.publicarEm);if(p.fuso!=='America/Sao_Paulo')falhar('horario-invalido');}
-   else if(p.publicarEm!==undefined||p.fuso!==undefined)falhar('pedido-invalido');break;
+   if(p.acao==='reagendar'){
+    p.publicarEm=horario(p.publicarEm);if(p.fuso!=='America/Sao_Paulo')falhar('horario-invalido');
+    uuid(p.previaId);if(typeof p.previaHash!=='string'||!HASH.test(p.previaHash))falhar('pedido-invalido');
+   }else if(p.publicarEm!==undefined||p.fuso!==undefined||p.previaId!==undefined||p.previaHash!==undefined)falhar('pedido-invalido');break;
   }
   default:falhar('pedido-invalido');
  }
@@ -100,7 +104,7 @@ function validarPublicacaoRealV2(p:Objeto):PedidoPublicacaoReal{
   const {contractVersion:_v,previaId,previaHash,...d}=p;
   if(p.acao==='reagendar'){
    uuid(previaId);if(typeof previaHash!=='string'||!HASH.test(previaHash))falhar('pedido-invalido');
-   validarPublicacaoReal(d);
+   validarPublicacaoReal({...d,previaId,previaHash});
   }else validarPublicacaoReal({...d,...(previaId!==undefined?{previaId}:{}),...(previaHash!==undefined?{previaHash}:{})});
  }
  return p as PedidoPublicacaoReal;
@@ -150,8 +154,10 @@ export function criarOperacaoPublicacoesReais(_deps:unknown={}):OperacaoAdmin<Pe
     {p_admin:userId,[consulta?'p_filtro':'p_pedido']:filtro},signal)}};
   }
   if(p.acao==='previa'){
-   const row=await rpcReal<{id:string;hash:string;expira_em:string;destinos:unknown[]}>(cliente,'previa',{p_admin:userId,p_pedido:{snapshotId:p.snapshotId,snapshotRevisao:p.snapshotRevisao,destinos:p.destinos}},signal);
-   const snapshot=await lerSnapshot(cliente,String(p.snapshotId),signal);
+   const row=await rpcReal<{id:string;hash:string;expira_em:string;snapshot_id:string;destinos:unknown[]}>(cliente,'previa',
+    {p_admin:userId,p_pedido:p.jobId?{jobId:p.jobId,destinos:p.destinos}:{snapshotId:p.snapshotId,snapshotRevisao:p.snapshotRevisao,destinos:p.destinos}},signal);
+   const snapshot=await lerSnapshot(cliente,row.snapshot_id,signal);
+   if(snapshot.admin_id!==userId)falhar('nao-autorizado',403);
    const estado=await rpcReal<{controles:{habilitado:boolean;recuperacaoPendente:boolean;pausaGlobal:boolean;pausaFacebook:boolean;pausaInstagram:boolean;margemValidaAte:string|null};contas:{contaId:string;pausada:boolean}[]}>(cliente,'consultar',{p_admin:userId,p_filtro:{acao:'contas'}},signal);
    const c=estado.controles;const bloqueios:string[]=[];
    if(!c?.habilitado||c.recuperacaoPendente||!c.margemValidaAte||Date.parse(c.margemValidaAte)<=agora.getTime())bloqueios.push('operacao-bloqueada');
