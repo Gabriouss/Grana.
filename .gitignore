@@ -157,3 +157,6 @@ __pycache__/
 
 # Lixeira da galeria de midia do Antigravity: descarte local, nunca versionar (autor, 13/10/2026)
 docs/marketing/.lixeira/
+
+# Config local do Codex: guarda chave de API (repositorio publico, regra 15)
+.codex/config.toml
