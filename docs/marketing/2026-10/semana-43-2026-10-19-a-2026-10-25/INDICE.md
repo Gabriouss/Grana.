@@ -2,7 +2,7 @@
 
 ## Para aprovação
 
-- `para-aprovacao/pecas/reels/Conheça o Granabô.mp4`: Reels de apresentação do mascote, 1080x1920, 17,6 s, v5 de 19/10/2026 (celular maior e cortado embaixo, foco no Granachat). Montado na Editonny (HyperFrames) com narração da ElevenLabs (voz "Gabriel - Shorts & Reels", aprovada pelo autor), trilha pop local e as telas reais gravadas no celular do autor (conta de teste). Fontes da edição em `apoio/reels-granabo-v3/`. Legenda em `para-aprovacao/pecas/COPYS-FINAIS.md`.
+- `para-aprovacao/pecas/reels/Conheça o Granabô.mp4`: Reels de apresentação do mascote, 1080x1920, 17,6 s, v6 de 19/10/2026 (celular maior e cortado embaixo, foco no Granachat, barra de status com o cronômetro do gravador escondida sob a moldura). Montado na Editonny (HyperFrames) com narração da ElevenLabs (voz "Gabriel - Shorts & Reels", aprovada pelo autor), trilha pop local e as telas reais gravadas no celular do autor (conta de teste). Fontes da edição em `apoio/reels-granabo-v3/`. Legenda em `para-aprovacao/pecas/COPYS-FINAIS.md`.
 
 ## Observações da produção
 
