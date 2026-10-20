@@ -496,7 +496,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  /* Nome e valor dividem uma linha que quebra. Até 30/09/2026 o nome ficava
+  /* 19/10/2026: nome em cima e valor embaixo, os dois alinhados à esquerda, em
+     TODA linha (Total inclusive). Com o valor à direita e a quebra automática,
+     "Total" ficava numa linha só e "Principal" e "Dia a dia" quebravam, e o
+     bloco do valor ficava desalinhado do nome (visto no print da web e no app).
+     Coluna fixa não depende de largura nem de escala de fonte. O histórico
+     abaixo descreve o desenho anterior, em linha que quebra.
+     Nome e valor dividiam uma linha que quebra. Até 30/09/2026 o nome ficava
      numa View `flex: 1` (base zero) ao lado da coluna do valor, que no Yoga
      não encolhe: a 130% da fonte do sistema a coluna "entradas no período"
      levava quase a linha toda e o nome, com ~70dp, partia letra a letra
@@ -511,10 +517,8 @@ const styles = StyleSheet.create({
      maior que ela quebra por palavra (conferido no emulador). */
   walletInfo: {
     flex: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    columnGap: spacing.md,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
     rowGap: 2,
   },
   walletName: {
@@ -531,9 +535,8 @@ const styles = StyleSheet.create({
      dele é o que evita a pessoa ler "entradas do período" como "saldo
      disponível". */
   walletValueCol: {
-    marginLeft: 'auto',
     flexShrink: 0,
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
   },
   walletValueLabel: {
     color: theme.inkFaint,
