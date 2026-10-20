@@ -97,6 +97,14 @@ export async function montarReal(raiz, ctx, integracao = null) {
     avisar(`${acao} não foi concluída. ${frase}`, true, codigo);
   }
 
+  async function focarFeedbackReagendamento(texto) {
+    // O aviso pertence à casca e sobrevive à troca do mês. O recibo da tela antiga não.
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const feedback = [...document.querySelectorAll('.avisos .aviso')].find((el) => el.querySelector('span')?.textContent === texto);
+    if (feedback) { feedback.setAttribute('tabindex', '-1'); feedback.focus(); }
+    else if (recibo.isConnected && !recibo.closest('dialog:not([open])')) recibo.focus();
+  }
+
   function busy(valor) {
     ocupado = valor;
     raiz.setAttribute('aria-busy', String(valor));
@@ -651,7 +659,8 @@ export async function montarReal(raiz, ctx, integracao = null) {
       const mesAlvo = horarioUtcParaLocal(data).slice(0, 7);
       if (integracao && ctx.params?.mes && ctx.params.mes !== mesAlvo) ctx.navegar?.(`#/marketing/calendario?mes=${mesAlvo}`);
       await atualizarFilaSemBloquear();
-      recibo.focus?.();
+      if (substituicao) await focarFeedbackReagendamento(texto);
+      else recibo.focus?.();
     } catch (err) {
       if (encerrada || ctx.obsoleta()) return;
       if (resultadoIncerto(err)) {
@@ -676,10 +685,12 @@ export async function montarReal(raiz, ctx, integracao = null) {
     const anterior = raiz.querySelector('.pub-real-consulta-pendente');
     anterior?.remove();
     const caixa = integracao && ['confirmar', 'reagendar'].includes(pendencia?.tipo) ? integracao.painel : disponibilidade;
+    const consultar = botao('Consultar resultado pendente', () => consultarPendente(), { operacao: false });
     caixa.appendChild(h('div', { class: 'pub-real-consulta-pendente', role: 'alert' },
       h('p', { texto: 'A resposta se perdeu. Consulte o resultado antes de repetir a operação.' }),
       detalhesTecnicos(`Chave de consulta: ${pendencia?.idempotencia || 'indisponível'}`),
-      botao('Consultar resultado pendente', () => consultarPendente(), { operacao: false })));
+      consultar));
+    if (pendencia?.tipo === 'reagendar') consultar.focus();
   }
 
   async function consultarPendente() {
@@ -693,15 +704,19 @@ export async function montarReal(raiz, ctx, integracao = null) {
         avisar('A chave ainda não tem recibo consultável. Não repita a confirmação; atualize e aguarde a fonte responder.', true);
         return;
       }
-      if (pendencia.tipo === 'reagendar') {
+      const reagendado = pendencia.tipo === 'reagendar';
+      if (reagendado) {
         liberarPreview(); reagendamento = null;
         compositor.closest?.('dialog')?.close?.();
       }
       pendencia = null;
       raiz.querySelector('.pub-real-consulta-pendente')?.remove();
       desenharLista();
-      avisar(d.jobs.length ? `Resultado conferido pela chave idempotente: ${resumirLote(d.jobs).rotulo}.` : 'A chave ainda não tem recibo consultável. Não repita a confirmação; atualize e aguarde a fonte responder.', !d.jobs.length);
+      const texto = `Resultado conferido pela chave idempotente: ${resumirLote(d.jobs).rotulo}.`;
+      avisar(texto);
+      if (reagendado) ctx.aviso?.(texto, 'ok');
       if (d.jobs.length) await atualizarFilaSemBloquear();
+      if (reagendado) await focarFeedbackReagendamento(texto);
     } catch (err) { if (!encerrada && !ctx.obsoleta()) erroLegivel(err, 'A consulta pela chave preservada'); }
     finally { busy(false); }
   }
