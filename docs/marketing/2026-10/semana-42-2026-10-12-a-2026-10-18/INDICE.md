@@ -75,3 +75,4 @@ Cada linha registra o aceite explícito do autor dado no painel local, para a ve
 
 <!-- promocao:0a1059ea191a0cb7:155bf65552710ce910d98f77682924d6dab8e94a -->
 - Promoção 2026-10-19T00:24:00-03:00: [peça em aprovados](aprovados/pecas/reels/Recebeu um Pix, só colar-capa.png); aceite do autor em 2026-10-19T00:24:00-03:00, versão `155bf65552710ce910d98f77682924d6dab8e94a`. Origem `docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/para-aprovacao/pecas/reels/Recebeu um Pix, só colar-capa.png`. Nada publicado ou agendado.
+- 20/10/2026 09:07 (-03:00): aceite pelo autor no painel local. Peça `aprovados/pecas/lumen-v8/Quanto dá pra gastar hoje.png`, versão `abb2d9977754`. Registro em `docs/marketing/painel/aprovacoes.json`. Publicação pede passo próprio.

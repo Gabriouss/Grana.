@@ -66,25 +66,6 @@
       ]
     },
     {
-      "id": "d56f097f03d86707",
-      "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/lumen-v8/Quanto dá pra gastar hoje.png",
-      "versao": "a9f38fbaf252aac92f8f20f8bfd0b9e8ebbe31e2",
-      "data": "2026-10-20",
-      "hora": "09:00",
-      "canal": "instagram-feed",
-      "observacao": null,
-      "planejadoEm": "2026-10-19T00:29:09-03:00",
-      "recibos": [
-        {
-          "tipo": "data-marcada",
-          "em": "2026-10-19T00:29:09-03:00",
-          "data": "2026-10-20",
-          "hora": "09:00",
-          "canal": "instagram-feed"
-        }
-      ]
-    },
-    {
       "id": "3128ff5fb6809313",
       "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/Organize no computador, acompanhe pelo celular.png",
       "versao": "699a671d442890bbd312df749001e8119ff5f4c3",
@@ -169,6 +150,25 @@
           "tipo": "data-marcada",
           "em": "2026-10-19T10:58:03-03:00",
           "data": "2026-10-22",
+          "hora": "09:00",
+          "canal": "instagram-feed"
+        }
+      ]
+    },
+    {
+      "id": "d56f097f03d86707",
+      "caminho": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/aprovados/pecas/lumen-v8/Quanto dá pra gastar hoje.png",
+      "versao": "abb2d9977754333c2fd63d3398802d9520030e57",
+      "data": "2026-10-20",
+      "hora": "09:00",
+      "canal": "instagram-feed",
+      "observacao": null,
+      "planejadoEm": "2026-10-20T09:07:33-03:00",
+      "recibos": [
+        {
+          "tipo": "data-marcada",
+          "em": "2026-10-20T09:07:33-03:00",
+          "data": "2026-10-20",
           "hora": "09:00",
           "canal": "instagram-feed"
         }
