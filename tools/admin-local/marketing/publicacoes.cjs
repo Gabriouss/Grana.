@@ -20,9 +20,12 @@ function horario(p) {
 function validarPedido(p) {
   if (!p || !acoes.includes(p.acao)) invalido();
   if (p.acao === 'prever') {
-    fechado(p, ['acao', 'pecaId', 'versao', 'destinos', 'agendarPara', 'fuso']);
-    if (!/^[0-9a-f]{16}$/.test(p.pecaId || '') || !/^[0-9a-f]{40}$/.test(p.versao || '')
+    const reagendamento = p.jobId !== undefined;
+    fechado(p, ['acao', ...(reagendamento ? ['jobId'] : ['pecaId', 'versao']), 'destinos', 'agendarPara', 'fuso']);
+    if (reagendamento) uuid(p.jobId);
+    if ((!reagendamento && (!/^[0-9a-f]{16}$/.test(p.pecaId || '') || !/^[0-9a-f]{40}$/.test(p.versao || '')))
       || !Array.isArray(p.destinos) || p.destinos.length < 1 || p.destinos.length > 8) invalido();
+    if (reagendamento && p.destinos.length !== 1) invalido();
     const publicarEm = horario(p), unicos = new Set();
     const destinos = p.destinos.map(d => {
       fechado(d, ['contaId', 'rede', 'formato']);
@@ -32,12 +35,12 @@ function validarPedido(p) {
       if (unicos.has(chave)) invalido(); unicos.add(chave);
       return { ...d, publicarEm, fuso: p.fuso };
     });
-    return { acao: 'previa', pecaId: p.pecaId, versao: p.versao, destinos };
+    return { acao: 'previa', ...(reagendamento ? { jobId: p.jobId } : { pecaId: p.pecaId, versao: p.versao }), destinos };
   }
   const base = ['acao', 'revisaoEsperada', 'idempotencia', 'confirmacao'];
   const campos = p.acao === 'confirmar' ? ['previaId', 'previaHash']
     : ['pausar', 'retomar'].includes(p.acao) ? ['escopo', 'contaId']
-    : p.acao === 'reagendar' ? ['jobId', 'agendarPara', 'fuso'] : ['jobId'];
+    : p.acao === 'reagendar' ? ['jobId', 'agendarPara', 'fuso', 'previaId', 'previaHash'] : ['jobId'];
   fechado(p, [...base, ...campos]);
   if (p.confirmacao !== true) throw new ErroMarketing('confirmacao-invalida', 'Confirme a ação para continuar.', 400);
   const r = { acao: p.acao, revisaoEsperada: revisao(p.revisaoEsperada), idempotencia: uuid(p.idempotencia), confirmado: true };
@@ -50,7 +53,9 @@ function validarPedido(p) {
     if (p.escopo !== 'conta' && p.contaId !== undefined) invalido();
     return { ...r, escopo: p.escopo, ...(p.escopo === 'conta' ? { contaId: conta(p.contaId) } : {}) };
   }
-  return { ...r, jobId: uuid(p.jobId), ...(p.acao === 'reagendar' ? { publicarEm: horario(p), fuso: p.fuso } : {}) };
+  if (p.acao === 'reagendar' && !/^[0-9a-f]{64}$/.test(p.previaHash || '')) invalido();
+  return { ...r, jobId: uuid(p.jobId), ...(p.acao === 'reagendar'
+    ? { publicarEm: horario(p), fuso: p.fuso, previaId: uuid(p.previaId), previaHash: p.previaHash } : {}) };
 }
 function criarPublicacoes({ remoto, catalogo = listarPecas, obterPeca = obterPecaCatalogo, estado: estadoInjetado } = {}) {
   let estadoLocal;

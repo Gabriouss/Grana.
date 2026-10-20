@@ -20,12 +20,29 @@ const previa = { acao: 'prever', pecaId: 'a'.repeat(16), versao: 'b'.repeat(40),
     assert.throws(() => api.executar('.', ruim), { codigo: 'pedido-invalido' });
   }
   assert.equal(efeitos.length, 1);
+  const reagendamento = { acao: 'prever', jobId: U, destinos: [destino], agendarPara: previa.agendarPara, fuso: previa.fuso };
+  await api.executar('acervo-fixture', reagendamento);
+  assert.equal(efeitos.at(-1)[2].jobId, U);
+  assert.equal(efeitos.at(-1)[2].pecaId, undefined);
+  const antesInvalidos = efeitos.length;
+  for (const ruim of [{ ...reagendamento, pecaId: previa.pecaId }, { ...reagendamento, versao: previa.versao },
+    { ...reagendamento, jobId: 'invalido' }, { ...reagendamento, destinos: [destino, { ...destino, rede: 'facebook' }] },
+    { ...base, acao: 'reagendar', jobId: U, agendarPara: previa.agendarPara, fuso: previa.fuso },
+    { ...base, acao: 'reagendar', jobId: U, agendarPara: previa.agendarPara, fuso: previa.fuso, previaId: U, previaHash: 'x' }]) {
+    assert.throws(() => api.executar('.', ruim), { codigo: 'pedido-invalido' });
+  }
+  assert.equal(efeitos.length, antesInvalidos, 'pedido ambíguo ou sem prévia não chega ao remoto');
   for (const acao of ['cancelar', 'reconciliar', 'reagendar']) {
-    const p = { ...base, acao, jobId: U, ...(acao === 'reagendar' ? { agendarPara: previa.agendarPara, fuso: previa.fuso } : {}) };
+    const p = { ...base, acao, jobId: U, ...(acao === 'reagendar'
+      ? { agendarPara: previa.agendarPara, fuso: previa.fuso, previaId: U, previaHash: 'a'.repeat(64) } : {}) };
     await api.executar('.', p);
     assert.equal(efeitos.at(-1)[1].acao, acao);
     assert.equal(efeitos.at(-1)[1].revisaoEsperada, 2);
     assert.equal(efeitos.at(-1)[1].idempotencia, U);
+    if (acao === 'reagendar') {
+      assert.equal(efeitos.at(-1)[1].previaId, U);
+      assert.equal(efeitos.at(-1)[1].previaHash, 'a'.repeat(64));
+    }
     assert.throws(() => api.executar('.', { ...p, versao: previa.versao }), { codigo: 'pedido-invalido' });
   }
   for (const acao of ['pausar', 'retomar']) {

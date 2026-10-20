@@ -51,7 +51,7 @@ function criarRemoto() {
       Object.assign(r, { estado: 'pronto', revisao: r.revisao + 1 }); return resposta(r);
     },
     // Formato da RPC publicada: revisões de conta/capacidade, SEM estado ou motivos.
-    previa: a => resposta({ id: PREVIA, hash: HASH_PREVIA, expira_em: '2027-01-01T15:00:00.000Z',
+    previa: a => resposta({ id: PREVIA, snapshot_id: SNAP, hash: HASH_PREVIA, expira_em: '2027-01-01T15:00:00.000Z',
       destinos: alterarDestinos(a.p_pedido.destinos.map(d => ({ ...d, contaRevisao: 2, capacidadeRevisao: 3 }))) }),
     consultar: a => a.p_filtro.acao === 'contas'
       ? resposta({ controles, contas: [{ contaId: CONTA, pausada: false }, { contaId: CONTA_FB, pausada: false }] })

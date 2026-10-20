@@ -102,6 +102,38 @@ function criarPublicacoesReais({ env, remoto, cliente, relogio, log, rede, estad
     stream.on('end', () => ok(new Uint8Array(Buffer.concat(partes))));
   });
 
+  async function apresentarPrevia(dados, p, snap) {
+    // Mesmo DTO para captura nova e reagendamento de snapshot já aprovado.
+    // A RPC devolve destinos com revisões, sem estado/motivos. Nunca repara estado explícito.
+    const invalida = () => { throw new ErroMarketing('previa-invalida', 'O servidor não devolveu os destinos validados desta prévia.', 502); };
+    if (!Array.isArray(dados.destinos) || dados.destinos.length !== p.destinos.length
+      || typeof dados.podeConfirmar !== 'boolean' || !Array.isArray(dados.bloqueios)
+      || dados.bloqueios.some(m => typeof m !== 'string') || !snap || !UUID.test(snap.snapshotId || '')
+      || !Array.isArray(snap.midias)) invalida();
+    const pronta = dados.podeConfirmar && dados.bloqueios.length === 0 && dados.snapshot?.estado === 'pronto';
+    const destinos = dados.destinos.map((d, i) => {
+      if (!d || typeof d !== 'object') return invalida();
+      const alvo = p.destinos[i];
+      if (d.contaId !== alvo.contaId || d.rede !== alvo.rede || d.formato !== alvo.formato
+        || d.publicarEm !== alvo.publicarEm || d.fuso !== alvo.fuso
+        || !Number.isSafeInteger(d.contaRevisao) || d.contaRevisao < 1
+        || !Number.isSafeInteger(d.capacidadeRevisao) || d.capacidadeRevisao < 1) return invalida();
+      if (Object.hasOwn(d, 'estado') || Object.hasOwn(d, 'motivos')) {
+        if (!['pronto', 'bloqueado'].includes(d.estado) || !Array.isArray(d.motivos)
+          || d.motivos.some(m => typeof m !== 'string')
+          || (d.estado === 'pronto' && (!pronta || d.motivos.length > 0))) return invalida();
+        return d;
+      }
+      return { ...d, estado: pronta ? 'pronto' : 'bloqueado',
+        motivos: pronta ? [] : dados.bloqueios.length ? [...dados.bloqueios] : ['previa-bloqueada'] };
+    });
+    await estado().registrarPrevia({ previaId: dados.previaId, snapshotId: snap.snapshotId,
+      midias: snap.midias.length, capa: !!snap.capa, expiraEm: dados.expiraEm });
+    const url = indice => `/api/marketing/publicacoes/midia?previaId=${encodeURIComponent(dados.previaId)}&indice=${indice}`;
+    return { ...dados, destinos, midiasLocais: snap.midias.map((x, i) => ({ ordem: x.ordem, tipo: x.tipo, mime: x.mime, url: url(i) })),
+      capaLocal: snap.capa ? { mime: snap.capa.mime, url: url('capa') } : null };
+  }
+
   const api = {
     executar(pedido) {
       return comPrazo(PRAZO_REAL_MS, ctx => executarOp(pedido, ctx));
@@ -110,6 +142,15 @@ function criarPublicacoesReais({ env, remoto, cliente, relogio, log, rede, estad
        (o servidor relê e confere), confere de novo o aceite local e só então pede a prévia.
        Upload e verificação terminam ANTES de qualquer confirmação. */
     prever(raiz, p) {
+      if (p.jobId !== undefined) {
+        // O SQL resolve o snapshot/ator e vincula a prévia ao job e à revisão.
+        // Não recaptura a peça nem envia novamente os objetos privados.
+        return comPrazo(PRAZO_REAL_MS, async ctx => {
+          const dados = await executarOp({ recurso: 'publicacoes-reais', modo: 'real', acao: 'previa',
+            jobId: p.jobId, destinos: p.destinos }, ctx);
+          return apresentarPrevia(dados, p, dados.snapshot);
+        });
+      }
       return comPrazo(PRAZO_PREVIA_MS, async ctx => {
         const cap = await capturar(raiz, p.pecaId, p.versao, { signal: ctx.signal, jpeg: true });
         try {
@@ -133,34 +174,7 @@ function criarPublicacoesReais({ env, remoto, cliente, relogio, log, rede, estad
           await cap.conferir(); // aceite e versão continuam os mesmos depois do upload
           const dados = await executarOp({ recurso: 'publicacoes-reais', modo: 'real', acao: 'previa',
             snapshotId: snap.snapshotId, snapshotRevisao: snap.revisao, destinos: p.destinos }, ctx);
-          // A RPC devolve os destinos validados com suas revisões, sem estado/motivos.
-          // Traduz só esse formato para o DTO do browser; nunca repara estado explícito.
-          const invalida = () => { throw new ErroMarketing('previa-invalida', 'O servidor não devolveu os destinos validados desta prévia.', 502); };
-          if (!Array.isArray(dados.destinos) || dados.destinos.length !== p.destinos.length
-            || typeof dados.podeConfirmar !== 'boolean' || !Array.isArray(dados.bloqueios)
-            || dados.bloqueios.some(m => typeof m !== 'string')) invalida();
-          const pronta = dados.podeConfirmar && dados.bloqueios.length === 0 && dados.snapshot?.estado === 'pronto';
-          const destinos = dados.destinos.map((d, i) => {
-            if (!d || typeof d !== 'object') return invalida();
-            const alvo = p.destinos[i];
-            if (d.contaId !== alvo.contaId || d.rede !== alvo.rede || d.formato !== alvo.formato
-              || d.publicarEm !== alvo.publicarEm || d.fuso !== alvo.fuso
-              || !Number.isSafeInteger(d.contaRevisao) || d.contaRevisao < 1
-              || !Number.isSafeInteger(d.capacidadeRevisao) || d.capacidadeRevisao < 1) return invalida();
-            if (Object.hasOwn(d, 'estado') || Object.hasOwn(d, 'motivos')) {
-              if (!['pronto', 'bloqueado'].includes(d.estado) || !Array.isArray(d.motivos)
-                || d.motivos.some(m => typeof m !== 'string')
-                || (d.estado === 'pronto' && (!pronta || d.motivos.length > 0))) return invalida();
-              return d;
-            }
-            return { ...d, estado: pronta ? 'pronto' : 'bloqueado',
-              motivos: pronta ? [] : dados.bloqueios.length ? [...dados.bloqueios] : ['previa-bloqueada'] };
-          });
-          await estado().registrarPrevia({ previaId: dados.previaId, snapshotId: snap.snapshotId,
-            midias: snap.midias.length, capa: !!snap.capa, expiraEm: dados.expiraEm });
-          const url = indice => `/api/marketing/publicacoes/midia?previaId=${encodeURIComponent(dados.previaId)}&indice=${indice}`;
-          return { ...dados, destinos, midiasLocais: snap.midias.map((x, i) => ({ ordem: x.ordem, tipo: x.tipo, mime: x.mime, url: url(i) })),
-            capaLocal: snap.capa ? { mime: snap.capa.mime, url: url('capa') } : null };
+          return await apresentarPrevia(dados, p, snap);
         } finally { await cap.fechar(); }
       });
     },
