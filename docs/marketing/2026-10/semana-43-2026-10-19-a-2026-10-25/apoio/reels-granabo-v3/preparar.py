@@ -13,12 +13,12 @@ EDIT = os.path.join(AQ, 'edit'); MID = os.path.join(AQ, 'midia')
 os.makedirs(os.path.join(EDIT, 'transcripts'), exist_ok=True); os.makedirs(MID, exist_ok=True)
 CEL = os.path.join(AQ, '..', '..', 'capturas-app', 'celular')
 AUD = os.path.join(AQ, '..', 'audio')
-DUR, FPS = 21.0, 30
+DUR, FPS = 17.6, 30
 def run(c): subprocess.run(c, check=True)
 
 # narração: (início na fonte, fim na fonte, posição no vídeo). Cortes nos silêncios medidos.
-NARR = [(0.00, 1.45, 0.30), (1.55, 3.45, 1.95), (3.50, 5.00, 4.40), (5.00, 6.27, 6.90), (6.27, 7.64, 11.60), (7.64, 10.08, 16.50)]
-PLIM = 13.6   # confirmação do lançamento aparece na tela
+NARR = [(0.00, 1.45, 0.30), (1.55, 3.45, 1.85), (3.50, 5.00, 4.20), (5.00, 6.27, 6.00), (6.27, 7.64, 9.70), (7.64, 10.08, 13.55)]
+PLIM = 11.3   # confirmação do lançamento aparece na tela
 
 def audio():
     # entradas: 0 fundo (imagem), 1 narração, 2 música, 3 plim
@@ -87,15 +87,15 @@ def volta(fr, t):
         if q > 0: M.cola_mascote(fr, 'feliz', 540, cy, 1, q, sombra=q >= 0.5)
 
 # telas: (clipe, [(início na fonte, fim na fonte, duração no vídeo)]). Digitação acelerada, espera cortada.
-TELAS = {'consulta': ('granachat-consulta', [(2.0, 13.2, 2.2), (14.0, 14.4, 0.4), (18.3, 20.5, 2.2)]),
-         'registro': ('granachat-registro', [(4.0, 11.5, 1.8), (12.0, 12.4, 0.4), (18.2, 20.8, 2.6)])}
+TELAS = {'consulta': ('granachat-consulta', [(2.0, 13.2, 1.6), (14.0, 14.3, 0.3), (18.3, 20.3, 2.0)]),
+         'registro': ('granachat-registro', [(4.0, 11.5, 1.3), (12.0, 12.3, 0.3), (18.2, 20.4, 2.2)])}
 SW, SH = 900, 2070      # proporção da tela útil do aparelho (365x839)
 
 def telas():
     for nome, (clipe, trechos) in TELAS.items():
         fl = []
         for i, (a, b, d) in enumerate(trechos):
-            fl.append(f'[0:v]trim={a}:{b},setpts=(PTS-STARTPTS)*{d/(b-a):.5f},fps={FPS},scale={SW}:{SH}:force_original_aspect_ratio=increase,crop={SW}:{SH},setsar=1[v{i}]')
+            fl.append(f'[0:v]trim={a}:{b},setpts=(PTS-STARTPTS)*{d/(b-a):.5f},fps={FPS},scale={SW}:{SH}:force_original_aspect_ratio=increase,crop={SW}:{SH},setsar=1,trim=duration={d},setpts=PTS-STARTPTS[v{i}]')
         fl.append(''.join(f'[v{i}]' for i in range(len(trechos))) + f'concat=n={len(trechos)}:v=1:a=0[v]')
         run(['ffmpeg', '-y', '-loglevel', 'error', '-i', os.path.join(CEL, clipe + '.mp4'), '-filter_complex', ';'.join(fl),
              '-map', '[v]', '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '16', '-g', '15', os.path.join(MID, f'tela-{nome}.mp4')])
