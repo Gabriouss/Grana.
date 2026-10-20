@@ -59,11 +59,18 @@ const job = (contaId, rede, estado, extra = {}) => ({
   let falhas = 0;
   const ok = (c, m) => { if (!c) { falhas++; console.error('FALHOU:', m); } else console.log('ok:', m); };
 
-  for (const width of [390, 768, 1024, 1280, 1440]) {
+  for (const width of (process.env.QA_LARGURAS ? process.env.QA_LARGURAS.split(',').map(Number) : [390, 768, 1024, 1280, 1440])) {
     const page = await browser.newPage({ viewport: { width, height: 960 } });
     const posts = [];
     let confirmarTentativas = 0; let leituraParcial = false; let catalogoDesatualizado = false; let leiturasCatalogo = 0;
     const jobs = [job('ig-1', 'instagram', 'agendado-na-meta'), job('fb-1', 'facebook', 'precisa-conferir')];
+    const reagendavel = job('ig-1', 'instagram', 'precisa-conferir', { codigoErro: 'lease-vencida', reagendamento: { permitido: true, motivos: [] } });
+    const publicado = job('fb-1', 'facebook', 'publicado', { permalink: 'https://www.facebook.com/qa', reagendamento: { permitido: true } });
+    jobs.push(reagendavel, publicado);
+    const editorial = job('ig-1', 'instagram', 'programado-no-painel', { pausado: true, motivoSuspensao: 'revisao-editorial',
+      reagendamento: { permitido: true, motivos: [] } }); // metadado contraditório não contorna suspensão
+    jobs.push(editorial);
+    let perderReagendamento = false, consultasReagendamento = 0;
     let falhaEditorial = false, falhaPerfil = false;
     const envelope = (dados, status = 200) => ({ status, contentType: 'application/json',
       body: JSON.stringify({ ok: status === 200, dados, atualizadoEm: new Date().toISOString(), erro: { codigo: 'qa', mensagem: 'QA' } }) });
@@ -96,7 +103,13 @@ const job = (contaId, rede, estado, extra = {}) => ({
       }
       if (p === '/api/marketing/publicacoes/catalogo') { leiturasCatalogo++; const pecas = catalogoDesatualizado ? [] : [PECA]; catalogoDesatualizado = false; return route.fulfill(envelope({ pecas, total: pecas.length })); }
       if (p === '/api/marketing/publicacoes/midia') return route.fulfill({ status: 200, headers: { 'content-type': 'image/png', 'cache-control': 'private, no-store' }, body: PNG });
-      if (p === '/api/marketing/publicacoes/detalhe') return route.fulfill(envelope(real({ loteId: LOTE, jobs })));
+      if (p === '/api/marketing/publicacoes/detalhe') {
+        if (perderReagendamento && url.searchParams.has('idempotencia')) {
+          consultasReagendamento++;
+          return route.fulfill(envelope(real({ loteId: LOTE, jobs: consultasReagendamento === 1 ? [] : jobs })));
+        }
+        return route.fulfill(envelope(real({ loteId: LOTE, jobs })));
+      }
       if (p === '/api/marketing/publicacoes' && req.method() === 'GET') return route.fulfill(envelope(real({ jobs, proximoCursor: null, limitado: false })));
       if (p === '/api/marketing/publicacoes' && req.method() === 'POST') {
         const body = req.postDataJSON();
@@ -104,10 +117,14 @@ const job = (contaId, rede, estado, extra = {}) => ({
         if (body.acao === 'prever') {
           return route.fulfill(envelope(real({
             previaId: uuid(), previaHash: 'f'.repeat(64), revisao: 4, expiraEm: new Date(Date.now() + 600000).toISOString(), podeConfirmar: true,
-            snapshot: { snapshotId: uuid(), estado: 'pronto', pecaId: PECA.id, versao: PECA.versao, legenda: LEGENDA, legendaSha256: sha(Buffer.from(LEGENDA)),
+            snapshot: { snapshotId: body.jobId ? reagendavel.snapshotId : uuid(), estado: 'pronto', pecaId: body.jobId ? 'd'.repeat(16) : PECA.id, versao: body.jobId ? 'a'.repeat(40) : PECA.versao, legenda: LEGENDA, legendaSha256: sha(Buffer.from(LEGENDA)),
               midias: [{ ordem: 0, tipo: 'imagem', mime: 'image/png', sha256: sha(PNG) }], capa: null, motivos: [] },
             destinos: body.destinos.map((d) => ({ ...d, estado: 'pronto', motivos: [], publicarEm: body.agendarPara })),
           })));
+        }
+        if (body.acao === 'reagendar') {
+          if (perderReagendamento) return route.abort('failed');
+          return route.fulfill(envelope(real({ jobs })));
         }
         if (body.acao === 'confirmar') {
           confirmarTentativas++;
@@ -124,12 +141,62 @@ const job = (contaId, rede, estado, extra = {}) => ({
     await page.getByRole('heading', { name: 'Calendário', exact: true }).waitFor({ timeout: 15000 });
     ok(await page.locator('.cal-operacao').evaluate((el) => !!(el.compareDocumentPosition(document.querySelector('.cal-unico-filtros')) & Node.DOCUMENT_POSITION_PRECEDING)), `${width}px: acompanhamento vem depois da grade`);
     ok(page.url().includes('visao=lista'), `${width}px: rota antiga redireciona para lista do calendário`);
+    const cardEditorial = page.locator('.pub-real-job.estado-suspenso-para-revisao');
+    ok(await cardEditorial.locator('.pub-real-estado').innerText() === 'Suspenso para revisão', `${width}px: A2 mostra suspensão editorial em vez de agendado`);
+    ok(await cardEditorial.locator('[role="alert"]').innerText().then((t) => /aceite anterior foi suspenso/.test(t) && /Revise e aprove/.test(t)), `${width}px: A2 tem causa e próximo passo visíveis`);
+    ok(await cardEditorial.getByRole('button', { name: /Reagendar/ }).count() === 0, `${width}px: A2 não oferece reagendar apesar do metadado contraditório`);
+    ok(await page.locator('.cal-operacao-secao', { hasText: 'Precisam de atenção' }).innerText().then((t) => t.includes('Suspenso para revisão')), `${width}px: A2 aparece no resumo de atenção abaixo da grade`);
     await page.screenshot({ path: path.join(OUT, `calendario-lista-${width}.png`), fullPage: true });
+    const privado = page.locator('.pub-real-job').filter({ hasText: 'Preparo interrompido antes da publicação' }).first();
+    ok(await privado.getByRole('button', { name: 'Reagendar Instagram', exact: true }).count() === 1, `${width}px: preparo privado oferece reagendamento por rede`);
+    ok(await page.locator('.pub-real-job.estado-publicado').getByRole('button', { name: /Reagendar/ }).count() === 0, `${width}px: publicado nunca oferece repetição, mesmo com metadado contraditório`);
+    ok(await page.locator('.pub-real-job.estado-precisa-conferir').filter({ hasText: 'Grana. (Página)' }).getByRole('button', { name: /Reagendar/ }).count() === 0, `${width}px: Facebook incerto não oferece reagendar`);
+    const abrirReagendamento = async () => {
+      await privado.getByRole('button', { name: 'Reagendar Instagram', exact: true }).click();
+      await page.locator('dialog[open] input[type="datetime-local"]').fill('2026-12-01T10:30');
+      await page.getByRole('button', { name: 'Gerar nova prévia', exact: true }).click();
+      await page.getByRole('button', { name: 'Confirmar reagendamento', exact: true }).waitFor();
+    };
+    await abrirReagendamento();
+    ok(posts.filter((p) => p.acao === 'reagendar').length === 0, `${width}px: gerar prévia não troca o agendamento`);
+    const novaPrevia = posts.at(-1);
+    ok(novaPrevia.acao === 'prever' && novaPrevia.jobId === reagendavel.jobId && novaPrevia.destinos.length === 1 && novaPrevia.destinos[0].rede === 'instagram' && !novaPrevia.pecaId,
+      `${width}px: nova prévia vinculada somente ao Instagram alvo sem recapturar peça`);
+    await page.screenshot({ path: path.join(OUT, `reagendamento-previa-${width}.png`), fullPage: true });
+    await page.waitForFunction(() => [...document.querySelectorAll('.pub-real-previa-destino img')].every((img) => img.complete && img.naturalWidth > 0));
+    await page.getByRole('button', { name: 'Confirmar reagendamento', exact: true }).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(OUT, `reagendamento-confirmacao-${width}.png`) });
+    ok(await page.evaluate('document.documentElement.scrollWidth <= innerWidth'), `${width}px: prévia de reagendamento sem overflow`);
+    await page.getByRole('button', { name: 'Confirmar reagendamento', exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector('.cal-unico-painel[open]'));
+    const troca = posts.find((p) => p.acao === 'reagendar');
+    ok(troca && troca.confirmacao === true && troca.previaHash === 'f'.repeat(64) && troca.revisaoEsperada === 1 && troca.jobId === reagendavel.jobId,
+      `${width}px: troca leva prévia/hash/revisão e confirmação explícita`);
+    // Resposta perdida: não reenvia; consulta vazia continua bloqueada até recibo disponível.
+    perderReagendamento = true;
+    await page.goto('http://127.0.0.1:4399/#/marketing/calendario?mes=2026-10&visao=lista');
+    await page.reload();
+    await privado.getByRole('button', { name: 'Reagendar Instagram', exact: true }).waitFor();
+    await abrirReagendamento();
+    await page.getByRole('button', { name: 'Confirmar reagendamento', exact: true }).click();
+    await page.locator('.pub-real-consulta-pendente').waitFor();
+    ok(await page.getByRole('button', { name: 'Confirmar reagendamento', exact: true }).isDisabled(), `${width}px: resposta incerta bloqueia nova troca`);
+    await page.getByRole('button', { name: 'Consultar resultado pendente', exact: true }).click();
+    await page.waitForFunction(() => [...document.querySelectorAll('.publicacoes-recibo-painel')].some((p) => p.textContent.includes('ainda não tem recibo')));
+    ok(await page.getByRole('button', { name: 'Confirmar reagendamento', exact: true }).isDisabled(), `${width}px: consulta sem recibo mantém bloqueio`);
+    ok(posts.filter((p) => p.acao === 'reagendar').length === 2 && posts.filter((p) => p.acao === 'confirmar').length === 0,
+      `${width}px: nenhum reenvio nem confirmação genérica no reagendamento incerto`);
+    await page.getByRole('button', { name: 'Consultar resultado pendente', exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector('.cal-unico-painel[open]'));
+    perderReagendamento = false;
+    jobs.splice(2); // restaura os dados-base da suíte existente
     // na grade (largura >= 900) os cartões são compactos: as ações ficam na janela do dia
     const abrirDia20 = async () => { if (width >= 900) await page.locator('.cal-dia[data-data="2026-10-20"] .cal-num-botao').click(); };
     await page.getByRole('button', { name: 'Calendário', exact: true }).click();
+    await page.getByRole('button', { name: 'Calendário', exact: true }).and(page.locator('[aria-pressed="true"]')).waitFor();
     if (width >= 900) {
       await page.locator('button.cal-icone:visible').first().waitFor();
+      await page.waitForFunction(() => [...document.querySelectorAll('.cal-num-botao')].some((el) => el.getBoundingClientRect().width >= 44));
       const alvos = await page.locator('button.cal-icone, .cal-num-botao, .cal-mais').evaluateAll((els) => els.filter((el) => el.getBoundingClientRect().width).map((el) => { const r = el.getBoundingClientRect(); return [r.width, r.height]; }));
       ok(alvos.length > 0 && alvos.every(([w,h]) => w >= 43.99 && h >= 43.99), `${width}px: ícones e dias acionáveis têm alvo mínimo de 44px (${JSON.stringify(alvos)})`);
     }

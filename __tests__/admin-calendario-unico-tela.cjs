@@ -2,7 +2,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const fonte = fs.readFileSync('tools/admin-local/web/telas/calendario.js', 'utf8').replace(/^import .*\r?\n/gm, '').replace(/export (async )?function /g, '$1function ');
-const sandbox = { console, Date, Intl, URL, URLSearchParams };
+const dominio = { Date, Intl, URLSearchParams };
+vm.runInNewContext(fs.readFileSync('tools/admin-local/web/telas/_publicacoes-reais.js', 'utf8').replace(/^export /gm, ''), dominio);
+const sandbox = { console, Date, Intl, URL, URLSearchParams,
+  estadoApresentacaoJob: dominio.estadoApresentacaoJob, descreverJobReal: dominio.descreverJobReal };
 vm.runInNewContext(fonte, sandbox);
 const p = { id: 'a'.repeat(16), versao: 'b'.repeat(40), titulo: 'Peça audit' };
 const d = { itens: [{ peca: p, data: '2026-10-19' }], aprovadosSemData: [] };
@@ -11,6 +14,12 @@ const projetar = (jobs, camada = 'ambos') => sandbox.projetarCalendario(d, jobs,
 const proximas = sandbox.resumirOperacaoCalendario([job('depois', 'preparando', '2026-10-23T15:00:00Z'), job('antes', 'programado-no-painel'), job('incerto', 'precisa-conferir'), job('publicado', 'publicado'), job('sem-confirmacao', 'preparando', undefined, { confirmadoEm: null })]);
 assert.equal(proximas.proximas.map((j) => j.jobId).join(','), 'antes,depois', 'resumo usa somente jobs confirmados, em ordem cronológica');
 assert.equal(proximas.atencao.map((j) => j.jobId).join(','), 'incerto', 'atenção independente por rede, sem confundir publicado com pendente');
+const suspenso = job('revisao', 'programado-no-painel', undefined, { pausado: true, motivoSuspensao: 'revisao-editorial' });
+const resumoSuspenso = sandbox.resumirOperacaoCalendario([suspenso]);
+assert.equal(resumoSuspenso.proximas.length, 0, 'A2: suspensão editorial não promete publicação futura');
+assert.equal(resumoSuspenso.atencao[0].jobId, 'revisao', 'A2: suspensão aparece em Precisa de atenção');
+assert.equal(sandbox.estadoDoIcone({ jobs: [suspenso] }).chave, 'atencao', 'A2: ícone também sinaliza atenção');
+assert.equal(suspenso.estado, 'programado-no-painel', 'apresentação não altera o estado do servidor');
 assert.equal(sandbox.diaReal(job('a', 'publicado')), '2026-10-20', 'dia é São Paulo, não UTC');
 assert.equal(projetar([job('a', 'programado-no-painel')]).itens.length, 1);
 assert.equal(projetar([job('a', 'programado-no-painel')]).itens[0].data, '2026-10-20');

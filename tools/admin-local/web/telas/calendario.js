@@ -3,7 +3,7 @@
 // Arrastar da coluna para o dia abre o mesmo formulário do botão "Escolher data".
 
 import { CANAIS, rotuloCanal, tituloPeca } from './_pecas.js';
-import { descreverJobReal } from './_publicacoes-reais.js';
+import { descreverJobReal, estadoApresentacaoJob } from './_publicacoes-reais.js';
 import { iconeSvg } from './_previa-publicacao.js';
 
 const DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
@@ -23,8 +23,8 @@ export function resumirOperacaoCalendario(jobs) {
   const atencao = new Set(['precisa-conferir', 'falhou', 'cancelamento-pendente', 'suspenso-para-revisao']);
   const confirmados = jobs.filter((j) => j.confirmadoEm);
   return {
-    proximas: confirmados.filter((j) => ativos.has(j.estado)).sort((a, b) => Date.parse(a.destino?.publicarEm) - Date.parse(b.destino?.publicarEm)),
-    atencao: confirmados.filter((j) => atencao.has(j.estado)),
+    proximas: confirmados.filter((j) => ativos.has(estadoApresentacaoJob(j))).sort((a, b) => Date.parse(a.destino?.publicarEm) - Date.parse(b.destino?.publicarEm)),
+    atencao: confirmados.filter((j) => atencao.has(estadoApresentacaoJob(j))),
   };
 }
 export function diaReal(job) {
@@ -128,7 +128,7 @@ const ESTADOS_CONHECIDOS = new Set(['planejado', 'programado-no-painel', 'prepar
 export function estadoDoIcone(item, publicado) {
   const reais = (item.jobs || []).filter((j) => j.estado !== 'cancelado');
   const textos = (lista) => lista.map((j) => { const d = descreverJobReal(j); return `${d.rede}: ${d.texto}`; }).join('; ');
-  const atencao = reais.filter((j) => ESTADOS_ATENCAO.has(j.estado) || !ESTADOS_CONHECIDOS.has(j.estado));
+  const atencao = reais.filter((j) => ESTADOS_ATENCAO.has(estadoApresentacaoJob(j)) || !ESTADOS_CONHECIDOS.has(j.estado));
   if (atencao.length) return { chave: 'atencao', texto: textos(atencao) };
   if ((publicado || reais.length) && reais.every((j) => j.estado === 'publicado')) return { chave: 'publicado', texto: 'Publicado' };
   const preparando = reais.filter((j) => j.estado === 'preparando');
@@ -200,6 +200,7 @@ export async function montar(raiz, ctx) {
     if (!controleReal?.abrirCompositor) { ctx.aviso('O agendamento real ainda não está disponível. Atualize os dados.', 'erro'); return; }
     focoOrigem = origem;
     if (controleReal.abrirCompositor(peca, data) === false) return;
+    dialogo.querySelector('#cal-unico-painel-titulo').textContent = 'Agendar de verdade';
     dialogo.showModal();
   };
   const pubDe = (item) => item.publicacoes?.[0] || null;
@@ -426,6 +427,7 @@ export async function montar(raiz, ctx) {
     const { montarReal } = await import('./_publicacoes-reais-ui.js');
     if (ctx.obsoleta()) return;
     controleReal = await montarReal(raiz, ctx, { topo: topoReal, painel: conteudoPainel, fila,
+      abrirPainel: (titulo) => { focoOrigem = document.activeElement; dialogo.querySelector('#cal-unico-painel-titulo').textContent = titulo; if (!dialogo.open) dialogo.showModal(); },
       vinculado: (job) => [...(dados.itens || []), ...(dados.aprovadosSemData || dados.semData || []).map((p) => ({ peca: p }))].some((i) => identidade(i.peca || i) === identidade(job.peca)),
       listar: async (atualizar = true) => { if (atualizar) await carregar(); return { jobs: [...acumulados.values()], limitado: !dados?.reais?.completo, proximoCursor: null }; },
       aposConfirmar: () => carregar(),

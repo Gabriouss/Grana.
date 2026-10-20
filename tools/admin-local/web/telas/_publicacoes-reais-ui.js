@@ -5,7 +5,7 @@ import {
   API_PUBLICACOES, FORMATOS_PUBLICACAO, FUSO_PUBLICACAO, ROTULOS_ESTADO,
   capacidadeDaConta, caminhoMidia, criarClientePublicacoes, horarioLocalParaUtc,
   horarioUtcParaLocal, previaConfirmavel, resumirLote, rotuloDataHorario,
-  antecedenciaMinima, conferirHorario, sugestaoHorario, mensagemHumana, fraseDoMotivo, descreverJobReal, jobAtivo, quandoCurto,
+  antecedenciaMinima, conferirHorario, sugestaoHorario, mensagemHumana, fraseDoMotivo, descreverJobReal, jobAtivo, quandoCurto, reagendamentoPermitido, estadoApresentacaoJob,
 } from './_publicacoes-reais.js';
 
 // Enquanto houver job ativo e a aba estiver visível, o estado real é relido neste intervalo.
@@ -32,6 +32,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
   let selecaoPeca = ctx.params?.peca || '';
   let selecaoDestinos = new Set();
   let previa = null;
+  let reagendamento = null;
   let previewBlobs = [];
   let ocupado = false;
   let encerrada = false;
@@ -120,8 +121,9 @@ export async function montarReal(raiz, ctx, integracao = null) {
     if (foco) [...compositor.querySelectorAll('input')].find((i) => i.name === foco.name && i.value === foco.value)?.focus();
   }
 
-  function pecaSelecionada() { return catalogo?.pecas.find((p) => p.id === selecaoPeca) || null; }
+  function pecaSelecionada() { return reagendamento?.peca || catalogo?.pecas.find((p) => p.id === selecaoPeca) || null; }
   function destinosSelecionados() {
+    if (reagendamento) return [reagendamento.job.destino];
     if (!capacidades) return [];
     return [...selecaoDestinos].map((k) => {
       const [contaId, formato] = k.split('\u001f');
@@ -172,6 +174,14 @@ export async function montarReal(raiz, ctx, integracao = null) {
 
   function desenharCompositor() {
     if (!capacidades || !catalogo) return;
+    if (reagendamento) {
+      const { job, horarioLocal } = reagendamento;
+      compositor.replaceChildren(h('h2', { class: 'secao-titulo', texto: `Reagendar ${REDES[job.destino.rede]}` }),
+        h('p', { texto: 'Confira a nova prévia antes de confirmar. Somente este destino será substituído; o histórico será preservado.' }),
+        h('p', { texto: `Anterior: ${rotuloDataHorario(job.destino.publicarEm)}. Novo: ${rotuloDataHorario(horarioLocalParaUtc(horarioLocal))}.` }),
+        botao('Escolher outro horário', () => abrirReagendamento(job)));
+      return;
+    }
     const peca = pecaSelecionada();
     const cardsPecas = catalogo.pecas.length
       ? h('div', { class: 'pub-real-pecas', role: 'radiogroup', 'aria-label': 'Peças aprovadas e vigentes' }, catalogo.pecas.map((item) => {
@@ -350,7 +360,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
       h('span', { class: 'campo-ajuda', texto: 'Filtros aplicados somente aos registros da página recebida.' }));
     const resultados = h('div', { class: 'publicacoes-lista pub-real-jobs' });
     const paginacao = h('div', { class: 'pub-real-paginacao' });
-    const filtrado = () => jobs.filter((j) => (!estado.value || j.estado === estado.value)
+    const filtrado = () => jobs.filter((j) => (!estado.value || estadoApresentacaoJob(j) === estado.value)
       && (!rede.value || j.destino.rede === rede.value)
       && (!de.value || horarioUtcParaLocal(j.destino.publicarEm).slice(0, 10) >= de.value)
       && (!ate.value || horarioUtcParaLocal(j.destino.publicarEm).slice(0, 10) <= ate.value));
@@ -394,16 +404,17 @@ export async function montarReal(raiz, ctx, integracao = null) {
   }
 
   function cartaoJob(job, emDetalhe) {
+    const estadoVisivel = estadoApresentacaoJob(job);
     const nome = nomeDestino(job.destino);
     const resumoHora = rotuloDataHorario(job.destino.publicarEm, job.destino.fuso || FUSO_PUBLICACAO);
     const resumo = resumirLote(jobs.filter((j) => j.loteId === job.loteId));
     const acoes = [];
     acoes.push(botao('Ver recibos', () => consultarDetalhe(job.jobId)));
-    if (job.estado === 'precisa-conferir' || job.estado === 'cancelamento-pendente') {
+    if ((job.estado === 'precisa-conferir' && !reagendamentoPermitido(job)) || job.estado === 'cancelamento-pendente') {
       acoes.push(botao('Conferir publicação', () => confirmarComando(job, 'reconciliar')));
     }
-    if (ESTADOS_ATIVOS.has(job.estado) && job.estado !== 'agendado-na-meta' && job.estado !== 'preparando') {
-      acoes.push(botao('Reagendar horário', () => abrirReagendamento(job)));
+    if (reagendamentoPermitido(job)) {
+      acoes.push(botao(`Reagendar ${REDES[job.destino.rede]}`, () => abrirReagendamento(job)));
     }
     if (!ESTADOS_TERMINAIS.has(job.estado) && job.estado !== 'cancelamento-pendente' && job.estado !== 'precisa-conferir') {
       acoes.push(botao('Cancelar destino', () => confirmarComando(job, 'cancelar'), { perigo: true }));
@@ -415,12 +426,12 @@ export async function montarReal(raiz, ctx, integracao = null) {
         r.codigo ? h('code', { texto: r.codigo }) : null,
         r.remotoId ? h('span', { texto: `Referência remota: ${r.remotoId}` }) : null))
       : h('li', { texto: job.recibosLimitados ? 'Este detalhe não contém recibos; recarregue o detalhe para conferir.' : 'Nenhum recibo registrado.' })) : null;
-    return h('article', { class: `cartao pub-real-job estado-${job.estado}` },
+    return h('article', { class: `cartao pub-real-job estado-${estadoVisivel}` },
       integracao && !integracao.vinculado(job) ? h('p', { class: 'campo-ajuda', texto: 'Sem vínculo editorial exato com peça e versão deste mês. O destino e os recibos reais foram preservados.' }) : null,
       h('div', { class: 'pub-real-job-topo' },
         h('div', null, h('span', { class: `pub-real-rede pub-real-${job.destino.rede}`, texto: REDES[job.destino.rede] || job.destino.rede }),
           h('h3', { texto: nome }), h('p', { texto: `${FORMATOS[job.destino.formato]} · ${resumoHora}` })),
-        h('strong', { class: 'pub-real-estado', texto: ROTULOS_ESTADO[job.estado] || 'Estado não reconhecido' })),
+        h('strong', { class: 'pub-real-estado', texto: ROTULOS_ESTADO[estadoVisivel] || 'Estado não reconhecido' })),
       h('p', { class: 'pub-real-parcial', texto: resumo.parcial ? `${resumo.rotulo} · lote ${resumo.total} destinos` : `${resumo.rotulo} · 1 destino` }),
       h('p', { class: 'pub-real-atualizado', texto: `Atualizado ${quandoCurto(Date.parse(job.atualizadoEm))}` }),
       detalhesTecnicos(`Agendamento: ${job.jobId} · revisão ${job.revisao}`, ...(job.remotoId ? [`Referência na rede: ${job.remotoId}`] : [])),
@@ -434,6 +445,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
       job.estado === 'publicado' ? h('p', { class: 'pub-real-publicado', texto: 'Publicado segundo o recibo remoto.' }) : null,
       linkSeguro(job.permalink) ? h('a', { class: 'botao botao-fantasma', href: linkSeguro(job.permalink), target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação confirmada' }) : null,
       job.estado === 'publicado' && !linkSeguro(job.permalink) ? h('p', { class: 'campo-ajuda', texto: 'O link da publicação não está disponível nesta fonte. Consulte o ID e o recibo.' }) : null,
+      job.estado === 'programado-no-painel' && !job.reagendamento ? h('p', { class: 'campo-ajuda', texto: 'O servidor ainda não informou se este destino pode ser reagendado. Atualize o estado real e confira os recibos.' }) : null,
       job.recibosLimitados && !emDetalhe ? h('p', { class: 'campo-ajuda', texto: 'A lista mostra somente os recibos recentes. Abra o detalhe para conferir até 50.' }) : null,
       emDetalhe ? recibos : null,
       h('div', { class: 'pub-real-job-acoes' }, acoes));
@@ -443,22 +455,26 @@ export async function montarReal(raiz, ctx, integracao = null) {
     const peca = pecaSelecionada();
     const destinos = destinosSelecionados();
     const input = compositor.querySelector('[name="agendarParaLocal"]');
-    if (!peca || !destinos.length || !input?.value || ocupado) return;
+    const horarioLocal = reagendamento?.horarioLocal || input?.value;
+    if (!peca || !destinos.length || !horarioLocal || ocupado || pendencia) return;
     // O relógio anda: o horário é conferido de novo no clique, não só quando foi digitado.
-    const horario = horarioConferido(input.value);
+    const horario = horarioConferido(horarioLocal);
     if (!horario.ok) { atualizarResumoHorario(); avisar(horario.texto, true); return; }
     liberarPreview();
     busy(true);
     avisar('Validando aceite, mídia, destinos e horário no servidor…');
     try {
-      const resultado = await cliente.prever({ peca, destinos, horarioLocal: input.value, contas: capacidades.contas });
+      const resultado = await cliente.prever({ peca, ...(reagendamento ? { job: reagendamento.job } : {}), destinos, horarioLocal, contas: capacidades.contas });
       if (encerrada || ctx.obsoleta()) return;
       previa = resultado;
+      if (reagendamento && !reagendamento.peca.id) {
+        reagendamento.peca = { ...reagendamento.peca, id: resultado.snapshot.pecaId, versao: resultado.snapshot.versao };
+      }
       const dadosMidia = await lerSnapshotVerificado(resultado);
       if (encerrada || ctx.obsoleta()) { dadosMidia.urls.forEach((x) => URL.revokeObjectURL(x)); return; }
       previewBlobs = dadosMidia.urls;
       desenharPrevia(resultado, dadosMidia);
-      avisar(previaConfirmavel(resultado) ? 'Prévia carregada e conferida. Revise as imagens, a legenda e os destinos; depois clique em Agendar.' : 'A prévia está bloqueada. Confira os motivos e as ações abaixo.', !previaConfirmavel(resultado));
+      avisar(previaConfirmavel(resultado) ? `Prévia carregada e conferida. Revise as imagens, a legenda e os destinos; depois clique em ${reagendamento ? 'Confirmar reagendamento' : 'Agendar'}.` : 'A prévia está bloqueada. Confira os motivos e as ações abaixo.', !previaConfirmavel(resultado));
     } catch (err) {
       if (!encerrada && !ctx.obsoleta()) {
         liberarPreview();
@@ -540,7 +556,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     const coerente = p.snapshot?.pecaId === peca?.id && p.snapshot?.versao === peca?.versao
       && p.destinos?.length === alvos.length && p.destinos.every((d, i) => d.contaId === alvos[i].contaId && d.rede === alvos[i].rede && d.formato === alvos[i].formato);
     const botaoConfirmar = h('button', { class: 'botao botao-primario', type: 'button', 'data-operacao': true,
-      texto: 'Agendar', disabled: true, 'data-bloqueado': 'true',
+      texto: reagendamento ? 'Confirmar reagendamento' : 'Agendar', disabled: true, 'data-bloqueado': 'true',
       'aria-describedby': 'pub-real-bloqueio-confirmacao', onclick: () => confirmarPrevia(p) });
     const prazo = h('div', { class: 'pub-real-prazo', 'aria-live': 'polite' });
     previaElRevisao(p, detalhePrevia);
@@ -557,7 +573,9 @@ export async function montarReal(raiz, ctx, integracao = null) {
         h('h3', { texto: 'Resumo exato da autorização' }),
         h('ul', null, alvos.map((a, i) => h('li', { texto: `${nomeDestino(a)} · ${REDES[a.rede]} · ${FORMATOS[a.formato]} · ${rotuloDataHorario(p.destinos?.[i]?.publicarEm || p.agendarPara)}` }))),
         h('p', { texto: 'Esta legenda e estas imagens serão publicadas automaticamente no horário escolhido, somente após confirmar.' })),
-      h('p', { id: 'pub-real-bloqueio-confirmacao', class: 'campo-ajuda', texto: 'Ao clicar em Agendar, você autoriza a publicação destas imagens e desta legenda nos destinos e horários acima.' }),
+      h('p', { id: 'pub-real-bloqueio-confirmacao', class: 'campo-ajuda', texto: reagendamento
+        ? 'Ao confirmar o reagendamento, você substitui somente este destino e autoriza estas imagens e esta legenda no novo horário. As outras redes permanecem como estão.'
+        : 'Ao clicar em Agendar, você autoriza a publicação destas imagens e desta legenda nos destinos e horários acima.' }),
       prazo,
       botaoConfirmar);
     previewEl.querySelector('h2').focus();
@@ -580,7 +598,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     relogioPrevia = setInterval(tique, 5000);
     // data-bloqueado sobrevive ao busy(false), que reabilita os demais botões de operação.
     function atualizarBotaoConfirmar() {
-      const bloqueado = !coerente || !previaConfirmavel(p);
+      const bloqueado = !coerente || !previaConfirmavel(p) || !!(reagendamento && pendencia);
       botaoConfirmar.dataset.bloqueado = String(bloqueado);
       botaoConfirmar.disabled = ocupado || bloqueado;
     }
@@ -602,26 +620,34 @@ export async function montarReal(raiz, ctx, integracao = null) {
   }
 
   async function confirmarPrevia(p) {
-    if (p !== previa || !previaConfirmavel(p) || ocupado) return;
+    if (p !== previa || !previaConfirmavel(p) || ocupado || (reagendamento && pendencia)) return;
+    const substituicao = reagendamento;
     const destinos = destinosSelecionados();
-    const { k: chaveIntencao, idempotencia } = chaveDe('confirmar', p.previaId, p.previaHash, p.revisao);
+    const tipo = substituicao ? 'reagendar' : 'confirmar';
+    const { k: chaveIntencao, idempotencia } = chaveDe(tipo, p.previaId, p.previaHash, p.revisao);
     const data = p.destinos?.[0]?.publicarEm || p.agendarPara;
     if (ctx.obsoleta() || ocupado || p !== previa) return;
-    pendencia = { idempotencia, previaId: p.previaId, tipo: 'confirmar' };
+    pendencia = { idempotencia, previaId: p.previaId, tipo };
     busy(true);
     try {
-      const lote = await cliente.confirmar(p, idempotencia);
+      const lote = substituicao ? await cliente.comando('reagendar', {
+        jobId: substituicao.job.jobId, revisaoEsperada: substituicao.job.revisao,
+        previaId: p.previaId, previaHash: p.previaHash, agendarPara: data, fuso: FUSO_PUBLICACAO,
+        idempotencia, confirmacao: true,
+      }) : await cliente.confirmar(p, idempotencia);
+      if (!Array.isArray(lote.jobs) || !lote.jobs.length) throw new Error('lote-invalido');
       if (encerrada || ctx.obsoleta()) return;
       pendencia = null;
       intencoes.delete(chaveIntencao);
       liberarPreview();
       // R9: fecha a janela, diz em uma linha o que foi agendado e leva ao mês da publicação no Calendário.
       const redes = [...new Set(destinos.map((d) => REDES[d.rede]))].join(' e ');
-      const texto = `Agendado: ${redes}, ${quandoCurto(Date.parse(data)).replace(/^às /, 'hoje às ')}. Acompanhe o andamento no Calendário.`;
+      const texto = `${substituicao ? 'Reagendado' : 'Agendado'}: ${redes}, ${quandoCurto(Date.parse(data)).replace(/^às /, 'hoje às ')}. Acompanhe o andamento no Calendário.`;
       avisar(texto);
       ctx.aviso?.(texto, 'ok');
       estadosVistos.clear(); for (const j of lote.jobs) estadosVistos.set(j.jobId, j.estado);
       compositor.closest?.('dialog')?.close?.();
+      reagendamento = null;
       const mesAlvo = horarioUtcParaLocal(data).slice(0, 7);
       if (integracao && ctx.params?.mes && ctx.params.mes !== mesAlvo) ctx.navegar?.(`#/marketing/calendario?mes=${mesAlvo}`);
       await atualizarFilaSemBloquear();
@@ -631,6 +657,10 @@ export async function montarReal(raiz, ctx, integracao = null) {
       if (resultadoIncerto(err)) {
         avisar('A resposta da confirmação não chegou. Consulte o resultado pendente antes de tentar outra vez.', true);
         desenharConsultaPendente();
+        if (substituicao) {
+          const b = previewEl.querySelector('.botao-primario');
+          if (b) { b.dataset.bloqueado = 'true'; b.disabled = true; }
+        }
       } else {
         pendencia = null;
         intencoes.delete(chaveIntencao);
@@ -645,7 +675,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
   function desenharConsultaPendente() {
     const anterior = raiz.querySelector('.pub-real-consulta-pendente');
     anterior?.remove();
-    const caixa = integracao && pendencia?.tipo === 'confirmar' ? integracao.painel : disponibilidade;
+    const caixa = integracao && ['confirmar', 'reagendar'].includes(pendencia?.tipo) ? integracao.painel : disponibilidade;
     caixa.appendChild(h('div', { class: 'pub-real-consulta-pendente', role: 'alert' },
       h('p', { texto: 'A resposta se perdeu. Consulte o resultado antes de repetir a operação.' }),
       detalhesTecnicos(`Chave de consulta: ${pendencia?.idempotencia || 'indisponível'}`),
@@ -659,6 +689,14 @@ export async function montarReal(raiz, ctx, integracao = null) {
       const d = await cliente.consultar({ idempotencia: pendencia.idempotencia });
       if (encerrada || ctx.obsoleta()) return;
       jobs = d.jobs;
+      if (!d.jobs.length) {
+        avisar('A chave ainda não tem recibo consultável. Não repita a confirmação; atualize e aguarde a fonte responder.', true);
+        return;
+      }
+      if (pendencia.tipo === 'reagendar') {
+        liberarPreview(); reagendamento = null;
+        compositor.closest?.('dialog')?.close?.();
+      }
       pendencia = null;
       raiz.querySelector('.pub-real-consulta-pendente')?.remove();
       desenharLista();
@@ -683,26 +721,28 @@ export async function montarReal(raiz, ctx, integracao = null) {
   }
 
   async function abrirReagendamento(job) {
+    if (!reagendamentoPermitido(job)) { avisar('O servidor não liberou o reagendamento deste destino. Atualize o estado e confira os recibos.', true); return; }
+    if (ocupado || pendencia) { avisar('Consulte o resultado pendente antes de iniciar outro reagendamento.', true); return; }
     const localAtual = horarioUtcParaLocal(job.destino.publicarEm);
-    const novaHora = await ctx.formulario({ titulo: 'Reagendar somente o horário',
-      texto: 'O conteúdo, a versão e os destinos ficam imutáveis. A alteração preserva o job anterior e o histórico de recibos; se um efeito já começou, o servidor recusará esta operação.',
-      rotuloBotao: 'Conferir novo horário', campos: [
+    const novaHora = await ctx.formulario({ titulo: `Reagendar ${REDES[job.destino.rede]}`,
+      texto: 'Escolha o novo horário deste destino. Depois confira a nova prévia e confirme. O servidor recusará a troca se houver publicação possível ou em andamento.',
+      rotuloBotao: 'Gerar nova prévia', campos: [
         { nome: 'agendarParaLocal', rotulo: `Novo horário (${FUSO_PUBLICACAO})`, tipo: 'datetime-local', valor: localAtual, obrigatorio: true },
       ] });
     if (!novaHora || ocupado || ctx.obsoleta()) return;
     let agendarPara;
     try { agendarPara = horarioLocalParaUtc(novaHora.agendarParaLocal); }
     catch (err) { avisar(err.message, true); return; }
-    const { k: chaveIntencao, idempotencia } = chaveDe('reagendar', job.jobId, job.revisao, agendarPara);
-    const novoRotulo = rotuloDataHorario(agendarPara);
-    const ok = await ctx.confirmar({ titulo: 'Confirmar novo horário?',
-      texto: `${nomeDestino(job.destino)} · ${REDES[job.destino.rede]} · ${FORMATOS[job.destino.formato]}.`,
-      detalhes: [`Anterior: ${rotuloDataHorario(job.destino.publicarEm)}`, `Novo: ${novoRotulo}`, `Job ${job.jobId} · revisão ${job.revisao}`,
-        'Apenas horário é alterado. Alterar conteúdo ou destino exige novo aceite e outra confirmação.'],
-      rotuloBotao: 'Reagendar destino' });
-    if (!ok || ocupado || ctx.obsoleta()) return;
-    await executarComando('reagendar', { jobId: job.jobId, revisaoEsperada: job.revisao,
-      agendarPara, fuso: FUSO_PUBLICACAO, idempotencia, confirmacao: true }, { idempotencia, chaveIntencao, jobId: job.jobId, rotulo: `reagendar · ${novoRotulo}` });
+    const peca = catalogo?.pecas.find((p) => p.id === job.peca?.pecaId && p.versao === job.peca?.versao);
+    const horario = conferirHorario(agendarPara, antecedenciaMinima([job.destino], peca));
+    if (!horario.ok) { avisar(horario.texto, true); return; }
+    liberarPreview();
+    reagendamento = { job, horarioLocal: novaHora.agendarParaLocal, peca: peca || {
+      id: job.peca?.pecaId, versao: job.peca?.versao, titulo: 'Conteúdo do agendamento anterior',
+    } };
+    desenharCompositor();
+    integracao?.abrirPainel?.(`Reagendar ${REDES[job.destino.rede]}`);
+    await gerarPrevia();
   }
 
   async function executarComando(acao, campos, metadata) {
@@ -845,6 +885,8 @@ export async function montarReal(raiz, ctx, integracao = null) {
     return true;
   };
   function abrirCom(exata, data) {
+    if (pendencia) { avisar('Consulte o resultado pendente antes de iniciar outro agendamento.', true); return false; }
+    reagendamento = null;
     selecaoPeca = exata.id;
     selecaoDestinos.clear();
     liberarPreview();

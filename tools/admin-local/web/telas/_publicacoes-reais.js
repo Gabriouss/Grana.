@@ -170,8 +170,8 @@ export function validarJob(job) {
 export function resumirLote(jobs) {
   if (!Array.isArray(jobs) || !jobs.length || jobs.some((j) => !validarJob(j))) return { rotulo: 'Estado do lote indisponível', total: 0, parcial: false };
   const contagem = new Map();
-  for (const j of jobs) contagem.set(j.estado, (contagem.get(j.estado) || 0) + 1);
-  if (contagem.size === 1) return { rotulo: ROTULOS_ESTADO[jobs[0].estado], total: jobs.length, parcial: false, contagem };
+  for (const j of jobs) { const estado = estadoApresentacaoJob(j); contagem.set(estado, (contagem.get(estado) || 0) + 1); }
+  if (contagem.size === 1) return { rotulo: ROTULOS_ESTADO[estadoApresentacaoJob(jobs[0])], total: jobs.length, parcial: false, contagem };
   const resumo = [...contagem].map(([estado, n]) => `${n} ${ROTULOS_ESTADO[estado].toLowerCase()}`).join(' · ');
   return { rotulo: `Parcial · ${resumo}`, total: jobs.length, parcial: true, contagem };
 }
@@ -212,8 +212,8 @@ export function criarClientePublicacoes(ctx) {
       const d = dadosCatalogo(await get(`${API_PUBLICACOES}/catalogo`));
       return { ...d, pecas: d.pecas.filter(validarPeca) };
     },
-    async prever({ peca, destinos, horarioLocal, contas }) {
-      if (!validarPeca(peca) || !Array.isArray(destinos) || destinos.length < 1 || destinos.length > 8) {
+    async prever({ peca, job, destinos, horarioLocal, contas }) {
+      if (!(job ? validarJob(job) : validarPeca(peca)) || !Array.isArray(destinos) || destinos.length < 1 || destinos.length > 8) {
         throw erroContrato('pedido-invalido', 'Escolha uma peça aprovada e ao menos um destino válido.');
       }
       if (!Array.isArray(contas) || destinos.some((d) => !validarDestino(d, contas))) {
@@ -225,14 +225,18 @@ export function criarClientePublicacoes(ctx) {
         || !FORMATOS_PUBLICACAO.includes(d.formato))) {
         throw erroContrato('destino-invalido', 'Confira as contas e os formatos selecionados.');
       }
+      if (job && (destinos.length !== 1 || !reagendamentoPermitido(job)
+        || destinos.some((d) => ['contaId', 'rede', 'formato'].some((k) => d[k] !== job.destino[k])))) {
+        throw erroContrato('estado-incompativel');
+      }
       const publicarEm = horarioLocalParaUtc(horarioLocal);
       const pedido = {
-        acao: 'prever', pecaId: peca.id, versao: peca.versao,
+        acao: 'prever', ...(job ? { jobId: job.jobId } : { pecaId: peca.id, versao: peca.versao }),
         destinos: destinos.map(({ contaId, rede, formato }) => ({ contaId, rede, formato })),
         agendarPara: publicarEm, fuso: FUSO_PUBLICACAO,
       };
-      const d = await post('prever', { pecaId: pedido.pecaId, versao: pedido.versao,
-        destinos: pedido.destinos, agendarPara: pedido.agendarPara, fuso: pedido.fuso });
+      const { acao: _acao, ...campos } = pedido;
+      const d = await post('prever', campos);
       if (!UUID.test(d.previaId || '') || !HASH256.test(d.previaHash || '')
         || !Number.isSafeInteger(d.revisao) || d.revisao < 1 || !Array.isArray(d.destinos)
         || !d.snapshot || !UUID.test(d.snapshot.snapshotId || '')
@@ -240,6 +244,8 @@ export function criarClientePublicacoes(ctx) {
         || typeof d.podeConfirmar !== 'boolean' || d.destinos.length !== destinos.length
         || d.destinos.some((alvo) => !REDES.has(alvo.rede) || !FORMATOS_PUBLICACAO.includes(alvo.formato)
           || !['pronto', 'bloqueado'].includes(alvo.estado) || !Array.isArray(alvo.motivos))) throw erroContrato('previa-invalida');
+      if (job && (d.snapshot.snapshotId !== job.snapshotId || d.destinos.some((d, i) =>
+        ['contaId', 'rede', 'formato'].some((k) => d[k] !== destinos[i][k]) || d.publicarEm !== publicarEm))) throw erroContrato('previa-invalida');
       return d;
     },
     async confirmar(previa, idempotencia) {
@@ -273,7 +279,12 @@ export function criarClientePublicacoes(ctx) {
     async comando(acao, campos) {
       const permitidas = new Set(['cancelar', 'reconciliar', 'pausar', 'retomar', 'reagendar']);
       if (!permitidas.has(acao)) throw erroContrato('acao-invalida');
-      return post(acao, campos);
+      if (acao === 'reagendar' && (!UUID.test(campos?.previaId || '') || !HASH256.test(campos?.previaHash || '')
+        || campos.confirmacao !== true || !UUID.test(campos.jobId || '') || !UUID.test(campos.idempotencia || '')
+        || !Number.isSafeInteger(campos.revisaoEsperada) || campos.revisaoEsperada < 1)) throw erroContrato('confirmacao-bloqueada');
+      const d = await post(acao, campos);
+      if (acao === 'reagendar' && (!Array.isArray(d.jobs) || !d.jobs.length || d.jobs.some((j) => !validarJob(j)))) throw erroContrato('lote-invalido');
+      return d;
     },
   };
 }
@@ -319,6 +330,11 @@ const FORMATO_ESTRANHO = 'O servidor respondeu num formato que o painel não rec
 const SEM_RESPOSTA = 'A resposta não chegou. Não repita: use "Consultar resultado pendente" para saber se foi feito.';
 const PREVIA_DE_NOVO = 'As imagens ou a legenda recebidas para conferência não batem com a peça aprovada. Nada foi confirmado. Gere outra prévia.';
 const MENSAGENS = {
+  'revisao-editorial': 'O conteúdo entrou em revisão e o aceite anterior foi suspenso. Revise e aprove a nova versão antes de agendar.',
+  'identidade-editorial-pendente': 'O vínculo desta peça com a versão aprovada precisa ser conferido. Peça a revisão do vínculo antes de agendar.',
+  'lease-vencida': 'O processamento perdeu o prazo de resposta. Atualize os recibos; só reagende se a conferência do servidor liberar.',
+  'publicacao-sem-id-recuperavel': 'A rede não devolveu uma referência que permita conferir a publicação. Confira na rede e peça a revisão do recibo; não publique outra vez.',
+  'executor-indisponivel': 'O serviço de publicação não respondeu. Atualize o estado e confira os recibos antes de escolher o próximo passo.',
   'atualizar-cliente': 'O servidor usa uma versão mais recente. Recarregue o painel antes de agendar.',
   'geracao-divergente': 'O conteúdo mudou em outra sessão. Atualize e revise a versão atual antes de agendar.',
   'revisao-editorial-pendente': 'Esta peça está em revisão. Aprove a nova versão antes de agendar.',
@@ -398,7 +414,19 @@ export function fraseDoMotivo(codigo) { return MENSAGENS[codigo] || null; }
 
 const NOME_REDE = { instagram: 'Instagram', facebook: 'Facebook' };
 const ATIVOS_REAIS = new Set(['planejado', 'programado-no-painel', 'preparando', 'agendado-na-meta', 'cancelamento-pendente']);
-export const jobAtivo = (job) => ATIVOS_REAIS.has(job?.estado);
+export function estadoApresentacaoJob(job) {
+  return typeof job?.motivoSuspensao === 'string' && job.motivoSuspensao.trim()
+    && !['publicado', 'cancelado', 'falhou'].includes(job.estado) ? 'suspenso-para-revisao' : job?.estado;
+}
+export const jobAtivo = (job) => ATIVOS_REAIS.has(estadoApresentacaoJob(job));
+// A lista pode trazer somente os últimos recibos. Só o servidor pode autorizar a troca.
+export function reagendamentoPermitido(job) {
+  return job?.reagendamento?.permitido === true
+    && Array.isArray(job.reagendamento.motivos) && job.reagendamento.motivos.length === 0
+    && !job.motivoSuspensao
+    && ['programado-no-painel', 'precisa-conferir', 'falhou'].includes(estadoApresentacaoJob(job))
+    && !job.remotoId && !job.permalink;
+}
 // Estado real de UM destino, em palavras do autor. Nunca usa "Planejado" (essa palavra é do editorial).
 export function descreverJobReal(job, agora = Date.now()) {
   const rede = NOME_REDE[job?.destino?.rede] || 'rede';
@@ -406,6 +434,15 @@ export function descreverJobReal(job, agora = Date.now()) {
   const sai = Number.isFinite(quando) ? quandoCurto(quando, agora) : 'no horário marcado';
   const link = /^https:\/\//.test(job?.permalink || '') ? job.permalink : null;
   const motivo = job?.codigoErro ? (fraseDoMotivo(job.codigoErro) || `Motivo informado pela rede: ${job.codigoErro}.`) : null;
+  if (estadoApresentacaoJob(job) === 'suspenso-para-revisao') {
+    return { rede, texto: 'Suspenso para revisão', atencao: true,
+      motivo: fraseDoMotivo(job.motivoSuspensao) || motivo || 'O agendamento está suspenso até a revisão do conteúdo.',
+      acao: `${job.estado === 'precisa-conferir' ? `Confira também no ${rede} se a publicação anterior saiu. ` : ''}Revise e aprove a nova versão. Depois, gere outra prévia para agendar.` };
+  }
+  if (reagendamentoPermitido(job) && (['precisa-conferir', 'falhou'].includes(job.estado) || job.codigoErro === 'lease-vencida')) {
+    return { rede, texto: 'Preparo interrompido antes da publicação', atencao: true, motivo,
+      acao: `Escolha Reagendar ${rede}, confira a nova prévia e confirme o novo horário somente deste destino.` };
+  }
   switch (job?.estado) {
     case 'planejado':
     case 'programado-no-painel': return { rede, texto: `Agendado no painel, sai ${sai}`, atencao: false };
