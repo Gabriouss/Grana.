@@ -90,6 +90,38 @@ Em 08/10/2026, o autor confirmou que os cinco segredos incluídos no pacote envi
 O histórico e a evidência da exposição permanecem na seção datada de 16/09/2026 abaixo. A rotação resolve a pendência de validade dos valores expostos, sem apagar o fato histórico de que o pacote de projeto foi enviado ao EAS.
 
 ---
+# 19/10/2026 (M1, Claude Code maestro, noite): capturas, Reels "Conheça o Granabô" com capa e regras de edição de vídeo
+
+> Nota de sessão no vault e no fichário (`Fichário - Sessões`): `2026-10-19 - M1 - Capturas, Reels do Granabô e capa`. Continua a rodada de capturas aberta pelo Ledger à tarde (entrada abaixo). O autor mandou este terminal executar direto (exceção pedida à regra 19).
+
+## O que mudou no repositório (todos publicados em `origin/main`, último `f937d4d`)
+
+- **Seletor de carteira (`34ac1e5`, layout em commit próprio):** `components/WalletPickerModal.tsx`, nome em cima e valor embaixo, alinhados à esquerda em toda linha. `tsc --noEmit` ok e `__tests__/seletor-carteira-entradas.cjs` 15/15. Conferido só na web 1440; **não conferido no celular nem com fonte a 130%.** Registro do defeito antes da correção em `4b442e7`.
+- **Reels "Conheça o Granabô" (semana 43, `para-aprovacao/pecas/reels/`):** seis versões no mesmo dia. v1 `4a5562e` (montar.py com as telas reais), v2 `4c5d3ec` (celular maior, música, zoom dentro da tela: reprovado pelo autor), v3 `1370853` refeito na skill **Editonny** (HyperFrames) com narração, v5 `fab67ba` (17,6 s, digitação 6-7×, celular grande e cortado embaixo, título em y≈290), v6 `749b8ec` (barra de status com cronômetro do gravador escondida sob a moldura). Fontes da edição em `apoio/reels-granabo-v3/` (`preparar.py`, `granabo.html`, `project.json`); projeto completo da Editonny em `E:/Grana-temporarios/2026-10-19-agendamento-meta/reels-granabo/v3/projeto`. `docs/marketing/reels-granabo/montar.py` aceita `CEL_H`/`CEL_Y` por variável de ambiente (padrão inalterado).
+- **Narração ElevenLabs aprovada pelo autor nesta sessão:** uma geração, voz "Gabriel - Shorts & Reels", modelo eleven_v4, 158 créditos (≈ US$ 0,029, ≈ R$ 0,16 com cotação suposta). Cortada nos silêncios medidos e posicionada frase a frase. Trilha pop local (`identidade-sonora/gerar-trilha.py pop`) com compressão lateral e "plim" na confirmação. Final −13,6 LUFS, pico −1,5 dBTP.
+- **Capa (`180dda9`, `0a2bc9a`):** `Conheça o Granabô-capa.png`, arquétipo A do guia estático, gerada por `apoio/ferramentas/gerar-capa-reels-granabo.py` (usa o gerador da semana 41). Mascote trocado, a pedido do autor, para o render do app `assets/granabo/granabo-feliz.png`.
+- **Legenda revisada** em `para-aprovacao/pecas/COPYS-FINAIS.md` (a primeira repetia o texto do vídeo).
+- **Vínculo da capa no registro de famílias (`f937d4d`):** o painel recusou a promoção com `capa-sem-registro`; capa de Reel precisa de linha em `docs/marketing/painel/familias.json` > `capas`, não basta o nome `<vídeo>-capa.png`.
+- **Regras de edição de vídeo (`0d32a2b`, `0a75084`):** observações do autor registradas em `docs/marketing/ajustes.md` ("Narração e vídeo", "Visual" e "Receita que funcionou"). Regra 23 do `AGENTS.md` ganhou a exceção: celular cortado na borda de baixo vale **só no Reels**.
+- **Push de `180dda9`** levou junto quatro registros do Ledger no `context.md` (`09b7ac5`, `7b79320`, `8c7759f`, `a6c80ff`), com autorização do autor ("sobe no painel"). Varredura de segredos no intervalo inteiro: limpa.
+
+## Fora do repositório (E:/Grana-temporarios/2026-10-19-agendamento-meta)
+
+- Prints web 1440×900 refeitos sem o Granabô no meio (`capturas-web/`, antigos em `anteriores-com-granabo/`); Perfil não sai (mostra e-mail).
+- Prints do app em `capturas-app/claude/`; vídeos do emulador travaram (o portal do Maestri mantém um `screenrecord` próprio em paralelo) e foram substituídos pelos 12 vídeos que o autor gravou no celular (`capturas-app/celular/`). Faltam `fotografar-nota` e `importar-extrato`: o CSV sintético não foi aceito no app (possível defeito de importação, **não investigado**) e não havia nota fictícia.
+- Roteiro de gravação (`roteiro-gravacao-celular.md`) e página local `roteiros-gravacao.html` (botões e localStorage não testados).
+
+## Estado que fica para a próxima sessão
+
+- [ ] Autor: clicar Atualizar e Aprovar de novo no Reels do Granabô para a promoção concluir (aceites de 23h21/23h22 já gravados).
+- [ ] **Conta de teste com dados alterados pelas gravações:** fatura do Cartão Principal (R$ 306,90) aparece paga no `credito.mp4`, e o Granachat registrou R$ 23,90 em Alimentação (Mercado), carteira Principal. Nada foi desfeito.
+- [ ] Emulador Pixel_8: APK de produção 1.10.8 instalado no lugar do dev client (backup do dev em scratchpad da sessão), dados do app limpos (`pm clear`), **sem login**; bloqueio de captura volta ligado.
+- [ ] Servidor Expo Go `--lan --port 8082` continua rodando (pedido do autor); o web 8083 foi encerrado por falta de memória.
+- [ ] `npm run build:preparar -- --help` sobe a versão: o script trata qualquer argumento como mensagem. Revertido à mão; nenhuma build disparada (autor cancelou). Seria a build 1 de 3 da semana.
+- [ ] Blur da barra de abas sem causa achada (ausente num print do dev, presente no de produção).
+- **Não verificado:** o vídeo final não foi assistido em movimento nem ouvido por agente; conferência foi por quadros soltos, checks da Editonny (lint/check) e quality gate (só o silêncio intencional do fim).
+
+---
 # 19/10/2026 (M1, Ledger): prioridade de capturas para o autor às 19h — recibo parcial aberto
 
 Pedido direto de prioridade: ler `E:/Grana-temporarios/2026-10-19-agendamento-meta/00-ORDEM-codex-PRIORIDADE-capturas.md`, criar agora `resumo-para-o-autor-19h.md` e atualizar a cada entrega de Compass (lista), Forge (app/Granabô), Harbor (web/Pix) e Watchtower (revisão v2). O recibo existe desde 15h31 local segundo o relógio da máquina; o pedido informa ~15h33. Prazo 19h local de 19/10. Lista ainda sem recibo e nenhuma captura validada por Ledger na abertura: andamento explicitamente separado de concluído, arquivos/evidências exigidos peça por peça.
