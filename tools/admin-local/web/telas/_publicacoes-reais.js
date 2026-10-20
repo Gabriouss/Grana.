@@ -24,7 +24,7 @@ export const SHA1 = /^[0-9a-f]{40}$/i;
 
 const REDES = new Set(['instagram', 'facebook']);
 const ESTADOS = new Set(Object.keys(ROTULOS_ESTADO));
-const OPERACOES_RECIBO = new Set(['preparar', 'agendar', 'publicar', 'cancelar', 'reconciliar']);
+const OPERACOES_RECIBO = new Set(['preparar', 'consultar-preparo', 'agendar', 'publicar', 'verificar-publicacao', 'cancelar', 'reconciliar']);
 const ESTADOS_RECIBO = new Set(['iniciado', 'confirmado', 'falhou', 'incerto']);
 
 export function erroContrato(codigo = 'contrato-invalido', mensagem = 'O servidor devolveu um contrato de publicação incompatível.') {

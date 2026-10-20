@@ -9,7 +9,7 @@ const vm = require('node:vm');
 const ROOT = path.resolve(__dirname, '..');
 const fonte = fs.readFileSync(path.join(ROOT, 'tools/admin-local/web/telas/_publicacoes-reais.js'), 'utf8');
 const sandbox = { Date, Intl, URLSearchParams, Set, Map, Object, Array, String, Number, RegExp, Error, Math };
-vm.runInNewContext(`${fonte.replace(/^export /gm, '')}\nglobalThis.modulo = { API_PUBLICACOES, FUSO_PUBLICACAO, FORMATOS_PUBLICACAO, ROTULOS_ESTADO, UUID, erroContrato, dadosReais, dadosCatalogo, validarPeca, validarConta, capacidadeDaConta, horarioLocalParaUtc, horarioUtcParaLocal, rotuloDataHorario, validarDestino, validarJob, previaConfirmavel, resumirLote, caminhoMidia, criarClientePublicacoes };`, sandbox);
+vm.runInNewContext(`${fonte.replace(/^export /gm, '')}\nglobalThis.modulo = { API_PUBLICACOES, FUSO_PUBLICACAO, FORMATOS_PUBLICACAO, ROTULOS_ESTADO, UUID, erroContrato, dadosReais, dadosCatalogo, validarPeca, validarConta, capacidadeDaConta, horarioLocalParaUtc, horarioUtcParaLocal, rotuloDataHorario, validarDestino, validarJob, previaConfirmavel, resumirLote, caminhoMidia, criarClientePublicacoes, mensagemHumana };`, sandbox);
 const m = sandbox.modulo;
 let checks = 0;
 const ok = (condition, message) => { assert.ok(condition, message); checks++; };
@@ -51,6 +51,51 @@ const previa = {
 function envelope(dados) { return { ok: true, dados, atualizadoEm: '2026-10-17T23:00:00.000Z' }; }
 
 (async () => {
+  // H1: consultas do executor são recibos legítimos, não novos envios.
+  // Exercita o consumidor real com fixture sintética e somente GET local.
+  for (const operacao of ['consultar-preparo', 'verificar-publicacao']) {
+    const recibo = { reciboId: U4, operacao, estado: 'confirmado' };
+    const comRecibo = { ...job, estado: 'preparando', recibos: [recibo] };
+    ok(m.validarJob(comRecibo), `${operacao}: job válido`);
+    equal(m.resumirLote([comRecibo]).rotulo, 'Preparando', `${operacao}: consulta não vira publicação nem agendamento`);
+    for (const alterado of [{ ...recibo, reciboId: 'invalido' }, { ...recibo, estado: 'desconhecido' }]) {
+      ok(!m.validarJob({ ...comRecibo, recibos: [alterado] }), `${operacao}: preserva validação do ID e estado do recibo`);
+    }
+    const leituras = [];
+    const cliente = m.criarClientePublicacoes({
+      api: async (url) => {
+        leituras.push(url);
+        return envelope({ ...BASE, loteId: U2, jobs: [comRecibo], proximoCursor: null, limitado: false });
+      },
+      acao: async () => assert.fail('Consulta de recibos não deve produzir mutação'),
+    });
+    equal((await cliente.listar()).jobs, [comRecibo], `${operacao}: lista preserva recibo e estado`);
+    equal((await cliente.consultar({ jobId: U1 })).jobs, [comRecibo], `${operacao}: detalhe preserva recibo e estado`);
+    equal(leituras, [`${m.API_PUBLICACOES}?limite=20`, `${m.API_PUBLICACOES}/detalhe?jobId=${U1}`], `${operacao}: somente duas leituras`);
+  }
+  for (const operacao of ['operacao-desconhecida', 'consultar', 'verificar-publicacao-extra', '']) {
+    const invalido = { ...job, recibos: [{ reciboId: U4, operacao, estado: 'confirmado' }] };
+    ok(!m.validarJob(invalido), `${operacao}: operação fora da allowlist recusada`);
+    equal(m.resumirLote([invalido]).rotulo, 'Estado do lote indisponível', `${operacao}: não apresenta sucesso`);
+    const cliente = m.criarClientePublicacoes({
+      api: async () => envelope({ ...BASE, jobs: [invalido], proximoCursor: null, limitado: false }),
+      acao: async () => assert.fail('Contrato inválido não deve produzir mutação'),
+    });
+    for (const [ler, codigo] of [
+      [() => cliente.listar(), 'lista-invalida'],
+      [() => cliente.consultar({ jobId: U1 }), 'detalhe-invalido'],
+    ]) {
+      await assert.rejects(ler, (err) => {
+        equal(err.codigo, codigo, `${operacao}: código de contrato preservado`);
+        const mensagem = m.mensagemHumana(err);
+        equal(mensagem.codigo, codigo, `${operacao}: código disponível para suporte`);
+        ok(/formato que o painel não reconhece/.test(mensagem.frase)
+          && /Recarregue a página.*avise o suporte/.test(mensagem.frase), `${operacao}: causa e recuperação acionáveis`);
+        return true;
+      });
+      checks++;
+    }
+  }
   equal(m.API_PUBLICACOES, '/api/marketing/publicacoes', 'usa a rota canônica Node');
   equal(m.FUSO_PUBLICACAO, 'America/Sao_Paulo', 'fuso fixo da operação');
   equal(m.horarioLocalParaUtc('2026-10-18T15:30'), '2026-10-18T18:30:00.000Z', 'converte São Paulo para UTC sem fuso do navegador');
