@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="UTF-8"/><title>Grana. · Conheça o Granabô</title></head>
+<body>
+<!-- Reels "Conheça o Granabô": títulos no tempo da narração, mascote, celular com as telas reais e fecho com o logo. -->
+
+<template id="granabo-template">
+<style>
+@font-face{font-family:"NM";src:url("assets/granabo/NeueMachina-Light.otf");font-weight:300;font-display:block}
+@font-face{font-family:"NM";src:url("assets/granabo/NeueMachina-Regular.otf");font-weight:400;font-display:block}
+#root{position:absolute;inset:0;overflow:hidden;font-family:"NM",sans-serif;color:#EFFFFE}
+#gb-bg{position:absolute;inset:0;background:radial-gradient(60% 34% at 50% 93%,#0B4A5A 0%,rgba(11,74,90,0) 100%),linear-gradient(180deg,#021319 0%,#021721 50%,#021721 100%)}
+.gb-ico{position:absolute;opacity:0}
+.gb-txt{position:absolute;font-weight:300;letter-spacing:.05em;opacity:1}
+.gb-txt .w{display:inline-block;opacity:0;white-space:pre}
+.gb-txt .d{color:#ADFBE3;font-weight:400}
+.gb-hook{left:84px;width:912px;font-size:92px;line-height:112px}
+.gb-top{left:60px;width:960px;top:78px;text-align:center;font-size:62px;line-height:78px}
+.gb-masc{position:absolute;left:0;top:0;width:1080px;height:1920px;opacity:0}
+#gb-cel{position:absolute;left:194px;top:220px;width:692px;height:1480px;transform-origin:50% 40%;opacity:0}
+#gb-sombra{position:absolute;left:-10px;top:40px;width:712px;height:1470px;border-radius:90px;background:#000;filter:blur(40px);opacity:.6}
+#gb-moldura{position:absolute;left:0;top:0;width:692px;height:1480px}
+#gb-tela{position:absolute;left:33px;top:40px;width:611px;height:1403px;border-radius:66px;overflow:hidden;background:#0a1e25 url("assets/granabo/tela-consulta-inicio.jpg") center/cover}
+#gb-tela video{position:absolute;left:0;top:0;width:611px;height:1403px;object-fit:cover}
+#gb-flash{position:absolute;inset:0;background:#ADFBE3;opacity:0}
+#gb-furo{position:absolute;left:331px;top:62px;width:27px;height:27px;border-radius:50%;background:#020304;box-shadow:inset -4px -5px 0 #1d2c33}
+#gb-logo{position:absolute;left:240px;top:882px;width:600px;opacity:0}
+</style>
+<div id="root" data-composition-id="granabo" data-width="1080" data-height="1920" data-duration="21">
+  <div id="gb-bg"></div>
+  <img class="gb-ico" id="gb-i1" src="assets/granabo/graficos-petroleo.png" style="left:180px;top:350px;width:140px;filter:blur(6px)"/>
+  <img class="gb-ico" id="gb-i2" src="assets/granabo/dinheiro-gradiente.png" style="left:760px;top:500px;width:190px"/>
+
+  <div class="gb-txt gb-hook" id="gb-t1" style="top:820px"><span class="w">Tem </span><span class="w">dúvida </span><span class="w">sobre </span><span class="w">o </span><span class="w">seu </span><span class="w d">dinheiro?</span></div>
+  <div class="gb-txt gb-hook" id="gb-t2" style="top:820px"><span class="w">Pergunte </span><span class="w">para </span><span class="w">quem </span><span class="w">anota </span><span class="w d">tudo.</span></div>
+
+  <video class="gb-masc" id="gb-m1" src="assets/granabo/mascote-entrada.webm" data-start="3.55" data-duration="3" data-track-index="1" muted playsinline></video>
+
+  <div id="gb-cel">
+    <div id="gb-sombra"></div>
+    <img id="gb-moldura" src="assets/granabo/celular-real-recorte.png"/>
+    <div id="gb-tela">
+      <video id="gb-v1" src="assets/granabo/tela-consulta.mp4" data-start="6.4" data-duration="4.8" data-track-index="2" muted playsinline></video>
+      <video id="gb-v2" src="assets/granabo/tela-registro.mp4" data-start="11.2" data-duration="4.8" data-track-index="3" muted playsinline style="opacity:0"></video>
+      <div id="gb-flash"></div>
+    </div>
+    <div id="gb-furo"></div>
+  </div>
+
+  <video class="gb-masc" id="gb-m2" src="assets/granabo/mascote-volta.webm" data-start="16.15" data-duration="2.4" data-track-index="4" muted playsinline></video>
+
+  <div class="gb-txt gb-top" id="gb-t3"><span class="w">Esse </span><span class="w">é </span><span class="w">o </span><span class="w d">Granabô.</span></div>
+  <div class="gb-txt gb-top" id="gb-t4"><span class="w">Pergunte </span><span class="w">o </span><span class="w">que </span><span class="w d">quiser.</span></div>
+  <div class="gb-txt gb-top" id="gb-t5"><span class="w">Ou </span><span class="w">só </span><span class="w">conte </span><span class="w">o </span><span class="w d">gasto.</span></div>
+  <div class="gb-txt gb-top" id="gb-t6" style="top:150px"><span class="w">Ele </span><span class="w">cuida </span><span class="w">das </span><span class="w d">contas.</span><br/><span class="w">Você </span><span class="w">vive.</span></div>
+
+  <img id="gb-logo" src="assets/granabo/logo-gradiente-1200.png"/>
+</div>
+<script>
+(function () {
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused: true });
+
+  // palavras entram no instante em que a narração as diz (transcrição local deslocada, edit/transcripts/cut.json)
+  function palavras(id, tempos, sai, sobe) {
+    const ws = document.querySelectorAll(id + " .w");
+    ws.forEach(function (w, i) {
+      tl.fromTo(w, { opacity: 0, y: sobe || 34, scale: .92 }, { opacity: 1, y: 0, scale: 1, duration: .26, ease: "back.out(2)" }, tempos[i] - .05);
+    });
+    tl.to(id, { opacity: 0, y: -44, duration: .3, ease: "power2.in" }, sai);
+  }
+
+  // 0 a 3,8 s: gancho em duas telas, com ícones derivando
+  tl.fromTo("#gb-i1", { opacity: 0, y: 30 }, { opacity: .55, y: -20, duration: 3.5, ease: "none" }, .1);
+  tl.fromTo("#gb-i2", { opacity: 0, y: 40, rotation: -8 }, { opacity: 1, y: -40, rotation: 6, duration: 3.5, ease: "none" }, .1);
+  tl.to(["#gb-i1", "#gb-i2"], { opacity: 0, duration: .35 }, 3.45);
+  palavras("#gb-t1", [0.30, 0.44, 0.82, 1.06, 1.18, 1.26], 1.80);
+  tl.fromTo("#gb-t1 .d", { scale: 1 }, { scale: 1.12, duration: .12, yoyo: true, repeat: 1, ease: "power1.out" }, 1.45);
+  palavras("#gb-t2", [2.15, 2.50, 2.70, 2.90, 3.24], 3.75);
+  tl.fromTo("#gb-t2 .d", { scale: 1 }, { scale: 1.12, duration: .12, yoyo: true, repeat: 1, ease: "power1.out" }, 3.40);
+
+  // 3,55 a 6,55 s: o Granabô sobe, gira e mostra o rosto; depois mergulha para o botão do celular
+  tl.set("#gb-m1", { opacity: 1 }, 3.55);
+  palavras("#gb-t3", [4.60, 4.88, 5.16, 5.30], 6.35, 20);
+  tl.to("#gb-m1", { scale: .16, y: 610, opacity: 0, duration: .45, ease: "power2.in", transformOrigin: "50% 47%" }, 6.15);
+
+  // 6,1 s: o celular sobe inteiro e assenta
+  tl.fromTo("#gb-cel", { opacity: 1, y: 1760 }, { opacity: 1, y: 0, duration: .55, ease: "back.out(1.1)" }, 6.1);
+  tl.fromTo("#gb-cel", { rotation: 0 }, { rotation: .6, duration: 2.2, yoyo: true, repeat: 3, ease: "sine.inOut" }, 6.7);
+  palavras("#gb-t4", [7.00, 7.44, 7.54, 7.62], 10.85, 20);
+  // zoom no aparelho inteiro quando a resposta aparece
+  tl.to("#gb-cel", { scale: 1.13, duration: 1.1, ease: "power2.inOut" }, 8.85);
+
+  // 11,2 s: troca de tela com um soco de escala e um clarão menta
+  tl.to("#gb-cel", { scale: .95, duration: .18, ease: "power2.in" }, 11.02);
+  tl.fromTo("#gb-flash", { opacity: 0 }, { opacity: .55, duration: .09, yoyo: true, repeat: 1 }, 11.1);
+  tl.set("#gb-v1", { opacity: 0 }, 11.2);
+  tl.set("#gb-v2", { opacity: 1 }, 11.2);
+  tl.to("#gb-cel", { scale: 1, duration: .35, ease: "back.out(2.2)" }, 11.2);
+  palavras("#gb-t5", [11.75, 11.91, 12.19, 12.41, 12.53], 15.45, 20);
+  tl.to("#gb-cel", { scale: 1.13, duration: 1.0, ease: "power2.inOut" }, 13.25);
+
+  // 15,85 s: o celular desce e o Granabô volta, feliz
+  tl.to("#gb-cel", { y: 1750, duration: .4, ease: "power3.in" }, 15.5);
+  tl.set("#gb-cel", { opacity: 0 }, 15.95);
+  tl.set("#gb-m2", { opacity: 1 }, 16.15);
+  palavras("#gb-t6", [16.54, 16.82, 17.16, 17.36, 17.92, 18.34], 18.55, 20);
+  tl.to("#gb-m2", { opacity: 0, duration: .3 }, 18.25);
+
+  // 18,6 s: fecho com o logo
+  tl.fromTo("#gb-logo", { opacity: 0, scale: .86 }, { opacity: 1, scale: 1, duration: .5, ease: "back.out(1.6)" }, 18.65);
+  tl.to({}, { duration: 21 }, 0);
+  window.__timelines["granabo"] = tl;
+})();
+</script>
+</template>
+</body></html>
