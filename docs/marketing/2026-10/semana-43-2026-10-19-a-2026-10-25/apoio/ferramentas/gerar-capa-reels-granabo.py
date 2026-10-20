@@ -3,7 +3,8 @@
 Usa o gerador das capas aprovadas da semana 41 (gerar-capas-reels.py), no sistema do
 guia-de-design-estatico-feed-3x4.md (regra 26): arquétipo A, texto à esquerda e
 celular à direita, com a resposta real do Granabô gravada no celular do autor (conta
-de teste). O mascote entra ao lado do texto, renderizado do modelo 3D (reels-granabo/sprites).
+de teste). O mascote é o mesmo do app e da web (assets/granabo/granabo-feliz.png), o render com brilho
+que também aparece no vídeo.
 
 Uso:  python -I gerar-capa-reels-granabo.py <tela.png> <saida.png>
 A tela é um quadro de granachat-consulta.mp4 (1080x2388), em E:/Grana-temporarios.
@@ -20,7 +21,7 @@ spec = importlib.util.spec_from_file_location('capas', os.path.join(
     RAIZ, 'docs', 'marketing', '2026-10', 'semana-41-2026-10-05-a-2026-10-11', 'apoio', 'ferramentas', 'gerar-capas-reels.py'))
 C = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(C)
-MASCOTE = os.path.join(RAIZ, 'docs', 'marketing', 'reels-granabo', 'sprites', 'feliz.png')
+MASCOTE = os.path.join(RAIZ, 'assets', 'granabo', 'granabo-feliz.png')   # o mesmo Granabô do app e da web
 OY = C.OY
 
 
@@ -48,10 +49,11 @@ def capa(tela, saida):
 
     # mascote ao lado do texto, com sombra de contato
     m = Image.open(MASCOTE).convert('RGBA')
-    m = m.crop(m.getbbox()).resize((330, 338), Image.LANCZOS)
+    m = m.crop(m.getbbox())
+    m = m.resize((340, round(340 * m.height / m.width)), Image.LANCZOS)
     mx, my = 175, OY + 800
     sombra = Image.new('L', base.size, 0)
-    ImageDraw.Draw(sombra).ellipse([mx + 40, my + 318, mx + 290, my + 358], fill=130)
+    ImageDraw.Draw(sombra).ellipse([mx + 45, my + m.height - 22, mx + 295, my + m.height + 18], fill=130)
     sombra = sombra.filter(ImageFilter.GaussianBlur(16))
     base = Image.composite(Image.new('RGBA', base.size, (0, 10, 14, 255)), base, sombra)
     base.alpha_composite(m, (mx, my))
