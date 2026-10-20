@@ -101,7 +101,23 @@ export async function montarReal(raiz, ctx, integracao = null) {
     // O aviso pertence à casca e sobrevive à troca do mês. O recibo da tela antiga não.
     await new Promise((resolve) => requestAnimationFrame(resolve));
     const feedback = [...document.querySelectorAll('.avisos .aviso')].find((el) => el.querySelector('span')?.textContent === texto);
-    if (feedback) { feedback.setAttribute('tabindex', '-1'); feedback.focus(); }
+    if (feedback) {
+      feedback.setAttribute('tabindex', '-1'); feedback.focus();
+      // Ao expirar ou fechar o aviso, devolve foco ao título da tela atual.
+      // Se a pessoa já escolheu outro alvo, a remoção não deve mover seu foco.
+      let focoNoAviso = true;
+      const limpar = () => { observador.disconnect(); document.removeEventListener('focusin', aoMover); };
+      const aoMover = (evento) => { focoNoAviso = feedback.contains(evento.target); };
+      const observador = new MutationObserver(() => {
+        if (feedback.isConnected) return;
+        limpar();
+        if (!focoNoAviso || document.activeElement !== document.body || !document.hasFocus()) return;
+        const alvo = document.querySelector('#conteudo .tela-titulo');
+        if (alvo) { alvo.setAttribute('tabindex', '-1'); alvo.focus(); }
+      });
+      observador.observe(feedback.parentNode, { childList: true });
+      document.addEventListener('focusin', aoMover);
+    }
     else if (recibo.isConnected && !recibo.closest('dialog:not([open])')) recibo.focus();
   }
 

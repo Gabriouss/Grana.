@@ -54,6 +54,10 @@ const tail = String.raw`
     const sucesso=await foco('sucesso-navegacao');
     assert.notEqual(sucesso.tag,'BODY'); assert.equal(sucesso.abertos,0); assert.equal(sucesso.visivel,true);
     assert.match(sucesso.texto,/Reagendado: Instagram/); assert.match(sucesso.classe,/aviso/);
+    await page.waitForTimeout(6500);
+    const expirado=await foco('sucesso-aviso-expirado');
+    assert.notEqual(expirado.tag,'BODY','foco permanece visível após expirar o aviso');
+    assert.equal(expirado.visivel,true); assert.equal(expirado.texto,'Calendário');
     perderReagendamento=true;
     await carregar(); await abrir(); await confirmar();
     await page.locator('.pub-real-consulta-pendente').waitFor();
@@ -69,12 +73,27 @@ const tail = String.raw`
     const resolvido=await foco('resolvido');
     assert.notEqual(resolvido.tag,'BODY'); assert.equal(resolvido.abertos,0); assert.equal(resolvido.visivel,true);
     assert.match(resolvido.texto,/Resultado conferido/); assert.match(resolvido.classe,/aviso/);
-    assert.equal(posts.filter(p=>p.acao==='reagendar').length,2,'resposta incerta não reenvia');
+    // Sair e voltar ao aviso também deve preservar o destino após fechar.
+    await page.getByRole('button',{name:'Atualizar estado real',exact:true}).focus();
+    await page.locator('.avisos .aviso').filter({hasText:'Resultado conferido'}).getByRole('button',{name:'Fechar aviso',exact:true}).focus();
+    await page.keyboard.press('Enter');
+    const fechado=await foco('consulta-aviso-fechado');
+    assert.notEqual(fechado.tag,'BODY'); assert.equal(fechado.visivel,true); assert.equal(fechado.texto,'Calendário');
+    perderReagendamento=false;
+    await carregar(); await abrir(); await confirmar();
+    await page.waitForFunction(()=>location.hash.includes('mes=2026-12')&&!document.querySelector('.cal-unico-painel[open]'));
+    await estabilizar();
+    const outroAlvo=page.getByRole('button',{name:'Atualizar estado real',exact:true});
+    await outroAlvo.focus();
+    await page.waitForTimeout(6500);
+    const movido=await foco('aviso-expirado-foco-movido');
+    assert.equal(movido.tag,'BUTTON'); assert.equal(movido.texto,'Atualizar estado real'); assert.equal(movido.visivel,true);
+    assert.equal(posts.filter(p=>p.acao==='reagendar').length,3,'somente três intenções distintas; resposta incerta não reenvia');
     assert.equal(posts.filter(p=>p.acao==='confirmar').length,0,'nenhuma confirmação genérica');
     await page.close();
   }
   await browser.close();
-  console.log('admin-reagendamento-foco: 390/1440, foco ativo em cancelamento/sucesso/incerto/vazio/resolução; zero HTTP externo');
+  console.log('admin-reagendamento-foco: 390/1440, cancelamento/sucesso/incerto/vazio/resolução, expiração/fechamento sem roubar foco; zero HTTP externo');
 })().catch(e=>{console.error(e);process.exit(1)});
 `;
 const mod = new Module(filename, module); mod.filename = filename; mod.paths = Module._nodeModulePaths(path.dirname(filename));
