@@ -129,11 +129,11 @@ def cola_mascote(fr, nome, cx, cy, escala=1.0, alfa=1.0, sombra=True, chao=None,
 # e atualizar TELA_SRC com os quatro cantos medidos da tela daquele arquivo.
 CEL_SRC = Image.open(os.path.join(AQUI, 'celular-real-recorte.png')).convert('RGBA')
 TELA_SRC = (20, 24, 385, 863)              # tela útil dentro do recorte
-CEL_H = 1400                                # altura do aparelho no quadro
+CEL_H = int(os.environ.get("CEL_H", 1400))   # altura do aparelho no quadro
 K = CEL_H / CEL_SRC.height
 CEL_IMG = CEL_SRC.resize((round(CEL_SRC.width * K), CEL_H), Image.LANCZOS)
 TX0, TY0, TX1, TY1 = [round(v * K) for v in TELA_SRC]
-CEL = dict(y=300)
+CEL = dict(y=int(os.environ.get("CEL_Y", 300)))
 
 def tela(rotulo, sub):
     w, h = TX1 - TX0, TY1 - TY0
