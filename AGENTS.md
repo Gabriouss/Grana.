@@ -891,6 +891,9 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     Regras de criativo dadas na mesma data, também permanentes:
 
     - **Celular e notebook nunca cortados na borda;** sempre margem segura.
+      Única exceção, dada pelo autor em 19/10/2026: no Reels, o celular pode
+      ficar grande e cortado na borda de baixo quando o que importa é a tela
+      ("o celular cortado só vale nos reels"). Capa e estático, nunca.
     - **Sem contador de página e sem aviso de exemplo dentro da arte.** Desde
       19/10/2026 o aviso também não vai na legenda nem em copy nenhuma
       (autor: "esta informação de dados de exemplo não deve aparecer de forma
