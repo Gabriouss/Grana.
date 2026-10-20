@@ -402,7 +402,7 @@ end $$;
 
 create or replace function public.admin_marketing_real_consultar(p_admin uuid,p_filtro jsonb)
 returns jsonb language plpgsql security invoker set search_path='' as $$
-declare saida jsonb; lid uuid; total integer;
+declare saida jsonb; lid uuid; alvo uuid; recibo jsonb; total integer;
 begin
   if p_admin is null then raise exception 'pedido-invalido'; end if;
   if p_filtro->>'acao'='contas' then
@@ -416,7 +416,21 @@ begin
   end if;
   if p_filtro ? 'idempotencia' then
     select id into lid from public.admin_marketing_real_lotes where admin_id=p_admin and idempotencia=(p_filtro->>'idempotencia')::uuid;
-    if not found then raise exception 'lote-inexistente'; end if;
+    if not found then
+      -- Reagendar mantém o lote original: sua chave pertence ao diário de comandos.
+      -- O recibo identifica o alvo; o DTO abaixo sempre lê o estado ATUAL desse job.
+      select resultado into recibo from public.admin_marketing_real_comandos
+        where admin_id=p_admin and idempotencia=(p_filtro->>'idempotencia')::uuid;
+      if not found or jsonb_typeof(recibo->'jobs') is distinct from 'array' then raise exception 'lote-inexistente'; end if;
+      if jsonb_array_length(recibo->'jobs')<>1 or coalesce(recibo->'jobs'->0->>'jobId','')
+        !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+        then raise exception 'lote-inexistente'; end if;
+      alvo:=(recibo->'jobs'->0->>'jobId')::uuid;
+      select g.lote_id into lid from public.admin_marketing_agendamentos g
+        join public.admin_marketing_autorizacoes a on a.id=g.autorizacao_id
+        where g.id=alvo and g.snapshot_id is not null and a.admin_id=p_admin;
+      if not found then raise exception 'lote-inexistente'; end if;
+    end if;
   else lid:=(p_filtro->>'loteId')::uuid; end if;
   select coalesce(jsonb_agg(x.d order by x.criado_em desc,x.id desc),'[]') into saida from (
     select g.id,g.criado_em,jsonb_build_object('jobId',g.id,'loteId',g.lote_id,'revisao',g.revisao,
@@ -441,7 +455,8 @@ begin
           'codigo',e.codigo_erro,'iniciadoEm',e.iniciado_em,'terminadoEm',e.terminado_em) d
         from public.admin_marketing_envios e where e.agendamento_id=g.id order by e.iniciado_em desc,e.id desc limit 50) r),'[]')) d
     from public.admin_marketing_agendamentos g join public.admin_marketing_autorizacoes a on a.id=g.autorizacao_id
-    where g.snapshot_id is not null and (not(p_filtro ? 'jobId') or g.id=(p_filtro->>'jobId')::uuid)
+    where g.snapshot_id is not null and a.admin_id=p_admin and (alvo is null or g.id=alvo)
+      and (not(p_filtro ? 'jobId') or g.id=(p_filtro->>'jobId')::uuid)
       and (lid is null or g.lote_id=lid)
       and (not(p_filtro ? 'cursor') or (g.criado_em,g.id)<((p_filtro->'cursor'->>'criadoEm')::timestamptz,(p_filtro->'cursor'->>'id')::uuid))
     order by g.criado_em desc,g.id desc limit least(coalesce((p_filtro->>'limite')::integer,20),50)+1

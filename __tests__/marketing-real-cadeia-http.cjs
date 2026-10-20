@@ -152,7 +152,37 @@ async function testarRecuperacao({ db, cliente, client, http, peca, contas, ig, 
   await assert.rejects(client.confirmar(nova, crypto.randomUUID()), { codigo: 'estado-incompativel', status: 409 });
   await assert.rejects(client.comando('reagendar', { ...comando, previaHash: '0'.repeat(64) }), { codigo: 'revisao-divergente', status: 409 });
   assert.equal(await quantidade(), quantidadeAntes);
-  const result = await client.comando('reagendar', comando);
+  // P2: HTTP conclui de verdade, mas sua resposta se perde antes de chegar ao cliente.
+  // A recuperação usa apenas GET pela chave enviada, sem replay do comando.
+  let respostaDescartada = false;
+  const clientSemResposta = browser.criarClientePublicacoes({ ...http.ctx, acao: async (...args) => {
+    await http.ctx.acao(...args);
+    respostaDescartada = true;
+    throw Object.assign(new Error('resposta-reagendamento-perdida'), { codigo: 'resposta-perdida' });
+  } });
+  const eventosAntesDoComando = eventos.length;
+  await assert.rejects(clientSemResposta.comando('reagendar', comando), { codigo: 'resposta-perdida' });
+  assert.equal(respostaDescartada, true, 'P2 resposta HTTP real descartada só após conclusão');
+  assert.equal(await quantidade(), quantidadeAntes + 1, 'P2 servidor já criou sucessor apesar da resposta perdida');
+  const banco = async () => {
+    const dados = {};
+    for (const { tablename } of (await db.query(`select tablename from pg_tables where schemaname='public' order by tablename`)).rows)
+      dados[tablename] = (await db.query(`select coalesce(jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text),'[]') d from public.${tablename} t`)).rows[0].d;
+    return dados;
+  };
+  const consultarChave = async idempotencia => {
+    await db.exec('begin read only');
+    try { return await client.consultar({ idempotencia }); }
+    finally { await db.exec('rollback'); }
+  };
+  let dadosAntes = await banco(), graphAntes = graph.length;
+  const result = await consultarChave(comando.idempotencia);
+  assert.deepEqual(await banco(), dadosAntes, 'P2 GET pela chave não muda tabelas públicas');
+  assert.equal(graph.length, graphAntes, 'P2 recuperar resposta não chama Graph');
+  assert.equal(eventos.slice(eventosAntesDoComando).filter(e => e.acao === 'comando').length, 1,
+    'P2 consulta da chave não reenvia o comando');
+  assert.ok(eventos.slice(eventosAntesDoComando).filter(e => e.acao === 'consultar').some(e =>
+    e.args.p_filtro.idempotencia === comando.idempotencia), 'P2 chave real atravessa HTTP/adaptador/remoto/SQL');
   assert.equal(result.jobs.length, 1);
   const sucessor = await consulta(result.jobs[0].jobId);
   assert.notEqual(sucessor.jobId, jobIg); assert.equal(sucessor.estado, 'programado-no-painel');
@@ -190,13 +220,31 @@ async function testarRecuperacao({ db, cliente, client, http, peca, contas, ig, 
   await tick(); await tick();
   incerto = await consulta(sucessor.jobId);
   assert.equal(incerto.estado, 'precisa-conferir'); assert.equal(publicacoesIg(), 1);
+  // A chave original continua apontando para o alvo, agora em estado diferente do recibo.
+  dadosAntes = await banco(); graphAntes = graph.length;
+  const atual = await consultarChave(comando.idempotencia);
+  assert.equal(atual.loteId, lote.loteId);
+  assert.deepEqual(json(atual.jobs), json([incerto]), 'P2 chave devolve somente o sucessor no estado atual');
+  assert.equal((await db.query('select resultado from public.admin_marketing_real_comandos where admin_id=$1 and idempotencia=$2',
+    [env.ADMIN_MARKETING_USER_ID, comando.idempotencia])).rows[0].resultado.jobs[0].estado, 'programado-no-painel');
+  const dono = env.ADMIN_MARKETING_USER_ID;
+  try {
+    env.ADMIN_MARKETING_USER_ID = crypto.randomUUID();
+    await assert.rejects(consultarChave(comando.idempotencia), { codigo: 'lote-inexistente', status: 404 });
+    assert.deepEqual(json((await client.consultar({ jobId: sucessor.jobId })).jobs), [], 'P2 job alheio não vaza');
+    assert.deepEqual(json((await client.consultar({ loteId: lote.loteId })).jobs), [], 'P2 lote alheio não vaza');
+    assert.deepEqual(json((await client.listar()).jobs), [], 'P2 lista não expõe jobs de outro ator');
+  } finally { env.ADMIN_MARKETING_USER_ID = dono; }
+  await assert.rejects(consultarChave(crypto.randomUUID()), { codigo: 'lote-inexistente', status: 404 });
+  assert.deepEqual(await banco(), dadosAntes, 'P2 consultas atuais/negativas não fazem mutação');
+  assert.equal(graph.length, graphAntes, 'P2 consultas atuais/negativas não fazem Graph nem POST');
   assert.equal(await quantidade(), quantidadeAntes + 1);
   assert.equal(postsFb(), fbAntes, 'zero novo POST Facebook depois de publicado');
   assert.deepEqual((await db.query('select * from public.admin_marketing_agendamentos where id=$1', [jobFb])).rows[0], facebookSql);
   assert.deepEqual((await db.query('select * from public.admin_marketing_envios where agendamento_id=$1 order by id', [jobFb])).rows, facebookRecibos);
   assert.deepEqual(json(await consulta(jobFb)), json(facebook));
   assert.ok((await client.listar()).jobs.every(j => browser.validarJob(j)));
-  console.log('  recuperação v1: preparo privado interrompido → prévia nova → sucessor vazio/replay; publicação incerta 1 POST; Facebook publicado preservado.');
+  console.log('  recuperação v1/P2: comando com resposta HTTP perdida → GET pela chave → sucessor e estado atual; owner/zero mutação; publicação incerta 1 POST; Facebook intacto.');
 }
 
 async function main() {
@@ -310,6 +358,11 @@ async function main() {
     assert.equal(eventos.length, antesHttp, 'autenticação e negativas não chegam à RPC');
     const client = browser.criarClientePublicacoes(http.ctx);
     const contas = (await client.capacidades()).contas;
+    if (process.argv.includes('--p2')) {
+      await testarRecuperacao({ db, cliente, client, http, peca, contas, ig, fb, secret, env, eventos, objetos });
+      console.log('marketing-real-cadeia-http P2: OK — SQL/remoto/adaptador/HTTP autenticado/consumidor; R0 v9 não executado nem alterado.');
+      return;
+    }
     const horarioLocal = new Date(Date.now() + 7200000 - 3 * 3600000).toISOString().slice(0, 16);
     const previa = await client.prever({ peca, horarioLocal, contas,
       destinos: [{ contaId: ig, rede: 'instagram', formato: 'carrossel' }, { contaId: fb, rede: 'facebook', formato: 'carrossel' }] });

@@ -54,14 +54,14 @@ const rejects = async (p,re) => { await assert.rejects(p,re); checks++; };
       await db.query(`update public.admin_marketing_real_contas set pausada=false,conexao='verificada',valida_ate=now()+interval '1 day'`);
     };
     await operacional(); await db.exec('set role service_role');
-    const novo = async (conta=ig) => {
+    const novo = async (conta=ig,ator=admin) => {
       const hex = (++serial).toString(16).padStart(16,'0');
-      let s = await rpc('snapshot_iniciar',[admin,{pecaId:hex,versao:hex.padStart(40,'0'),aceiteId:'fixture',aceiteRevisao:1,
+      let s = await rpc('snapshot_iniciar',[ator,{pecaId:hex,versao:hex.padStart(40,'0'),aceiteId:'fixture',aceiteRevisao:1,
         legenda:'Conteúdo aprovado.',legendaSha256:'a'.repeat(64),midias:[{ordem:0,sha256:'b'.repeat(64),mime:'image/jpeg',tipo:'imagem',bytes:100}],capa:null}]);
-      s = await rpc('snapshot_finalizar',[admin,s.id,1,{identidade:s.identidade,midias:s.dados.midias,capa:null}]);
+      s = await rpc('snapshot_finalizar',[ator,s.id,1,{identidade:s.identidade,midias:s.dados.midias,capa:null}]);
       const destinos = (Array.isArray(conta)?conta:[conta]).map(contaId=>({contaId,formato:'feed',publicarEm:future(),fuso:'America/Sao_Paulo'}));
-      const p = await rpc('previa',[admin,{snapshotId:s.id,snapshotRevisao:s.revisao,destinos}]);
-      const l = await rpc('confirmar',[admin,p.id,p.hash,1,randomUUID()]);
+      const p = await rpc('previa',[ator,{snapshotId:s.id,snapshotRevisao:s.revisao,destinos}]);
+      const l = await rpc('confirmar',[ator,p.id,p.hash,1,randomUUID()]);
       return (await db.query('select * from public.admin_marketing_agendamentos where lote_id=$1',[l.loteId])).rows[0];
     };
     const row = async id => (await db.query('select * from public.admin_marketing_agendamentos where id=$1',[id])).rows[0];
@@ -78,12 +78,80 @@ const rejects = async (p,re) => { await assert.rejects(p,re); checks++; };
       publicarEm:p.destinos[0].publicarEm,fuso:'America/Sao_Paulo',previaId:p.id,previaHash:p.hash,...extra});
     const comando = p => rpc('comando',[admin,p]);
     const tentativas = async id => (await db.query('select * from public.admin_marketing_envios where agendamento_id=$1 order by tentativa',[id])).rows;
+    async function testarRespostaPerdidaP2() {
+      await db.exec('set role service_role'); await operacional();
+      const original=await novo([ig,fb]);
+      const jobs=(await db.query('select * from public.admin_marketing_agendamentos where lote_id=$1',[original.lote_id])).rows;
+      const anterior=jobs.find(j=>j.conta_id===ig), facebook=jobs.find(j=>j.conta_id===fb);
+      await db.query(`update public.admin_marketing_agendamentos set estado='publicado',remoto_id='456_925',concluido_em=now(),
+        processamento='{"publicacaoId":"456_925"}' where id=$1`,[facebook.id]);
+      const facebookAntes=await row(facebook.id), p=await previa(anterior), cmd=pedido(anterior,p);
+      // O chamador perde a resposta; só conhece a chave que já tinha enviado.
+      await comando(cmd);
+      const [sucessor]=(await db.query('select * from public.admin_marketing_agendamentos where substitui_id=$1',[anterior.id])).rows;
+      ok(sucessor&&sucessor.id!==anterior.id,'P2 comando concluiu e criou sucessor');
+      const banco=async()=>{
+        const dados={};
+        for(const {tablename} of (await db.query(`select tablename from pg_tables where schemaname='public' order by tablename`)).rows)
+          dados[tablename]=(await db.query(`select coalesce(jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text),'[]') d from public.${tablename} t`)).rows[0].d;
+        return dados;
+      };
+      const consultar=async(ator,filtro)=>{
+        await db.exec('begin read only');
+        try{return await rpc('consultar',[ator,{acao:'consultar',...filtro}]);}
+        finally{await db.exec('rollback');}
+      };
+      let antes=await banco();
+      let recuperado=await consultar(admin,{idempotencia:cmd.idempotencia});
+      eq(recuperado.jobs.map(j=>j.jobId),[sucessor.id],'P2 chave do comando devolve somente seu alvo, não o lote todo');
+      eq(recuperado.loteId,anterior.lote_id,'P2 recupera o lote real do alvo');
+      eq(recuperado.jobs[0].estado,'programado-no-painel','P2 sucessor consultado após resposta perdida');
+      eq(await banco(),antes,'P2 consulta não altera nenhuma tabela pública');
+      // O estado evolui depois do recibo guardado: devolver o JSON antigo mentiria.
+      await comando({acao:'cancelar',jobId:sucessor.id,revisaoEsperada:sucessor.revisao,idempotencia:randomUUID()});
+      const outroAtor=randomUUID(), outro=await novo(ig,outroAtor);
+      const chaveOutro=(await db.query('select idempotencia from public.admin_marketing_real_lotes where id=$1',[outro.lote_id])).rows[0].idempotencia;
+      const chaveEstranha=randomUUID();
+      await db.query(`insert into public.admin_marketing_real_comandos(admin_id,idempotencia,pedido,resultado) values($1,$2,$3,$4)`,
+        [admin,chaveEstranha,{acao:'reagendar',jobId:anterior.id},{jobs:[{jobId:outro.id}]}]);
+      const chaveSemAlvo=randomUUID();
+      await db.query(`insert into public.admin_marketing_real_comandos(admin_id,idempotencia,pedido,resultado) values($1,$2,$3,$4)`,
+        [admin,chaveSemAlvo,{acao:'pausar',escopo:'global'},{contas:[{privado:'nao-expor'}]}]);
+      antes=await banco();
+      recuperado=await consultar(admin,{idempotencia:cmd.idempotencia});
+      eq(recuperado.jobs.map(j=>j.jobId),[sucessor.id],'P2 segue o alvo registrado mesmo depois de terminar');
+      eq(recuperado.jobs[0].estado,'cancelado','P2 retorna estado atual, não cópia do recibo');
+      eq(recuperado.jobs[0].revisao,(await row(sucessor.id)).revisao,'P2 retorna revisão atual');
+      eq((await db.query('select resultado from public.admin_marketing_real_comandos where admin_id=$1 and idempotencia=$2',[admin,cmd.idempotencia])).rows[0].resultado.jobs[0].estado,
+        'programado-no-painel','P2 recibo original não foi reescrito pela consulta');
+      await rejects(consultar(outroAtor,{idempotencia:cmd.idempotencia}),/lote-inexistente/);
+      await rejects(consultar(admin,{idempotencia:randomUUID()}),/lote-inexistente/);
+      await rejects(consultar(admin,{idempotencia:chaveOutro}),/lote-inexistente/);
+      await rejects(consultar(admin,{idempotencia:chaveEstranha}),/lote-inexistente/);
+      await rejects(consultar(admin,{idempotencia:chaveSemAlvo}),/lote-inexistente/);
+      eq((await consultar(outroAtor,{jobId:sucessor.id})).jobs,[],'P2 job de outro ator não vaza por consulta direta');
+      eq((await consultar(outroAtor,{loteId:anterior.lote_id})).jobs,[],'P2 lote de outro ator não vaza por consulta direta');
+      eq((await consultar(admin,{idempotencia:cmd.idempotencia,jobId:outro.id})).jobs,[],'P2 filtro não pode trocar o alvo da chave');
+      const lista=await rpc('consultar',[admin,{acao:'listar',limite:50}]);
+      ok(lista.jobs.every(j=>j.jobId!==outro.id),'P2 lista também respeita owner');
+      const lote=(await db.query('select idempotencia from public.admin_marketing_real_lotes where id=$1',[anterior.lote_id])).rows[0];
+      eq((await consultar(admin,{idempotencia:lote.idempotencia})).jobs.map(j=>j.jobId).sort(),
+        [anterior.id,facebook.id,sucessor.id].sort(),'P2 consulta pela chave de lote continua compatível');
+      eq((await consultar(outroAtor,{idempotencia:chaveOutro})).jobs.map(j=>j.jobId),[outro.id],'P2 ator continua vendo seu próprio lote');
+      eq(await row(facebook.id),facebookAntes,'P2 Facebook publicado permanece intacto');
+      eq(await banco(),antes,'P2 consultas positivas/negativas e owner não escrevem dados');
+    }
     // Instalar não reinterpreta nem reativa jobs que já estavam no banco.
     let g = await novo(); const before = await row(g.id);
     if (!process.argv.includes('--baseline')) {
       await db.exec('reset role');
       await db.exec(fs.readFileSync(path.join(root,'supabase/migrations',MIGRATION),'utf8'));
       await db.exec('set role service_role');
+    }
+    if(process.argv.includes('--p2')){
+      await testarRespostaPerdidaP2();
+      console.log(`marketing-real-recuperacao-v1 P2: ${checks} verificacoes SQL real; chave de comando, estado atual, owner e zero mutacao`);
+      return;
     }
     const after = await row(g.id);
     for (const k of Object.keys(before)) eq(after[k],before[k],'instalação preserva '+k);
@@ -304,6 +372,7 @@ const rejects = async (p,re) => { await assert.rejects(p,re); checks++; };
       await db.exec('set role '+role); await rejects(rpc('claim',[randomUUID(),3]),/permission denied/);
       await rejects(rpc('publicacao_possivel',[g.id]),/permission denied/); await db.exec('reset role');
     }
+    await testarRespostaPerdidaP2();
     console.log(`marketing-real-recuperacao-v1: ${checks} verificacoes; SQL/Edge/executor/Graph reais; sem rede externa; concorrencia de chamadas e interleavings locais (PGlite serializa a conexao)`);
   } finally { await db.close(); }
 })().catch(e=>{console.error(e.stack||e.message);process.exitCode=1;});
