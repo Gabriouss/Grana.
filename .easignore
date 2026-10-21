@@ -5,6 +5,11 @@
 # build antes mesmo de consumir a cota.
 .agents/
 .claude/
+.codex/
+.expo/
+.impeccable/
+.githooks/
+.sb-pentest*
 .expo-start*.log
 design-system/marketing-mockups/
 
