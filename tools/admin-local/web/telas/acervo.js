@@ -98,6 +98,7 @@ export async function montar(raiz, ctx) {
         h('div', { class: 'peca-midia' }, ctx.midia(p)),
         h('div', { class: 'peca-info' },
           h('h2', { class: 'peca-titulo', texto: tituloPeca(p) }),
+          p.tipo === 'video' && !p.capa?.url ? h('p', { class: 'campo-ajuda', texto: 'Vídeo sem capa vinculada nesta versão.' }) : null,
           h('p', { class: 'peca-meta', texto: `${rotuloSemana(p.semana)} · ${p.tipo}${p.arquivos?.length > 1 ? ` · ${p.arquivos.length} arquivos` : ''}` }),
           ehReferenciaEditorial(p)
             ? h('span', { class: 'peca-estado selo selo-neutro', texto: 'Referência editorial, fora da Aprovação' })

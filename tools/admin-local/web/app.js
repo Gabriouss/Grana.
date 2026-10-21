@@ -675,7 +675,9 @@ export function midia(peca, { grande = false } = {}) {
       outro ? h('a', { href: urlArquivo(outro), target: '_blank', rel: 'noopener', texto: 'Abrir o arquivo' }) : null);
   }
   const um = (arq, i) => (EXT_VIDEO.test(arq)
-    ? h('video', { src: urlArquivo(arq), controls: true, preload: 'metadata', playsinline: true, 'aria-label': `${alt}${arquivos.length > 1 ? `, parte ${i + 1}` : ''}` })
+    ? h('video', { src: urlArquivo(arq), controls: true, preload: 'metadata', playsinline: true,
+      ...(peca.capa?.url ? { poster: urlArquivo(peca.capa.url) } : {}),
+      'aria-label': `${alt}${arquivos.length > 1 ? `, parte ${i + 1}` : ''}` })
     : h('img', { src: urlArquivo(arq), alt: arquivos.length > 1 ? `${alt}, slide ${i + 1} de ${arquivos.length}` : alt, loading: 'lazy', decoding: 'async' }));
   if (arquivos.length === 1) return h('div', { class: classe }, um(arquivos[0], 0));
 
