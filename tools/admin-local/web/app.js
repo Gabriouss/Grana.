@@ -577,6 +577,7 @@ export function selo(status, texto) {
 // colunas: [{ titulo, valor: (linha) => texto|Node, classe }]
 export function tabela(colunas, linhas, { legenda } = {}) {
   return h('div', { class: 'tabela-rolagem', tabindex: '0', role: 'region', 'aria-label': legenda || 'Tabela' },
+    h('p', { class: 'campo-ajuda tabela-rolagem-ajuda', texto: 'Se houver colunas fora da tela, role a tabela para os lados.' }),
     h('table', { class: 'tabela' },
       legenda ? h('caption', { texto: legenda }) : null,
       h('thead', null, h('tr', null, colunas.map((c) => h('th', { scope: 'col', class: c.classe, texto: c.titulo })))),

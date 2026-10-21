@@ -547,9 +547,18 @@ a.cartao:hover { border-color: var(--rule-strong); }
 
 .tabela-rolagem {
   overflow-x: auto;
+  max-width: 100%;
   border: 1px solid var(--rule);
   border-radius: var(--r-lg);
   background: var(--paper);
+}
+.tabela-rolagem-ajuda {
+  position: sticky;
+  left: 0;
+  width: fit-content;
+  max-width: 100%;
+  padding: var(--s-sm) var(--s-lg);
+  margin: 0;
 }
 .tabela caption { caption-side: top; padding: var(--s-md) var(--s-lg); text-align: left; font-size: var(--t-legenda); color: var(--ink-faint); border-bottom: 1px solid var(--rule); }
 .tabela {
@@ -575,9 +584,9 @@ a.cartao:hover { border-color: var(--rule-strong); }
   border-bottom: 1px solid var(--rule);
   vertical-align: top;
 }
-/* Célula nunca parte palavra no meio: a quebra é só entre palavras. Código e hash (mono) continuam quebrando. */
+/* Texto quebra entre palavras; tokens operacionais definem a largura mínima da coluna. */
 .tabela td, .tabela th { overflow-wrap: normal; word-break: normal; hyphens: none; }
-.tabela td.mono { overflow-wrap: anywhere; }
+.tabela td.mono, .tabela td.num { overflow-wrap: normal; white-space: nowrap; }
 .tabela tbody tr:last-child td { border-bottom: 0; }
 .tabela tbody tr:hover td { background: var(--hover); }
 .tabela .num, .tabela td.num, .tabela th.num { text-align: right; font-variant-numeric: tabular-nums; }
