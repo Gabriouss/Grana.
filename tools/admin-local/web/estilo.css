@@ -2644,6 +2644,15 @@ dialog.feed-post[open] { animation: modal-entra 240ms var(--ease-saida); }
   background: var(--paper-deep);
   overflow: hidden;
 }
+/* AUD-01: a trilha da área fica presa ao tamanho dela, para a miniatura do post publicado não crescer
+   pela altura natural (9:16 cortado no celular). No desktop a área ocupa a célula do corpo nas duas
+   medidas: a proporção da peça (aspect-ratio inline) tirava a altura da largura da coluna, 738x984 num
+   corpo de 760, e o rodapé da arte saía da janela. contain mostra a peça inteira. O Calendário tem
+   regra própria em _previa-post.css. */
+dialog.feed-post:not(.previa-post) .feed-post-corpo > .feed-post-midia { grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
+@media (min-width: 900px) {
+  dialog.feed-post:not(.previa-post) .feed-post-corpo > .feed-post-midia { width: 100%; height: 100%; }
+}
 .feed-trilho {
   display: flex;
   width: 100%;
