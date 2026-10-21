@@ -226,5 +226,37 @@ async function test(nome, fn, nomes) { await fixture(fn, nomes); grupos++; conso
     etapa = 'ok'; assert.equal((await post({ ...body, confirmacao: 'sim' })).status, 400); assert.equal(chamados, 1); assert(!fs.existsSync(h.destino()));
     assert.equal((await post(body)).status, 200); assert.equal(chamados, 2); assert(fs.existsSync(h.destino())); assert.deepEqual(rede, []);
   });
+  // 21/10: Reel com capa ligada pelo registro de famílias. A cópia em aprovados precisa da mesma
+  // capa, senão a versão composta muda e a promoção recusa com destino-divergente.
+  {
+    const tmpRoot = path.resolve(os.tmpdir());
+    const dir = fs.mkdtempSync(path.join(tmpRoot, 'grana-promocao-'));
+    try {
+      const semana = 'docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25';
+      const reels = path.join(dir, semana, 'para-aprovacao/pecas/reels'); fs.mkdirSync(reels, { recursive: true });
+      fs.writeFileSync(path.join(reels, 'Pra onde foi.mp4'), 'fixture video');
+      fs.writeFileSync(path.join(reels, 'Pra onde foi-capa.png'), 'fixture capa');
+      fs.writeFileSync(path.join(dir, semana, 'INDICE.md'), `# Semana\n\n[Reel](${c.linkDoIndice('para-aprovacao/pecas/reels/Pra onde foi.mp4')})\n`);
+      fs.writeFileSync(path.join(reels, '..', 'COPYS-FINAIS.md'), '## Pra onde foi\n\n**Legenda:** Texto de publicacao do Reel.\n');
+      const painel = path.join(dir, 'docs/marketing/painel'); fs.mkdirSync(painel, { recursive: true });
+      fs.writeFileSync(path.join(painel, 'calendario.json'), JSON.stringify({ diaD: '2099-01-01', planejados: [] }));
+      const base = semana + '/para-aprovacao/pecas/reels/';
+      fs.writeFileSync(path.join(painel, 'familias.json'), JSON.stringify({ familias: [], capas: [{ capa: base + 'Pra onde foi-capa.png', reel: base + 'Pra onde foi.mp4' }] }));
+      const p = c.montarCatalogo(dir).find((x) => x.tipo === 'video');
+      assert(p && p.composicao && p.capa, 'Reel com aceite composto');
+      await ap.aprovar(dir, p.id, { versao: p.versao, confirmacao: true });
+      const r = await promo.promover(dir, p.id, { versao: p.versao, confirmacao: true });
+      assert.equal(r.promocao.versao, p.versao);
+      const nova = c.obterPeca(dir, r.promocao.id);
+      assert.equal(nova.estado, 'aprovados'); assert.equal(nova.versao, p.versao); assert.equal(nova.capa.sha1, p.capa.sha1);
+      assert(fs.existsSync(path.join(dir, semana, 'aprovados/pecas/reels/Pra onde foi.mp4')));
+      assert(!fs.existsSync(path.join(reels, 'Pra onde foi.mp4')), 'origem limpa depois da prova');
+      assert(fs.existsSync(path.join(reels, 'Pra onde foi-capa.png')), 'a capa fica, ligada pelo registro');
+      grupos++; console.log('OK Reel com capa so no registro promove com a mesma versao composta');
+    } finally {
+      assert.equal(path.dirname(path.resolve(dir)), tmpRoot); assert(path.basename(dir).startsWith('grana-promocao-'));
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
   assert.deepEqual(rede, []); console.log(`admin-meta-promocao: ${grupos} grupos passaram (modulos reais, nenhuma Meta)`);
 })().catch((e) => { console.error(e); process.exitCode = 1; });

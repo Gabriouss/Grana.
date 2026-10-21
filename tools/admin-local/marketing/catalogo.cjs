@@ -779,11 +779,14 @@ function montarCatalogo(raiz) {
   // nunca vira peça própria no Feed. Reel ausente do acervo: a capa fica como está.
   for (const [capaCaminho, reelCaminho] of registro.capas) {
     const capa = pecas.find((p) => chaveDoRegistro(p.caminho) === capaCaminho && p.tipo === 'imagem');
-    const reel = pecas.find((p) => chaveDoRegistro(p.caminho) === reelCaminho && p.tipo === 'video');
+    // Na promoção o Reel existe nas duas pastas até a prova ser gravada. Só a primeira cópia
+    // recebia a capa, e a de aprovados mudava de versão composta ("destino-divergente", 21/10).
+    const reels = pecas.filter((p) => chaveDoRegistro(p.caminho) === reelCaminho && p.tipo === 'video');
+    const reel = reels[0];
     if (!capa || !reel) { console.error(JSON.stringify({ codigo: 'familias-capa-sem-par' })); continue; }
     capa.capaDe = reel.id; capa.capaOrfa = false; capa.familia = reel.familia;
     capa.vinculoCapa = 'registro';
-    reel.capa = { pecaId: capa.id, nome: capa.arquivos[0].nome, url: capa.arquivos[0].url, sha1: capa.arquivos[0].sha1 };
+    for (const r of reels) r.capa = { pecaId: capa.id, nome: capa.arquivos[0].nome, url: capa.arquivos[0].url, sha1: capa.arquivos[0].sha1 };
   }
   // Aceite composto do Reel (W-A2): a versão sela vídeo + capa + legenda. Trocar a
   // capa, o vídeo ou a legenda gera versão nova, e o aceite anterior deixa de valer.
