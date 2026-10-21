@@ -351,7 +351,14 @@ function carregarMiniatura(src, img, aoFalhar) {
   if (typeof src !== 'string' || !src.startsWith(ROTA_MINIATURA)) { aoFalhar(); return; }
   fetch(src, { headers: { Accept: 'image/*', 'X-Grana-Admin': '1' }, credentials: 'same-origin' })
     .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(`status-${r.status}`))))
-    .then((b) => { img.src = URL.createObjectURL(b); })
+    .then((b) => {
+      // Solta o blob quando a imagem decodifica ou falha, como o Calendário: o painel fica aberto o dia todo.
+      const url = URL.createObjectURL(b);
+      const soltar = () => URL.revokeObjectURL(url);
+      img.addEventListener('load', soltar, { once: true });
+      img.addEventListener('error', soltar, { once: true });
+      img.src = url;
+    })
     .catch((err) => { console.warn('[feed-miniatura]', err.message || 'falhou'); aoFalhar(); });
 }
 
