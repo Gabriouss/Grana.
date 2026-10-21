@@ -27,7 +27,12 @@ export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
 AQUI="$(cd "$(dirname "$0")" && pwd)"
 VAZIA='Ask Codex to do anything'
 ALVOS=(Codex Compass Forge Prism Sentinel Harbor Beacon Ledger Watchtower)
-ORQUESTRADORES=(Codex "Claude Code" "Orquestrador Supremo")
+# 21/10/2026: os oito agentes Codex e o maestro "Claude Code #2" tambem sao
+# retomados; antes so os orquestradores voltavam e o resto do time ficava
+# parado depois do limite. Terminal que nao esta ligado a quem roda o
+# guardiao devolve tela vazia e e pulado.
+ORQUESTRADORES=(Codex Compass Forge Prism Sentinel Harbor Beacon Ledger Watchtower
+  "Claude Code" "Orquestrador Supremo" "Claude Code #2")
 RETOMADA='O limite de uso foi redefinido. Continue a tarefa em que voce estava quando o limite chegou; nao refaca o que ja esta concluido.'
 LOG="${GUARDIAO_LOG:-/e/Grana-temporarios/guardiao-caixas.log}"
 INTERVALO="${GUARDIAO_INTERVALO:-15}"
@@ -88,8 +93,20 @@ livre() {
   [ -n "$c" ] && printf '%s' "$c" | grep -qE '^[[:space:]]*❯[[:space:]]*(Try ".*)?$'
 }
 
+# Retomada agendada, mas o aviso de limite sumiu da tela (mensagem nova do
+# time, comando no shell, rolagem). Ate 20/10/2026 isso contava como "voltou
+# sozinho" e a retomada era cancelada: a das 00h26 de 21/10 caiu assim as
+# 20h12. Agora so conta como retomado quem esta trabalhando; ocioso espera a
+# hora e recebe o pedido. Args: agora, hora agendada, ocupado (1/0).
+sem_aviso() {
+  if [ "$3" = 1 ]; then echo retomou
+  elif [ "$1" -lt "$2" ]; then echo manter
+  else echo retomar; fi
+}
+
 if [ "${1:-}" = "--testar" ]; then estado; exit 0; fi
 if [ "${1:-}" = "--testar-limite" ]; then limite; exit 0; fi
+if [ "${1:-}" = "--testar-sem-aviso" ]; then sem_aviso "$2" "$3" "$4"; exit 0; fi
 
 log() { echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG"; }
 tela() { maestri check "$1" 2>/dev/null | grep -v '^[[:space:]]*$' | tail -40; }
@@ -136,8 +153,23 @@ vigiar_limites() {
     t="$(tela "$a")"
     [ -z "$t" ] && continue
     l="$(printf '%s\n' "$t" | limite)"
-    if [ -z "$l" ] || [ "$l" = auto ]; then
-      [ -n "${agenda[$a]:-}" ] && log "RETOMADA $a: saiu do limite sem precisar do guardiao"
+    if [ "$l" = auto ]; then
+      [ -n "${agenda[$a]:-}" ] && log "RETOMADA $a: o Claude retoma sozinho"
+      unset 'agenda[$a]' 'aviso_de[$a]' 'tentativas[$a]'; continue
+    fi
+    if [ -z "$l" ]; then
+      [ -z "${agenda[$a]:-}" ] && continue
+      local ocupado=0
+      printf '%s' "$t" | tail -8 | grep -q 'esc to interrupt' && ocupado=1
+      case "$(sem_aviso "$agora" "${agenda[$a]}" "$ocupado")" in
+        manter) continue ;;
+        retomou) log "RETOMADA $a: voltou a trabalhar sem precisar do guardiao" ;;
+        retomar)
+          livre "$t" || continue                           # rascunho na caixa: espera
+          retomar "$a" "$t"
+          log "RETOMADO $a: aviso saiu da tela antes da hora; pedido de retomada enviado"
+          feito[$a]="${aviso_de[$a]}" ;;
+      esac
       unset 'agenda[$a]' 'aviso_de[$a]' 'tentativas[$a]'; continue
     fi
     e="${l%% *}"; av="${l#* }"

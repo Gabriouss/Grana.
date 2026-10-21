@@ -34,4 +34,13 @@ caso "Claude so avisando uso (nao e limite)" '^$' \
 caso "Claude ja retomou" '^$' \
   "  ⎿  You've hit your session limit · resets 4am (America/Sao_Paulo)\n❯ oi\n● Ola\n❯ "
 
+decisao() { # nome, esperado, agora, agenda, ocupado
+  local saida; saida="$(bash "$G" --testar-sem-aviso "$3" "$4" "$5")"
+  if [ "$saida" = "$2" ]; then echo "ok    $1"; else echo "FALHA $1: saiu \"$saida\""; falhas=$((falhas + 1)); fi
+}
+# Caso real de 20/10 20h12: aviso das 00h25 saiu da tela, Codex ocioso.
+decisao "aviso sumiu antes da hora, ocioso: mantem a agenda" manter 1000 2000 0
+decisao "aviso sumiu, hora passou, ocioso: retoma" retomar 2000 2000 0
+decisao "aviso sumiu e esta trabalhando: ja voltou" retomou 1000 2000 1
+
 [ "$falhas" -eq 0 ] && echo "todos passaram" || { echo "$falhas falha(s)"; exit 1; }
