@@ -121,12 +121,12 @@ function vincular(posts, pecas, registro = new Map()) {
 function criarMetaPublicados({ ler = config.ler, catalogo = listarPecas, agora = () => new Date(), buscar = (...a) => fetch(...a) } = {}) {
   const cache = new Map();
   const urls = new Map(); // chave -> { url, ate }: o cliente só conhece a chave, nunca a URL da CDN
-  function lembrar(posts) {
+  function lembrar(posts, renovar) {
     for (const p of posts) {
       const url = cdnPermitida(p.miniatura);
       if (url) {
         urls.delete(p.chave);
-        urls.set(p.chave, { url: url.href, ate: agora().getTime() + VALIDADE_URL_MS });
+        urls.set(p.chave, { url: url.href, ate: agora().getTime() + VALIDADE_URL_MS, renovar });
         p.miniatura = `${ROTA_MIDIA}${p.chave}`;
       } else p.miniatura = null; // host fora da lista: sem miniatura, legenda e link seguem
     }
@@ -134,7 +134,13 @@ function criarMetaPublicados({ ler = config.ler, catalogo = listarPecas, agora =
   }
   async function midia(chaveMidia) {
     if (typeof chaveMidia !== 'string' || !/^[0-9a-f]{16}$/.test(chaveMidia)) throw new ErroMarketing('pedido-invalido', 'Miniatura inválida.', 400);
-    const guardada = urls.get(chaveMidia);
+    let guardada = urls.get(chaveMidia);
+    // O Feed pode ficar aberto além dos 30 minutos da chave. Releia a origem antes de
+    // usar outra URL; nunca prolongue a validade da URL antiga nem busque uma capa local.
+    if (guardada && guardada.ate < agora().getTime() && guardada.renovar) {
+      await guardada.renovar();
+      guardada = urls.get(chaveMidia);
+    }
     if (!guardada || guardada.ate < agora().getTime()) throw new ErroMarketing('midia-indisponivel', 'Atualize o calendário para recarregar a miniatura.', 404);
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), PRAZO_IMAGEM_MS);
@@ -257,7 +263,7 @@ function criarMetaPublicados({ ler = config.ler, catalogo = listarPecas, agora =
     }
     const ordem = r.posts.sort((a, b) => Date.parse(b.publicadoEm) - Date.parse(a.publicadoEm));
     const posts = vincular(ordem, catalogo(raiz).pecas, registroDePublicados(raiz));
-    lembrar(posts);
+    lembrar(posts, () => feedReal(raiz));
     const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
     const dados = {
       ...base, status: 'disponivel', completo: r.completo,
