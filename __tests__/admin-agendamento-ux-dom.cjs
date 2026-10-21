@@ -43,7 +43,9 @@ const sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
 const LEGENDA = 'Legenda fictícia de teste.';
 const T0 = Date.parse('2026-10-19T03:00:00.000Z'); // 19/10 00:00 em São Paulo
 const iso = (min) => new Date(T0 + min * 60000).toISOString();
-const PECA = { id: 'a1b2c3d4e5f60718', titulo: 'Carrossel AUDIT', versao: 'c'.repeat(40), tipo: 'carrossel', aprovada: true, bloqueios: [] };
+// O catálogo real manda as mídias da peça; sem elas o compositor não oferece formato (0e153a10).
+const PECA = { id: 'a1b2c3d4e5f60718', titulo: 'Carrossel AUDIT', versao: 'c'.repeat(40), tipo: 'carrossel', aprovada: true, bloqueios: [],
+  midias: [{ tipo: 'imagem', mime: 'image/jpeg' }, { tipo: 'imagem', mime: 'image/jpeg' }] };
 const cap = (formato) => ({ formato, estado: 'disponivel', revisao: 1, motivos: [] });
 const CONTAS = [
   { contaId: 'ig-1', rede: 'instagram', rotulo: '@grana.audit', revisao: 3, conexao: 'verificada', pausada: false, capacidades: ['feed', 'carrossel'].map(cap) },
