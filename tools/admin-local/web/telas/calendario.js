@@ -585,7 +585,8 @@ async function montarEditorial(raiz, ctx) {
         const li = h('div', { class: 'cal-item', draggable: 'true', title: nomeDaPeca(p), dados: { id: p.id } },
           p.capa?.url && p.capa.tipo === 'imagem' ? h('img', { class: 'cal-item-capa', src: ctx.urlArquivo(p.capa.url), alt: '', loading: 'lazy' }) : null,
           h('span', { class: 'cal-item-titulo', texto: nomeCurto(p) }),
-          p.tipo || formatoDoNome(p) ? h('span', { class: 'cal-item-canal', texto: maiuscula(String(p.tipo || formatoDoNome(p))) }) : null,
+          p.capaOrfa || p.tipo || formatoDoNome(p) ? h('span', { class: 'cal-item-canal', texto: p.capaOrfa
+            ? 'Capa sem vídeo vinculado nesta versão' : maiuscula(String(p.tipo || formatoDoNome(p))) }) : null,
           h('div', { class: 'bloco-acao' },
             h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Escolher data', onclick: () => planejar(p) }),
             ctx.botaoAgendar ? ctx.botaoAgendar(p, '', false) : null),
