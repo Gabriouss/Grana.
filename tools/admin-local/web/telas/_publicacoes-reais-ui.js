@@ -126,6 +126,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     ocupado = valor;
     raiz.setAttribute('aria-busy', String(valor));
     raiz.querySelectorAll('button[data-operacao]').forEach((b) => { b.disabled = valor || b.dataset.bloqueado === 'true'; });
+    atualizarResumoHorario();
   }
 
   function liberarPreview() {
@@ -188,12 +189,20 @@ export async function montarReal(raiz, ctx, integracao = null) {
     const input = compositor.querySelector('[name="agendarParaLocal"]');
     const saida = compositor.querySelector('.pub-real-horario-resumo');
     const acaoPrevia = compositor.querySelector('[data-acao-previa]');
-    if (!input || !saida) return;
+    if (!input || !saida) return '';
     const r = horarioConferido(input.value);
     saida.textContent = r.texto;
     saida.dataset.valido = String(r.ok);
     saida.setAttribute('role', r.ok ? 'status' : 'alert');
-    if (acaoPrevia) acaoPrevia.disabled = ocupado || !pecaSelecionada() || !destinosSelecionados().length || saida.dataset.valido !== 'true';
+    const motivo = ocupado ? 'Aguarde a operação em andamento.'
+      : pendencia ? 'Consulte o resultado pendente antes de gerar outra prévia.'
+      : !pecaSelecionada() ? 'Escolha uma peça aprovada vigente.'
+      : !destinosSelecionados().length ? 'Escolha ao menos uma conta e um formato compatível com a peça.'
+      : !r.ok ? r.texto : '';
+    if (acaoPrevia) acaoPrevia.disabled = !!motivo;
+    const ajuda = compositor.querySelector('#pub-real-previa-motivo');
+    if (ajuda) ajuda.textContent = motivo || 'Peça, destinos e horário prontos para gerar a prévia.';
+    return motivo;
   }
 
   function imagemDaPeca(peca) {
@@ -265,6 +274,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     const resumoHora = h('p', { class: 'pub-real-horario-resumo', id: 'pub-real-horario-resumo', role: 'status', 'aria-live': 'polite' });
     const previaBtn = h('button', { class: 'botao botao-primario', type: 'button', 'data-operacao': true,
       'data-acao-previa': true, texto: 'Gerar prévia dos destinos', disabled: ocupado || !peca || !destinosSelecionados().length,
+      'aria-describedby': 'pub-real-previa-motivo',
       onclick: () => gerarPrevia() });
     compositor.replaceChildren(
       h('h2', { class: 'secao-titulo', id: 'pub-real-compor-titulo', texto: 'Preparar publicação' }),
@@ -283,6 +293,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
             hora, h('small', { id: 'pub-real-fuso-ajuda', class: 'campo-ajuda', texto: 'Use o horário de Brasília, mesmo se o seu computador estiver em outro fuso.' })),
           resumoHora)),
       h('div', { class: 'pub-real-acoes' }, previaBtn,
+        h('span', { class: 'campo-ajuda', id: 'pub-real-previa-motivo', role: 'status', 'aria-live': 'polite' }),
         h('span', { class: 'campo-ajuda', texto: 'A data editorial é uma sugestão. Revise horário e destinos antes de gerar a prévia.' })));
     hora.id = 'pub-real-agendar-para';
     atualizarResumoHorario();
@@ -490,7 +501,11 @@ export async function montarReal(raiz, ctx, integracao = null) {
     const destinos = destinosSelecionados();
     const input = compositor.querySelector('[name="agendarParaLocal"]');
     const horarioLocal = reagendamento?.horarioLocal || input?.value;
-    if (!peca || !destinos.length || !horarioLocal || ocupado || pendencia) return;
+    if (ocupado || pendencia) return;
+    if (!peca || !destinos.length || !horarioLocal) {
+      avisar(atualizarResumoHorario() || 'Confira a peça, os destinos e o horário antes de gerar a prévia.', true);
+      return;
+    }
     // O relógio anda: o horário é conferido de novo no clique, não só quando foi digitado.
     const horario = horarioConferido(horarioLocal);
     if (!horario.ok) { atualizarResumoHorario(); avisar(horario.texto, true); return; }
