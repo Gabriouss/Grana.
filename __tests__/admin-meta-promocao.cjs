@@ -252,6 +252,11 @@ async function test(nome, fn, nomes) { await fixture(fn, nomes); grupos++; conso
       assert(fs.existsSync(path.join(dir, semana, 'aprovados/pecas/reels/Pra onde foi.mp4')));
       assert(!fs.existsSync(path.join(reels, 'Pra onde foi.mp4')), 'origem limpa depois da prova');
       assert(fs.existsSync(path.join(reels, 'Pra onde foi-capa.png')), 'a capa fica, ligada pelo registro');
+      // A capa que ficou em para-aprovacao está aprovada pelo aceite composto: a família não volta à fila.
+      const lista = c.listarPecas(dir, {}); const todas = Array.isArray(lista) ? lista : lista.pecas;
+      const capaPeca = todas.find((x) => x.id === p.capa.pecaId);
+      assert.equal(capaPeca.estado, 'para-aprovacao'); assert.equal(capaPeca.cobertaPeloReel, true);
+      assert.equal(capaPeca.aprovada, true); assert.equal(capaPeca.estadoEfetivo, 'aprovada'); assert.equal(capaPeca.aceiteDeVersaoAnterior, false);
       grupos++; console.log('OK Reel com capa so no registro promove com a mesma versao composta');
     } finally {
       assert.equal(path.dirname(path.resolve(dir)), tmpRoot); assert(path.basename(dir).startsWith('grana-promocao-'));

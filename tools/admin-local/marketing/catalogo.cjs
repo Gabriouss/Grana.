@@ -859,7 +859,11 @@ function enriquecer(raiz, pecas) {
     const aceiteDaVersao = aprovacoes.filter((a) => valido(a, p)).at(-1) || null;
     // Aceite de revisão superada fica no histórico e não vale mais para publicar.
     const aceite = superada || recusada ? null : aceiteDaVersao;
-    const aceiteAntigo = !aceiteDaVersao && aprovacoes.some((a) => a.id === p.id);
+    // Capa selada no aceite composto do Reel vigente está aprovada pelo Reel, mesmo parada em
+    // para-aprovacao (a promoção move só o vídeo) ou com aceite próprio de versão antiga. Sem isto a
+    // família do Reel aprovado voltava para "Precisa de você" (21/10).
+    const cobertaPeloReel = !!p.capaDe && !superada && !recusada && !aceite && capasEmComposto.has(p.id);
+    const aceiteAntigo = !aceiteDaVersao && !cobertaPeloReel && aprovacoes.some((a) => a.id === p.id);
     const ajuste = ajustes.filter((a) => a.id === p.id && a.versao === p.versao).at(-1) || null;
     const pedido = fila.filter((r) => r.pecaId === p.id).at(-1);
     const plano = planejados.find((c) => c.id === p.id && c.versao === p.versao) || null;
@@ -867,12 +871,12 @@ function enriquecer(raiz, pecas) {
     // Reel com capa só é aprovado com aceite composto desta versão (vídeo + capa + legenda),
     // mesmo na pasta aprovados: a pasta não sela a capa (decisão do Supremo, 14/10).
     const reelSemComposto = !!p.composicao && !aceite;
-    const aprovada = !superada && !recusada && !pendente && !capaSemAceite && !reelSemComposto && (estado === 'aprovados' || !!aceite);
+    const aprovada = !superada && !recusada && !pendente && !capaSemAceite && !reelSemComposto && (estado === 'aprovados' || !!aceite || cobertaPeloReel);
     let estadoEfetivo = estado;
     if (superada) estadoEfetivo = 'superada';
     else if (recusada) estadoEfetivo = 'historico';
     else if (capaSemAceite) estadoEfetivo = ajuste ? 'ajuste-pedido' : 'aguardando-aceite';
-    else if (estado === 'para-aprovacao') estadoEfetivo = aceite ? 'aprovada' : ajuste ? 'ajuste-pedido' : 'aguardando-aceite';
+    else if (estado === 'para-aprovacao') estadoEfetivo = aceite || (cobertaPeloReel && !pendente) ? 'aprovada' : ajuste ? 'ajuste-pedido' : 'aguardando-aceite';
     else if (estado === 'aprovados') estadoEfetivo = pendente || reelSemComposto ? 'aguardando-aceite' : 'aprovada';
     return {
       ...p,
@@ -882,6 +886,7 @@ function enriquecer(raiz, pecas) {
       recusada,
       estadoEfetivo,
       aceite,
+      cobertaPeloReel,
       aceiteSuperado: superada ? aceiteDaVersao : null,
       // Já saiu na Meta (vínculo explícito em publicados.json): recusar só tira do painel.
       publicadaEm: redesPublicadas(p.caminho),

@@ -34,6 +34,21 @@ for (const codigo of ['entrega-parada', 'lease-vencendo', 'lease-vencido']) {
   assert.equal(ajustes.contarPrecisaDeVoce(familias, f), 3);
   assert.equal(f[0].estado, codigo === 'entrega-parada' ? 'novo' : 'em-correcao', 'UI nao altera estado da fila');
 }
+// 21/10: capa selada no aceite composto do Reel conta como concluída com ele, mesmo parada em
+// para-aprovacao depois da promoção ou com aceite próprio de versão antiga. A família não volta à fila.
+const reelPromovido = p('reel', { familia: 'r', aprovada: true, estado: 'aprovados', estadoEfetivo: 'aprovada', versao: 'b'.repeat(40),
+  aceite: { versao: 'b'.repeat(40), aprovadoEm: '2026-10-21T02:04:02-03:00' }, aceiteDeVersaoAnterior: false });
+const capaFicou = p('capa', { familia: 'r', capaDe: 'reel', aprovada: true, estadoEfetivo: 'aprovada', cobertaPeloReel: true, aceite: null, aceiteDeVersaoAnterior: false });
+assert.equal(pecas.aprovacaoConcluida(capaFicou), true);
+assert.equal(pecas.aprovacaoConcluida({ ...capaFicou, estado: 'aprovados', aceiteDeVersaoAnterior: true }), true);
+assert.equal(pecas.aprovacaoConcluida({ ...capaFicou, aprovada: false }), false, 'cobertura não aprova o que o servidor não aprovou');
+const familiaReel = pecas.agruparFamilias([reelPromovido, capaFicou]);
+assert.equal(ajustes.situacaoDaFamilia(familiaReel[0], []).secao, 'resolvidas');
+assert.equal(ajustes.contarPrecisaDeVoce(familiaReel, []), 0);
+// Aceite de versão anterior (legenda reescrita depois do aceite): continua pedindo o autor, com o motivo certo.
+const legendaNova = p('legenda-nova', { aprovada: true, estado: 'aprovados', aceite: null, aceiteDeVersaoAnterior: true });
+const sNova = ajustes.situacaoDaFamilia(pecas.agruparFamilias([legendaNova])[0], []);
+assert.equal(sNova.secao, 'voce'); assert.ok(sNova.proximo.startsWith('A legenda ou o arquivo mudou depois do seu aceite.'), sNova.proximo);
 assert.equal(ajustes.situacaoDaDemanda(p('c', { ajuste: { alertas: [{ codigo: 'entrega-parada', proximoPasso: 'Retome a entrega.' }] } }), []).secao, 'voce');
 assert.equal(ajustes.situacaoDaDemanda(p('c'), [pedido('c', 'novo', { alertas: [{ codigo: 'desconhecido' }] })]).secao, 'agentes');
 assert.equal(ajustes.textoAlertaDemanda({codigo:'entrega-parada',idadeMs:11*60000}),'Pedido aguardando há 11 min. O vigia está inativo.');

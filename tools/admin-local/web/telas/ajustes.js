@@ -54,7 +54,9 @@ export function situacaoDaFamilia(grupo, pedidos) {
   const situacoes = grupo.pecas.map((p) => {
     const s = situacaoDaDemanda(p, pedidos);
     return p.aprovada && !aprovacaoConcluida(p) && s.secao === 'resolvidas'
-      ? { ...s, secao: 'voce', proximo: 'Conclua pelo botão Aprovar para seguir ao Calendário.' } : s;
+      ? { ...s, secao: 'voce', proximo: p.aceiteDeVersaoAnterior
+        ? 'A legenda ou o arquivo mudou depois do seu aceite. Aprove esta versão para seguir ao Calendário.'
+        : 'Conclua pelo botão Aprovar para seguir ao Calendário.' } : s;
   });
   return situacoes.find((s) => s.secao === 'voce') || situacoes.find((s) => s.secao === 'agentes') || situacoes[0];
 }
