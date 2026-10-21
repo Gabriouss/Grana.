@@ -31,3 +31,7 @@ Pedido do autor em 21/10/2026: refazer os quatro destaques de um perfil de outro
 - `para-aprovacao/pecas/destaques/Capas dos destaques-1..4.png`: capas 1080x1920 (Conheça, Recursos, Planos, Segurança), com o símbolo da marca e os ícones do arsenal (`voz`, `dinheiro`, `seguranca`), centrados para o recorte circular do Instagram.
 - Gerador: `apoio/ferramentas/gerar-destaques.py` (`python -I gerar-destaques.py <pasta-dos-quadros> <saida>`). Legendas em `para-aprovacao/pecas/COPYS-FINAIS.md`.
 - Diferenças em relação ao guia de feed 3:4, por ser Story: H1 em 88 px (o guia de feed usa 72), sem os rótulos FÁCIL/PRÁTICO embaixo, porque a parte de baixo do Story é da interface do Instagram.
+- 21/10/2026 02:04 (-03:00): aceite pelo autor no painel local. Peça `para-aprovacao/pecas/reels/Pra onde foi o dinheiro do mês.mp4`, versão `07023b1b1920`. Registro em `docs/marketing/painel/aprovacoes.json`. Publicação pede passo próprio.
+
+<!-- promocao:46be59a4a563ac69:07023b1b1920c43b58bb5e2e8bc0a9b83526c218 -->
+- Promoção 2026-10-21T09:52:56-03:00: [peça em aprovados](aprovados/pecas/reels/Pra onde foi o dinheiro do mês.mp4); aceite do autor em 2026-10-21T02:04:02-03:00, versão `07023b1b1920c43b58bb5e2e8bc0a9b83526c218`. Origem `docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Pra onde foi o dinheiro do mês.mp4`. Nada publicado ou agendado.

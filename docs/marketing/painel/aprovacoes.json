@@ -538,6 +538,45 @@
       "evidencia": "aceite pelo autor no painel local",
       "escopo": "arquivos e legenda desta versão",
       "indice": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/INDICE.md"
+    },
+    {
+      "id": "4f55e92a2716d5d2",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Pra onde foi o dinheiro do mês.mp4",
+      "versao": "07023b1b1920c43b58bb5e2e8bc0a9b83526c218",
+      "aprovadoEm": "2026-10-21T02:04:02-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "vídeo, capa e legenda desta versão (aceite composto)",
+      "composicao": {
+        "video": [
+          "5f9acdfd9d585d039cb579ff553c4424168187a7"
+        ],
+        "capa": "00f924b7dd76cc9f4ce492f62958fa6d9151521a",
+        "capaPecaId": "43aa697dde641a61",
+        "legenda": "incluida"
+      },
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "46be59a4a563ac69",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Pra onde foi o dinheiro do mês.mp4",
+      "versao": "07023b1b1920c43b58bb5e2e8bc0a9b83526c218",
+      "aprovadoEm": "2026-10-21T02:04:02-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "vídeo, capa e legenda desta versão (aceite composto)",
+      "promovidoEm": "2026-10-21T09:52:56-03:00",
+      "origem": {
+        "id": "4f55e92a2716d5d2",
+        "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Pra onde foi o dinheiro do mês.mp4",
+        "aprovadoEm": "2026-10-21T02:04:02-03:00"
+      },
+      "arquivosPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Pra onde foi o dinheiro do mês.mp4",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Pra onde foi o dinheiro do mês.mp4",
+          "sha1": "5f9acdfd9d585d039cb579ff553c4424168187a7"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
     }
   ],
   "ajustes": [
