@@ -26,7 +26,7 @@
 #fm-furo{position:absolute;left:331px;top:62px;width:27px;height:27px;border-radius:50%;background:#020304;box-shadow:inset -4px -5px 0 #1d2c33}
 #fm-logo{position:absolute;left:240px;top:882px;width:600px;opacity:0}
 </style>
-<div id="root" data-composition-id="fim-do-mes" data-width="1080" data-height="1920" data-duration="33.2">
+<div id="root" data-composition-id="fim-do-mes" data-width="1080" data-height="1920" data-duration="46.0">
   <div id="fm-bg"></div>
   <img class="fm-ico" id="fm-i1" src="assets/granabo/graficos-petroleo.png" style="left:150px;top:330px;width:150px;filter:blur(6px)"/>
   <img class="fm-ico" id="fm-i2" src="assets/granabo/dinheiro-gradiente.png" style="left:600px;top:1260px;width:300px"/>
@@ -41,11 +41,11 @@
     <div id="fm-sombra"></div>
     <img id="fm-moldura" src="assets/granabo/celular-real-recorte.png"/>
     <div id="fm-tela">
-      <video id="fm-v1" src="assets/granabo/tela-voz.mp4" data-start="7.0" data-duration="4.35" data-track-index="1" muted playsinline></video>
-      <video id="fm-v2" src="assets/granabo/tela-pix.mp4" data-start="11.35" data-duration="4.65" data-track-index="2" muted playsinline></video>
-      <video id="fm-v3" src="assets/granabo/tela-credito.mp4" data-start="16.0" data-duration="5.15" data-track-index="3" muted playsinline></video>
-      <video id="fm-v4" src="assets/granabo/tela-lista.mp4" data-start="21.15" data-duration="2.6" data-track-index="4" muted playsinline></video>
-      <video id="fm-v5" src="assets/granabo/tela-grafico.mp4" data-start="23.75" data-duration="2.2" data-track-index="5" muted playsinline></video>
+      <video id="fm-v1" src="assets/granabo/tela-voz.mp4" data-start="7.98" data-duration="6.53" data-track-index="1" muted playsinline></video>
+      <video id="fm-v2" src="assets/granabo/tela-pix.mp4" data-start="14.51" data-duration="6.56" data-track-index="2" muted playsinline></video>
+      <video id="fm-v3" src="assets/granabo/tela-credito.mp4" data-start="21.07" data-duration="7.09" data-track-index="3" muted playsinline></video>
+      <video id="fm-v4" src="assets/granabo/tela-lista.mp4" data-start="28.16" data-duration="4.03" data-track-index="4" muted playsinline></video>
+      <video id="fm-v5" src="assets/granabo/tela-grafico.mp4" data-start="32.19" data-duration="3.51" data-track-index="5" muted playsinline></video>
       <img id="fm-v6" src="assets/granabo/tela-inicio.jpg"/>
       <div id="fm-flash"></div>
     </div>
@@ -64,7 +64,7 @@
   <div class="fm-txt fm-top" id="fm-t12"><span class="w">E </span><span class="w">o </span><span class="w">app </span><span class="w">ainda </span><span class="w">mostra </span><span class="w">quanto </span><span class="w">dá </span><span class="w">pra </span><span class="w d">gastar</span></div>
   <div class="fm-txt fm-top" id="fm-t13"><span class="w">por </span><span class="w">dia </span><span class="w">até </span><span class="w">o </span><span class="w">fim </span><span class="w">do </span><span class="w d">mês.</span></div>
 
-  <div class="fm-txt fm-hook" id="fm-t14" style="top:802px;text-align:center;left:60px;width:960px"><span class="w">Começa </span><span class="w">pelo </span><span class="w">próximo </span><span class="w d">gasto.</span></div>
+  <div class="fm-txt fm-hook" id="fm-t14" style="top:802px;text-align:center;left:60px;width:960px"><span class="w">Assim, </span><span class="w">o </span><span class="w">fim </span><span class="w">do </span><span class="w">mês </span><span class="w">deixa </span><span class="w">de </span><span class="w">ser </span><span class="w d">surpresa.</span></div>
   <img id="fm-logo" src="assets/granabo/logo-gradiente-1200.png"/>
 </div>
 <script>
@@ -72,16 +72,22 @@
   window.__timelines = window.__timelines || {};
   const tl = gsap.timeline({ paused: true });
 
+  // v2 (21/10/2026): pausas antes de cada tela e fala 8% mais lenta. M() leva um instante da v1 para a v2,
+  // pelos trechos de edit/mapa-v2.json ([início do trecho na narração antiga, onde ele começa agora]).
+  const TRECHOS = [[0.0, 0.3], [6.45, 7.7109], [8.46, 10.4957], [11.02, 14.4783], [13.21, 17.3587], [15.55, 20.9022], [16.66, 22.4087], [20.71, 28.0109], [23.2, 31.9174]];
+  function M(t) { const n = t - .3; let k = 0; while (k + 1 < TRECHOS.length && TRECHOS[k + 1][0] <= n) k++; return TRECHOS[k][1] + (n - TRECHOS[k][0]) / .92; }
+
   // palavras entram no instante em que a narração as diz (edit/transcripts/cut.json)
   function palavras(id, tempos, sai, sobe) {
     document.querySelectorAll(id + " .w").forEach(function (w, i) {
-      tl.fromTo(w, { opacity: 0, y: sobe || 34, scale: .92 }, { opacity: 1, y: 0, scale: 1, duration: .26, ease: "back.out(2)" }, tempos[i] - .05);
+      tl.fromTo(w, { opacity: 0, y: sobe || 34, scale: .92 }, { opacity: 1, y: 0, scale: 1, duration: .26, ease: "back.out(2)" }, M(tempos[i]) - .05);
     });
-    tl.to(id, { opacity: 0, y: -44, duration: .3, ease: "power2.in" }, sai);
+    tl.to(id, { opacity: 0, y: -44, duration: .3, ease: "power2.in" }, M(sai));
   }
-  function soco(id, t) { tl.fromTo(id + " .d", { scale: 1 }, { scale: 1.12, duration: .12, yoyo: true, repeat: 1, ease: "power1.out" }, t); }
+  function soco(id, t) { tl.fromTo(id + " .d", { scale: 1 }, { scale: 1.12, duration: .12, yoyo: true, repeat: 1, ease: "power1.out" }, M(t)); }
   // troca de tela: soco de escala e clarão menta, como no Reels aprovado
-  function troca(de, para, t) {
+  function troca(de, para, t, direto) {
+    if (!direto) t = M(t);
     tl.to("#fm-cel", { scale: .95, duration: .18, ease: "power2.in" }, t - .18);
     tl.fromTo("#fm-flash", { opacity: 0 }, { opacity: .55, duration: .09, yoyo: true, repeat: 1 }, t - .1);
     if (de) tl.set(de, { opacity: 0 }, t);
@@ -90,23 +96,23 @@
   }
 
   // 0 a 6,5 s: a dor. O dinheiro some no "sumiu" e a carteira treme vazia
-  tl.fromTo("#fm-i1", { opacity: 0, y: 30 }, { opacity: .5, y: -30, duration: 6, ease: "none" }, .1);
-  tl.fromTo("#fm-i2", { opacity: 0, y: 60, rotation: -6 }, { opacity: 1, y: 0, rotation: 4, duration: .5, ease: "back.out(1.6)" }, .2);
-  tl.fromTo("#fm-i3", { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: .5, ease: "back.out(1.6)" }, .35);
-  tl.to("#fm-i2", { y: -520, x: 120, rotation: 28, scale: .3, opacity: 0, duration: .7, ease: "power2.in" }, 1.9);
-  tl.to("#fm-i3", { rotation: 5, duration: .07, yoyo: true, repeat: 5, ease: "none", transformOrigin: "50% 90%" }, 2.0);
+  tl.fromTo("#fm-i1", { opacity: 0, y: 30 }, { opacity: .5, y: -30, duration: 6, ease: "none" }, M(.1));
+  tl.fromTo("#fm-i2", { opacity: 0, y: 60, rotation: -6 }, { opacity: 1, y: 0, rotation: 4, duration: .5, ease: "back.out(1.6)" }, M(.2));
+  tl.fromTo("#fm-i3", { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: .5, ease: "back.out(1.6)" }, M(.35));
+  tl.to("#fm-i2", { y: -520, x: 120, rotation: 28, scale: .3, opacity: 0, duration: .7, ease: "power2.in" }, M(1.9));
+  tl.to("#fm-i3", { rotation: 5, duration: .07, yoyo: true, repeat: 5, ease: "none", transformOrigin: "50% 90%" }, M(2.0));
   palavras("#fm-t1", [0.30, 0.70, 0.82, 1.00, 1.14, 1.38, 1.54, 1.62, 1.94], 2.42);
   soco("#fm-t1", 2.05);
   palavras("#fm-t2", [2.68, 2.80, 3.02, 3.48, 3.58, 4.00, 4.30, 4.42, 4.82, 4.94, 5.32, 5.46, 5.74, 6.18], 6.5);
   soco("#fm-t2", 6.3);
-  tl.to("#fm-i3", { y: 80, opacity: 0, duration: .35, ease: "power2.in" }, 6.3);
-  tl.to("#fm-i1", { opacity: 0, duration: .35 }, 6.3);
+  tl.to("#fm-i3", { y: 80, opacity: 0, duration: .35, ease: "power2.in" }, M(6.3));
+  tl.to("#fm-i1", { opacity: 0, duration: .35 }, M(6.3));
 
   // 6,6 s: a solução. O celular sobe com a Início e assenta
   palavras("#fm-t3", [6.56, 6.96, 7.38, 7.78, 8.04], 8.75, 20);
-  tl.set("#fm-v1", { opacity: 1 }, 7.0);
-  tl.fromTo("#fm-cel", { opacity: 1, y: 1760, rotation: -4 }, { opacity: 1, y: 0, rotation: 0, duration: .6, ease: "back.out(1.1)" }, 7.0);
-  tl.fromTo("#fm-cel", { rotation: 0 }, { rotation: .6, duration: 2.2, yoyo: true, repeat: 9, ease: "sine.inOut", immediateRender: false }, 7.65);
+  tl.set("#fm-v1", { opacity: 1 }, M(7.0));
+  tl.fromTo("#fm-cel", { opacity: 1, y: 1760, rotation: -4 }, { opacity: 1, y: 0, rotation: 0, duration: .6, ease: "back.out(1.1)" }, M(7.0));
+  tl.fromTo("#fm-cel", { rotation: 0 }, { rotation: .6, duration: 2.2, yoyo: true, repeat: 15, ease: "sine.inOut", immediateRender: false }, M(7.65));
 
   // 9,0 s: voz
   palavras("#fm-t4", [8.99, 9.20, 9.32, 9.70, 9.86, 10.00, 10.20, 10.66, 10.82], 11.1, 20);
@@ -115,15 +121,15 @@
   troca("#fm-v1", "#fm-v2", 11.35);
   palavras("#fm-t5", [11.38, 11.82, 11.94, 12.51, 12.70, 12.82], 13.35, 20);
   palavras("#fm-t6", [13.60, 14.14, 14.32, 14.50, 14.72, 14.92, 15.12], 15.75, 20);
-  tl.to("#fm-cel", { scale: 1.07, duration: .8, ease: "power2.inOut" }, 13.55);
-  tl.to("#fm-cel", { scale: 1, duration: .4, ease: "power2.inOut" }, 15.45);
+  tl.to("#fm-cel", { scale: 1.07, duration: .8, ease: "power2.inOut" }, M(13.55));
+  tl.to("#fm-cel", { scale: 1, duration: .4, ease: "power2.inOut" }, M(15.45));
 
   // 16,0 s: cartão
   troca("#fm-v2", "#fm-v3", 16.0);
   palavras("#fm-t7", [16.00, 16.30, 16.42], 16.85, 20);
   palavras("#fm-t8", [17.08, 17.28, 17.72, 18.16], 18.55, 20);
   palavras("#fm-t9", [18.70, 18.86, 19.00, 19.56, 19.86, 20.00, 20.16, 20.34, 20.48], 20.9, 20);
-  tl.to("#fm-cel", { scale: 1.07, duration: .8, ease: "power2.inOut" }, 18.9);
+  tl.to("#fm-cel", { scale: 1.07, duration: .8, ease: "power2.inOut" }, M(18.9));
 
   // 21,15 s: lista
   troca("#fm-v3", "#fm-v4", 21.15);
@@ -133,19 +139,30 @@
   troca("#fm-v4", "#fm-v5", 23.75);
   palavras("#fm-t11", [23.56, 23.70, 24.08, 24.26, 24.46, 24.60, 24.82, 25.04, 25.46], 25.7, 20);
 
-  // 25,95 s: Início com o "Livre para gastar"
-  troca("#fm-v5", "#fm-v6", 25.95);
-  palavras("#fm-t12", [25.92, 26.08, 26.18, 26.32, 26.58, 26.98, 27.26, 27.42, 27.56], 27.82, 20);
-  palavras("#fm-t13", [27.92, 28.12, 28.36, 28.56, 28.72, 28.82, 28.92], 29.2, 20);
-  tl.to("#fm-cel", { scale: 1.07, duration: .8, ease: "power2.inOut" }, 26.4);
+  // v2, a partir de 35,7 s: Início com o "Livre para gastar", tempos da narração nova (take g1)
+  const N = function (t) { return t + .3; };   // tempo da narração -> tempo do vídeo
+  troca("#fm-v5", "#fm-v6", 35.70, true);
+  function palavrasN(id, tempos, sai) {
+    document.querySelectorAll(id + " .w").forEach(function (w, i) {
+      tl.fromTo(w, { opacity: 0, y: 20, scale: .92 }, { opacity: 1, y: 0, scale: 1, duration: .26, ease: "back.out(2)" }, N(tempos[i]) - .05);
+    });
+    tl.to(id, { opacity: 0, y: -44, duration: .3, ease: "power2.in" }, sai);
+  }
+  palavrasN("#fm-t12", [35.47, 35.49, 35.62, 35.80, 36.03, 36.38, 36.63, 36.81, 36.95], 37.62);
+  palavrasN("#fm-t13", [37.35, 37.58, 37.81, 38.08, 38.22, 38.31, 38.41], 39.05);
+  tl.to("#fm-cel", { scale: 1.07, duration: .8, ease: "power2.inOut" }, 36.3);
 
-  // 29,0 s: o celular desce, chamada final e o logo
-  tl.to("#fm-cel", { y: 1750, duration: .4, ease: "power3.in" }, 29.0);
-  tl.set("#fm-cel", { opacity: 0 }, 29.45);
-  palavras("#fm-t14", [29.30, 29.62, 29.84, 30.18], 30.75);
-  soco("#fm-t14", 30.35);
-  tl.fromTo("#fm-logo", { opacity: 0, scale: .86 }, { opacity: 1, scale: 1, duration: .5, ease: "back.out(1.6)" }, 31.0);
-  tl.to({}, { duration: 33.2 }, 0);
+  // 39,2 s: o celular desce na pausa, a frase final entra com a fala e o logo fecha
+  tl.to("#fm-cel", { y: 1750, duration: .45, ease: "power3.in" }, 39.2);
+  tl.set("#fm-cel", { opacity: 0 }, 39.7);
+  document.querySelectorAll("#fm-t14 .w").forEach(function (w, i) {
+    const t = [40.18, 40.59, 40.66, 40.84, 40.98, 41.23, 41.62, 41.77, 42.02][i];
+    tl.fromTo(w, { opacity: 0, y: 34, scale: .92 }, { opacity: 1, y: 0, scale: 1, duration: .26, ease: "back.out(2)" }, N(t) - .05);
+  });
+  tl.fromTo("#fm-t14 .d", { scale: 1 }, { scale: 1.12, duration: .12, yoyo: true, repeat: 1, ease: "power1.out" }, 42.75);
+  tl.to("#fm-t14", { opacity: 0, y: -44, duration: .3, ease: "power2.in" }, 43.55);
+  tl.fromTo("#fm-logo", { opacity: 0, scale: .86 }, { opacity: 1, scale: 1, duration: .5, ease: "back.out(1.6)" }, 43.85);
+  tl.to({}, { duration: 46.0 }, 0);
   window.__timelines["fim-do-mes"] = tl;
 })();
 </script>
