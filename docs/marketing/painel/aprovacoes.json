@@ -595,6 +595,67 @@
       "evidencia": "aceite pelo autor no painel local",
       "escopo": "arquivos e legenda desta versão",
       "indice": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/INDICE.md"
+    },
+    {
+      "id": "4f55e92a2716d5d2",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Pra onde foi o dinheiro do mês.mp4",
+      "versao": "9fb224f2ec743942bc0608196086207e52b50028",
+      "aprovadoEm": "2026-10-21T20:17:44-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "vídeo, capa e legenda desta versão (aceite composto)",
+      "composicao": {
+        "video": [
+          "7244b31096b054c353f0d1daeca94b138f9f8c0d"
+        ],
+        "capa": "00f924b7dd76cc9f4ce492f62958fa6d9151521a",
+        "capaPecaId": "43aa697dde641a61",
+        "legenda": "incluida"
+      },
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "46be59a4a563ac69",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Pra onde foi o dinheiro do mês.mp4",
+      "versao": "9fb224f2ec743942bc0608196086207e52b50028",
+      "aprovadoEm": "2026-10-21T20:17:44-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "vídeo, capa e legenda desta versão (aceite composto)",
+      "promovidoEm": "2026-10-21T20:30:33-03:00",
+      "origem": {
+        "id": "4f55e92a2716d5d2",
+        "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Pra onde foi o dinheiro do mês.mp4",
+        "aprovadoEm": "2026-10-21T20:17:44-03:00"
+      },
+      "arquivosPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Pra onde foi o dinheiro do mês.mp4",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Pra onde foi o dinheiro do mês.mp4",
+          "sha1": "7244b31096b054c353f0d1daeca94b138f9f8c0d"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "23894a0cb1724e68",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Conheça o Granabô.mp4",
+      "versao": "42700d9bd3e0ee65d0b1e921d3290a60f6f307fd",
+      "aprovadoEm": "2026-10-19T23:21:49-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "vídeo, capa e legenda desta versão (aceite composto)",
+      "promovidoEm": "2026-10-21T20:30:35-03:00",
+      "origem": {
+        "id": "66ef1ef2def24361",
+        "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Conheça o Granabô.mp4",
+        "aprovadoEm": "2026-10-19T23:21:49-03:00"
+      },
+      "arquivosPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Conheça o Granabô.mp4",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Conheça o Granabô.mp4",
+          "sha1": "90095295c1784e0dba2b1fde377d27536c178fa1"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
     }
   ],
   "ajustes": [
