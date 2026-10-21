@@ -45,7 +45,7 @@
       <video id="fm-v2" src="assets/granabo/tela-pix.mp4" data-start="14.88" data-duration="4.93" data-track-index="2" muted playsinline></video>
       <video id="fm-v3" src="assets/granabo/tela-credito.mp4" data-start="19.81" data-duration="4.99" data-track-index="3" muted playsinline></video>
       <video id="fm-v4" src="assets/granabo/tela-lista.mp4" data-start="24.8" data-duration="2.69" data-track-index="4" muted playsinline></video>
-      <video id="fm-v5" src="assets/granabo/tela-grafico.mp4" data-start="27.49" data-duration="2.6" data-track-index="5" muted playsinline></video>
+      <video id="fm-v5" src="assets/granabo/tela-grafico.mp4" data-start="27.49" data-duration="2.78" data-track-index="5" muted playsinline></video>
       <img id="fm-v6" src="assets/granabo/tela-inicio.jpg"/>
       <div id="fm-flash"></div>
     </div>
@@ -71,14 +71,14 @@
 (function () {
   window.__timelines = window.__timelines || {};
   const tl = gsap.timeline({ paused: true });
-  // v3 (21/10/2026): tempos gerados por ferramentas/montar-v3.py a partir da transcrição da narração
-  // (edit/tempos-v3.json). Cada palavra entra quando é dita; cada tela troca com a frase da função.
+  // v4 (21/10/2026): tempos gerados por ferramentas/montar-v4.py a partir da transcrição da narração,
+  // conferida contra os silêncios medidos (edit/tempos-v4.json); cada frase some antes da seguinte entrar. Cada palavra entra quando é dita; cada tela troca com a frase da função.
 
-  function palavras(id, tempos, sai, sobe) {
+  function palavras(id, tempos, sai, sobe, some) {
     document.querySelectorAll(id + " .w").forEach(function (w, i) {
       tl.fromTo(w, { opacity: 0, y: sobe || 34, scale: .92 }, { opacity: 1, y: 0, scale: 1, duration: .26, ease: "back.out(2)" }, tempos[i] - .05);
     });
-    tl.to(id, { opacity: 0, y: -44, duration: .3, ease: "power2.in" }, sai);
+    tl.to(id, { opacity: 0, y: -44, duration: some || .3, ease: "power2.in" }, sai);
   }
   function soco(id, t) { tl.fromTo(id + " .d", { scale: 1 }, { scale: 1.12, duration: .12, yoyo: true, repeat: 1, ease: "power1.out" }, t); }
   // troca de tela: soco de escala e clarão menta, como no Reels aprovado
@@ -96,54 +96,54 @@
   tl.fromTo("#fm-i3", { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: .5, ease: "back.out(1.6)" }, .35);
   tl.to("#fm-i2", { y: -520, x: 120, rotation: 28, scale: .3, opacity: 0, duration: .7, ease: "power2.in" }, 2.55);
   tl.to("#fm-i3", { rotation: 5, duration: .07, yoyo: true, repeat: 5, ease: "none", transformOrigin: "50% 90%" }, 2.65);
-  palavras("#fm-t1", [0.30, 0.72, 0.84, 0.96, 1.10, 1.64, 2.20, 2.30, 2.60], 3.22);
+  palavras("#fm-t1", [0.30, 0.72, 0.84, 0.96, 1.10, 2.17, 2.20, 2.30, 2.60], 3.17, undefined, 0.3);
   soco("#fm-t1", 2.70);
-  palavras("#fm-t2", [3.10, 4.18, 4.40, 5.12, 5.30, 5.66, 6.36, 6.52, 6.94, 7.08, 7.60, 8.14, 8.52, 9.02], 9.56);
+  palavras("#fm-t2", [3.52, 4.18, 4.40, 5.12, 5.30, 5.66, 6.41, 6.52, 6.94, 7.08, 8.10, 8.14, 8.52, 9.02], 9.43, undefined, 0.3);
   soco("#fm-t2", 9.12);
   tl.to("#fm-i3", { y: 80, opacity: 0, duration: .35, ease: "power2.in" }, 9.12);
   tl.to("#fm-i1", { opacity: 0, duration: .35 }, 9.12);
 
   // a solução: o celular sobe e assenta
-  palavras("#fm-t3", [9.78, 9.92, 10.42, 10.94, 11.18], 12.15, 20);
+  palavras("#fm-t3", [9.78, 9.92, 10.48, 10.94, 11.18], 11.92, 20, 0.3);
   tl.set("#fm-v1", { opacity: 1 }, 10.13);
   tl.fromTo("#fm-cel", { opacity: 1, y: 1760, rotation: -4 }, { opacity: 1, y: 0, rotation: 0, duration: .6, ease: "back.out(1.1)" }, 10.13);
   tl.fromTo("#fm-cel", { rotation: 0 }, { rotation: .6, duration: 2.2, yoyo: true, repeat: 11, ease: "sine.inOut", immediateRender: false }, 10.78);
 
   // voz
-  palavras("#fm-t4", [12.37, 12.64, 12.74, 13.14, 13.36, 13.46, 13.66, 14.06, 14.24], 14.71, 20);
+  palavras("#fm-t4", [12.37, 12.64, 12.74, 13.14, 13.36, 13.46, 13.66, 14.06, 14.24], 14.58, 20, 0.3);
 
   // Pix colado: o formulário chega preenchido e o aparelho chega mais perto
   troca("#fm-v1", "#fm-v2", 14.88);
-  palavras("#fm-t5", [14.93, 15.30, 15.38, 15.86, 16.12, 16.22], 16.88, 20);
-  palavras("#fm-t6", [16.94, 17.62, 17.84, 18.02, 18.30, 18.62, 18.86], 19.64, 20);
-  tl.to("#fm-cel", { scale: 1.07, duration: .8, ease: "power2.inOut" }, 16.89);
+  palavras("#fm-t5", [14.93, 15.30, 15.38, 15.96, 16.12, 16.22], 16.76, 20, 0.21);
+  palavras("#fm-t6", [17.02, 17.62, 17.84, 18.02, 18.30, 18.62, 18.86], 19.51, 20, 0.3);
+  tl.to("#fm-cel", { scale: 1.07, duration: .8, ease: "power2.inOut" }, 16.97);
   tl.to("#fm-cel", { scale: 1, duration: .4, ease: "power2.inOut" }, 19.51);
 
   // cartão
   troca("#fm-v2", "#fm-v3", 19.81);
-  palavras("#fm-t7", [19.86, 20.12, 20.22], 20.7, 20);
-  palavras("#fm-t8", [20.92, 21.14, 21.54, 21.91], 22.74, 20);
-  palavras("#fm-t9", [22.68, 22.78, 22.89, 23.48, 23.64, 23.73, 23.96, 24.07, 24.20], 24.67, 20);
+  palavras("#fm-t7", [19.86, 20.12, 20.22], 20.57, 20, 0.3);
+  palavras("#fm-t8", [20.92, 21.14, 21.54, 21.91], 22.48, 20, 0.15);
+  palavras("#fm-t9", [22.68, 22.78, 22.89, 23.48, 23.64, 23.73, 23.96, 24.07, 24.20], 24.55, 20, 0.25);
   tl.to("#fm-cel", { scale: 1.07, duration: .8, ease: "power2.inOut" }, 22.68);
 
   // lista
   troca("#fm-v3", "#fm-v4", 24.8);
-  palavras("#fm-t10", [24.85, 25.05, 25.36, 25.52, 26.02, 26.41, 26.60], 27.32, 20);
+  palavras("#fm-t10", [24.85, 25.05, 25.36, 25.52, 26.02, 26.41, 26.60], 27.19, 20, 0.3);
 
   // gráfico
   troca("#fm-v4", "#fm-v5", 27.49);
-  palavras("#fm-t11", [27.54, 27.64, 28.18, 28.34, 28.52, 28.70, 28.94, 29.21, 29.66], 30.12, 20);
+  palavras("#fm-t11", [27.54, 27.64, 28.18, 28.34, 28.52, 28.70, 28.94, 29.41, 29.66], 30.0, 20, 0.27);
 
   // Início com o "Livre para gastar"
-  troca("#fm-v5", "#fm-v6", 30.09);
-  palavras("#fm-t12", [30.14, 30.39, 30.54, 30.71, 30.94, 31.32, 31.71, 31.91, 32.05], 32.51, 20);
-  palavras("#fm-t13", [32.39, 32.61, 32.95, 33.38, 33.53, 33.67, 33.77], 34.17, 20);
-  tl.to("#fm-cel", { scale: 1.07, duration: .8, ease: "power2.inOut" }, 30.59);
+  troca("#fm-v5", "#fm-v6", 30.27);
+  palavras("#fm-t12", [30.32, 30.39, 30.54, 30.71, 30.94, 31.32, 31.71, 31.91, 32.05], 32.19, 20, 0.15);
+  palavras("#fm-t13", [32.39, 32.61, 32.95, 33.38, 33.53, 33.67, 33.77], 34.04, 20, 0.3);
+  tl.to("#fm-cel", { scale: 1.07, duration: .8, ease: "power2.inOut" }, 30.77);
 
   // o celular desce, a frase final entra com a fala e o logo fecha
   tl.to("#fm-cel", { y: 1750, duration: .4, ease: "power3.in" }, 34.18);
   tl.set("#fm-cel", { opacity: 0 }, 34.63);
-  palavras("#fm-t14", [34.39, 35.02, 35.20, 35.35, 35.47, 35.77, 36.20, 36.33, 36.52], 37.32);
+  palavras("#fm-t14", [34.39, 35.11, 35.20, 35.35, 35.47, 35.77, 36.20, 36.33, 36.52], 37.32, undefined, 0.3);
   soco("#fm-t14", 36.92);
   tl.fromTo("#fm-logo", { opacity: 0, scale: .86 }, { opacity: 1, scale: 1, duration: .5, ease: "back.out(1.6)" }, 37.57);
   tl.to({}, { duration: 39.8 }, 0);
