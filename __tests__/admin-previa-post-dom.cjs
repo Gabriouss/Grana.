@@ -31,6 +31,15 @@ assert.equal(spawnSync('ffmpeg', ['-y', '-i', videoPath, '-frames:v', '1', thumb
   try {
     for (const width of [390, 1440, 2560]) {
       const page = await browser.newPage({ viewport: { width, height: 960 }, timezoneId: 'Asia/Tokyo', reducedMotion: 'reduce' });
+      // O agendamento sintético de 20/10 22:00 não pode vencer com o relógio da máquina: vencido, ele vira
+      // "atrasado" (AUD-13). Só Date/Date.now ficam na data da fixture; os timers seguem reais.
+      await page.addInitScript(() => {
+        const Original = Date, agora = Original.parse('2026-10-19T12:00:00-03:00');
+        globalThis.Date = class extends Original {
+          constructor(...args) { super(...(args.length ? args : [agora])); }
+          static now() { return agora; }
+        };
+      });
       const erros = [], metodos = [];
       page.on('pageerror', (e) => erros.push(e.message));
       await page.route('**/*', (route) => {

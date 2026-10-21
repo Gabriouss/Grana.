@@ -457,6 +457,9 @@ export function efeitoAnteriorIncerto(job) {
     || (Array.isArray(job?.recibos) && job.recibos.some((r) => r?.estado === 'incerto'
       || (r?.operacao === 'publicar' && r?.estado !== 'falhou')));
 }
+// Até cinco minutos depois do horário, a confirmação da rede ainda pode estar chegando (o executor roda a
+// cada minuto); depois disso, o horário vencido aparece como atraso.
+const TOLERANCIA_ATRASO_MS = 5 * 60000;
 // Estado real de UM destino, em palavras do autor. Nunca usa "Planejado" (essa palavra é do editorial).
 export function descreverJobReal(job, agora = Date.now()) {
   const rede = NOME_REDE[job?.destino?.rede] || 'rede';
@@ -464,6 +467,16 @@ export function descreverJobReal(job, agora = Date.now()) {
   const sai = Number.isFinite(quando) ? quandoCurto(quando, agora) : 'no horário marcado';
   const link = /^https:\/\//.test(job?.permalink || '') ? job.permalink : null;
   const motivo = job?.codigoErro ? (fraseDoMotivo(job.codigoErro) || `Motivo informado pela rede: ${job.codigoErro}.`) : null;
+  // Destino ainda ativo (AUD-13): antes do horário, "sai às"; na hora, espera a confirmação; passada a
+  // tolerância, atraso com atenção. Atraso não vira falha nem convite a repetir: o servidor ainda pode
+  // publicar dentro da janela dele, e depois marca o destino para conferir.
+  const passou = Number.isFinite(quando) && agora >= quando;
+  const atrasado = Number.isFinite(quando) && agora - quando > TOLERANCIA_ATRASO_MS;
+  const ativo = (inicio) => !passou ? { rede, texto: `${inicio}, sai ${sai}`, atencao: false }
+    : !atrasado ? { rede, texto: `${inicio}: marcado ${sai}, aguardando a confirmação da rede`, atencao: false }
+      : { rede, texto: `${inicio}: marcado ${sai}, atrasado`, atencao: true,
+        motivo: 'O horário marcado passou e a rede ainda não confirmou a publicação.',
+        acao: `Confira no ${rede} se a publicação saiu. Não agende de novo sem conferir.` };
   if (estadoApresentacaoJob(job) === 'suspenso-para-revisao') {
     return { rede, texto: 'Suspenso para revisão', atencao: true,
       motivo: fraseDoMotivo(job.motivoSuspensao) || motivo || 'O agendamento está suspenso até a revisão do conteúdo.',
@@ -475,13 +488,13 @@ export function descreverJobReal(job, agora = Date.now()) {
   }
   switch (job?.estado) {
     case 'planejado':
-    case 'programado-no-painel': return { rede, texto: `Agendado no painel, sai ${sai}`, atencao: false };
+    case 'programado-no-painel': return ativo('Agendado no painel');
     case 'preparando': {
       // preparo {itens, total} vem do consultar desde 2fb8582; servidor antigo não manda, e aí fica sem contagem.
       const pr = job?.preparo, conta = Number.isInteger(pr?.itens) && Number.isInteger(pr?.total) && pr.total > 1 && pr.itens >= 0 && pr.itens <= pr.total;
-      return { rede, texto: `Preparando${conta ? ` ${pr.itens}/${pr.total}` : ''} na rede, sai ${sai}`, atencao: false };
+      return ativo(`Preparando${conta ? ` ${pr.itens}/${pr.total}` : ''} na rede`);
     }
-    case 'agendado-na-meta': return { rede, texto: `Agendado na Meta, sai ${sai}`, atencao: false };
+    case 'agendado-na-meta': return ativo('Agendado na Meta');
     case 'publicado': return { rede, texto: 'Publicado', atencao: false, link, linkRotulo: `Abrir no ${rede}`,
       acao: link ? null : `Confira no ${rede}: o link ainda não veio da rede.` };
     case 'cancelamento-pendente': return { rede, texto: 'Cancelamento pedido', atencao: true, acao: 'Aguarde a confirmação do cancelamento antes de agendar de novo.' };

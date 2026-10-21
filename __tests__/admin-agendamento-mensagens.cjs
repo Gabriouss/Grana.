@@ -74,6 +74,21 @@ const { pathToFileURL } = require('node:url');
   }
   assert.equal(m.descreverJobReal(job('cancelado', { recibos: [{ reciboId: 'r', operacao: 'publicar', estado: 'falhou' }] }), agora).atencao, false,
     'publicar recusado sem efeito não é incerto');
+  // AUD-13: horário vencido deixa de ser promessa. Na tolerância, espera a rede; depois, atraso com atenção e o
+  // último progresso, sem virar falha nem convite a repetir.
+  const naHora = Date.parse('2026-10-19T04:02:00Z'), depois = Date.parse('2026-10-19T04:10:00Z');
+  for (const [estado, extra, inicio] of [['programado-no-painel', {}, 'Agendado no painel'], ['agendado-na-meta', {}, 'Agendado na Meta'],
+    ['preparando', { preparo: { itens: 3, total: 5, container: false } }, 'Preparando 3/5 na rede']]) {
+    const espera = m.descreverJobReal(job(estado, extra), naHora);
+    assert.deepEqual([espera.texto, espera.atencao], [`${inicio}: marcado às 01:00, aguardando a confirmação da rede`, false], `${estado} na hora`);
+    const atraso = m.descreverJobReal(job(estado, extra), depois), tudo = `${atraso.texto} ${atraso.motivo} ${atraso.acao}`;
+    assert.deepEqual([atraso.texto, atraso.atencao], [`${inicio}: marcado às 01:00, atrasado`, true], `${estado} atrasado`);
+    assert.ok(!/\bsai\b/.test(atraso.texto), `${estado}: sem promessa de saída`);
+    assert.match(atraso.acao, /^Confira no Instagram se a publicação saiu\. Não agende de novo sem conferir\.$/);
+    assert.ok(!/falh|tente|reenvi/i.test(tudo), `${estado}: atraso não vira falha nem nova tentativa: ${tudo}`);
+  }
+  assert.match(m.descreverJobReal(job('programado-no-painel'), Date.parse('2026-10-20T12:00:00Z')).texto, /^Agendado no painel: marcado em .*19\/10.*01:00, atrasado$/);
+
   assert.equal(m.jobAtivo(job('agendado-na-meta')), true); assert.equal(m.jobAtivo(job('precisa-conferir')), false);
 
   console.log(`admin-agendamento-mensagens: ${lista.length} códigos do servidor + ${cliente.length} do cliente com frase, antecedência e estado real por rede OK`);
