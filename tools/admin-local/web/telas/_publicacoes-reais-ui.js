@@ -23,6 +23,9 @@ const MIME_OK = new Set(['image/png', 'image/jpeg', 'video/mp4']);
 // A navegação SPA desmonta a tela, mas não encerra a intenção enviada.
 // Conserva só a chave e seus metadados nesta aba até a consulta obter recibo.
 let pendencia = null;
+// Pausas por escopo não têm recibo consultável por chave no contrato v1.
+// Conserva as intenções incertas sem tratá-las como confirmações de jobs.
+const pausasIncertas = new Map();
 
 export async function montarReal(raiz, ctx, integracao = null) {
   const { h } = ctx;
@@ -45,6 +48,8 @@ export async function montarReal(raiz, ctx, integracao = null) {
   let relogioFila = null;
   const estadosVistos = new Map();
   const controladores = new Set();
+  const pausasConferidas = new Set();
+  const pausaSemReleitura = () => [...pausasIncertas.keys()].some((id) => !pausasConferidas.has(id));
   // Uma chave por INTENÇÃO, não por clique: depois de timeout ou perda de resposta o mesmo
   // pedido reutiliza a chave (achado C3). Só sai daqui quando o resultado é definitivo.
   const intencoes = new Map();
@@ -58,6 +63,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
   const recibo = h('p', { class: 'publicacoes-recibo', role: 'status', 'aria-live': 'polite', tabindex: '-1' });
   const reciboPainel = h('p', { class: 'publicacoes-recibo-painel', role: 'status', 'aria-live': 'polite' });
   const disponibilidade = h('div', { class: 'pub-real-disponibilidade', role: 'status', 'aria-live': 'polite' });
+  const avisosPausa = h('div', { class: 'pub-real-pausas-incertas', 'aria-live': 'polite' });
   const controles = h('div', { class: 'pub-real-controles' });
   const pausasVisiveis = h('div', { class: 'pub-real-pausas-visiveis' });
   const compositor = h('section', { class: 'secao pub-real-compositor', 'aria-labelledby': 'pub-real-compor-titulo' });
@@ -72,10 +78,10 @@ export async function montarReal(raiz, ctx, integracao = null) {
   if (integracao) {
     integracao.topo.append(pausasVisiveis, recibo,
       h('div', { class: 'bloco-acao' }, acoesTopo[1]),
-      h('details', { class: 'pub-real-ferramentas' }, h('summary', { texto: 'Ferramentas de publicação' }), disponibilidade, controles, acoesTopo[0]));
+      avisosPausa, h('details', { class: 'pub-real-ferramentas' }, h('summary', { texto: 'Ferramentas de publicação' }), disponibilidade, controles, acoesTopo[0]));
     integracao.painel.append(reciboPainel, compositor, previewEl);
     integracao.fila.append(lista, detalheEl);
-  } else raiz.append(corpo, recibo, disponibilidade, controles, compositor, previewEl, lista, detalheEl);
+  } else raiz.append(corpo, recibo, disponibilidade, avisosPausa, controles, compositor, previewEl, lista, detalheEl);
 
   const botao = (texto, onclick, opcoes = {}) => h('button', {
     class: opcoes.primario ? 'botao botao-primario' : 'botao',
@@ -199,6 +205,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     saida.setAttribute('role', r.ok ? 'status' : 'alert');
     const motivo = ocupado ? 'Aguarde a operação em andamento.'
       : pendencia ? 'Consulte o resultado pendente antes de gerar outra prévia.'
+      : pausaSemReleitura() ? 'A resposta de uma pausa não chegou. Atualize o estado real antes de iniciar outra operação.'
       : !pecaSelecionada() ? 'Escolha uma peça aprovada vigente.'
       : !destinosSelecionados().length ? 'Escolha ao menos uma conta e um formato compatível com a peça.'
       : !r.ok ? r.texto : '';
@@ -315,6 +322,8 @@ export async function montarReal(raiz, ctx, integracao = null) {
 
   async function atualizarTudo() {
     if (ocupado || encerrada) return;
+    const chavesPausa = [...pausasIncertas.keys()];
+    pausasConferidas.clear();
     busy(true);
     disponibilidade.replaceChildren(h('p', { class: 'campo-ajuda', role: 'status', texto: 'Conferindo contrato real, catálogo aprovado e fila…' }));
     try {
@@ -324,6 +333,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
       ]);
       if (encerrada || ctx.obsoleta()) return;
       capacidades = cap;
+      chavesPausa.forEach((id) => pausasConferidas.add(id));
       catalogo = cat;
       const listaFeed = feed?.dados?.pecas || feed?.dados?.itens || [];
       feedPorPeca = new Map(listaFeed.filter((p) => p && typeof p.id === 'string').map((p) => [p.id, p]));
@@ -357,8 +367,26 @@ export async function montarReal(raiz, ctx, integracao = null) {
       erroLegivel(err, 'A leitura do agendamento real');
     } finally {
       if (pendencia) desenharConsultaPendente();
+      desenharPausasIncertas();
       busy(false);
     }
+  }
+
+  function desenharPausasIncertas() {
+    avisosPausa.replaceChildren(...[...pausasIncertas.values()].map((p) => {
+      const conta = capacidades?.contas.find((c) => c.contaId === p.contaId);
+      const c = capacidades?.controles;
+      const pausada = p.escopo === 'conta' ? conta?.pausada
+        : c?.[{ global: 'pausaGlobal', facebook: 'pausaFacebook', instagram: 'pausaInstagram' }[p.escopo]];
+      const revisao = p.escopo === 'conta' ? conta?.revisao : c?.revisao;
+      const conferida = pausasConferidas.has(p.idempotencia) && typeof pausada === 'boolean' && Number.isSafeInteger(revisao);
+      return h('div', { class: 'alerta alerta-atencao', role: conferida ? 'status' : 'alert' },
+        h('p', { texto: `A resposta do pedido “${p.pedido}” não chegou.` }),
+        h('p', { texto: conferida
+          ? `Agora: ${pausada ? 'pausada' : 'ativa'} · revisão ${revisao}. Se ainda quiser mudar, use o botão de novo.`
+          : 'Atualize o estado real para ver como está agora. O painel não repete o pedido sozinho.' }),
+        detalhesTecnicos(`Chave do pedido: ${p.idempotencia}`));
+    }));
   }
 
   function desenharControles() {
@@ -391,7 +419,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
       detalhes: ['O servidor valida MFA local recente e CSRF.', 'A pausa não cancela jobs existentes nem resolve estado incerto.'],
       rotuloBotao: `${pausada ? 'Retomar' : 'Pausar'} ${rotulo}` });
     if (!ok || ctx.obsoleta() || ocupado) return;
-    await executarComando(acao, campos, { idempotencia, chaveIntencao, rotulo: resumo });
+    await executarComando(acao, campos, { idempotencia, chaveIntencao, rotulo: resumo, pedido: `${pausada ? 'Retomar' : 'Pausar'} ${rotulo}` });
   }
 
   function desenharLista() {
@@ -504,7 +532,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     const destinos = destinosSelecionados();
     const input = compositor.querySelector('[name="agendarParaLocal"]');
     const horarioLocal = reagendamento?.horarioLocal || input?.value;
-    if (ocupado || pendencia) return;
+    if (ocupado || pendencia || pausaSemReleitura()) return;
     if (!peca || !destinos.length || !horarioLocal) {
       avisar(atualizarResumoHorario() || 'Confira a peça, os destinos e o horário antes de gerar a prévia.', true);
       return;
@@ -650,7 +678,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     relogioPrevia = setInterval(tique, 5000);
     // data-bloqueado sobrevive ao busy(false), que reabilita os demais botões de operação.
     function atualizarBotaoConfirmar() {
-      const bloqueado = !coerente || !previaConfirmavel(p) || !!pendencia;
+      const bloqueado = !coerente || !previaConfirmavel(p) || !!pendencia || pausaSemReleitura();
       botaoConfirmar.dataset.bloqueado = String(bloqueado);
       botaoConfirmar.disabled = ocupado || bloqueado;
     }
@@ -672,7 +700,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
   }
 
   async function confirmarPrevia(p) {
-    if (p !== previa || !previaConfirmavel(p) || ocupado || pendencia) return;
+    if (p !== previa || !previaConfirmavel(p) || ocupado || pendencia || pausaSemReleitura()) return;
     const substituicao = reagendamento;
     const destinos = destinosSelecionados();
     const tipo = substituicao ? 'reagendar' : 'confirmar';
@@ -786,7 +814,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
 
   async function abrirReagendamento(job) {
     if (!reagendamentoPermitido(job)) { avisar('O servidor não liberou o reagendamento deste destino. Atualize o estado e confira os recibos.', true); return; }
-    if (ocupado || pendencia) { avisar('Consulte o resultado pendente antes de iniciar outro reagendamento.', true); return; }
+    if (ocupado || pendencia || pausaSemReleitura()) { avisar('Confira o resultado pendente e atualize o estado das pausas antes de iniciar outro reagendamento.', true); return; }
     const localAtual = horarioUtcParaLocal(job.destino.publicarEm);
     const novaHora = await ctx.formulario({ titulo: `Reagendar ${REDES[job.destino.rede]}`,
       texto: 'Escolha o novo horário deste destino. Depois confira a nova prévia e confirme. O servidor recusará a troca se houver publicação possível ou em andamento.',
@@ -812,12 +840,16 @@ export async function montarReal(raiz, ctx, integracao = null) {
   async function executarComando(acao, campos, metadata) {
     if (ocupado) return;
     if (pendencia) { avisar('Consulte o resultado pendente antes de iniciar outra operação.', true); return; }
-    pendencia = { ...metadata, tipo: acao };
+    if (pausaSemReleitura()) { avisar('A resposta de uma pausa não chegou. Atualize o estado real antes de iniciar outra operação.', true); return; }
+    const pausa = ['pausar', 'retomar'].includes(acao) && !!campos.escopo;
+    if (pausa) pausasIncertas.set(metadata.idempotencia, { ...metadata, tipo: acao, escopo: campos.escopo, contaId: campos.contaId });
+    else pendencia = { ...metadata, tipo: acao };
     busy(true);
     try {
       const resultado = await cliente.comando(acao, campos);
       if (encerrada || ctx.obsoleta()) return;
-      pendencia = null;
+      if (pausa) pausasIncertas.delete(metadata.idempotencia);
+      else pendencia = null;
       intencoes.delete(metadata.chaveIntencao);
       avisar(`${metadata.rotulo}: resposta real recebida. Confira o estado e os recibos por destino.`);
       if (Array.isArray(resultado.jobs)) {
@@ -828,15 +860,21 @@ export async function montarReal(raiz, ctx, integracao = null) {
     } catch (err) {
       if (encerrada || ctx.obsoleta()) return;
       if (resultadoIncerto(err)) {
-        avisar(`${metadata.rotulo}: a resposta não chegou. Consulte o resultado pendente antes de repetir.`, true);
-        desenharConsultaPendente();
+        if (pausa) {
+          avisar(`A resposta do pedido “${metadata.pedido}” não chegou. Atualize o estado real para ver como está agora.`, true);
+          desenharPausasIncertas();
+        } else {
+          avisar(`${metadata.rotulo}: a resposta não chegou. Consulte o resultado pendente antes de repetir.`, true);
+          desenharConsultaPendente();
+        }
       } else {
-        pendencia = null;
+        if (pausa) pausasIncertas.delete(metadata.idempotencia);
+        else pendencia = null;
         intencoes.delete(metadata.chaveIntencao);
         erroLegivel(err, metadata.rotulo);
         if ([409, 422].includes(err?.status)) await atualizarTudo();
       }
-    } finally { busy(false); }
+    } finally { desenharPausasIncertas(); busy(false); }
   }
 
   async function consultarDetalhe(jobId) {
@@ -953,7 +991,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     return true;
   };
   function abrirCom(exata, data) {
-    if (pendencia) { avisar('Consulte o resultado pendente antes de iniciar outro agendamento.', true); return false; }
+    if (pendencia || pausaSemReleitura()) { avisar('Confira o resultado pendente e atualize o estado das pausas antes de iniciar outro agendamento.', true); return false; }
     reagendamento = null;
     selecaoPeca = exata.id;
     selecaoDestinos.clear();
