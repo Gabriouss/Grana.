@@ -25,6 +25,22 @@ const miudos = [];
 ast.walkDecls('font-size', (d) => { const px = /^(\d+)px$/.exec(d.value.trim()); if (px && Number(px[1]) <= 12) miudos.push(`${d.parent.selector}: ${d.value}`); });
 assert.deepEqual(miudos, [], 'tamanho pequeno vem do token --t-micro, nunca escrito à mão');
 
+// Cor só por token (C.1): fora do :root, só a impressão do relatório e as amostras do Design System podem
+// escrever cor à mão. E o véu atrás de janela vem sempre de um token de scrim.
+const COR = /#[0-9a-f]{3,8}\b|rgba?\(/i;
+const soltas = [], veus = [];
+ast.walkDecls((d) => {
+  if (d.prop.startsWith('--') || !d.parent.selector) return;
+  let impressao = false;
+  for (let a = d.parent.parent; a; a = a.parent) if (a.type === 'atrule' && /print/.test(a.params)) impressao = true;
+  const sel = d.parent.selector;
+  if (sel.includes('::backdrop') && d.prop === 'background' && !/^var\(--scrim/.test(d.value)) veus.push(`${sel}: ${d.value}`);
+  if (impressao || /imprimindo-relatorio/.test(sel) || /(^|[\s,])\.ds-/.test(sel)) return;
+  if (COR.test(d.value)) soltas.push(`${d.source.start.line} ${sel}: ${d.prop}`);
+});
+assert.deepEqual(soltas, [], 'nenhuma cor escrita à mão fora dos tokens');
+assert.deepEqual(veus, [], 'todo véu de janela usa um token de scrim');
+
 (async () => {
   const { browser, page } = await abrirAmbiente(1280);
   try {
