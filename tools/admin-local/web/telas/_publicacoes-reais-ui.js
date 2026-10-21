@@ -862,6 +862,8 @@ export async function montarReal(raiz, ctx, integracao = null) {
       if (!antes || antes === j.estado) continue;
       const d = descreverJobReal(j);
       if (j.estado === 'publicado') ctx.aviso?.(`${d.rede}: publicado.${d.link ? '' : ` ${d.acao}`}`, 'ok');
+      // Cancelamento comum é neutro, mas continua deixando recibo visível (AUD-09).
+      else if (j.estado === 'cancelado' && !d.atencao) ctx.aviso?.(`${d.rede}: cancelado. ${d.acao}`, 'info');
       else if (d.atencao) ctx.aviso?.(`${d.rede}: ${d.texto}. ${[d.motivo, d.acao].filter(Boolean).join(' ')}`, 'erro');
     }
   }

@@ -59,6 +59,21 @@ const { pathToFileURL } = require('node:url');
   assert.equal(m.ROTULOS_ESTADO['programado-no-painel'], 'Agendado no painel');
   assert.equal(m.descreverJobReal(job('suspenso-para-revisao'), agora).texto, 'Suspenso para revisão');
   assert.match(m.descreverJobReal(job('falhou', { codigoErro: 'credencial-ausente' }), agora).motivo, /chave de acesso/);
+  // AUD-09: cancelamento comum é neutro e pode sugerir reagendar; com envio anterior incerto, só conferir.
+  const cancelComum = m.descreverJobReal(job('cancelado'), agora);
+  assert.equal(cancelComum.atencao, false); assert.match(cancelComum.acao, /agende de novo/);
+  assert.equal(m.descreverJobReal(job('cancelado', { codigoErro: 'credencial-ausente' }), agora).atencao, false, 'motivo sem efeito remoto continua comum');
+  for (const extra of [{ codigoErro: 'resultado-desconhecido' }, { codigoErro: 'lease-vencida' }, { codigoErro: 'prazo' }, { remotoId: '17890' },
+    { permalink: 'https://www.instagram.com/p/x/' }, { recibos: [{ reciboId: 'r', operacao: 'publicar', estado: 'incerto' }] },
+    { recibos: [{ reciboId: 'r', operacao: 'publicar', estado: 'iniciado' }] }]) {
+    const d = m.descreverJobReal(job('cancelado', extra), agora), tudo = `${d.texto} ${d.motivo} ${d.acao}`;
+    assert.equal(d.atencao, true, JSON.stringify(extra));
+    assert.match(d.acao, /só encerrou a execução no Grana\. Confira no Instagram e nos recibos/, JSON.stringify(extra));
+    assert.ok(!/agend|repit|de novo/i.test(d.acao), `não convida a repetir: ${JSON.stringify(extra)}`);
+    assert.ok(!(/n[aã]o repita|n[aã]o publique/i.test(tudo) && /agend|de novo/i.test(tudo)), `sem contradição: ${tudo}`);
+  }
+  assert.equal(m.descreverJobReal(job('cancelado', { recibos: [{ reciboId: 'r', operacao: 'publicar', estado: 'falhou' }] }), agora).atencao, false,
+    'publicar recusado sem efeito não é incerto');
   assert.equal(m.jobAtivo(job('agendado-na-meta')), true); assert.equal(m.jobAtivo(job('precisa-conferir')), false);
 
   console.log(`admin-agendamento-mensagens: ${lista.length} códigos do servidor + ${cliente.length} do cliente com frase, antecedência e estado real por rede OK`);

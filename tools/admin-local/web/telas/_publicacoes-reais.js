@@ -448,6 +448,15 @@ export function reagendamentoPermitido(job) {
     && ['programado-no-painel', 'precisa-conferir', 'falhou'].includes(estadoApresentacaoJob(job))
     && !job.remotoId && !job.permalink;
 }
+// Num cancelado, sinais de que um envio anterior pode ter tido efeito na rede (AUD-09). Cancelar só
+// encerra a execução no Grana; não prova que nada saiu. Sem esses sinais, o cancelamento é comum.
+const EFEITO_INCERTO = new Set(['resultado-desconhecido', 'rede', 'prazo', 'prazo-esgotado', 'resultado-nao-confirmado',
+  'publicacao-sem-id-recuperavel', 'publicacao-ja-iniciada', 'lease-vencida']);
+export function efeitoAnteriorIncerto(job) {
+  return EFEITO_INCERTO.has(job?.codigoErro) || !!job?.remotoId || /^https:\/\//.test(job?.permalink || '')
+    || (Array.isArray(job?.recibos) && job.recibos.some((r) => r?.estado === 'incerto'
+      || (r?.operacao === 'publicar' && r?.estado !== 'falhou')));
+}
 // Estado real de UM destino, em palavras do autor. Nunca usa "Planejado" (essa palavra é do editorial).
 export function descreverJobReal(job, agora = Date.now()) {
   const rede = NOME_REDE[job?.destino?.rede] || 'rede';
@@ -476,7 +485,12 @@ export function descreverJobReal(job, agora = Date.now()) {
     case 'publicado': return { rede, texto: 'Publicado', atencao: false, link, linkRotulo: `Abrir no ${rede}`,
       acao: link ? null : `Confira no ${rede}: o link ainda não veio da rede.` };
     case 'cancelamento-pendente': return { rede, texto: 'Cancelamento pedido', atencao: true, acao: 'Aguarde a confirmação do cancelamento antes de agendar de novo.' };
-    case 'cancelado': return { rede, texto: 'Cancelado', atencao: true, motivo, acao: 'Nada sai neste destino. Para publicar, agende de novo.' };
+    // Incerto: só conferir, sem convite a repetir. Comum: neutro, e reagendar é o caminho.
+    case 'cancelado': return efeitoAnteriorIncerto(job)
+      ? { rede, texto: 'Cancelado, com envio anterior sem confirmação', atencao: true,
+        motivo: 'O último envio deste destino ficou sem resultado confirmado.',
+        acao: `O cancelamento só encerrou a execução no Grana. Confira no ${rede} e nos recibos se a publicação saiu.` }
+      : { rede, texto: 'Cancelado', atencao: false, motivo, acao: 'Nada sai neste destino. Para publicar, agende de novo.' };
     case 'falhou': return { rede, texto: 'Não saiu', atencao: true, motivo, acao: 'Nada foi publicado neste destino. Resolva o motivo e agende de novo.' };
     case 'suspenso-para-revisao': return { rede, texto: 'Suspenso para revisão', atencao: true, motivo, acao: 'Revise e aprove a nova versão. Depois, gere outra prévia para agendar.' };
     case 'precisa-conferir': return { rede, texto: 'Precisa conferir: não confirmamos se saiu', atencao: true, motivo,
