@@ -66,7 +66,8 @@ function detalhesPlano(plano) {
   };
 }
 function resumoPeca(p, plano = null) {
-  const capa = p.arquivos[0] || null;
+  // Reels: o primeiro arquivo é o .mp4, que a bandeja não desenha. Usa a capa vinculada ao vídeo.
+  const capa = p.tipo === 'video' && p.capa?.url ? { url: p.capa.url, tipo: 'imagem' } : p.arquivos[0] || null;
   // p.aceite já vem do catálogo filtrado pelo validador único (aceite-evidencia.cjs).
   const aceite = p.aceite || null;
   return {
