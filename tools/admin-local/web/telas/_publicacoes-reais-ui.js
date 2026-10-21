@@ -332,7 +332,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
       if (encerrada || ctx.obsoleta()) return;
       capacidades = catalogo = pagina = null;
       jobs = [];
-      disponibilidade.replaceChildren(h('div', { class: 'estado-ausente' },
+      disponibilidade.replaceChildren(h('div', { class: 'estado estado-ausente' },
         h('h2', { texto: 'Agendamento real indisponível' }),
         h('p', { texto: 'O servidor não confirmou todos os contratos reais necessários. A tela não presumiu contas, capacidades nem fila vazia.' }),
         botao('Tentar novamente', () => atualizarTudo())));

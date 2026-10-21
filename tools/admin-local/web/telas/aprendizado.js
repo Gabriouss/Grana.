@@ -140,7 +140,7 @@ export async function montar(raiz, ctx) {
 
   function indisponivel(motivo) {
     corpo.replaceChildren(
-      h('div', { class: 'estado-ausente' },
+      h('div', { class: 'estado estado-ausente' },
         h('p', { texto: 'Relatório semanal indisponível' }),
         h('p', { class: 'texto-fraco', texto: motivo }),
         h('p', { class: 'texto-fraco', texto: 'Indisponível não é zero: nenhuma métrica foi calculada.' }),

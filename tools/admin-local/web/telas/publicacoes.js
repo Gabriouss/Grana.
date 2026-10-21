@@ -55,7 +55,7 @@ async function montarSimulacao(raiz, ctx) {
         detalhe.hidden = true;
         detalhe.replaceChildren();
         const faltantes = Array.isArray(d.faltantes) && d.faltantes.length ? ` Faltando: ${d.faltantes.join(', ')}.` : '';
-        corpo.replaceChildren(h('div', { class: 'estado-ausente' },
+        corpo.replaceChildren(h('div', { class: 'estado estado-ausente' },
           h('h2', { texto: 'Publicações indisponíveis' }),
           h('p', { texto: `${d.motivo || 'Configuração remota incompleta para simulação de publicações.'}${faltantes} Nenhuma lista vazia ou pausa foi presumida.` }),
           botao('Tentar de novo', () => carregar())));
@@ -73,7 +73,7 @@ async function montarSimulacao(raiz, ctx) {
       dados = null;
       detalhe.hidden = true;
       detalhe.replaceChildren();
-      corpo.replaceChildren(h('div', { class: 'estado-ausente' },
+      corpo.replaceChildren(h('div', { class: 'estado estado-ausente' },
         h('h2', { texto: 'Publicações indisponíveis' }),
         h('p', { texto: 'Não foi possível ler o estado da simulação. Nenhuma lista vazia ou pausa foi presumida.' }),
         botao('Tentar de novo', () => carregar())));

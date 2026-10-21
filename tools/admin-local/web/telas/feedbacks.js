@@ -71,7 +71,7 @@ export async function montar(raiz, ctx) {
 
   async function carregar(zerar) {
     if (zerar) { itens = []; haMais = false; }
-    corpo.replaceChildren(h('p', { class: 'estado-carregando', 'aria-busy': 'true', texto: 'Carregando feedbacks…' }));
+    corpo.replaceChildren(h('div', { class: 'estado estado-carregando', role: 'status', 'aria-busy': 'true' }, h('p', { class: 'estado-texto', texto: 'Carregando feedbacks…' })));
     try {
       const q = new URLSearchParams();
       for (const [k, v] of Object.entries(filtros)) q.set(k, String(v));
@@ -80,7 +80,7 @@ export async function montar(raiz, ctx) {
       if (ctx.obsoleta()) return;
       const d = r.dados || r;
       if (d.status === 'ausente' || d.status === 'pendente') {
-        corpo.replaceChildren(h('div', { class: 'estado-ausente' }, h('p', { texto: d.motivo || 'Feedbacks ainda não estão disponíveis neste painel.' })));
+        corpo.replaceChildren(h('div', { class: 'estado estado-ausente' }, h('p', { class: 'estado-texto', texto: d.motivo || 'Feedbacks ainda não estão disponíveis neste painel.' })));
         return;
       }
       const vistos = new Set(itens.map((i) => i.id));
@@ -92,8 +92,9 @@ export async function montar(raiz, ctx) {
       console.warn('[feedbacks]', err.codigo || 'falha');
       if (ctx.obsoleta()) return;
       // Falha de leitura nunca vira lista vazia: a tela diz que não leu.
-      corpo.replaceChildren(h('div', { class: 'estado-erro', role: 'alert' },
-        h('p', { texto: 'Não foi possível ler os feedbacks. Isto não significa que não haja nenhum.' }),
+      // Mesma caixa de estado do resto do painel (base .estado + modificador), AUD-06.
+      corpo.replaceChildren(h('div', { class: 'estado estado-erro', role: 'alert' },
+        h('p', { class: 'estado-texto', texto: 'Não foi possível ler os feedbacks. Isto não significa que não haja nenhum.' }),
         h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Tentar de novo', onclick: () => carregar(true) })));
     }
   }
@@ -107,7 +108,7 @@ export async function montar(raiz, ctx) {
       partes.push(ctx.alerta('atencao', 'A gestão de feedbacks ainda não foi aplicada no banco. A lista é só de leitura e todos aparecem como Novo.'));
     }
     if (!itens.length) {
-      partes.push(h('div', { class: 'estado-ausente' }, h('p', { texto: Object.keys(filtros).length ? 'Nenhum feedback corresponde aos filtros.' : 'Ainda não chegaram feedbacks.' })));
+      partes.push(h('div', { class: 'estado estado-ausente' }, h('p', { class: 'estado-texto', texto: Object.keys(filtros).length ? 'Nenhum feedback corresponde aos filtros.' : 'Ainda não chegaram feedbacks.' })));
       corpo.replaceChildren(...partes);
       return;
     }
