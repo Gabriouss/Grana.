@@ -352,7 +352,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 
 @media (max-width: 899px) {
-  .casca { grid-template-columns: minmax(0, 1fr); }
+  /* AUD-05: a barra fica na altura natural e o conteúdo leva o espaço livre. Com linhas auto e o
+     min-height de 100vh, tela curta repartia a sobra e a barra chegava a 231px. */
+  .casca { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
   .barra-topo {
     position: sticky;
     top: 0;
