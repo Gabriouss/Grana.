@@ -63,7 +63,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
   const previewEl = h('section', { class: 'secao pub-real-previa', 'aria-label': 'Prévia estimada por destino', hidden: true });
   const acoesTopo = [
     h('a', { class: 'botao botao-fantasma', href: '#/marketing/publicacoes?modo=simulacao', texto: 'Abrir simulação isolada' }),
-    h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Atualizar estado real', onclick: () => atualizarTudo() }),
+    h('button', { class: 'botao', type: 'button', texto: 'Atualizar estado real', onclick: () => atualizarTudo() }),
   ];
   if (!integracao) ctx.cabecalho(raiz, 'Agendamento real', 'Uma confirmação autoriza execução futura no serviço remoto. O calendário editorial é referência; só a confirmação autoriza publicação.', acoesTopo);
   if (integracao) {
@@ -75,7 +75,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
   } else raiz.append(corpo, recibo, disponibilidade, controles, compositor, previewEl, lista, detalheEl);
 
   const botao = (texto, onclick, opcoes = {}) => h('button', {
-    class: `botao ${opcoes.primario ? 'botao-primario' : 'botao-fantasma'}`,
+    class: opcoes.primario ? 'botao botao-primario' : 'botao',
     type: 'button', texto, onclick, disabled: (opcoes.operacao === false ? false : ocupado) || !!opcoes.disabled,
     'data-operacao': opcoes.operacao === false ? undefined : 'true',
   });
@@ -414,7 +414,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
         pilhaCursor.push(pagina.cursorAtual || '');
         await carregarPagina(pagina.proximoCursor, true);
       }, { disabled: !pagina.proximoCursor }));
-    const mais = h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Atualizar fila real', 'data-operacao': true, onclick: () => atualizarTudo() });
+    const mais = h('button', { class: 'botao', type: 'button', texto: 'Atualizar fila real', 'data-operacao': true, onclick: () => atualizarTudo() });
     lista.replaceChildren(h('h2', { class: 'secao-titulo', id: 'pub-real-lista-titulo', texto: 'Fila real e recibos' }),
       h('p', { class: 'campo-ajuda', texto: 'Um job por destino. Estados diferentes no mesmo lote permanecem independentes e são resumidos como parciais.' }), filtros, mais, resultados, paginacao);
     montarResultados(filtrado());

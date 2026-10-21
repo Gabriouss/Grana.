@@ -420,7 +420,7 @@ export async function montar(raiz, ctx) {
         ...(resposta.pendenciasLegenda?.length ? [ctx.alerta('atencao', `${resposta.pendenciasLegenda.length} ${resposta.pendenciasLegenda.length === 1 ? 'peça já aprovada precisa' : 'peças já aprovadas precisam'} de legenda. Confira a Aprovação antes de agendar.`)] : [])].filter(Boolean));
       await desenhar();
       if (r?.proximoCursor) paginacao.appendChild(h('button', { class: 'botao', type: 'button', texto: 'Carregar mais agendamentos do mês', onclick: async () => { await carregar(true); controleReal?.atualizarLista?.(); } }));
-      paginacao.appendChild(h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Atualizar mês', onclick: async () => { await carregar(); controleReal?.atualizarLista?.(); } }));
+      paginacao.appendChild(h('button', { class: 'botao', type: 'button', texto: 'Atualizar mês', onclick: async () => { await carregar(); controleReal?.atualizarLista?.(); } }));
       if (camada === 'planejado' && visao === 'lista') fila.replaceChildren(h('p', { texto: 'Selecione Real ou Ambos para consultar a fila e os recibos.' }));
     } catch (err) {
       console.warn('[calendario-unico]', err.codigo || 'leitura-falhou');
