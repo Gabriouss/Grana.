@@ -315,7 +315,7 @@ function navPost(h, area, lista, indice, ctx, dlg) {
   const ir = (i) => { dlg.close(); abrirPost(area, lista, i, ctx); };
   return h('span', { class: 'fileira' },
     h('button', { class: 'botao botao-fantasma', type: 'button', disabled: indice === 0, 'aria-label': 'Publicação anterior', onclick: () => ir(indice - 1) }, iconeSvg('esquerda')),
-    h('span', { class: 'fraco num', texto: `${indice + 1} de ${lista.length}` }),
+    h('span', { class: 'fraco num', texto: `Peça ${indice + 1} de ${lista.length}` }),
     h('button', { class: 'botao botao-fantasma', type: 'button', disabled: indice === lista.length - 1, 'aria-label': 'Próxima publicação', onclick: () => ir(indice + 1) }, iconeSvg('direita')));
 }
 

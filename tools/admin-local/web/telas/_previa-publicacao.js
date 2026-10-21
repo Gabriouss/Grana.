@@ -45,7 +45,7 @@ export function montarMidia(h, p) {
     // Aceita string (caminho, tipo pela extensão) ou { url, tipo }: blob: não tem extensão.
     const arq = typeof item === 'string' ? item : item.url;
     const ehVideoItem = typeof item === 'string' ? EXT_VIDEO.test(item) : item.tipo === 'video';
-    const alt = p.midias.length > 1 ? `${p.titulo}, ${i + 1} de ${p.midias.length}` : p.titulo;
+    const alt = p.midias.length > 1 ? `${p.titulo}, slide ${i + 1} de ${p.midias.length}` : p.titulo;
     const el = ehVideoItem
       ? h('video', { src: arq, controls: true, preload: 'metadata', playsinline: true, 'aria-label': alt, ...(p.capa ? { poster: p.capa.url } : {}) })
       : h('img', { src: arq, alt: '', decoding: 'async' }); // alt só depois do load: antes ele aparecia solto no meio da área
@@ -59,7 +59,7 @@ export function montarMidia(h, p) {
       else if (el.complete && el.naturalWidth) proporcaoDaPeca(el.naturalWidth, el.naturalHeight);
       else el.addEventListener('load', () => proporcaoDaPeca(el.naturalWidth, el.naturalHeight), { once: true });
     }
-    const slide = h('div', { class: 'feed-slide', role: 'group', 'aria-roledescription': 'slide', 'aria-label': `${i + 1} de ${p.midias.length}` }, el);
+    const slide = h('div', { class: 'feed-slide', role: 'group', 'aria-roledescription': 'slide', 'aria-label': `Slide ${i + 1} de ${p.midias.length}` }, el);
     slide.style.display = 'block'; // altura definida: a mídia com height:100% cabe na área em vez de crescer pela proporção natural
     slide.style.height = '100%';
     return slide;
@@ -71,8 +71,8 @@ export function montarMidia(h, p) {
 
   if (slides.length > 1) {
     let atual = 0;
-    const ant = h('button', { class: 'feed-seta feed-seta-ant', type: 'button', 'aria-label': 'Página anterior', hidden: true }, iconeSvg('esquerda'));
-    const prox = h('button', { class: 'feed-seta feed-seta-prox', type: 'button', 'aria-label': 'Próxima página' }, iconeSvg('direita'));
+    const ant = h('button', { class: 'feed-seta feed-seta-ant', type: 'button', 'aria-label': 'Slide anterior', hidden: true }, iconeSvg('esquerda'));
+    const prox = h('button', { class: 'feed-seta feed-seta-prox', type: 'button', 'aria-label': 'Próximo slide' }, iconeSvg('direita'));
     const pontos = h('div', { class: 'feed-pontos', 'aria-hidden': 'true' }, slides.map(() => h('span')));
     const contador = h('span', { class: 'feed-contador-slide', 'aria-live': 'polite' });
     const marcar = (i) => {
@@ -81,7 +81,7 @@ export function montarMidia(h, p) {
       ant.hidden = atual === 0;
       prox.hidden = atual === slides.length - 1;
       [...pontos.children].forEach((s, k) => s.setAttribute('aria-current', String(k === atual)));
-      contador.textContent = `${atual + 1} de ${slides.length}`;
+      contador.textContent = `Slide ${atual + 1} de ${slides.length}`;
     };
     const ir = (i) => {
       const alvo = Math.max(0, Math.min(slides.length - 1, i));
