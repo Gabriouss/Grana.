@@ -181,6 +181,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
   font-size: var(--t-legenda);
   letter-spacing: 0;
 }
+/* O navegador dá monoespaçada do sistema a code/pre/kbd/samp; a marca proíbe fonte do sistema. */
+code, pre, kbd, samp { font-family: var(--font); font-variant-numeric: tabular-nums; }
 .fraco { color: var(--ink-faint); }
 .suave { color: var(--ink-soft); }
 .sr {
@@ -1100,7 +1102,8 @@ dialog.modal[open] { animation: modal-entra 220ms var(--ease-saida); }
   background: var(--paper-raised);
   border: 1px solid var(--rule);
   color: var(--ink);
-  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-family: var(--font);
+  font-variant-numeric: tabular-nums;
   font-size: var(--t-legenda);
 }
 .documento blockquote {
@@ -1121,7 +1124,8 @@ pre.saida {
   border-radius: var(--r-md);
   background: var(--paper-deep);
   color: var(--ink-soft);
-  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-family: var(--font);
+  font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   line-height: var(--lh-corpo);
   white-space: pre-wrap;
@@ -1199,7 +1203,8 @@ pre.saida {
   border-radius: var(--r-md);
   background: var(--paper-deep);
   color: var(--accent-2);
-  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-family: var(--font);
+  font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   line-height: var(--lh-corpo);
   white-space: pre-wrap;
