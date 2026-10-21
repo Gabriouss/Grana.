@@ -108,12 +108,21 @@ export function montarMidia(h, p) {
   return { elemento: midiaEl, pausar };
 }
 
-// Cabeçalho do post: avatar, perfil, formato e o botão de fechar. Sem formato informado, não inventa
-// "Feed" (AUD-08): fica só o rótulo da prévia.
-export function topoDaPrevia(h, { nome = 'grana.', formato, aoFechar }) {
+// Rede do cabeçalho (AUD-15): sem rede informada, é a prévia do Feed do Instagram; rede desconhecida
+// não vira Instagram.
+const NOMES_REDE = { instagram: 'Instagram', facebook: 'Facebook' };
+export function rotuloDaRede(plataforma) {
+  if (plataforma == null) return ROTULO_PREVIA;
+  return NOMES_REDE[plataforma] ? `Prévia estimada do ${NOMES_REDE[plataforma]}` : 'Prévia estimada';
+}
+
+// Cabeçalho do post: avatar, perfil, rede, formato e o botão de fechar. Sem formato informado, não
+// inventa "Feed" (AUD-08).
+export function topoDaPrevia(h, { nome = 'grana.', formato, plataforma, aoFechar }) {
+  const rotulo = rotuloDaRede(plataforma);
   return h('div', { class: 'feed-post-topo' },
     h('img', { src: AVATAR, alt: '' }),
-    h('div', null, h('span', { texto: nome }), h('small', { texto: formato ? `${ROTULO_PREVIA} · ${formato}` : ROTULO_PREVIA })),
+    h('div', null, h('span', { texto: nome }), h('small', { texto: formato ? `${rotulo} · ${formato}` : rotulo })),
     h('button', { class: 'feed-fechar', type: 'button', 'aria-label': 'Fechar prévia', onclick: aoFechar }, iconeSvg('fechar')));
 }
 

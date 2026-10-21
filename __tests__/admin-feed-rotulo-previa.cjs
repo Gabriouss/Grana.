@@ -33,5 +33,12 @@ globalThis.document = { createElementNS: no };
   assert.deepEqual(textos(topoDaPrevia(h, { formato: rotuloDaPrevia(video) })), ['grana.', `${ROTULO_PREVIA} · Vídeo · sem destino planejado`]);
   assert.deepEqual(textos(topoDaPrevia(h, {})), ['grana.', ROTULO_PREVIA]);
 
-  console.log('admin-feed-rotulo-previa: tipo de mídia e destino separados; sem canal não inventa Feed nem Reels OK');
+  // AUD-15: o cabeçalho usa a rede recebida.
+  const fb = topoDaPrevia(h, { nome: 'Grana. (Página)', formato: 'Feed', plataforma: 'facebook', aoFechar: null });
+  assert.deepEqual(textos(fb), ['Grana. (Página)', 'Prévia estimada do Facebook · Feed']);
+  const ig = topoDaPrevia(h, { formato: 'Feed', plataforma: 'instagram', aoFechar: () => {} });
+  assert.deepEqual(textos(ig), ['grana.', 'Prévia estimada do Instagram · Feed']);
+  assert.deepEqual(textos(topoDaPrevia(h, { formato: 'Feed', plataforma: 'outra' })), ['grana.', 'Prévia estimada · Feed'], 'rede desconhecida não vira Instagram');
+
+  console.log('admin-feed-rotulo-previa: tipo de mídia e destino separados, rede do destino no cabeçalho OK');
 })().catch((e) => { console.error(e); process.exit(1); });
