@@ -457,6 +457,27 @@ export function efeitoAnteriorIncerto(job) {
     || (Array.isArray(job?.recibos) && job.recibos.some((r) => r?.estado === 'incerto'
       || (r?.operacao === 'publicar' && r?.estado !== 'falhou')));
 }
+// Pausa descrita pelo escopo (AUD-14): nomeia o que parou e o que segue. No servidor, a pausa recusa
+// prévia, confirmação, preparo e publicação só no escopo pausado; consultas de envios já iniciados e
+// cancelamentos continuam, e nada que a rede já recebeu é desfeito.
+const LISTA = new Intl.ListFormat('pt-BR', { style: 'long', type: 'conjunction' });
+export function descreverPausas(controles, contas = []) {
+  const ligadas = [
+    controles?.pausaGlobal ? { escopo: 'global', contaId: null, rotulo: 'Pausa geral', alvo: null, revisao: controles.revisao } : null,
+    controles?.pausaInstagram ? { escopo: 'instagram', contaId: null, rotulo: 'Pausa do Instagram', alvo: 'os destinos do Instagram', revisao: controles.revisao } : null,
+    controles?.pausaFacebook ? { escopo: 'facebook', contaId: null, rotulo: 'Pausa do Facebook', alvo: 'os destinos do Facebook', revisao: controles.revisao } : null,
+    ...(contas || []).filter((a) => a?.pausada).map((a) => ({ escopo: 'conta', contaId: a.contaId, rotulo: `Pausa da conta ${a.rotulo}`,
+      alvo: `os destinos da conta ${a.rotulo}`, revisao: a.revisao })),
+  ].filter(Boolean);
+  if (!ligadas.length) return { ligadas, resumo: 'Publicação ativa: nenhuma pausa ligada.', limite: null };
+  const alvos = LISTA.format(ligadas.map((l) => l.alvo).filter(Boolean));
+  const efeito = ligadas.some((l) => l.escopo === 'global') ? 'Nenhum destino é agendado, preparado nem publicado.'
+    : `${alvos[0].toUpperCase()}${alvos.slice(1)} não são agendados, preparados nem publicados. Os demais destinos seguem normalmente.`;
+  return { ligadas,
+    resumo: `${LISTA.format(ligadas.map((l) => l.rotulo))} ${ligadas.length === 1 ? 'está ligada' : 'estão ligadas'}. ${efeito}`,
+    limite: 'A pausa não desfaz o que a rede já recebeu: consultas de envios já iniciados e cancelamentos continuam. Retome para voltar a agendar.' };
+}
+
 // Até cinco minutos depois do horário, a confirmação da rede ainda pode estar chegando (o executor roda a
 // cada minuto); depois disso, o horário vencido aparece como atraso.
 const TOLERANCIA_ATRASO_MS = 5 * 60000;

@@ -6,6 +6,7 @@ import {
   capacidadeDaConta, capacidadeDaPeca, caminhoMidia, criarClientePublicacoes, horarioLocalParaUtc,
   horarioUtcParaLocal, previaConfirmavel, resumirLote, rotuloDataHorario,
   antecedenciaMinima, conferirHorario, sugestaoHorario, mensagemHumana, fraseDoMotivo, descreverJobReal, jobAtivo, quandoCurto, reagendamentoPermitido, estadoApresentacaoJob,
+  descreverPausas,
 } from './_publicacoes-reais.js';
 
 // Enquanto houver job ativo e a aba estiver visível, o estado real é relido neste intervalo.
@@ -288,16 +289,11 @@ export async function montarReal(raiz, ctx, integracao = null) {
   // Pausa visível ANTES da prévia (não só depois do erro), com Retomar ali mesmo.
   function estadoDaPausa() {
     const c = capacidades.controles;
-    const ligadas = [
-      c.pausaGlobal ? ['global', null, 'Pausa geral', c.revisao] : null,
-      c.pausaInstagram ? ['instagram', null, 'Pausa do Instagram', c.revisao] : null,
-      c.pausaFacebook ? ['facebook', null, 'Pausa do Facebook', c.revisao] : null,
-      ...capacidades.contas.filter((a) => a.pausada).map((a) => ['conta', a.contaId, `Pausa da conta ${a.rotulo}`, a.revisao]),
-    ].filter(Boolean);
-    if (!ligadas.length) return h('p', { class: 'pub-real-pausa-estado campo-ajuda', role: 'status', texto: 'Publicação ativa: nenhuma pausa ligada.' });
+    const { ligadas, resumo, limite } = descreverPausas(c, capacidades.contas);
+    if (!ligadas.length) return h('p', { class: 'pub-real-pausa-estado campo-ajuda', role: 'status', texto: resumo });
     return h('div', { class: 'alerta alerta-atencao pub-real-pausa-estado', role: 'alert' },
-      h('p', { texto: `${ligadas.map((l) => l[2]).join(', ')} ${ligadas.length === 1 ? 'está ligada' : 'estão ligadas'}: nada é preparado nem publicado enquanto houver pausa. Retome para agendar.` }),
-      h('div', { class: 'bloco-acao' }, ligadas.map(([escopo, contaId, rotulo, revisao]) =>
+      h('p', { texto: resumo }), h('p', { texto: limite }),
+      h('div', { class: 'bloco-acao' }, ligadas.map(({ escopo, contaId, rotulo, revisao }) =>
         botao(`Retomar ${rotulo.replace(/^Pausa (d[aoe] )?/, '').replace(/^geral$/, 'tudo')}`, () => mudarPausa(escopo, contaId, true, revisao, rotulo), { disabled: !c.habilitado }))));
   }
 

@@ -89,6 +89,24 @@ const { pathToFileURL } = require('node:url');
   }
   assert.match(m.descreverJobReal(job('programado-no-painel'), Date.parse('2026-10-20T12:00:00Z')).texto, /^Agendado no painel: marcado em .*19\/10.*01:00, atrasado$/);
 
+  // AUD-14: a pausa nomeia o escopo e o que segue ativo, e não se confunde com cancelar ou desfazer.
+  const ctl = (extra) => ({ revisao: 2, pausaGlobal: false, pausaInstagram: false, pausaFacebook: false, ...extra });
+  const contas = [{ contaId: 'ig-1', rede: 'instagram', rotulo: '@grana.app', revisao: 3, pausada: false }, { contaId: 'fb-1', rede: 'facebook', rotulo: 'Grana. (Página)', revisao: 2, pausada: false }];
+  assert.deepEqual(m.descreverPausas(ctl(), contas), { ligadas: [], resumo: 'Publicação ativa: nenhuma pausa ligada.', limite: null });
+  const soIg = m.descreverPausas(ctl({ pausaInstagram: true }), contas);
+  assert.equal(soIg.resumo, 'Pausa do Instagram está ligada. Os destinos do Instagram não são agendados, preparados nem publicados. Os demais destinos seguem normalmente.');
+  assert.ok(!/nada é preparado|Facebook/.test(soIg.resumo), 'pausa do Instagram não sugere o Facebook parado');
+  assert.match(soIg.limite, /não desfaz o que a rede já recebeu: consultas de envios já iniciados e cancelamentos continuam\./);
+  assert.deepEqual(soIg.ligadas.map((l) => [l.escopo, l.contaId, l.rotulo, l.revisao]), [['instagram', null, 'Pausa do Instagram', 2]]);
+  const conta = m.descreverPausas(ctl(), [{ ...contas[0], pausada: true }, contas[1]]);
+  assert.equal(conta.resumo, 'Pausa da conta @grana.app está ligada. Os destinos da conta @grana.app não são agendados, preparados nem publicados. Os demais destinos seguem normalmente.');
+  assert.deepEqual(conta.ligadas.map((l) => [l.escopo, l.contaId, l.revisao]), [['conta', 'ig-1', 3]]);
+  const duas = m.descreverPausas(ctl({ pausaFacebook: true }), [{ ...contas[0], pausada: true }, contas[1]]);
+  assert.equal(duas.resumo, 'Pausa do Facebook e Pausa da conta @grana.app estão ligadas. Os destinos do Facebook e os destinos da conta @grana.app não são agendados, preparados nem publicados. Os demais destinos seguem normalmente.');
+  const geral = m.descreverPausas(ctl({ pausaGlobal: true, pausaInstagram: true }), contas);
+  assert.equal(geral.resumo, 'Pausa geral e Pausa do Instagram estão ligadas. Nenhum destino é agendado, preparado nem publicado.');
+  assert.ok(!/demais/.test(geral.resumo), 'pausa geral não diz que algo segue');
+
   assert.equal(m.jobAtivo(job('agendado-na-meta')), true); assert.equal(m.jobAtivo(job('precisa-conferir')), false);
 
   console.log(`admin-agendamento-mensagens: ${lista.length} códigos do servidor + ${cliente.length} do cliente com frase, antecedência e estado real por rede OK`);
