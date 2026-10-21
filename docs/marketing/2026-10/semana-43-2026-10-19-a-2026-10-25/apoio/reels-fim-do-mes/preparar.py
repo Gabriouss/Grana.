@@ -12,10 +12,10 @@ CEL = r'E:\Grana-temporarios\2026-10-19-agendamento-meta\capturas-app\celular'
 FUNDO = r'E:\Grana-temporarios\2026-10-19-agendamento-meta\reels-granabo\v3\midia\fundo.png'
 PLIM = r'E:\GranaPonto\docs\marketing\identidade-sonora\plim-sucesso.wav'
 AUD = os.path.join(BASE, 'audio')
-NARR = os.path.join(AUD, 'narracao-v2.wav')     # v2: take "d" + take g1, com pausas e 8% mais lenta (montar-v2.py)
-TR = os.path.join(AUD, 'edit-v2', 'transcripts', 'narracao-v2.json')
-DUR, FPS, P = 46.0, 30, 0.30                     # P: a narração começa 0,3 s depois do primeiro quadro
-T_PLIM = 17.77                                   # "Valor," : o formulário já está preenchido na tela
+NARR = os.path.join(AUD, 'narracao-v3.wav')     # v3: narração nova no eleven_v4 (take h3), pausas de até 0,3 s (montar-v3.py)
+TR = os.path.join(AUD, 'edit-v3', 'transcripts', 'narracao-v3.json')
+DUR, FPS, P = 39.8, 30, 0.30                     # P: a narração começa 0,3 s depois do primeiro quadro
+T_PLIM = 17.24                                   # "Valor," : o formulário já está preenchido na tela
 def run(c): subprocess.run(c, check=True)
 
 def audio():
@@ -39,13 +39,12 @@ def audio():
 
 # telas: nome -> (clipe, [(início na fonte, fim na fonte, duração no vídeo)]). Esperas cortadas, rolagem acelerada.
 # A gravação da voz termina com o Expo Go recarregando (tela branca): só vai até "Transcrevendo..." (6,6 s; a tela branca começa em 6,8 s).
-TELAS = {'voz':     ('lancar-por-voz',   [(0.0, 1.9, 3.0), (1.9, 6.6, 3.53)]),
-         'pix':     ('colar-pix',        [(3.4, 4.6, 1.41), (5.6, 7.0, 1.27), (9.6, 10.4, 0.85), (10.9, 13.0, 3.03)]),
-         'credito': ('credito',          [(0.0, 2.5, 2.2), (2.5, 8.5, 4.89)]),
-         'lista':   ('lancamentos',      [(0.5, 6.5, 4.03)]),
-         'grafico': ('graficos-periodo', [(6.0, 11.0, 3.51)])}
-# v2 (pedido do autor: "dar uma desacelerada na exibição das funcionalidades"): cada tela fica de 1,4x a
-# 1,6x mais tempo no ar, igual ao tempo novo entre as trocas da cena (edit/mapa-v2.json).
+TELAS = {'voz':     ('lancar-por-voz',   [(0.0, 1.9, 2.34), (1.9, 6.6, 2.76)]),
+         'pix':     ('colar-pix',        [(3.4, 4.6, 1.06), (5.6, 7.0, 0.95), (9.6, 10.4, 0.64), (10.9, 13.0, 2.28)]),
+         'credito': ('credito',          [(0.0, 2.5, 1.55), (2.5, 8.5, 3.44)]),
+         'lista':   ('lancamentos',      [(0.5, 6.5, 2.69)]),
+         'grafico': ('graficos-periodo', [(6.0, 11.0, 2.6)])}
+# v3: cada tela dura exatamente o tempo entre as trocas da cena (edit/tempos-v3.json).
 SW, SH = 900, 2070      # proporção da tela útil do aparelho, igual ao modelo
 
 def telas():
