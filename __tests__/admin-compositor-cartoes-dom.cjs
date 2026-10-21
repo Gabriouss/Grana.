@@ -1,7 +1,8 @@
 // AUD-02 (21/10/2026): os cartões de escolha de peça do compositor nunca encolhem abaixo do conteúdo.
 // Com o min-height de 44px no cartão e a bandeja limitada a 240px no painel do Calendário, a grade
 // encolhia as linhas até caber (44px no celular, 72px em 1440) e miniatura, título e radio invadiam o
-// cartão seguinte. Módulo real (montarReal com a integração do Calendário) e estilo.css real, no Chromium.
+// cartão seguinte. AUD-03: horário e filtros da fila usam o contrato de campo do painel, com o rótulo do
+// horário ligado ao campo. Módulo real (montarReal com a integração do Calendário) e estilo.css real, no Chromium.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -136,9 +137,23 @@ const cruzam = (a, b) => Math.min(a.dir, b.dir) - Math.max(a.esq, b.esq) > 1 && 
       const foco = await page.evaluate(() => { const a = document.activeElement; const c = a.closest('.pub-real-peca'); const r = a.getBoundingClientRect(), k = c.getBoundingClientRect();
         return { checado: a.checked, titulo: c.querySelector('strong').textContent, dentro: r.top >= k.top && r.bottom <= k.bottom && r.left >= k.left && r.right <= k.right }; });
       assert.ok(foco.checado && foco.titulo === 'Recebeu um Pix, só colar' && foco.dentro, rotulo(`seta para baixo marca e foca o cartão seguinte (${JSON.stringify(foco)})`));
+      // AUD-03: horário e filtros da fila seguem o contrato de campo do painel (44px, linha de base, sem o
+      // cinza nativo), com o rótulo do horário ligado ao campo.
+      const campos = await page.evaluate(() => {
+        const ler = (el) => { const s = getComputedStyle(el), b = el.getBoundingClientRect();
+          return { h: b.height, fundo: s.backgroundColor, linha: s.borderBottomStyle, rotulos: [...(el.labels || [])].map((l) => l.textContent.trim()) }; };
+        return { hora: ler(document.querySelector('[name="agendarParaLocal"]')), filtros: [...document.querySelectorAll('.pub-real-filtros select, .pub-real-filtros input')].map(ler) };
+      });
+      assert.equal(campos.filtros.length, 4, rotulo('quatro filtros na fila'));
+      for (const [nome, c] of [['horário', campos.hora], ...campos.filtros.map((c, i) => [`filtro ${i + 1}`, c])]) {
+        assert.ok(c.h >= 43.5, rotulo(`${nome} com alvo de 44px (${c.h})`));
+        assert.equal(c.fundo, 'rgba(0, 0, 0, 0)', rotulo(`${nome} sem o fundo cinza nativo`));
+        assert.equal(c.linha, 'solid', rotulo(`${nome} com a linha de base do campo`));
+      }
+      assert.ok(campos.hora.rotulos.some((t) => t.startsWith('Agendar em')), rotulo(`rótulo do horário ligado ao campo (${JSON.stringify(campos.hora.rotulos)})`));
       assert.deepEqual(erros, [], rotulo('sem erro de página'));
       await page.close();
     }
-    console.log(`admin-compositor-cartoes-dom: ${cartoesMedidos} cartões em ${TELAS.length} larguras contêm radio, miniatura e texto; bandeja rola até o último; label e teclado OK`);
+    console.log(`admin-compositor-cartoes-dom: ${cartoesMedidos} cartões em ${TELAS.length} larguras contêm radio, miniatura e texto; bandeja rola até o último; label e teclado; horário e filtros no contrato de campo OK`);
   } finally { await browser.close(); }
 })().catch((e) => { console.error(e); process.exit(1); });

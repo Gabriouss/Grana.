@@ -260,7 +260,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
 
     const anterior = compositor.querySelector('.pub-real-compositor-conteudo');
     const valorHorario = anterior?.querySelector('[name="agendarParaLocal"]')?.value || horarioInicial('');
-    const hora = h('input', { type: 'datetime-local', name: 'agendarParaLocal', required: true, value: valorHorario,
+    const hora = h('input', { type: 'datetime-local', id: 'pub-real-agendar-para', name: 'agendarParaLocal', required: true, value: valorHorario,
       'aria-describedby': 'pub-real-fuso-ajuda pub-real-horario-resumo', onchange: () => { liberarPreview(); atualizarResumoHorario(); }, oninput: atualizarResumoHorario });
     const resumoHora = h('p', { class: 'pub-real-horario-resumo', id: 'pub-real-horario-resumo', role: 'status', 'aria-live': 'polite' });
     const previaBtn = h('button', { class: 'botao botao-primario', type: 'button', 'data-operacao': true,
@@ -277,8 +277,10 @@ export async function montarReal(raiz, ctx, integracao = null) {
           h('div', { class: 'pub-real-contas' }, contas)),
         h('fieldset', { class: 'pub-real-selecao pub-real-horario' },
           h('legend', { texto: '3 · Data e hora' }),
-          h('label', { for: 'pub-real-agendar-para', texto: `Agendar em ${FUSO_PUBLICACAO}` }),
-          hora, h('small', { id: 'pub-real-fuso-ajuda', class: 'campo-ajuda', texto: 'Use o horário de Brasília, mesmo se o seu computador estiver em outro fuso.' }),
+          // Mesmo contrato de campo do painel (AUD-03): 44px, linha de base, rótulo ligado ao campo.
+          h('div', { class: 'campo' },
+            h('label', { for: 'pub-real-agendar-para', texto: `Agendar em ${FUSO_PUBLICACAO}` }),
+            hora, h('small', { id: 'pub-real-fuso-ajuda', class: 'campo-ajuda', texto: 'Use o horário de Brasília, mesmo se o seu computador estiver em outro fuso.' })),
           resumoHora)),
       h('div', { class: 'pub-real-acoes' }, previaBtn,
         h('span', { class: 'campo-ajuda', texto: 'A data editorial é uma sugestão. Revise horário e destinos antes de gerar a prévia.' })));
@@ -387,7 +389,8 @@ export async function montarReal(raiz, ctx, integracao = null) {
       h('option', { value: '', texto: 'Todas as redes desta página' }), Object.entries(REDES).map(([v, t]) => h('option', { value: v, texto: t })));
     const de = h('input', { type: 'date', 'aria-label': 'Agendados a partir de', onchange: () => filtrarPagina() });
     const ate = h('input', { type: 'date', 'aria-label': 'Agendados até', onchange: () => filtrarPagina() });
-    filtros.append(h('label', null, 'Estado', estado), h('label', null, 'Rede', rede), h('label', null, 'De', de), h('label', null, 'Até', ate),
+    filtros.append(h('label', { class: 'campo' }, 'Estado', estado), h('label', { class: 'campo' }, 'Rede', rede),
+      h('label', { class: 'campo' }, 'De', de), h('label', { class: 'campo' }, 'Até', ate),
       h('span', { class: 'campo-ajuda', texto: 'Filtros aplicados somente aos registros da página recebida.' }));
     const resultados = h('div', { class: 'publicacoes-lista pub-real-jobs' });
     const paginacao = h('div', { class: 'pub-real-paginacao' });

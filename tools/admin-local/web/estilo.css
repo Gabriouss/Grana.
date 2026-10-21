@@ -680,7 +680,8 @@ a.cartao:hover { border-color: var(--rule-strong); }
 }
 .campo textarea:focus-visible { outline: none; border-color: var(--accent-2); }
 .campo input[type="date"]::-webkit-calendar-picker-indicator,
-.campo input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(0.85) sepia(0.3) hue-rotate(110deg); cursor: pointer; }
+.campo input[type="time"]::-webkit-calendar-picker-indicator,
+.campo input[type="datetime-local"]::-webkit-calendar-picker-indicator { filter: invert(0.85) sepia(0.3) hue-rotate(110deg); cursor: pointer; }
 .campo [aria-invalid="true"] { border-color: var(--danger); }
 .campo-ajuda { font-size: var(--t-legenda); font-weight: 300; color: var(--ink-faint); }
 .campo-erro { margin: var(--s-sm) 0 0; font-size: var(--t-legenda); color: var(--danger); }
