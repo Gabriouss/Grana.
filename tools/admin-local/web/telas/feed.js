@@ -281,7 +281,7 @@ function abrirPost(area, lista, indice, ctx) {
       dados.map((t) => h('span', { texto: t })),
       p.caminho ? h('span', { texto: `Arquivo: ${String(p.caminho).split('/').pop()}` }) : null),
     h('div', { class: 'fileira' },
-      h('a', { class: 'botao botao-fantasma', href: '#/marketing/calendario', texto: p.data ? 'Ver no calendário' : 'Marcar data no calendário' }),
+      h('a', { class: 'botao', href: '#/marketing/calendario', texto: p.data ? 'Ver no calendário' : 'Marcar data no calendário' }),
       lista.length > 1 ? navPost(h, area, lista, indice, ctx, dlg) : null));
 
   corpo.append(midiaEl, h('div', { class: 'feed-post-lado' }, topo, legenda, editorial, meta));
