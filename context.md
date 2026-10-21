@@ -90,6 +90,57 @@ Em 08/10/2026, o autor confirmou que os cinco segredos incluídos no pacote envi
 O histórico e a evidência da exposição permanecem na seção datada de 16/09/2026 abaixo. A rotação resolve a pendência de validade dos valores expostos, sem apagar o fato histórico de que o pacote de projeto foi enviado ao EAS.
 
 ---
+# 21/10/2026 (M1, Ledger): agendamento implantado, reparos visuais e pendências — corte14h00
+
+**Registro autorizado pelo autor às13h58, ordem do maestro14h00.** Substitui como estado atual os cortes de20/10 e da retomada em que implantação/runtime ainda estavam pendentes; preserva esses registros históricos. Fonte operacional: `E:/Grana-temporarios/2026-10-21-retomada-0030/00-ORDEM-maestro-0955-meta-feito-pelo-maestro.md`, atualização10h24, e ordem14h00. Hashes abaixo conferidos no histórico local; Ledger não repetiu testes, sondas, login ou operações remotas. **Implantação concluída não significa fluxo inteiro100% aprovado.**
+
+## Agendamento: publicado, aplicado e limites
+
+- Granabô: `2bf0213f4edf159f36e0914179b0ced9de522e91`, cinco caminhos exclusivos forge_aprovacao, QA Beacon reaproveitado, publicado porCompass. Correção reconhece aceite vigente sem depender da pasta física; WIP alheio preservado.
+- `0e153a10`: oito arquivos Forge UI/Node e migrationHarbor083000 publicados; intenção/chave preservadas após confirmar seguido de503, recuperação sem reenviarPOST, bloqueio de comando concorrente e validação mídia×rede×formato no catálogo/UI/capturaNode. Evidências locais Forge: pendência15, mídia224, modelo93, Node/DOM/consumidor/carrossel afetados verdes; não são prova do processo vivo.
+- **Produção aplicada pelo autor executando o script do maestro:** V2 `20261019210000` → V1 `20261020120000` → `20261021083000`; conforme readback10h24, V2 com3tabelas/3colunas/15funções fechadas, V1 com colunas/helpers e13terminais preservados,083000 com fonte conferida. O pacote antigo42c266bc foi declarado obsoleto pelo maestro: não reaplicar seus guards incompatíveis comV2. Os16+12 itens inconclusivos do inventário64 não foram promovidos a migrations faltantes.
+- `admin-publicacoes-reais` v3 e `marketing-real-executor` v5, ACTIVE/jwttrue; maestro relata fonte publicada baixada e igual aoHEAD (5/5 e8/8), executor200 por minuto depois. Recibos, backups e retorno: `E:/Grana-temporarios/2026-10-21-deploy-maestro/`. Sem nova aplicação porLedger.
+- `af4e0fb1`: capaReels na bandeja; `cdbf649d`: vínculo de capa de `familias.json` não era propagado a todas as cópias, causando `destino-divergente`; `b815ead4`: promoção de “Pra onde foi o dinheiro do mês”, id4f55e92a2716d5d2, com aceite existente02h04, sem novo aceite. `5c3ae4d6`: capa selada no aceite composto não devolveReel à aprovação.
+- Segundo maestro, “Conheça o Granabô” saiu noInstagram pelo executor às10h05; **Facebook estava em `precisa-conferir` às10h10 e depende da decisão do autor**, sem conclusão posterior neste corte.
+- Reinícios4317 às09h27/09h53 e **13h53 a pedido explícito do autor**, este último para carregar `9192bbbe`. Superam a proibição anterior apenas nessas operações autorizadas; não provam por si só todos os fluxos autenticados. Ledger não reiniciou o painel.
+
+## Auditoria e reparos publicados
+
+Auditoria externa em `E:/Grana-temporarios/2026-10-20-auditoria-design-painel/`; consolidadoHarbor reutilizado, sem concorrente. Base auditada3d2f5a00,HEAD0cf8 informado separadamente. Sentinel539capturas/medidas,17entradas,seis larguras+equivalente200, **não zoom nativo**; Prism34panoramas390/1440,11comprovados+1candidato; Forge9causas+1candidato. Contagens não somadas: correlações por causa preservadas. Cobertura parcial não é aceite do painel inteiro.
+
+Os16 itens “Corrigir agora” foram implementados, conforme ordem14h00, com regressões que falham no código antigo. Commits conferidos no histórico:
+
+| Itens | Commits |
+|---|---|
+| AUD-09/01/02 | `799d9fb8` / `ae05856a` / `096888ce` |
+| AUD-08/15/16 | `53946dcb` / `83ca2d8e` / `ae2e8f48` |
+| AUD-13/14/06 | `7fbc6f4b` / `de8c572f` / `95b1b4ab` |
+| AUD-05/03 | `a1b5128c` / `aec40f58` |
+| AUD-04 | `a7a52e56` + `60b7e593` |
+| AUD-07/21/18/19 | `c16e85cb` / `e6af5232` / `7997206b` / `69a4fdff` |
+
+Os reparos cobrem mídia inteira no modal, cartões sem compressão, ações reconhecíveis, campos/estados/casca/tabelas, rótulos por rede/tipo, estados cancelado/vencido/pausa e representações parciais/capa. `d107e2fc` corrige fixture sem metadados de mídia; `02319d2f` faz o aviso de aprovadas sem data contar a mesma lista da bandeja, após autor observar11contra5. `9192bbbe` renova miniatura remota doReel apósURL expirar em30min; depende do servidor do painel atualizado.
+
+**Feed “cortado”:** maestro atribuiu os prints posteriores do autor à aba antiga comCSS anterior; conferência relatada com código atual e criativos reais (estático3:4,carrossel,Reel,três publicados),1213×834 e390, mostrou100% da mídia na inspeção. Fonte externa: `E:/Grana-temporarios/2026-10-21-feed-corte/repro2.cjs`. Esse resultado não remove o crop intencional4:5/1:1 da grade nem valida todas as mídias/estados.
+
+`aaabdca8bf16610a46274906314d36d1974c83df`: aceites do autor11h17 publicados para “Organize no computador, acompanhe pelo celular” e “O café, o delivery, a corrida”.
+
+## Ocorrências e QA ainda aberto
+
+Hook: recibo finalWatchtower confirma10/10comandos em disco iguais ao reparo anterior; causa daqueleHookfailed era `||` incompatível comPowerShell5.1. Quatro casos anteriores exit0/payloadidêntico; não prova dez eventos universais nem diagnosticaerror1455. Fonte: `E:/Grana-temporarios/2026-10-21-harbor-hook/relatorio-watchtower-final.md`. RestauraçãoWatchtower preservou configuração; reparo dohook é independente da implantação.
+
+O maestro corrigiu a afirmação de que o timeCodex ainda não voltara após12h32; vigia emsegundo plano encerrou por memória e não foi religado. `admin-previa-post-dom` dependia da data: fixture passou apósAUD-13, agora congelaDate na página. Falhas de harness/fixture das rodadas estão separadas de bugs do produto nos relatórios.
+
+- [ ] Miniatura doReel “Conheça o Granabô” noFeed comMeta real: depende de login do autor após reinício13h53; não presumir corrigida em produção pela suíte local.
+- [ ] Decisão/readback posterior doFacebook `precisa-conferir`; não registrar como resolvido.
+- [ ] Zoom nativo200%, leitor de tela e aparelho físico.
+- [ ] AUD-10/11 P1 sem confiabilidade suficiente: maestro conferindo, nenhuma conclusão recebida neste corte.
+- [ ] AUD-12/17/20/23/25/26 sem confiabilidade suficiente, não conferidos; AUD-22/24 P3 confirmados, não corrigidos.
+- [ ] Funções fora do agendamento não publicadas por decisão do autor: admin-consulta,admin-ajustes,admin-feedbacks,admin-marketing,admin-publicacoes-simulacao,marketing-simulacao-executor,admin-meta,admin-analytics; assistente-financeiro; enviar-lembretes-habito. **Hipótese não verificada:** assistente-financeiro emprodução ainda semLivre17/10 pode divergir doapp; não tratar como causa comprovada.
+
+Sem EAS/build ou nova publicação/agendamento porLedger. Registro desta passagem limitado a `context.md` e à sessão existente21/10 no vault; não refez perenes/espelhos nem alterou produto, dados, modelos, esforço ou contas.
+
+---
 # 20/10/2026 (M1, Ledger): fechamento único — desagendamento e prevenção12h
 
 
