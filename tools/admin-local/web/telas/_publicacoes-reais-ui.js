@@ -20,6 +20,10 @@ const ESTADOS_ATIVOS = new Set(['planejado', 'programado-no-painel', 'preparando
 const ESTADOS_TERMINAIS = new Set(['publicado', 'cancelado']);
 const MIME_OK = new Set(['image/png', 'image/jpeg', 'video/mp4']);
 
+// A navegação SPA desmonta a tela, mas não encerra a intenção enviada.
+// Conserva só a chave e seus metadados nesta aba até a consulta obter recibo.
+let pendencia = null;
+
 export async function montarReal(raiz, ctx, integracao = null) {
   const { h } = ctx;
   const cliente = criarClientePublicacoes(ctx);
@@ -37,7 +41,6 @@ export async function montarReal(raiz, ctx, integracao = null) {
   let previewBlobs = [];
   let ocupado = false;
   let encerrada = false;
-  let pendencia = null;
   let relogioPrevia = null;
   let relogioFila = null;
   const estadosVistos = new Map();
