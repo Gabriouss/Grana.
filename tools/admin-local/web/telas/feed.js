@@ -422,8 +422,14 @@ function abrirPostReal(ctx, post, usuario) {
   const dlg = h('dialog', { class: 'feed-post', 'aria-label': `${tipo} de ${post.data ? dataCurta(post.data) : 'data desconhecida'}` });
   const img = h('img', { alt: '', class: 'feed-post-real-img' });
   const midia = h('div', { class: 'feed-post-midia feed-midia-carregando' }, img);
-  img.addEventListener('load', () => { img.alt = 'Miniatura da publicação'; midia.classList.remove('feed-midia-carregando'); if (img.naturalWidth > 0) midia.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`; }, { once: true });
-  carregarMiniatura(post.miniatura, img, () => midia.replaceChildren(h('p', { class: 'fraco', texto: 'Sem miniatura. A legenda e o link continuam ao lado.' })));
+  const ehVideo = post.formato === 'reel' || post.formato === 'video';
+  const semMiniatura = () => {
+    midia.classList.remove('feed-midia-carregando');
+    midia.replaceChildren(h('p', { class: 'fraco', texto: 'Sem miniatura. A legenda e o link continuam ao lado.' }));
+  };
+  img.addEventListener('load', () => { img.alt = ehVideo ? 'Miniatura do vídeo publicado' : 'Miniatura da publicação'; midia.classList.remove('feed-midia-carregando'); if (img.naturalWidth > 0) midia.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`; }, { once: true });
+  img.addEventListener('error', semMiniatura, { once: true });
+  carregarMiniatura(post.miniatura, img, semMiniatura);
   const topo = h('div', { class: 'feed-post-topo' },
     h('img', { src: AVATAR, alt: '' }),
     h('div', null, h('span', { texto: nome }), h('small', { texto: `Publicado no Instagram · ${tipo}` })),
@@ -437,7 +443,8 @@ function abrirPostReal(ctx, post, usuario) {
       h('span', { texto: quando ? `Publicado em ${quando} · São Paulo` : post.data ? `Publicado em ${ctx.formatar.data(post.data)}` : 'Data não informada' })),
     post.link ? h('div', { class: 'fileira' },
       h('a', { class: 'botao', href: post.link, target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir no Instagram' })) : null,
-    post.formato === 'carrossel' ? h('p', { class: 'campo-ajuda', texto: 'Esta visualização mostra apenas a miniatura do carrossel. Abra a publicação no Instagram para ver os demais slides.' }) : null);
+    post.formato === 'carrossel' ? h('p', { class: 'campo-ajuda', texto: 'Esta visualização mostra apenas a miniatura do carrossel. Abra a publicação no Instagram para ver os demais slides.' }) : null,
+    ehVideo ? h('p', { class: 'campo-ajuda', texto: 'Esta visualização mostra apenas a miniatura do vídeo. Abra a publicação no Instagram para assistir.' }) : null);
   dlg.appendChild(h('div', { class: 'feed-post-corpo' }, midia, h('div', { class: 'feed-post-lado' }, topo, legenda, meta)));
   ligarDialogo(dlg, { devolverFoco });
   document.body.appendChild(dlg);
