@@ -117,13 +117,14 @@ export function rotuloDaRede(plataforma) {
 }
 
 // Cabeçalho do post: avatar, perfil, rede, formato e o botão de fechar. Sem formato informado, não
-// inventa "Feed" (AUD-08).
+// inventa "Feed" (AUD-08). O botão só existe quando há o que fechar (AUD-16): a prévia dentro do
+// compositor não é janela.
 export function topoDaPrevia(h, { nome = 'grana.', formato, plataforma, aoFechar }) {
   const rotulo = rotuloDaRede(plataforma);
   return h('div', { class: 'feed-post-topo' },
     h('img', { src: AVATAR, alt: '' }),
     h('div', null, h('span', { texto: nome }), h('small', { texto: formato ? `${rotulo} · ${formato}` : rotulo })),
-    h('button', { class: 'feed-fechar', type: 'button', 'aria-label': 'Fechar prévia', onclick: aoFechar }, iconeSvg('fechar')));
+    typeof aoFechar === 'function' ? h('button', { class: 'feed-fechar', type: 'button', 'aria-label': 'Fechar prévia', onclick: aoFechar }, iconeSvg('fechar')) : null);
 }
 
 // Liga o ciclo de vida da janela. `aoFechar` roda antes do foco voltar (pausa, limpeza).

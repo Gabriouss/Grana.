@@ -33,12 +33,15 @@ globalThis.document = { createElementNS: no };
   assert.deepEqual(textos(topoDaPrevia(h, { formato: rotuloDaPrevia(video) })), ['grana.', `${ROTULO_PREVIA} · Vídeo · sem destino planejado`]);
   assert.deepEqual(textos(topoDaPrevia(h, {})), ['grana.', ROTULO_PREVIA]);
 
-  // AUD-15: o cabeçalho usa a rede recebida.
+  // AUD-15: o cabeçalho usa a rede recebida; AUD-16: sem ação de fechar, não há botão Fechar.
+  const botao = (n) => !!n && typeof n === 'object' && (n.tag === 'button' || (n.filhos || []).some(botao));
   const fb = topoDaPrevia(h, { nome: 'Grana. (Página)', formato: 'Feed', plataforma: 'facebook', aoFechar: null });
   assert.deepEqual(textos(fb), ['Grana. (Página)', 'Prévia estimada do Facebook · Feed']);
+  assert.equal(botao(fb), false, 'prévia inline sem Fechar sem ação');
   const ig = topoDaPrevia(h, { formato: 'Feed', plataforma: 'instagram', aoFechar: () => {} });
   assert.deepEqual(textos(ig), ['grana.', 'Prévia estimada do Instagram · Feed']);
+  assert.equal(botao(ig), true, 'janela com fechamento mantém o botão');
   assert.deepEqual(textos(topoDaPrevia(h, { formato: 'Feed', plataforma: 'outra' })), ['grana.', 'Prévia estimada · Feed'], 'rede desconhecida não vira Instagram');
 
-  console.log('admin-feed-rotulo-previa: tipo de mídia e destino separados, rede do destino no cabeçalho OK');
+  console.log('admin-feed-rotulo-previa: tipo de mídia e destino separados, rede do destino no cabeçalho e Fechar só com ação OK');
 })().catch((e) => { console.error(e); process.exit(1); });

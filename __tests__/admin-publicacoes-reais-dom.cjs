@@ -269,11 +269,12 @@ const job = (contaId, rede, estado, extra = {}) => ({
     await page.getByRole('button', { name: 'Gerar prévia dos destinos' }).click();
     await page.locator('.pub-real-previa-destino').first().waitFor({ timeout: 15000 });
     ok(await page.locator('.pub-real-previa-destino').count() === 2, `${width}px: uma prévia por destino`);
-    // AUD-15: o cabeçalho de cada cartão diz a rede do próprio destino.
+    // AUD-15/16: o cabeçalho de cada cartão diz a rede do próprio destino, e a prévia inline não tem Fechar sem ação.
     const redesDaPrevia = await page.locator('.pub-real-previa-destino').evaluateAll((cs) => cs.map((c) => [
       c.querySelector('.feed-post-topo small')?.textContent || '', (c.querySelector('.pub-real-previa-horario')?.textContent || '').split(' · ')[0]]));
     ok(new Set(redesDaPrevia.map(([, rede]) => rede)).size === 2 && redesDaPrevia.every(([topo, rede]) => topo.startsWith(`Prévia estimada do ${rede} ·`)),
       `${width}px: cabeçalho da prévia diz a rede do destino (${JSON.stringify(redesDaPrevia)})`);
+    ok(await page.locator('.pub-real-previa-destino .feed-fechar').count() === 0, `${width}px: prévia inline sem botão Fechar sem ação`);
     if (process.env.DEPURA && !(await semOverflow())) console.log(await page.evaluate(() => [...document.querySelectorAll('.pub-real-previa *, .pub-real-previews *')].filter((n) => n.getBoundingClientRect().right > innerWidth + 1).slice(0, 6).map((n) => n.tagName + '.' + n.className + ' ' + Math.round(n.getBoundingClientRect().right))));
     ok(await semOverflow(), `${width}px: sem overflow com a prévia aberta`);
     const corpoTexto = await page.locator('main, .tela, body').first().innerText();
