@@ -41,6 +41,14 @@ ast.walkDecls((d) => {
 assert.deepEqual(soltas, [], 'nenhuma cor escrita à mão fora dos tokens');
 assert.deepEqual(veus, [], 'todo véu de janela usa um token de scrim');
 
+// Aviso não se marca com faixa grossa num lado só (C.3): atenção usa borda de 1px e fundo âmbar, como .alerta-atencao.
+const faixas = [];
+ast.walkDecls(/^border-(left|right|inline-start|inline-end)$/, (d) => {
+  const px = /(\d+(?:\.\d+)?)px/.exec(d.value);
+  if (px && Number(px[1]) > 1 && !/(^|[\s,])\.ds-/.test(d.parent.selector)) faixas.push(`${d.parent.selector}: ${d.prop} ${d.value}`);
+});
+assert.deepEqual(faixas, [], 'nenhuma faixa lateral colorida acima de 1px');
+
 (async () => {
   const { browser, page } = await abrirAmbiente(1280);
   try {

@@ -961,10 +961,9 @@ dialog.modal[open] { animation: modal-entra 220ms var(--ease-saida); }
   max-width: var(--medida);
   margin: var(--s-md) 0 0;
   padding: var(--s-md);
-  border: 1px solid var(--rule-strong);
-  border-inline-start: 3px solid var(--atencao);
+  border: 1px solid var(--atencao-borda);
   border-radius: var(--r-md);
-  background: var(--paper-deep);
+  background: var(--atencao-fundo);
   color: var(--ink-soft);
   line-height: var(--lh-corpo);
   overflow-wrap: anywhere;
@@ -1641,12 +1640,11 @@ details.aprovacao-mais[open] { display: flex; flex-direction: column; gap: var(-
   gap: var(--s-sm);
   min-width: 0;
   padding: var(--s-md);
-  border: 1px solid var(--rule-strong);
-  border-left: 3px solid var(--atencao);
+  border: 1px solid var(--atencao-borda);
   border-radius: var(--r-md);
-  background: var(--paper-deep);
+  background: var(--atencao-fundo);
 }
-.demanda-custo > .campo-ajuda { margin: 0; }
+.demanda-custo > .campo-ajuda { margin: 0; color: var(--ink-soft); } /* ink-faint fica abaixo de 4.5:1 no fundo âmbar */
 
 @media (max-width: 1023px) {
   .demanda-comparacao { grid-template-columns: minmax(0, 1fr); }
