@@ -284,7 +284,9 @@ function abrirPost(area, lista, indice, ctx) {
       h('a', { class: 'botao', href: '#/marketing/calendario', texto: p.data ? 'Ver no calendário' : 'Marcar data no calendário' }),
       lista.length > 1 ? navPost(h, area, lista, indice, ctx, dlg) : null));
 
-  corpo.append(midiaEl, h('div', { class: 'feed-post-lado' }, topo, legenda, editorial, meta));
+  corpo.append(midiaEl, h('div', { class: 'feed-post-lado' }, topo,
+    h('p', { class: 'campo-ajuda', texto: 'A peça aparece inteira nesta janela. A grade mostra um recorte.' }),
+    legenda, editorial, meta));
 
   ligarDialogo(dlg, { devolverFoco, aoFechar: pausarTudo });
   dlg.querySelectorAll('a[href^="#/"]').forEach((a) => a.addEventListener('click', () => dlg.close()));

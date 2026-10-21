@@ -1,0 +1,21 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {playwright,pagina}=require('./helpers/admin-ui-local.cjs');
+const PECA={id:'a'.repeat(16),versao:'b'.repeat(40),nomeExibicao:'Imagem integral fixture',tipo:'imagem',aprovada:true,arquivos:[{url:'/qa/3x4.png'}]};
+(async()=>{const browser=await playwright().chromium.launch({headless:true});let checks=0;
+try{for(const width of [390,1440]){
+ const {page,errors}=await pagina(browser,{width,dados:{'/api/marketing/feed':{pecas:[PECA]},'/api/marketing/feed-real':{status:'disponivel',perfil:{usuario:'grana'},posts:[],vinculadas:[]}}});
+ await page.goto('http://127.0.0.1:4394/#/marketing/feed');
+ const image=page.locator('.feed-proximas-grade .feed-celula img');
+ await image.waitFor();await image.scrollIntoViewIfNeeded();await page.waitForFunction(()=>document.querySelector('.feed-proximas-grade img')?.naturalWidth>0);
+ const read=()=>image.evaluate(el=>{const b=el.getBoundingClientRect();return {src:el.getAttribute('src'),ratio:b.width/b.height,fit:getComputedStyle(el).objectFit,w:el.naturalWidth,h:el.naturalHeight};});
+ const a=await read();assert.equal(a.fit,'cover');assert.ok(Math.abs(a.ratio-4/5)<0.02);checks+=2;
+ await page.getByRole('button',{name:'Grade 1:1',exact:true}).click();const b=await read();assert.ok(Math.abs(b.ratio-1)<0.02);assert.equal(b.src,a.src);checks+=2;
+ await page.locator('.feed-proximas-grade .feed-celula').click();const dialog=page.locator('dialog[open]');
+ assert.equal(await dialog.getByText('A peça aparece inteira nesta janela. A grade mostra um recorte.',{exact:true}).count(),1,`${width}: inspeção integral é distinguível do recorte`);checks++;
+ await page.waitForFunction(()=>document.querySelector('dialog[open] .feed-slide img')?.naturalWidth>0);
+ const m=await dialog.locator('.feed-slide img').evaluate(el=>{const b=el.getBoundingClientRect(),area=el.closest('.feed-post-midia').getBoundingClientRect(),k=Math.min(b.width/el.naturalWidth,b.height/el.naturalHeight);return {fit:getComputedStyle(el).objectFit,w:el.naturalWidth,h:el.naturalHeight,desenhoW:k*el.naturalWidth,desenhoH:k*el.naturalHeight,areaW:area.width,areaH:area.height};});
+ assert.ok(m.fit==='contain'&&m.w===a.w&&m.h===a.h&&m.desenhoW<=m.areaW+1&&m.desenhoH<=m.areaH+1);checks++;
+ assert.deepEqual(errors,[]);await page.close();
+}console.log(`admin-feed-grade-inspecao-dom: ${checks} checks, crop4:5/1:1 preservado e inspeção integral390/1440 OK`);
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
