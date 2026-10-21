@@ -83,6 +83,24 @@ export function capacidadeDaConta(conta, formato) {
   return { disponivel: true, capacidade, motivos: [] };
 }
 
+// O catálogo informa MIME de transporte: a captura converte PNG aprovado em JPEG.
+// Capacidade da conta sozinha não comprova compatibilidade da peça selecionada.
+export function capacidadeDaPeca(peca, rede, formato) {
+  const midias = peca?.midias;
+  if (!Array.isArray(midias) || !midias.length) return { disponivel: false, motivos: ['midia-nao-conferida'] };
+  const imagem = m => m?.tipo === 'imagem' && ['image/jpeg', 'image/png'].includes(m.mime);
+  const video = m => m?.tipo === 'video' && m.mime === 'video/mp4';
+  const compativel = REDES.has(rede) && FORMATOS_PUBLICACAO.includes(formato)
+    && midias.length <= 10 && midias.every(m => imagem(m) || video(m))
+    && (formato === 'carrossel' ? midias.length >= 2 : midias.length === 1)
+    && (formato !== 'feed' || imagem(midias[0]))
+    && (formato !== 'reels' || video(midias[0]))
+    && (rede !== 'facebook' || (formato !== 'stories' && (formato !== 'carrossel' || midias.every(imagem))))
+    && (rede !== 'instagram' || (midias.every(m => !imagem(m) || m.mime === 'image/jpeg')
+      && (formato !== 'reels' || !peca.capa || peca.capa.mime === 'image/jpeg')));
+  return { disponivel: compativel, motivos: compativel ? [] : ['midia-incompativel'] };
+}
+
 function partesNoFuso(instantaneo, fuso = FUSO_PUBLICACAO) {
   const partes = new Intl.DateTimeFormat('en-CA', {
     timeZone: fuso, year: 'numeric', month: '2-digit', day: '2-digit',
@@ -218,6 +236,9 @@ export function criarClientePublicacoes(ctx) {
       }
       if (!Array.isArray(contas) || destinos.some((d) => !validarDestino(d, contas))) {
         throw erroContrato('destino-invalido', 'Uma conta ou capacidade deixou de estar verificada. Atualize os destinos antes de continuar.');
+      }
+      if (!job && peca.midias && destinos.some(d => !capacidadeDaPeca(peca, d.rede, d.formato).disponivel)) {
+        throw erroContrato('midia-incompativel', 'A mídia desta peça não é compatível com um dos destinos selecionados. Escolha os destinos novamente.');
       }
       const chaves = destinos.map((d) => `${d?.contaId}|${d?.formato}`);
       if (new Set(chaves).size !== destinos.length || destinos.some((d) => !d

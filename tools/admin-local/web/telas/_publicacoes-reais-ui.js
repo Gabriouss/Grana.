@@ -3,7 +3,7 @@
 import { iconeSvg, montarMidia, topoDaPrevia } from './_previa-publicacao.js';
 import {
   API_PUBLICACOES, FORMATOS_PUBLICACAO, FUSO_PUBLICACAO, ROTULOS_ESTADO,
-  capacidadeDaConta, caminhoMidia, criarClientePublicacoes, horarioLocalParaUtc,
+  capacidadeDaConta, capacidadeDaPeca, caminhoMidia, criarClientePublicacoes, horarioLocalParaUtc,
   horarioUtcParaLocal, previaConfirmavel, resumirLote, rotuloDataHorario,
   antecedenciaMinima, conferirHorario, sugestaoHorario, mensagemHumana, fraseDoMotivo, descreverJobReal, jobAtivo, quandoCurto, reagendamentoPermitido, estadoApresentacaoJob,
 } from './_publicacoes-reais.js';
@@ -140,6 +140,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     const ativo = globalThis.document?.activeElement;
     const foco = ativo && compositor.contains(ativo) ? { name: ativo.name, value: ativo.value } : null;
     liberarPreview();
+    conferirDestinosDaPeca();
     avisar('Seleção alterada. Gere uma nova prévia antes de confirmar.');
     desenharCompositor();
     if (foco) [...compositor.querySelectorAll('input')].find((i) => i.name === foco.name && i.value === foco.value)?.focus();
@@ -156,6 +157,17 @@ export async function montarReal(raiz, ctx, integracao = null) {
     }).filter(Boolean);
   }
   function chaveDestino(contaId, formato) { return `${contaId}\u001f${formato}`; }
+  function capacidadeSelecionada(conta, formato) {
+    const cap = capacidadeDaConta(conta, formato);
+    return cap.disponivel ? capacidadeDaPeca(pecaSelecionada(), conta.rede, formato) : cap;
+  }
+  function conferirDestinosDaPeca() {
+    selecaoDestinos = new Set([...selecaoDestinos].filter(key => {
+      const [contaId, formato] = key.split('\u001f');
+      const conta = capacidades?.contas.find(c => c.contaId === contaId);
+      return conta && capacidadeSelecionada(conta, formato).disponivel;
+    }));
+  }
   function contaPorId(id, rede) { return capacidades?.contas.find((c) => c.contaId === id && c.rede === rede) || null; }
   function nomeDestino(d) { return contaPorId(d?.contaId, d?.rede)?.rotulo || `${REDES[d?.rede] || 'Conta'} indisponível`; }
 
@@ -225,7 +237,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
 
     const contas = capacidades.contas.map((conta) => {
       const estados = FORMATOS_PUBLICACAO.map((formato) => {
-        const cap = capacidadeDaConta(conta, formato);
+        const cap = capacidadeSelecionada(conta, formato);
         const key = chaveDestino(conta.contaId, formato);
         return h('label', { class: `pub-real-formato${cap.disponivel ? '' : ' indisponivel'}` },
           h('input', { type: 'checkbox', name: `destino-${conta.contaId}`, value: formato,
@@ -310,11 +322,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
       vigiar();
       const validos = new Set(catalogo.pecas.map((p) => p.id));
       if (!validos.has(selecaoPeca)) selecaoPeca = catalogo.pecas[0]?.id || '';
-      selecaoDestinos = new Set([...selecaoDestinos].filter((key) => {
-        const [contaId, formato] = key.split('\u001f');
-        const conta = capacidades.contas.find((c) => c.contaId === contaId);
-        return !!conta && capacidadeDaConta(conta, formato).disponivel;
-      }));
+      conferirDestinosDaPeca();
       disponibilidade.replaceChildren(
         h('p', { class: 'pub-real-dado-real', texto: `CONTRATO REAL · ${plural(cap.contas.length, 'conta', 'contas')} · ${plural(catalogo.pecas.length, 'peça aprovada', 'peças aprovadas')} · fila ${page1.limitado ? 'parcial' : 'consultada'}` }),
         h('p', { class: 'campo-ajuda', texto: 'O navegador não envia IDs de conta digitados, URLs remotas ou dados de autorização.' }));
@@ -335,7 +343,10 @@ export async function montarReal(raiz, ctx, integracao = null) {
       compositor.replaceChildren(); controles.replaceChildren(); lista.replaceChildren();
       pausasVisiveis.replaceChildren();
       erroLegivel(err, 'A leitura do agendamento real');
-    } finally { busy(false); }
+    } finally {
+      if (pendencia) desenharConsultaPendente();
+      busy(false);
+    }
   }
 
   function desenharControles() {
@@ -622,7 +633,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     relogioPrevia = setInterval(tique, 5000);
     // data-bloqueado sobrevive ao busy(false), que reabilita os demais botões de operação.
     function atualizarBotaoConfirmar() {
-      const bloqueado = !coerente || !previaConfirmavel(p) || !!(reagendamento && pendencia);
+      const bloqueado = !coerente || !previaConfirmavel(p) || !!pendencia;
       botaoConfirmar.dataset.bloqueado = String(bloqueado);
       botaoConfirmar.disabled = ocupado || bloqueado;
     }
@@ -644,14 +655,14 @@ export async function montarReal(raiz, ctx, integracao = null) {
   }
 
   async function confirmarPrevia(p) {
-    if (p !== previa || !previaConfirmavel(p) || ocupado || (reagendamento && pendencia)) return;
+    if (p !== previa || !previaConfirmavel(p) || ocupado || pendencia) return;
     const substituicao = reagendamento;
     const destinos = destinosSelecionados();
     const tipo = substituicao ? 'reagendar' : 'confirmar';
     const { k: chaveIntencao, idempotencia } = chaveDe(tipo, p.previaId, p.previaHash, p.revisao);
     const data = p.destinos?.[0]?.publicarEm || p.agendarPara;
     if (ctx.obsoleta() || ocupado || p !== previa) return;
-    pendencia = { idempotencia, previaId: p.previaId, tipo };
+    pendencia = { idempotencia, previaId: p.previaId, chaveIntencao, tipo };
     busy(true);
     try {
       const lote = substituicao ? await cliente.comando('reagendar', {
@@ -682,10 +693,8 @@ export async function montarReal(raiz, ctx, integracao = null) {
       if (resultadoIncerto(err)) {
         avisar('A resposta da confirmação não chegou. Consulte o resultado pendente antes de tentar outra vez.', true);
         desenharConsultaPendente();
-        if (substituicao) {
-          const b = previewEl.querySelector('.botao-primario');
-          if (b) { b.dataset.bloqueado = 'true'; b.disabled = true; }
-        }
+        const b = previewEl.querySelector('.botao-primario');
+        if (b) { b.dataset.bloqueado = 'true'; b.disabled = true; }
       } else {
         pendencia = null;
         intencoes.delete(chaveIntencao);
@@ -695,7 +704,12 @@ export async function montarReal(raiz, ctx, integracao = null) {
     } finally { busy(false); }
   }
 
-  function resultadoIncerto(err) { return ['resultado-desconhecido', 'prazo-esgotado', 'rede', 'prazo'].includes(err?.codigo) || !err?.status; }
+  // Uma falha do servidor pode vir da leitura posterior a uma mutação já gravada.
+  // O status HTTP não prova que a confirmação/comando ficou sem efeito.
+  function resultadoIncerto(err) {
+    return ['resultado-desconhecido', 'prazo-esgotado', 'rede', 'prazo'].includes(err?.codigo)
+      || !err?.status || err.status >= 500 || err.status === 408;
+  }
 
   function desenharConsultaPendente() {
     const anterior = raiz.querySelector('.pub-real-consulta-pendente');
@@ -721,16 +735,18 @@ export async function montarReal(raiz, ctx, integracao = null) {
         return;
       }
       const reagendado = pendencia.tipo === 'reagendar';
-      if (reagendado) {
+      const confirmacao = ['confirmar', 'reagendar'].includes(pendencia.tipo);
+      if (confirmacao) {
         liberarPreview(); reagendamento = null;
         compositor.closest?.('dialog')?.close?.();
       }
+      intencoes.delete(pendencia.chaveIntencao);
       pendencia = null;
       raiz.querySelector('.pub-real-consulta-pendente')?.remove();
       desenharLista();
       const texto = `Resultado conferido pela chave idempotente: ${resumirLote(d.jobs).rotulo}.`;
       avisar(texto);
-      if (reagendado) ctx.aviso?.(texto, 'ok');
+      if (confirmacao) ctx.aviso?.(texto, 'ok');
       if (d.jobs.length) await atualizarFilaSemBloquear();
       if (reagendado) await focarFeedbackReagendamento(texto);
     } catch (err) { if (!encerrada && !ctx.obsoleta()) erroLegivel(err, 'A consulta pela chave preservada'); }
@@ -760,7 +776,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
       rotuloBotao: 'Gerar nova prévia', campos: [
         { nome: 'agendarParaLocal', rotulo: `Novo horário (${FUSO_PUBLICACAO})`, tipo: 'datetime-local', valor: localAtual, obrigatorio: true },
       ] });
-    if (!novaHora || ocupado || ctx.obsoleta()) return;
+    if (!novaHora || ocupado || pendencia || ctx.obsoleta()) return;
     let agendarPara;
     try { agendarPara = horarioLocalParaUtc(novaHora.agendarParaLocal); }
     catch (err) { avisar(err.message, true); return; }
@@ -778,6 +794,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
 
   async function executarComando(acao, campos, metadata) {
     if (ocupado) return;
+    if (pendencia) { avisar('Consulte o resultado pendente antes de iniciar outra operação.', true); return; }
     pendencia = { ...metadata, tipo: acao };
     busy(true);
     try {
@@ -868,6 +885,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     if (!Array.isArray(itens) || !itens.length) return 'Motivo de bloqueio indisponível; não selecionar';
     const rotulos = {
       'midia-incompativel': 'O formato de uma imagem ou vídeo não é aceito por esta rede. Peça a preparação do arquivo no formato compatível e gere a prévia novamente.',
+      'midia-nao-conferida': 'Os tipos de mídia desta peça ainda não foram conferidos pelo servidor local. Atualize o catálogo antes de escolher os destinos.',
       'sem-leitura-de-volta': 'A rede não permite conferir o resultado deste formato automaticamente.',
       'capacidade-nao-comprovada': 'Este formato ainda não foi verificado para esta conta.',
       'formato-nao-suportado': 'Este formato não está disponível nesta rede.',

@@ -60,6 +60,21 @@ function criarBackend({ configuracao = config, rede = fetch, cliente: criarClien
    no simulador e nunca presume conta, capacidade ou sucesso. */
 const PRAZO_REAL_MS = 12_000;
 const PRAZO_PREVIA_MS = 120_000; // captura + upload privado de até 64 MB antes da prévia
+// Mesmo contrato do preparo Graph e da elegibilidade SQL. O manifesto é da captura
+// real, após a conversão PNG→JPEG; rejeita antes de RPC/assinatura/upload privado.
+function midiaCompativel(dados, rede, formato) {
+  const midias = dados?.midias;
+  const imagem = m => m?.tipo === 'imagem' && ['image/jpeg', 'image/png'].includes(m.mime);
+  const video = m => m?.tipo === 'video' && m.mime === 'video/mp4';
+  return ['instagram', 'facebook'].includes(rede) && ['feed', 'carrossel', 'reels', 'stories'].includes(formato)
+    && Array.isArray(midias) && midias.length >= 1 && midias.length <= 10
+    && midias.every(m => imagem(m) || video(m))
+    && (formato === 'carrossel' ? midias.length >= 2 : midias.length === 1)
+    && (formato !== 'feed' || imagem(midias[0])) && (formato !== 'reels' || video(midias[0]))
+    && (rede !== 'facebook' || (formato !== 'stories' && (formato !== 'carrossel' || midias.every(imagem))))
+    && (rede !== 'instagram' || (midias.every(m => !imagem(m) || m.mime === 'image/jpeg')
+      && (formato !== 'reels' || !dados.capa || dados.capa.mime === 'image/jpeg')));
+}
 function criarPublicacoesReais({ env, remoto, cliente, relogio, log, rede, estado: estadoInjetado, capturar: capturarInjetado }) {
   const modulo = () => carregar('supabase/functions/_shared/admin-publicacoes-reais.ts');
   let op, importador, estadoLocal, capturador;
@@ -155,6 +170,9 @@ function criarPublicacoesReais({ env, remoto, cliente, relogio, log, rede, estad
         const cap = await capturar(raiz, p.pecaId, p.versao, { signal: ctx.signal, jpeg: true });
         try {
           const m = cap.manifesto;
+          if (p.destinos.some(d => !midiaCompativel(m, d.rede, d.formato))) {
+            throw new ErroMarketing('midia-incompativel', 'A mídia desta peça não é compatível com os destinos selecionados. Escolha os destinos novamente.', 409);
+          }
           const ini = await imp().iniciar(cliente(), {
             pecaId: cap.pecaId, versao: cap.versao, aceiteId: cap.aceiteSha256, aceiteRevisao: 1,
             legenda: m.legenda, legendaSha256: m.legendaSha256, titulo: String(cap.titulo || '').slice(0, 200),

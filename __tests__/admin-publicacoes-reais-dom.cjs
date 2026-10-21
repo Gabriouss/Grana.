@@ -39,7 +39,8 @@ const PNG = gerarPng(240, 300);
 const sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
 const LEGENDA = 'Livre para gastar do mês, sem susto.';
 const uuid = () => crypto.randomUUID();
-const PECA = { id: 'a1b2c3d4e5f60718', titulo: 'Carrossel Livre para gastar', versao: 'c'.repeat(40), tipo: 'Carrossel', aprovada: true, bloqueios: [] };
+const PECA = { id: 'a1b2c3d4e5f60718', titulo: 'Imagem Livre para gastar', versao: 'c'.repeat(40), tipo: 'imagem',
+  midias: [{ tipo: 'imagem', mime: 'image/jpeg' }], aprovada: true, bloqueios: [] };
 const cap = (formato, estado = 'disponivel', motivos = []) => ({ formato, estado, revisao: 1, motivos });
 const CONTAS = [
   { contaId: 'ig-1', rede: 'instagram', rotulo: '@grana.app', revisao: 3, conexao: 'verificada', pausada: false,
@@ -48,6 +49,7 @@ const CONTAS = [
     capacidades: [cap('feed'), cap('carrossel', 'nao-verificado', ['capacidade-nao-comprovada']), cap('reels', 'nao-verificado', ['capacidade-nao-comprovada']), cap('stories', 'nao-suportado', ['formato-nao-suportado'])] },
 ];
 const LOTE = uuid();
+const AGORA_FIXTURE = Date.parse('2026-10-19T12:00:00-03:00');
 const job = (contaId, rede, estado, extra = {}) => ({
   jobId: uuid(), loteId: LOTE, snapshotId: uuid(), revisao: 1, estado, atualizadoEm: '2026-10-18T12:00:00.000Z',
   destino: { contaId, rede, formato: 'feed', publicarEm: '2026-10-20T15:00:00.000Z', fuso: 'America/Sao_Paulo' },
@@ -61,6 +63,15 @@ const job = (contaId, rede, estado, extra = {}) => ({
 
   for (const width of (process.env.QA_LARGURAS ? process.env.QA_LARGURAS.split(',').map(Number) : [390, 768, 1024, 1280, 1440])) {
     const page = await browser.newPage({ viewport: { width, height: 960 } });
+    // O calendário sintético de20/10 não expira com o relógio da máquina.
+    // Mantém timers reais; apenas Date/Date.now representam a data da fixture.
+    await page.addInitScript(() => {
+      const Original = Date, agora = Original.parse('2026-10-19T12:00:00-03:00');
+      globalThis.Date = class extends Original {
+        constructor(...args) { super(...(args.length ? args : [agora])); }
+        static now() { return agora; }
+      };
+    });
     const posts = [];
     let confirmarTentativas = 0; let leituraParcial = false; let catalogoDesatualizado = false; let leiturasCatalogo = 0;
     const jobs = [job('ig-1', 'instagram', 'agendado-na-meta'), job('fb-1', 'facebook', 'precisa-conferir')];
@@ -116,7 +127,7 @@ const job = (contaId, rede, estado, extra = {}) => ({
         posts.push(body);
         if (body.acao === 'prever') {
           return route.fulfill(envelope(real({
-            previaId: uuid(), previaHash: 'f'.repeat(64), revisao: 4, expiraEm: new Date(Date.now() + 600000).toISOString(), podeConfirmar: true,
+            previaId: uuid(), previaHash: 'f'.repeat(64), revisao: 4, expiraEm: new Date(AGORA_FIXTURE + 600000).toISOString(), podeConfirmar: true,
             snapshot: { snapshotId: body.jobId ? reagendavel.snapshotId : uuid(), estado: 'pronto', pecaId: body.jobId ? 'd'.repeat(16) : PECA.id, versao: body.jobId ? 'a'.repeat(40) : PECA.versao, legenda: LEGENDA, legendaSha256: sha(Buffer.from(LEGENDA)),
               midias: [{ ordem: 0, tipo: 'imagem', mime: 'image/png', sha256: sha(PNG) }], capa: null, motivos: [] },
             destinos: body.destinos.map((d) => ({ ...d, estado: 'pronto', motivos: [], publicarEm: body.agendarPara })),
@@ -243,7 +254,7 @@ const job = (contaId, rede, estado, extra = {}) => ({
 
     // formatos sem capacidade comprovada não são selecionáveis
     const bloqueados = await page.locator('.pub-real-formato input:disabled').count();
-    ok(bloqueados === 5, `${width}px: 5 formatos sem capacidade comprovada ficam desabilitados (achou ${bloqueados})`);
+    ok(bloqueados === 6, `${width}px: capacidades e mídia única bloqueiam 6 formatos incompatíveis (achou ${bloqueados})`);
 
     await page.getByLabel('Instagram @grana.app, Feed').check();
     await page.getByLabel('Facebook Grana. (Página), Feed').check();
@@ -251,7 +262,7 @@ const job = (contaId, rede, estado, extra = {}) => ({
     await page.locator('[name="agendarParaLocal"]').fill('2026-12-01T10:30');
     const resumo = await page.locator('.pub-real-horario-resumo').innerText();
     // 19/10: o autor lê quando o Grana. começa a preparar e quando publica (horário de Brasília), sem ISO/UTC na cara.
-    ok(/começa a preparar em .*01\/12.*10:00 e publica em .*01\/12.*10:30/.test(resumo) && !/UTC|Z\b/.test(resumo), `${width}px: horário diz quando prepara e publica (${resumo.slice(0, 90)}...)`);
+    ok(/começa a preparar em .*01\/12.*10:15 e publica em .*01\/12.*10:30/.test(resumo) && !/UTC|Z\b/.test(resumo), `${width}px: horário diz quando prepara e publica (${resumo.slice(0, 90)}...)`);
     ok(await page.getByText('Use o horário de Brasília', { exact: false }).count() >= 1, `${width}px: fuso explicado ao autor`);
     await page.screenshot({ path: path.join(OUT, `real-compositor-${width}.png`), fullPage: true });
 
@@ -282,20 +293,20 @@ const job = (contaId, rede, estado, extra = {}) => ({
     await page.evaluate(() => { Date.now = window.qaDateNow; });
     await page.screenshot({ path: path.join(OUT, `real-previa-${width}.png`), fullPage: true });
 
-    // 1ª tentativa perde a resposta; a repetição tem de usar a MESMA chave idempotente (C3)
+    // Resposta perdida: conserva a chave e consulta, sem reenviar a confirmação.
     await botaoConfirmar.click();
     await page.locator('.pub-real-consulta-pendente').waitFor({ timeout: 15000 });
     ok(await page.getByRole('button', { name: 'Autorizar agendamento real' }).count() === 0, `${width}px: nenhum segundo modal de autorização`);
     ok(await page.locator('.pub-real-consulta-pendente details').getAttribute('open') === null, `${width}px: chave de consulta fica em detalhes recolhidos`);
     ok(posts.filter((b) => b.acao === 'confirmar').length === 1, `${width}px: timeout não dispara reenvio automático`);
-    await botaoConfirmar.click();
-    // R9: fecha a janela, avisa "Agendado: Instagram e Facebook, ..." e leva ao mês da publicação (dezembro).
-    await page.waitForFunction(() => [...document.querySelectorAll('.avisos .aviso')].some((a) => /^Agendado: Instagram e Facebook, em .*01\/12.*10:30\. Acompanhe/.test(a.textContent)), null, { timeout: 15000 });
-    await page.waitForFunction(() => location.hash.includes('mes=2026-12'), null, { timeout: 15000 });
-    ok(await page.locator('.pub-real-compositor:visible').count() === 0, `${width}px: compositor fecha depois de confirmar`);
+    ok(await botaoConfirmar.isDisabled(), `${width}px: confirmação fica bloqueada enquanto consulta está pendente`);
+    await botaoConfirmar.evaluate(el => el.click());
+    await page.getByRole('button', { name: 'Consultar resultado pendente', exact: true }).click();
+    await page.waitForFunction(() => [...document.querySelectorAll('.avisos .aviso')].some((a) => /Resultado conferido pela chave idempotente/.test(a.textContent)), null, { timeout: 15000 });
+    ok(await page.locator('.pub-real-compositor:visible').count() === 0, `${width}px: consulta positiva encerra compositor`);
     const conf = posts.filter((b) => b.acao === 'confirmar');
-    ok(conf.length === 2 && conf[0].idempotencia === conf[1].idempotencia && /^[0-9a-f-]{36}$/.test(conf[0].idempotencia),
-      `${width}px: repetição após timeout reutiliza a mesma chave idempotente`);
+    ok(conf.length === 1 && /^[0-9a-f-]{36}$/.test(conf[0].idempotencia),
+      `${width}px: resposta perdida gera uma confirmação e recuperação por consulta`);
     ok(conf.every((b) => b.confirmacao === true && b.revisaoEsperada === 4 && b.previaHash === 'f'.repeat(64)), `${width}px: confirmar leva hash, revisão e confirmação`);
     ok(!JSON.stringify(posts).match(/token|segredo|https?:\/\/[^"]*supabase/i), `${width}px: nenhum segredo/URL privada nos pedidos`);
 

@@ -80,6 +80,22 @@ function criarPublicacoes({ remoto, catalogo = listarPecas, obterPeca = obterPec
   // Só peça com aceite datado válido desta versão é selecionável (mesmo predicado da captura).
   const motivo = (raiz, p) => require('./snapshot-local.cjs').motivoSemAceite(raiz, p);
   const MENSAGEM_SEM_ACEITE = 'A peça precisa de aceite datado desta versão.';
+  const midiaDoCatalogo = (raiz, a) => {
+    let fd;
+    try {
+      const rel = a?.url?.startsWith('/') ? decodeURIComponent(a.url.slice(1)) : '';
+      if (!/^docs\/marketing\/\d{4}-\d{2}\/semana-[^/]+\/(?:para-aprovacao|aprovados|historico)\//.test(rel)) return null;
+      const fs = require('node:fs');
+      fd = fs.openSync(caminhoSeguro(raiz, rel), 'r');
+      const inicio = Buffer.alloc(12);
+      const lidos = fs.readSync(fd, inicio, 0, 12, 0);
+      const mime = require('./previa-conteudo.cjs').detectarMime(inicio.subarray(0, lidos));
+      const tipo = mime?.startsWith('image/') ? 'imagem' : mime === 'video/mp4' ? 'video' : null;
+      // Somente a captura posterior comprova bytes/hash/aceite da versão.
+      return tipo && (!a.tipo || tipo === a.tipo) ? { tipo, mime: mime === 'image/png' ? 'image/jpeg' : mime } : null;
+    } catch { return null; }
+    finally { if (fd !== undefined) require('node:fs').closeSync(fd); }
+  };
   return {
     catalogo(raiz, filtros = {}) {
       fechado(filtros, ['semana', 'tipo']);
@@ -88,6 +104,8 @@ function criarPublicacoes({ remoto, catalogo = listarPecas, obterPeca = obterPec
         const m = motivo(raiz, p);
         const imagem = p.capa?.url || p.arquivos?.find(a => a.tipo === 'imagem')?.url;
         return { id: p.id, titulo: p.nomeExibicao || p.titulo, nomeExibicao: p.nomeExibicao, versao: p.versao, tipo: p.tipo, aprovada: !m,
+          midias: !m && Array.isArray(p.arquivos) ? p.arquivos.map(a => midiaDoCatalogo(raiz, a)) : [],
+          capa: !m && p.capa ? midiaDoCatalogo(raiz, p.capa) || { tipo: 'imagem', mime: null } : null,
           miniaturaUrl: !m && imagem ? `/api/marketing/publicacoes/miniatura?pecaId=${p.id}` : null,
           bloqueios: m ? [{ codigo: m, mensagem: MENSAGEM_SEM_ACEITE }] : [] };
       }), total: pecas.length };

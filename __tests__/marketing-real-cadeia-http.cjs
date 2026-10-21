@@ -2,6 +2,7 @@
 // Cadeia SQL real → módulo remoto → adaptador → Node → HTTP autenticado → consumidor.
 // Fixture independente do R0 v9, que permanece byte a byte intacto.
 // Transportes Supabase/Storage/Graph dublados; somente HTTP loopback, sem .env.
+// --carrossel executa a cadeia de mídia; --p2 executa somente a recuperação.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -491,7 +492,9 @@ async function main() {
     assert.equal((await terminal.json()).processados, 0); assert.equal(chamadas.length, antes);
     assert.ok(!JSON.stringify({ logs, detalhe }).includes(token));
     assert.equal(fs.readdirSync(raiz).some(n => n.startsWith('grana-snapshot-')), false);
-    await testarRecuperacao({ db, cliente, client, http, peca, contas, ig, fb, secret, env, eventos, objetos });
+    if (!process.argv.includes('--carrossel')) {
+      await testarRecuperacao({ db, cliente, client, http, peca, contas, ig, fb, secret, env, eventos, objetos });
+    }
     console.log('marketing-real-cadeia-http: OK — SQL/remoto/adaptador/HTTP senha+TOTP+CSRF/consumidor; H1 lista+detalhe; 21 chamadas/recibos simulados.');
   } finally {
     if (http) await http.fechar();
