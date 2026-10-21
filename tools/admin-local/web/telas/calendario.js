@@ -133,16 +133,21 @@ const formatoDoIcone = (tipo, formatoJob) => FORMATO_ICONE[String(formatoJob || 
 const ESTADOS_ATENCAO = new Set(['precisa-conferir', 'falhou', 'cancelamento-pendente', 'suspenso-para-revisao']);
 const ESTADOS_CONHECIDOS = new Set(['planejado', 'programado-no-painel', 'preparando', 'agendado-na-meta', 'publicado', 'cancelado', ...ESTADOS_ATENCAO]);
 export function estadoDoIcone(item, publicado) {
-  const reais = (item.jobs || []).filter((j) => j.estado !== 'cancelado');
-  const textos = (lista) => lista.map((j) => { const d = descreverJobReal(j); return `${d.rede}: ${d.texto}`; }).join('; ');
+  const todos = item.jobs || [];
+  const historico = (item.historico || []).filter((j) => !todos.some((outro) => outro.jobId === j.jobId));
+  const reais = todos.filter((j) => j.estado !== 'cancelado');
+  const textos = (lista) => lista.map((j) => { const d = descreverJobReal(j); return `${historico.includes(j) ? 'Histórico ' : ''}${d.rede}: ${d.texto}`; }).join('; ');
+  const registros = [...todos, ...historico];
+  const resumo = `${registros.length > 1 ? `${registros.length} destinos · ` : ''}${textos(registros)}`;
   const atencao = reais.filter((j) => ESTADOS_ATENCAO.has(estadoApresentacaoJob(j)) || !ESTADOS_CONHECIDOS.has(j.estado));
-  if (atencao.length) return { chave: 'atencao', texto: textos(atencao) };
-  if ((publicado || reais.length) && reais.every((j) => j.estado === 'publicado')) return { chave: 'publicado', texto: 'Publicado' };
+  if (atencao.length) return { chave: 'atencao', texto: resumo };
+  if ((publicado || reais.length) && reais.every((j) => j.estado === 'publicado')) return { chave: 'publicado', texto: resumo || 'Publicado' };
   const preparando = reais.filter((j) => j.estado === 'preparando');
-  if (preparando.length) return { chave: 'preparando', texto: textos(reais) };
-  if (reais.length) return { chave: 'agendado', texto: textos(reais) };
+  if (preparando.length) return { chave: 'preparando', texto: resumo };
+  if (reais.length) return { chave: 'agendado', texto: resumo };
+  if (todos.length) return { chave: 'planejado', texto: resumo };
   if (item.peca?.precisaAceite) return { chave: 'atencao', texto: 'Precisa de aceite' };
-  return { chave: 'planejado', texto: item.hora ? `Planejado para ${item.hora}` : 'Planejado' };
+  return { chave: 'planejado', texto: (item.hora ? `Planejado para ${item.hora}` : 'Planejado') + (resumo ? ` · ${resumo}` : '') };
 }
 // Dica única em posição fixa: a célula do dia corta o que passa da borda, uma dica filha seria cortada.
 let dicaEl = null;
@@ -334,7 +339,7 @@ export async function montar(raiz, ctx) {
       ...abrirAoClicar(itemPrevia(i, pub)) },
       h('strong', { class: 'cal-item-titulo', texto: i.marcador && !i.principal ? `Destino de ${nomeDaPeca(i.peca)}` : nomeDaPeca(i.peca) }),
       h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Abrir prévia', onclick: () => abrirPrevia(itemPrevia(i, pub)) }),
-      h('span', { class: 'cal-item-canal', texto: pub ? 'Publicado na Meta' : reais.length ? i.marcador ? 'Mesma peça, destinos em dias diferentes' : 'Agendamento confirmado' : 'Planejado' }),
+      h('span', { class: 'cal-item-canal', texto: pub ? 'Publicado na Meta' : `${i.marcador ? 'Destinos em dias diferentes · ' : ''}${estadoDoIcone(i, pub).texto}` }),
       ...(i.publicacoes || []).filter((p) => !reais.some((j) => j.estado === 'publicado' && j.destino.rede === p.rede && linkPublicado(p.link) && linkPublicado(p.link) === linkPublicado(j.permalink))).map((p) => h('div', { class: 'cal-unico-destino' },
         h('strong', { texto: `${ROTULO_REDE[p.rede] || p.rede} · ${ROTULO_FORMATO[p.formato] || 'Post'} · Publicado` }),
         h('span', { texto: `Publicado em ${ctx.formatar.data(p.data)}` }),
