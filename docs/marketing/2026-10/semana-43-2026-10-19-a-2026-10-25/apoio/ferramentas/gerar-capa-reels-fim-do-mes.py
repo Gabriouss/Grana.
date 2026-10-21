@@ -1,18 +1,27 @@
-"""Capa 1080x1920 do Reels "Pra onde foi o dinheiro do mês" (21/10/2026).
+"""Capa 1080x1920 do Reels "Pra onde foi o dinheiro do mês" (21/10/2026), versão 2.
 
-Usa o gerador das capas aprovadas da semana 41 (gerar-capas-reels.py), no sistema do
-guia-de-design-estatico-feed-3x4.md (regra 26). Arquétipo C (celular à esquerda, texto à
-direita), para não repetir a capa anterior, do Granabô, que é arquétipo A. A tela é a lista
-real de Lançamentos gravada no celular do autor (conta de teste).
+A primeira versão (arquétipo C, celular com a lista de Lançamentos) foi recusada pelo autor:
+"Não gostei dessa capa, vamos tentar fazer algo no estilo das referências [...] adaptado para o
+Grana. com nosso estilo visual". A referência era um anúncio de outro app com título centrado e
+cartões de interface soltos, inclinados e sobrepostos, mais uma etiqueta de notificação.
 
-Uso:  python -I gerar-capa-reels-fim-do-mes.py <tela.png> <saida.png>
-A tela é um quadro de lancamentos.mp4 (1080x2388), em E:/Grana-temporarios.
+No Grana. isso é o arquétipo E, jeito 3, do guia-de-design-estatico-feed-3x4.md (seção 10b):
+cartões recortados de print real do app, girados de 3° a 8°, sobre o fundo escuro da série (painel,
+G, logotipo em gradiente, RÁPIDO/FÁCIL/PRÁTICO), sem o fundo claro quadriculado da referência.
+O título fica centrado, como na referência.
+
+Uso:  python -I gerar-capa-reels-fim-do-mes.py <pasta-dos-quadros> <saida.png>
+A pasta tem os quadros 1080x2388 das gravações do celular (conta de teste), em E:/Grana-temporarios:
+  credito.png      credito.mp4 em 1,0 s
+  inicio.png       lancar-por-voz.mp4 em 0,8 s
+  lancamentos.png  lancamentos.mp4 em 0,5 s
 """
 import importlib.util
 import os
 import sys
 
-from PIL import Image, ImageDraw
+import numpy as np
+from PIL import Image, ImageDraw, ImageFilter
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.abspath(os.path.join(AQUI, *(['..'] * 6)))
@@ -22,38 +31,84 @@ C = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(C)
 OY = C.OY
 
-
-def preparar_tela(tela):
-    """Tira a barra de status (cronômetro do gravador) e completa embaixo com a cor do rodapé,
-    para a gravação (0,452) caber na proporção da tela do mockup (0,433) sem cortar as laterais."""
-    im = Image.open(tela).convert('RGB')
-    barra = round(im.height * 0.045)
-    alvo_h = round(im.width / ((C.CEL_TELA[1][0] - C.CEL_TELA[0][0]) / (C.CEL_TELA[3][1] - C.CEL_TELA[0][1])))
-    nova = Image.new('RGB', (im.width, alvo_h), im.getpixel((im.width // 2, im.height - 4)))
-    nova.paste(im.crop((0, barra, im.width, im.height)), (0, 0))
-    saida = os.path.splitext(tela)[0] + '-mockup.png'
-    nova.save(saida)
-    return saida
+# Caixas dos cartões nos quadros 1080x2388, medidas pela borda de cada cartão contra o fundo da tela.
+CARTAO_CREDITO = ('credito.png', (34, 474, 544, 812))       # Cartão Principal, fatura e barra do limite
+LIVRE = ('inicio.png', (34, 737, 1046, 1123))               # Livre para gastar e o que sai dele
+RESUMO = ('lancamentos.png', (34, 473, 1046, 590))          # Entradas, Saídas e Saldo do mês
+LINHA = ('lancamentos.png', (43, 1136, 1037, 1246))         # Farmácia, vira a etiqueta
+RAIO_APP = 26                                               # canto dos cartões no app, em px do quadro
 
 
-def capa(tela, saida):
-    g = dict(cx=800, cy=OY + 940, r=790, rot=3, delta=13)
-    base, cob = C.ajustar_g(True, g)
+def cartao(quadros, fonte_caixa, largura, raio=RAIO_APP):
+    arq, caixa = fonte_caixa
+    im = Image.open(os.path.join(quadros, arq)).convert('RGBA').crop(caixa)
+    esc = largura / im.width
+    im = im.resize((largura, round(im.height * esc)), Image.LANCZOS)
+    m = C.ret_arredondado(im.width, im.height, max(6, round(raio * esc)))
+    im.putalpha(m)
+    return im
+
+
+def etiqueta(quadros, largura):
+    """A linha real do lançamento numa pílula com borda menta, como a notificação da referência.
+    O nome e o valor vêm da mesma linha; o vão entre eles encolhe, como na linha do app numa tela
+    mais estreita, para o texto continuar legível no tamanho da capa."""
+    arq, (x0, y0, x1, y1) = LINHA
+    im = Image.open(os.path.join(quadros, arq)).convert('RGBA')
+    nome = im.crop((x0, y0, 420, y1))
+    valor = im.crop((860, y0, x1, y1))
+    vao, borda = 40, 28
+    esc = (largura - 2 * borda) / (nome.width + vao + valor.width)
+    nome = nome.resize((round(nome.width * esc), round(nome.height * esc)), Image.LANCZOS)
+    valor = valor.resize((round(valor.width * esc), round(valor.height * esc)), Image.LANCZOS)
+    h = nome.height + 24
+    fundo_cor = tuple(int(v) for v in np.asarray(im)[y0 + 4, 640][:3])
+    pilula = Image.new('RGBA', (largura, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(pilula)
+    d.rounded_rectangle([0, 0, largura - 1, h - 1], radius=h // 2, fill=fundo_cor + (255,), outline=C.MENTA + (255,), width=2)
+    pilula.alpha_composite(nome, (borda, 12))
+    pilula.alpha_composite(valor, (largura - borda - valor.width, 12))
+    return pilula
+
+
+def colar(base, im, centro, rot):
+    im = im.rotate(rot, resample=Image.BICUBIC, expand=True)
+    x = int(centro[0] - im.width / 2)
+    y = int(centro[1] - im.height / 2)
+    a = np.asarray(im.split()[-1], float)
+    sombra = Image.new('L', base.size, 0)
+    sombra.paste(Image.fromarray((a * 0.6).astype(np.uint8)), (x + 10, y + 26))
+    sombra = sombra.filter(ImageFilter.GaussianBlur(26))
+    escuro = Image.new('RGBA', base.size, (0, 10, 14, 255))
+    base = Image.composite(escuro, base, sombra)
+    base.alpha_composite(im, (x, y))
+    return base, (x, y, x + im.width, y + im.height)
+
+
+def capa(quadros, saida):
+    g = dict(cx=540, cy=OY + 860, r=640, rot=200, espelho=True, delta=-8)
+    base, cob = C.ajustar_g(False, g)
     base = base.convert('RGBA')
-    C.icone(base, 'dinheiro', (40, OY + 230), 150, -12)
-    C.icone(base, 'cartao', (1040, OY + 1160), 260, 14)
-    cel = C.celular_com_tela(preparar_tela(tela))
-    base, caixa = C.colar_celular(base, cel, (362, OY + 742), 930, 5)
+    C.icone(base, 'dinheiro', (1042, OY + 470), 150, 12)
+    C.icone(base, 'cartao', (30, OY + 940), 220, -15)
+
+    caixas = {}
+    base, caixas['credito'] = colar(base, cartao(quadros, CARTAO_CREDITO, 450), (310, OY + 585), 6)
+    base, caixas['livre'] = colar(base, cartao(quadros, LIVRE, 780), (612, OY + 950), -3)
+    base, caixas['resumo'] = colar(base, cartao(quadros, RESUMO, 700), (470, OY + 1215), 4)
+    base, caixas['etiqueta'] = colar(base, etiqueta(quadros, 500), (735, OY + 470), -3)
+
     d = ImageDraw.Draw(base)
     h1 = C.fonte(C.ULTRABOLD, 72)
-    h2 = C.fonte(C.REGULAR, 31)
-    y = C.escrever(d, [[('Cadê o', C.BRANCO)], [('dinheiro', C.BRANCO)], [('do mês?', C.MENTA)]], h1, 958, OY + 587, 72, 0, 'dir')
-    C.escrever(d, [[('Pix, almoço, parcela.', C.BRANCO)], [('No Grana., anotar', C.MENTA)], [('leva segundos.', C.MENTA)]], h2, 958, y + 19 + 22 + 22, 37, 0.05, 'dir')
+    linhas = [[('Pra onde foi o', C.BRANCO)], [('dinheiro do mês?', C.MENTA)]]
+    for i, partes in enumerate(linhas):
+        w = sum(C.largura(t, h1, 0) for t, _ in partes)
+        C.escrever(d, [partes], h1, 540 - w / 2, OY + 258 + i * 79, 0)
     C.fixos(base)
     base.convert('RGB').save(saida)
-    return cob, caixa
+    return cob, caixas
 
 
 if __name__ == '__main__':
-    cob, caixa = capa(sys.argv[1], sys.argv[2])
-    print(f'G cobre {cob:.0%} do painel; celular em {caixa}')
+    cob, caixas = capa(sys.argv[1], sys.argv[2])
+    print(f'G cobre {cob:.0%} do painel; caixas {caixas}')
