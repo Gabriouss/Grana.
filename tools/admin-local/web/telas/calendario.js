@@ -78,6 +78,7 @@ export function motivoSemAgendar(camada, reais, data, agora = new Date()) {
 }
 const AVISO_PODE_TER_REAL = 'Pode já ter agendamento real. Veja em Ambos.';
 
+const AVISO_SEM_DATA_SERVIDOR = /^\d+ peças? aprovadas? (está|estão) sem data válida no cronograma\./;
 export function projetarCalendario(d, jobs, camada = 'ambos', posts = [], catalogo = []) {
   const grupos = new Map();
   const publicados = new Map();
@@ -117,7 +118,13 @@ export function projetarCalendario(d, jobs, camada = 'ambos', posts = [], catalo
   // Sem vínculo exato, o job permanece na lista. Não cria uma peça editorial fictícia.
   const semData = (d.aprovadosSemData || d.semData || []).filter((p) => camada !== 'real' && (camada === 'planejado' || (!(grupos.get(identidade(p)) || []).some((j) => !['cancelado', 'falhou'].includes(j.estado)) && !(d.vinculos || []).some((v) => identidade(v) === identidade(p) && v.destinos?.some((j) => !['cancelado', 'falhou'].includes(j.estado))))));
   const restantes = semData.filter((p) => camada === 'planejado' || !publicados.has(identidade(p)));
-  return { ...d, itens: itens.sort((a, b) => a.data.localeCompare(b.data)), aprovadosSemData: restantes, semData: restantes };
+  // O aviso do servidor conta só o cronograma editorial (11); a bandeja tira o que já tem agendamento real
+  // ativo ou já saiu (5). O aviso passa a contar a mesma lista da bandeja e diz quantas ficaram de fora.
+  const fora = (d.aprovadosSemData || d.semData || []).length - restantes.length;
+  const avisos = (d.avisos || []).filter((a) => !AVISO_SEM_DATA_SERVIDOR.test(a));
+  if (restantes.length) avisos.push(`${restantes.length} ${restantes.length === 1 ? 'peça aprovada está' : 'peças aprovadas estão'} sem data no calendário`
+    + `${fora === 1 ? '; outra já tem agendamento real ou já foi publicada' : fora > 1 ? `; outras ${fora} já têm agendamento real ou já foram publicadas` : ''}. Nenhuma data foi inferida.`);
+  return { ...d, avisos, itens: itens.sort((a, b) => a.data.localeCompare(b.data)), aprovadosSemData: restantes, semData: restantes };
 }
 
 // --- Ícones do dia: o post vira um disco com o glifo do formato; a cor e o traço dizem o estado.

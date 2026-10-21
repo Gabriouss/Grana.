@@ -30,6 +30,17 @@ for (const camada of ['ambos', 'real']) {
 }
 assert.equal(projetar('planejado').itens.length, 0);
 assert.equal(projetar('planejado').aprovadosSemData.length, 1, 'camada editorial preservada');
+// 21/10: o aviso conta a mesma lista da bandeja (o servidor contava 11, a bandeja mostrava 5).
+{
+  const outra = { ...feed, id: 'f'.repeat(16), versao: 'e'.repeat(40) };
+  const avisoServidor = '2 peças aprovadas estão sem data válida no cronograma. Nenhuma data foi inferida.';
+  const r2 = sandbox.projetarCalendario({ ...dados, aprovadosSemData: [feed, outra], avisos: [avisoServidor, 'Outro aviso.'] }, [], 'ambos', posts, [reel]);
+  assert.equal(r2.aprovadosSemData.length, 1, 'publicado sai da bandeja, a outra fica');
+  assert.deepEqual(JSON.parse(JSON.stringify(r2.avisos)), ['Outro aviso.',
+    '1 peça aprovada está sem data no calendário; outra já tem agendamento real ou já foi publicada. Nenhuma data foi inferida.']);
+  const r3 = sandbox.projetarCalendario({ ...dados, aprovadosSemData: [feed], avisos: [avisoServidor.replace('2 peças aprovadas estão', '1 peça aprovada está')] }, [], 'ambos', posts, [reel]);
+  assert.deepEqual(JSON.parse(JSON.stringify(r3.avisos)), [], 'bandeja vazia: sem aviso de sem data');
+}
 const job = { jobId: 'job1', confirmadoEm: '2026-10-10T12:00:00Z', estado: 'publicado', peca: posts[0].vinculo, destino: { rede: 'instagram', formato: 'feed', publicarEm: '2026-10-11T12:00:00Z' }, permalink: posts[0].link };
 let r = projetar('ambos', [job], [...posts, posts[0]]);
 assert.equal(r.itens.length, 2, 'job+recibo não duplicam cartão no dia planejado');
