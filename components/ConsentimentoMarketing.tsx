@@ -17,7 +17,7 @@ export function registrarCheckoutMarketing(destino: string, plano: PlanoPixel) {
 const TEXTO = 'Quando o Pixel estiver configurado, ele mede, com sua autorização, visitas às páginas públicas, a visualização dos preços e o início do checkout. Se a integração de conversões for habilitada separadamente, a Meta também poderá receber a confirmação da compra da assinatura. A Meta pode receber identificadores do navegador e dados técnicos da conexão. Recusar ou retirar a autorização não impede a navegação nem a compra. Você pode mudar sua escolha em Preferências de privacidade.';
 // Resumo do texto final do Beacon, conforme a revisão de legibilidade do Lumen.
 const RESUMO = 'Você escolhe se a Meta pode medir suas visitas, a visualização dos preços e o início da compra. A Meta pode receber identificadores do navegador e dados técnicos da conexão. Recusar não impede navegar ou comprar.';
-const botao: CSSProperties = { appearance: 'none', background: theme.paperRaised, color: theme.ink, border: `1px solid ${theme.inkFaint}`, borderRadius: 8, minHeight: 44, padding: '10px 16px', font: 'inherit', cursor: 'pointer', flex: '1 1 110px' };
+const botao: CSSProperties = { appearance: 'none', background: theme.paperRaised, color: theme.ink, border: `1px solid ${theme.inkFaint}`, borderRadius: 8, minHeight: 36, padding: '6px 12px', font: 'inherit', cursor: 'pointer', flex: '1 1 90px' };
 
 /** Montado somente em ConteudoWeb, nunca no layout compartilhado ou no app. */
 export default function ConsentimentoMarketing() {
@@ -72,11 +72,10 @@ export default function ConsentimentoMarketing() {
     document.getElementById('preferencias-privacidade')?.focus({ preventScroll: true });
   }
   if (!aberto) return null;
-  return h('section', { role: 'region', 'aria-label': 'Preferências de privacidade', style: { position: 'fixed', bottom: 16, left: 16, right: 16, zIndex: 10000, maxWidth: 760, margin: '0 auto', maxHeight: 'calc(100dvh - 32px)', overflowY: 'auto', boxSizing: 'border-box', background: theme.paper, color: theme.ink, border: `1px solid ${theme.inkFaint}`, borderRadius: 12, padding: 16, fontFamily: `${fonts.brandLight}, sans-serif`, fontSize: 15, lineHeight: 1.5 } as CSSProperties },
-    h('style', null, '.grana-consentimento-acoes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}.grana-consentimento-configurar{grid-column:1/-1}@media(min-width:600px){.grana-consentimento-acoes{grid-template-columns:repeat(3,minmax(0,1fr))}.grana-consentimento-configurar{grid-column:auto}}'),
-    h('h2', { ref: titulo, tabIndex: -1, style: { margin: '0 0 8px', fontSize: 18, fontFamily: fonts.brandRegular } }, configurar ? 'Preferências de privacidade' : 'Você decide sobre a medição da Meta'),
-    h('p', { style: { margin: '0 0 12px' } }, RESUMO),
-    h('p', { style: { color: theme.inkSoft } }, 'Mude sua escolha em Preferências de privacidade no rodapé. ', h('a', { href: '/privacidade', style: { color: theme.ink, textDecoration: 'underline' } }, 'Política de Privacidade.')),
+  return h('section', { role: 'region', 'aria-label': 'Preferências de privacidade', style: { position: 'fixed', bottom: 16, left: 16, right: 16, zIndex: 10000, maxWidth: configurar ? 640 : 480, maxHeight: 'calc(100dvh - 32px)', overflowY: 'auto', boxSizing: 'border-box', background: theme.paper, color: theme.ink, border: `1px solid ${theme.inkFaint}`, borderRadius: 10, padding: '12px 14px', fontFamily: `${fonts.brandLight}, sans-serif`, fontSize: 13, lineHeight: 1.45 } as CSSProperties },
+    h('style', null, '.grana-consentimento-acoes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:10px}'),
+    h('h2', { ref: titulo, tabIndex: -1, style: { margin: '0 0 4px', fontSize: 15, fontFamily: fonts.brandRegular } }, configurar ? 'Preferências de privacidade' : 'Você decide sobre a medição da Meta'),
+    h('p', { style: { margin: 0 } }, RESUMO, ' ', h('span', { style: { color: theme.inkSoft } }, 'Mude depois em Preferências de privacidade, no rodapé. ', h('a', { href: '/privacidade', style: { color: theme.ink, textDecoration: 'underline' } }, 'Política de Privacidade.'))),
     configurar && h('p', { style: { color: theme.inkSoft } }, 'Role as opções abaixo para ler os detalhes.'),
     h('div', { style: configurar ? { maxHeight: '38vh', overflowY: 'auto', paddingBottom: 8 } : undefined },
     configurar && h('div', { style: { marginBottom: 12 } },
