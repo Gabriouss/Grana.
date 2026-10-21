@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="UTF-8"/><title>Grana. · Fim do mês</title></head>
+<body>
+<!-- Reels "Fim do mês" (21/10/2026): dor no gancho, solução do Grana. e cinco telas reais do app. Títulos no tempo da narração. -->
+
+<template id="fim-do-mes-template">
+<style>
+@font-face{font-family:"NM";src:url("assets/granabo/NeueMachina-Light.otf");font-weight:300;font-display:block}
+@font-face{font-family:"NM";src:url("assets/granabo/NeueMachina-Regular.otf");font-weight:400;font-display:block}
+#root{position:absolute;inset:0;overflow:hidden;font-family:"NM",sans-serif;color:#EFFFFE}
+#fm-bg{position:absolute;inset:0;background:radial-gradient(60% 34% at 50% 93%,#0B4A5A 0%,rgba(11,74,90,0) 100%),linear-gradient(180deg,#021319 0%,#021721 50%,#021721 100%)}
+.fm-ico{position:absolute;opacity:0}
+.fm-txt{position:absolute;font-weight:300;letter-spacing:.05em}
+.fm-txt .w{display:inline-block;opacity:0;white-space:pre}
+.fm-txt .d{color:#ADFBE3;font-weight:400}
+.fm-hook{left:84px;width:912px;font-size:84px;line-height:104px}
+.fm-top{left:60px;width:960px;top:240px;text-align:center;font-size:60px;line-height:78px}
+#fm-cw{position:absolute;left:119px;top:480px;width:692px;height:1480px;transform:scale(1.216);transform-origin:0 0}
+#fm-cel{position:absolute;left:0;top:0;width:692px;height:1480px;transform-origin:50% 8%;opacity:0}
+#fm-sombra{position:absolute;left:-10px;top:40px;width:712px;height:1470px;border-radius:90px;background:#000;filter:blur(40px);opacity:.6}
+#fm-moldura{position:absolute;left:0;top:0;width:692px;height:1480px}
+#fm-tela{position:absolute;left:33px;top:40px;width:611px;height:1403px;border-radius:66px;overflow:hidden;background:#0a1e25}
+/* sobe 72 px: a barra de status com o cronômetro vermelho do gravador fica escondida sob a moldura */
+#fm-tela video,#fm-tela img{position:absolute;left:0;top:-72px;width:611px;height:1403px;object-fit:cover;opacity:0}
+#fm-flash{position:absolute;inset:0;background:#ADFBE3;opacity:0}
+#fm-furo{position:absolute;left:331px;top:62px;width:27px;height:27px;border-radius:50%;background:#020304;box-shadow:inset -4px -5px 0 #1d2c33}
+#fm-logo{position:absolute;left:240px;top:882px;width:600px;opacity:0}
+</style>
+<div id="root" data-composition-id="fim-do-mes" data-width="1080" data-height="1920" data-duration="33.2">
+  <div id="fm-bg"></div>
+  <img class="fm-ico" id="fm-i1" src="assets/granabo/graficos-petroleo.png" style="left:150px;top:330px;width:150px;filter:blur(6px)"/>
+  <img class="fm-ico" id="fm-i2" src="assets/granabo/dinheiro-gradiente.png" style="left:600px;top:1260px;width:300px"/>
+  <img class="fm-ico" id="fm-i3" src="assets/granabo/carteira-menta.png" style="left:150px;top:1330px;width:230px"/>
+
+  <!-- dor -->
+  <div class="fm-txt fm-hook" id="fm-t1" style="top:700px"><span class="w">Chegou </span><span class="w">o </span><span class="w">fim </span><span class="w">do </span><span class="w">mês </span><span class="w">e </span><span class="w">o </span><span class="w">dinheiro </span><span class="w d">sumiu?</span></div>
+  <div class="fm-txt fm-hook" id="fm-t2" style="top:560px"><span class="w">Um </span><span class="w">Pix </span><span class="w">aqui, </span><span class="w">um </span><span class="w">almoço </span><span class="w">ali, </span><span class="w">uma </span><span class="w">parcela </span><span class="w">no </span><span class="w">cartão, </span><span class="w">e </span><span class="w">ninguém </span><span class="w">anotou </span><span class="w d">nada.</span></div>
+
+  <!-- solução e telas reais -->
+  <div id="fm-cw"><div id="fm-cel">
+    <div id="fm-sombra"></div>
+    <img id="fm-moldura" src="assets/granabo/celular-real-recorte.png"/>
+    <div id="fm-tela">
+      <video id="fm-v1" src="assets/granabo/tela-voz.mp4" data-start="7.0" data-duration="4.35" data-track-index="1" muted playsinline></video>
+      <video id="fm-v2" src="assets/granabo/tela-pix.mp4" data-start="11.35" data-duration="4.65" data-track-index="2" muted playsinline></video>
+      <video id="fm-v3" src="assets/granabo/tela-credito.mp4" data-start="16.0" data-duration="5.15" data-track-index="3" muted playsinline></video>
+      <video id="fm-v4" src="assets/granabo/tela-lista.mp4" data-start="21.15" data-duration="2.6" data-track-index="4" muted playsinline></video>
+      <video id="fm-v5" src="assets/granabo/tela-grafico.mp4" data-start="23.75" data-duration="2.2" data-track-index="5" muted playsinline></video>
+      <img id="fm-v6" src="assets/granabo/tela-inicio.jpg"/>
+      <div id="fm-flash"></div>
+    </div>
+    <div id="fm-furo"></div>
+  </div></div>
+
+  <div class="fm-txt fm-top" id="fm-t3"><span class="w">No </span><span class="w">Grana., </span><span class="w">anotar </span><span class="w">leva </span><span class="w d">segundos.</span></div>
+  <div class="fm-txt fm-top" id="fm-t4"><span class="w">Fala </span><span class="w">o </span><span class="w">gasto </span><span class="w">e </span><span class="w">o </span><span class="w">app </span><span class="w">escreve </span><span class="w">por </span><span class="w d">você.</span></div>
+  <div class="fm-txt fm-top" id="fm-t5"><span class="w">Recebeu </span><span class="w">um </span><span class="w">Pix? </span><span class="w">Cola </span><span class="w">o </span><span class="w d">comprovante.</span></div>
+  <div class="fm-txt fm-top" id="fm-t6"><span class="w">Valor, </span><span class="w">nome </span><span class="w">e </span><span class="w">data </span><span class="w">já </span><span class="w">vêm </span><span class="w d">preenchidos.</span></div>
+  <div class="fm-txt fm-top" id="fm-t7" style="top:279px"><span class="w">Comprou </span><span class="w">no </span><span class="w d">cartão?</span></div>
+  <div class="fm-txt fm-top" id="fm-t8"><span class="w">Cada </span><span class="w">fatura </span><span class="w">aparece </span><span class="w d">separada,</span></div>
+  <div class="fm-txt fm-top" id="fm-t9"><span class="w">com </span><span class="w">as </span><span class="w">parcelas </span><span class="w">e </span><span class="w">o </span><span class="w">dia </span><span class="w">em </span><span class="w">que </span><span class="w d">fecha.</span></div>
+  <div class="fm-txt fm-top" id="fm-t10"><span class="w">Tudo </span><span class="w">fica </span><span class="w">na </span><span class="w">lista, </span><span class="w">separado </span><span class="w">por </span><span class="w d">categoria.</span></div>
+  <div class="fm-txt fm-top" id="fm-t11"><span class="w">No </span><span class="w">gráfico, </span><span class="w">você </span><span class="w">vê </span><span class="w">pra </span><span class="w">onde </span><span class="w">foi </span><span class="w">cada </span><span class="w d">real.</span></div>
+  <div class="fm-txt fm-top" id="fm-t12"><span class="w">E </span><span class="w">o </span><span class="w">app </span><span class="w">ainda </span><span class="w">mostra </span><span class="w">quanto </span><span class="w">dá </span><span class="w">pra </span><span class="w d">gastar</span></div>
+  <div class="fm-txt fm-top" id="fm-t13"><span class="w">por </span><span class="w">dia </span><span class="w">até </span><span class="w">o </span><span class="w">fim </span><span class="w">do </span><span class="w d">mês.</span></div>
+
+  <div class="fm-txt fm-hook" id="fm-t14" style="top:802px;text-align:center;left:60px;width:960px"><span class="w">Começa </span><span class="w">pelo </span><span class="w">próximo </span><span class="w d">gasto.</span></div>
+  <img id="fm-logo" src="assets/granabo/logo-gradiente-1200.png"/>
+</div>
+<script>
+(function () {
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused: true });
+
+  // palavras entram no instante em que a narração as diz (edit/transcripts/cut.json)
+  function palavras(id, tempos, sai, sobe) {
+    document.querySelectorAll(id + " .w").forEach(function (w, i) {
+      tl.fromTo(w, { opacity: 0, y: sobe || 34, scale: .92 }, { opacity: 1, y: 0, scale: 1, duration: .26, ease: "back.out(2)" }, tempos[i] - .05);
+    });
+    tl.to(id, { opacity: 0, y: -44, duration: .3, ease: "power2.in" }, sai);
+  }
+  function soco(id, t) { tl.fromTo(id + " .d", { scale: 1 }, { scale: 1.12, duration: .12, yoyo: true, repeat: 1, ease: "power1.out" }, t); }
+  // troca de tela: soco de escala e clarão menta, como no Reels aprovado
+  function troca(de, para, t) {
+    tl.to("#fm-cel", { scale: .95, duration: .18, ease: "power2.in" }, t - .18);
+    tl.fromTo("#fm-flash", { opacity: 0 }, { opacity: .55, duration: .09, yoyo: true, repeat: 1 }, t - .1);
+    if (de) tl.set(de, { opacity: 0 }, t);
+    tl.set(para, { opacity: 1 }, t);
+    tl.to("#fm-cel", { scale: 1, duration: .35, ease: "back.out(2.2)" }, t);
+  }
+
+  // 0 a 6,5 s: a dor. O dinheiro some no "sumiu" e a carteira treme vazia
+  tl.fromTo("#fm-i1", { opacity: 0, y: 30 }, { opacity: .5, y: -30, duration: 6, ease: "none" }, .1);
+  tl.fromTo("#fm-i2", { opacity: 0, y: 60, rotation: -6 }, { opacity: 1, y: 0, rotation: 4, duration: .5, ease: "back.out(1.6)" }, .2);
+  tl.fromTo("#fm-i3", { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: .5, ease: "back.out(1.6)" }, .35);
+  tl.to("#fm-i2", { y: -520, x: 120, rotation: 28, scale: .3, opacity: 0, duration: .7, ease: "power2.in" }, 1.9);
+  tl.to("#fm-i3", { rotation: 5, duration: .07, yoyo: true, repeat: 5, ease: "none", transformOrigin: "50% 90%" }, 2.0);
+  palavras("#fm-t1", [0.30, 0.70, 0.82, 1.00, 1.14, 1.38, 1.54, 1.62, 1.94], 2.42);
+  soco("#fm-t1", 2.05);
+  palavras("#fm-t2", [2.68, 2.80, 3.02, 3.48, 3.58, 4.00, 4.30, 4.42, 4.82, 4.94, 5.32, 5.46, 5.74, 6.18], 6.5);
+  soco("#fm-t2", 6.3);
+  tl.to("#fm-i3", { y: 80, opacity: 0, duration: .35, ease: "power2.in" }, 6.3);
+  tl.to("#fm-i1", { opacity: 0, duration: .35 }, 6.3);
+
+  // 6,6 s: a solução. O celular sobe com a Início e assenta
+  palavras("#fm-t3", [6.56, 6.96, 7.38, 7.78, 8.04], 8.75, 20);
+  tl.set("#fm-v1", { opacity: 1 }, 7.0);
+  tl.fromTo("#fm-cel", { opacity: 1, y: 1760, rotation: -4 }, { opacity: 1, y: 0, rotation: 0, duration: .6, ease: "back.out(1.1)" }, 7.0);
+  tl.fromTo("#fm-cel", { rotation: 0 }, { rotation: .6, duration: 2.2, yoyo: true, repeat: 9, ease: "sine.inOut", immediateRender: false }, 7.65);
+
+  // 9,0 s: voz
+  palavras("#fm-t4", [8.99, 9.20, 9.32, 9.70, 9.86, 10.00, 10.20, 10.66, 10.82], 11.1, 20);
+
+  // 11,35 s: Pix colado, o formulário chega preenchido e o aparelho chega mais perto
+  troca("#fm-v1", "#fm-v2", 11.35);
+  palavras("#fm-t5", [11.38, 11.82, 11.94, 12.51, 12.70, 12.82], 13.35, 20);
+  palavras("#fm-t6", [13.60, 14.14, 14.32, 14.50, 14.72, 14.92, 15.12], 15.75, 20);
+  tl.to("#fm-cel", { scale: 1.07, duration: .8, ease: "power2.inOut" }, 13.55);
+  tl.to("#fm-cel", { scale: 1, duration: .4, ease: "power2.inOut" }, 15.45);
+
+  // 16,0 s: cartão
+  troca("#fm-v2", "#fm-v3", 16.0);
+  palavras("#fm-t7", [16.00, 16.30, 16.42], 16.85, 20);
+  palavras("#fm-t8", [17.08, 17.28, 17.72, 18.16], 18.55, 20);
+  palavras("#fm-t9", [18.70, 18.86, 19.00, 19.56, 19.86, 20.00, 20.16, 20.34, 20.48], 20.9, 20);
+  tl.to("#fm-cel", { scale: 1.07, duration: .8, ease: "power2.inOut" }, 18.9);
+
+  // 21,15 s: lista
+  troca("#fm-v3", "#fm-v4", 21.15);
+  palavras("#fm-t10", [21.17, 21.30, 21.56, 21.70, 22.06, 22.50, 22.70], 23.35, 20);
+
+  // 23,75 s: gráfico
+  troca("#fm-v4", "#fm-v5", 23.75);
+  palavras("#fm-t11", [23.56, 23.70, 24.08, 24.26, 24.46, 24.60, 24.82, 25.04, 25.46], 25.7, 20);
+
+  // 25,95 s: Início com o "Livre para gastar"
+  troca("#fm-v5", "#fm-v6", 25.95);
+  palavras("#fm-t12", [25.92, 26.08, 26.18, 26.32, 26.58, 26.98, 27.26, 27.42, 27.56], 27.82, 20);
+  palavras("#fm-t13", [27.92, 28.12, 28.36, 28.56, 28.72, 28.82, 28.92], 29.2, 20);
+  tl.to("#fm-cel", { scale: 1.07, duration: .8, ease: "power2.inOut" }, 26.4);
+
+  // 29,0 s: o celular desce, chamada final e o logo
+  tl.to("#fm-cel", { y: 1750, duration: .4, ease: "power3.in" }, 29.0);
+  tl.set("#fm-cel", { opacity: 0 }, 29.45);
+  palavras("#fm-t14", [29.30, 29.62, 29.84, 30.18], 30.75);
+  soco("#fm-t14", 30.35);
+  tl.fromTo("#fm-logo", { opacity: 0, scale: .86 }, { opacity: 1, scale: 1, duration: .5, ease: "back.out(1.6)" }, 31.0);
+  tl.to({}, { duration: 33.2 }, 0);
+  window.__timelines["fim-do-mes"] = tl;
+})();
+</script>
+</template>
+</body></html>

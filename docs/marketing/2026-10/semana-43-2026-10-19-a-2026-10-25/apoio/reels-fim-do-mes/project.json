@@ -1,0 +1,41 @@
+{
+  "title": "Fim do mês",
+  "skill": "C:\\Users\\user\\.local\\share\\editonny\\engine",
+  "edit": "../edit",
+  "format": "9:16",
+  "style": "night",
+  "corrections": {},
+  "blocks": [
+    {
+      "scene": "fullscreen",
+      "start": 0,
+      "zoom": 1.0
+    }
+  ],
+  "captions": {
+    "enabled": false,
+    "style": "standard",
+    "maxWords": 3,
+    "inFrame": false
+  },
+  "animations": [],
+  "sounds": [],
+  "endHold": 0,
+  "endCard": {
+    "enabled": false,
+    "seconds": 1.8,
+    "title": "",
+    "sub": "",
+    "button": "Tap Learn more",
+    "logo": ""
+  },
+  "scenes": [
+    {
+      "file": "compositions/scenes/fim-do-mes.html",
+      "start": 0,
+      "end": 33.2,
+      "name": "fim-do-mes",
+      "hidesCaptions": true
+    }
+  ]
+}
