@@ -12,6 +12,19 @@ const fontes = [];
 ast.walkDecls(/^font(-family)?$/, (d) => { if (SISTEMA.test(d.value)) fontes.push(`${d.parent.selector}: ${d.value}`); });
 assert.deepEqual(fontes, [], 'nenhuma regra declara fonte do sistema');
 
+// A lateral fica na tela o dia todo: rótulo de 14px da escala, nunca o micro de 12px (auditoria /impeccable, B.2).
+const tamanhoDe = (classe) => {
+  let valor;
+  ast.walkRules((r) => { if (r.selectors.includes(classe)) r.walkDecls('font-size', (d) => { valor = d.value; }); });
+  return valor;
+};
+for (const classe of ['.lateral-marca-sub', '.nav-grupo-titulo', '.lateral-rodape']) {
+  assert.equal(tamanhoDe(classe), 'var(--t-legenda)', `${classe} usa o rótulo de 14px`);
+}
+const miudos = [];
+ast.walkDecls('font-size', (d) => { const px = /^(\d+)px$/.exec(d.value.trim()); if (px && Number(px[1]) <= 12) miudos.push(`${d.parent.selector}: ${d.value}`); });
+assert.deepEqual(miudos, [], 'tamanho pequeno vem do token --t-micro, nunca escrito à mão');
+
 (async () => {
   const { browser, page } = await abrirAmbiente(1280);
   try {
