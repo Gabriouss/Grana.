@@ -14,6 +14,13 @@ import { tituloPeca } from './_pecas.js';
 
 const CANAIS = { 'instagram-feed': 'Feed', stories: 'Stories', reels: 'Reels', anuncio: 'Anúncio' };
 
+// Cabeçalho da prévia: tipo de mídia e destino planejado são fatos separados (AUD-08). Sem destino,
+// diz isso, sem cair em "Feed" e sem transformar todo vídeo em Reels.
+export function rotuloDaPrevia(p) {
+  const midia = p.capaOrfa ? 'Capa de Reel' : p.ehVideo ? 'Vídeo' : p.tipo === 'carrossel' ? 'Carrossel' : p.midias?.length ? 'Imagem' : 'Texto';
+  return `${midia} · ${p.canal ? `destino ${CANAIS[p.canal] || p.canal}` : 'sem destino planejado'}`;
+}
+
 let proporcaoSalva = '4/5';
 try { proporcaoSalva = localStorage.getItem('grana-admin-feed-proporcao') || '4/5'; } catch { /* sem armazenamento: segue o padrão */ }
 
@@ -256,7 +263,7 @@ function abrirPost(area, lista, indice, ctx) {
   const { elemento: midiaEl, pausar: pausarTudo } = montarMidia(h, p);
 
   // lateral: topo, legenda, metadados
-  const topo = topoDaPrevia(h, { nome: nomePerfil, formato: p.canal ? CANAIS[p.canal] || p.canal : 'Feed', aoFechar: () => dlg.close() });
+  const topo = topoDaPrevia(h, { nome: nomePerfil, formato: rotuloDaPrevia(p), aoFechar: () => dlg.close() });
 
   const legenda = p.legenda
     ? h('div', { class: 'feed-legenda' }, h('b', { texto: nomePerfil }), p.legenda)

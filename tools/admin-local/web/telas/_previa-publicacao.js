@@ -108,11 +108,12 @@ export function montarMidia(h, p) {
   return { elemento: midiaEl, pausar };
 }
 
-// Cabeçalho do post: avatar, perfil, formato e o botão de fechar.
-export function topoDaPrevia(h, { nome = 'grana.', formato = 'Feed', aoFechar }) {
+// Cabeçalho do post: avatar, perfil, formato e o botão de fechar. Sem formato informado, não inventa
+// "Feed" (AUD-08): fica só o rótulo da prévia.
+export function topoDaPrevia(h, { nome = 'grana.', formato, aoFechar }) {
   return h('div', { class: 'feed-post-topo' },
     h('img', { src: AVATAR, alt: '' }),
-    h('div', null, h('span', { texto: nome }), h('small', { texto: `${ROTULO_PREVIA} · ${formato}` })),
+    h('div', null, h('span', { texto: nome }), h('small', { texto: formato ? `${ROTULO_PREVIA} · ${formato}` : ROTULO_PREVIA })),
     h('button', { class: 'feed-fechar', type: 'button', 'aria-label': 'Fechar prévia', onclick: aoFechar }, iconeSvg('fechar')));
 }
 
