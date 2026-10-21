@@ -1,7 +1,7 @@
 // Aprovação: galeria de famílias; clicar abre a prévia do post com legenda e decisão.
 // Aprovar grava o aceite do autor para AQUELA versão (sha1). Não publica nem agenda nada em rede social.
 
-import { tituloPeca, rotuloSemana, rotuloEstado, trilha, historicoDaPeca, agruparFamilias, idadeDemanda, formatoDaPeca, ROTULOS_FORMATO, juntarCapasAoReel, pecaDaFila, arquivada } from './_pecas.js';
+import { tituloPeca, rotuloSemana, rotuloEstado, trilha, historicoDaPeca, agruparFamilias, idadeDemanda, formatoDaPeca, ROTULOS_FORMATO, juntarCapasAoReel, pecaDaFila, arquivada, aprovacaoConcluida } from './_pecas.js';
 import { montarMidia, midiasDaPeca, topoDaPrevia } from './_previa-publicacao.js';
 import { faltaLegenda, localLegenda } from './_legenda-publicacao.js';
 import { montarFila, secaoAjustesDaPeca, situacaoDaFamilia, contarPrecisaDeVoce, textoAlertaDemanda, observarPedidos, pedidoAberto, filaDisponivel, aguardaLegenda } from './ajustes.js';
@@ -402,7 +402,7 @@ export async function montar(raiz, ctx) {
     }
     if (faltaLegenda(p)) detalhe.appendChild(ctx.alerta('atencao', `Falta a legenda para publicar. ${localLegenda(p)}`));
     // Em aprovados com versão nova (legenda ou arquivo mudou depois do aceite) o Aprovar volta a valer.
-    const jaAceita = !!p.aprovada && p.estado !== 'para-aprovacao' && !(p.estado === 'aprovados' && !p.aceite && p.aceiteDeVersaoAnterior);
+    const jaAceita = aprovacaoConcluida(p);
     const botaoAprovar = h('button', { class: 'botao botao-primario', type: 'button', texto: jaAceita ? 'Aprovada nesta versão' : 'Aprovar', disabled: faltaLegenda(p) || jaAceita || temPedidoAberto || filaIndisponivel || arquivada(p) || !!pendencia,
       onclick: () => aprovar(ctx, p, botaoAprovar) });
     const podePedir = !filaIndisponivel && !arquivada(p);
@@ -432,7 +432,7 @@ export async function montar(raiz, ctx) {
       disabled: filaIndisponivel || temPedidoAberto || arquivada(p),
       onclick: () => recusarPeca(ctx, p, familiaAtual?.pecas || [p], pedidos, botaoRecusar) });
     [botaoAprovar, botaoAjuste, botaoRecusar,
-      p.aprovada && p.estado === 'aprovados' ? h('a', { class: 'botao botao-fantasma', href: `#/marketing/calendario?secao=sem-data&peca=${encodeURIComponent(p.id)}`, texto: 'Marcar data no calendário' }) : null,
+      jaAceita ? h('a', { class: 'botao botao-fantasma', href: `#/marketing/calendario?secao=sem-data&peca=${encodeURIComponent(p.id)}`, texto: 'Marcar data no calendário' }) : null,
     ].filter(Boolean).forEach((b) => decisao.appendChild(b));
 
     // 5. Evidência, recolhida: andamento, histórico, referência e dados técnicos.

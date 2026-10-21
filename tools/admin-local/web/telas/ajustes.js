@@ -4,6 +4,7 @@
 
 // A lista recolhe e abre por escolha da pessoa; recarregar a tela não muda isso nem faz a tela pular.
 import { faltaLegenda, localLegenda } from './_legenda-publicacao.js';
+import { aprovacaoConcluida } from './_pecas.js';
 const estadoLista = { aberta: false };
 const detalhesDasFilas = new WeakMap();
 const saudeDasFilas = new WeakMap();
@@ -52,7 +53,7 @@ export function situacaoDaDemanda(peca, pedidos) {
 export function situacaoDaFamilia(grupo, pedidos) {
   const situacoes = grupo.pecas.map((p) => {
     const s = situacaoDaDemanda(p, pedidos);
-    return p.aprovada && p.estado === 'para-aprovacao' && s.secao === 'resolvidas'
+    return p.aprovada && !aprovacaoConcluida(p) && s.secao === 'resolvidas'
       ? { ...s, secao: 'voce', proximo: 'Conclua pelo botão Aprovar para seguir ao Calendário.' } : s;
   });
   return situacoes.find((s) => s.secao === 'voce') || situacoes.find((s) => s.secao === 'agentes') || situacoes[0];

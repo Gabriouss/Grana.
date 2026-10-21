@@ -61,6 +61,15 @@ export function arquivada(p) {
   return (p?.estadoEfetivo || p?.estado) === 'historico';
 }
 
+// O catálogo valida o recibo (inclusive composição). A pasta física não invalida
+// esse aceite, nem substitui um recibo datado quando o arquivo mudou depois.
+export function aprovacaoConcluida(p) {
+  if (!p?.aprovada || p.aceiteDeVersaoAnterior) return false;
+  if (!p.aceite) return p.estado !== 'para-aprovacao';
+  return !!p.versao && p.aceite.versao === p.versao
+    && typeof p.aceite.aprovadoEm === 'string' && Number.isFinite(Date.parse(p.aceite.aprovadoEm));
+}
+
 export function agruparFamilias(pecas, familiasServidor) {
   if (Array.isArray(familiasServidor)) {
     const porId = new Map(pecas.map((p) => [p.id, p]));

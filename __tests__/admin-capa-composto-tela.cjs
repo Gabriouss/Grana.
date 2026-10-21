@@ -46,19 +46,24 @@ const reelPath = `${S41}/para-aprovacao/pecas/reels/R01-audit-reel.mp4`;
 let capaPath;
 const grava = (rel, c) => { const f = path.join(raiz, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, c); };
 
-async function tela() {
+async function tela(alterar = () => {}, pedidos = []) {
   const dto = JSON.parse(JSON.stringify(cat.listarPecas(raiz)));
   const reel = dto.pecas.find((p) => p.caminho === reelPath);
+  alterar(reel);
   const r = node('main');
   await load('aprovacao.js').montar(r, { h: node, params: { peca: reel.id }, obsoleta: () => false, recarregar() {}, cabecalho() {}, navegar() {},
     midia: () => node('img'), markdown: (t) => node('p', { texto: t }), urlArquivo: (u) => u,
     selo: (_n, t) => node('span', { texto: t }), alerta: (_n, t) => node('p', { texto: t }), formatar: { data: (d) => d, dataHora: (d) => d },
     estado: { carregando() {}, erro: (_r, e) => assert.fail(e.message), vazio() {}, bloco: { vazio: (t) => node('p', { texto: t }) } },
-    api: async (url) => ({ dados: url.endsWith('/pecas') ? dto : { pedidos: [], remoto: { status: 'ativo' } } }),
+    api: async (url) => ({ dados: url.endsWith('/pecas') ? dto : { pedidos, remoto: { status: 'ativo' } } }),
     acao: () => assert.fail('nenhuma mutação pela tela'), formulario: () => assert.fail('nada abre sozinho'), contadorAprovacao() {} });
   const bloco = walk(r).find((n) => n.attrs.class === 'demanda-capa');
   const botao = walk(r).find((n) => n.tag === 'button' && ['Aprovada nesta versão', 'Aprovar'].includes(n.attrs.texto));
-  return { reel, capa: text(bloco), botao: botao.attrs, revisar: walk(bloco).some((n) => n.attrs.texto === 'Revisar capa') };
+  const grupo = { principal: reel, pecas: [reel] };
+  const ajustes = load('ajustes.js');
+  return { reel, capa: text(bloco), botao: botao.attrs, revisar: walk(bloco).some((n) => n.attrs.texto === 'Revisar capa'),
+    calendario: walk(r).find((n) => n.tag === 'a' && n.attrs.texto === 'Marcar data no calendário')?.attrs,
+    situacao: ajustes.situacaoDaFamilia(grupo, pedidos), contador: ajustes.contarPrecisaDeVoce([grupo], pedidos), texto: text(r) };
 }
 
 (async () => {
@@ -88,9 +93,36 @@ async function tela() {
       assert.equal(t.reel.capa.aprovada, true, `${pasta}: DTO, capa coberta pelo composto`);
       assert.ok(t.capa.includes('Capa aprovada junto com o Reel: o aceite desta versão cobre vídeo, capa e legenda.'), `${pasta}: ${t.capa}`);
       assert.ok(!t.capa.includes('aceite próprio') && !t.capa.includes('não vale para ela'), `${pasta}: nem exige nem inventa aceite próprio`);
-      const faltaPromover = t.reel.estado === 'para-aprovacao';
-      assert.equal(t.botao.texto, faltaPromover ? 'Aprovar' : 'Aprovada nesta versão');
-      assert.equal(t.botao.disabled, !faltaPromover, 'aceite preservado pode concluir a promoção pelo Aprovar');
+      assert.equal(t.reel.estado, 'para-aprovacao', 'recibo real válido, sem promover arquivos');
+      assert.equal(t.botao.texto, 'Aprovada nesta versão');
+      assert.equal(t.botao.disabled, true, 'aceite datado desta versão não pede reaprovação');
+      assert.equal(t.situacao.secao, 'resolvidas');
+      assert.equal(t.contador, 0, 'recibo válido não conta como pendência');
+      assert.ok(!t.texto.includes('Conclua pelo botão Aprovar'));
+      assert.equal(t.calendario.href, `#/marketing/calendario?secao=sem-data&peca=${encodeURIComponent(t.reel.id)}`);
+
+      // DTOs antigos/incoerentes não tornam um recibo stale ou sem data válido.
+      for (const alterar of [
+        (p) => { p.aceite.versao = '0'.repeat(40); },
+        (p) => { p.aceite.aprovadoEm = null; },
+        (p) => { p.aceite.aprovadoEm = 'invalido'; },
+        (p) => { p.aceiteDeVersaoAnterior = true; },
+        (p) => { p.aceite = null; },
+      ]) {
+        const invalida = await tela(alterar);
+        assert.equal(invalida.botao.texto, 'Aprovar');
+        assert.equal(invalida.botao.disabled, false);
+        assert.equal(invalida.situacao.secao, 'voce');
+        assert.equal(invalida.contador, 1);
+        assert.equal(invalida.calendario, undefined);
+      }
+      const comPedido = await tela(() => {}, [{ pecaId: t.reel.id, estado: 'precisa-de-atencao', criadoEm: '2026-10-21T10:00:00Z' }]);
+      assert.equal(comPedido.situacao.secao, 'voce', 'aceite não esconde ajuste aberto');
+      assert.equal(comPedido.contador, 1);
+      const ajustes = load('ajustes.js');
+      const mista = { principal: t.reel, pecas: [t.reel, { ...t.reel, id: 'outra', aprovada: false, aceite: null }] };
+      assert.equal(ajustes.situacaoDaFamilia(mista, []).secao, 'voce', 'outra revisão pendente continua atenção');
+      assert.equal(ajustes.contarPrecisaDeVoce([mista], []), 1);
 
       // 3. Capa alterada: a versão do Reel muda e o aceite deixa de valer.
       grava(capaPath, 'AUDIT-capa-v2');
@@ -98,6 +130,8 @@ async function tela() {
       assert.equal(t.reel.aprovada, false); assert.equal(t.reel.capa.aprovada, false);
       assert.ok(t.capa.includes('Capa ainda sem aceite.'), `${pasta}: ${t.capa}`);
       assert.equal(t.botao.disabled, false, `${pasta}: composição nova pede aceite de novo`);
+      assert.equal(t.situacao.secao, 'voce'); assert.equal(t.contador, 1);
+      assert.equal(t.calendario, undefined, 'composição nova não segue como aprovada ao calendário');
     }
 
     // 4. Os outros ramos, direto na função exportada: "aceite próprio" só com registro da capa (capa.aceite).

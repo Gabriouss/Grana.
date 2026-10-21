@@ -21,6 +21,8 @@ assert.equal(pecas.pecaDaFila({ estado: 'para-aprovacao' }), true);
 const p = (id, extra = {}) => ({ id, familia: id, estado: 'para-aprovacao', legenda: 'Legenda AUDIT', ...extra });
 const pedido = (pecaId, estado, extra = {}) => ({ pecaId, estado, criadoEm: '2026-10-12T10:00:00Z', ...extra });
 const acervo = [p('a'), p('b', { familia: 'a' }), p('c'), p('d', { aprovada: true }), p('e', { aprovada: true, estado: 'aprovados' })];
+acervo.push(p('recibo-atual', { aprovada: true, estadoEfetivo: 'aprovada', versao: 'a'.repeat(40),
+  aceite: { versao: 'a'.repeat(40), aprovadoEm: '2026-10-19T23:21:49-03:00' }, aceiteDeVersaoAnterior: false }));
 const familias = pecas.agruparFamilias(acervo);
 const fila = [pedido('c', 'novo')];
 assert.equal(ajustes.contarPrecisaDeVoce(familias, fila), 2, 'uma familia sem aceite e uma aceita aguardando mover');
