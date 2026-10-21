@@ -437,7 +437,7 @@ function abrirPostReal(ctx, post, usuario) {
       h('span', { texto: quando ? `Publicado em ${quando} · São Paulo` : post.data ? `Publicado em ${ctx.formatar.data(post.data)}` : 'Data não informada' })),
     post.link ? h('div', { class: 'fileira' },
       h('a', { class: 'botao', href: post.link, target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir no Instagram' })) : null,
-    post.formato === 'carrossel' ? h('p', { class: 'campo-ajuda', texto: 'A Meta entrega só a capa do carrossel. Os demais slides estão na publicação no Instagram.' }) : null);
+    post.formato === 'carrossel' ? h('p', { class: 'campo-ajuda', texto: 'Esta visualização mostra apenas a miniatura do carrossel. Abra a publicação no Instagram para ver os demais slides.' }) : null);
   dlg.appendChild(h('div', { class: 'feed-post-corpo' }, midia, h('div', { class: 'feed-post-lado' }, topo, legenda, meta)));
   ligarDialogo(dlg, { devolverFoco });
   document.body.appendChild(dlg);
