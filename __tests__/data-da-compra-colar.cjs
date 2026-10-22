@@ -118,6 +118,9 @@ const imports = {
   },
   '@/lib/voz': { mensagemDeErroVoz: (c) => ({ titulo: 'Erro ' + c, texto: '' }) },
   '@/lib/data-da-fala': lib('data-da-fala'),
+  // Fora do modo teste da landing: o caminho de gravação real é o coberto aqui.
+  '@/lib/modo-teste': { MODO_TESTE: false },
+  '@/lib/lancamentos-teste': { adicionarLancamentoDeTeste: () => { throw Error('modo teste nao deveria gravar aqui'); } },
 };
 function componente(arquivo) {
   const exports = {};

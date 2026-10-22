@@ -157,6 +157,7 @@ async function principal() {
     '@supabase/supabase-js': require('@supabase/supabase-js'),
     'react-native': { Platform: { OS: 'android' }, AppState: { addEventListener() {} } },
     './fetch-com-prazo': prazoMod,
+    './modo-teste': { MODO_TESTE: false, RedeDesligadaNoTeste: class extends TypeError {} },
   }, {
     fetch: fetchRegistrado,
     crypto: globalThis.crypto,

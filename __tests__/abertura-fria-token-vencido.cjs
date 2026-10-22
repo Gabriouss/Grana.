@@ -102,6 +102,7 @@ async function cenario({ fonteA = fonteAuth, guardada = 'vencida' } = {}) {
       './offline-cache': { esquecerLancamentosLocais: async () => {} },
       './widgets-home-sync': { limparSnapshotWidgets: async () => {} },
       './sair-da-conta': { sairDaConta: async () => {} },
+      './modo-teste': { MODO_TESTE: false, SESSAO_TESTE: null },
     })[id] ?? require(id),
   });
 

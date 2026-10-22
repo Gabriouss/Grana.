@@ -65,6 +65,7 @@ function revisao(extra) {
     '@/lib/voz-confiabilidade': lib('voz-confiabilidade'), '@/lib/limits': lib('limits'),
     '@/lib/data': { fetchApelidosCategoria: async () => [], fetchCategories: async () => [] }, '@/lib/demo-context': { useDemo: () => ({ isDemoMode: false }) },
     '@/lib/wallet-context': { useWallet: () => ({ wallets, activeWallet: wallets[0] }) },
+    '@/lib/modo-teste': { MODO_TESTE: false }, '@/lib/lancamentos-teste': { adicionarLancamentoDeTeste() {} },
     '@/lib/alerta': { Alert: { alert: (...v) => errors.push(v) } }, '@/lib/erros': { mensagemErro: () => 'falha simulada' },
     '@/lib/lancamentos-alterados': { marcarLancamentosAlterados() {} }, 'expo-crypto': { randomUUID: () => 'op' },
     '@/lib/voz': { mensagemDeErroVoz: (v) => ({ titulo: v, texto: v }) },

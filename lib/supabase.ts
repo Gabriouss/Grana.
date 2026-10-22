@@ -5,6 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 import { createClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 import { comPrazo } from './fetch-com-prazo';
+import { MODO_TESTE, RedeDesligadaNoTeste } from './modo-teste';
 
 /**
  * expo-secure-store não guarda valores acima de ~2048 bytes, e a sessão do
@@ -114,6 +115,9 @@ async function fetchComRetentativaDeRelogio(
   input: RequestInfo | URL,
   init?: RequestInit
 ): Promise<Response> {
+  /* Modo teste da landing (lib/modo-teste.ts): nada do que a pessoa faz ali sai
+     do navegador. Recusar aqui cobre leitura, gravação, RPC, auth e funções. */
+  if (MODO_TESTE) throw new RedeDesligadaNoTeste();
   const resposta = await fetch(input, init);
   if (resposta.status !== 401) return resposta;
 

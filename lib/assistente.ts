@@ -5,6 +5,8 @@
 // estas funções; nenhum outro arquivo do app precisa saber que por trás tem
 // Groq, tool calling ou tabela nova.
 
+import { MODO_TESTE } from './modo-teste';
+import { respostaDoTeste } from './assistente-teste';
 import { supabase } from './supabase';
 
 /* ── Prazo da conversa ────────────────────────────────────────────────────
@@ -83,6 +85,8 @@ export function textoDoAssistente(texto: string): string {
  * `components/Granachat.tsx`.
  */
 export async function fetchMensagens(limit = 50): Promise<MensagemAssistente[]> {
+  // Teste da landing: sem servidor, a conversa começa vazia (lib/assistente-teste.ts).
+  if (MODO_TESTE) return [];
   /* `papel` é desempate obrigatório, não refinamento: até 07/09/2026 a Edge
      Function gravava pergunta e resposta numa única instrução, e `now()` no
      Postgres devolve o MESMO instante para a transação inteira — as duas
@@ -137,6 +141,10 @@ export async function enviarPergunta(
   historico: { papel: string; texto: string }[] = [],
   signal?: AbortSignal,
 ): Promise<RespostaAssistente> {
+  if (MODO_TESTE) {
+    await new Promise((r) => setTimeout(r, 600));
+    return { resposta: respostaDoTeste(mensagem), ferramenta: null };
+  }
   const {
     data: { session },
   } = await supabase.auth.getSession();

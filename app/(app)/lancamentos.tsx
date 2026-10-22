@@ -65,6 +65,7 @@ import { CATEGORIES } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
 import { DEMO_TRANSACTIONS } from '@/lib/demo-data';
+import { guardarLancamentosDeExemplo, lancamentosDeExemplo } from '@/lib/lancamentos-teste';
 import type { Transaction, TxType } from '@/lib/types';
 import { textoDaListaVazia } from '@/lib/lancamentos-vazio';
 
@@ -144,6 +145,11 @@ export default function LancamentosScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  /* Teste da landing: o que se lança ou edita aqui vale também nas outras telas
+     (lib/lancamentos-teste.ts). Fora do teste, isto não guarda nada. */
+  useEffect(() => {
+    if (isDemoMode && transactions.length) guardarLancamentosDeExemplo(transactions);
+  }, [isDemoMode, transactions]);
   const [filter, setFilter] = useState<'tudo' | TxType>('tudo');
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
@@ -229,7 +235,7 @@ export default function LancamentosScreen() {
     const vigente = () => minhaCarga === cargaAtual.current;
 
     if (isDemoMode) {
-      setTransactions(DEMO_TRANSACTIONS);
+      setTransactions(lancamentosDeExemplo());
       setOffline(false);
       setPendingCount(0);
       setLoading(false);

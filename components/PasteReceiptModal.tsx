@@ -30,6 +30,8 @@ import { marcarLancamentosAlterados } from '@/lib/lancamentos-alterados';
 import { mensagemErro } from '@/lib/erros';
 import { useDemo } from '@/lib/demo-context';
 import TransactionSheet, { type ValoresLancamento } from './TransactionSheet';
+import { MODO_TESTE } from '@/lib/modo-teste';
+import { adicionarLancamentoDeTeste } from '@/lib/lancamentos-teste';
 import AppPressable from './AppPressable';
 import Sheet from './Sheet';
 import { dataInicialDaRevisao, type ReferenciaDaFala } from '@/lib/data-da-fala';
@@ -218,7 +220,7 @@ export default function PasteReceiptModal({
       Alert.alert('Escolha a data');
       return;
     }
-    if (isDemoMode) {
+    if (isDemoMode && !MODO_TESTE) {
       Alert.alert(
         'Modo de exemplo ativo',
         'Desative "Dados de exemplo" no Perfil para salvar lançamentos reconhecidos na sua conta.'
@@ -249,7 +251,10 @@ export default function PasteReceiptModal({
         ...(v.recurring ? { recurring: true } : null),
         wallet_id: v.wallet_id,
       };
-      if (origemVoz) {
+      if (MODO_TESTE) {
+        // Teste da landing: grava só na memória da página (lib/lancamentos-teste.ts).
+        adicionarLancamentoDeTeste(input);
+      } else if (origemVoz) {
         operacaoVoz.current ??= randomUUID();
         const resultado = await registrarOperacaoVoz(operacaoVoz.current, 'app', { kind: 'transaction', ...input }, undefined, falaGuardada);
         const desfecho = desfechoDaOperacaoVoz(resultado);

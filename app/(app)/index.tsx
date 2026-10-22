@@ -47,6 +47,8 @@ import { useDemo } from '@/lib/demo-context';
 import { useSession } from '@/lib/auth-context';
 import { useWallet } from '@/lib/wallet-context';
 import { DEMO_BILLS, DEMO_BUDGETS, DEMO_GOALS, DEMO_LIFETIME_XP, DEMO_TRANSACTIONS } from '@/lib/demo-data';
+import { guardarLancamentosDeExemplo, lancamentosDeExemplo } from '@/lib/lancamentos-teste';
+import { MODO_TESTE } from '@/lib/modo-teste';
 import type { Bill, Budget, Goal, Transaction, TxType } from '@/lib/types';
 import PieChart, { type PieSlice } from '@/components/PieChart';
 import FlowChart, { ChartPeriod } from '@/components/FlowChart';
@@ -119,6 +121,11 @@ export default function InicioScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  /* Teste da landing: o que se lança ou edita aqui vale também nas outras telas
+     (lib/lancamentos-teste.ts). Fora do teste, isto não guarda nada. */
+  useEffect(() => {
+    if (isDemoMode && transactions.length) guardarLancamentosDeExemplo(transactions);
+  }, [isDemoMode, transactions]);
   /* Pagamentos de fatura: só o resumo de faturas usa, para saber se a fatura
      que já fechou ainda tem algo "A pagar agora" (T25). `null` = ainda não
      carregou: sem eles o resumo não afirma dívida que pode já estar paga. */
@@ -379,7 +386,7 @@ export default function InicioScreen() {
        versão de novo e o próximo foco recarrega, em vez de ser engolida. */
     const versaoAoComecar = versaoDosLancamentos();
     if (isDemoMode) {
-      setTransactions(DEMO_TRANSACTIONS);
+      setTransactions(lancamentosDeExemplo());
       setBills(DEMO_BILLS);
       setBudgets(DEMO_BUDGETS);
       setGoals(DEMO_GOALS);
@@ -1612,7 +1619,7 @@ export default function InicioScreen() {
         eyebrow="Início"
         eyebrowBadges={
           <>
-            {isDemoMode && <Text style={styles.demoFlag}>exemplo</Text>}
+            {isDemoMode && !MODO_TESTE && <Text style={styles.demoFlag}>exemplo</Text>}
             {hidden && <Text style={styles.demoFlag}>oculto</Text>}
           </>
         }

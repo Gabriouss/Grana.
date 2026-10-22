@@ -4,6 +4,7 @@ import { useSession } from './auth-context';
 import { estadoAposFalha, guardarAcesso, lerAcessoGuardado, prazoOfflineAindaVale } from './entitlement-cache';
 import { isLikelyNetworkError } from './offline-cache';
 import { supabase } from './supabase';
+import { MODO_TESTE } from './modo-teste';
 
 export type EstadoAcesso = {
   enforced: boolean;
@@ -28,9 +29,13 @@ type EntitlementContextValue = {
 
 const EntitlementContext = createContext<EntitlementContextValue | null>(null);
 
+/* Modo teste da landing: acesso liberado só dentro do teste, que não toca o servidor. */
+const ACESSO_TESTE: EstadoAcesso = { enforced: false, active: true, allowed: true, status: 'teste', access_until: null, grace_until: null };
+
 export function useEntitlement() {
   const value = use(EntitlementContext);
   if (!value) throw new Error('useEntitlement precisa estar dentro de EntitlementProvider');
+  if (MODO_TESTE) return { ...value, estado: ACESSO_TESTE, carregando: false, modoOffline: false };
   return value;
 }
 
@@ -50,7 +55,8 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
      contar como mudança e disparar uma recarga inteira do acesso. Cada recarga
      é uma janela em que a guarda de `app/_layout.tsx` pode cair e remontar o
      grupo de telas. */
-  const userId = session?.user.id ?? null;
+  // No modo teste o acesso vem fixo de `useEntitlement`; o provedor não consulta nada.
+  const userId = MODO_TESTE ? null : session?.user.id ?? null;
 
   /* Os dois valores abaixo são LIDOS dentro da recarga, nunca dependências
      dela. Como ref, a recarga enxerga sempre o valor do instante em que a

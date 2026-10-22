@@ -19,6 +19,7 @@ import { esquecerTelas } from './cache-de-tela';
 import { esquecerLancamentosLocais } from './offline-cache';
 import { limparSnapshotWidgets } from './widgets-home-sync';
 import { sairDaConta } from './sair-da-conta';
+import { MODO_TESTE, SESSAO_TESTE } from './modo-teste';
 
 type AuthContextValue = {
   session: Session | null;
@@ -53,6 +54,8 @@ export function useSession() {
   if (!value) {
     throw new Error('useSession precisa estar dentro de um <SessionProvider />');
   }
+  // Modo teste da landing: sessão fictícia, sem token (lib/modo-teste.ts).
+  if (MODO_TESTE) return { ...value, session: SESSAO_TESTE, isLoading: false, emRecuperacao: false, sessaoNaoConfirmada: false };
   return value;
 }
 

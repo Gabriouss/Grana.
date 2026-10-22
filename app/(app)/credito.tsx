@@ -79,6 +79,7 @@ import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
 import { DEMO_CREDIT_CARDS, DEMO_TRANSACTIONS } from '@/lib/demo-data';
+import { lancamentosDeExemplo } from '@/lib/lancamentos-teste';
 import { LIMITS } from '@/lib/limits';
 import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
@@ -248,7 +249,7 @@ export default function CreditoScreen() {
 
     if (isDemoMode) {
       setCards(DEMO_CREDIT_CARDS);
-      setTransactions(DEMO_TRANSACTIONS);
+      setTransactions(lancamentosDeExemplo());
       setInvoicePayments([]);
       setLoading(false);
       setRefreshing(false);

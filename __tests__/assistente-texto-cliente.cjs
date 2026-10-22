@@ -14,7 +14,8 @@ const query = { select() { return this; }, gte() { return this; }, order() { ret
 const mod = { exports: {} };
 vm.runInNewContext(codigo, {
   exports: mod.exports, module: mod, console, process: { env: { EXPO_PUBLIC_SUPABASE_URL: 'https://teste.invalid' } },
-  require: (id) => { assert.equal(id, './supabase'); return { supabase: { from: () => query, auth: { getSession: async () => ({ data: { session: { access_token: 'token-ficticio-teste' } } }) } } }; },
+  // Fora do modo teste da landing (lib/modo-teste.ts), que é o caminho que este teste cobre.
+  require: (id) => { if (id === './modo-teste') return { MODO_TESTE: false }; if (id === './assistente-teste') return { respostaDoTeste: () => { throw Error('modo teste nao deveria responder aqui'); } }; assert.equal(id, './supabase'); return { supabase: { from: () => query, auth: { getSession: async () => ({ data: { session: { access_token: 'token-ficticio-teste' } } }) } } }; },
   fetch: async (_url, opts) => { enviado = JSON.parse(opts.body); return { ok: true, json: async () => ({ resposta: original, ferramenta: 'consultar_saldo' }) }; },
 });
 (async () => {

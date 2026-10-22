@@ -21,6 +21,7 @@ import { useWallet } from '@/lib/wallet-context';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
 import { DEMO_TRANSACTIONS } from '@/lib/demo-data';
+import { lancamentosDeExemplo } from '@/lib/lancamentos-teste';
 import { fetchTransactions, fetchTransactionsDoPeriodo } from '@/lib/data';
 import { formatMoney, formatBRLSaldo, isCreditTx, todayISO, formatDateLabel } from '@/lib/format';
 import { theme, radius, spacing, type, screenRhythm, card as cardTokens, fonts, lh } from '@/lib/theme';
@@ -100,7 +101,7 @@ export default function GraficosScreen() {
   const carregarDados = useCallback(async (forcar = false) => {
     try {
       if (isDemoMode) {
-        setTransactions(DEMO_TRANSACTIONS);
+        setTransactions(lancamentosDeExemplo());
         return;
       }
       /* Em "Período" a tela já descarta tudo fora do intervalo (ver

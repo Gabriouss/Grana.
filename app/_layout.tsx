@@ -360,6 +360,9 @@ function RootNavigator() {
         {/* A distribuição direta precisa abrir antes de existir uma conta, tanto
             pelo e-mail da compra quanto pela landing. */}
         <Stack.Screen name="baixar" />
+        {/* Teste interativo da landing (lib/modo-teste.ts): sem guarda, porque é
+            ele quem marca a janela como teste antes de abrir a área do app. */}
+        <Stack.Screen name="experimentar" />
         <Stack.Screen name="admin" />
         {/* Callback PKCE dedicado: recebe somente um código curto e de uso
             único; a troca pela sessão acontece em auth-context. */}

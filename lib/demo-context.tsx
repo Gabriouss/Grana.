@@ -1,4 +1,5 @@
 import { createContext, use, useState, type PropsWithChildren } from 'react';
+import { MODO_TESTE } from './modo-teste';
 
 type DemoContextValue = {
   isDemoMode: boolean;
@@ -19,13 +20,14 @@ export function useDemo() {
 }
 
 export function DemoProvider({ children }: PropsWithChildren) {
-  const [isDemoMode, setIsDemoMode] = useState(false);
+  // No modo teste da landing os dados de exemplo são a própria conta, e não se desligam.
+  const [isDemoMode, setIsDemoMode] = useState(MODO_TESTE);
 
   const value: DemoContextValue = {
     isDemoMode,
-    toggleDemoMode: () => setIsDemoMode((prev) => !prev),
+    toggleDemoMode: () => setIsDemoMode((prev) => MODO_TESTE || !prev),
     enableDemoMode: () => setIsDemoMode(true),
-    disableDemoMode: () => setIsDemoMode(false),
+    disableDemoMode: () => setIsDemoMode(MODO_TESTE),
   };
 
   return <DemoContext value={value}>{children}</DemoContext>;
