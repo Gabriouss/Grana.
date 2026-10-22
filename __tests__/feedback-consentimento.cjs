@@ -140,6 +140,7 @@ function carregar() {
     const funcoes = fonteLanding.statements.filter(n => ts.isFunctionDeclaration(n) && ['comAtribuicao','abrirCompraMarketing'].includes(n.name?.text));
     conferir('as duas funções reais da landing estão cobertas', funcoes.length === 2, funcoes.length);
     const ligacao = { exports: {} };
+    const atrasos = [];
     const codigoLanding = funcoes.map(n => n.getText(fonteLanding)).join('\n') + '\nexports.href = comAtribuicao; exports.abrir = abrirCompraMarketing;';
     vm.runInNewContext(ts.transpileModule(codigoLanding, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, {
       module: ligacao, exports: ligacao.exports, window: janela,
@@ -147,13 +148,16 @@ function carregar() {
       consentimentoMarketingAtual: consent.exports.consentimentoMarketingAtual,
       hrefCompra: () => 'https://pay.cakto.com.br/oferta', hrefCompraAnual: () => 'https://pay.cakto.com.br/anual',
       registrarCheckoutMarketing: () => {}, // Adaptador local, sem Pixel/rede.
+      setTimeout: (fn, ms) => { atrasos.push(ms); fn(); }, // Executa na hora e guarda o atraso pedido.
     });
     ligacao.exports.abrir(false);
     conferir('sem escolha, o clique real não repassa identificadores', destinos.at(-1).search === '');
+    conferir('sem consentimento, a ida ao checkout não espera', atrasos.at(-1) === 0, atrasos.at(-1));
     consent.exports.salvarConsentimento(janela.localStorage, true);
     conferir('o href copiável continua limpo mesmo após aceitar', ligacao.exports.href('https://pay.cakto.com.br/oferta?gclid=antigo') === 'https://pay.cakto.com.br/oferta');
     ligacao.exports.abrir(true);
     conferir('com aceite, o clique real preserva os identificadores permitidos', destinos.at(-1).searchParams.get('gclid') === 'cliqueGoogle' && destinos.at(-1).searchParams.get('fbclid') === 'cliqueMeta');
+    conferir('com aceite, a ida ao checkout espera o Pixel enviar o InitiateCheckout', atrasos.at(-1) === 400, atrasos.at(-1));
     consent.exports.salvarConsentimento(janela.localStorage, false);
     ligacao.exports.abrir(false);
     conferir('após recusar, a navegação continua sem repasse', destinos.at(-1).pathname === '/oferta' && destinos.at(-1).search === '');

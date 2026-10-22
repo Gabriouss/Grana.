@@ -106,7 +106,8 @@ function abrirCompraMarketing(anual: boolean, evento?: { preventDefault?: () => 
   const destino = atribuirCampanha(anual ? hrefCompraAnual() : hrefCompra(), window.location.search, consentimentoMarketingAtual());
   registrarCheckoutMarketing(destino, anual ? 'anual' : 'mensal');
   evento?.preventDefault?.();
-  window.location.assign(destino);
+  // Com consentimento, o Pixel envia o InitiateCheckout em segundo plano; sair na hora cortava o envio.
+  setTimeout(() => window.location.assign(destino), consentimentoMarketingAtual() ? 400 : 0);
 }
 
 function hrefCadastroComAtribuicao(): string {
