@@ -93,7 +93,7 @@ O histórico e a evidência da exposição permanecem na seção datada de 16/09
 
 # 21/10/2026 (M1, Antigravity): Correção do .easignore, validação completa e disparo da build 1.10.9
 
-- **Build 1.10.9:** preparo `npm run build:preparar -- "Melhorias no visual do início com atalhos organizados em grade, seletor de carteira aprimorado e mais estabilidade no aplicativo."` (versão 1.10.8 → 1.10.9, versionCode 22 → 23 no `app.json`). **Build 1 de 3 da semana** (regra 22). Pedido explícito do autor nesta sessão: "Arrocha, dispara a build. Pode fazer você mesmo a mensagem da nota de atualização".
+- **Build 1.10.9:** preparo `npm run build:preparar -- "Melhorias no visual do início com atalhos organizados em grade, seletor de carteira aprimorado e mais estabilidade no aplicativo."` (versão 1.10.8 → 1.10.9, versionCode 22 → 23 no `app.json`). **Build 1 de 3 da semana** (regra 22). Pedido explícito do autor nesta sessão: "Arrocha, dispara a build. Pode fazer você mesmo a mensagem da nota de atualização". **EAS Build ID:** `4d12dc0a-2c9c-454a-ac9c-21b0ba0197d2` (`https://expo.dev/accounts/gabriouss/projects/grana-app/builds/4d12dc0a-2c9c-454a-ac9c-21b0ba0197d2`).
 - **Correção preventiva crítica no `.easignore`:** regra `supabase/functions/*` com `!supabase/functions/_shared/` barrava a pasta de `_shared` na raiz durante `fs.cp` do EAS CLI, o que omitia `supabase/functions/_shared/livre-para-gastar.ts` (importado por `lib/safe-to-spend.ts`) e derrubava a compilação do Android com `Unable to resolve module`. Corrigido com `!supabase/functions/_shared` e `!supabase/functions/_shared/**`.
 - **Validação pré-build 100% verde:**
   - `npx tsc --noEmit`: 0 erros.
