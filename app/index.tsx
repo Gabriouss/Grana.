@@ -17,7 +17,7 @@ import SegmentedTabs from '@/components/SegmentedTabs';
 import FogBackground from '@/components/FogBackground';
 import TrustMarquee from '@/components/TrustMarquee';
 import NavFlutuanteLanding from '@/components/NavFlutuanteLanding';
-import CarrosselTelasApp from '@/components/CarrosselTelasApp';
+import TesteInterativo from '@/components/TesteInterativo';
 import PainelWebDestaque from '@/components/PainelWebDestaque';
 import ScrollLinkedView from '@/components/ScrollLinkedView';
 import TrilhaPassos from '@/components/TrilhaPassos';
@@ -1352,40 +1352,42 @@ function ConteudoWeb() {
         </Dobra>
       </View>
 
+      {/* ───────── Teste o app (no lugar do carrossel "Por dentro do aplicativo.") ─────────
+          Pedido do autor em 21/10/2026: trocar a prévia de telas por um teste
+          interativo do app de verdade, em que a pessoa simula lançamentos. O app
+          real roda num iframe em modo teste (lib/modo-teste.ts), sem login e sem
+          rede; detalhes em components/TesteInterativo.tsx. */}
+      <View nativeID="teste" style={styles.palcoComCamada}>
+        <GradeInterativa />
+        <Dobra levantada>
+          <View style={styles.secao}>
+            <TesteInterativo
+              compacto={ehCompacto}
+              cabecalho={
+                <View>
+                  <Text style={[styles.eyebrow, ehCompacto && styles.precoTextoCentralizado]}>Por dentro do aplicativo</Text>
+                  <TituloSecao>Teste o Grana. agora, sem cadastro.</TituloSecao>
+                  <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, ehCompacto && styles.precoTextoCentralizado]}>
+                    É o aplicativo de verdade, com uma conta de mentirinha. Lance um gasto e veja o mês se ajustar.
+                  </Text>
+                </View>
+              }
+            />
+          </View>
+        </Dobra>
+      </View>
+
       {/* ───────── Construção do hábito (dobra 5) ─────────
-          Fundida com o antigo "Por dentro do aplicativo" (autor: "o
-          carrossel pode muito bem estar nessa tela aqui e mesclar essas
-          duas sessões") — eram duas dobras seguidas mostrando um celular
-          com telas do app, uma delas nem navegável (só 2 quadros em
-          crossfade automático). Agora é uma só: o carrossel de 5 abas de
-          verdade (`CarrosselTelasApp`) entra no lugar do `MolduraCelular`
-          de 2 quadros, e "Por dentro do aplicativo." vira legenda
-          (`eyebrow`) presa ao carrossel — hierarquia menor, de propósito —
-          enquanto "O Grana. ajuda o controle a virar hábito." continua
-          sendo o título (H2) da seção. */}
+          Até 21/10/2026 dividia a dobra com o carrossel de telas
+          (`CarrosselTelasApp`). O carrossel deu lugar ao teste interativo, que
+          ganhou dobra própria logo acima (`#teste`), e esta seção ficou só com a
+          notificação e os pilares do hábito, numa coluna centralizada. */}
       <View nativeID="habitos" style={styles.palcoComCamada}>
         <GradeInterativa />
         <Dobra levantada>
           <RevealOnScroll>
             <View style={[styles.secao, styles.secaoComCartao, !habitosEmpilhados && styles.secaoHabitos, habitosEmpilhados && styles.secaoComCartaoCompacta]}>
-              <View style={[styles.molduraCentralizada, habitosEmpilhados && styles.molduraCentralizadaCompacta]}>
-                <Text style={styles.eyebrow}>Por dentro do aplicativo.</Text>
-                {/* `parallaxFolgaAcima` não é respiro estético: é a reserva do
-                    curso da flutuação. O `ScrollLinkedView` translada o
-                    conteúdo em até `intensidade` px para cima, e o celular
-                    subia por cima deste sobretítulo, que fica logo acima dele
-                    (relatado pelo autor). Transform não reserva espaço no
-                    layout, então quem tem que reservar é o layout. A folga
-                    precisa ser sempre MAIOR que a intensidade usada aqui. */}
-                <ScrollLinkedView
-                  intensidade={ehCompacto ? 6 : 14}
-                  style={[styles.visualParallax, styles.parallaxFolgaAcima]}
-                  contentStyle={styles.visualParallaxConteudo}
-                >
-                  <CarrosselTelasApp compacto={ehCompacto} />
-                </ScrollLinkedView>
-              </View>
-              <View style={[styles.colunaTextoSecao, habitosEmpilhados && styles.colunaTextoSecaoCompacta]}>
+              <View style={[styles.colunaTextoSecao, styles.colunaHabitosSozinha, habitosEmpilhados && styles.colunaTextoSecaoCompacta]}>
                 <Text style={[styles.eyebrow, ehCompacto && styles.precoTextoCentralizado]}>Notificações e desafios</Text>
                 <TituloSecao>Um lembrete na hora certa. Um placar que não julga.</TituloSecao>
                 {/* Uma frase só. A versão de três linhas repetia o que os
@@ -1475,13 +1477,13 @@ function ConteudoWeb() {
                   Gastos de uma categoria, contas do mês, fatura do cartão ou quanto sobra até o fim do mês. O Granabô
                   consulta os seus lançamentos e responde.
                 </Text>
-                <View style={styles.granaboPontos}>
+                <View style={[styles.granaboPontos, ehCompacto && styles.granaboPontosCompactos]}>
                   {COMO_O_GRANABO_RESPONDE.map((ponto) => (
-                    <View key={ponto.texto} style={styles.granaboPonto}>
+                    <View key={ponto.texto} style={[styles.granaboPonto, ehCompacto && styles.granaboPontoCompacto]}>
                       <View style={styles.granaboPontoIcone} aria-hidden>
                         <Ionicons name={ponto.icone} size={16} color={theme.accent2} />
                       </View>
-                      <Text style={styles.granaboPontoTexto}>{ponto.texto}</Text>
+                      <Text style={[styles.granaboPontoTexto, ehCompacto && styles.granaboPontoTextoCompacto]}>{ponto.texto}</Text>
                     </View>
                   ))}
                 </View>
@@ -2219,6 +2221,8 @@ const styles = StyleSheet.create({
      área útil de 840 e cortava o último pilar. Com 20px: 833. A `Dobra`
      continua centralizando, então o ritmo com as dobras vizinhas se mantém. */
   secaoHabitos: { paddingVertical: spacing.xl },
+  // Sozinha na dobra desde que o carrossel saiu: coluna centralizada no lugar da metade esquerda.
+  colunaHabitosSozinha: { flexBasis: 640, flexGrow: 0, maxWidth: 640, marginHorizontal: 'auto' },
   /* Mesmo respiro vertical que `conteudoLivre` dava à grade anterior, para a
      troca de componente não mudar o ritmo da página. */
   secaoBento: { paddingVertical: spacing.xxl * 2.5 },
@@ -2287,6 +2291,10 @@ const styles = StyleSheet.create({
   },
   habitoTexto: { flex: 1 },
   granaboPontos: { gap: spacing.md, marginTop: spacing.xl },
+  // Web no celular: tudo centralizado, ícone sobre o texto (autor, 21/10/2026).
+  granaboPontosCompactos: { alignItems: 'center', gap: spacing.lg },
+  granaboPontoCompacto: { flexDirection: 'column', gap: spacing.xs },
+  granaboPontoTextoCompacto: { flex: 0, textAlign: 'center' },
   granaboPonto: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   granaboPontoIcone: {
     width: 32,
