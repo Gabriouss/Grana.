@@ -73,8 +73,10 @@ const jsonLd = JSON.stringify({
 
 const jsonLdHash = crypto.createHash('sha256').update(jsonLd).digest('base64');
 const vercel = JSON.parse(fs.readFileSync(vercelPath, 'utf8'));
-const csp = vercel.headers?.flatMap((item) => item.headers ?? []).find((header) => header.key === 'Content-Security-Policy')?.value ?? '';
-if (!csp.includes(`'sha256-${jsonLdHash}'`)) {
+// Toda CSP do vercel.json, não só a primeira: a do teste da landing (`/experimentar`)
+// é uma cópia da geral que só troca o `frame-ancestors`, e as duas andam juntas.
+const csps = vercel.headers?.flatMap((item) => item.headers ?? []).filter((header) => header.key === 'Content-Security-Policy').map((header) => header.value) ?? [];
+if (!csps.length || csps.some((csp) => !csp.includes(`'sha256-${jsonLdHash}'`))) {
   console.error(`[inject-og-meta] CSP sem o hash atual do JSON-LD: sha256-${jsonLdHash}`);
   process.exit(1);
 }
