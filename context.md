@@ -91,6 +91,16 @@ O histórico e a evidência da exposição permanecem na seção datada de 16/09
 
 ---
 
+# 22/10/2026 (M1, Claude direto com o autor): auditoria ponytail e correções
+
+**Pedido:** `/ponytail audit` e depois "Resolve os achados". Relatório só com quatro achados menores; nada urgente. O que estava sólido: os webhooks públicos conferem segredo/assinatura em tempo constante, têm teto de corpo e idempotência; o paywall vale no banco (política de `transactions` exige `tem_direito_acesso()`).
+
+**Corrigido:** (1) `kiwify-webhook` e `_shared/kiwify.ts` apagados do repositório (`d5d6172d`): a Kiwify nunca vendeu, mas a função seguia no ar com `KIWIFY_WEBHOOK_TOKEN`, uma porta a mais que libera acesso pago. (2) A landing (`app/index.tsx`) e `app/assinar.tsx` não caem mais em `EXPO_PUBLIC_KIWIFY_CHECKOUT_URL`/`_BILLING_URL` (mesmo commit); a antiga ainda existe na Vercel em produção e um renomeio da nova mandaria a compra a um checkout morto. `EXPO_PUBLIC_CHECKOUT_URL` conferida por nome na Vercel (três ambientes); no EAS, pelo registro de 10/09 e pelo log da build 1.9.0 (o `eas env:list` foi negado nesta sessão). Sem `EXPO_PUBLIC_BILLING_URL` em lugar nenhum, o botão de gerenciar some e fica o e-mail de suporte. (3) `lib/projections.ts` e `lib/data.ts` (`sinceDays`) usam `isoLocal` em vez de UTC (`9bf7b28b`). (4) `__tests__/auditoria-0310-textos-e-projecao.cjs` estava quebrado desde `2244e190` (import de `./modo-teste` não simulado), deixando o `test:ci` vermelho; corrigido em `fb42199e`.
+
+**PENDENTE, produção:** o modo automático barrou apagar a função e o segredo no Supabase. Script conferido para o autor rodar: `E:/Grana-temporarios/auditoria-ponytail/remover-kiwify-webhook.sh`; cópia do pacote publicado em `E:/Grana-temporarios/auditoria-ponytail/retorno/`. Até rodar, existe função no ar sem fonte no `origin/main` (regra 11): não republicar nada com esse nome. **Verificado:** `tsc` zero erros; `request-body-limitado`, `cakto-webhook`, `cobranca-eventos-lgpd`, `checkout-com-email`, `exemplo-landing`, `regra-20-saldo-do-mes`, `paridade-livre-para-gastar`, `auditoria-0310`, `projecao-ignora-credito-sem-cartao`, `lancamentos-mes-vazio`, `modo-teste`, `corpus-schema-guardas` e `deno check` do `cakto-webhook`. **Não verificado:** `test:ci` inteiro; o APK atual (o botão de gerenciar no app só muda na próxima build). Não lidos na auditoria: `whatsapp-webhook` (publicado, sem JWT, remoção adiada pelo autor), `assistente-financeiro`, migrations uma a uma, painel admin e executor Meta.
+
+---
+
 # 22/10/2026 (M1, Claude direto com o autor): simulador da landing não sai da página
 
 **Pedido do autor:** "o simulador do aplicativo dentro do celular leva o usuário para outra página [...] Isso não pode acontecer em hipótese alguma". No telefone, "Testar agora" abria `/experimentar` em aba nova, e o link "Abrir em tela cheia" fazia o mesmo em qualquer largura (`components/TesteInterativo.tsx`). Uma primeira correção, com camada de tela cheia por cima da landing e botão "Voltar à página", foi **recusada**: "faz o usuário perder o interesse em continuar rolando a página".
