@@ -8,16 +8,23 @@
       "id": "46be59a4a563ac69",
       "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Pra onde foi o dinheiro do mês.mp4",
       "versao": "9fb224f2ec743942bc0608196086207e52b50028",
-      "data": "2026-10-23",
+      "data": "2026-10-22",
       "hora": "09:00",
       "canal": "reels",
       "observacao": null,
-      "planejadoEm": "2026-10-21T20:30:34-03:00",
+      "planejadoEm": "2026-10-21T20:35:54-03:00",
       "recibos": [
         {
           "tipo": "data-marcada",
           "em": "2026-10-21T20:30:34-03:00",
           "data": "2026-10-23",
+          "hora": "09:00",
+          "canal": "reels"
+        },
+        {
+          "tipo": "data-marcada",
+          "em": "2026-10-21T20:35:54-03:00",
+          "data": "2026-10-22",
           "hora": "09:00",
           "canal": "reels"
         }

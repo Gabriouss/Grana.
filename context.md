@@ -90,7 +90,19 @@ Em 08/10/2026, o autor confirmou que os cinco segredos incluídos no pacote envi
 O histórico e a evidência da exposição permanecem na seção datada de 16/09/2026 abaixo. A rotação resolve a pendência de validade dos valores expostos, sem apagar o fato histórico de que o pacote de projeto foi enviado ao EAS.
 
 ---
-# 21/10/2026 (M1, Ledger): agendamento implantado, reparos visuais e pendências — corte 14h00
+
+# 21/10/2026 (M1, Antigravity): Correção do .easignore, validação completa e disparo da build 1.10.9
+
+- **Build 1.10.9:** preparo `npm run build:preparar -- "Melhorias no visual do início com atalhos organizados em grade, seletor de carteira aprimorado e mais estabilidade no aplicativo."` (versão 1.10.8 → 1.10.9, versionCode 22 → 23 no `app.json`). **Build 1 de 3 da semana** (regra 22). Pedido explícito do autor nesta sessão: "Arrocha, dispara a build. Pode fazer você mesmo a mensagem da nota de atualização".
+- **Correção preventiva crítica no `.easignore`:** regra `supabase/functions/*` com `!supabase/functions/_shared/` barrava a pasta de `_shared` na raiz durante `fs.cp` do EAS CLI, o que omitia `supabase/functions/_shared/livre-para-gastar.ts` (importado por `lib/safe-to-spend.ts`) e derrubava a compilação do Android com `Unable to resolve module`. Corrigido com `!supabase/functions/_shared` e `!supabase/functions/_shared/**`.
+- **Validação pré-build 100% verde:**
+  - `npx tsc --noEmit`: 0 erros.
+  - `expo export --platform android` a partir de cópia rasa com o `.easignore` real: exit 0 (bundle Hermes `5.8MB`).
+  - Suítes de teste executadas com sucesso: `test:voz` (35.014 verificações), `test:assistente-aprendizado`, `test:assistente-fatura`, `test:blur`, `test:motion`, `test:parser` (>300.000 asserções), `voice-fallback.cjs`, `voz-offline.cjs`, `widget-voz-cartoes.cjs`, `modo-teste.cjs`.
+  - Verificação de segredos (`varrer-segredos.cjs`): exit 0.
+- **Landing page:** rodada final do Claude Opus com Granabô narrador, teste interativo `/experimentar` e ajustes responsivos já publicada no GitHub e deploy `dpl_2DxuZUydM9mjCva1T37F5KFzwZaN` em produção na Vercel (`READY` / `PROMOTED`).
+
+---
 
 **Registro autorizado pelo autor às 13h58, ordem do maestro 14h00.** Substitui como estado atual os cortes de 20/10 e da retomada em que implantação/runtime ainda estavam pendentes; preserva esses registros históricos. Fonte operacional: `E:/Grana-temporarios/2026-10-21-retomada-0030/00-ORDEM-maestro-0955-meta-feito-pelo-maestro.md`, atualização 10h24, e ordem 14h00. Hashes abaixo conferidos no histórico local; Ledger não repetiu testes, sondas, login ou operações remotas. **Implantação concluída não significa fluxo inteiro 100% aprovado.**
 

@@ -73,7 +73,8 @@ supabase/migrations/
 supabase/email-templates/
 supabase/*.sql
 supabase/functions/*
-!supabase/functions/_shared/
+!supabase/functions/_shared
+!supabase/functions/_shared/**
 scripts/*
 !scripts/ligar-hooks.cjs
 .github/
