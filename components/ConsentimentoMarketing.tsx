@@ -29,10 +29,10 @@ export default function ConsentimentoMarketing() {
   useEffect(() => { if (aberto && configurar) titulo.current?.focus({ preventScroll: true }); }, [aberto, configurar]);
 
   useEffect(() => {
-    const permitidoNaEntrada = consentimentoMarketingAtual();
     const pixel = criarPixel({ id: process.env.EXPO_PUBLIC_META_PIXEL_ID, liberado: process.env.EXPO_PUBLIC_META_PIXEL_ATIVO === 'true' },
       consentimentoMarketingAtual, () => paginaPublicaLimpa(window.location, document.referrer),
-      transportePixelWeb(window, document, () => { if (permitidoNaEntrada) pixel.evento('PageView'); }),
+      // Consentimento lido quando o script fica pronto: quem aceita no banner conta a visita em que aceitou.
+      transportePixelWeb(window, document, () => { if (consentimentoMarketingAtual()) pixel.evento('PageView'); }),
       () => window.crypto.randomUUID());
     let vencimento: ReturnType<typeof setTimeout>;
     function sincronizar() {
