@@ -209,7 +209,7 @@ for (const caminho of listarHtml(path.join(__dirname, '..', 'dist'))) {
   for (const [, atributos, corpo] of html.matchAll(/<script(?![^>]*\bsrc=)([^>]*)>([\s\S]*?)<\/script>/gi)) {
     if (!corpo.trim() || /application\/ld\+json/i.test(atributos)) continue;
     const hash = crypto.createHash('sha256').update(corpo).digest('base64');
-    if (!csp.includes(`'sha256-${hash}'`)) {
+    if (csps.some((csp) => !csp.includes(`'sha256-${hash}'`))) {
       console.error(`[inject-og-meta] script inline sem hash na CSP em ${rota}: sha256-${hash}`);
       process.exit(1);
     }
