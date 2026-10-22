@@ -133,8 +133,9 @@ const styles = StyleSheet.create({
   guiaCompacto: { width: '100%', alignItems: 'center' },
   // Web no celular: guia todo centralizado (autor, 21/10/2026).
   guiaTopoCompacto: { flexDirection: 'column', alignSelf: 'stretch' },
-  passoCompacto: { flexDirection: 'column', alignItems: 'center', gap: spacing.xs },
-  passoTextoCompacto: { flex: 0, textAlign: 'center' },
+  // No celular, cada passo vira um bloco da mesma largura, número à esquerda na linha do texto.
+  passoCompacto: { alignItems: 'center', alignSelf: 'center', width: '100%', maxWidth: 420, padding: spacing.md, borderRadius: radius.md, backgroundColor: theme.paperRaised, borderWidth: 1, borderColor: theme.rule },
+  passoTextoCompacto: { textAlign: 'left' },
   centro: { textAlign: 'center' },
   meio: { alignSelf: 'center' },
   guiaTopo: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
