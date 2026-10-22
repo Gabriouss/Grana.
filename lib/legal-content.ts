@@ -34,7 +34,7 @@ const EMAIL_CONTATO = '[contato@granaponto.com.br](mailto:contato@granaponto.com
 
 export const POLITICA_PRIVACIDADE: DocumentoLegal = {
   titulo: 'Política de Privacidade',
-  atualizadoEm: '16 de outubro de 2026',
+  atualizadoEm: '22 de outubro de 2026',
   blocos: [
     {
       tipo: 'paragrafo',
@@ -88,7 +88,12 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
     {
       tipo: 'paragrafo',
       texto:
-        'Há uma exceção, e ela fica declarada aqui: quando você chega ao nosso site por um anúncio, o endereço traz identificadores de clique (gclid, do Google, e fbclid, da Meta) e parâmetros de campanha (utm). Se você seguir dali para a compra, esses identificadores acompanham o link e informam ao Google e à Meta que aquele anúncio resultou numa venda. O que isso mede é a campanha. Nada do que você registra dentro do Grana. entra nessa medição, e quem chega ao site sem passar por um anúncio não carrega identificador nenhum.',
+        'Há uma exceção, e ela fica declarada aqui: quando você chega ao nosso site por um anúncio, o endereço traz identificadores de clique (gclid, do Google, e fbclid, da Meta) e parâmetros de campanha (utm). Se você seguir dali para a compra, esses identificadores acompanham o link e informam ao Google e à Meta que aquele anúncio resultou numa venda. O que isso mede é a campanha. Nada do que você registra dentro do Grana. entra nessa medição, e quem chega ao site sem passar por um anúncio não carrega identificador de clique.',
+    },
+    {
+      tipo: 'paragrafo',
+      texto:
+        'No site (granaponto.com.br) usamos também o Pixel da Meta, somente se você aceitar no aviso de privacidade. Com o aceite, a Meta registra a sua visita à página inicial, a visualização dos preços e o início da compra, e grava no seu navegador os cookies _fbp e _fbc, que ela usa para ligar essas visitas aos anúncios. A Meta também recebe dados técnicos do navegador e da conexão, como o endereço IP. A base legal é o seu consentimento (LGPD, art. 7º, I). Sem o aceite, nada disso acontece, e recusar não impede navegar nem comprar. Você muda a escolha quando quiser em Preferências de privacidade, no rodapé do site. O Pixel não existe dentro do aplicativo e não recebe nada do que você registra no Grana.',
     },
     { tipo: 'subtitulo', texto: '4. Com quem os dados são compartilhados' },
     {
@@ -98,7 +103,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
         'OpenAI e Groq (Whisper), somente para transcrever mensagens de áudio enviadas pelo app ou widget, quando você usa voz. O áudio é enviado só para a transcrição e não é retido por nós após o processamento.',
         'Google (Gemini), somente para gerar a resposta textual do Granabô a partir da pergunta, do contexto da conversa e dos resultados financeiros necessários para responder. O modelo não recebe acesso direto ao banco.',
         `Google (ML Kit), biblioteca que lê a foto da nota no próprio aparelho, no Android. Segundo a documentação do Google, o ML Kit não envia aos servidores do Google a imagem, o conteúdo lido nem o resultado da leitura. A biblioteca envia ao Google métricas de diagnóstico e uso: dados do aparelho e da versão do app, um identificador por instalação, configuração e tamanho da leitura, tempo de processamento, versão do recurso, eventos e códigos de erro. O Google informa que usa essas métricas para manter, melhorar e proteger as APIs. O Grana. não recebe essas métricas. A biblioteca faz parte do app e é iniciada sempre que ele abre, inclusive pelo widget, mesmo que você não use a foto da nota. Por isso, não garantimos que nenhuma métrica seja enviada sem o uso dessas funções. A base legal desse envio é o legítimo interesse (LGPD, art. 7º, IX, e art. 10): manter a leitura da foto da nota funcionando com segurança. Você pode se opor a esse tratamento. Deixar de usar a foto da nota, que é opcional, evita as métricas dessa leitura, e você também pode escrever para ${EMAIL_CONTATO}.`,
-        'Google Ads e Meta, somente se você chegou por um anúncio e seguiu dali para a compra: recebem o identificador daquele clique e a informação de que a compra aconteceu, para medir a campanha. Não recebem seus dados financeiros nem seu uso do app.',
+        'Google Ads e Meta, somente se você chegou por um anúncio e seguiu dali para a compra: recebem o identificador daquele clique e a informação de que a compra aconteceu, para medir a campanha. A Meta recebe ainda, se você aceitar no site, as visitas descritas na seção anterior pelo Pixel. Nenhuma das duas recebe seus dados financeiros nem seu uso do app.',
         'Resend, serviço de e-mail: envia os e-mails da sua conta (confirmação de cadastro e troca de senha) e recebe as mensagens que você manda para contato@granaponto.com.br e suporte@granaponto.com.br. Para isso, recebe o seu endereço de e-mail e o conteúdo dessas mensagens.',
         'Google (Gmail), a caixa de e-mail em que o nosso atendimento lê e responde as suas mensagens. As mensagens que você manda para o atendimento, com os anexos, e as nossas respostas ficam guardadas nessa caixa.',
         'Cakto, se você assinar o Grana. como plano pago: o processamento do pagamento é feito inteiramente pela Cakto, que nos informa o e-mail usado na compra e o status da assinatura (ativa, atrasada, cancelada, reembolsada), só para liberar o acesso correspondente. O Grana. não recebe nem armazena dados de cartão.',

@@ -1,3 +1,5 @@
+import { CHAVES_CAMPANHA, valorDeCampanhaValido } from './consentimento-marketing';
+
 /** Preparação somente. A liberação operacional é independente do consentimento. */
 export type EventoPixel = 'PageView' | 'ViewContent' | 'InitiateCheckout';
 export type PlanoPixel = 'mensal' | 'anual';
@@ -46,9 +48,13 @@ export function limparIdsMeta(win: Window, doc: Document) {
   }
 }
 
-/** Meta lê URL/referrer por conta própria. Até validação real, falha fechado com URL suja. */
+/** Meta lê URL/referrer por conta própria: falha fechado com URL suja. Parâmetro de anúncio
+ *  (utm, fbclid, gclid) passa, desde que todo o resto da query também seja de campanha. */
 export function paginaPublicaLimpa(location: Pick<Location, 'pathname' | 'search' | 'hash'>, referrer: string): boolean {
-  if (location.pathname !== '/' || location.search || location.hash) return false;
+  if (location.pathname !== '/' || location.hash) return false;
+  for (const [chave, valor] of new URLSearchParams(location.search)) {
+    if (!CHAVES_CAMPANHA.includes(chave) || !valorDeCampanhaValido(valor)) return false;
+  }
   if (!referrer) return true;
   try { const url = new URL(referrer); return url.pathname === '/' && !url.search && !url.hash && !url.username && !url.password; } catch { return false; }
 }

@@ -49,9 +49,16 @@ export function abrirPreferenciasMarketing() {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(ABRIR_PREFERENCIAS_MARKETING));
 }
 
+export const CHAVES_CAMPANHA = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid'];
+
+/** Não aceitar endereço, texto livre, e-mail, JSON ou telefone/CPF numérico. O `fbclid` atual passa de 100 caracteres. */
+export function valorDeCampanhaValido(valor: string | null): boolean {
+  return !!valor && valor.length <= 512 && /^[a-zA-Z0-9_-]+$/.test(valor) && !/^\d{8,}$/.test(valor);
+}
+
 /** Nada de copiar query livre. Só códigos de campanha, e somente após aceite. */
 export function atribuirCampanha(destino: string, origem: string, permitido: boolean): string {
-  const chaves = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid'];
+  const chaves = CHAVES_CAMPANHA;
   try {
     const url = new URL(destino, 'https://landing.invalid');
     for (const chave of chaves) url.searchParams.delete(chave);
@@ -59,8 +66,7 @@ export function atribuirCampanha(destino: string, origem: string, permitido: boo
       const entrada = new URLSearchParams(origem);
       for (const chave of chaves) {
         const valor = entrada.get(chave);
-        // Não aceitar endereço, texto livre, e-mail, JSON ou telefone/CPF numérico.
-        if (valor && valor.length <= 100 && /^[a-zA-Z0-9_-]+$/.test(valor) && !/^\d{8,}$/.test(valor)) url.searchParams.set(chave, valor);
+        if (valorDeCampanhaValido(valor)) url.searchParams.set(chave, valor!);
       }
     }
     return /^https?:\/\//.test(destino) ? url.toString() : `${url.pathname}${url.search}${url.hash}`;

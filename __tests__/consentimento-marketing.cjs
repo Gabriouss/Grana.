@@ -13,7 +13,7 @@ function load(file, extra = {}) {
 }
 const win = new EventTarget(); win.localStorage = storage();
 const consent = load('lib/consentimento-marketing.ts', { window: win });
-const pixel = load('lib/meta-pixel.ts');
+const pixel = load('lib/meta-pixel.ts', { require: () => consent });
 const now = Date.now();
 check(consent.lerConsentimento(storage(), now), null, 'ausência falha fechado');
 for (const value of ['{', '{}', 'null', JSON.stringify({versao:2,marketing:true,data:now}), JSON.stringify({versao:1,marketing:'true',data:now}), JSON.stringify({versao:1,marketing:true,data:now+1}), JSON.stringify({versao:1,marketing:true,data:now-consent.VALIDADE_CONSENTIMENTO_MS})]) {
@@ -42,6 +42,13 @@ const clean = { pathname:'/',search:'',hash:'' };
 check(pixel.paginaPublicaLimpa(clean,''),true);
 for(const pathname of ['/admin','/sign-up','/sign-in','/baixar','/app']) check(pixel.paginaPublicaLimpa({...clean,pathname},''),false);
 check(pixel.paginaPublicaLimpa({...clean,search:'?email=fixture'},''),false);
+// Clique de anúncio: só parâmetros de campanha válidos passam; um único intruso derruba.
+const fbclidLongo = 'IwZXh0bgNhZW0CMTEAAR2' + 'a'.repeat(150) + '_aem_xYz-12';
+check(pixel.paginaPublicaLimpa({...clean,search:`?utm_source=meta&utm_campaign=lancamento&fbclid=${fbclidLongo}`},''),true);
+check(pixel.paginaPublicaLimpa({...clean,search:'?utm_source=meta&email=fixture'},''),false);
+check(pixel.paginaPublicaLimpa({...clean,search:'?utm_term=pessoa%40exemplo.test'},''),false);
+check(pixel.paginaPublicaLimpa({...clean,search:'?gclid=12345678901'},''),false);
+check(consent.atribuirCampanha('/sign-up',`?fbclid=${fbclidLongo}`,true),`/sign-up?fbclid=${fbclidLongo}`);
 check(pixel.paginaPublicaLimpa({...clean,hash:'#token'},''),false);
 check(pixel.paginaPublicaLimpa(clean,'https://outro.test/conta?email=fixture'),false);
 
