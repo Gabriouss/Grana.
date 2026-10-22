@@ -2297,7 +2297,7 @@ const styles = StyleSheet.create({
   // Web no celular: tudo centralizado, ícone sobre o texto (autor, 21/10/2026).
   granaboPontosCompactos: { alignItems: 'center', gap: spacing.sm },
   // No celular, cada ponto vira um bloco da mesma largura, ícone à esquerda na linha do texto.
-  granaboPontoCompacto: { alignSelf: 'center', width: '100%', maxWidth: 420, padding: spacing.md, borderRadius: radius.md, backgroundColor: theme.paperRaised, borderWidth: 1, borderColor: theme.rule },
+  granaboPontoCompacto: { alignSelf: 'center', width: '100%', maxWidth: 540, padding: spacing.md, borderRadius: radius.md, backgroundColor: theme.paperRaised, borderWidth: 1, borderColor: theme.rule },
   granaboPontoTextoCompacto: { textAlign: 'left' },
   granaboPonto: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   granaboPontoIcone: {
