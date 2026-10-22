@@ -2308,7 +2308,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: theme.accentDeep,
   },
-  granaboPontoTexto: { flex: 1, color: theme.ink, fontSize: type.apoio, lineHeight: lh(type.apoio), fontFamily: fonts.light },
+  granaboPontoTexto: { flex: 1, color: theme.ink, fontSize: type.apoio, lineHeight: lh(type.apoio), fontFamily: fonts.light, ...({ textWrap: 'balance' } as any) },
   habitoTitulo: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular, marginBottom: 2 },
   habitoDescricao: { color: theme.inkSoft, fontSize: type.nota, lineHeight: type.nota * 1.4, fontFamily: fonts.light },
   destaqueInline: { color: theme.accent2, fontFamily: fonts.regular },

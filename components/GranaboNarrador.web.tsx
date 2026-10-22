@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg, borderBottomLeftRadius: radius.sm, boxShadow: sombras.cardHeroi,
   } as any,
   balaoCompacto: { paddingVertical: spacing.xs, marginBottom: spacing.sm },
-  texto: { flexShrink: 1, color: theme.ink, fontFamily: fonts.light, fontSize: type.nota, lineHeight: 21, ...({ textWrap: 'pretty' } as any) },
+  texto: { flexShrink: 1, color: theme.ink, fontFamily: fonts.light, fontSize: type.nota, lineHeight: 21, ...({ textWrap: 'balance' } as any) },
   textoCompacto: { fontSize: type.micro, lineHeight: 17 },
   fechar: { padding: 2, marginTop: 1 },
 });
