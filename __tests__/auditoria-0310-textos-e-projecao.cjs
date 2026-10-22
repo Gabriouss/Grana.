@@ -23,7 +23,7 @@ function carregar(arquivo, deps) {
 }
 
 /* V08: nenhum asterisco, #, crase nem marcador de lista cru chega ao chat. */
-const { textoDoAssistente } = carregar('lib/assistente.ts', { './supabase': { supabase: {} } });
+const { textoDoAssistente } = carregar('lib/assistente.ts', { './supabase': { supabase: {} }, './modo-teste': { MODO_TESTE: false }, './assistente-teste': { respostaDoTeste: () => null } });
 assert.equal(textoDoAssistente('Total **R$ 50** ok'), 'Total R$ 50 ok');
 assert.equal(textoDoAssistente('*(Além disso, a fatura for paga).*'), '(Além disso, a fatura for paga).');
 assert.equal(textoDoAssistente('um *itálico* e 2 * 3'), 'um itálico e 2 * 3');
