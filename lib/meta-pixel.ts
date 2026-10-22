@@ -38,7 +38,7 @@ export function criarPixel(config: ConfigPixel, permitido: () => boolean, public
   };
 }
 
-type FilaPixel = ((...args: unknown[]) => void) & { queue: unknown[][]; callMethod?: (...args: unknown[]) => void; push?: FilaPixel; loaded?: boolean; version?: string };
+type FilaPixel = ((...args: unknown[]) => void) & { queue: unknown[][]; callMethod?: (...args: unknown[]) => void; push?: FilaPixel; loaded?: boolean; version?: string; disablePushState?: boolean };
 
 export function limparIdsMeta(win: Window, doc: Document) {
   const host = win.location.hostname.split('.');
@@ -75,6 +75,8 @@ export function transportePixelWeb(win: Window, doc: Document, aoPronto: () => v
         if (fila?.callMethod) fila.callMethod(...args); else fila?.queue.push(args);
       }, { queue: [] as unknown[][], loaded: true, version: '2.0' });
       fila.push = fila;
+      // Sem isto a Meta conta um PageView extra, sem eventID, a cada pushState (os botões levam a #precos).
+      fila.disablePushState = true;
       globals.fbq = globals._fbq = fila;
       fila('consent', 'grant');
       fila('set', 'autoConfig', false, id);

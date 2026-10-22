@@ -82,7 +82,7 @@ accepted=true;publicPage=false;check(p.evento('PageView'),false,'rota privada in
 const browser={location:{hostname:'www.fixture.test'}}, cookies=[], scripts=[], sdkCalls=[];
 const doc={querySelector:()=>null, createElement:()=>({remove(){this.removed=true;}}),head:{appendChild:s=>scripts.push(s)},set cookie(v){cookies.push(v);}};
 const adapter=pixel.transportePixelWeb(browser,doc);
-check(scripts.length,0);adapter.iniciar('123456789');check(scripts.length,1);check(adapter.pronto(),false);
+check(scripts.length,0);adapter.iniciar('123456789');check(scripts.length,1);check(adapter.pronto(),false);check(browser.fbq.disablePushState,true,'sem PageView automático da Meta no pushState');
 browser.fbq.callMethod=(...args)=>sdkCalls.push(args);scripts[0].onload();check(adapter.pronto(),true);
 adapter.enviar('123456789','ViewContent',{content_type:'product',content_ids:['grana-assinatura']},'event-fixture');
 check(sdkCalls[0][0],'trackSingle');
