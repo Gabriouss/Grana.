@@ -48,10 +48,15 @@ export function limparIdsMeta(win: Window, doc: Document) {
   }
 }
 
+/* Âncoras das seções da landing (nativeID em app/index.tsx): os botões levam a `#precos`, e o
+   Pixel não pode se desligar no meio da página. Qualquer outro hash, como token de login, recusa. */
+const SECOES_DA_LANDING = ['#produto', '#precos', '#faq', '#beneficios', '#garantia', '#granachat', '#habitos', '#no-bolso',
+  '#objecoes', '#painel-web', '#registro-rapido', '#teste', '#conteudo-principal', '#preferencias-privacidade'];
+
 /** Meta lê URL/referrer por conta própria: falha fechado com URL suja. Parâmetro de anúncio
  *  (utm, fbclid, gclid) passa, desde que todo o resto da query também seja de campanha. */
 export function paginaPublicaLimpa(location: Pick<Location, 'pathname' | 'search' | 'hash'>, referrer: string): boolean {
-  if (location.pathname !== '/' || location.hash) return false;
+  if (location.pathname !== '/' || (location.hash && !SECOES_DA_LANDING.includes(location.hash))) return false;
   for (const [chave, valor] of new URLSearchParams(location.search)) {
     if (!CHAVES_CAMPANHA.includes(chave) || !valorDeCampanhaValido(valor)) return false;
   }

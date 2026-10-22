@@ -50,6 +50,8 @@ check(pixel.paginaPublicaLimpa({...clean,search:'?utm_term=pessoa%40exemplo.test
 check(pixel.paginaPublicaLimpa({...clean,search:'?gclid=12345678901'},''),false);
 check(consent.atribuirCampanha('/sign-up',`?fbclid=${fbclidLongo}`,true),`/sign-up?fbclid=${fbclidLongo}`);
 check(pixel.paginaPublicaLimpa({...clean,hash:'#token'},''),false);
+check(pixel.paginaPublicaLimpa({...clean,hash:'#precos'},''),true,'botão que rola até os preços não desliga o Pixel');
+check(pixel.paginaPublicaLimpa({...clean,hash:'#access_token=abc'},''),false);
 check(pixel.paginaPublicaLimpa(clean,'https://outro.test/conta?email=fixture'),false);
 
 let accepted=false, publicPage=true, ready=true, calls=[];
