@@ -18,6 +18,7 @@ import FogBackground from '@/components/FogBackground';
 import TrustMarquee from '@/components/TrustMarquee';
 import NavFlutuanteLanding from '@/components/NavFlutuanteLanding';
 import TesteInterativo from '@/components/TesteInterativo';
+import GranaboNarrador from '@/components/GranaboNarrador';
 import PainelWebDestaque from '@/components/PainelWebDestaque';
 import ScrollLinkedView from '@/components/ScrollLinkedView';
 import TrilhaPassos from '@/components/TrilhaPassos';
@@ -1842,6 +1843,8 @@ function ConteudoWeb() {
         autor pediu que voltasse a flutuar no canto inferior, em todas as
         larguras. */}
     <NavFlutuanteLanding itens={NAVEGACAO_LANDING} onNavigate={navegarParaSecao} />
+    {/* Granabô narrador: canto esquerdo, fala da seção no meio da tela (components/GranaboNarrador.web.tsx). */}
+    <GranaboNarrador />
     </IrParaSecaoContexto.Provider>
     </AlturaCabecalhoContexto.Provider>
   );

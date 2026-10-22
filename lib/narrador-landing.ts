@@ -1,0 +1,21 @@
+/**
+ * Falas do Granabô narrador da landing (autor, 21/10/2026: "o Granabô deverá
+ * aparecer em algumas sessões da página para explicar funcionalidades").
+ *
+ * Uma fala por seção, pelo `nativeID` dela em app/index.tsx. Regras de escrita
+ * do Grana.: frase curta, voz de amigo, sem travessão, sem "não é X, é Y", sem
+ * palavra viúva no fim, e só o que o app faz de verdade hoje.
+ */
+export type FalaNarrador = { secao: string; texto: string; imagem: 'feliz' | 'pensando' | 'piscando' | 'saudacao' };
+
+export const FALAS_NARRADOR: FalaNarrador[] = [
+  { secao: 'produto', imagem: 'pensando', texto: 'Café, app de corrida, um Pix aqui e ali. Somado, vira um bom pedaço do mês.' },
+  { secao: 'registro-rapido', imagem: 'feliz', texto: 'Copiou o comprovante? Cola no Grana. que eu separo valor, data e tipo pra você.' },
+  { secao: 'painel-web', imagem: 'piscando', texto: 'No computador o mês inteiro cabe numa tela. Passa o mouse no painel pra ver de perto.' },
+  { secao: 'beneficios', imagem: 'feliz', texto: 'Cada cartão desses foi desenhado a partir de uma tela de verdade do app.' },
+  { secao: 'no-bolso', imagem: 'saudacao', texto: 'No Android dá pra falar o gasto e fotografar a nota. Eu entendo e lanço.' },
+  { secao: 'habitos', imagem: 'piscando', texto: 'Esqueceu de anotar ontem? Acontece. Aqui ninguém leva bronca.' },
+  { secao: 'granachat', imagem: 'pensando', texto: 'Esse sou eu! Pergunta quanto foi no mercado e eu respondo com os seus lançamentos.' },
+  { secao: 'precos', imagem: 'feliz', texto: 'Tem sete dias de garantia. Se não curtir, devolvemos o valor.' },
+  { secao: 'faq', imagem: 'pensando', texto: 'Ficou alguma dúvida? As respostas mais pedidas estão aqui embaixo.' },
+];
