@@ -1,6 +1,7 @@
 import { ARQUETIPOS, type ArquetipoId } from './diagnostico';
 import type { Bill, Budget, Transaction } from './types';
 import { creditoSemCartao } from './transaction-rules';
+import { isoLocal } from './format';
 
 export { calcularSafeToSpend, calcularSaldoAtual } from './safe-to-spend';
 export type { SafeToSpend } from './safe-to-spend';
@@ -141,7 +142,7 @@ export function sugerirEvolucaoArquetipo(
   const somaOut = porMes.reduce((s, m) => s + m.totalOut, 0);
   const taxaPoupanca = somaIn > 0 ? (somaIn - somaOut) / somaIn : 0;
 
-  const hojeStr = hoje.toISOString().slice(0, 10);
+  const hojeStr = isoLocal(hoje);
   const contasAtrasadas = bills.filter((b) => b.status === 'due' && b.due_date < hojeStr).length;
   const parcelasAtivas = transactions.some((t) => t.type === 'out' && (t.installment_total ?? 1) > 1);
   const creditoEmRisco = contasAtrasadas > 0 || parcelasAtivas;
