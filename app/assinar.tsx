@@ -12,12 +12,10 @@ import { fonts, radius, spacing, theme } from '@/lib/theme';
 import { useFlags } from '@/lib/feature-flags';
 
 /* Nomes sem provedor no meio, porque o provedor mudou uma vez e pode mudar de
-   novo. A queda para os nomes antigos existe para a build instalada e os
-   ambientes já configurados não pararem de vender no dia da troca: enquanto a
-   variável nova não estiver publicada em toda parte, a antiga continua
-   valendo. Remover a queda só depois que Vercel e EAS estiverem com a nova. */
-const checkoutConfigurado =
-  process.env.EXPO_PUBLIC_CHECKOUT_URL ?? process.env.EXPO_PUBLIC_KIWIFY_CHECKOUT_URL;
+   novo. A queda para os nomes da Kiwify saiu em 22/10/2026: a variável nova
+   está na Vercel e no EAS desde 10/09, e a antiga só servia para mandar a
+   compra a um checkout morto se a nova sumisse. */
+const checkoutConfigurado = process.env.EXPO_PUBLIC_CHECKOUT_URL;
 const destinoCompra = checkoutConfigurado?.startsWith('https://')
   ? checkoutConfigurado
   : 'https://granaponto.com.br/#precos';
@@ -41,8 +39,7 @@ const PRECO_ANUAL = 97.9;
 const reais = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 const economiaAnual = reais(PRECO_MENSAL * 12 - PRECO_ANUAL);
 
-const gerenciamentoConfigurado =
-  process.env.EXPO_PUBLIC_BILLING_URL ?? process.env.EXPO_PUBLIC_KIWIFY_BILLING_URL;
+const gerenciamentoConfigurado = process.env.EXPO_PUBLIC_BILLING_URL;
 const destinoGerenciamento = gerenciamentoConfigurado?.startsWith('https://')
   ? gerenciamentoConfigurado
   : null;

@@ -5,9 +5,8 @@ import { timingSafeEqual } from '../_shared/seguranca.ts';
 
 /* Webhook de assinatura da Cakto.
  *
- * Gêmeo do `kiwify-webhook`: os dois traduzem o payload do provedor para a
- * mesma forma neutra e chamam a MESMA função do banco, com o provedor como
- * parâmetro. Toda a regra de assinatura — ordem de eventos, idempotência,
+ * Traduz o payload do provedor para uma forma neutra e chama a função do
+ * banco, com o provedor como parâmetro (o gêmeo da Kiwify saiu em 22/10/2026). Toda a regra de assinatura — ordem de eventos, idempotência,
  * janela de carência — mora lá e não é reimplementada aqui.
  *
  * Duas diferenças da Cakto obrigam cuidados que o gêmeo não precisa ter:

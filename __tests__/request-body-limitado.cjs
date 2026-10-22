@@ -90,7 +90,7 @@ async function main() {
   const exactResult = await lerCorpoLimitado(exact.req, 4);
   assert.deepEqual([...exactResult.bytes], [0, 255, 195, 169]); checks++;
 
-  const names = ['cakto-webhook', 'kiwify-webhook', 'eas-build-webhook', 'email-recebido',
+  const names = ['cakto-webhook', 'eas-build-webhook', 'email-recebido',
     'whatsapp-webhook', 'assistente-financeiro', 'processar-lancamento-voz'];
   for (const name of names) {
     const f = carregar(name);

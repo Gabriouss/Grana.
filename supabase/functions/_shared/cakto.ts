@@ -7,7 +7,7 @@ import {
 } from './normalizar-webhook.ts';
 
 /* Tradução do webhook da Cakto para a forma neutra que
- * `processar_evento_assinatura` consome — a mesma que `kiwify.ts` produz.
+ * `processar_evento_assinatura` consome.
  *
  * O formato da Cakto é `{ secret, event, data: { ... } }`, com o pedido em
  * `data` e a assinatura aninhada em `data.subscription`. Escrito contra o
@@ -132,8 +132,8 @@ function acessoAte(
 /* Validação de autenticidade.
  *
  * A Cakto manda o segredo DENTRO do corpo, em `secret`. É mais fraco que a
- * assinatura HMAC da Kiwify, e contraria a regra que o próprio
- * `kiwify-webhook` documenta: segredo não deve viajar no JSON, porque JSON
+ * assinatura HMAC no cabeçalho, e contraria a regra de que
+ * segredo não deve viajar no JSON, porque JSON
  * acaba em log, proxy e ferramenta de observabilidade. Quem capturar UM
  * payload consegue forjar eventos.
  *

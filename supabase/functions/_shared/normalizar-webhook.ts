@@ -1,7 +1,7 @@
 /* Leitura defensiva de payload de webhook.
  *
- * Nasceu dentro de `kiwify.ts` e saiu para cá quando a Cakto entrou: os dois
- * provedores mandam JSON com formatos diferentes, mas o problema é o mesmo —
+ * Nasceu no webhook da Kiwify (removido em 22/10/2026) e saiu para cá quando a
+ * Cakto entrou: os provedores mandam JSON com formatos diferentes, mas o problema é o mesmo —
  * o campo pode vir aninhado em lugares distintos conforme a versão do
  * provedor, pode vir vazio, e nada disso pode derrubar a função.
  *
