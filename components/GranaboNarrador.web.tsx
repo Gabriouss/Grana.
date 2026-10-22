@@ -106,7 +106,7 @@ export default function GranaboNarrador() {
 
 const styles = StyleSheet.create({
   raiz: { ...({ position: 'fixed' } as any), left: spacing.xl, bottom: spacing.xl, zIndex: 40, flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, maxWidth: 380 },
-  raizCompacta: { left: spacing.sm, bottom: spacing.sm, maxWidth: '72%' as any },
+  raizCompacta: { left: spacing.lg, bottom: spacing.xl, maxWidth: '72%' as any },
   mascote: { borderRadius: 999 },
   balao: {
     flexShrink: 1, flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs,

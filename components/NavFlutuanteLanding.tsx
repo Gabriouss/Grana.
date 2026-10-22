@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     zIndex: 49,
   },
-  ancoraCompacta: { right: spacing.xs, bottom: spacing.sm },
+  ancoraCompacta: { right: spacing.lg, bottom: spacing.xl },
   painel: {
     marginBottom: spacing.md,
     backgroundColor: theme.paperRaised,
