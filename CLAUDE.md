@@ -15,4 +15,5 @@
 - Never include sample or placeholder data in post copy; captions must use only real, verified information.
 - Whenever a deliverable is finished, add it to the approval panel (para-aprovacao) without being asked.
 - Never break existing working behavior; every change must avoid regressions and keep current passing functionality green.
+- Never redirect users or open new windows to any destination except the Cakto checkout; keep them on the page. Allowed exceptions on the landing (author, 22/10/2026): the header "Entrar" button, the footer links (Criar conta, Baixar o app, Entrar, Termos de Uso, Privacidade, Excluir dados) and the Instagram link in a new tab.
 <!-- end claude-reflect -->

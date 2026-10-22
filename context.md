@@ -91,6 +91,18 @@ O histórico e a evidência da exposição permanecem na seção datada de 16/09
 
 ---
 
+# 22/10/2026 (M1, Claude direto com o autor): simulador da landing não sai da página
+
+**Pedido do autor:** "o simulador do aplicativo dentro do celular leva o usuário para outra página [...] Isso não pode acontecer em hipótese alguma". No telefone, "Testar agora" abria `/experimentar` em aba nova, e o link "Abrir em tela cheia" fazia o mesmo em qualquer largura (`components/TesteInterativo.tsx`). Uma primeira correção, com camada de tela cheia por cima da landing e botão "Voltar à página", foi **recusada**: "faz o usuário perder o interesse em continuar rolando a página".
+
+**Como ficou:** o teste roda sempre dentro do celular desenhado na página. No telefone o aparelho ocupa a largura menos 12 px de cada lado (`FOLGA_LATERAL_COMPACTA`), cabe inteiro na altura da janela, e o app roda sem escala, com a largura real da tela desenhada. O link "Abrir em tela cheia" saiu. O `iframe` ganhou `sandbox="allow-scripts allow-same-origin allow-forms allow-modals"`: sem `allow-popups` nem `allow-top-navigation`, nada de dentro do simulador abre outra janela nem troca o endereço da landing.
+
+**Regra nova (CLAUDE.md, learned rules):** nenhum redirecionamento nem janela nova, exceto o checkout da Cakto. Exceções aceitas pelo autor: "Entrar" do topo, links do rodapé (Criar conta, Baixar o app, Entrar, Termos de Uso, Privacidade, Excluir dados) e Instagram em aba nova.
+
+**Verificado:** Playwright em 390x844, 360x640 e 1440x900: URL igual, zero abas novas, sem rolagem horizontal, `window.open` de dentro do simulador devolve `null`; `tsc --noEmit` sem erro. **Não verificado:** rolagem por toque num celular real com o simulador aberto (o aparelho ocupa quase toda a largura; o arrasto em cima dele rola o app, e a passagem da rolagem para a página no fim do app não foi vista); Safari do iPhone; um lançamento completo dentro do celular grande.
+
+---
+
 # 21/10/2026 (M1, Antigravity): Correção do .easignore, validação completa e disparo da build 1.10.9
 
 - **Build 1.10.9:** preparo `npm run build:preparar -- "Melhorias no visual do início com atalhos organizados em grade, seletor de carteira aprimorado e mais estabilidade no aplicativo."` (versão 1.10.8 → 1.10.9, versionCode 22 → 23 no `app.json`). **Build 1 de 3 da semana** (regra 22). Pedido explícito do autor nesta sessão: "Arrocha, dispara a build. Pode fazer você mesmo a mensagem da nota de atualização". **EAS Build ID:** `4d12dc0a-2c9c-454a-ac9c-21b0ba0197d2` (`https://expo.dev/accounts/gabriouss/projects/grana-app/builds/4d12dc0a-2c9c-454a-ac9c-21b0ba0197d2`).
