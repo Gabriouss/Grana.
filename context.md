@@ -91,6 +91,14 @@ O histórico e a evidência da exposição permanecem na seção datada de 16/09
 
 ---
 
+# 22/10/2026 (M1, Claude direto com o autor): Pixel da Meta ligado para a primeira campanha
+
+**Pedido:** "estou criando a primeira campanha de tráfego do Grana. temos algo que precisamos fazer antes", e depois o Pixel `1092831350327753` (o mesmo do `.env`). O site não mandava evento nenhum: sem variáveis na Vercel, CSP bloqueando a Meta e `paginaPublicaLimpa` recusando qualquer query (todo clique de anúncio). **Feito** (`54b5fd39`): `EXPO_PUBLIC_META_PIXEL_ID` e `EXPO_PUBLIC_META_PIXEL_ATIVO=true` na Vercel, só produção; a CSP geral libera `connect.facebook.net` e `www.facebook.com` (`/experimentar` igual); a query passa se for só de campanha válida; `valorDeCampanhaValido` vira regra única do checkout e do Pixel, com teto de 512 (o `fbclid` atual passa de 100); Política de Privacidade de 22/10 declara Pixel, cookies `_fbp`/`_fbc` e base legal (consentimento). O snippet colado pelo autor NÃO foi usado: dispararia sem consentimento. **Defeito achado e corrigido** (`0bf22e4d`): o `PageView` não saía na visita em que a pessoa aceitava o banner. Banner de consentimento centralizado a pedido do autor (`7e43a95b`).
+
+**Verificado em produção** (`dpl_5VuQRFsa`) com dublê do `fbevents.js`: `PageView` na visita do aceite e na seguinte, `ViewContent` nos preços, `InitiateCheckout` no clique de compra; script e config da Meta carregam sem violação de CSP. **Não verificado:** recebimento pela Meta. Nem o snippet oficial gera envio a `facebook.com/tr` no Chromium automatizado; a prova é o "Eventos de teste" no navegador do autor. **Pendente do autor:** Pixel no produto da Cakto para `Purchase`; verificação do domínio no Business Manager; UTMs só com letras, números, `_` e `-` (nome com espaço ou acento e ID numérico longo derrubam o Pixel naquela visita, de propósito).
+
+---
+
 # 22/10/2026 (M1, Claude direto com o autor): auditoria ponytail e correções
 
 **Pedido:** `/ponytail audit` e depois "Resolve os achados". Relatório só com quatro achados menores; nada urgente. O que estava sólido: os webhooks públicos conferem segredo/assinatura em tempo constante, têm teto de corpo e idempotência; o paywall vale no banco (política de `transactions` exige `tem_direito_acesso()`).
