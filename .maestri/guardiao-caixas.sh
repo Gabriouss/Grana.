@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# Guardiao dos terminais do Maestri. Duas tarefas no mesmo laco:
+# Guardiao dos terminais do Maestri. Uma tarefa no laco:
 #
-# 1. Caixas dos Codex. Texto que chega por `maestri ask` puro fica na caixa
-#    sem Enter (medido em 01 e 02/10/2026). Quando o MESMO texto continua na
-#    caixa em duas leituras seguidas (>= 15 s), manda o Enter (ou Tab, se o
-#    Codex estiver no meio de um turno e pedir "tab to queue") e CONFERE que a
-#    caixa esvaziou. Nunca digita texto: so manda tecla.
+# 1. (removido em 23/10/2026) Antes mandava Enter/Tab em caixa Codex com o mesmo
+#    texto parado em duas leituras. Os agentes usam o enviar.sh, que ja separa o
+#    Enter e confere a entrega, e o recurso so arriscava enviar rascunho do autor.
+#    Este guardiao NUNCA manda tecla em caixa parada.
 #
 # 2. Retomada dos orquestradores depois do limite de uso (13/10/2026). O aviso
 #    de limite traz a hora da volta ("try again at 11:50 PM" no Codex,
@@ -25,6 +24,7 @@
 #       bash .maestri/guardiao-caixas.sh --testar-limite  (tela no stdin -> auto|<epoch> <aviso>|nada)
 export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
 AQUI="$(cd "$(dirname "$0")" && pwd)"
+source "$AQUI/codex-caixa.sh"
 VAZIA='Ask Codex to do anything'
 ALVOS=(Codex Compass Forge Prism Sentinel Harbor Beacon Ledger Watchtower)
 # 21/10/2026: os oito agentes Codex e o maestro "Claude Code #2" tambem sao
@@ -40,14 +40,8 @@ FOLGA=90          # segundos depois da hora anunciada
 REPETE=300        # se ainda estiver no limite, tenta de novo 5 min depois
 MAX_TENTATIVAS=3
 
-# Estado da caixa a partir da tela: a ULTIMA linha com "›" e a caixa; o resto
-# acima (›) e historico de mensagens ja enviadas.
-estado() {
-  local ult
-  ult="$(grep -E '^[[:space:]]*›' | tail -1)"
-  [ -z "$ult" ] && { echo sem-caixa; return; }
-  case "$ult" in *"$VAZIA"*) echo vazia ;; *) echo texto ;; esac
-}
+# Usa a mesma caixa completa do envio, inclusive quando o marcador e ».
+estado() { estado_caixa_codex; }
 
 # Hora anunciada -> epoch. Hora sem data que ja passou ha mais de 6 h e a de
 # amanha (o limite de sessao dura 5 h; o semanal sempre vem com data).
@@ -73,9 +67,9 @@ limite() {
   # (› ou ❯ com texto), saida do agente (• ou ●) nem turno em andamento.
   local resto="${fim##*hit your}"
   [ "$resto" = "$fim" ] && return
-  printf '%s' "$resto" | sed "s/› $VAZIA//g; s/❯ Try \"[^\"]*\"//g" |
-    grep -qE '› [^ ]|❯ [^ ─]|• |● |esc to interrupt' && return
-  aviso="$(printf '%s' "$fim" | grep -oE "hit your usage limit[^■›❯]*try again at [^■›❯]*[AP]M\.?|hit your [a-z-]+ limit · resets [^(·›❯]*" | tail -1)"
+  printf '%s' "$resto" | sed -E "s/(›|») $VAZIA//g; s/❯ Try \"[^\"]*\"//g" |
+    grep -qE '(›|») [^ ]|❯ [^ ─]|• |● |esc to interrupt' && return
+  aviso="$(printf '%s' "$fim" | grep -oE "hit your usage limit[^■›»❯]*try again at [^■›»❯]*[AP]M\.?|hit your [a-z-]+ limit · resets [^(·›»❯]*" | tail -1)"
   [ -z "$aviso" ] && return
   hora="$(printf '%s' "$aviso" | sed -E 's/.*(try again at|resets) //')"
   e="$(quando "$hora")" || return
@@ -86,7 +80,7 @@ limite() {
 livre() {
   local t="$1"
   printf '%s' "$t" | tail -8 | grep -q 'esc to interrupt' && return 1
-  if printf '%s' "$t" | grep -q "$VAZIA"; then
+  if [ "$(printf '%s\n' "$t" | estado)" != sem-caixa ]; then
     [ "$(printf '%s\n' "$t" | estado)" = vazia ]; return
   fi
   local c; c="$(printf '%s\n' "$t" | grep -E '^[[:space:]]*❯' | tail -1)"
@@ -110,36 +104,13 @@ if [ "${1:-}" = "--testar-sem-aviso" ]; then sem_aviso "$2" "$3" "$4"; exit 0; f
 
 log() { echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG"; }
 tela() { maestri check "$1" 2>/dev/null | grep -v '^[[:space:]]*$' | tail -40; }
-declare -A visto agenda aviso_de tentativas feito
-
-varrer() {
-  local a t e assin tecla
-  for a in "${ALVOS[@]}"; do
-    t="$(tela "$a")"
-    [ -z "$t" ] && continue
-    # Aviso de atualizacao ou shell: nao e caixa, nao mexe.
-    echo "$t" | tail -4 | grep -qE 'enter continue|^\$[[:space:]]*$' && continue
-    e="$(echo "$t" | estado)"
-    if [ "$e" != texto ]; then unset 'visto[$a]'; continue; fi
-    assin="$(echo "$t" | grep -E '^[[:space:]]*›' | tail -1 | md5sum | cut -c1-12)"
-    if [ "${visto[$a]:-}" != "$assin" ]; then visto[$a]="$assin"; continue; fi   # 1a leitura: espera
-    if echo "$t" | tail -8 | grep -qi 'tab to queue'; then tecla='\t'; else tecla='\r'; fi
-    maestri ask "$a" --raw "$tecla" >/dev/null 2>&1
-    sleep 4
-    if [ "$(tela "$a" | estado)" = texto ] && [ "$(tela "$a" | grep -E '^[[:space:]]*›' | tail -1 | md5sum | cut -c1-12)" = "$assin" ]; then
-      log "FALHOU $a: texto continua na caixa depois da tecla"
-    else
-      log "ENVIADO $a: texto parado na caixa liberado ($( [ "$tecla" = '\t' ] && echo Tab || echo Enter ))"
-      unset 'visto[$a]'
-    fi
-  done
-}
+declare -A agenda aviso_de tentativas feito
 
 # Digita o pedido de retomada. Codex vai pelo enviar.sh (Enter separado e
 # conferido); Claude recebe o texto e o Enter em duas escritas.
 retomar() {
   local a="$1" t="$2"
-  if printf '%s' "$t" | grep -q "$VAZIA"; then
+  if [ "$(printf '%s\n' "$t" | estado)" != sem-caixa ]; then
     bash "$AQUI/enviar.sh" "$a" "$RETOMADA" >/dev/null 2>&1
   else
     maestri ask "$a" --raw "$RETOMADA" >/dev/null 2>&1 && sleep 2 && maestri ask "$a" --raw '\r' >/dev/null 2>&1
@@ -204,9 +175,9 @@ if [ -z "${MAESTRI_PIPE:-}" ]; then
   log "guardiao NAO iniciado: fora de um terminal do Maestri (MAESTRI_PIPE vazio)"
   echo "guardiao: rode dentro de um terminal do Maestri" >&2; exit 1
 fi
-if [ "${1:-}" = "--uma-vez" ]; then varrer; varrer; vigiar_limites; exit 0; fi
+if [ "${1:-}" = "--uma-vez" ]; then vigiar_limites; exit 0; fi
 # Vive e morre com o Maestri: sem o processo dele nao ha caixa para vigiar.
 maestri_aberto() { tasklist.exe /FI "IMAGENAME eq Maestri.exe" 2>/dev/null | grep -qi 'Maestri.exe'; }
 log "guardiao iniciado (intervalo ${INTERVALO}s; orquestradores: ${ORQUESTRADORES[*]})"
-while maestri_aberto; do varrer; vigiar_limites; sleep "$INTERVALO"; done
+while maestri_aberto; do vigiar_limites; sleep "$INTERVALO"; done
 log "guardiao encerrado: o Maestri fechou"

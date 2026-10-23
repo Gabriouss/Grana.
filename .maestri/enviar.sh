@@ -37,8 +37,11 @@ if [[ -z "$a" || -z "$t" ]]; then
 fi
 
 # Caixa vazia do Codex. Qualquer outra coisa na caixa e tratada como rascunho.
-VAZIA='› Ask Codex to do anything'
-RODAPE='for shortcuts|(fast|low|medium|high|default) · |tab to queue|edit last queued'
+source "$(dirname "$0")/codex-caixa.sh"
+VAZIA="$CAIXA_CODEX_VAZIA"
+# Esforcos que aparecem na linha do modelo, no rodape. "ultra" e "xhigh" entraram
+# depois: sem eles a linha do modelo grudava na caixa e ela nunca parecia vazia.
+RODAPE="$RODAPE_CODEX"
 
 tela() { maestri check "$a" 2>/dev/null | grep -v '^[[:space:]]*$' | tail -"${1:-15}"; }
 
@@ -55,11 +58,14 @@ tecla() {
   fi
 }
 
-# A caixa do Codex e o bloco INTEIRO que vai da ultima linha com "›" ate o
-# rodape, porque texto longo quebra em varias linhas. Sai numa linha so.
+# A caixa do Codex e o bloco INTEIRO que vai da ultima linha com o marcador ate
+# o rodape, porque texto longo quebra em varias linhas. Sai numa linha so.
+# Marcador: "›" ate 22/10/2026; em 23/10 a caixa passou a abrir com "»",
+# enquanto as mensagens ja enviadas, no historico acima, seguem com "›". So
+# com "›" o script pegava uma linha velha do historico e recusava o envio com
+# a caixa vazia. Vale a ULTIMA linha com qualquer dos dois, normalizada a "›".
 caixa() {
-  tela 40 | awk '/^[[:space:]]*›/ { buf = ""; on = 1 } on { buf = buf "\n" $0 } END { print buf }' |
-    grep -vE "$RODAPE" | tr -s '[:space:]' ' ' | sed 's/^ //; s/ $//'
+  tela 40 | caixa_codex
 }
 
 if ! maestri check "$a" >/dev/null 2>&1; then
@@ -72,11 +78,11 @@ fi
 # acima, ja enganou este script e fez o Enter cair em "Update now".
 no_shell() { tela 1 | grep -qE '^\$[[:space:]]*$'; }
 no_aviso() { tela 4 | grep -q 'enter continue'; }
-no_skip() { tela 4 | grep -qE '›[[:space:]]*2\. Skip'; }
+no_skip() { tela 4 | grep -qE '(›|»)[[:space:]]*2\. Skip'; }
 # Codex aberto de verdade: o rodape dele esta nas ultimas linhas. So a caixa
 # "›" nao basta, porque durante a subida a tela ainda mostra restos antigos e
 # o texto digitado cedo demais cai no aviso de atualizacao.
-aberto() { ! no_shell && ! no_aviso && tela 3 | grep -qE 'for shortcuts|(fast|low|medium|high|default) · '; }
+aberto() { ! no_shell && ! no_aviso && tela 3 | grep -qE "$RODAPE|$AVISO_RODAPE_CODEX"; }
 espera() { for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do "$@" && return 0; sleep 2; done; return 1; }
 
 # 1. Terminal no shell: reabre o Codex e espera a tela dele aparecer.
