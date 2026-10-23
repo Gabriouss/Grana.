@@ -93,9 +93,10 @@ const contas = [[IG, 'instagram'], [FB, 'facebook']].map(([contaId, rede]) => ({
     for (const data of matrix) for (const rede of ['instagram', 'facebook']) for (const formato of ['feed', 'carrossel', 'reels', 'stories']) {
       const midias = data.midias;
       const sql = (await db.query('select public.admin_marketing_real_midia_compativel($1,$2,$3) r', [data, rede, formato])).rows[0].r;
-      // Contrato: Stories saíram dos pedidos novos na UI; o SQL ainda os aceita para leitura legada.
-      if (formato === 'stories') ok(!helper.capacidadeDaPeca(data, rede, formato).disponivel, `UI recusa Stories novos ${rede}/${midias.length}/${midias[0]?.mime || 'invalido'}`);
-      else ok(helper.capacidadeDaPeca(data, rede, formato).disponivel === sql, `UI/SQL paridade ${rede}/${formato}/${midias.length}/${midias[0]?.mime || 'invalido'}`);
+      // Stories voltaram aos pedidos novos (autor, 23/10): Instagram com 1 JPEG ou 1 MP4; Facebook recusado nos dois lados.
+      ok(helper.capacidadeDaPeca(data, rede, formato).disponivel === sql, `UI/SQL paridade ${rede}/${formato}/${midias.length}/${midias[0]?.mime || 'invalido'}`);
+      if (formato === 'stories') ok(sql === (rede === 'instagram' && midias.length === 1 && ['image/jpeg', 'video/mp4'].includes(midias[0]?.mime) && !!midias[0]?.tipo && (midias[0].tipo === 'video') === (midias[0].mime === 'video/mp4')),
+        `Stories ${rede}/${midias.length}/${midias[0]?.mime || 'invalido'}: só Instagram com uma mídia JPEG ou MP4`);
       const events = [];
       const backend = criarPublicacoesReais({ env: n => n === 'ADMIN_MARKETING_USER_ID' ? ADMIN : undefined,
         remoto: () => null, cliente: () => ({ rpc: nome => {

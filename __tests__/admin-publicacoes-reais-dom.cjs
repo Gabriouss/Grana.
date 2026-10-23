@@ -44,7 +44,7 @@ const PECA = { id: 'a1b2c3d4e5f60718', titulo: 'Imagem Livre para gastar', versa
 const cap = (formato, estado = 'disponivel', motivos = []) => ({ formato, estado, revisao: 1, motivos });
 const CONTAS = [
   { contaId: 'ig-1', rede: 'instagram', rotulo: '@grana.app', revisao: 3, conexao: 'verificada', pausada: false,
-    capacidades: [cap('feed'), cap('carrossel'), cap('reels', 'nao-verificado', ['capacidade-nao-comprovada']), cap('stories', 'nao-suportado', ['formato-nao-suportado'])] },
+    capacidades: [cap('feed'), cap('carrossel'), cap('reels', 'nao-verificado', ['capacidade-nao-comprovada']), cap('stories')] },
   { contaId: 'fb-1', rede: 'facebook', rotulo: 'Grana. (Página)', revisao: 2, conexao: 'verificada', pausada: false,
     capacidades: [cap('feed'), cap('carrossel', 'nao-verificado', ['capacidade-nao-comprovada']), cap('reels', 'nao-verificado', ['capacidade-nao-comprovada']), cap('stories', 'nao-suportado', ['formato-nao-suportado'])] },
 ];
@@ -254,7 +254,11 @@ const job = (contaId, rede, estado, extra = {}) => ({
 
     // formatos sem capacidade comprovada não são selecionáveis
     const bloqueados = await page.locator('.pub-real-formato input:disabled').count();
-    ok(bloqueados === 6, `${width}px: capacidades e mídia única bloqueiam 6 formatos incompatíveis (achou ${bloqueados})`);
+    ok(bloqueados === 5, `${width}px: capacidades e mídia única bloqueiam 5 formatos incompatíveis (achou ${bloqueados})`);
+    // Stories (autor, 23/10): cartão ao lado de Feed/Carrossel/Reels; Instagram selecionável, Facebook com motivo claro.
+    ok(await page.getByLabel('Instagram @grana.app, Stories', { exact: true }).isEnabled(), `${width}px: Stories do Instagram selecionável`);
+    const fbStories = page.locator('.pub-real-formato', { has: page.getByLabel('Facebook Grana. (Página), Stories, indisponível', { exact: true }) });
+    ok(await fbStories.count() === 1 && /ainda não publica Stories no Facebook/.test(await fbStories.innerText()), `${width}px: Stories do Facebook desabilitado com motivo em português claro`);
 
     await page.getByLabel('Instagram @grana.app, Feed').check();
     await page.getByLabel('Facebook Grana. (Página), Feed').check();

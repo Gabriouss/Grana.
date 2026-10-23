@@ -16,5 +16,9 @@ assert.equal(api.resumirLote([provado(fb), provado(ig)]).completo, false, 'pági
 assert.equal(api.resumirLote([provado(fb)]).completo, false, 'uma rede não comprova as duas');
 assert.equal(api.resumirLote([provado(fb), ig]).parcial, true);
 assert.equal(api.dadosReais({ ok: true, dados: { contractVersion: 'e5.real.v2', modo: 'real' } }).modo, 'real');
-assert.equal(api.capacidadeDaPeca({ midias: [{ tipo: 'imagem', mime: 'image/jpeg' }] }, 'instagram', 'stories').disponivel, false);
-console.log('admin-confiabilidade-consumidor: readback por rede, parcial sem falso sucesso, v1/v2 e Stories fora OK');
+// Cláusula "Stories fora dos pedidos novos" revogada pelo autor em 23/10: Stories só no Instagram, uma mídia.
+const jpeg = { tipo: 'imagem', mime: 'image/jpeg' };
+assert.equal(api.capacidadeDaPeca({ midias: [jpeg] }, 'instagram', 'stories').disponivel, true);
+assert.equal(api.capacidadeDaPeca({ midias: [jpeg] }, 'facebook', 'stories').disponivel, false);
+assert.equal(api.capacidadeDaPeca({ midias: [jpeg, jpeg] }, 'instagram', 'stories').disponivel, false);
+console.log('admin-confiabilidade-consumidor: readback por rede, parcial sem falso sucesso, v1/v2 e Stories só no Instagram OK');

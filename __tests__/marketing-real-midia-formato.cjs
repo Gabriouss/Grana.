@@ -112,6 +112,24 @@ const reject=async(p,re)=>{await assert.rejects(p,re);checks++;};
    }
   }
  }
+ // Stories no Instagram de ponta a ponta (autor, 23/10): job 'stories', container STORIES, espera FINISHED,
+ // media_publish e leitura de volta STORY, pelo adaptador real com transporte dublado.
+ const ss=await snapshot([midia()]);const ls=await confirmar(await prever(ss,[destino(ig,'stories')]));
+ eq((await db.query(`select a.formato from public.admin_marketing_agendamentos g join public.admin_marketing_autorizacoes a on a.id=g.autorizacao_id
+  where g.lote_id=$1`,[ls.loteId])).rows.map(r=>r.formato),['stories'],'Stories IG vira um job de Stories');
+ const passos=[];const gs=criarAdaptadorGraphReal({versao:'v24.0',token:'fixture-only',signal:new AbortController().signal,assinar:async()=>'https://fixture.invalid/midia',
+  rede:async(url,opts)=>{const u=new URL(url),p=Object.fromEntries(opts.method==='POST'?new URLSearchParams(opts.body):u.searchParams);
+   passos.push([opts.method,u.pathname.replace('/v24.0/',''),p]);
+   const corpo=u.pathname.endsWith('/media')?{id:'789'}:u.pathname.endsWith('/media_publish')?{id:'791'}
+    :p.fields==='status_code'?{status_code:'FINISHED'}:{id:'791',media_product_type:'STORY',permalink:'https://www.instagram.com/stories/grana/791/'};
+   return new Response(JSON.stringify(corpo),{status:200});}});
+ let proc={};const etapa=(e,extra={})=>gs.executar({jobId:randomUUID(),rede:'instagram',formato:'stories',etapa:e,remotoContaId:'123',processamento:proc,...extra},ss.dados);
+ let rs=await etapa('preparar');eq(rs.estado,'processando','Stories: container criado');proc=rs.processamento;
+ rs=await etapa('consultar-preparo');eq(rs.estado,'pronto','Stories: publica só depois de FINISHED');proc=rs.processamento;
+ rs=await etapa('publicar');eq(rs.estado,'publicacao-aceita');proc=rs.processamento;
+ rs=await etapa('verificar-publicacao',{remotoId:'791'});eq(rs.estado,'publicado','Stories: leitura de volta STORY');
+ eq(passos.map(([m,c])=>m+' '+c),['POST 123/media','GET 789','POST 123/media_publish','GET 791'],'Stories: sequência oficial');
+ eq(passos[0][2].media_type,'STORIES');eq(passos[0][2].image_url,'https://fixture.invalid/midia');eq(passos[3][2].fields,'id,media_product_type,permalink');
  const sc=await snapshot([video()],midia('imagem','image/png'));
  await reject(prever(sc,[destino(ig,'reels')]),/midia-incompativel/);
  const foreign=randomUUID();await reject(rpc('previa',[foreign,{snapshotId:sv.id,snapshotRevisao:sv.revisao,destinos:[destino(ig,'feed')]}]),/snapshot-indisponivel/);

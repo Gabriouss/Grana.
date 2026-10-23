@@ -20,6 +20,13 @@ const previa = { acao: 'prever', pecaId: 'a'.repeat(16), versao: 'b'.repeat(40),
     assert.throws(() => api.executar('.', ruim), { codigo: 'pedido-invalido' });
   }
   assert.equal(efeitos.length, 1);
+  // Stories (autor, 23/10): o Node aceita no Instagram e recusa no Facebook antes do remoto.
+  const efeitosStories = [];
+  const apiStories = criarPublicacoes({ remoto: { prever: async (_r, p) => { efeitosStories.push(p); return { previaId: U }; } } });
+  await apiStories.executar('acervo-fixture', { ...previa, destinos: [{ ...destino, formato: 'stories' }] });
+  assert.equal(efeitosStories[0].destinos[0].formato, 'stories');
+  assert.throws(() => apiStories.executar('.', { ...previa, destinos: [{ ...destino, rede: 'facebook', formato: 'stories' }] }), { codigo: 'pedido-invalido' });
+  assert.equal(efeitosStories.length, 1, 'Stories no Facebook não chega ao remoto');
   const reagendamento = { acao: 'prever', jobId: U, destinos: [destino], agendarPara: previa.agendarPara, fuso: previa.fuso };
   await api.executar('acervo-fixture', reagendamento);
   assert.equal(efeitos.at(-1)[2].jobId, U);
