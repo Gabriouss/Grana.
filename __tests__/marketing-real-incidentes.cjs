@@ -84,6 +84,19 @@ let checks=0;const eq=(a,b,m)=>{assert.deepEqual(a,b,m);checks++;};
   eq(proc.exitCode,1);eq(errors,['consentimento-email-ausente']);
  }
  eq(redesOps,0,'gate generico nao envia nem configura email');eq(escritasOps,0);
+ // Readback: o papel do /read-only nao tem EXECUTE em admin_marketing_real_limite (42501 na implantacao
+ // de 23/10). Vai ao endpoint normal, dentro de transacao somente leitura. Conter segue escrita normal.
+ for(const [acao,arquivo,gate] of [['readback','scripts/meta-confiabilidade-readback.sql',null],['conter','scripts/meta-confiabilidade-retorno.sql',{raizAutorizou:true,acao:'conter',sha256:fixtureHash}]]){
+  const chamadas=[],proc={argv:['node','runner',acao,'E:/Grana-temporarios/qa-ops','gate.json'],env:{SUPABASE_PROJECT_REF:'fixtureref1234',SUPABASE_ACCESS_TOKEN:'fixture'},exitCode:0},logs=[];
+  await vm.runInNewContext(fs.readFileSync(path.join(root,'scripts/meta-confiabilidade-sql.cjs'),'utf8'),{
+   require:id=>id==='node:fs'?{readFileSync:file=>String(file).endsWith('manifesto.json')?JSON.stringify({arquivos:[{arquivo,sha256:fixtureHash}]}):String(file).endsWith('gate.json')?JSON.stringify(gate):fixtureSql,writeFileSync:()=>{escritasOps++;}}:require(id),
+   process:proc,console:{error:s=>logs.push(s),log:s=>logs.push(s)},fetch:async(url,init)=>{chamadas.push({url,query:JSON.parse(init.body).query});return Response.json([{dados:{}}]);},Buffer,AbortSignal,
+  });
+  eq(proc.exitCode,0,acao+' conclui');eq(chamadas.length,1,acao+' faz uma chamada');
+  eq(chamadas[0].url,'https://api.supabase.com/v1/projects/fixtureref1234/database/query',acao+' usa o endpoint normal');
+  eq(chamadas[0].query,acao==='readback'?'set transaction read only;\nselect 1;':'select 1;',acao+': corpo');
+ }
+ eq(escritasOps,0);
  const job={jobId:randomUUID(),rede:'instagram',formato:'feed',etapa:'publicar',remotoContaId:'123',processamento:{container:'456'}};
  const snap={legenda:'Aprovada.',midias:[{objeto:'fixture',sha256:'a'.repeat(64),mime:'image/jpeg',tipo:'imagem',bytes:1}]};
  let posts=0;

@@ -38,8 +38,9 @@ async function main(){const [acao,pasta,reciboFile]=process.argv.slice(2);if((!m
   fs.writeFileSync(path.join(folder,'rollback-rpcs.sql'),ddl,{flag:'wx'});
   fs.writeFileSync(path.join(folder,'rollback-rpcs-manifest.json'),JSON.stringify({arquivo:'backups/rollback-rpcs.sql',sha256:crypto.createHash('sha256').update(ddl).digest('hex'),localOnly:true}),{flag:'wx'});
  }
- const endpoint=api+(acao==='readback'?'/read-only':'');
- const query=autorizacaoEmail?bytes.toString('utf8').replace('begin;',"begin;\nselect set_config('app.marketing_email_autorizacao','"+autorizacaoEmail+"',true);"):bytes.toString('utf8');
+ // Readback no endpoint normal, em transacao somente leitura: o papel do /read-only nao tem EXECUTE nas funcoes do readback (42501).
+ const endpoint=api;
+ const query=acao==='readback'?'set transaction read only;\n'+bytes.toString('utf8'):autorizacaoEmail?bytes.toString('utf8').replace('begin;',"begin;\nselect set_config('app.marketing_email_autorizacao','"+autorizacaoEmail+"',true);"):bytes.toString('utf8');
  const r=await fetch(endpoint,{method:'POST',redirect:'error',signal:AbortSignal.timeout(90000),headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({query})});
  if(!r.ok){await r.body?.cancel();throw new Error('sql-nao-concluido');}
  if(acao==='readback')console.log(JSON.stringify({codigo:'readback',dados:await r.json()}));
