@@ -41,7 +41,8 @@ assert.equal(projetar('planejado').aprovadosSemData.length, 1, 'camada editorial
   const r3 = sandbox.projetarCalendario({ ...dados, aprovadosSemData: [feed], avisos: [avisoServidor.replace('2 peças aprovadas estão', '1 peça aprovada está')] }, [], 'ambos', posts, [reel]);
   assert.deepEqual(JSON.parse(JSON.stringify(r3.avisos)), [], 'bandeja vazia: sem aviso de sem data');
 }
-const job = { jobId: 'job1', confirmadoEm: '2026-10-10T12:00:00Z', estado: 'publicado', peca: posts[0].vinculo, destino: { rede: 'instagram', formato: 'feed', publicarEm: '2026-10-11T12:00:00Z' }, permalink: posts[0].link };
+const job = { jobId: 'job1', confirmadoEm: '2026-10-10T12:00:00Z', estado: 'publicado', peca: posts[0].vinculo, destino: { rede: 'instagram', formato: 'feed', publicarEm: '2026-10-11T12:00:00Z' }, permalink: posts[0].link,
+  remotoId: 'instagram-final', recibos: [{ operacao: 'verificar-publicacao', estado: 'confirmado', remotoId: 'instagram-final' }] };
 let r = projetar('ambos', [job], [...posts, posts[0]]);
 assert.equal(r.itens.length, 2, 'job+recibo não duplicam cartão no dia planejado');
 assert.equal(r.itens[0].data, '2026-10-12');
@@ -63,9 +64,11 @@ function elemento(tag, attrs = {}, ...children) {
   };
 }
 const todos = (n) => n && typeof n === 'object' ? [n, ...n.children.flatMap(todos)] : [];
-const texto = (n) => todos(n).map((e) => e.attrs.texto || '').join(' ');
+const texto = (n) => todos(n).map((e) => e.attrs?.texto || '').join(' ');
 (async () => {
-  for (const camada of ['ambos', 'real', 'planejado']) {
+  for (const semProva of [false, true]) for (const camada of ['ambos', 'real', 'planejado']) {
+    const jobRecebido = semProva ? { ...job, recibos: [] } : job;
+    const originalJob = JSON.stringify(jobRecebido);
     const raiz = elemento('main'), chamadas = [];
     const ctx = { h: elemento, params: { mes: dados.mes, camada }, obsoleta: () => false, cabecalho() {}, navegar() {},
       alerta: (tipo, t) => elemento('p', { texto: t }), aviso() {},
@@ -75,7 +78,7 @@ const texto = (n) => todos(n).map((e) => e.attrs.texto || '').join(' ');
         assert.equal(opcoes, undefined, 'apenas leitura'); chamadas.push(url);
         if (url === '/api/marketing/pecas') return { dados: [feed, reel] };
         if (url.includes('meta-publicados')) return { dados: { posts, completo: true } };
-        if (url.startsWith('/api/marketing/calendario?')) return { dados: { ...dados, reais: { ...dados.reais, itens: camada === 'planejado' ? [] : [job] } } };
+        if (url.startsWith('/api/marketing/calendario?')) return { dados: { ...dados, reais: { ...dados.reais, itens: camada === 'planejado' ? [] : [jobRecebido] } } };
         throw Error('Chamada inesperada: ' + url);
       },
     };
@@ -93,15 +96,20 @@ const texto = (n) => todos(n).map((e) => e.attrs.texto || '').join(' ');
       assert(texto(agenda).includes(feed.nomeExibicao) && texto(agenda).includes(reel.nomeExibicao));
       const links = todos(agenda).filter((n) => n.tag === 'a').map((n) => n.attrs.href);
       assert.equal(links.length, 4, 'job+recibo usa só um link por publicação');
+      assert.equal(new Set(links).size, 4, 'quatro publicacoes distintas, sem duplicar o job confirmado');
       assert(posts.every((p) => links.includes(p.link)));
       assert(texto(raiz).includes('Aprovados sem data (0)'));
       const compactos = todos(raiz).filter((n) => n.tag === 'button' && (n.attrs.class || '').includes('cal-icone'));
       assert.equal(compactos.length, 2);
       assert(compactos.every((n) => n.attrs.type === 'button'), 'ícones acionáveis usam botões nativos');
-      assert(compactos.every((n) => String(n.attrs['aria-label']).includes('Publicado')), 'o ícone diz o estado no aria-label');
+      if (semProva) {
+        assert(texto(agenda).includes('Precisa conferir'), 'estado bruto publicado sem readback continua incerto');
+        assert(compactos.some((n) => String(n.attrs.class).includes('cal-icone-atencao')), 'recibo Meta nao transforma job sem prova em sucesso');
+      } else assert(compactos.every((n) => String(n.attrs['aria-label']).includes('Publicado')), 'o ícone diz o estado comprovado no aria-label');
       assert(compactos.some((n) => String(n.attrs['aria-label']).includes(feed.nomeExibicao)) && compactos.some((n) => String(n.attrs['aria-label']).includes(reel.nomeExibicao)), 'e o nome da peça');
     }
+    assert.equal(JSON.stringify(jobRecebido), originalJob, 'renderizacao nao inventa prova nem altera job recebido');
     limpar();
   }
-  console.log('admin-calendario-meta-vinculados: projeção e montagem reais, duas redes, catálogo, camadas, data real, deduplicação, links e imutabilidade OK');
+  console.log('admin-calendario-meta-vinculados: 6 montagens reais; readback presente/ausente, quatro links sem duplicacao, atencao sem prova e imutabilidade OK');
 })().catch((err) => { console.error(err); process.exitCode = 1; });

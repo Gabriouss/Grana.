@@ -18,7 +18,10 @@ const path = require('node:path');
   assert.match(m.descreverJobReal(suspenso).acao, /Revise e aprove/);
   assert.equal(m.resumirLote([suspenso]).rotulo, 'Suspenso para revisão');
   assert.equal(m.reagendamentoPermitido(suspenso), false, 'suspensão não pode ser contornada por metadado contraditório');
-  assert.equal(m.descreverJobReal({ ...suspenso, estado: 'publicado' }).texto, 'Publicado', 'publicado continua publicado');
+  // Contrato: "publicado" só com readback oficial do ID final; sem ele, Precisa conferir.
+  const comprovado = { remotoId: 'ig-final', recibos: [{ operacao: 'verificar-publicacao', estado: 'confirmado', remotoId: 'ig-final' }] };
+  assert.equal(m.descreverJobReal({ ...suspenso, ...comprovado, estado: 'publicado' }).texto, 'Publicado', 'publicado continua publicado');
+  assert.equal(m.descreverJobReal({ ...suspenso, estado: 'publicado' }).texto, 'Precisa conferir', 'publicado sem readback não vira sucesso');
   assert.equal(m.descreverJobReal({ ...suspenso, estado: 'falhou' }).texto, 'Não saiu', 'falha terminal continua falha');
   assert.equal(m.descreverJobReal({ ...suspenso, motivoSuspensao: null }).atencao, false, 'sem motivo, estado normal é preservado');
   assert.match(m.descreverJobReal({ ...suspenso, estado: 'precisa-conferir' }).acao, /publicação anterior/);

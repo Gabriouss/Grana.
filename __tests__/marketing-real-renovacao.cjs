@@ -66,7 +66,11 @@ function clienteDb(db, opcoes = {}) {
     rpc: (nome, args) => ({
       abortSignal: async (s) => {
         if (s?.aborted) return { data: null, error: { message: 'abortado' } };
-        const n = nome.replace('admin_marketing_real_', ''), valores = ARGS[n].map((k) => args[k]);
+        const n = nome.replace('admin_marketing_real_', '');
+        // Este banco termina na migration18: RPC de saude v2 nao existe nele.
+        // Simula a fronteira PostgREST legada, sem TypeError no proprio dublê.
+        if (!ARGS[n]) return { data: null, error: { message: 'rpc-ausente-na-fixture-legada', code: 'PGRST202' } };
+        const valores = ARGS[n].map((k) => args[k]);
         if (opcoes[n]) return opcoes[n]();
         try {
           const r = await db.query(`select public.${nome}(${valores.map((_, i) => '$' + (i + 1)).join(',')}) as r`, valores);
@@ -119,7 +123,10 @@ async function rodar(db, graph, prazos, opcoes) {
   const executar = executorMod.criarExecutorReal({ env: (n) => ENV[n], cliente: () => clienteDb(db, opcoes), rede: graph.rede, log: (l) => logs.push(l), prazos });
   const r = await executar(new Request('https://x/functions/v1/marketing-real-executor', { method: 'POST',
     headers: { 'x-marketing-real-secret': SECRET, 'Content-Type': 'application/json' }, body: '{}' }));
-  return { status: r.status, log: JSON.parse(logs.at(-1)), logs };
+  const registros = logs.map((l) => JSON.parse(l));
+  const log = registros.findLast((l) => l.codigo === 'executor-real');
+  assert.ok(log, 'executor deixa o recibo principal mesmo com diagnosticos auxiliares');
+  return { status: r.status, log, logs };
 }
 const contas = async (db) => Object.fromEntries((await db.query(`select rede,conexao,revisao,valida_ate,capacidades,renovacao from public.admin_marketing_real_contas`)).rows.map((x) => [x.rede, x]));
 const controles = async (db) => (await db.query(`select capacidade_validada_em,margem_validada_ate,renovacao,renovacao_lease from public.admin_marketing_controles`)).rows[0];
@@ -138,6 +145,8 @@ async function main() {
     await cenario(db);const antes = await contas(db);
     let g = graphDublada();let r = await rodar(db, g);
     eq(r.log.renovacao, 'renovada', 'ciclo devido renova');
+    ok(r.logs.some((l) => JSON.parse(l).codigo === 'heartbeat-ausente'), 'diagnostico de heartbeat ausente continua visivel depois do recibo principal');
+    ok(r.logs.some((l) => JSON.parse(l).codigo === 'saude-executor-pendente'), 'RPC de saude ausente no banco legado nao altera a renovacao');
     ok(g.chamadas.length > 0 && g.chamadas.every((c) => c.metodo === 'GET'), 'renovacao so faz GET na Graph');
     ok(g.chamadas.every((c) => !c.url.includes(USER) && !c.url.includes(PAGE)), 'token nunca na URL');
     ok(g.chamadas.every((c) => c.auth === 'Bearer ' + USER || c.auth === 'Bearer ' + PAGE), 'token so no cabecalho');

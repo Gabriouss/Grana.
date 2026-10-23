@@ -55,7 +55,9 @@ function criarRemoto() {
       destinos: alterarDestinos(a.p_pedido.destinos.map(d => ({ ...d, contaRevisao: 2, capacidadeRevisao: 3 }))) }),
     consultar: a => a.p_filtro.acao === 'contas'
       ? resposta({ controles, contas: [{ contaId: CONTA, pausada: false }, { contaId: CONTA_FB, pausada: false }] })
-      : resposta({ lote: { id: a.p_filtro.loteId }, jobs: [] }),
+      : resposta({ lote: { id: a.p_filtro.loteId }, jobs: [{ jobId: CHAVE_1, loteId: LOTE, snapshotId: SNAP,
+        revisao: 1, estado: 'programado-no-painel', atualizadoEm: '2026-10-22T12:00:00Z',
+        destino: { contaId: CONTA, rede: 'instagram', formato: 'feed', publicarEm: '2027-01-01T15:30:00Z', fuso: 'America/Sao_Paulo' }, recibos: [] }] }),
     confirmar: a => {
       // O servidor guarda a chave: a mesma chave devolve o mesmo lote (replay).
       const replay = lotes.has(a.p_idempotencia);
@@ -329,7 +331,7 @@ const confirmacao = chave => ({ acao: 'confirmar', previaId: PREVIA, previaHash:
     const pag = await c3.api.listar({ limite: 2 });
     assert.equal(typeof pag.proximoCursor, 'string');
     await c3.api.listar({ cursor: pag.proximoCursor });
-    assert.deepEqual(r3.log.at(-1)[2].p_filtro.cursor, proximo);
+    assert.deepEqual(r3.log.filter(x => x[2]?.p_filtro?.acao === 'listar').at(-1)[2].p_filtro.cursor, proximo);
     await assert.rejects(c3.api.listar({ cursor: Buffer.from('{"id":"x"}').toString('base64url') }), { codigo: 'pedido-invalido' });
     console.log('admin-publicacoes-reais-node: cliente real/RPC sem estado, bloqueios e destinos divergentes, zero confirmação nas negativas, upload, chave C3 (reinício e prazo), miniatura, cursor OK');
   } finally {

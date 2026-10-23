@@ -13,7 +13,11 @@ const UUID = '11111111-1111-4111-8111-111111111111';
 const chamadas = [];
 let tratar, fonteErro = null;
 const fonte = {
-  executar: async p => { chamadas.push(p); if (fonteErro) throw fonteErro; return { contractVersion: 'e5.real.v1', modo: 'real', jobs: [], proximoCursor: null }; },
+  // Contrato: confirmar só conclui com recibo completo (loteId + jobs); vazio fica pendente (503).
+  executar: async p => { chamadas.push(p); if (fonteErro) throw fonteErro;
+    return { contractVersion: 'e5.real.v1', modo: 'real', proximoCursor: null,
+      ...(p.acao === 'confirmar' ? { loteId: UUID, jobs: [{ jobId: UUID }] } : { jobs: [] }),
+      ...(p.acao === 'incidentes' ? { incidentes: [], naoReconhecidos: 0 } : {}) }; },
   prever: async (_, p) => { chamadas.push(p); return { modo: 'real', podeConfirmar: false, previaId: UUID }; },
   midia: async (...p) => { chamadas.push(p); return { conteudo: Buffer.from([137,80,78,71,13,10,26,10]), mime: 'image/png' }; },
 };
@@ -71,7 +75,9 @@ Date.now = () => tempo;
   assert.equal((await pedir(base + '/detalhe?jobId=' + UUID + '&loteId=' + UUID)).status, 400);
   assert.equal(chamadas.length, quantidade);
   assert.equal((await pedir(base + '?limite=2')).status, 200);
-  assert.equal(chamadas.at(-1).limite, 2);
+  // Listar consulta também os incidentes, numa segunda chamada (contrato de confiabilidade).
+  assert.equal(chamadas.at(-2).acao, 'listar'); assert.equal(chamadas.at(-2).limite, 2);
+  assert.equal(chamadas.at(-1).acao, 'incidentes');
   assert.equal((await pedir(base + '/capacidades')).status, 200); assert.equal(chamadas.at(-1).acao, 'contas');
   const b = await pedir(base + '/midia?previaId=' + UUID + '&indice=0');
   assert.equal(b.status, 200); assert.equal(b.bytes.length, 8); assert.equal(b.headers.get('cache-control'), 'private, no-store');

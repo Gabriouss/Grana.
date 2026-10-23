@@ -56,8 +56,10 @@ const { motivoSemAceite } = require('../tools/admin-local/marketing/snapshot-loc
     const aceites = ap.listarAprovacoes(dir).aprovacoes.filter((a) => a.id === id);
     assert.deepEqual(aceites.map((a) => a.versao).sort(), [antiga, p.versao].sort(), 'um aceite por versão, nenhum inventado');
 
-    // Segundo clique na mesma versão já aceita continua recusado.
-    await assert.rejects(ap.aprovarEFechar(dir, id, { versao: p.versao, confirmacao: true }), (e) => e.codigo === 'ja-aprovada' || e.status === 409);
+    // Replay da mesma intenção devolve o recibo, sem novo aceite nem agendamento remoto.
+    const repetida = await ap.aprovarEFechar(dir, id, { versao: p.versao, confirmacao: true });
+    assert.equal(repetida.jaExistia, true);
+    assert.equal(repetida.conclusao.estado, 'concluida');
 
     // Falha ao levar a data não desfaz o aceite: aviso visível e log, e a chamada aconteceu depois do aceite.
     fs.writeFileSync(copys, '## E01 - Fixture\n\n**Legenda:** Legenda AUDIT v3.\n');
@@ -71,7 +73,7 @@ const { motivoSemAceite } = require('../tools/admin-local/marketing/snapshot-loc
       assert.deepEqual(chamadas, [true], 'aceite gravado antes de levar a data');
       assert.equal(f.aprovacao.versao, p.versao);
       assert(f.avisos.some((t) => t.includes('a data marcada não passou')));
-      assert(logs.some((t) => t.includes('aprovar-levar-plano: disco')));
+      assert(logs.some((t) => t.includes('aprovar-plano: disco')));
     } finally { console.error = erroOriginal; }
     console.log('admin-reaceite-legenda: legenda nova pede aceite explícito, data segue a versão vigente, falha preserva aceite OK');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }

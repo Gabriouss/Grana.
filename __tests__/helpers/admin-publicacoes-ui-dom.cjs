@@ -52,8 +52,9 @@ window.exibir = async (vazio=false) => {
 };`;
 async function abrirAmbiente() {
   const browser = await playwright().chromium.launch({ headless: true });
-  const page = await browser.newPage();
-  await page.route('**/*', r => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await context.route('**/*', r => {
     const u = new URL(r.request().url());
     if (u.origin !== 'http://127.0.0.1:4395') throw Error('Rede externa proibida');
     if (u.pathname === '/') return r.fulfill({ contentType: 'text/html', body: '<!doctype html><html><body><script type="module" src="/qa/boot.js"></script></body></html>' });

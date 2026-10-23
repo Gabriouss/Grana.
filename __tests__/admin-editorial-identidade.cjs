@@ -153,7 +153,7 @@ function fronteira() {
     eq(recibo.estadoEditorial, 'em-revisao'); ok(ids.UUID.test(recibo.idempotencia), 'CLI entrega recibo sem texto/credenciais');
     eq(await cli.main(['iniciar-revisao', p.id, p.versao], depsCli), recibo, 'CLI repetido preserva recibo');
     await reject(cli.main(['iniciar-revisao', p.id, '0'.repeat(40)], depsCli), { codigo: 'versao-mudou' });
-    await reject(cli.main(['iniciar-revisao', p.id, p.versao], { ...depsCli, raiz: root(), editorial: desativado }), { codigo: 'editorial-rollout-pendente' });
+    await reject(cli.main(['iniciar-revisao', p.id, p.versao], { ...depsCli, raiz: root(), editorial: desativado }), /nao deve chamar/, 'rollout local desligado não libera edição aceita: exige consulta remota');
     // Promocao real interrompida entre a prova dos arquivos e o alias editorial.
     const promoRoot = root(), pasta = path.join(promoRoot, base, 'para-aprovacao/pecas');
     fs.mkdirSync(pasta, { recursive: true }); fs.writeFileSync(path.join(pasta, 'E01.jpg'), 'arte-original');

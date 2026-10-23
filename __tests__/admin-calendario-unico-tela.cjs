@@ -13,7 +13,7 @@ const job = (id, estado, dia = '2026-10-21T01:00:00Z', extra = {}) => ({ jobId: 
 const projetar = (jobs, camada = 'ambos') => sandbox.projetarCalendario(d, jobs, camada);
 const proximas = sandbox.resumirOperacaoCalendario([job('depois', 'preparando', '2026-10-23T15:00:00Z'), job('antes', 'programado-no-painel'), job('incerto', 'precisa-conferir'), job('publicado', 'publicado'), job('sem-confirmacao', 'preparando', undefined, { confirmadoEm: null })]);
 assert.equal(proximas.proximas.map((j) => j.jobId).join(','), 'antes,depois', 'resumo usa somente jobs confirmados, em ordem cronológica');
-assert.equal(proximas.atencao.map((j) => j.jobId).join(','), 'incerto', 'atenção independente por rede, sem confundir publicado com pendente');
+assert.equal(proximas.atencao.map((j) => j.jobId).join(','), 'incerto,publicado', 'publicado sem prova final também pede conferência, sem falso sucesso');
 const suspenso = job('revisao', 'programado-no-painel', undefined, { pausado: true, motivoSuspensao: 'revisao-editorial' });
 const resumoSuspenso = sandbox.resumirOperacaoCalendario([suspenso]);
 assert.equal(resumoSuspenso.proximas.length, 0, 'A2: suspensão editorial não promete publicação futura');

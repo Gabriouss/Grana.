@@ -51,9 +51,11 @@ const { pathToFileURL } = require('node:url');
   assert.equal(m.descreverJobReal(job('preparando', { preparo: { itens: 3, total: 5, container: false } }), agora).texto, 'Preparando 3/5 na rede, sai às 01:00');
   for (const preparo of [undefined, null, { itens: 1, total: 1 }, { itens: 6, total: 5 }, { itens: '3', total: 5 }, { itens: -1, total: 5 }])
     assert.equal(m.descreverJobReal(job('preparando', { preparo }), agora).texto, 'Preparando na rede, sai às 01:00', JSON.stringify(preparo));
-  const pub = m.descreverJobReal(job('publicado', { permalink: 'https://www.instagram.com/p/x/' }), agora);
+  // Contrato Forge: 'publicado' só vale com remotoId + recibo verificar-publicacao confirmado do mesmo id.
+  const prova = { remotoId: 'r1', recibos: [{ operacao: 'verificar-publicacao', estado: 'confirmado', remotoId: 'r1' }] };
+  const pub = m.descreverJobReal(job('publicado', { ...prova, permalink: 'https://www.instagram.com/p/x/' }), agora);
   assert.deepEqual([pub.texto, pub.link, pub.linkRotulo], ['Publicado', 'https://www.instagram.com/p/x/', 'Abrir no Instagram']);
-  assert.equal(m.descreverJobReal(job('publicado', { permalink: 'javascript:alert(1)' }), agora).link, null, 'link só https');
+  assert.equal(m.descreverJobReal(job('publicado', { ...prova, permalink: 'javascript:alert(1)' }), agora).link, null, 'link só https');
   const conferir = m.descreverJobReal(job('precisa-conferir'), agora);
   assert.equal(conferir.texto, 'Precisa conferir: não confirmamos se saiu'); assert.match(conferir.acao, /Abra o Instagram antes de tentar de novo/);
   assert.equal(m.ROTULOS_ESTADO['programado-no-painel'], 'Agendado no painel');

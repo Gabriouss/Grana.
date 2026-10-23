@@ -230,7 +230,7 @@ function encontrar(root, predicado) {
   falhar='versao-mudou';confirms.push(true);await aprovacao.aprovar(contexto,p,botao());assert.match(avisos.at(-1).t,/revise de novo/);
   falhar=null;n=posts().length;await calendario.ligarCronograma(contexto,{...nova,reciboAceite:null},botao());assert.equal(posts().length,n);
   // Resposta perdida/incompleta não vira sucesso; aviso secundário continua visível.
-  const parcial={...contexto,acao:async()=>({dados:{promocao:{id:nova.id,versao:nova.versao,indice:null},avisos:['AUDIT calendário pendente']}})};
+  const parcial={...contexto,acao:async()=>({dados:{promocao:{id:nova.id,versao:nova.versao,indice:null},conclusao:{estado:'concluida'},avisos:['AUDIT calendário pendente']}})};
   confirms.push(true);await aprovacao.aprovar(parcial,p,botao());assert(avisos.some((a)=>a.t==='AUDIT calendário pendente'));assert.match(avisos.at(-1).t,/recibo no índice está pendente/);
   const incompleta={...contexto,acao:async()=>({dados:{avisos:[]}})};const navAntes=navegacoes.length;
   confirms.push(true);await aprovacao.aprovar(incompleta,p,botao());assert.equal(navegacoes.length,navAntes);assert.equal(avisos.at(-1).tipo,'erro');

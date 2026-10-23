@@ -93,7 +93,9 @@ const contas = [[IG, 'instagram'], [FB, 'facebook']].map(([contaId, rede]) => ({
     for (const data of matrix) for (const rede of ['instagram', 'facebook']) for (const formato of ['feed', 'carrossel', 'reels', 'stories']) {
       const midias = data.midias;
       const sql = (await db.query('select public.admin_marketing_real_midia_compativel($1,$2,$3) r', [data, rede, formato])).rows[0].r;
-      ok(helper.capacidadeDaPeca(data, rede, formato).disponivel === sql, `UI/SQL paridade ${rede}/${formato}/${midias.length}/${midias[0]?.mime || 'invalido'}`);
+      // Contrato: Stories saíram dos pedidos novos na UI; o SQL ainda os aceita para leitura legada.
+      if (formato === 'stories') ok(!helper.capacidadeDaPeca(data, rede, formato).disponivel, `UI recusa Stories novos ${rede}/${midias.length}/${midias[0]?.mime || 'invalido'}`);
+      else ok(helper.capacidadeDaPeca(data, rede, formato).disponivel === sql, `UI/SQL paridade ${rede}/${formato}/${midias.length}/${midias[0]?.mime || 'invalido'}`);
       const events = [];
       const backend = criarPublicacoesReais({ env: n => n === 'ADMIN_MARKETING_USER_ID' ? ADMIN : undefined,
         remoto: () => null, cliente: () => ({ rpc: nome => {
