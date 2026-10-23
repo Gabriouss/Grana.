@@ -18,6 +18,15 @@ const ESTADOS_AJUSTE = {
 // vira "vinculada ao cronograma"; UUID e hash (7+ hex com letra e dígito, como a versão curta
 // `386a6fec7528` dos aceites) somem, junto com a palavra "versão" que os apresenta. Célula vazia some.
 const HEX = '(?=[0-9a-f]*\\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,}';
+// Contrato de conclusaoAprovacao: concluída só com aceite, ajuste, promoção e plano em concluido/nao-necessario.
+// Falha de etapa fica pendente (com codigo). Sem dado de etapas, o aviso diz isso em vez de listar nada.
+const ROTULOS_ETAPA_APROVACAO = { aceite: 'aceite', ajuste: 'encerramento do ajuste', promocao: 'promoção', plano: 'calendário' };
+function avisoAprovacaoIncompleta(conclusao) {
+  const etapas = conclusao?.etapas && typeof conclusao.etapas === 'object' && Object.keys(conclusao.etapas).length ? conclusao.etapas : null;
+  const faltam = etapas ? Object.keys(ROTULOS_ETAPA_APROVACAO).filter((k) => !['concluido', 'nao-necessario'].includes(etapas[k]?.estado)).map((k) => ROTULOS_ETAPA_APROVACAO[k]) : [];
+  return faltam.length ? `Aprovação incompleta. Falta concluir: ${faltam.join(', ')}. O aceite salvo foi preservado. Use Continuar.`
+    : 'Aprovação incompleta. Não foi possível ver quais etapas faltam. O aceite salvo foi preservado. Use Continuar.';
+}
 export function semIdTecnico(celula) {
   return String(celula)
     .replace(/`?[^\s`|#]+#[^\s`|@]+@[^\s`|]+`?/g, 'vinculada ao cronograma')
@@ -693,9 +702,7 @@ export async function aprovar(ctx, p, botao) {
     for (const a of r.dados?.avisos || []) ctx.aviso(a, 'info');
     if (r.dados?.conclusao?.estado !== 'concluida') {
       p.conclusaoAprovacao = r.dados?.conclusao || { estado: 'incompleta', etapas: {} };
-      const rotulos = { aceite: 'aceite', ajuste: 'encerramento do ajuste', promocao: 'promoção', plano: 'calendário' };
-      const faltam = Object.entries(p.conclusaoAprovacao.etapas || {}).filter(([, e]) => e.estado === 'pendente').map(([k]) => rotulos[k] || k);
-      ctx.aviso(`Aprovação incompleta. Falta concluir: ${faltam.join(', ')}. O aceite salvo foi preservado. Use Continuar.`, 'erro');
+      ctx.aviso(avisoAprovacaoIncompleta(p.conclusaoAprovacao), 'erro');
       return;
     }
     // Já em aprovados: não há movimentação, só o aceite desta versão.

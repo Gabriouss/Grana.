@@ -70,17 +70,17 @@ assert.equal(spawnSync('ffmpeg', ['-y', '-i', videoPath, '-frames:v', '1', thumb
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'página sem overflow');
       assert(await dialog.evaluate((d) => d.scrollWidth <= d.clientWidth), 'janela sem overflow horizontal');
       await page.screenshot({ path: path.join(OUT, `previa-carrossel-${width}.png`), fullPage: true });
-      await dialog.getByRole('button', { name: 'Próxima página', exact: true }).click();
-      await page.waitForFunction(() => document.querySelector('.feed-contador-slide')?.textContent === '2 de 3');
+      await dialog.getByRole('button', { name: 'Próximo slide', exact: true }).click();
+      await page.waitForFunction(() => document.querySelector('.feed-contador-slide')?.textContent === 'Slide 2 de 3');
       await dialog.locator('.feed-trilho').focus();
       await page.keyboard.press('ArrowRight');
-      await page.waitForFunction(() => document.querySelector('.feed-contador-slide')?.textContent === '3 de 3');
+      await page.waitForFunction(() => document.querySelector('.feed-contador-slide')?.textContent === 'Slide 3 de 3');
       await page.keyboard.press('Escape');
       await page.waitForFunction(() => !document.querySelector('dialog.previa-post'));
       assert.equal(await page.evaluate(() => document.activeElement.id), 'abrir', 'Escape devolve o foco');
 
       for (const formato of ['feed', 'stories', 'reels']) {
-        await page.evaluate(({ peca, formato }) => { window.item = { peca: { ...peca, tipo: formato === 'reels' ? 'video' : 'imagem', arquivos: [formato === 'reels' ? '/qa/reel.mp4' : '/qa/um.svg'] }, formato, jobs: [{ estado: 'publicado', destino: { rede: 'instagram', formato, publicarEm: '2026-10-20T18:00:00Z' }, permalink: 'https://www.instagram.com/p/audit/' }] }; }, { peca: PECA, formato });
+        await page.evaluate(({ peca, formato }) => { window.item = { peca: { ...peca, tipo: formato === 'reels' ? 'video' : 'imagem', arquivos: [formato === 'reels' ? '/qa/reel.mp4' : '/qa/um.svg'] }, formato, jobs: [{ estado: 'publicado', destino: { rede: 'instagram', formato, publicarEm: '2026-10-20T18:00:00Z' }, permalink: 'https://www.instagram.com/p/audit/', remotoId: 'audit-remoto', recibos: [{ operacao: 'verificar-publicacao', estado: 'confirmado', remotoId: 'audit-remoto' }] }] }; }, { peca: PECA, formato });
         await page.getByRole('button', { name: 'Abrir prévia', exact: true }).click();
         await dialog.waitFor();
         await page.waitForLoadState('networkidle');
