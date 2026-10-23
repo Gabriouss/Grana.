@@ -332,7 +332,8 @@ export async function montar(raiz, ctx) {
       p.legenda ? h('p', { class: 'texto-legenda', texto: p.legenda }) : h('p', { class: 'texto-fraco', texto: 'Sem legenda registrada para esta peça.' }),
       p.fonteLegenda ? h('p', { class: 'campo-ajuda', texto: `Fonte da legenda: ${p.fonteLegenda}` }) : null));
 
-    const alternativas = familiaAtual?.pecas.filter((a) => !a.capaDe && a.id !== p.id) || [];
+    // Capa órfã continua visível na galeria ("Capa sem Reel"), mas não é alternativa de post.
+    const alternativas = familiaAtual?.pecas.filter((a) => !a.capaDe && !a.capaOrfa && a.id !== p.id) || [];
     if (alternativas.length) detalhe.appendChild(h('section', { class: 'demanda-alternativas', 'aria-label': 'Alternativas da família' },
       h('h3', { texto: 'Alternativas' }), h('div', { class: 'bloco-acao' }, alternativas.map((a) => h('button', {
         class: 'botao botao-fantasma', type: 'button', texto: tituloPeca(a), onclick: () => escolher(a),

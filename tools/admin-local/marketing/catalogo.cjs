@@ -778,6 +778,18 @@ function montarCatalogo(raiz) {
       }
     }
   }
+  // A aprovação promove uma metade do par antes da outra: capa órfã em aprovados ou
+  // para-aprovacao ainda pertence ao Reel sem capa do outro estado, mesma semana e mesma
+  // subpasta. O par da mesma pasta já venceu acima; historico não entra.
+  const naSemana = (p) => { const i = p.caminho.indexOf(`/${p.estado}/`); return [p.caminho.slice(0, i), p.caminho.slice(i + p.estado.length + 2).toLowerCase()]; };
+  for (const capa of pecas.filter((p) => p.capaOrfa && p.estado !== 'historico')) {
+    const [semanaCapa, restoCapa] = naSemana(capa);
+    const reel = pecas.find((r) => r.tipo === 'video' && !r.capa && r.estado !== 'historico' && r.estado !== capa.estado
+      && naSemana(r)[0] === semanaCapa && naSemana(r)[1].replace(/\.[^./]+$/, '') + '-capa.png' === restoCapa);
+    if (!reel) continue;
+    capa.capaDe = reel.id; capa.capaOrfa = false; capa.familia = reel.familia; capa.vinculoCapa = 'estados';
+    reel.capa = { pecaId: capa.id, nome: capa.arquivos[0].nome, url: capa.arquivos[0].url, sha1: capa.arquivos[0].sha1 };
+  }
   // Vínculo explícito capa -> Reel do registro (sufixo de tamanho ou outra semana
   // quebram o pareamento por nome). A capa vinculada entra na família do Reel e
   // nunca vira peça própria no Feed. Reel ausente do acervo: a capa fica como está.
