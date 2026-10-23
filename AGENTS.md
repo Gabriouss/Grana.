@@ -68,9 +68,10 @@ Regras permanentes para qualquer sessão que abrir este repositório:
 
 6. **Ao iniciar o trabalho numa sessão, leia o `context.md` primeiro.** Ele é
    a visão técnica/operacional do projeto e o estado de onde a última sessão
-   parou. Ao encerrar uma sessão que mexeu em código, atualize o `context.md`
-   com o que mudou e o estado atual, e suba isso no GitHub junto com o resto
-   do commit — é assim que a outra máquina fica sabendo o que aconteceu aqui.
+   parou. Atualize o `context.md` a CADA alteração no projeto, na hora, e não só
+   ao encerrar a sessão (regra do autor, 23/10/2026): quando um limite de uso derruba
+   um agente, o que não foi registrado se perde. Suba isso no GitHub junto com o
+   resto do commit — é assim que a outra máquina fica sabendo o que aconteceu aqui.
 
 7. **Antes de agir sobre qualquer pedido do autor, procure na biblioteca de
    skills instaladas (`.claude/skills/`, `.agents/skills/`, e as globais)

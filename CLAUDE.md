@@ -2,6 +2,7 @@
 
 <!-- claude-reflect: learned rules (saved from the band; edit freely) -->
 ## Learned rules
+- After ANY change to the project, update context.md, the vault session note and the canvas round note immediately (not only at session end), so a usage limit that drops an agent loses nothing (author, 23/10/2026).
 - Always run the Orquestrador Supremo terminal on Opus 5.5 at medium effort; check and correct it at session start if it is on another model.
 - Always run the Codex orchestrator on model Sol 6.1 with medium effort, never Luna.
 - Do not let any post move to approval unless it has a caption ready to publish.
