@@ -4,8 +4,6 @@
 export const API_PUBLICACOES = '/api/marketing/publicacoes';
 export const FUSO_PUBLICACAO = 'America/Sao_Paulo';
 export const FORMATOS_PUBLICACAO = ['feed', 'carrossel', 'reels', 'stories'];
-// Stories de Página ainda não têm executor (Graph recusa em marketing-real-graph.ts); só o Instagram publica.
-const storiesNoFacebook = (rede, formato) => rede === 'facebook' && formato === 'stories';
 
 export const ROTULOS_ESTADO = {
   planejado: 'Planejado',
@@ -89,7 +87,6 @@ export function validarConta(conta) {
 
 export function capacidadeDaConta(conta, formato) {
   if (!validarConta(conta) || !FORMATOS_PUBLICACAO.includes(formato)) return { disponivel: false, motivos: ['capacidade-nao-comprovada'] };
-  if (storiesNoFacebook(conta.rede, formato)) return { disponivel: false, motivos: ['stories-facebook-pendente'] };
   const capacidade = conta.capacidades.find((c) => c.formato === formato);
   if (conta.conexao !== 'verificada' || conta.pausada || !capacidade || capacidade.estado !== 'disponivel') {
     return {
@@ -108,7 +105,6 @@ export function capacidadeDaConta(conta, formato) {
 // Capacidade da conta sozinha não comprova compatibilidade da peça selecionada.
 export function capacidadeDaPeca(peca, rede, formato) {
   const midias = peca?.midias;
-  if (storiesNoFacebook(rede, formato)) return { disponivel: false, motivos: ['stories-facebook-pendente'] };
   if (!Array.isArray(midias) || !midias.length) return { disponivel: false, motivos: ['midia-nao-conferida'] };
   const imagem = m => m?.tipo === 'imagem' && ['image/jpeg', 'image/png'].includes(m.mime);
   const video = m => m?.tipo === 'video' && m.mime === 'video/mp4';
@@ -117,7 +113,7 @@ export function capacidadeDaPeca(peca, rede, formato) {
     && (formato === 'carrossel' ? midias.length >= 2 : midias.length === 1)
     && (formato !== 'feed' || imagem(midias[0]))
     && (formato !== 'reels' || video(midias[0]))
-    && (rede !== 'facebook' || (formato !== 'stories' && (formato !== 'carrossel' || midias.every(imagem))))
+    && (rede !== 'facebook' || formato !== 'carrossel' || midias.every(imagem))
     && (rede !== 'instagram' || (midias.every(m => !imagem(m) || m.mime === 'image/jpeg')
       && (formato !== 'reels' || !peca.capa || peca.capa.mime === 'image/jpeg')));
   return { disponivel: compativel, motivos: compativel ? [] : ['midia-incompativel'] };
@@ -418,7 +414,6 @@ const MENSAGENS = {
   'capacidade-nao-comprovada': 'Este formato ainda não foi verificado para esta conta. Escolha outro formato.',
   'formato-nao-verificado': 'Este formato ainda não foi verificado para esta conta. Escolha outro formato.',
   'formato-nao-suportado': 'Este formato não está disponível nesta rede.',
-  'stories-facebook-pendente': 'O painel ainda não publica Stories no Facebook. Para Stories, use a conta do Instagram.',
   'sem-leitura-de-volta': 'A rede não deixa conferir o resultado deste formato automaticamente.',
   'horario-invalido': 'O horário não é válido. Escolha um horário no futuro.',
   'destino-duplicado': 'O mesmo destino foi marcado duas vezes. Desmarque um e gere outra prévia.',

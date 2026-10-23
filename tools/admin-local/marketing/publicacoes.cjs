@@ -45,9 +45,7 @@ function validarPedido(p) {
     const destinos = p.destinos.map(d => {
       fechado(d, ['contaId', 'rede', 'formato']);
       conta(d.contaId);
-      // Stories só no Instagram: Página ainda sem executor de Stories.
-      if (!['facebook', 'instagram'].includes(d.rede) || !['feed', 'carrossel', 'reels', 'stories'].includes(d.formato)
-        || (d.rede === 'facebook' && d.formato === 'stories')) invalido();
+      if (!['facebook', 'instagram'].includes(d.rede) || !['feed', 'carrossel', 'reels', 'stories'].includes(d.formato)) invalido();
       const chave = JSON.stringify([d.contaId, d.rede, d.formato]);
       if (unicos.has(chave)) invalido(); unicos.add(chave);
       return { ...d, publicarEm, fuso: p.fuso };

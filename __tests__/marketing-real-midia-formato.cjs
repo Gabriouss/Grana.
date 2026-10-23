@@ -55,6 +55,8 @@ const reject=async(p,re)=>{await assert.rejects(p,re);checks++;};
  if(!process.argv.includes('--baseline')){
   await db.exec('reset role');
   await db.exec(fs.readFileSync(path.join(root,'supabase/migrations',FILE),'utf8'));
+  // Stories no Facebook (23/10): tira só a exclusão facebook+stories das duas funções.
+  await db.exec(fs.readFileSync(path.join(root,'supabase/migrations','20261023160000_admin_marketing_stories_facebook.sql'),'utf8'));
   await db.exec('set role service_role');
  }
  const before=await efeitos();
@@ -88,7 +90,8 @@ const reject=async(p,re)=>{await assert.rejects(p,re);checks++;};
   ['duas-feed',[midia(),midia()],'feed',false,false],['carrossel-imagens',[midia(),midia()],'carrossel',true,true],
   ['carrossel-misto',[midia(),video()],'carrossel',true,false],['carrossel-unitario',[midia()],'carrossel',false,false],
   ['video-reels',[video()],'reels',true,true],['imagem-reels',[midia()],'reels',false,false],
-  ['video-stories',[video()],'stories',true,false],['imagem-stories',[midia()],'stories',true,false],
+  ['video-stories',[video()],'stories',true,true],['imagem-stories',[midia()],'stories',true,true],
+  ['duas-stories',[midia(),midia()],'stories',false,false],['png-stories',[midia('imagem','image/png')],'stories',false,true],
   ['png-feed',[midia('imagem','image/png')],'feed',false,true],
  ];
  let accepted=0,blocked=0;
@@ -130,12 +133,57 @@ const reject=async(p,re)=>{await assert.rejects(p,re);checks++;};
  rs=await etapa('verificar-publicacao',{remotoId:'791'});eq(rs.estado,'publicado','Stories: leitura de volta STORY');
  eq(passos.map(([m,c])=>m+' '+c),['POST 123/media','GET 789','POST 123/media_publish','GET 791'],'Stories: sequência oficial');
  eq(passos[0][2].media_type,'STORIES');eq(passos[0][2].image_url,'https://fixture.invalid/midia');eq(passos[3][2].fields,'id,media_product_type,permalink');
+ eq('caption' in passos[0][2],false,'Story do IG sem caption (sintaxe oficial do container de Story)');
+ // Stories no Facebook (Page Stories API): foto, vídeo, leitura em /stories e POST incerto.
+ const fbStory=async(midias,responder)=>{const calls=[];let proc={};
+  const g=criarAdaptadorGraphReal({versao:'v24.0',token:'fixture-only',signal:new AbortController().signal,assinar:async m=>'https://fixture.invalid/'+m.tipo,
+   rede:async(url,opts)=>{const u=new URL(url),p=Object.fromEntries(opts.method==='POST'&&opts.body?new URLSearchParams(opts.body):u.searchParams);
+    calls.push([opts.method,u.hostname==='rupload.facebook.com'?'rupload':u.pathname.replace('/v24.0/',''),p]);return responder(u,p,calls.length);}});
+  const s=await snapshot(midias);
+  const passo=async(etapa,extra={})=>{const r=await g.executar({jobId:randomUUID(),rede:'facebook',formato:'stories',etapa,remotoContaId:'456',processamento:proc,...extra},s.dados);if(r.processamento)proc=r.processamento;return r;};
+  return {calls,passo,s};};
+ const ok=c=>new Response(JSON.stringify(c),{status:200});
+ const lista=(post,status='PUBLISHED')=>ok({data:[{post_id:'999',status:'PUBLISHED',media_type:'photo'},{post_id:post,status,media_type:'photo',url:'https://facebook.com/stories/'+post}]});
+ // Foto: /photos published=false -> photo_stories -> leitura em /stories casando o post_id.
+ let f=await fbStory([midia()],(u,p)=>u.pathname.endsWith('/photos')?ok({id:'811'}):u.pathname.endsWith('/photo_stories')?ok({success:true,post_id:'456_812'}):lista('456_812'));
+ eq((await f.passo('preparar')).estado,'pronto','FB Story foto: preparo');
+ let pub=await f.passo('publicar');eq([pub.estado,pub.remotoId],['publicacao-aceita','456_812']);
+ let v=await f.passo('verificar-publicacao',{remotoId:'456_812'});eq([v.estado,v.processamento.permalink],['publicado','https://facebook.com/stories/456_812'],'FB Story foto: prova na lista /stories');
+ eq(f.calls.map(([m,c])=>m+' '+c),['POST 456/photos','POST 456/photo_stories','GET 456/stories'],'FB Story foto: ordem oficial');
+ eq(f.calls[0][2],{url:'https://fixture.invalid/imagem',published:'false'});eq(f.calls[1][2],{photo_id:'811'});
+ // Ainda fora da lista: consulta sem efeito, adiada; vencido (ARCHIVED) ainda prova; reconciliar sem lista vira conferência.
+ f=await fbStory([midia()],()=>ok({data:[{post_id:'999',status:'PUBLISHED'}]}));
+ eq((await f.passo('verificar-publicacao',{remotoId:'456_812'})).estado,'adiado','FB Story fora da lista: repete a consulta, não publica de novo');
+ eq((await f.passo('reconciliar',{remotoId:'456_812'})).estado,'incerto');
+ f=await fbStory([midia()],()=>lista('456_812','ARCHIVED'));eq((await f.passo('verificar-publicacao',{remotoId:'456_812'})).estado,'publicado','ARCHIVED (24 h) ainda prova');
+ // Vídeo: start -> rupload -> finish -> leitura.
+ f=await fbStory([video()],(u,p)=>u.hostname==='rupload.facebook.com'?ok({success:true})
+  :u.pathname.endsWith('/video_stories')?ok(p.upload_phase==='start'?{video_id:'820',upload_url:'https://rupload.facebook.com/video-upload/v24.0/820'}:{success:true,post_id:'821'}):lista('821'));
+ eq((await f.passo('preparar')).estado,'preparo-parcial','FB Story vídeo: start');
+ eq((await f.passo('preparar')).estado,'pronto','FB Story vídeo: upload concluído');
+ pub=await f.passo('publicar');eq([pub.estado,pub.remotoId],['publicacao-aceita','821']);
+ eq((await f.passo('verificar-publicacao',{remotoId:'821'})).estado,'publicado');
+ eq(f.calls.map(([m,c,p])=>m+' '+c+(p.upload_phase?' '+p.upload_phase:'')),['POST 456/video_stories start','POST rupload','POST 456/video_stories finish','GET 456/stories'],'FB Story vídeo: fases oficiais');
+ eq(f.calls[2][2],{video_id:'820',upload_phase:'finish'});
+ // POST incerto (rede caiu ou success ausente) não se repete: vira conferência humana.
+ f=await fbStory([midia()],u=>u.pathname.endsWith('/photos')?ok({id:'811'}):(()=>{throw new Error('rede caiu');})());
+ await f.passo('preparar');eq((await f.passo('publicar')).estado,'incerto','FB Story: POST sem resposta vira precisa-conferir');
+ f=await fbStory([midia()],u=>u.pathname.endsWith('/photos')?ok({id:'811'}):ok({post_id:'812'}));
+ await f.passo('preparar');eq((await f.passo('publicar')).estado,'incerto','FB Story: sem success:true não é aceito');
+ // SQL: FB Story vira um job de Stories.
+ const sf=await snapshot([midia()]);const lf=await confirmar(await prever(sf,[destino(fb,'stories')]));
+ eq((await db.query(`select a.formato from public.admin_marketing_agendamentos g join public.admin_marketing_autorizacoes a on a.id=g.autorizacao_id
+  where g.lote_id=$1`,[lf.loteId])).rows.map(r=>r.formato),['stories'],'Stories FB vira um job de Stories');
  const sc=await snapshot([video()],midia('imagem','image/png'));
  await reject(prever(sc,[destino(ig,'reels')]),/midia-incompativel/);
  const foreign=randomUUID();await reject(rpc('previa',[foreign,{snapshotId:sv.id,snapshotRevisao:sv.revisao,destinos:[destino(ig,'feed')]}]),/snapshot-indisponivel/);
  const client={rpc:(n,args)=>({abortSignal:async()=>{try{return {data:await rpc(n.replace('admin_marketing_real_',''),[args.p_admin,args.p_pedido]),error:null};}catch(e){return {data:null,error:{message:e.message}};}}})};
  await reject(rpcReal(client,'previa',{p_admin:admin,p_pedido:{snapshotId:sv.id,snapshotRevisao:sv.revisao,destinos:[destino(ig,'feed')]}},new AbortController().signal),e=>e.codigo==='midia-incompativel'&&e.status===409);
  if(comV2){
+  // Prévia v2: Stories no FB passa a ser compatível; carrossel FB com vídeo continua recusado.
+  const eleg=async(s,f)=>(await db.query('select public.admin_marketing_real_elegibilidade_v2($1,$2,$3,false) r',[admin,s.id,destino(fb,f)])).rows[0].r.motivos;
+  eq((await eleg(sf,'stories')).includes('midia-incompativel'),false,'v2: FB Stories compatível');
+  eq((await eleg(await snapshot([midia(),video()]),'carrossel')).includes('midia-incompativel'),true,'v2: FB carrossel com vídeo segue recusado');
   const cid=randomUUID();
   const adotado=await snapshot([midia(),midia()],null,{conteudoId:cid,geracaoEditorial:1});
   await db.exec('reset role');

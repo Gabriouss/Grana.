@@ -46,7 +46,7 @@ const CONTAS = [
   { contaId: 'ig-1', rede: 'instagram', rotulo: '@grana.app', revisao: 3, conexao: 'verificada', pausada: false,
     capacidades: [cap('feed'), cap('carrossel'), cap('reels', 'nao-verificado', ['capacidade-nao-comprovada']), cap('stories')] },
   { contaId: 'fb-1', rede: 'facebook', rotulo: 'Grana. (Página)', revisao: 2, conexao: 'verificada', pausada: false,
-    capacidades: [cap('feed'), cap('carrossel', 'nao-verificado', ['capacidade-nao-comprovada']), cap('reels', 'nao-verificado', ['capacidade-nao-comprovada']), cap('stories', 'nao-suportado', ['formato-nao-suportado'])] },
+    capacidades: [cap('feed'), cap('carrossel', 'nao-verificado', ['capacidade-nao-comprovada']), cap('reels', 'nao-verificado', ['capacidade-nao-comprovada']), cap('stories')] },
 ];
 const LOTE = uuid();
 const AGORA_FIXTURE = Date.parse('2026-10-19T12:00:00-03:00');
@@ -254,11 +254,11 @@ const job = (contaId, rede, estado, extra = {}) => ({
 
     // formatos sem capacidade comprovada não são selecionáveis
     const bloqueados = await page.locator('.pub-real-formato input:disabled').count();
-    ok(bloqueados === 5, `${width}px: capacidades e mídia única bloqueiam 5 formatos incompatíveis (achou ${bloqueados})`);
-    // Stories (autor, 23/10): cartão ao lado de Feed/Carrossel/Reels; Instagram selecionável, Facebook com motivo claro.
+    ok(bloqueados === 4, `${width}px: capacidades e mídia única bloqueiam 4 formatos incompatíveis (achou ${bloqueados})`);
+    // Stories (autor, 23/10): cartão ao lado de Feed/Carrossel/Reels, selecionável nas duas redes quando a capacidade está disponível.
     ok(await page.getByLabel('Instagram @grana.app, Stories', { exact: true }).isEnabled(), `${width}px: Stories do Instagram selecionável`);
-    const fbStories = page.locator('.pub-real-formato', { has: page.getByLabel('Facebook Grana. (Página), Stories, indisponível', { exact: true }) });
-    ok(await fbStories.count() === 1 && /ainda não publica Stories no Facebook/.test(await fbStories.innerText()), `${width}px: Stories do Facebook desabilitado com motivo em português claro`);
+    ok(await page.getByLabel('Facebook Grana. (Página), Stories', { exact: true }).isEnabled(), `${width}px: Stories do Facebook selecionável`);
+    ok(!/ainda não publica Stories no Facebook/.test(await page.locator('.pub-real-compositor').innerText()), `${width}px: recusa antiga de Stories no Facebook sumiu`);
 
     await page.getByLabel('Instagram @grana.app, Feed').check();
     await page.getByLabel('Facebook Grana. (Página), Feed').check();

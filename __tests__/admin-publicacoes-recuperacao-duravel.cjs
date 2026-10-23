@@ -27,9 +27,10 @@ const pedido = { acao: 'confirmar', previaId: U, previaHash: 'a'.repeat(64), rev
     assert.equal(validarPedido(previa).politicaExecucao, undefined, 'cliente antigo não ganha 2h');
     assert.equal(validarPedido({ ...previa, politicaExecucao: 'recuperacao-2h-v1', capacidadesCliente: ['execucao-2h-v1'], consentimentoExecucao: true }).politicaExecucao, 'recuperacao-2h-v1');
     assert.throws(() => validarPedido({ ...previa, politicaExecucao: 'recuperacao-2h-v1' }), { codigo: 'pedido-invalido' });
-    // Cláusula "Stories fora dos pedidos novos" revogada pelo autor em 23/10: só o Facebook continua recusado.
+    // Stories (autor, 23/10): aceitos nas duas redes; formato fora da lista continua recusado.
     assert.equal(validarPedido({ ...previa, destinos: [{ ...previa.destinos[0], formato: 'stories' }] }).destinos[0].formato, 'stories');
-    assert.throws(() => validarPedido({ ...previa, destinos: [{ ...previa.destinos[0], rede: 'facebook', formato: 'stories' }] }), { codigo: 'pedido-invalido' });
+    assert.equal(validarPedido({ ...previa, destinos: [{ ...previa.destinos[0], rede: 'facebook', formato: 'stories' }] }).destinos[0].formato, 'stories');
+    assert.throws(() => validarPedido({ ...previa, destinos: [{ ...previa.destinos[0], rede: 'facebook', formato: 'live' }] }), { codigo: 'pedido-invalido' });
     const estado = criarEstado({ pasta: path.join(pasta, 'incompleto') });
     const api = criarPublicacoes({ estado, remoto: { executar: async () => ({ loteId: V, jobs: [] }) } });
     await assert.rejects(api.executar('.', pedido), { codigo: 'resultado-desconhecido' });

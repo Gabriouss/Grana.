@@ -33,7 +33,7 @@ export async function jsonLimitado(r:Response):Promise<Record<string,unknown>>{
 export function criarAdaptadorGraphReal(deps:Deps){
  if(!/^v\d+\.\d+$/.test(deps.versao)||!deps.token)throw new Error('configuracao-invalida');
  async function graph(path:string,metodo:'GET'|'POST',params:Record<string,string>={}):Promise<Record<string,unknown>>{
-  if(!/^[0-9]+(?:_[0-9]+)?(?:\/(?:media|media_publish|photos|feed|video_reels))?$/.test(path))throw new Error('destino-invalido');
+  if(!/^[0-9]+(?:_[0-9]+)?(?:\/(?:media|media_publish|photos|feed|video_reels|photo_stories|video_stories|stories))?$/.test(path))throw new Error('destino-invalido');
   const url=new URL(`https://graph.facebook.com/${deps.versao}/${path}`),body=new URLSearchParams(params);
   if(metodo==='GET')url.search=body.toString();let r:Response;
   try{r=await deps.rede(url,{method:metodo,redirect:'error',signal:deps.signal,
@@ -68,6 +68,15 @@ export function criarAdaptadorGraphReal(deps:Deps){
      // media_product_type separa Story, Reel e Feed (IG Content Publishing, "Story posts").
      const d=await graph(post,'GET',{fields:'id,media_product_type,permalink'});
      if(d.id===post&&d.media_product_type===(job.formato==='reels'?'REELS':job.formato==='stories'?'STORY':'FEED'))return publicado(d.permalink);
+    }else if(job.formato==='stories'){
+     // Story de Page: a prova e o post_id na lista oficial /stories (Page Stories API, "Get stories").
+     // Vencido em 24 h, aparece como ARCHIVED, que tambem prova que saiu.
+     const d=await graph(job.remotoContaId+'/stories','GET');
+     const s=Array.isArray(d.data)?(d.data as {post_id?:unknown;status?:unknown;url?:unknown}[])
+      .find(x=>String(x?.post_id)===post&&(x.status==='PUBLISHED'||x.status==='ARCHIVED')):undefined;
+     if(s)return publicado(s.url);
+     // Video ainda processando pode demorar a entrar na lista: consulta sem efeito, repete.
+     if(job.etapa==='verificar-publicacao')return {estado:'adiado',codigo:'story-ainda-nao-listado',processamento:estado};
     }else if(job.formato==='reels'){
      // Reel de Page: o ID e o do video. success:true do finish nao prova nada;
      // so a fase de publicacao concluida e publicada (FB Reels Publishing, status).
@@ -90,7 +99,8 @@ export function criarAdaptadorGraphReal(deps:Deps){
      if(itens.length<midias.length){const m=midias[itens.length];const params:Record<string,string>={};
       params[m.tipo==='video'?'video_url':'image_url']=await deps.assinar(m);
       if(job.formato==='carrossel'){params.is_carousel_item='true';if(m.tipo==='video')params.media_type='VIDEO';}
-      else{params.caption=snapshot.legenda;if(job.formato==='reels')params.media_type='REELS';if(job.formato==='stories')params.media_type='STORIES';
+      else{// Container de Story nao tem caption na sintaxe oficial (IG User Media, Story Containers).
+       if(job.formato!=='stories')params.caption=snapshot.legenda;if(job.formato==='reels')params.media_type='REELS';if(job.formato==='stories')params.media_type='STORIES';
        if(job.formato==='reels'&&snapshot.capa)params.cover_url=await deps.assinar(snapshot.capa);}
       const d=await graph(job.remotoContaId+'/media','POST',params);itens.push(id(d.id));
       if(job.formato!=='carrossel')estado.container=itens[0];
@@ -111,23 +121,24 @@ export function criarAdaptadorGraphReal(deps:Deps){
    }
    const video=midias[0].tipo==='video';
    if(job.etapa==='preparar'){
-    // Stories de Page sem contrato oficial de criacao/leitura (matriz Compass, 17/10).
-    if(job.formato==='stories')return {estado:'falhou',codigo:'formato-sem-contrato-oficial'};
+    // Story de Page: foto via /photos published=false + photo_stories; video via video_stories (Page Stories API).
+    if(job.formato==='stories'&&midias.length!==1)return {estado:'falhou',codigo:'formato-invalido'};
     // Meta SDK oficial: Page.create_feed aceita attached_media list<Object>, nao um par.
     // 2..10 e o limite INTERNO do snapshot; nao representa um teto declarado pela Meta.
     // https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/page.py
     if(job.formato==='carrossel'&&(midias.length<2||midias.some(x=>x.tipo!=='imagem')))return {estado:'falhou',codigo:'carrossel-invalido'};
     if(job.formato==='feed'&&(video||midias.length!==1))return {estado:'falhou',codigo:'feed-video-nao-validado'};
-    if(job.formato==='reels'){
+    if(job.formato==='reels'||(job.formato==='stories'&&video)){
      if(midias.length!==1||!video)return {estado:'falhou',codigo:'formato-invalido'};
-     const edge='video_reels';
+     const edge=job.formato==='reels'?'video_reels':'video_stories';
      if(!estado.video){const d=await graph(job.remotoContaId+'/'+edge,'POST',{upload_phase:'start'});
       estado.video=id(d.video_id);if(typeof d.upload_url!=='string')throw new Error('upload-ausente');
       const u=new URL(d.upload_url);if(u.hostname!=='rupload.facebook.com')throw new Error('upload-host-recusado');estado.uploadUrl=d.upload_url;
       return {estado:'preparo-parcial',processamento:estado};}
      if(!estado.transferido){if(!estado.uploadUrl)throw new Error('upload-ausente');await transferir(estado.uploadUrl,midias[0]);
-      estado={...estado,transferido:true};return {estado:'processando',processamento:estado};}
-     return {estado:'processando',processamento:estado};
+      // Story: a API oficial publica (finish) logo depois do upload; o status e conferido na leitura.
+      estado={...estado,transferido:true};}
+     return {estado:job.formato==='stories'?'pronto':'processando',processamento:estado};
     }
     if(itens.length<midias.length){const d=await graph(job.remotoContaId+'/photos','POST',{url:await deps.assinar(midias[itens.length]),published:'false'});
      itens.push(id(d.id));return {estado:itens.length===midias.length?'pronto':'preparo-parcial',processamento:estado};}
@@ -138,8 +149,12 @@ export function criarAdaptadorGraphReal(deps:Deps){
     return status?.video_status==='ready'?{estado:'pronto',processamento:estado}:{estado:'processando',processamento:estado};
    }
    let post:string;
-   if(job.formato==='stories')return {estado:'falhou',codigo:'formato-sem-contrato-oficial'};
-   if(job.formato==='reels'){
+   if(job.formato==='stories'){
+    const d=video?await graph(job.remotoContaId+'/video_stories','POST',{video_id:id(estado.video),upload_phase:'finish'})
+     :await graph(job.remotoContaId+'/photo_stories','POST',{photo_id:id(itens[0])});
+    // post_id numerico so se for inteiro seguro; acima disso o JSON ja perdeu digitos.
+    if(d.success!==true)throw new Error('publicacao-nao-confirmada');post=id(Number.isSafeInteger(d.post_id)?String(d.post_id):d.post_id);
+   }else if(job.formato==='reels'){
     const d=await graph(job.remotoContaId+'/video_reels','POST',{video_id:id(estado.video),upload_phase:'finish',video_state:'PUBLISHED',description:snapshot.legenda});
     if(d.success!==true)throw new Error('publicacao-nao-confirmada');post=id(estado.video);
    }else{

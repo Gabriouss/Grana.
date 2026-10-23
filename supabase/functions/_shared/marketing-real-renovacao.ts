@@ -8,9 +8,9 @@ import { jsonLimitado } from './marketing-real-graph.ts';
 export type ContaRenovacao={contaId:string;rede:'facebook'|'instagram';remotoId:string;credencialRef:string};
 export type ResultadoRenovacao={contaId:string;
  resultado:'ok'|'permissao-ausente'|'expirada'|'revogada'|'indisponivel'|'inconclusivo';motivo?:string;formatos?:Record<string,string>};
-// FB Stories fica fora: sem contrato oficial de leitura de volta (Compass, 18/10).
+// FB Stories: Page Stories API tem criacao e leitura de volta (GET /{page}/stories), autor 23/10.
 export const PERMISSOES={instagram:{permissao:'instagram_content_publish',formatos:['feed','carrossel','reels','stories']},
- facebook:{permissao:'pages_manage_posts',formatos:['feed','carrossel','reels']}} as const;
+ facebook:{permissao:'pages_manage_posts',formatos:['feed','carrossel','reels','stories']}} as const;
 type Leitura={ok:true;d:Record<string,unknown>}|{ok:false;tipo:'token';sub:number|null}|{ok:false;tipo:'negado'|'nao-aplicavel'|'inconclusivo'};
 type Deps={rede:typeof fetch;versao:string;env:(n:string)=>string|undefined;signal:AbortSignal;prazoLeitura?:number};
 // 463 = token expirado; o resto do 190 (senha trocada, app removido, sessao encerrada) e revogacao.

@@ -78,11 +78,12 @@ const contas = [[IG, 'instagram'], [FB, 'facebook']].map(([contaId, rede]) => ({
     }
     // Paridade da decisão UI com a função SQL real; nenhuma RPC remota.
     const { PGlite } = await import('@electric-sql/pglite'); db = new PGlite();
-    const migration = fs.readFileSync(path.join(ROOT, 'supabase/migrations/20261021083000_admin_marketing_real_midia_formato.sql'), 'utf8');
-    const start = migration.indexOf('create function public.admin_marketing_real_midia_compativel(');
-    const end = migration.indexOf('end $$;', start);
+    // Definição vigente: a migration de Stories no Facebook (23/10) substitui a de 21/10.
+    const migration = fs.readFileSync(path.join(ROOT, 'supabase/migrations/20261023160000_admin_marketing_stories_facebook.sql'), 'utf8');
+    const start = migration.indexOf('CREATE OR REPLACE FUNCTION public.admin_marketing_real_midia_compativel(');
+    const end = migration.indexOf('end $function$;', start);
     assert.ok(start >= 0 && end > start);
-    await db.exec(migration.slice(start, end + 'end $$;'.length));
+    await db.exec(migration.slice(start, end + 'end $function$;'.length));
     const im = mime => ({ tipo: 'imagem', mime: mime || 'image/jpeg' });
     const vid = () => ({ tipo: 'video', mime: 'video/mp4' });
     const cases = [[], [im()], [vid()], [im(), im()], [im(), vid()], [vid(), vid()], [im('image/png')],
@@ -93,10 +94,11 @@ const contas = [[IG, 'instagram'], [FB, 'facebook']].map(([contaId, rede]) => ({
     for (const data of matrix) for (const rede of ['instagram', 'facebook']) for (const formato of ['feed', 'carrossel', 'reels', 'stories']) {
       const midias = data.midias;
       const sql = (await db.query('select public.admin_marketing_real_midia_compativel($1,$2,$3) r', [data, rede, formato])).rows[0].r;
-      // Stories voltaram aos pedidos novos (autor, 23/10): Instagram com 1 JPEG ou 1 MP4; Facebook recusado nos dois lados.
+      // Stories (autor, 23/10): uma mídia nas duas redes; Instagram só JPEG ou MP4, Facebook também PNG, como no Feed.
       ok(helper.capacidadeDaPeca(data, rede, formato).disponivel === sql, `UI/SQL paridade ${rede}/${formato}/${midias.length}/${midias[0]?.mime || 'invalido'}`);
-      if (formato === 'stories') ok(sql === (rede === 'instagram' && midias.length === 1 && ['image/jpeg', 'video/mp4'].includes(midias[0]?.mime) && !!midias[0]?.tipo && (midias[0].tipo === 'video') === (midias[0].mime === 'video/mp4')),
-        `Stories ${rede}/${midias.length}/${midias[0]?.mime || 'invalido'}: só Instagram com uma mídia JPEG ou MP4`);
+      const mimes = rede === 'instagram' ? ['image/jpeg', 'video/mp4'] : ['image/jpeg', 'image/png', 'video/mp4'];
+      if (formato === 'stories') ok(sql === (midias.length === 1 && mimes.includes(midias[0]?.mime) && !!midias[0]?.tipo && (midias[0].tipo === 'video') === (midias[0].mime === 'video/mp4')),
+        `Stories ${rede}/${midias.length}/${midias[0]?.mime || 'invalido'}: uma mídia, nos tipos aceitos pela rede`);
       const events = [];
       const backend = criarPublicacoesReais({ env: n => n === 'ADMIN_MARKETING_USER_ID' ? ADMIN : undefined,
         remoto: () => null, cliente: () => ({ rpc: nome => {

@@ -277,7 +277,8 @@ async function main() {
   /* ── 5. Adaptador: formatos sem contrato oficial e mídia incompatível nunca chegam à Meta ── */
   {
     const casos = [
-      ['facebook', 'stories', [{ tipo: 'imagem', mime: 'image/jpeg' }], 'formato-sem-contrato-oficial'],
+      // FB Stories passou a ter executor (Page Stories API, 23/10); duas mídias continuam fora do contrato.
+      ['facebook', 'stories', [{ tipo: 'imagem', mime: 'image/jpeg' }, { tipo: 'imagem', mime: 'image/jpeg' }], 'formato-invalido'],
       ['facebook', 'carrossel', [{ tipo: 'imagem', mime: 'image/jpeg' }], 'carrossel-invalido'],
       ['facebook', 'carrossel', [{ tipo: 'imagem', mime: 'image/jpeg' }, { tipo: 'video', mime: 'video/mp4' }], 'carrossel-invalido'],
       ['instagram', 'feed', [{ tipo: 'imagem', mime: 'image/png' }], 'midia-incompativel'],

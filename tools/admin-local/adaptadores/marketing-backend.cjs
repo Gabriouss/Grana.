@@ -71,7 +71,7 @@ function midiaCompativel(dados, rede, formato) {
     && midias.every(m => imagem(m) || video(m))
     && (formato === 'carrossel' ? midias.length >= 2 : midias.length === 1)
     && (formato !== 'feed' || imagem(midias[0])) && (formato !== 'reels' || video(midias[0]))
-    && (rede !== 'facebook' || (formato !== 'stories' && (formato !== 'carrossel' || midias.every(imagem))))
+    && (rede !== 'facebook' || formato !== 'carrossel' || midias.every(imagem))
     && (rede !== 'instagram' || (midias.every(m => !imagem(m) || m.mime === 'image/jpeg')
       && (formato !== 'reels' || !dados.capa || dados.capa.mime === 'image/jpeg')));
 }
