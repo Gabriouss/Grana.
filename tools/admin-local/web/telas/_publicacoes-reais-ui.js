@@ -7,6 +7,7 @@ import {
   horarioUtcParaLocal, previaConfirmavel, resumirLote, rotuloDataHorario,
   antecedenciaMinima, conferirHorario, sugestaoHorario, mensagemHumana, fraseDoMotivo, descreverJobReal, jobAtivo, quandoCurto, reagendamentoPermitido, estadoApresentacaoJob,
   descreverPausas,
+  lerPendenciaPublicacao, gravarPendenciaPublicacao,
 } from './_publicacoes-reais.js';
 
 // Enquanto houver job ativo e a aba estiver visível, o estado real é relido neste intervalo.
@@ -20,9 +21,27 @@ const ESTADOS_ATIVOS = new Set(['planejado', 'programado-no-painel', 'preparando
 const ESTADOS_TERMINAIS = new Set(['publicado', 'cancelado']);
 const MIME_OK = new Set(['image/png', 'image/jpeg', 'video/mp4']);
 
+function mensagemEmailIncidente(i) {
+  if (i.emailEntrega === 'falhou') return 'A entrega do alerta por e-mail falhou. Este incidente continua visível no painel.';
+  if (i.emailEstado === 'falhou') return 'O alerta por e-mail falhou. Este incidente continua visível no painel.';
+  if (i.emailEstado === 'aceito') {
+    if (i.emailEntrega === 'entregue') return 'O provedor informou a entrega do alerta por e-mail; a leitura e a chegada à caixa de entrada não foram verificadas.';
+    if (i.emailEntrega === 'adiada') return 'O provedor aceitou o alerta por e-mail; a entrega está adiada.';
+    return 'O provedor aceitou o alerta por e-mail. A entrega ainda não foi verificada.';
+  }
+  if (i.emailEstado === 'incerto') return 'O envio do alerta por e-mail tem resultado incerto. Este incidente continua visível no painel.';
+  if (i.emailEstado === 'enviando') return 'O alerta por e-mail está em envio; ainda não há confirmação do provedor.';
+  if (i.emailEstado === 'pendente') return 'O alerta por e-mail aguarda envio. Este incidente continua visível no painel.';
+  return 'O alerta por e-mail ainda não tem envio confirmado. Este incidente continua visível no painel.';
+}
+
 // A navegação SPA desmonta a tela, mas não encerra a intenção enviada.
 // Conserva só a chave e seus metadados nesta aba até a consulta obter recibo.
 let pendencia = null;
+function definirPendencia(valor) {
+  gravarPendenciaPublicacao(valor, pendencia);
+  pendencia = valor;
+}
 // Pausas por escopo não têm recibo consultável por chave no contrato v1.
 // Conserva as intenções incertas sem tratá-las como confirmações de jobs.
 const pausasIncertas = new Map();
@@ -30,6 +49,8 @@ const pausasIncertas = new Map();
 export async function montarReal(raiz, ctx, integracao = null) {
   const { h } = ctx;
   const cliente = criarClientePublicacoes(ctx);
+  try { pendencia = lerPendenciaPublicacao() || pendencia; }
+  catch (e) { ctx.aviso?.(e.message, 'erro'); return; }
   let capacidades = null;
   let catalogo = null;
   let feedPorPeca = new Map();
@@ -352,6 +373,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
       pausasVisiveis.replaceChildren(estadoDaPausa());
       desenharCompositor();
       desenharLista();
+      if (pendencia) desenharConsultaPendente();
       if (!feedPorPeca.size && catalogo.pecas.length) avisar('O catálogo foi carregado, mas a fonte de miniaturas do Feed está indisponível. Não confirme sem uma prévia visual completa.', true);
       else avisar('Dados reais carregados do admin-local. Nenhuma publicação foi enviada ao carregar esta tela.');
     } catch (err) {
@@ -458,6 +480,17 @@ export async function montarReal(raiz, ctx, integracao = null) {
       }, { disabled: !pagina.proximoCursor }));
     const mais = h('button', { class: 'botao', type: 'button', texto: 'Atualizar fila real', 'data-operacao': true, onclick: () => atualizarTudo() });
     lista.replaceChildren(h('h2', { class: 'secao-titulo', id: 'pub-real-lista-titulo', texto: 'Fila real e recibos' }),
+      h('div', { class: 'pub-real-incidentes', 'aria-live': 'polite' },
+        pagina.incidentesDisponiveis !== true
+          ? h('p', { class: 'alerta alerta-atencao', role: 'alert', texto: 'Incidentes indisponíveis. A fila continua visível; a ausência de alertas não foi comprovada. Atualize o estado real.' })
+          : h('div', null, h('h3', { texto: 'Incidentes por rede' }),
+            pagina.incidentesLimitados ? h('p', { class: 'campo-ajuda', texto: `Coleção limitada aos incidentes recentes. ${pagina.naoReconhecidos} incidentes ainda sem reconhecimento na fonte.` }) : null,
+            ...(pagina.incidentes || []).filter(i => !i.resolvidoEm).map(i => h('div', { class: 'alerta alerta-atencao', role: 'alert' },
+              h('p', { texto: `${REDES[i.rede] || 'Publicação'}: ${fraseDoMotivo(i.codigo) || 'Há uma falha que precisa de conferência.'} O alerta não autoriza repetir o envio.` }),
+              h('p', { texto: mensagemEmailIncidente(i) }),
+              i.jobId ? botao('Conferir destino do incidente', () => consultarDetalhe(i.jobId)) : null,
+              detalhesTecnicos(`Incidente: ${i.incidenteId} · código: ${i.codigo}`))),
+            !(pagina.incidentes || []).some(i => !i.resolvidoEm) ? h('p', { class: 'campo-ajuda', texto: 'Nenhum incidente aberto na coleção consultada.' }) : null)),
       h('p', { class: 'campo-ajuda', texto: 'Um job por destino. Estados diferentes no mesmo lote permanecem independentes e são resumidos como parciais.' }), filtros, mais, resultados, paginacao);
     montarResultados(filtrado());
     botoesPagina();
@@ -518,8 +551,8 @@ export async function montarReal(raiz, ctx, integracao = null) {
           h('p', { class: d.atencao ? 'pub-real-erro' : 'campo-ajuda', role: d.atencao ? 'alert' : null, texto: frase || 'A rede informou um código. Confira os recibos antes de continuar.' }),
           job.codigoErro ? detalhesTecnicos(`Código: ${job.codigoErro}`) : null) : null;
       })(),
-      job.estado === 'publicado' ? h('p', { class: 'pub-real-publicado', texto: 'Publicado segundo o recibo remoto.' }) : null,
-      linkSeguro(job.permalink) ? h('a', { class: 'botao botao-fantasma', href: linkSeguro(job.permalink), target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação confirmada' }) : null,
+      estadoVisivel === 'publicado' ? h('p', { class: 'pub-real-publicado', texto: 'Publicado e comprovado nesta rede.' }) : null,
+      estadoVisivel === 'publicado' && linkSeguro(job.permalink) ? h('a', { class: 'botao botao-fantasma', href: linkSeguro(job.permalink), target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação confirmada' }) : null,
       job.estado === 'publicado' && !linkSeguro(job.permalink) ? h('p', { class: 'campo-ajuda', texto: 'O link da publicação não está disponível nesta fonte. Consulte o ID e o recibo.' }) : null,
       job.estado === 'programado-no-painel' && !job.reagendamento ? h('p', { class: 'campo-ajuda', texto: 'O servidor ainda não informou se este destino pode ser reagendado. Atualize o estado real e confira os recibos.' }) : null,
       job.recibosLimitados && !emDetalhe ? h('p', { class: 'campo-ajuda', texto: 'A lista mostra somente os recibos recentes. Abra o detalhe para conferir até 50.' }) : null,
@@ -544,7 +577,8 @@ export async function montarReal(raiz, ctx, integracao = null) {
     busy(true);
     avisar('Validando aceite, mídia, destinos e horário no servidor…');
     try {
-      const resultado = await cliente.prever({ peca, ...(reagendamento ? { job: reagendamento.job } : {}), destinos, horarioLocal, contas: capacidades.contas });
+      const resultado = await cliente.prever({ peca, ...(reagendamento ? { job: reagendamento.job } : {}), destinos, horarioLocal, contas: capacidades.contas,
+        recuperacao2h: capacidades.controles.recuperacao2hDisponivel === true });
       if (encerrada || ctx.obsoleta()) return;
       previa = resultado;
       if (reagendamento && !reagendamento.peca.id) {
@@ -652,7 +686,10 @@ export async function montarReal(raiz, ctx, integracao = null) {
       h('div', { class: 'pub-real-confirmacao-resumo' },
         h('h3', { texto: 'Resumo exato da autorização' }),
         h('ul', null, alvos.map((a, i) => h('li', { texto: `${nomeDestino(a)} · ${REDES[a.rede]} · ${FORMATOS[a.formato]} · ${rotuloDataHorario(p.destinos?.[i]?.publicarEm || p.agendarPara)}` }))),
-        h('p', { texto: 'Esta legenda e estas imagens serão publicadas automaticamente no horário escolhido, somente após confirmar.' })),
+        h('p', { texto: 'Esta legenda e estas imagens serão publicadas automaticamente no horário escolhido, somente após confirmar.' }),
+        ...p.destinos.map(d => h('p', { texto: d.politicaExecucao === 'recuperacao-2h-v1'
+          ? `${REDES[d.rede]}: você autoriza tentativas seguras até ${rotuloDataHorario(d.executarAte)} (até 2h de atraso). Um envio incerto será conferido antes de qualquer nova tentativa.`
+          : `${REDES[d.rede]}: política anterior de até 15 minutos de atraso. Recuperação de 2h ainda não está habilitada.` }))),
       h('p', { id: 'pub-real-bloqueio-confirmacao', class: 'campo-ajuda', texto: reagendamento
         ? 'Ao confirmar o reagendamento, você substitui somente este destino e autoriza estas imagens e esta legenda no novo horário. As outras redes permanecem como estão.'
         : 'Ao clicar em Agendar, você autoriza a publicação destas imagens e desta legenda nos destinos e horários acima.' }),
@@ -704,20 +741,23 @@ export async function montarReal(raiz, ctx, integracao = null) {
     const substituicao = reagendamento;
     const destinos = destinosSelecionados();
     const tipo = substituicao ? 'reagendar' : 'confirmar';
-    const { k: chaveIntencao, idempotencia } = chaveDe(tipo, p.previaId, p.previaHash, p.revisao);
+    const { k: chaveIntencao } = chaveDe(tipo, p.previaId, p.previaHash, p.revisao);
+    const idempotencia = p.previaId;
     const data = p.destinos?.[0]?.publicarEm || p.agendarPara;
     if (ctx.obsoleta() || ocupado || p !== previa) return;
-    pendencia = { idempotencia, previaId: p.previaId, chaveIntencao, tipo };
+    try { definirPendencia({ idempotencia, previaId: p.previaId, chaveIntencao, tipo }); }
+    catch (e) { erroLegivel(e, 'A preservação do pedido'); return; }
     busy(true);
     try {
       const lote = substituicao ? await cliente.comando('reagendar', {
         jobId: substituicao.job.jobId, revisaoEsperada: substituicao.job.revisao,
         previaId: p.previaId, previaHash: p.previaHash, agendarPara: data, fuso: FUSO_PUBLICACAO,
         idempotencia, confirmacao: true,
+        ...(p.destinos.some(d => d.politicaExecucao === 'recuperacao-2h-v1') ? { capacidadesCliente: ['execucao-2h-v1'] } : {}),
       }) : await cliente.confirmar(p, idempotencia);
       if (!Array.isArray(lote.jobs) || !lote.jobs.length) throw new Error('lote-invalido');
       if (encerrada || ctx.obsoleta()) return;
-      pendencia = null;
+      definirPendencia(null);
       intencoes.delete(chaveIntencao);
       liberarPreview();
       // R9: fecha a janela, diz em uma linha o que foi agendado e leva ao mês da publicação no Calendário.
@@ -741,7 +781,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
         const b = previewEl.querySelector('.botao-primario');
         if (b) { b.dataset.bloqueado = 'true'; b.disabled = true; }
       } else {
-        pendencia = null;
+        definirPendencia(null);
         intencoes.delete(chaveIntencao);
         erroLegivel(err, 'A confirmação do agendamento');
         if (err?.status === 409 || err?.status === 422) await atualizarTudo();
@@ -786,7 +826,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
         compositor.closest?.('dialog')?.close?.();
       }
       intencoes.delete(pendencia.chaveIntencao);
-      pendencia = null;
+      definirPendencia(null);
       raiz.querySelector('.pub-real-consulta-pendente')?.remove();
       desenharLista();
       const texto = `Resultado conferido pela chave idempotente: ${resumirLote(d.jobs).rotulo}.`;
@@ -843,13 +883,16 @@ export async function montarReal(raiz, ctx, integracao = null) {
     if (pausaSemReleitura()) { avisar('A resposta de uma pausa não chegou. Atualize o estado real antes de iniciar outra operação.', true); return; }
     const pausa = ['pausar', 'retomar'].includes(acao) && !!campos.escopo;
     if (pausa) pausasIncertas.set(metadata.idempotencia, { ...metadata, tipo: acao, escopo: campos.escopo, contaId: campos.contaId });
-    else pendencia = { ...metadata, tipo: acao };
+    else {
+      try { definirPendencia({ ...metadata, tipo: acao }); }
+      catch (e) { erroLegivel(e, 'A preservação do comando'); return; }
+    }
     busy(true);
     try {
       const resultado = await cliente.comando(acao, campos);
       if (encerrada || ctx.obsoleta()) return;
       if (pausa) pausasIncertas.delete(metadata.idempotencia);
-      else pendencia = null;
+      else definirPendencia(null);
       intencoes.delete(metadata.chaveIntencao);
       avisar(`${metadata.rotulo}: resposta real recebida. Confira o estado e os recibos por destino.`);
       if (Array.isArray(resultado.jobs)) {
@@ -869,7 +912,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
         }
       } else {
         if (pausa) pausasIncertas.delete(metadata.idempotencia);
-        else pendencia = null;
+        else definirPendencia(null);
         intencoes.delete(metadata.chaveIntencao);
         erroLegivel(err, metadata.rotulo);
         if ([409, 422].includes(err?.status)) await atualizarTudo();
@@ -881,11 +924,15 @@ export async function montarReal(raiz, ctx, integracao = null) {
     if (ocupado) return;
     busy(true);
     try {
-      const d = await cliente.consultar({ jobId });
+      const conhecido = jobs.find(j => j.jobId === jobId);
+      const primeira = conhecido ? null : await cliente.consultar({ jobId });
+      const loteId = conhecido?.loteId || primeira?.jobs?.[0]?.loteId;
+      const d = loteId ? await cliente.consultar({ loteId }) : primeira;
+      if (!d || d.jobs.some(j => j.loteId !== loteId)) throw new Error('lote-incompleto');
       if (encerrada || ctx.obsoleta()) return;
       detalhe = d;
       const loteJobs = d.jobs;
-      const resumo = resumirLote(loteJobs);
+      const resumo = resumirLote(loteJobs, { integral: true });
       detalheEl.hidden = false;
       detalheEl.replaceChildren(h('h2', { class: 'secao-titulo', tabindex: '-1', texto: `Detalhe do lote · ${resumo.rotulo}` }),
         h('p', { class: 'campo-ajuda', texto: `${plural(loteJobs.length, 'destino', 'destinos')} · um estado e recibos independentes por job.` }),
@@ -916,7 +963,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
       estadosVistos.set(j.jobId, j.estado);
       if (!antes || antes === j.estado) continue;
       const d = descreverJobReal(j);
-      if (j.estado === 'publicado') ctx.aviso?.(`${d.rede}: publicado.${d.link ? '' : ` ${d.acao}`}`, 'ok');
+      if (estadoApresentacaoJob(j) === 'publicado') ctx.aviso?.(`${d.rede}: publicado e comprovado.${d.link ? '' : ` ${d.acao}`}`, 'ok');
       // Cancelamento comum é neutro, mas continua deixando recibo visível (AUD-09).
       else if (j.estado === 'cancelado' && !d.atencao) ctx.aviso?.(`${d.rede}: cancelado. ${d.acao}`, 'info');
       else if (d.atencao) ctx.aviso?.(`${d.rede}: ${d.texto}. ${[d.motivo, d.acao].filter(Boolean).join(' ')}`, 'erro');
@@ -937,6 +984,16 @@ export async function montarReal(raiz, ctx, integracao = null) {
     else if (!encerrada && jobs.some(jobAtivo)) atualizarFilaSemBloquear();
   };
   globalThis.document?.addEventListener?.('visibilitychange', aoMudarVisibilidade);
+  const aoMudarPendencia = () => {
+    if (encerrada) return;
+    try {
+      pendencia = lerPendenciaPublicacao();
+      if (pendencia) desenharConsultaPendente();
+      else raiz.querySelector('.pub-real-consulta-pendente')?.remove();
+      atualizarResumoHorario();
+    } catch (e) { erroLegivel(e, 'A leitura do pedido preservado'); }
+  };
+  globalThis.addEventListener?.('storage', aoMudarPendencia);
 
   function motivos(itens) {
     if (!Array.isArray(itens) || !itens.length) return 'Motivo de bloqueio indisponível; não selecionar';
@@ -972,6 +1029,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     liberarPreview();
     clearTimeout(relogioFila); relogioFila = null;
     globalThis.document?.removeEventListener?.('visibilitychange', aoMudarVisibilidade);
+    globalThis.removeEventListener?.('storage', aoMudarPendencia);
   };
   const achar = (peca) => catalogo?.pecas.find((p) => p.id === peca.id && p.versao === peca.versao);
   // O catálogo é lido quando a tela monta. Um aceite dado depois, na mesma tela ("Aprovar esta versão",
