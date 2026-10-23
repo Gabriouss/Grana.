@@ -343,7 +343,7 @@ function pedidosComTitulo(lista) {
 }
 const ID_PECA = /^\/api\/marketing\/pecas\/([0-9a-f]{16})\/(aprovar|ajuste|promover|recusar)$/;
 const ANTERIOR = /^\/api\/marketing\/ajustes\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/anterior$/i;
-const MARKETING_POST = new Set(['/api/marketing/publicacoes-simulacao', '/api/marketing/calendario', '/api/marketing/trafego', '/api/marketing/ajustes/aceitar', '/api/marketing/ajustes/retry', '/api/marketing/ajustes/reenviar', '/api/marketing/ajustes/encerrar', '/api/marketing/cronograma', '/api/marketing/cronograma/vinculo', '/api/marketing/notificacoes/ler', '/api/marketing/feedbacks/gestao', '/api/marketing/aprendizado/csv']);
+const MARKETING_POST = new Set(['/api/marketing/publicacoes-simulacao', '/api/marketing/calendario', '/api/marketing/calendario/sem-data', '/api/marketing/trafego', '/api/marketing/ajustes/aceitar', '/api/marketing/ajustes/retry', '/api/marketing/ajustes/reenviar', '/api/marketing/ajustes/encerrar', '/api/marketing/cronograma', '/api/marketing/cronograma/vinculo', '/api/marketing/notificacoes/ler', '/api/marketing/feedbacks/gestao', '/api/marketing/aprendizado/csv']);
 const ACOES_BUILD = {
   '/api/eas/preparar-build': ['PREPARAR BUILD', 'prepararBuild'],
   '/api/eas/disparar-build': ['DISPARAR BUILD', 'dispararBuild'],
@@ -425,6 +425,7 @@ async function tratarAcao(req, res, url, corpo, sessao) {
     }
     else if (m && m[2] === 'aprovar') r = aprovarEFecharPedido(res, m[1], corpo);
     else if (m) r = rotaMarketingPost(res, 'aprovacoes', ['pedirAjuste', 'ajuste'], [m[1], corpo]);
+    else if (p === '/api/marketing/calendario/sem-data') r = rotaMarketingPost(res, 'calendario', ['voltarSemData'], [corpo]);
     else if (p === '/api/marketing/calendario') r = rotaMarketingPost(res, 'calendario', ['planejar', 'salvar', 'gravar'], [corpo]);
     else r = rotaMarketingPost(res, 'trafego', ['salvarCampanha', 'salvar', 'gravar'], [corpo]);
     await r;

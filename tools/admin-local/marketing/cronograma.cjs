@@ -236,13 +236,14 @@ function projetar(raiz, operacional = {}, pecas = c.montarCatalogo(raiz)) {
     const legado = antigos.find((r) => !r.manifestoId && r.id === p.id && r.versao === p.versao);
     const substituicaoManual = anterior?.substituicaoManual || (legado ? { data: legado.data, hora: legado.hora, canal: legado.canal, observacao: legado.observacao || null } : null);
     const d = item?.dataPrevista;
+    if (!estado && anterior?.semData) estado = 'sem data';
     const data = estado ? null : d.modo === 'absoluta' ? d.data : m.diaD ? require('./calendario.cjs').somarDiasUteis(m.diaD, d.diasUteis) : null;
     if (!estado && !data) estado = 'aguardando dia D';
     const dataPrevista = d ? { ...d, dataResolvida: data } : null;
     const efetivo = estado && estado !== 'aguardando dia D' ? { data: null, hora: d?.hora || null, canal: d?.canal || null } : substituicaoManual || { data, hora: d?.hora || null, canal: d?.canal || null };
     if (efetivo.data && estado === 'aguardando dia D') estado = null;
-    planos.push({ ...base, ...efetivo, dataPrevista, substituicaoManual, registroLegado: anterior?.registroLegado || legado || null, recibos: anterior?.recibos || legado?.recibos || [], estado: estado || 'planejado', origem });
-    if (estado) avisos.push(`${rotulo(p)}: ${estado}.`);
+    planos.push({ ...base, ...efetivo, dataPrevista, substituicaoManual, registroLegado: anterior?.registroLegado || legado || null, recibos: anterior?.recibos || legado?.recibos || [], semData: anterior?.semData, estado: estado || 'planejado', origem });
+    if (estado && estado !== 'sem data') avisos.push(`${rotulo(p)}: ${estado}.`);
     if (efetivo.data && efetivo.data < c.hojeLocal()) avisos.push(`${rotulo(p)}: data prevista no passado; nada será publicado automaticamente.`);
     for (const d of m.datasComAviso || []) if (efetivo.data === d.data) avisos.push(`${rotulo(p)}: ${d.motivo}. O cálculo não exclui feriados.`);
     if (d && (!efetivo.hora || !efetivo.canal)) avisos.push(`${rotulo(p)}: ${!efetivo.hora ? 'horário pendente' : ''}${!efetivo.hora && !efetivo.canal ? '; ' : ''}${!efetivo.canal ? 'canal pendente' : ''}; envio Meta bloqueado.`);
@@ -282,6 +283,26 @@ function sincronizar(raiz) {
   nova.versaoOperacional = base + 1; c.gravarJsonAtomico(arq, nova);
   return nova;
 }
+// Tira a data planejada de uma peça sem job real (o chamador confere os jobs). Plano do manifesto fica
+// com a marca semData, que projetar() respeita; plano manual (legado) simplesmente sai do calendário.
+function voltarSemData(raiz, corpo = {}) {
+  return c.serializar(raiz, () => {
+    const arq = c.caminhoPainel(raiz, 'calendario.json');
+    const atual = c.lerJson(arq, { formato: 1, planejados: [] });
+    const nova = projetar(raiz, atual);
+    const plano = nova.planejados.find((r) => r.id === corpo.id && r.versao === corpo.versao);
+    if (!plano) throw new c.ErroMarketing('sem-planejamento', 'Esta peça não estava no calendário.', 404);
+    if (plano.estado !== 'planejado' || !plano.data) throw new c.ErroMarketing('sem-data-recusado', 'Só uma peça planejada com data volta para os aprovados sem data.', 409);
+    const em = c.agoraLocalIso();
+    if (plano.manifestoId) { plano.recibos = [...(plano.recibos || []), { tipo: 'sem-data', em }]; plano.semData = { em }; plano.estado = 'sem data'; plano.data = null; }
+    else nova.planejados = nova.planejados.filter((r) => r !== plano);
+    const relida = c.lerJson(arq, { versaoOperacional: 0 });
+    if ((relida.versaoOperacional || 0) !== (atual.versaoOperacional || 0)) erro('calendario-conflito', 'O calendário mudou; tente novamente.');
+    nova.versaoOperacional = (atual.versaoOperacional || 0) + 1;
+    c.gravarJsonAtomico(arq, nova);
+    return { semData: { id: plano.id, versao: plano.versao }, avisos: ['Peça devolvida aos aprovados sem data. Nada foi publicado ou agendado na Meta.'] };
+  });
+}
 function projetarSeguro(raiz, operacional, pecas) {
   try { return projetar(raiz, operacional, pecas); }
   catch {
@@ -299,4 +320,4 @@ function sincronizarComAviso(raiz, avisos, operacao) {
     return null;
   }
 }
-module.exports = { validar, ler, vinculo, registrarVinculo, salvarManifesto, projetar, projetarSeguro, sincronizar, sincronizarComAviso, chave };
+module.exports = { validar, ler, vinculo, registrarVinculo, salvarManifesto, projetar, voltarSemData, projetarSeguro, sincronizar, sincronizarComAviso, chave };

@@ -274,6 +274,23 @@ export async function montar(raiz, ctx) {
       if (!ctx.obsoleta()) ctx.aviso(`O aceite não foi gravado: ${String(err.message || 'falha').replace(/[.\s]+$/u, '')}. Atualize e tente de novo.`, 'erro');
     } finally { if (botao && !ctx.obsoleta()) botao.disabled = false; }
   }
+  // Peça planejada sem job real volta para "Aprovados sem data"; o servidor recusa de novo se houver job ou post.
+  async function voltarSemData(peca) {
+    const ok = await ctx.confirmar({ titulo: 'Voltar para aprovados (sem data)',
+      texto: 'A peça sai do calendário e volta para a lista de aprovados sem data. Nada é publicado nem apagado na Meta.',
+      detalhes: [nomeDaPeca(peca)], rotuloBotao: 'Voltar sem data' });
+    if (ok !== true || ctx.obsoleta()) return;
+    try {
+      const r = await ctx.acao('/api/marketing/calendario/sem-data', { id: peca.id, versao: peca.versao });
+      if (ctx.obsoleta()) return;
+      for (const a of r.dados?.avisos || []) ctx.aviso(a, 'ok');
+      await carregar();
+    } catch (err) {
+      console.warn('[calendario-sem-data]', err.codigo || 'falha');
+      if (!ctx.obsoleta()) ctx.aviso(`A peça não voltou para sem data: ${String(err.message || 'falha').replace(/[.\s]+$/u, '')}.`, 'erro');
+    }
+  }
+  const podeVoltarSemData = (i) => !(i.jobs || []).length && !pubDe(i) && !!i.data;
   // Botão sempre visível onde a peça planejada aparece; desabilitado com o motivo quando não pode agendar.
   const botaoAgendar = (peca, data, comMotivo = true) => {
     if (peca?.conclusaoAprovacao?.estado === 'incompleta') return [h('a', { class: 'botao', href: `#/marketing/aprovacao?peca=${encodeURIComponent(peca.id)}`, texto: 'Continuar aprovação' })];
@@ -292,7 +309,8 @@ export async function montar(raiz, ctx) {
       agendar: !planejado ? null : i.peca?.conclusaoAprovacao?.estado === 'incompleta'
         ? { habilitado: true, rotulo: 'Continuar aprovação', motivo, acao: () => ctx.navegar(`#/marketing/aprovacao?peca=${encodeURIComponent(i.peca.id)}`) }
         : i.peca?.precisaAceite ? { habilitado: true, rotulo: 'Aprovar esta versão', motivo, acao: () => reaceitar(i.peca) }
-        : { habilitado: !motivo, motivo, acao: () => abrir(i.peca, i.data, null) } }; };
+        : { habilitado: !motivo, motivo, acao: () => abrir(i.peca, i.data, null) },
+      voltarSemData: planejado && podeVoltarSemData(i) ? () => voltarSemData(i.peca) : null }; };
   // A miniatura vem de uma rota local autenticada (a CSP só aceita self, data e blob): busca com o cabeçalho do painel e exibe como blob.
   const ROTA_MINIATURA = '/api/marketing/calendario/meta-midia?chave=';
   function miniaturaDoPost(src) {
@@ -360,7 +378,7 @@ export async function montar(raiz, ctx) {
         d.link && linkPublicado(d.link) ? h('a', { href: linkPublicado(d.link), target: '_blank', rel: 'noopener noreferrer', texto: d.linkRotulo }) : d.acao ? h('span', { class: 'campo-ajuda', texto: d.acao }) : null,
         h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Ver destino e recibos', onclick: () => { navegar({ visao: 'lista' }); } })); }),
       ...(i.historico || []).map((j) => h('span', { class: 'campo-ajuda', texto: `${descreverJobReal(j).rede}: ${descreverJobReal(j).texto}. Histórico na lista.` })),
-      movel ? h('div', { class: 'bloco-acao' }, h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Mudar data', onclick: planejar }), botaoAgendar(i.peca, i.data)) : null);
+      movel ? h('div', { class: 'bloco-acao' }, h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Mudar data', onclick: planejar }), botaoAgendar(i.peca, i.data), podeVoltarSemData(i) ? h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Voltar para aprovados (sem data)', onclick: (e) => { e.stopPropagation(); voltarSemData(i.peca); } }) : null) : null);
   }
   async function desenhar() {
     const minha = ++geracao;

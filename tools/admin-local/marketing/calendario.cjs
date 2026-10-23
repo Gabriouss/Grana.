@@ -201,6 +201,7 @@ function planejar(raiz, corpo = {}) {
       const substituicaoManual = { data: registro.data, hora: registro.hora, canal: registro.canal, observacao: registro.observacao };
       Object.assign(registro, auto, substituicaoManual, { planejadoEm: registro.planejadoEm, substituicaoManual, estado: 'planejado', recibos: [...recibos, { acao: 'substituicao-manual', em: registro.planejadoEm, data: registro.data, hora: registro.hora, canal: registro.canal }] });
     } else registro.recibos = [...recibos, { tipo: 'data-marcada', em: registro.planejadoEm, data: registro.data, hora: registro.hora, canal: registro.canal }];
+    delete registro.semData; // data nova tira a marca de "voltou sem data"
     dados.planejados = dados.planejados.filter((c) => c.id !== peca.id);
     dados.planejados.push(registro);
     gravarJsonAtomico(caminhoPainel(raiz, ARQUIVO), dados);
@@ -210,7 +211,34 @@ function planejar(raiz, corpo = {}) {
   });
 }
 
+// Jobs reais (painel, Meta), menos cancelado e falhou (histórico, mesma regra da tela) e posts publicados da peça. Falha na consulta recusa: na dúvida, não mexe.
+async function pecaTemEstadoReal(raiz, pecaId, listar = (p) => require('./publicacoes.cjs').listar(p)) {
+  try {
+    let cursor;
+    for (let i = 0; i < 20; i++) {
+      const pag = await listar({ limite: 50, ...(cursor ? { cursor } : {}) });
+      if (!pag || !Array.isArray(pag.jobs)) return true;
+      if (pag.jobs.some((j) => j?.peca?.pecaId === pecaId && !['cancelado', 'falhou'].includes(j.estado))) return true;
+      if (!pag.limitado) break;
+      cursor = pag.proximoCursor;
+      if (!cursor || i === 19) return true;
+    }
+    const reg = lerJson(caminhoPainel(raiz, 'publicados.json'), { vinculos: [] });
+    const peca = montarCatalogo(raiz).find((p) => p.id === pecaId);
+    return (Array.isArray(reg.vinculos) ? reg.vinculos : []).some((v) => peca && v?.peca === peca.caminho);
+  } catch { console.error(JSON.stringify({ codigo: 'sem-data-consulta-real-falhou' })); return true; }
+}
+// POST /api/marketing/calendario/sem-data  { id, versao }: volta uma peça planejada para "Aprovados sem data".
+async function voltarSemData(raiz, corpo = {}, { listar } = {}) {
+  if (!corpo || typeof corpo.id !== 'string' || typeof corpo.versao !== 'string') throw new ErroMarketing('pedido-invalido', 'Informe a peça e a versão.', 400);
+  if (await pecaTemEstadoReal(raiz, corpo.id, listar)) {
+    throw new ErroMarketing('sem-data-recusado', 'Esta peça já tem publicação programada, agendada ou publicada. Use o cancelamento com recibo.', 409);
+  }
+  return require('./cronograma.cjs').voltarSemData(raiz, corpo);
+}
+
 module.exports = {
+  voltarSemData,
   obterCalendario,
   calendario: obterCalendario,
   listarCalendario: obterCalendario,

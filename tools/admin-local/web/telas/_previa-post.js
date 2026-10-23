@@ -114,6 +114,9 @@ export function abrirPreviaPost(item) {
       !p.publicado && !p.jobs.length && conteudo.agendar ? h('div', { class: 'bloco-acao previa-post-agendar' },
         h('button', { class: 'botao botao-primario', type: 'button', texto: conteudo.agendar.rotulo || 'Agendar de verdade', disabled: !conteudo.agendar.habilitado,
           onclick: () => { dlg.close(); conteudo.agendar.acao(); } }),
+        // Só peça planejada sem job real: o Calendário passa conteudo.voltarSemData; devolve a peça aos aprovados sem data.
+        conteudo.voltarSemData ? h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Voltar para aprovados (sem data)',
+          onclick: () => { dlg.close(); conteudo.voltarSemData(); } }) : null,
         conteudo.agendar.motivo ? h('p', { class: 'campo-ajuda', role: 'status', texto: conteudo.agendar.motivo }) : null) : null);
     const legenda = h('div', { class: 'feed-legenda' }, h('strong', { texto: '@granaponto' }),
       h('p', { class: 'previa-post-legenda', texto: p.legenda || 'Legenda não disponível nesta fonte.' }));
