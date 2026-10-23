@@ -64,6 +64,7 @@ function criarCalendarioUnico({ editorial = obterCalendario, catalogo = listarPe
         }
         confirmados.push(...vistos.values());
         Object.assign(reais, { status: pagina.limitado ? 'parcial' : 'disponivel', itens: confirmados.filter(j => j.data.slice(0, 7) === mes),
+          incidentes: pagina.incidentes, naoReconhecidos: pagina.naoReconhecidos, incidentesLimitados: pagina.incidentesLimitados, incidentesDisponiveis: pagina.incidentesDisponiveis,
           completo: !pagina.limitado, proximoCursor: pagina.proximoCursor || null, consultadoEm: agora().toISOString() });
         if (!reais.completo) avisos.push('Leitura parcial dos agendamentos. Há mais resultados para consultar.');
         if (reais.itens.some(j => j.estado === 'publicado' && !j.permalink)) avisos.push('O link da publicação não está disponível nesta fonte. Consulte o ID e o recibo.');

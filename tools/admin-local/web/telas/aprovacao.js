@@ -403,7 +403,9 @@ export async function montar(raiz, ctx) {
     if (faltaLegenda(p)) detalhe.appendChild(ctx.alerta('atencao', `Falta a legenda para publicar. ${localLegenda(p)}`));
     // Em aprovados com versão nova (legenda ou arquivo mudou depois do aceite) o Aprovar volta a valer.
     const jaAceita = aprovacaoConcluida(p);
-    const botaoAprovar = h('button', { class: 'botao botao-primario', type: 'button', texto: jaAceita ? 'Aprovada nesta versão' : 'Aprovar', disabled: faltaLegenda(p) || jaAceita || temPedidoAberto || filaIndisponivel || arquivada(p) || !!pendencia,
+    const incompleta = p.conclusaoAprovacao?.estado === 'incompleta';
+    if (incompleta) detalhe.appendChild(ctx.alerta('atencao', 'Aprovação incompleta. O aceite salvo foi preservado. Continue para concluir as etapas pendentes.'));
+    const botaoAprovar = h('button', { class: 'botao botao-primario', type: 'button', texto: jaAceita ? 'Aprovada nesta versão' : incompleta ? 'Continuar' : 'Aprovar', disabled: faltaLegenda(p) || jaAceita || temPedidoAberto || filaIndisponivel || arquivada(p) || !!pendencia,
       onclick: () => aprovar(ctx, p, botaoAprovar) });
     const podePedir = !filaIndisponivel && !arquivada(p);
     const aberto = rascunhoAberto === chaveRascunho(p);
@@ -676,7 +678,8 @@ export async function aprovar(ctx, p, botao) {
   if (botao.disabled || ctx.obsoleta() || faltaLegenda(p)) return;
   botao.disabled = true;
   try {
-    const ok = await ctx.confirmar({
+    const continuar = p.conclusaoAprovacao?.estado === 'incompleta';
+    const ok = continuar || await ctx.confirmar({
       titulo: 'Aprovar',
       texto: 'Aprova esta peça e esta legenda, fecha as correções entregues e move os arquivos para aprovados. Depois, abre o Calendário da peça. Não publica, não agenda e não envia nada ao Instagram ou à Meta. Se o arquivo mudar depois, o aceite deixa de valer.',
       detalhes: [tituloPeca(p), p.modificadoEm ? `Arquivo de ${ctx.formatar.dataHora(p.modificadoEm)}` : 'Versão que está na tela agora', p.legenda ? `Legenda: ${p.legenda.slice(0, 140)}${p.legenda.length > 140 ? '…' : ''}` : 'Sem legenda registrada'],
@@ -687,6 +690,13 @@ export async function aprovar(ctx, p, botao) {
     const r = await ctx.acao(`/api/marketing/pecas/${encodeURIComponent(p.id)}/aprovar`, { versao: p.versao, confirmacao: true });
     if (ctx.obsoleta()) return;
     for (const a of r.dados?.avisos || []) ctx.aviso(a, 'info');
+    if (r.dados?.conclusao?.estado !== 'concluida') {
+      p.conclusaoAprovacao = r.dados?.conclusao || { estado: 'incompleta', etapas: {} };
+      const rotulos = { aceite: 'aceite', ajuste: 'encerramento do ajuste', promocao: 'promoção', plano: 'calendário' };
+      const faltam = Object.entries(p.conclusaoAprovacao.etapas || {}).filter(([, e]) => e.estado === 'pendente').map(([k]) => rotulos[k] || k);
+      ctx.aviso(`Aprovação incompleta. Falta concluir: ${faltam.join(', ')}. O aceite salvo foi preservado. Use Continuar.`, 'erro');
+      return;
+    }
     // Já em aprovados: não há movimentação, só o aceite desta versão.
     if (p.estado === 'aprovados') {
       if (r.dados?.aprovacao?.versao !== p.versao) { ctx.aviso('O aceite desta versão não foi confirmado. Atualize e tente Aprovar novamente.', 'erro'); return; }
@@ -709,7 +719,7 @@ export async function aprovar(ctx, p, botao) {
       : `A aprovação não foi confirmada: ${String(err.message || 'Falha ao aprovar').replace(/[.\s]+$/u, '')}. Atualize e confira os recibos antes de repetir.`;
     if (!ctx.obsoleta()) ctx.aviso(texto, 'erro');
   } finally {
-    if (!ctx.obsoleta()) { botao.disabled = false; botao.textContent = 'Aprovar'; }
+    if (!ctx.obsoleta()) { botao.disabled = false; botao.textContent = p.conclusaoAprovacao?.estado === 'incompleta' ? 'Continuar' : 'Aprovar'; }
   }
 }
 

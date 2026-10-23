@@ -2,7 +2,7 @@
 // Contrato REAL fechado do browser. SQL, idempotência e Graph pertencem ao módulo remoto.
 const { ErroMarketing, listarPecas, obterPeca: obterPecaCatalogo, caminhoSeguro } = require('./catalogo.cjs');
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const acoes = ['prever', 'confirmar', 'cancelar', 'reagendar', 'pausar', 'retomar', 'reconciliar'];
+const acoes = ['prever', 'confirmar', 'cancelar', 'reagendar', 'pausar', 'retomar', 'reconciliar', 'reconhecer-incidente'];
 function invalido() { throw new ErroMarketing('pedido-invalido', 'Confira os campos do pedido de publicação real.', 400); }
 function fechado(p, campos) {
   if (!p || typeof p !== 'object' || Array.isArray(p) || Object.keys(p).some(k => !campos.includes(k))) invalido();
@@ -19,6 +19,21 @@ function horario(p) {
 }
 function validarPedido(p) {
   if (!p || !acoes.includes(p.acao)) invalido();
+  if (p.acao === 'reconhecer-incidente') {
+    fechado(p, ['acao', 'incidenteId', 'idempotencia', 'confirmacao']);
+    if (p.confirmacao !== true) invalido();
+    return { acao: p.acao, incidenteId: uuid(p.incidenteId), idempotencia: uuid(p.idempotencia), confirmado: true };
+  }
+  const extras = ['politicaExecucao', 'capacidadesCliente', 'consentimentoExecucao'];
+  if (extras.some(k => p[k] !== undefined)) {
+    const { politicaExecucao, capacidadesCliente, consentimentoExecucao, ...base } = p;
+    if (!['prever', 'confirmar', 'reagendar'].includes(p.acao)) invalido();
+    if (capacidadesCliente !== undefined && (!Array.isArray(capacidadesCliente) || capacidadesCliente.length !== 1 || capacidadesCliente[0] !== 'execucao-2h-v1')) invalido();
+    if (politicaExecucao !== undefined && (p.acao !== 'prever' || !['legado-15min', 'recuperacao-2h-v1'].includes(politicaExecucao))) invalido();
+    if (consentimentoExecucao !== undefined && (p.acao !== 'prever' || consentimentoExecucao !== true)) invalido();
+    if (politicaExecucao === 'recuperacao-2h-v1' && (consentimentoExecucao !== true || !capacidadesCliente)) invalido();
+    return { ...validarPedido(base), ...(politicaExecucao ? { politicaExecucao } : {}), ...(capacidadesCliente ? { capacidadesCliente } : {}), ...(consentimentoExecucao ? { consentimentoExecucao } : {}) };
+  }
   if (p.acao === 'prever') {
     const reagendamento = p.jobId !== undefined;
     fechado(p, ['acao', ...(reagendamento ? ['jobId'] : ['pecaId', 'versao']), 'destinos', 'agendarPara', 'fuso']);
@@ -30,7 +45,7 @@ function validarPedido(p) {
     const destinos = p.destinos.map(d => {
       fechado(d, ['contaId', 'rede', 'formato']);
       conta(d.contaId);
-      if (!['facebook', 'instagram'].includes(d.rede) || !['feed', 'carrossel', 'reels', 'stories'].includes(d.formato)) invalido();
+      if (!['facebook', 'instagram'].includes(d.rede) || !['feed', 'carrossel', 'reels'].includes(d.formato)) invalido();
       const chave = JSON.stringify([d.contaId, d.rede, d.formato]);
       if (unicos.has(chave)) invalido(); unicos.add(chave);
       return { ...d, publicarEm, fuso: p.fuso };
@@ -72,10 +87,12 @@ function criarPublicacoes({ remoto, catalogo = listarPecas, obterPeca = obterPec
      pedido, e o servidor devolve o mesmo lote (replay) em vez de criar outro. */
   async function confirmar(p) {
     const r = await estado().reservarConfirmacao({ previaId: p.previaId, previaHash: p.previaHash,
-      revisaoEsperada: p.revisaoEsperada, idempotencia: p.idempotencia });
-    const dados = await operar({ ...p, revisaoEsperada: r.revisaoEsperada, idempotencia: r.idempotencia });
-    await estado().concluirConfirmacao({ previaId: p.previaId, previaHash: p.previaHash, loteId: dados?.loteId ?? null });
-    return dados;
+      revisaoEsperada: p.revisaoEsperada, idempotencia: p.idempotencia, pedido: p });
+    const { capacidadesCliente: _capacidadesNovas, ...legado } = p;
+    const dados = await operar(r.pedido || { ...legado, revisaoEsperada: r.revisaoEsperada, idempotencia: r.idempotencia });
+    if (!UUID.test(dados?.loteId || '') || !Array.isArray(dados.jobs) || !dados.jobs.length) throw new ErroMarketing('resultado-desconhecido', 'A confirmação ainda não tem recibo completo. Consulte o resultado pendente.', 503);
+    await estado().concluirConfirmacao({ previaId: p.previaId, previaHash: p.previaHash, loteId: dados.loteId });
+    return { ...dados, ...(p.idempotencia !== r.idempotencia ? { idempotenciaSolicitada: p.idempotencia } : {}) };
   }
   // Só peça com aceite datado válido desta versão é selecionável (mesmo predicado da captura).
   const motivo = (raiz, p) => require('./snapshot-local.cjs').motivoSemAceite(raiz, p);
@@ -145,15 +162,24 @@ function criarPublicacoes({ remoto, catalogo = listarPecas, obterPeca = obterPec
         pedido.cursor = { id: c.id, criadoEm: c.criadoEm };
       }
       const r = await operar(pedido);
+      let incidentes;
+      try {
+        const i = await operar({ acao: 'incidentes' });
+        if (!Array.isArray(i?.incidentes) || !Number.isSafeInteger(i.naoReconhecidos)) throw new Error('incidentes-invalidos');
+        incidentes = { incidentes: i.incidentes, naoReconhecidos: i.naoReconhecidos, incidentesLimitados: i.incidentesLimitados === true, incidentesDisponiveis: true };
+      } catch (e) {
+        console.error('[painel] incidentes-indisponiveis: ' + (e.codigo || 'falha'));
+        incidentes = { incidentes: [], naoReconhecidos: null, incidentesDisponiveis: false };
+      }
       const prox = r?.proximoCursor;
-      return { ...r, proximoCursor: prox && typeof prox === 'object'
+      return { ...r, ...incidentes, proximoCursor: prox && typeof prox === 'object'
         ? Buffer.from(JSON.stringify({ id: prox.id, criadoEm: prox.criadoEm })).toString('base64url') : null };
     },
     detalhe(filtro) {
       fechado(filtro, ['jobId', 'loteId', 'idempotencia']);
       if (Object.keys(filtro).length !== 1) invalido();
       uuid(Object.values(filtro)[0]);
-      return operar({ acao: 'consultar', ...filtro });
+      return operar({ acao: 'consultar', ...filtro, ...(filtro.idempotencia && estado().resolverIdempotencia ? { idempotencia: estado().resolverIdempotencia(filtro.idempotencia) } : {}) });
     },
     executar(raiz, corpo) {
       const p = validarPedido(corpo);

@@ -3,7 +3,7 @@
 
 export const API_PUBLICACOES = '/api/marketing/publicacoes';
 export const FUSO_PUBLICACAO = 'America/Sao_Paulo';
-export const FORMATOS_PUBLICACAO = ['feed', 'carrossel', 'reels', 'stories'];
+export const FORMATOS_PUBLICACAO = ['feed', 'carrossel', 'reels'];
 
 export const ROTULOS_ESTADO = {
   planejado: 'Planejado',
@@ -21,6 +21,24 @@ export const ROTULOS_ESTADO = {
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const HASH256 = /^[0-9a-f]{64}$/i;
 export const SHA1 = /^[0-9a-f]{40}$/i;
+const CHAVE_PENDENCIA = 'grana-admin-publicacao-pendente-v1';
+export function lerPendenciaPublicacao() {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    const r = JSON.parse(localStorage.getItem(CHAVE_PENDENCIA) || 'null');
+    if (r !== null && (!UUID.test(r.idempotencia || '') || !['confirmar', 'reagendar', 'cancelar', 'reconciliar'].includes(r.tipo))) throw new Error('pendencia-invalida');
+    return r;
+  } catch { throw erroContrato('pendencia-local-ilegivel', 'Não foi possível ler o pedido pendente. Preserve os dados do navegador e confira os recibos no painel antes de repetir.'); }
+}
+export function gravarPendenciaPublicacao(r, anterior = null) {
+  if (typeof localStorage === 'undefined') return; // Node mantém a intenção antes da rede em ambientes sem storage.
+  try {
+    const atual = lerPendenciaPublicacao();
+    if (atual && atual.idempotencia !== (r?.idempotencia || anterior?.idempotencia)) throw new Error('outra-intencao-pendente');
+    if (r) localStorage.setItem(CHAVE_PENDENCIA, JSON.stringify(r));
+    else localStorage.removeItem(CHAVE_PENDENCIA);
+  } catch { throw erroContrato('pendencia-local-indisponivel', 'Há um pedido pendente ou o armazenamento está indisponível. Consulte o resultado antes de outra operação.'); }
+}
 
 const REDES = new Set(['instagram', 'facebook']);
 const ESTADOS = new Set(Object.keys(ROTULOS_ESTADO));
@@ -33,7 +51,7 @@ export function erroContrato(codigo = 'contrato-invalido', mensagem = 'O servido
 
 export function dadosReais(resposta) {
   const d = resposta?.dados;
-  if (resposta?.ok !== true || !d || d.contractVersion !== 'e5.real.v1' || d.modo !== 'real') {
+  if (resposta?.ok !== true || !d || !['e5.real.v1', 'e5.real.v2'].includes(d.contractVersion) || d.modo !== 'real') {
     throw erroContrato('contrato-real-invalido', 'O servidor não confirmou o contrato de agendamento real. Nenhuma ação foi feita.');
   }
   return d;
@@ -61,7 +79,7 @@ export function validarConta(conta) {
     || !['verificada', 'revogada', 'expirada', 'nao-verificada', 'indisponivel'].includes(conta.conexao)
     || !Array.isArray(conta.capacidades)) return false;
   if (typeof conta.pausada !== 'boolean') return false;
-  return conta.capacidades.every((c) => FORMATOS_PUBLICACAO.includes(c.formato)
+  return conta.capacidades.every((c) => [...FORMATOS_PUBLICACAO, 'stories'].includes(c.formato)
     && ['disponivel', 'nao-suportado', 'nao-verificado', 'indisponivel'].includes(c.estado)
     && Number.isSafeInteger(c.revisao) && c.revisao > 0
     && Array.isArray(c.motivos));
@@ -179,16 +197,18 @@ export function validarJob(job) {
   return !!job && UUID.test(job.jobId || '') && UUID.test(job.loteId || '')
     && UUID.test(job.snapshotId || '') && Number.isSafeInteger(job.revisao) && job.revisao > 0
     && job.destino && typeof job.destino.contaId === 'string' && REDES.has(job.destino.rede)
-    && FORMATOS_PUBLICACAO.includes(job.destino.formato) && ESTADOS.has(job.estado)
+    && [...FORMATOS_PUBLICACAO, 'stories'].includes(job.destino.formato) && ESTADOS.has(job.estado)
     && typeof job.atualizadoEm === 'string' && Number.isFinite(Date.parse(job.atualizadoEm))
     && Array.isArray(job.recibos) && job.recibos.every((r) => UUID.test(r.reciboId || '')
       && OPERACOES_RECIBO.has(r.operacao) && ESTADOS_RECIBO.has(r.estado));
 }
 
-export function resumirLote(jobs) {
+export function resumirLote(jobs, { integral = false } = {}) {
   if (!Array.isArray(jobs) || !jobs.length || jobs.some((j) => !validarJob(j))) return { rotulo: 'Estado do lote indisponível', total: 0, parcial: false };
   const contagem = new Map();
   for (const j of jobs) { const estado = estadoApresentacaoJob(j); contagem.set(estado, (contagem.get(estado) || 0) + 1); }
+  const ambas = ['facebook', 'instagram'].every(rede => jobs.some(j => j.destino.rede === rede));
+  if (jobs.every(publicacaoComprovada)) return { rotulo: ambas && integral ? 'Publicado e comprovado nas duas redes' : 'Publicado nesta consulta · confira o lote completo', total: jobs.length, parcial: !ambas || !integral, completo: ambas && integral, contagem };
   if (contagem.size === 1) return { rotulo: ROTULOS_ESTADO[estadoApresentacaoJob(jobs[0])], total: jobs.length, parcial: false, contagem };
   const resumo = [...contagem].map(([estado, n]) => `${n} ${ROTULOS_ESTADO[estado].toLowerCase()}`).join(' · ');
   return { rotulo: `Parcial · ${resumo}`, total: jobs.length, parcial: true, contagem };
@@ -230,7 +250,7 @@ export function criarClientePublicacoes(ctx) {
       const d = dadosCatalogo(await get(`${API_PUBLICACOES}/catalogo`));
       return { ...d, pecas: d.pecas.filter(validarPeca) };
     },
-    async prever({ peca, job, destinos, horarioLocal, contas }) {
+    async prever({ peca, job, destinos, horarioLocal, contas, recuperacao2h = false }) {
       if (!(job ? validarJob(job) : validarPeca(peca)) || !Array.isArray(destinos) || destinos.length < 1 || destinos.length > 8) {
         throw erroContrato('pedido-invalido', 'Escolha uma peça aprovada e ao menos um destino válido.');
       }
@@ -255,6 +275,7 @@ export function criarClientePublicacoes(ctx) {
         acao: 'prever', ...(job ? { jobId: job.jobId } : { pecaId: peca.id, versao: peca.versao }),
         destinos: destinos.map(({ contaId, rede, formato }) => ({ contaId, rede, formato })),
         agendarPara: publicarEm, fuso: FUSO_PUBLICACAO,
+        ...(recuperacao2h ? { politicaExecucao: 'recuperacao-2h-v1', capacidadesCliente: ['execucao-2h-v1'], consentimentoExecucao: true } : {}),
       };
       const { acao: _acao, ...campos } = pedido;
       const d = await post('prever', campos);
@@ -267,6 +288,8 @@ export function criarClientePublicacoes(ctx) {
           || !['pronto', 'bloqueado'].includes(alvo.estado) || !Array.isArray(alvo.motivos))) throw erroContrato('previa-invalida');
       if (job && (d.snapshot.snapshotId !== job.snapshotId || d.destinos.some((d, i) =>
         ['contaId', 'rede', 'formato'].some((k) => d[k] !== destinos[i][k]) || d.publicarEm !== publicarEm))) throw erroContrato('previa-invalida');
+      if (recuperacao2h && d.destinos.some(alvo => alvo.politicaExecucao !== 'recuperacao-2h-v1'
+        || alvo.consentimentoExecucao !== true || Date.parse(alvo.executarAte) - Date.parse(alvo.publicarEm) !== 7200000)) throw erroContrato('politica-nao-confirmada');
       return d;
     },
     async confirmar(previa, idempotencia) {
@@ -275,8 +298,9 @@ export function criarClientePublicacoes(ctx) {
         throw erroContrato('confirmacao-bloqueada', 'A prévia não está pronta para confirmação.');
       }
       const d = await post('confirmar', { previaId: previa.previaId, previaHash: previa.previaHash,
-        revisaoEsperada: previa.revisao, idempotencia, confirmacao: true });
-      if (!UUID.test(d.loteId || '') || d.idempotencia !== idempotencia || typeof d.replay !== 'boolean'
+        revisaoEsperada: previa.revisao, idempotencia, confirmacao: true,
+        ...(previa.destinos.some(d => d.politicaExecucao === 'recuperacao-2h-v1') ? { capacidadesCliente: ['execucao-2h-v1'] } : {}) });
+      if (!UUID.test(d.loteId || '') || !(d.idempotencia === idempotencia || (UUID.test(d.idempotencia || '') && d.idempotenciaSolicitada === idempotencia)) || typeof d.replay !== 'boolean'
         || !Array.isArray(d.jobs) || d.jobs.some((j) => !validarJob(j))) throw erroContrato('lote-invalido');
       return d;
     },
@@ -363,6 +387,10 @@ const MENSAGENS = {
   'versao-divergente': 'A versão da peça mudou. Atualize a lista e gere outra prévia da versão aprovada.',
   'identidade-ambigua': 'Não foi possível vincular esta peça ao agendamento com segurança. Peça a conferência do vínculo antes de continuar.',
   'antecedencia-insuficiente': 'Não há tempo para preparar a publicação neste horário. Escolha um horário mais distante e gere outra prévia.',
+  'consentimento-invalido': 'A confirmação para a tentativa de recuperação não chegou completa. Nada foi agendado; gere outra prévia e confirme de novo.',
+  'politica-invalida': 'A regra de recuperação deste agendamento não é válida. Nada foi agendado; gere outra prévia.',
+  'politica-nao-pronta': 'A recuperação automática ainda não está pronta no servidor. Nada foi agendado; avise quem cuida do servidor.',
+  'incidente-inexistente': 'Esse incidente não existe mais. Atualize os recibos para ver o estado atual.',
   'suspenso-para-revisao': 'O conteúdo mudou e o agendamento foi suspenso. Revise e aprove a nova versão antes de agendar.',
   'operacao-pausada': 'A pausa está ligada. Clique em Retomar no topo desta janela e gere a prévia de novo.',
   'conta-pausada': 'Esta conta está pausada. Clique em Retomar no topo desta janela.',
@@ -436,8 +464,14 @@ export function fraseDoMotivo(codigo) { return MENSAGENS[codigo] || null; }
 const NOME_REDE = { instagram: 'Instagram', facebook: 'Facebook' };
 const ATIVOS_REAIS = new Set(['planejado', 'programado-no-painel', 'preparando', 'agendado-na-meta', 'cancelamento-pendente']);
 export function estadoApresentacaoJob(job) {
+  if (job?.estado === 'publicado' && !publicacaoComprovada(job)) return 'precisa-conferir';
   return typeof job?.motivoSuspensao === 'string' && job.motivoSuspensao.trim()
     && !['publicado', 'cancelado', 'falhou'].includes(job.estado) ? 'suspenso-para-revisao' : job?.estado;
+}
+export function publicacaoComprovada(job) {
+  if (job?.estado !== 'publicado' || typeof job.remotoId !== 'string' || !job.remotoId.trim()) return false;
+  return Array.isArray(job.recibos) && job.recibos.some(r => r.operacao === 'verificar-publicacao'
+    && r.estado === 'confirmado' && r.remotoId === job.remotoId);
 }
 export const jobAtivo = (job) => ATIVOS_REAIS.has(estadoApresentacaoJob(job));
 // A lista pode trazer somente os últimos recibos. Só o servidor pode autorizar a troca.
@@ -445,6 +479,8 @@ export function reagendamentoPermitido(job) {
   return job?.reagendamento?.permitido === true
     && Array.isArray(job.reagendamento.motivos) && job.reagendamento.motivos.length === 0
     && !job.motivoSuspensao
+    // publicado sem prova aparece como precisa-conferir, mas nunca volta a ser reagendável
+    && job.estado !== 'publicado'
     && ['programado-no-painel', 'precisa-conferir', 'falhou'].includes(estadoApresentacaoJob(job))
     && !job.remotoId && !job.permalink;
 }
@@ -488,6 +524,8 @@ export function descreverJobReal(job, agora = Date.now()) {
   const sai = Number.isFinite(quando) ? quandoCurto(quando, agora) : 'no horário marcado';
   const link = /^https:\/\//.test(job?.permalink || '') ? job.permalink : null;
   const motivo = job?.codigoErro ? (fraseDoMotivo(job.codigoErro) || `Motivo informado pela rede: ${job.codigoErro}.`) : null;
+  if (job?.estado === 'publicado' && !publicacaoComprovada(job)) return { rede, texto: 'Precisa conferir', atencao: true,
+    motivo: 'Esta consulta ainda não trouxe a prova final da publicação.', acao: 'Abra Ver recibos para conferir o destino. Não repita a publicação.' };
   // Destino ainda ativo (AUD-13): antes do horário, "sai às"; na hora, espera a confirmação; passada a
   // tolerância, atraso com atenção. Atraso não vira falha nem convite a repetir: o servidor ainda pode
   // publicar dentro da janela dele, e depois marca o destino para conferir.

@@ -56,13 +56,18 @@ function criarEstado({ pasta = process.env.GRANA_ADMIN_PASTA_CONTA || path.join(
     },
     // Primeira confirmação de uma prévia grava a chave. As seguintes (mesmo previaId+hash)
     // recebem a chave gravada, ainda que o browser tenha mandado outra.
-    reservarConfirmacao: ({ previaId, previaHash, revisaoEsperada, idempotencia }) => transacao(db => {
+    reservarConfirmacao: ({ previaId, previaHash, revisaoEsperada, idempotencia, pedido }) => transacao(db => {
       const chave = `${previaId}:${previaHash}`;
       const atual = db.intencoes[chave];
-      if (atual) return { idempotencia: atual.idempotencia, repetida: true, revisaoEsperada: atual.revisaoEsperada };
-      db.intencoes[chave] = { previaId, previaHash, revisaoEsperada, idempotencia, estado: 'enviada', criadoEm: new Date(agora()).toISOString() };
-      return { idempotencia, repetida: false, revisaoEsperada };
+      if (atual) {
+        atual.aliases ||= [];
+        if (!atual.aliases.includes(idempotencia)) atual.aliases.push(idempotencia);
+        return { idempotencia: atual.idempotencia, repetida: true, revisaoEsperada: atual.revisaoEsperada, pedido: atual.pedido };
+      }
+      db.intencoes[chave] = { previaId, previaHash, revisaoEsperada, idempotencia, ...(pedido ? { pedido } : {}), aliases: [idempotencia], estado: 'enviada', criadoEm: new Date(agora()).toISOString() };
+      return { idempotencia, repetida: false, revisaoEsperada, pedido };
     }),
+    resolverIdempotencia: id => Object.values(ler().intencoes).find(r => r.idempotencia === id || r.aliases?.includes(id))?.idempotencia || id,
     concluirConfirmacao: ({ previaId, previaHash, loteId }) => transacao(db => {
       const i = db.intencoes[`${previaId}:${previaHash}`];
       if (i) Object.assign(i, { estado: 'confirmada', loteId, confirmadaEm: new Date(agora()).toISOString() });

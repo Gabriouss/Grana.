@@ -13,7 +13,8 @@ const falhar = (codigo, status = 409) => { throw new catalogo.ErroMarketing(codi
 
 // Predicado único de "peça agendável": o catálogo do agendamento real, a miniatura e a
 // captura usam o mesmo. null = aceite datado do autor válido para esta versão.
-function motivoSemAceite(raiz, q, agora = Date.now()) {
+function motivoSemAceite(raiz, q, agora = Date.now(), { somenteAceiteEditorial = false } = {}) {
+  if (!somenteAceiteEditorial && q?.conclusaoAprovacao?.estado === 'incompleta') return 'aprovacao-incompleta';
   if (!q?.aprovada || q.recusada || q.revisao?.superada || q.revisao?.pendencia) return 'sem-aceite';
   // Pasta "aprovados" sozinha não inventa registro datado do autor.
   const aceites = q.aceite?.evidencia === catalogo.EVIDENCIA_DERIVADA

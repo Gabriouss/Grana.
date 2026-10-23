@@ -702,7 +702,11 @@ function montarCatalogo(raiz) {
           const ehDocCopy = primeiro.nome === 'COPYS-FINAIS.md';
           // A referência editorial fica separada da legenda incorporada à
           // versão aceita. Classificar uma variante não altera seu aceite.
-          const legenda = copy && !ehDocCopy ? copy.legenda : null;
+          const preservada = estado === 'historico' ? lerJson(path.join(path.dirname(primeiro.abs), '.revisao.json'), null) : null;
+          const preservadaValida = (preservada?.arquivos?.filter(a => !a.componente).length === shas.length
+            && preservada.arquivos.filter(a => !a.componente).every((a, i) => a.sha1 === shas[i]))
+            || (shas.length === 1 && preservada?.arquivos?.some(a => a.componente && a.destino === relRepo(primeiro) && a.sha1 === shas[0]));
+          const legenda = preservadaValida ? preservada.legenda : copy && !ehDocCopy ? copy.legenda : null;
           // A legenda entra na versão: mudar só o texto gera versão nova,
           // e o aceite anterior deixa de valer para ela.
           const versao = versaoDeArquivos(shas, legenda);
@@ -740,7 +744,7 @@ function montarCatalogo(raiz) {
             ...(primeiro.tipo === 'imagem' ? (dimensoesImagem(primeiro.abs) || {}) : {}),
             codigo: codigo || null,
             legenda,
-            fonteLegenda: legenda ? copy.fonte : null,
+            fonteLegenda: legenda ? (copy?.fonte || null) : null,
             editorial: editorial ? {
               familia: editorial.familia,
               tipo: editorial.tipo,
@@ -778,15 +782,19 @@ function montarCatalogo(raiz) {
   // quebram o pareamento por nome). A capa vinculada entra na família do Reel e
   // nunca vira peça própria no Feed. Reel ausente do acervo: a capa fica como está.
   for (const [capaCaminho, reelCaminho] of registro.capas) {
-    const capa = pecas.find((p) => chaveDoRegistro(p.caminho) === capaCaminho && p.tipo === 'imagem');
-    // Na promoção o Reel existe nas duas pastas até a prova ser gravada. Só a primeira cópia
-    // recebia a capa, e a de aprovados mudava de versão composta ("destino-divergente", 21/10).
+    const capas = pecas.filter((p) => chaveDoRegistro(p.caminho) === capaCaminho && p.tipo === 'imagem');
+    // Durante a promoção ambas as cópias recebem a composição. Revisões distintas com o mesmo
+    // nome usam a capa do próprio estado, preservando o composto ainda aprovado.
     const reels = pecas.filter((p) => chaveDoRegistro(p.caminho) === reelCaminho && p.tipo === 'video');
-    const reel = reels[0];
-    if (!capa || !reel) { console.error(JSON.stringify({ codigo: 'familias-capa-sem-par' })); continue; }
-    capa.capaDe = reel.id; capa.capaOrfa = false; capa.familia = reel.familia;
-    capa.vinculoCapa = 'registro';
-    for (const r of reels) r.capa = { pecaId: capa.id, nome: capa.arquivos[0].nome, url: capa.arquivos[0].url, sha1: capa.arquivos[0].sha1 };
+    if (!capas.length || !reels.length) { console.error(JSON.stringify({ codigo: 'familias-capa-sem-par' })); continue; }
+    for (const capa of capas) {
+      const reel = reels.find(r => r.estado === capa.estado) || reels[0];
+      capa.capaDe = reel.id; capa.capaOrfa = false; capa.familia = reel.familia; capa.vinculoCapa = 'registro';
+    }
+    for (const r of reels) {
+      const capa = capas.find(cp => cp.estado === r.estado) || (capas.length === 1 ? capas[0] : null);
+      if (capa) r.capa = { pecaId: capa.id, nome: capa.arquivos[0].nome, url: capa.arquivos[0].url, sha1: capa.arquivos[0].sha1 };
+    }
   }
   // Aceite composto do Reel (W-A2): a versão sela vídeo + capa + legenda. Trocar a
   // capa, o vídeo ou a legenda gera versão nova, e o aceite anterior deixa de valer.
@@ -886,6 +894,7 @@ function enriquecer(raiz, pecas) {
       recusada,
       estadoEfetivo,
       aceite,
+      conclusaoAprovacao: (ap.conclusoes || []).find(r => r.versao === p.versao && (r.id === p.id || r.destinoId === p.id)) || null,
       cobertaPeloReel,
       aceiteSuperado: superada ? aceiteDaVersao : null,
       // Já saiu na Meta (vínculo explícito em publicados.json): recusar só tira do painel.
@@ -1057,6 +1066,7 @@ module.exports = {
   feed,
   documento,
   familia,
+  idDe,
   agruparFamilias,
   lerRegistroFamilias,
   exigirVigente,

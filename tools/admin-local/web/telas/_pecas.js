@@ -64,6 +64,7 @@ export function arquivada(p) {
 // O catálogo valida o recibo (inclusive composição). A pasta física não invalida
 // esse aceite, nem substitui um recibo datado quando o arquivo mudou depois.
 export function aprovacaoConcluida(p) {
+  if (p?.conclusaoAprovacao?.estado === 'incompleta') return false;
   if (!p?.aprovada) return false;
   // Capa selada no aceite composto do Reel: concluída junto com ele, sem aceite próprio (21/10).
   if (p.cobertaPeloReel) return true;

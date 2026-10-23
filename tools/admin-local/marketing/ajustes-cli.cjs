@@ -15,7 +15,7 @@ async function main(args) {
   if (acao === 'ler') {
     const pedido = fila.lerPedido(pedidoId, leaseId);
     const editorial = require('./editorial-publicacao.cjs'), cfg = require('../config.cjs');
-    if (editorial.ativo(cfg.RAIZ_DADOS, { id: pedido.pecaId })) {
+    {
       const r = await editorial.iniciarRevisao(cfg.RAIZ_DADOS, require('./catalogo.cjs').obterPeca(cfg.RAIZ_DADOS, pedido.pecaId), 'ajuste');
       if (r) pedido.revisaoEditorial = { conteudoId: r.conteudoId, geracaoEditorial: r.geracaoEditorial, estadoEditorial: r.estadoEditorial };
     }

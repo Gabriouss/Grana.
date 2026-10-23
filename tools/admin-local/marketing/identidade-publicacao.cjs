@@ -51,7 +51,7 @@ function vincularNaTransacao(raiz, peca, aliases = [], remoto = null) {
   for (const id of todos) {
     const a = r.aliases.find(x => x.pecaId === id);
     if (!a) r.aliases.push({ pecaId: id, versao: peca.versao });
-    else if (id === peca.id) a.versao = peca.versao;
+    else if (id === peca.id || id === peca.capa?.pecaId) a.versao = peca.versao;
   }
   if (r.aliases.length > 100) throw erro('identidades-invalidas');
   if (remoto) {

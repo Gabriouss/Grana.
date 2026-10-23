@@ -12,7 +12,7 @@ async function main(args, deps = {}) {
   const editorial = deps.editorial || require('./editorial-publicacao.cjs');
   const p = (deps.obterPeca || c.obterPeca)(raiz, id);
   if (p.versao !== versao) throw new c.ErroMarketing('versao-mudou', 'A peca mudou; confira a versao antes de editar.', 409);
-  if (!editorial.ativo(raiz, p)) throw new c.ErroMarketing('editorial-rollout-pendente', 'A revisao remota ainda nao foi ativada. Nenhuma permissao de edicao foi emitida.', 409);
+  if (acao !== 'iniciar-revisao' && !editorial.ativo(raiz, p)) throw new c.ErroMarketing('editorial-rollout-pendente', 'A revisao remota ainda nao foi ativada. Nenhuma permissao de edicao foi emitida.', 409);
   const r = await editorial[metodos[acao]](raiz, p);
   return r ? { conteudoId: r.conteudoId, geracaoEditorial: r.geracaoEditorial,
     estadoEditorial: r.estadoEditorial, remoto: r.remoto,

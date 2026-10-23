@@ -78,6 +78,7 @@ function resumoPeca(p, plano = null) {
     tipo: p.tipo,
     estado: p.estado,
     estadoEfetivo: p.estadoEfetivo,
+    conclusaoAprovacao: p.conclusaoAprovacao || null,
     capa: capa ? { url: capa.url, tipo: capa.tipo } : null,
     semana: p.semana,
     // Projecao do registro exato; nunca um novo aceite no calendario.json.

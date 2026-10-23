@@ -80,13 +80,14 @@ function criarEditorial({ remoto, obterPeca = c.obterPeca,
     },
     async iniciarRevisao(raiz, peca, motivo = 'revisao') {
       const p = unidade(raiz, peca);
-      if (!ativo(raiz, p)) return null;
       if (!['revisao', 'ajuste', 'recusa'].includes(motivo)) throw erro('motivo-invalido');
       // Rascunho sem identidade remota nao precisa de rede para continuar editavel.
       const local = ids.buscar(raiz, p.id);
       const aceites = c.lerJson(c.caminhoPainel(raiz, 'aprovacoes.json'), { aprovacoes: [] }).aprovacoes;
       if (!Array.isArray(aceites)) throw erro('aceites-invalidos');
       const jaTeveAceite = aceites.some(a => a.id === p.id || a.origem?.id === p.id);
+      // O rollout local desligado não libera revisão de conteúdo já aceito.
+      if (!ativo(raiz, p) && !jaTeveAceite && !p.aprovada && !p.aceite && p.estado !== 'aprovados') return null;
       if (!local?.remoto && !Object.keys(local?.pendentes || {}).length
         && !jaTeveAceite && !p.aprovada && !p.aceite && p.estado !== 'aprovados') return null;
       const r = await resolver(raiz, p, true);
@@ -106,7 +107,7 @@ function criarEditorial({ remoto, obterPeca = c.obterPeca,
     async registrarAceite(raiz, peca) {
       const p = unidade(raiz, peca);
       if (!ativo(raiz, p)) return null;
-      if (require('./snapshot-local.cjs').motivoSemAceite(raiz, p)) throw erro('sem-aceite');
+      if (require('./snapshot-local.cjs').motivoSemAceite(raiz, p, Date.now(), { somenteAceiteEditorial: true })) throw erro('sem-aceite');
       let r = await resolver(raiz, p, true);
       if (!r.remoto) r = await enviar(raiz, r, 'iniciarRevisao', p, { motivo: 'revisao' });
       if (r.versaoAtual !== p.versao && r.estadoEditorial !== 'em-revisao') throw erro('suspensao-previa-necessaria');

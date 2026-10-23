@@ -144,6 +144,7 @@ function aprovarLocal(raiz, id, corpo = {}) {
       aprovadoEm: agoraLocalIso(),
       evidencia: EVIDENCIA,
       escopo: peca.composicao ? 'vídeo, capa e legenda desta versão (aceite composto)' : peca.legenda ? 'arquivos e legenda desta versão' : 'arquivos desta versão',
+      manifesto: require('./identidade-publicacao.cjs').manifesto(peca),
       ...(peca.composicao ? { composicao: peca.composicao } : {}),
       indice: null,
     };
@@ -177,64 +178,94 @@ async function pedirAjuste(raiz, id, corpo = {}) {
 // entregue e promove para aprovados. Correção anterior é encerrada com recibo de
 // substituição; só hash idêntico recebe aceite. Falhas preservam o aceite e deixam aviso e log.
 async function aprovarEFechar(raiz, id, corpo = {}, deps = {}) {
-  // Uma resposta perdida pode chegar depois da mudança de ID/pasta. Retome pela
-  // prova da promoção; o módulo confere arquivos, aceite e versão novamente.
-  const anterior = !deps.aprovar && ler(raiz).aprovacoes.find((a) => a.origem?.id === id && a.versao === corpo.versao);
-  if (anterior) {
-    const promovida = await (deps.promover || require('./promocao.cjs').promover)(raiz, id, corpo);
-    return { aprovacao: anterior, jaExistia: true, pedidosFechados: 0, ...promovida };
-  }
-  const resultado = await (deps.aprovar || aprovar)(raiz, id, corpo);
-  const avisos = [...(resultado.avisos || [])];
-  let pedidosFechados = 0;
-  const fila = deps.fila || require('./ajustes-fila.cjs').fila;
-  const peca = (deps.obterPeca || obterPeca)(raiz, id);
+  return require('./conclusao-aprovacao.cjs').executar(raiz, () => concluirAprovacao(raiz, id, corpo, deps));
+}
+async function concluirAprovacao(raiz, id, corpo = {}, deps = {}) {
+  if (corpo.confirmacao !== true) throw new ErroMarketing('confirmacao-invalida', 'Confirme o aceite desta versão.', 400);
+  const cat = require('./catalogo.cjs');
+  const fluxo = require('./conclusao-aprovacao.cjs');
+  let conclusao = fluxo.buscar(raiz, id, corpo.versao) || fluxo.nova(id, corpo.versao);
+  const anterior = ler(raiz).aprovacoes.find(a => a.origem?.id === id && a.versao === corpo.versao);
+  const peca = (deps.obterPeca || obterPeca)(raiz, anterior?.id || id);
+  conferirVersao(peca, corpo.versao);
+  exigirVigente(peca, 'O aceite');
+  const avisos = [];
+  let resultado = { aprovacao: null, jaExistia: true }, promocao = anterior || null, pedidosFechados = 0;
+  const persistir = () => fluxo.salvar(raiz, conclusao);
+  const falha = async (etapa, e) => {
+    console.error(`[painel] aprovar-${etapa}: ${e.codigo || 'falhou'}`);
+    conclusao.etapas[etapa] = { estado: 'pendente', codigo: e.codigo || 'falhou' };
+    const prova = ler(raiz).aprovacoes.find(a => a.origem?.id === conclusao.id && a.versao === conclusao.versao);
+    if (prova) conclusao.destinoId = prova.id; // Mesmo se a RPC posterior à cópia perdeu a resposta.
+    await persistir();
+    avisos.push('Aprovação incompleta. O aceite salvo foi preservado. Use Continuar para concluir a etapa pendente.');
+    return { ...resultado, pedidosFechados, promocao, avisos, conclusao };
+  };
+  // Mesmo em uma retomada, conferir novamente o aceite da versão e o estado remoto.
   try {
-    if (resultado.aprovacao?.id !== peca.id || resultado.aprovacao?.versao !== peca.versao) {
-      throw new ErroMarketing('versao-mudou', 'A peça mudou depois do aceite.', 409);
-    }
-    for (const r of fila.listar().filter((x) => x.pecaId === id && x.estado === 'corrigido-aguardando-aceite')) {
-      try {
-        if (r.versaoCorrigida === peca.versao) await fila.aceitar(peca, r.id);
-        else await fila.encerrarPorAceite(peca, r.id, resultado.aprovacao);
-        pedidosFechados++;
-      } catch (e) {
-        console.error(`[painel] aprovar-fechar-pedido: ${e.codigo || 'falhou'}`);
-        avisos.push('O aceite foi gravado, mas o pedido de ajuste desta peça não fechou. Atualize a tela.');
-      }
-    }
+    const db = ler(raiz);
+    const existente = db.aprovacoes.find(a => require('./aceite-evidencia.cjs').aceiteValido(a, peca, Date.now(), db.aprovacoes));
+    if (existente) {
+      resultado = { aprovacao: existente, jaExistia: true };
+      const editorial = require('./editorial-publicacao.cjs');
+      if (editorial.ativo(raiz, peca)) await editorial.registrarAceite(raiz, peca);
+    } else resultado = await (deps.aprovar || aprovar)(raiz, id, corpo);
+    if (resultado.aprovacao?.versao !== peca.versao) throw new ErroMarketing('versao-mudou', 'A peça mudou depois do aceite.', 409);
+    avisos.push(...(resultado.avisos || []));
+    conclusao.etapas.aceite = { estado: 'concluido', aprovadoEm: resultado.aprovacao.aprovadoEm };
+    await persistir();
   } catch (e) {
-    console.error(`[painel] aprovar-conferir-pedidos: ${e.codigo || 'falhou'}`);
-    avisos.push('O aceite foi gravado, mas a fila de ajustes não pôde ser conferida. Atualize antes de tentar novamente.');
+    // Falha antes de qualquer aceite continua sendo rejeição, não um recibo benigno.
+    if (!ler(raiz).aprovacoes.some(a => a.versao === corpo.versao && (a.id === id || a.id === peca.id))) throw e;
+    return falha('aceite', e);
   }
-  let promocao = null;
-  // Reaceite em aprovados: a data marcada para a versão anterior passa para a versão aceita agora,
-  // se ainda não passou. Falha não desfaz o aceite: vira aviso e log.
-  if (peca.estado === 'aprovados' && !resultado.jaExistia) {
-    try {
-      const planejados = deps.planejados ? deps.planejados() : lerJson(caminhoPainel(raiz, 'calendario.json'), { planejados: [] }).planejados || [];
-      const antigo = planejados.find((r) => r.id === peca.id && r.versao !== peca.versao && r.data >= require('./catalogo.cjs').hojeLocal());
-      if (antigo) {
-        await (deps.planejar || require('./calendario.cjs').planejar)(raiz, { id: peca.id, versao: peca.versao, data: antigo.data, hora: antigo.hora, canal: antigo.canal, observacao: antigo.observacao });
-        avisos.push(`A data marcada (${antigo.data.split('-').reverse().join('/')}${antigo.hora ? ` ${antigo.hora}` : ''}) passou para esta versão.`);
-      }
-    } catch (e) {
-      console.error(`[painel] aprovar-levar-plano: ${e.codigo || 'falhou'}`);
-      avisos.push('O aceite foi gravado, mas a data marcada não passou para esta versão. Marque a data de novo no Calendário.');
+  try {
+    const fila = deps.fila || require('./ajustes-fila.cjs').fila;
+    const pedidos = fila.listar();
+    if (!Array.isArray(pedidos)) throw new Error('fila-invalida');
+    const ids = new Set([id, peca.id, conclusao.id]);
+    for (const r of pedidos.filter(x => ids.has(x.pecaId) && x.estado === 'corrigido-aguardando-aceite')) {
+      if (r.versaoCorrigida === peca.versao) await fila.aceitar(peca, r.id);
+      else await fila.encerrarPorAceite(peca, r.id, resultado.aprovacao);
+      pedidosFechados++;
     }
-  }
-  if (peca.estado === 'para-aprovacao') {
-    try {
-      const promovida = await (deps.promover || require('./promocao.cjs').promover)(raiz, id, { versao: corpo.versao, confirmacao: true });
-      promocao = promovida.promocao;
-      avisos.push(...(promovida.avisos || []));
-    } catch (e) {
-      console.error(`[painel] aprovar-promover: ${e.codigo || 'falhou'}`);
-      const motivo = require('../config.cjs').ocultar(String(e.message || 'Falha ao mover a peça')).replace(/[.\s]+$/u, '');
-      avisos.push(`O aceite foi gravado, mas a promoção não foi concluída: ${motivo}. Atualize e tente Aprovar novamente.`);
+    if (fila.listar().some(r => ids.has(r.pecaId) && !require('./ajustes-fila.cjs').estadoTerminal(r.estado))) throw new ErroMarketing('ajuste-aberto', 'Confira o pedido antes de continuar.', 409);
+    conclusao.etapas.ajuste = { estado: 'concluido' };
+    await persistir();
+  } catch (e) { return falha('ajuste', e); }
+  try {
+    if (peca.estado === 'para-aprovacao' || anterior) {
+      const r = await (deps.promover || require('./promocao.cjs').promover)(raiz, id, corpo);
+      promocao = r.promocao;
+      if (!promocao || promocao.versao !== corpo.versao || !promocao.indice || (r.avisos || []).some(a => /origem a conferir|pendente/.test(a))) throw new ErroMarketing('promocao-pendente', 'Confira os arquivos e o recibo da promoção.', 409);
+      conclusao.destinoId = promocao.id;
+      // A substituição pode criar a identidade remota só durante a suspensão da revisão anterior.
+      // Concluir inclui reconciliar o aceite já dado pelo autor, sem esperar um segundo clique.
+      const editorial = require('./editorial-publicacao.cjs');
+      if (editorial.ativo(raiz, { id: promocao.id })) await editorial.registrarAceite(raiz, cat.obterPeca(raiz, promocao.id));
+      avisos.push(...(r.avisos || []));
     }
+    conclusao.etapas.promocao = { estado: peca.estado === 'aprovados' && !anterior ? 'nao-necessario' : 'concluido' };
+    await persistir();
+  } catch (e) { return falha('promocao', e); }
+  try {
+    // Só a referência editorial é migrada; nenhuma confirmação/retomada remota é chamada.
+    const planejados = deps.planejados ? deps.planejados() : lerJson(caminhoPainel(raiz, 'calendario.json'), { planejados: [] }).planejados || [];
+    const aliases = new Set([id, peca.id, conclusao.destinoId, ...(promocao?.substituicoes || []).map(x => x.id)]);
+    const antigo = planejados.find(r => aliases.has(r.id) && (r.id !== conclusao.destinoId || r.versao !== corpo.versao) && r.data >= cat.hojeLocal());
+    if (antigo) {
+      await (deps.planejar || require('./calendario.cjs').planejar)(raiz, { id: conclusao.destinoId, versao: corpo.versao, data: antigo.data, hora: antigo.hora, canal: antigo.canal, observacao: antigo.observacao });
+      avisos.push(`A data marcada (${antigo.data.split('-').reverse().join('/')}${antigo.hora ? ` ${antigo.hora}` : ''}) passou para esta versão. Nada foi reautorizado na Meta.`);
+    }
+    const cr = require('./cronograma.cjs');
+    await cat.serializar(raiz, () => cr.sincronizar(raiz));
+    conclusao.etapas.plano = { estado: 'concluido' };
+    await persistir();
+  } catch (e) {
+    avisos.push('O aceite foi gravado, mas a data marcada não passou para esta versão. Continue para reconciliar o Calendário.');
+    return falha('plano', e);
   }
-  return { ...resultado, pedidosFechados, promocao, avisos };
+  return { ...resultado, pedidosFechados, promocao, avisos, conclusao };
 }
 
 module.exports = { listarAprovacoes, aprovar, pedirAjuste, aprovarEFechar };

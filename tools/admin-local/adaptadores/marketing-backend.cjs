@@ -149,6 +149,7 @@ function criarPublicacoesReais({ env, remoto, cliente, relogio, log, rede, estad
       capaLocal: snap.capa ? { mime: snap.capa.mime, url: url('capa') } : null };
   }
 
+  const politica = p => Object.fromEntries(['politicaExecucao','capacidadesCliente','consentimentoExecucao'].filter(k => p[k] !== undefined).map(k => [k,p[k]]));
   const api = {
     executar(pedido) {
       return comPrazo(PRAZO_REAL_MS, ctx => executarOp(pedido, ctx));
@@ -162,7 +163,7 @@ function criarPublicacoesReais({ env, remoto, cliente, relogio, log, rede, estad
         // Não recaptura a peça nem envia novamente os objetos privados.
         return comPrazo(PRAZO_REAL_MS, async ctx => {
           const dados = await executarOp({ recurso: 'publicacoes-reais', modo: 'real', acao: 'previa',
-            jobId: p.jobId, destinos: p.destinos }, ctx);
+            jobId: p.jobId, destinos: p.destinos, ...politica(p) }, ctx);
           return apresentarPrevia(dados, p, dados.snapshot);
         });
       }
@@ -191,7 +192,7 @@ function criarPublicacoesReais({ env, remoto, cliente, relogio, log, rede, estad
           if (snap?.estado !== 'pronto') throw new ErroMarketing('snapshot-indisponivel', 'O servidor não confirmou o snapshot desta peça.', 409);
           await cap.conferir(); // aceite e versão continuam os mesmos depois do upload
           const dados = await executarOp({ recurso: 'publicacoes-reais', modo: 'real', acao: 'previa',
-            snapshotId: snap.snapshotId, snapshotRevisao: snap.revisao, destinos: p.destinos }, ctx);
+            snapshotId: snap.snapshotId, snapshotRevisao: snap.revisao, destinos: p.destinos, ...politica(p) }, ctx);
           return await apresentarPrevia(dados, p, snap);
         } finally { await cap.fechar(); }
       });

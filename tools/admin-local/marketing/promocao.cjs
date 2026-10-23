@@ -42,7 +42,7 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
         const encoded = c.linkDoIndice(de);
         if (encoded !== de) texto = texto.split(`](${encoded})`).join(`](${c.linkDoIndice(para)})`);
       };
-      for (const a of registro.arquivosPromovidos) {
+      for (const a of [...registro.arquivosPromovidos, ...(registro.componentesPromovidos || [])]) {
         trocarLink(a.origem.slice(base.length), a.destino.slice(base.length));
       }
       // Carrossel usa link da pasta no INDICE; preserve a coluna/token da linha.
@@ -61,6 +61,10 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
     } catch { registro.indice = null; log('promocao-indice-pendente'); avisos.push('Evidência salva no JSON; origem preservada. Confira a linha e os links do índice semanal e retome a promoção.'); }
   }
   return async function promover(raiz, id, corpo = {}) {
+    if (corpo.confirmacao === true) {
+      const p = c.montarCatalogo(raiz).find(x => x.id === id && x.versao === corpo.versao && x.estado === 'para-aprovacao');
+      if (p) await require('./substituicao-promocao.cjs').suspender(raiz, p);
+    }
     const resultado = await c.serializar(raiz, () => {
       if (corpo.confirmacao !== true) throw new c.ErroMarketing('confirmacao-invalida', 'Confirme a promoção.', 400);
       if (!/^[a-f0-9]{16}$/.test(id) || !/^[a-f0-9]{40}$/.test(corpo.versao)) throw new c.ErroMarketing('versao-invalida', 'Informe a peça e a versão atual.', 400);
@@ -85,8 +89,16 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
           if (sha(para) !== a.sha1) throw new c.ErroMarketing('prova-invalida', 'O destino mudou; preserve a origem e confira a promoção.', 409);
           return { de: seguro(raiz, origem), sha1: a.sha1 };
         });
+        const componentes = anterior.componentesPromovidos || [];
+        if (!Array.isArray(componentes) || componentes.length > 1) throw new c.ErroMarketing('prova-invalida', 'Confira a prova da capa antes de retomar.', 409);
+        for (const a of componentes) {
+          if (!PREFIXO.test(a.origem) || a.destino !== a.origem.replace('/para-aprovacao/', '/aprovados/')
+            || a.destino === p.caminho || p.capa?.pecaId !== c.idDe(a.destino) || p.capa.sha1 !== a.sha1
+            || sha(seguro(raiz, a.destino)) !== a.sha1) throw new c.ErroMarketing('prova-invalida', 'Confira a capa da promoção antes de retomar.', 409);
+          arquivos.push({ de: seguro(raiz, a.origem), sha1: a.sha1 });
+        }
         const identidades = require('./identidade-publicacao.cjs');
-        if (identidades.buscar(raiz, anterior.origem.id)) identidades.vincularNaTransacao(raiz, p, [anterior.origem.id]);
+        identidades.vincularNaTransacao(raiz, p, [anterior.origem.id]);
         const avisos = [];
         if (!anterior.indice) indicePromocao(raiz, anterior, dados, avisos);
         if (anterior.indice) avisos.push(...limparOrigem(arquivos));
@@ -100,8 +112,7 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
       c.exigirItemAutonomo(p, 'A promoção');
       require('./legenda-publicacao.cjs').exigirLegenda(p);
       if (p.estado !== 'para-aprovacao' || !PREFIXO.test(p.caminho)) throw new c.ErroMarketing('pasta-invalida', 'Só peça de para-aprovacao pode ser promovida.', 409);
-      // A promoção move só o vídeo. Capa pareada pelo nome ficaria para trás e o aceite composto
-      // deixaria de valer: o vínculo precisa estar no registro de famílias, que sobrevive à troca de pasta.
+      // O vínculo explícito sobrevive à troca de pasta, inclusive para capas compartilhadas de outra semana.
       if (p.composicao && !pecas.find((v) => v.id === p.capa.pecaId)?.vinculoCapa) throw new c.ErroMarketing('capa-sem-registro', 'Este Reel tem capa ligada só pelo nome do arquivo. Registre o vínculo da capa no registro de famílias antes de promover.', 409);
       const aceite = dados.aprovacoes.find((a) => aceiteValido(a, p, Date.now(), dados.aprovacoes));
       if (!aceite) throw new c.ErroMarketing('sem-aceite', 'A versão precisa do aceite datado do autor antes da promoção.', 409);
@@ -117,12 +128,22 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
         throw new c.ErroMarketing('ajuste-aberto', 'Há pedido de ajuste aberto. Conclua ou confira o pedido antes de promover a peça.', 409);
       }
       const novoCaminho = p.caminho.replace('/para-aprovacao/', '/aprovados/');
-      const arquivos = p.arquivos.map((a) => {
+      const primarios = p.arquivos.map((a) => {
         const origem = path.posix.join(path.posix.dirname(p.caminho), a.nome);
         const destino = origem.replace('/para-aprovacao/', '/aprovados/');
         return { origem, destino, sha1: a.sha1, de: seguro(raiz, origem), para: seguro(raiz, destino) };
       });
+      const componentes = [];
+      const capa = p.capa && pecas.find(v => v.id === p.capa.pecaId);
+      // Capa local exclusiva acompanha a unidade aceita. O nome de origem pode então receber outra
+      // revisão sem modificar os bytes do composto aprovado. Vínculos compartilhados ficam no lugar.
+      if (capa && PREFIXO.test(capa.caminho) && !pecas.some(v => v.id !== p.id && v.capa?.pecaId === capa.id)) {
+        const origem = capa.caminho, destino = origem.replace('/para-aprovacao/', '/aprovados/');
+        componentes.push({ origem, destino, sha1: p.capa.sha1, de: seguro(raiz, origem), para: seguro(raiz, destino) });
+      }
+      const arquivos = [...primarios, ...componentes];
       if (!arquivos.length) throw new c.ErroMarketing('sem-arquivos', 'A peça não tem arquivos para promover.', 409);
+      const substituicoes = require('./substituicao-promocao.cjs').substituir(raiz, p, io);
       for (const a of arquivos) {
         if (io.existsSync(a.para)) throw new c.ErroMarketing('destino-existente', 'Já existe arquivo em aprovados; confira antes de promover.', 409);
         if (sha(a.de) !== a.sha1) throw new c.ErroMarketing('versao-mudou', 'A peça mudou; revise a versão atual.', 409);
@@ -150,8 +171,11 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
         // A evidência original fica imutável. O novo registro preserva seu momento e origem.
         const registro = { id: nova.id, caminho: nova.caminho, versao: nova.versao,
           aprovadoEm: aceite.aprovadoEm, evidencia: aceite.evidencia, escopo: aceite.escopo,
+          ...(aceite.manifesto ? { manifesto: aceite.manifesto } : {}),
           promovidoEm: c.agoraLocalIso(), origem: { id: p.id, caminho: p.caminho, aprovadoEm: aceite.aprovadoEm },
-          arquivosPromovidos: arquivos.map(({ origem, destino, sha1 }) => ({ origem, destino, sha1 })),
+          arquivosPromovidos: primarios.map(({ origem, destino, sha1 }) => ({ origem, destino, sha1 })),
+          ...(componentes.length ? { componentesPromovidos: componentes.map(({ origem, destino, sha1 }) => ({ origem, destino, sha1 })) } : {}),
+          substituicoes,
           indice: null };
         dados.aprovacoes.push(registro);
         // Persistência da prova ANTES de remover qualquer arquivo original.
@@ -160,7 +184,7 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
         if (!relida || !aceiteValido(relida, nova, Date.now(), dados.aprovacoes) || JSON.stringify(relida) !== JSON.stringify(registro)) throw new Error('prova-nao-confirmada');
         // Vincular antes de limpar a origem; a prova persistida torna o alias inequivoco.
         const identidades = require('./identidade-publicacao.cjs');
-        if (identidades.buscar(raiz, p.id)) identidades.vincularNaTransacao(raiz, nova, [p.id]);
+        identidades.vincularNaTransacao(raiz, nova, [p.id]);
         const avisos = [];
         indicePromocao(raiz, registro, dados, avisos);
         if (registro.indice) avisos.push(...limparOrigem(arquivos));

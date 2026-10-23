@@ -146,6 +146,7 @@ export function estadoDoIcone(item, publicado) {
   if (preparando.length) return { chave: 'preparando', texto: resumo };
   if (reais.length) return { chave: 'agendado', texto: resumo };
   if (todos.length) return { chave: 'planejado', texto: resumo };
+  if (item.peca?.conclusaoAprovacao?.estado === 'incompleta') return { chave: 'atencao', texto: 'Aprovação incompleta' };
   if (item.peca?.precisaAceite) return { chave: 'atencao', texto: 'Precisa de aceite' };
   return { chave: 'planejado', texto: (item.hora ? `Planejado para ${item.hora}` : 'Planejado') + (resumo ? ` · ${resumo}` : '') };
 }
@@ -246,7 +247,8 @@ export async function montar(raiz, ctx) {
     try { return (await catalogoLido).find((p) => p.id === id && p.versao === versao) || null; } catch (err) { console.warn('[calendario-catalogo]', err.codigo || 'leitura-falhou'); catalogoLido = null; return null; }
   }
   const MOTIVO_REACEITE = 'A legenda ou o arquivo mudou depois do aceite: aprove esta versão para agendar.';
-  const motivoAgendar = (data, peca) => (peca?.precisaAceite ? MOTIVO_REACEITE : motivoSemAgendar(camada, dados?.reais, data));
+  const motivoAgendar = (data, peca) => peca?.conclusaoAprovacao?.estado === 'incompleta'
+    ? 'Aprovação incompleta. Continue na Aprovação antes de agendar.' : peca?.precisaAceite ? MOTIVO_REACEITE : motivoSemAgendar(camada, dados?.reais, data);
   // Novo aceite em 1 clique onde o autor está: o mesmo POST do Aprovar, com confirmação explícita.
   async function reaceitar(peca, botao) {
     if (botao?.disabled || ctx.obsoleta()) return;
@@ -259,6 +261,10 @@ export async function montar(raiz, ctx) {
       const r = await ctx.acao(`/api/marketing/pecas/${encodeURIComponent(peca.id)}/aprovar`, { versao: peca.versao, confirmacao: true });
       if (ctx.obsoleta()) return;
       for (const a of r.dados?.avisos || []) ctx.aviso(a, 'info');
+      if (r.dados?.conclusao?.estado !== 'concluida') {
+        ctx.aviso('Aprovação incompleta. O aceite salvo foi preservado. Continue na Aprovação antes de agendar.', 'erro');
+        await carregar(); return;
+      }
       if (r.dados?.aprovacao?.versao !== peca.versao) { ctx.aviso('O aceite não foi confirmado. Atualize o mês e tente de novo.', 'erro'); return; }
       ctx.aviso('Versão aprovada. Agora use "Agendar de verdade".', 'ok');
       catalogoLido = null;
@@ -270,6 +276,7 @@ export async function montar(raiz, ctx) {
   }
   // Botão sempre visível onde a peça planejada aparece; desabilitado com o motivo quando não pode agendar.
   const botaoAgendar = (peca, data, comMotivo = true) => {
+    if (peca?.conclusaoAprovacao?.estado === 'incompleta') return [h('a', { class: 'botao', href: `#/marketing/aprovacao?peca=${encodeURIComponent(peca.id)}`, texto: 'Continuar aprovação' })];
     if (peca?.precisaAceite) {
       const b = h('button', { class: 'botao', type: 'button', texto: 'Aprovar esta versão', title: MOTIVO_REACEITE,
         onclick: (e) => { e.stopPropagation(); reaceitar(peca, e.currentTarget); } });
@@ -282,7 +289,9 @@ export async function montar(raiz, ctx) {
   };
   const itemPrevia = (i, pub) => { const jobs = i.jobs || []; const planejado = !pub && !jobs.length; const motivo = planejado ? motivoAgendar(i.data, i.peca) : null;
     return { carregarPeca, origem: pub ? 'meta' : jobs.length ? 'real' : 'planejado', peca: i.peca, data: i.data, jobs, publicado: pub || null, formato: formatoPrevia(i.peca, jobs, pub), rede: jobs[0]?.destino?.rede || pub?.rede || 'instagram',
-      agendar: !planejado ? null : i.peca?.precisaAceite ? { habilitado: true, rotulo: 'Aprovar esta versão', motivo, acao: () => reaceitar(i.peca) }
+      agendar: !planejado ? null : i.peca?.conclusaoAprovacao?.estado === 'incompleta'
+        ? { habilitado: true, rotulo: 'Continuar aprovação', motivo, acao: () => ctx.navegar(`#/marketing/aprovacao?peca=${encodeURIComponent(i.peca.id)}`) }
+        : i.peca?.precisaAceite ? { habilitado: true, rotulo: 'Aprovar esta versão', motivo, acao: () => reaceitar(i.peca) }
         : { habilitado: !motivo, motivo, acao: () => abrir(i.peca, i.data, null) } }; };
   // A miniatura vem de uma rota local autenticada (a CSP só aceita self, data e blob): busca com o cabeçalho do painel e exibe como blob.
   const ROTA_MINIATURA = '/api/marketing/calendario/meta-midia?chave=';
@@ -340,7 +349,7 @@ export async function montar(raiz, ctx) {
       h('strong', { class: 'cal-item-titulo', texto: i.marcador && !i.principal ? `Destino de ${nomeDaPeca(i.peca)}` : nomeDaPeca(i.peca) }),
       h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Abrir prévia', onclick: () => abrirPrevia(itemPrevia(i, pub)) }),
       h('span', { class: 'cal-item-canal', texto: pub ? 'Publicado na Meta' : `${i.marcador ? 'Destinos em dias diferentes · ' : ''}${estadoDoIcone(i, pub).texto}` }),
-      ...(i.publicacoes || []).filter((p) => !reais.some((j) => j.estado === 'publicado' && j.destino.rede === p.rede && linkPublicado(p.link) && linkPublicado(p.link) === linkPublicado(j.permalink))).map((p) => h('div', { class: 'cal-unico-destino' },
+      ...(i.publicacoes || []).filter((p) => !reais.some((j) => estadoApresentacaoJob(j) === 'publicado' && j.destino.rede === p.rede && linkPublicado(p.link) && linkPublicado(p.link) === linkPublicado(j.permalink))).map((p) => h('div', { class: 'cal-unico-destino' },
         h('strong', { texto: `${ROTULO_REDE[p.rede] || p.rede} · ${ROTULO_FORMATO[p.formato] || 'Post'} · Publicado` }),
         h('span', { texto: `Publicado em ${ctx.formatar.data(p.data)}` }),
         linkPublicado(p.link) ? h('a', { href: linkPublicado(p.link), target: '_blank', rel: 'noopener noreferrer', texto: 'Abrir publicação' }) : null)),
@@ -441,7 +450,8 @@ export async function montar(raiz, ctx) {
     controleReal = await montarReal(raiz, ctx, { topo: topoReal, painel: conteudoPainel, fila,
       abrirPainel: (titulo) => { focoOrigem = document.activeElement; dialogo.querySelector('#cal-unico-painel-titulo').textContent = titulo; if (!dialogo.open) dialogo.showModal(); },
       vinculado: (job) => [...(dados.itens || []), ...(dados.aprovadosSemData || dados.semData || []).map((p) => ({ peca: p }))].some((i) => identidade(i.peca || i) === identidade(job.peca)),
-      listar: async (atualizar = true) => { if (atualizar) await carregar(); return { jobs: [...acumulados.values()], limitado: !dados?.reais?.completo, proximoCursor: null }; },
+      listar: async (atualizar = true) => { if (atualizar) await carregar(); return { jobs: [...acumulados.values()], limitado: !dados?.reais?.completo, proximoCursor: null,
+        incidentes: dados?.reais?.incidentes, naoReconhecidos: dados?.reais?.naoReconhecidos, incidentesLimitados: dados?.reais?.incidentesLimitados, incidentesDisponiveis: dados?.reais?.incidentesDisponiveis }; },
       aposConfirmar: () => carregar(),
     });
   }

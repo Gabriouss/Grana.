@@ -15,7 +15,11 @@ const config = require('../config.cjs');
 const { backend } = require('../adaptadores/marketing-backend.cjs');
 
 const CODIGOS = {
-  'publicacao-precisa-conferir': { fonte: 'publicacoes', titulo: 'Confira o resultado no Instagram', resumo: 'A Meta não confirmou o resultado. Confira antes de repetir o envio.', acao: 'Conferir resultado', destino: '#/marketing/calendario' },
+  'publicacao-precisa-conferir': { fonte: 'publicacoes', titulo: 'Confira o resultado por rede', resumo: 'A Meta não confirmou o resultado. Confira antes de repetir o envio.', acao: 'Conferir resultado', destino: '#/marketing/calendario' },
+  'publicacao-incerta': { fonte: 'publicacoes', titulo: 'Publicação precisa de conferência', resumo: 'Um destino pode ter recebido o envio. Consulte seus recibos antes de qualquer nova tentativa.', acao: 'Conferir destino', destino: '#/marketing/calendario' },
+  'publicacao-falhou': { fonte: 'publicacoes', titulo: 'Falha em uma publicação', resumo: 'Confira a rede e o próximo passo no incidente. Os destinos já publicados serão preservados.', acao: 'Ver incidente', destino: '#/marketing/calendario' },
+  'executor-sem-sinal': { fonte: 'publicacoes', titulo: 'Execução de publicações sem sinal recente', resumo: 'O monitor não recebeu o sinal esperado do executor. Confira os incidentes antes de confirmar novas publicações.', acao: 'Ver incidentes', destino: '#/marketing/calendario' },
+  'publicacao-atrasada': { fonte: 'publicacoes', titulo: 'Publicação fora do horário', resumo: 'Confira o prazo autorizado e o estado por rede. Não repita um envio ainda incerto.', acao: 'Ver incidente', destino: '#/marketing/calendario' },
   'criativo-para-revisao': { fonte: 'criativos', titulo: 'Criativo pronto para sua revisão', resumo: 'Reel, versão 7. Confira as alterações e compare com a versão anterior.', acao: 'Revisar criativo', destino: '#/marketing/aprovacao' },
   'feedback-novo': { fonte: 'feedbacks', titulo: 'Novo feedback', resumo: 'Um novo relato aguarda sua análise.', acao: null, destino: null },
   'falha-reconciliada': { fonte: 'sistema', titulo: 'Falha de entrega resolvida', resumo: 'O envio que falhou foi reconciliado.', acao: null, destino: null },
