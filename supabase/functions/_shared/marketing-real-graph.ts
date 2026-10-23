@@ -5,7 +5,8 @@
 export type EtapaGraph='preparar'|'consultar-preparo'|'publicar'|'verificar-publicacao'|'cancelar'|'reconciliar';
 export type MidiaGraph={objeto:string;sha256:string;mime:string;bytes:number;tipo:'imagem'|'video'};
 export type JobGraph={jobId:string;rede:'facebook'|'instagram';formato:'feed'|'carrossel'|'reels'|'stories';
- etapa:EtapaGraph;remotoContaId:string;processamento:EstadoGraph;remotoId?:string|null};
+ etapa:EtapaGraph;remotoContaId:string;processamento:EstadoGraph;remotoId?:string|null;
+ publicarEm?:string;executarAte?:string;politicaExecucao?:string};
 export type EstadoGraph={itens?:string[];container?:string;video?:string;uploadUrl?:string;transferido?:boolean;publicacaoId?:string;permalink?:string|null};
 // Link relativo (o permalink_url de video de Page pode vir assim) ou de outro host nao e montado: fica nulo.
 const HOSTS_LINK={instagram:new Set(['www.instagram.com','instagram.com']),facebook:new Set(['www.facebook.com','facebook.com','m.facebook.com','web.facebook.com'])};
@@ -14,13 +15,13 @@ export function linkOficial(v:unknown,rede:'facebook'|'instagram'):string|null{
  try{const u=new URL(v);return u.protocol==='https:'&&HOSTS_LINK[rede].has(u.hostname)&&!u.username&&!u.password&&!u.port?u.href:null;}catch{return null;}
 }
 export type ResultadoGraph={estado:'adiado'|'preparo-parcial'|'pronto'|'processando'|'publicacao-aceita'|'publicado'|'cancelado'|'falhou'|'incerto';
- processamento?:EstadoGraph;remotoId?:string;codigo?:string};
+ processamento?:EstadoGraph;remotoId?:string;codigo?:string;retryAfterSegundos?:number};
 type Deps={rede:typeof fetch;versao:string;token:string;assinar:(midia:MidiaGraph)=>Promise<string>;signal:AbortSignal};
 const ID=/^[0-9]+(?:_[0-9]+)?$/;
 function id(v:unknown):string{if(typeof v!=='string'||!ID.test(v))throw new Error('resposta-invalida');return v;}
-class FalhaGraph extends Error{constructor(public codigo:string,public incerto:boolean){super(codigo);}}
+class FalhaGraph extends Error{constructor(public codigo:string,public incerto:boolean,public retryAfterSegundos?:number){super(codigo);}}
 // GET que nao chegou a resposta (rede, prazo, corpo): sem efeito, a etapa so espera.
-class ConsultaIndisponivel extends Error{}
+class ConsultaIndisponivel extends Error{constructor(public retryAfterSegundos=60){super('consulta-indisponivel');}}
 // O corpo inteiro, inclusive leitura do stream, esta sob o signal do worker.
 export async function jsonLimitado(r:Response):Promise<Record<string,unknown>>{
  const reader=r.body?.getReader();if(!reader)throw new Error('corpo-ausente');const partes:Uint8Array[]=[];let tamanho=0;
@@ -40,8 +41,11 @@ export function criarAdaptadorGraphReal(deps:Deps){
    ...(metodo==='POST'?{body:body.toString()}:{})});const d=await jsonLimitado(r);
    if(!r.ok||d.error){const error=d.error as {code?:number}|undefined;
     // Erro HTTP nao prova ausencia de efeito num POST (inclui 5xx/erro proxy).
-    throw new FalhaGraph(error?.code===190?'conexao-revogada':'meta-recusou',metodo==='POST');}return d;
-  }catch(e){if(e instanceof FalhaGraph)throw e;if(metodo==='GET')throw new ConsultaIndisponivel();throw new FalhaGraph('resultado-nao-confirmado',true);}
+    const after=r.headers.get('Retry-After');const bruto=after&&/^\d+$/.test(after)?Number(after):after?(Date.parse(after)-Date.now())/1000:60;
+    const retry=Number.isFinite(bruto)?Math.min(3600,Math.max(60,Math.ceil(bruto))):60;
+    if(metodo==='GET'&&(r.status===429||r.status>=500||[4,17,32,613].includes(error?.code??0)))throw new ConsultaIndisponivel(retry);
+    throw new FalhaGraph(error?.code===190?'conexao-revogada':'meta-recusou',metodo==='POST',retry);}return d;
+  }catch(e){if(e instanceof FalhaGraph||e instanceof ConsultaIndisponivel)throw e;if(metodo==='GET')throw new ConsultaIndisponivel();throw new FalhaGraph('resultado-nao-confirmado',true);}
  }
  async function transferir(url:string,midia:MidiaGraph){
   const u=new URL(url);if(u.protocol!=='https:'||u.hostname!=='rupload.facebook.com'||u.username||u.password||u.port||u.search||u.hash||!/^\/video-upload\/(?:v\d+\.\d+\/)?\d+$/.test(u.pathname))throw new Error('upload-host-recusado');
@@ -143,11 +147,12 @@ export function criarAdaptadorGraphReal(deps:Deps){
    }
    estado.publicacaoId=post;return {estado:'publicacao-aceita',remotoId:post,processamento:estado};
   }catch(e){
-   if(e instanceof ConsultaIndisponivel)return {estado:'adiado',codigo:'consulta-indisponivel',processamento:estado};
+   if(e instanceof ConsultaIndisponivel)return {estado:'adiado',codigo:'consulta-indisponivel',processamento:estado,retryAfterSegundos:e.retryAfterSegundos};
    /* Depois do POST de publicar, recusa da Meta numa CONSULTA nao prova que o
       post nao saiu: "falhou" ali convidaria a republicar. Fica para conferir. */
    const depoisDePublicar=job.etapa==='verificar-publicacao'||job.etapa==='reconciliar';
-   return {estado:e instanceof FalhaGraph&&!e.incerto&&!depoisDePublicar?'falhou':'incerto',codigo:e instanceof FalhaGraph?e.codigo:'resultado-nao-confirmado',processamento:estado};
+   return {estado:e instanceof FalhaGraph&&!e.incerto&&!depoisDePublicar?'falhou':'incerto',codigo:e instanceof FalhaGraph?e.codigo:'resultado-nao-confirmado',processamento:estado,
+    ...(e instanceof FalhaGraph&&e.retryAfterSegundos?{retryAfterSegundos:e.retryAfterSegundos}:{})};
   }
  }
  return {executar};

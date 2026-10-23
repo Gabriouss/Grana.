@@ -25,7 +25,7 @@ const CODIGOS=new Set(['pedido-invalido','previa-inexistente','previa-expirada',
  'agendamento-inexistente','lote-inexistente','estado-incompativel','ja-publicado','operacao-em-andamento','destino-invalido',
  'midia-incompativel','midia-grande','midia-inexistente','nao-autorizado',
  'atualizar-cliente','geracao-divergente','revisao-editorial-pendente','revisao-nao-iniciada','versao-divergente',
- 'identidade-ambigua','antecedencia-insuficiente']);
+ 'identidade-ambigua','antecedencia-insuficiente','consentimento-invalido','politica-invalida','politica-nao-pronta','incidente-inexistente']);
 export async function rpcReal<T>(cliente:SupabaseClient,nome:string,args:Objeto,signal:AbortSignal):Promise<T>{
  const r=await consultaComPrazo(s=>cliente.rpc('admin_marketing_real_'+nome,args).abortSignal(s),signal);
  if(r.error){const codigo=CODIGOS.has(r.error.message)?r.error.message:'fonte-indisponivel';
@@ -34,6 +34,22 @@ export async function rpcReal<T>(cliente:SupabaseClient,nome:string,args:Objeto,
 }
 export type PedidoPublicacaoReal={recurso:'publicacoes-reais';modo:'real';acao:string}&Objeto;
 export function validarPublicacaoReal(v:unknown):PedidoPublicacaoReal{
+  const entrada=objeto(v);
+ if(entrada.acao==='incidentes'||entrada.acao==='reconhecer-incidente'){
+  campos(entrada,['recurso','modo','acao','contractVersion',...(entrada.acao==='reconhecer-incidente'?['incidenteId','idempotencia','confirmado']:[])]);
+  if(entrada.recurso!=='publicacoes-reais'||entrada.modo!=='real')falhar('pedido-invalido');
+  if(entrada.contractVersion!==undefined&&![CONTRATO_REAL,CONTRATO_REAL_V2].includes(String(entrada.contractVersion)))falhar('atualizar-cliente',409);
+  if(entrada.acao==='reconhecer-incidente'){uuid(entrada.incidenteId);uuid(entrada.idempotencia);if(entrada.confirmado!==true)falhar('pedido-invalido');}
+  return entrada as PedidoPublicacaoReal;
+ }
+ if(['politicaExecucao','capacidadesCliente','consentimentoExecucao'].some(k=>entrada[k]!==undefined)){
+  const {politicaExecucao,capacidadesCliente,consentimentoExecucao,...resto}=entrada;
+  if(capacidadesCliente!==undefined&&(!Array.isArray(capacidadesCliente)||capacidadesCliente.length>4||capacidadesCliente.some(c=>c!=='execucao-2h-v1')))falhar('atualizar-cliente',409);
+  if(politicaExecucao!==undefined&&(!['legado-15min','recuperacao-2h-v1'].includes(String(politicaExecucao))||entrada.acao!=='previa'))falhar('pedido-invalido');
+  if(consentimentoExecucao!==undefined&&(consentimentoExecucao!==true||entrada.acao!=='previa'))falhar('pedido-invalido');
+  if(politicaExecucao==='recuperacao-2h-v1'&&(consentimentoExecucao!==true||!(capacidadesCliente as string[]|undefined)?.includes('execucao-2h-v1')))falhar('atualizar-cliente',409);
+  return {...validarPublicacaoReal(resto),...(politicaExecucao!==undefined?{politicaExecucao}:{}),...(capacidadesCliente!==undefined?{capacidadesCliente}:{}),...(consentimentoExecucao!==undefined?{consentimentoExecucao}:{})};
+ }
  const p=objeto(v);if(p.recurso!=='publicacoes-reais'||p.modo!=='real')falhar('pedido-invalido');
  if(p.contractVersion!==undefined){
   if(p.contractVersion===CONTRATO_REAL_V2)return validarPublicacaoRealV2(p);
@@ -126,7 +142,9 @@ export function criarOperacaoPublicacoesReais(_deps:unknown={}):OperacaoAdmin<Pe
   tratarErro:e=>e instanceof ErroPublicacaoReal&&CODIGOS.has(e.codigo)?{
     status:e.status as 400|403|404|409|413|415|422|503,codigo:e.codigo,mensagem:'Não foi possível concluir esta operação. Confira o estado e a versão antes de tentar novamente.'}:null,
   executar:async(cliente,p,{userId,signal,agora})=>{
-  uuid(userId);const v2=p.contractVersion===CONTRATO_REAL_V2;
+    uuid(userId);const v2=p.contractVersion===CONTRATO_REAL_V2;
+  if(p.acao==='incidentes'||p.acao==='reconhecer-incidente')return {dados:{contractVersion:v2?CONTRATO_REAL_V2:CONTRATO_REAL,modo:'real',...await rpcReal<Objeto>(cliente,p.acao==='incidentes'?'incidentes':'incidente_reconhecer',p.acao==='incidentes'?{p_admin:userId}:{p_admin:userId,p_incidente:p.incidenteId,p_idempotencia:p.idempotencia},signal)}};
+  const politica={...(p.politicaExecucao?{politicaExecucao:p.politicaExecucao}:{}),...(p.capacidadesCliente?{capacidadesCliente:p.capacidadesCliente}:{}),...(p.consentimentoExecucao?{consentimentoExecucao:p.consentimentoExecucao}:{})};
   const base={contractVersion:v2?CONTRATO_REAL_V2:CONTRATO_REAL,modo:'real'};
   if(v2){
    if(p.acao==='editorial')return {dados:{...base,...await rpcReal<Objeto>(cliente,'editorial_v2',{p_admin:userId,p_pedido:p.pedido},signal)}};
@@ -135,7 +153,7 @@ export function criarOperacaoPublicacoesReais(_deps:unknown={}):OperacaoAdmin<Pe
     p_filtro:p.conteudoId?{conteudoId:p.conteudoId}:{pecaId:p.pecaId}},signal)}};
    if(p.acao==='previa'){
     const row=await rpcReal<{id:string;hash:string;expira_em:string;snapshot_id:string;destinos:Objeto[]}>(cliente,'previa_v2',
-     {p_admin:userId,p_pedido:p.jobId?{jobId:p.jobId,destinos:p.destinos}:{snapshotId:p.snapshotId,snapshotRevisao:p.snapshotRevisao,destinos:p.destinos}},signal);
+     {p_admin:userId,p_pedido:{...(p.jobId?{jobId:p.jobId,destinos:p.destinos}:{snapshotId:p.snapshotId,snapshotRevisao:p.snapshotRevisao,destinos:p.destinos}),...politica}},signal);
     const snapshot=await lerSnapshot(cliente,row.snapshot_id,signal);
     if(snapshot.admin_id!==userId)falhar('nao-autorizado',403);
     const bloqueios=[...new Set(row.destinos.flatMap(d=>d.motivos as string[]))];
@@ -143,7 +161,7 @@ export function criarOperacaoPublicacoesReais(_deps:unknown={}):OperacaoAdmin<Pe
      snapshot:snapshotPublico(snapshot),destinos:row.destinos,podeConfirmar:row.destinos.every(d=>d.estado==='pronto'),bloqueios}};
    }
    if(p.acao==='confirmar'){
-    const r=await rpcReal<{loteId:string;replay:boolean}>(cliente,'confirmar_v2',{p_admin:userId,p_previa:p.previaId,
+    const r=await rpcReal<{loteId:string;replay:boolean}>(cliente,p.capacidadesCliente?'confirmar_politica':'confirmar_v2',{...(p.capacidadesCliente?{p_capacidades:p.capacidadesCliente,p_contrato:CONTRATO_REAL_V2}:{}),p_admin:userId,p_previa:p.previaId,
      p_hash:p.previaHash,p_revisao:p.revisaoEsperada,p_idempotencia:p.idempotencia},signal);
     const lote=await rpcReal<Objeto>(cliente,'consultar_v2',{p_admin:userId,p_filtro:{acao:'consultar',loteId:r.loteId,limite:50}},signal);
     return {dados:{...base,...lote,...r,idempotencia:p.idempotencia}};
@@ -155,7 +173,7 @@ export function criarOperacaoPublicacoesReais(_deps:unknown={}):OperacaoAdmin<Pe
   }
   if(p.acao==='previa'){
    const row=await rpcReal<{id:string;hash:string;expira_em:string;snapshot_id:string;destinos:unknown[]}>(cliente,'previa',
-    {p_admin:userId,p_pedido:p.jobId?{jobId:p.jobId,destinos:p.destinos}:{snapshotId:p.snapshotId,snapshotRevisao:p.snapshotRevisao,destinos:p.destinos}},signal);
+    {p_admin:userId,p_pedido:{...(p.jobId?{jobId:p.jobId,destinos:p.destinos}:{snapshotId:p.snapshotId,snapshotRevisao:p.snapshotRevisao,destinos:p.destinos}),...politica}},signal);
    const snapshot=await lerSnapshot(cliente,row.snapshot_id,signal);
    if(snapshot.admin_id!==userId)falhar('nao-autorizado',403);
    const estado=await rpcReal<{controles:{habilitado:boolean;recuperacaoPendente:boolean;pausaGlobal:boolean;pausaFacebook:boolean;pausaInstagram:boolean;margemValidaAte:string|null};contas:{contaId:string;pausada:boolean}[]}>(cliente,'consultar',{p_admin:userId,p_filtro:{acao:'contas'}},signal);
@@ -166,7 +184,7 @@ export function criarOperacaoPublicacoesReais(_deps:unknown={}):OperacaoAdmin<Pe
    return {dados:{...base,previaId:row.id,previaHash:row.hash,revisao:1,expiraEm:row.expira_em,snapshot:snapshotPublico(snapshot),destinos:row.destinos,podeConfirmar:bloqueios.length===0,bloqueios:[...new Set(bloqueios)]}};
   }
   if(p.acao==='confirmar'){
-   const r=await rpcReal<{loteId:string;replay:boolean}>(cliente,'confirmar',{p_admin:userId,p_previa:p.previaId,p_hash:p.previaHash,p_revisao:p.revisaoEsperada,p_idempotencia:p.idempotencia},signal);
+   const r=await rpcReal<{loteId:string;replay:boolean}>(cliente,p.capacidadesCliente?'confirmar_politica':'confirmar',{...(p.capacidadesCliente?{p_capacidades:p.capacidadesCliente,p_contrato:CONTRATO_REAL}:{}),p_admin:userId,p_previa:p.previaId,p_hash:p.previaHash,p_revisao:p.revisaoEsperada,p_idempotencia:p.idempotencia},signal);
    const lote=await rpcReal<Objeto>(cliente,'consultar',{p_admin:userId,p_filtro:{acao:'consultar',loteId:r.loteId,limite:50}},signal);
    return {dados:{...base,...lote,...r,idempotencia:p.idempotencia}};
   }

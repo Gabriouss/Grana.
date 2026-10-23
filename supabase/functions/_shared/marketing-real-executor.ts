@@ -5,6 +5,7 @@ import { criarAdaptadorGraphReal, type JobGraph, type MidiaGraph, type Resultado
 import { criarRenovacao, type ContaRenovacao, type ResultadoRenovacao } from './marketing-real-renovacao.ts';
 import { lerCorpoLimitado } from './request-body.ts';
 import { timingSafeEqual } from './seguranca.ts';
+import { heartbeatMarketing } from './marketing-real-heartbeat.ts';
 type Claim=JobGraph&{leaseId:string;revisao:number;envioId:string;snapshotId:string;credencialRef:string};
 /* Orcamento somado, nao chutado: claim 4 s + trabalho 14 s + recibo 5 s =
    23 s, dentro do total de 25 s e bem antes da lease de 2 min. V2 reserva
@@ -29,6 +30,7 @@ export function criarExecutorReal(deps:Deps){
  const prazo={...PRAZOS_EXECUTOR,...deps.prazos};
  return async(req:Request):Promise<Response>=>{
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),prazo.total);let status=500,processados=0,incertos=0;
+  let clienteHeartbeat:SupabaseClient|null=null;
   let renovacao='nao-rodou';
   const responder=(s:number,codigo:string)=>{status=s;return Response.json({modo:'real',codigo,processados,incertos},{status:s,headers:{'Cache-Control':'no-store'}});};
   try{
@@ -39,7 +41,7 @@ export function criarExecutorReal(deps:Deps){
    const lido=await lerCorpoLimitado(req,128,2000);if(!lido.ok)return responder(lido.status,'corpo-recusado');
    let corpo:unknown;try{corpo=JSON.parse(new TextDecoder().decode(lido.bytes));}catch{return responder(400,'pedido-invalido');}
    if(!corpo||typeof corpo!=='object'||Array.isArray(corpo)||Object.keys(corpo).length)return responder(400,'pedido-invalido');
-   const client=deps.cliente(controller.signal),worker=crypto.randomUUID();
+   const client=deps.cliente(controller.signal),worker=crypto.randomUUID();clienteHeartbeat=client;
    // Opt-in server-side: nunca envia RPC v2 para o servidor anterior por padrão.
    const contrato=deps.env('MARKETING_REAL_EXECUTOR_CONTRATO')??'e5.real.v1';
    if(!['e5.real.v1','e5.real.v2'].includes(contrato))return responder(503,'contrato-invalido');
@@ -97,6 +99,8 @@ export function criarExecutorReal(deps:Deps){
      // Efeito barrado pelo fence (pausa, cancelamento, lease) antes de sair volta incerto do adaptador.
      if(resultado.estado==='incerto'&&resultado.codigo==='resultado-nao-confirmado'&&!admitido&&job.etapa!=='publicar')
       resultado={estado:'adiado',codigo:'efeito-nao-admitido',processamento:resultado.processamento};
+     if(resultado.estado==='incerto'&&resultado.codigo==='resultado-nao-confirmado'&&!admitido&&job.etapa==='publicar'&&job.politicaExecucao==='recuperacao-2h-v1')
+      resultado={estado:'adiado',codigo:'efeito-nao-admitido',processamento:resultado.processamento};
     }catch(e){
      /* Regra 9: o motivo conhecido vai ao recibo, em vez de um "sem-efeito" mudo.
         Causa permanente sem POST admitido (credencial ou midia fora do snapshot)
@@ -105,24 +109,40 @@ export function criarExecutorReal(deps:Deps){
      const motivo=e instanceof Error&&MOTIVOS_SEM_POST.has(e.message)?e.message:'sem-efeito';
      resultado=admitido?{estado:'incerto',codigo:'resultado-nao-confirmado'}
       :PERMANENTES_SEM_POST.has(motivo)&&ETAPAS_QUE_PODEM_FALHAR.has(job.etapa)?{estado:'falhou',codigo:motivo}
-      :job.etapa==='publicar'?{estado:'incerto',codigo:'resultado-nao-confirmado'}:{estado:'adiado',codigo:motivo};
+      :job.etapa==='publicar'&&job.politicaExecucao!=='recuperacao-2h-v1'?{estado:'incerto',codigo:'resultado-nao-confirmado'}:{estado:'adiado',codigo:motivo};
     }
     if(resultado.estado==='incerto')incertos++;
-    await rpc('recibo',{p_worker:worker,p_job:job.jobId,p_lease:job.leaseId,p_revisao:job.revisao,p_resultado:resultado},
-      AbortSignal.timeout(prazo.recibo));
+    // Bancos anteriores recusam campos novos no recibo. Claim sem politica nao negociou extensao.
+    if(!job.politicaExecucao&&resultado.retryAfterSegundos!==undefined){const {retryAfterSegundos:_r,...legado}=resultado;resultado=legado;}
+    // O diario e o recibo compartilham o budget. Nenhum novo efeito sai sem ambos.
+    const reciboSignal=AbortSignal.timeout(prazo.recibo);
+    if(job.politicaExecucao){
+     const gravado=await rpc<boolean>('diario',{p_worker:worker,p_job:job.jobId,p_lease:job.leaseId,p_revisao:job.revisao,p_resultado:resultado},reciboSignal);
+     if(!gravado)throw new Error('diario-pendente');
+    }
+    await rpc('recibo',{p_worker:worker,p_job:job.jobId,p_lease:job.leaseId,p_revisao:job.revisao,p_resultado:resultado},reciboSignal);
     processados++;
    }));
    if(execucoes.some(x=>x.status==='rejected'))return responder(503,'recibo-pendente');
    return responder(200,'execucao-concluida');
    }catch(e){status=controller.signal.aborted?504:503;throw e;}finally{
     await renovando;
-    if(v2){
+    // A saude e do servico, inclusive contrato v1 e fila vazia. Banco anterior pode
+    // recusar esta RPC: log explicito, sem alterar o resultado de publicacao.
+    {
      try{await consultaComPrazo(s=>rpcReal(client,'worker_concluido_v2',
       {p_resultado:{http:status,processados,incertos}},s),controller.signal,1000);}
      catch{deps.log(JSON.stringify({codigo:'saude-executor-pendente'}));}
     }
    }
   }catch{return responder(controller.signal.aborted?504:503,controller.signal.aborted?'prazo':'executor-indisponivel');}
-  finally{clearTimeout(timer);deps.log(JSON.stringify({codigo:'executor-real',status,processados,incertos,renovacao}));}
+  finally{deps.log(JSON.stringify({codigo:'executor-real',status,processados,incertos,renovacao}));
+   // Autenticacao e budget total tambem cobrem a integracao externa.
+   if(clienteHeartbeat)try{
+    const sucesso=await consultaComPrazo(()=>heartbeatMarketing(deps.env,deps.rede??fetch,'WORKER',status===200,deps.log),controller.signal,700);
+    if(sucesso)await rpcReal(clienteHeartbeat,'integracao_recibo',{p_alvo:'WORKER'},controller.signal);
+   }catch{deps.log(JSON.stringify({codigo:'heartbeat-recibo-pendente'}));}
+   clearTimeout(timer);
+  }
  };
 }
