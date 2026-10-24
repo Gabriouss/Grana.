@@ -1980,25 +1980,26 @@ const styles = StyleSheet.create({
   },
   subheadline: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, marginBottom: spacing.xl, maxWidth: 520 },
 
-  /* Verde sólido: o botão de compra é o elemento de maior peso da página
-     (Von Restorff, auditoria Leis de UI de 24/10/2026). Antes ele era vidro
-     escuro com borda e o "Entrar" do cabeçalho era o verde, e quem chegava do
-     anúncio sem conta via primeiro o botão de entrar numa conta. */
+  /* Menta sólido, a cor da faixa do topo (pedido do autor, 24/10/2026): o
+     botão de compra é o elemento de maior peso da página (Von Restorff,
+     auditoria Leis de UI). Antes ele era vidro escuro com borda e o "Entrar"
+     do cabeçalho era o verde, e quem chegava do anúncio sem conta via
+     primeiro o botão de entrar numa conta. */
   ctaPrimario: {
     flexDirection: 'row',
     alignSelf: 'flex-start',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: theme.accent,
+    backgroundColor: theme.accent2,
     borderWidth: 1,
-    borderColor: theme.accent,
+    borderColor: theme.accent2,
     borderRadius: radius.md,
     paddingVertical: 16,
     paddingHorizontal: spacing.xl + spacing.xs,
     position: 'relative',
     overflow: 'hidden',
     ...({
-      boxShadow: sombras.ctaPrimario,
+      boxShadow: sombras.ctaPrimarioHover,
       transitionProperty: 'border-color, background-color, box-shadow, transform',
       transitionDuration: '180ms',
     } as any),
@@ -2038,8 +2039,8 @@ const styles = StyleSheet.create({
     backgroundImage: 'linear-gradient(90deg, transparent, rgba(174,255,227,0.55), transparent)',
   } as any,
   ctaPrimarioHover: {
-    borderColor: theme.accent2,
-    backgroundColor: theme.accent2,
+    borderColor: theme.ink,
+    backgroundColor: theme.ink,
     ...({ boxShadow: sombras.ctaPrimarioHover, transform: [{ translateY: -2 }] } as any),
   },
   ctaPrimarioTexto: { color: theme.paper, fontSize: type.corpo, lineHeight: type.corpo * 1.2, fontFamily: fonts.regular },
