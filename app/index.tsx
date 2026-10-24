@@ -688,7 +688,7 @@ const OBJECOES = [
   {
     objecao: 'Mas meus dados ficam seguros?',
     resposta:
-      'Só você acessa os dados da sua conta, e isso é reforçado no banco de dados, não só na tela. No aplicativo móvel a sessão fica criptografada no aparelho e dá pra ativar bloqueio por biometria. No Android, dá pra bloquear prints das telas com valores. Os detalhes completos estão na Política de Privacidade.',
+      'Só você acessa os dados da sua conta, e isso é reforçado no banco de dados, não só na tela. No aplicativo móvel a sessão fica criptografada no aparelho e dá pra ativar bloqueio por biometria. No Android, dá pra bloquear prints das telas com valores. Os detalhes completos estão na Política\u00A0de\u00A0Privacidade.',
   },
   {
     objecao: 'Mas o Grana. mexe no meu dinheiro?',
@@ -2163,7 +2163,8 @@ const styles = StyleSheet.create({
      balanceada) conserta um texto que simplesmente não cabe na largura. Com
      23px o mesmo título fecha em três linhas cheias. */
   secaoTituloCompacto: { fontSize: type.cabecalho - 1, lineHeight: (type.cabecalho - 1) * 1.28, letterSpacing: -0.4 },
-  secaoTexto: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, maxWidth: 560 },
+  // `balance`, não `pretty`: no Chromium o `pretty` do body deixou viúva aqui (regra 29, auditoria Leis de UI de 24/10/2026).
+  secaoTexto: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, maxWidth: 560, ...({ textWrap: 'balance' } as any) },
   secaoTextoMenta: { color: theme.paper },
   secaoTextoCompacto: { fontSize: type.corpo, lineHeight: type.corpo * 1.5 },
   /* Segundo parágrafo de uma mesma seção. `secaoTexto` não tem margem porque
@@ -2344,7 +2345,7 @@ const styles = StyleSheet.create({
   // linha de texto individualmente), só o bloco inteiro passa a ficar no
   // centro da coluna em vez de esticado até a borda.
   precoChecklistLinhaCompacta: { width: '100%', maxWidth: 340, alignSelf: 'center' },
-  precoChecklistTexto: { flex: 1, color: theme.inkSoft, fontSize: type.corpo, lineHeight: type.corpo * 1.45, fontFamily: fonts.light },
+  precoChecklistTexto: { flex: 1, color: theme.inkSoft, fontSize: type.corpo, lineHeight: type.corpo * 1.45, fontFamily: fonts.light, ...({ textWrap: 'balance' } as any) },
   // Painel de preço — metade com destaque visual (`paperSelected`) do card
   // único, separada da metade do checklist por uma borda, não por um vão.
   // `justifyContent: 'center'` — o painel de preço é sempre mais curto que
@@ -2497,7 +2498,7 @@ const styles = StyleSheet.create({
   ctaFinalLayoutCompacto: { flexDirection: 'column', gap: spacing.xxl },
   ctaFinalConteudo: { width: '100%', maxWidth: 760, alignItems: 'center' },
   ctaFinalConteudoCompacto: { minWidth: 0, width: '100%', alignItems: 'center' },
-  ctaFinalTitulo: { color: theme.ink, ...({ fontSize: 'clamp(32px, 3.2vw, 52px)', lineHeight: '1.08' } as any), fontFamily: fonts.regular, marginBottom: spacing.lg },
+  ctaFinalTitulo: { color: theme.ink, ...({ fontSize: 'clamp(32px, 3.2vw, 52px)', lineHeight: '1.08', textWrap: 'balance' } as any), fontFamily: fonts.regular, marginBottom: spacing.lg },
   ctaFinalTexto: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, maxWidth: 540 },
   ctaFinalFatos: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginVertical: spacing.xl },
   ctaFinalFatosCompacto: { justifyContent: 'center' },

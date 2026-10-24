@@ -771,7 +771,7 @@ const styles = StyleSheet.create({
   visualCelular: { marginBottom: spacing.lg },
   textos: { gap: 2 },
   rotulo: { color: theme.accent2, fontSize: type.micro, lineHeight: lh(type.micro), fontFamily: fonts.regular, textTransform: 'uppercase', letterSpacing: 0.7 },
-  titulo: { color: theme.ink, fontSize: type.destaque, lineHeight: lh(type.destaque, 'titulo'), fontFamily: fonts.regular },
+  titulo: { color: theme.ink, fontSize: type.destaque, lineHeight: lh(type.destaque, 'titulo'), fontFamily: fonts.regular, ...({ textWrap: 'balance' } as any) },
   texto: { color: theme.inkSoft, fontSize: type.nota, lineHeight: lh(type.nota), fontFamily: fonts.light },
 
   // peças comuns das telas desenhadas

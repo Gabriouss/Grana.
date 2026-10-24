@@ -119,6 +119,7 @@ const styles = StyleSheet.create({
     fontSize: type.apoio,
     lineHeight: lh(type.apoio, 'apoio'),
     fontFamily: fonts.light,
+    ...({ textWrap: 'balance' } as any),
     marginTop: spacing.md,
     paddingRight: spacing.sm,
   },
