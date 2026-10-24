@@ -1002,8 +1002,13 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     O motivo é acabamento: a palavra solta na última linha deixa o bloco
     desequilibrado e parece descuido, em qualquer superfície.
 
-    - **Na web, o CSS garante:** `text-wrap: pretty` no texto corrido e
-      `text-wrap: balance` em título.
+    - **Na web, o CSS ajuda mas não garante.** `text-wrap: pretty` no texto
+      corrido e `text-wrap: balance` em título. Medido em 24/10/2026 (auditoria
+      Leis de UI): no Chromium, `pretty` deixou viúvas na landing; `balance`
+      tirou a maioria, mas não age em texto com mais de 6 linhas e deixa a
+      palavra sozinha quando as duas linhas já têm a mesma largura. Nesses
+      casos, texto fixo usa `semViuva()` (`lib/sem-viuva.ts`). A conferência é
+      pelo medidor da skill `leis-de-ui`, nas larguras 360, 390, 768 e 1440.
     - **Em criativo estático, quem monta a peça confere** a última linha de
       cada bloco de texto e ajusta a quebra à mão.
     - **No app React Native não há mecanismo.** O app não usa

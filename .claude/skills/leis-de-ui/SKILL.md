@@ -61,7 +61,11 @@ leia a folha; abra o print inteiro só onde houver achado.
 - No React Native Web a fonte fica no filho que tem o texto, não no wrapper do botão; ler a fonte do wrapper dá
   "Times New Roman".
 - `text-wrap: pretty` **não garante** ausência de viúva no Chromium: conferido em 24/10/2026, a viúva continuou com
-  `pretty` e sumiu com `balance`. Viúva medida é achado mesmo com `pretty` aplicado.
+  `pretty` e sumiu com `balance`. Viúva medida é achado mesmo com `pretty` aplicado. E `balance` também tem dois
+  furos: não age em texto com mais de 6 linhas, e deixa a palavra sozinha quando as duas linhas já têm a mesma
+  largura ("Contas com / vencimento"). Nesses casos a correção é `semViuva()` (`lib/sem-viuva.ts`).
+- Depois de corrigir uma viúva, meça de novo nas quatro larguras: ela muda de lugar com a largura, e a correção de
+  uma largura pode criar outra.
 - Viúva dentro de mockup de tela (nome de loja, "R$ 172,02/dia") é dado de exemplo do desenho, não texto corrido:
   descarte esses casos.
 - O LCP medido sem limitação de rede engana. Use o `perfRedeMovel` para julgar Doherty.
