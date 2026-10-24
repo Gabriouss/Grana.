@@ -218,7 +218,9 @@ async function pecaTemEstadoReal(raiz, pecaId, listar = (p) => require('./public
     for (let i = 0; i < 20; i++) {
       const pag = await listar({ limite: 50, ...(cursor ? { cursor } : {}) });
       if (!pag || !Array.isArray(pag.jobs)) return true;
-      if (pag.jobs.some((j) => j?.peca?.pecaId === pecaId && !['cancelado', 'falhou'].includes(j.estado))) return true;
+      // Story publicado não prende a peça: some do perfil em 24 h (mesma regra de prendeNaAgenda, web/telas/calendario.js).
+      if (pag.jobs.some((j) => j?.peca?.pecaId === pecaId && !['cancelado', 'falhou'].includes(j.estado)
+        && !(j.estado === 'publicado' && j.destino?.formato === 'stories'))) return true;
       if (!pag.limitado) break;
       cursor = pag.proximoCursor;
       if (!cursor || i === 19) return true;

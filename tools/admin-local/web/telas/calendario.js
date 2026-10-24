@@ -79,6 +79,10 @@ export function motivoSemAgendar(camada, reais, data, agora = new Date()) {
 const AVISO_PODE_TER_REAL = 'Pode já ter agendamento real. Veja em Ambos.';
 
 const AVISO_SEM_DATA_SERVIDOR = /^\d+ peças? aprovadas? (está|estão) sem data válida no cronograma\./;
+// Story publicado some do perfil em 24 h e não fica no feed: a peça volta para "Aprovados sem data"
+// e pode ganhar outra data (autor, 24/10/2026). O job continua no calendário, no dia em que saiu.
+// Mesma regra em tools/admin-local/marketing/calendario.cjs (pecaTemEstadoReal).
+const prendeNaAgenda = (j) => !['cancelado', 'falhou'].includes(j.estado) && !(j.estado === 'publicado' && j.destino?.formato === 'stories');
 export function projetarCalendario(d, jobs, camada = 'ambos', posts = [], catalogo = []) {
   const grupos = new Map();
   const publicados = new Map();
@@ -116,7 +120,7 @@ export function projetarCalendario(d, jobs, camada = 'ambos', posts = [], catalo
     } else if (camada !== 'real' && i.data) itens.push({ ...i, peca: p, historico: todos });
   }
   // Sem vínculo exato, o job permanece na lista. Não cria uma peça editorial fictícia.
-  const semData = (d.aprovadosSemData || d.semData || []).filter((p) => camada !== 'real' && (camada === 'planejado' || (!(grupos.get(identidade(p)) || []).some((j) => !['cancelado', 'falhou'].includes(j.estado)) && !(d.vinculos || []).some((v) => identidade(v) === identidade(p) && v.destinos?.some((j) => !['cancelado', 'falhou'].includes(j.estado))))));
+  const semData = (d.aprovadosSemData || d.semData || []).filter((p) => camada !== 'real' && (camada === 'planejado' || (!(grupos.get(identidade(p)) || []).some(prendeNaAgenda) && !(d.vinculos || []).some((v) => identidade(v) === identidade(p) && v.destinos?.some((j) => !['cancelado', 'falhou'].includes(j.estado))))));
   const restantes = semData.filter((p) => camada === 'planejado' || !publicados.has(identidade(p)));
   // O aviso do servidor conta só o cronograma editorial (11); a bandeja tira o que já tem agendamento real
   // ativo ou já saiu (5). O aviso passa a contar a mesma lista da bandeja e diz quantas ficaram de fora.
