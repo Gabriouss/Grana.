@@ -22,6 +22,24 @@ const ts = require('typescript');
 const { novoBanco, aplicar, novoUsuario, inserir } = require('./helpers/postgres-t5.cjs');
 
 const root = path.join(__dirname, '..');
+/* lib/format.ts real: lib/data.ts passou a importá-lo em 9bf7b28b (isoLocal). */
+const formatReal = (() => {
+  const e = {};
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root, 'lib/format.ts'), 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText, {
+    exports: e, Intl, Date, Math, Number, String, Array, Object, RegExp, JSON,
+    require: (id) => {
+      if (id !== './transaction-rules') throw new Error('import nao simulado em lib/format.ts: ' + id);
+      const regras = {};
+      vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root, 'lib/transaction-rules.ts'), 'utf8'), {
+        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+      }).outputText, { exports: regras, Math, Number, String });
+      return regras;
+    },
+  });
+  return e;
+})();
 let aprovadas = 0;
 const ok = (r) => { aprovadas++; console.log('  ok  ' + r); };
 
@@ -40,6 +58,7 @@ function carregarData(supabase, userId, eventos) {
   const deps = {
     './supabase': { supabase },
     './cache-de-tela': { comCacheOffline: (_n, buscar) => buscar, invalidarRespostasAtrasadas() { ordem.push('invalida'); } },
+    './format': formatReal,
     './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => userId },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() { eventos.push('widgets'); } },
     './lancamentos-alterados': { marcarLancamentosAlterados() { eventos.push('alterados'); } },

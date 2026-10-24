@@ -21,6 +21,24 @@ const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
 const root = path.join(__dirname, '..');
+/* lib/format.ts real: lib/data.ts passou a importá-lo em 9bf7b28b (isoLocal). */
+const formatReal = (() => {
+  const e = {};
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root, 'lib/format.ts'), 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText, {
+    exports: e, Intl, Date, Math, Number, String, Array, Object, RegExp, JSON,
+    require: (id) => {
+      if (id !== './transaction-rules') throw new Error('import nao simulado em lib/format.ts: ' + id);
+      const regras = {};
+      vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root, 'lib/transaction-rules.ts'), 'utf8'), {
+        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+      }).outputText, { exports: regras, Math, Number, String });
+      return regras;
+    },
+  });
+  return e;
+})();
 
 let aprovadas = 0;
 function ok(rotulo) { aprovadas++; console.log('  ok  ' + rotulo); }
@@ -59,6 +77,7 @@ function carregarData(supabase) {
   return carregar('lib/data.ts', {
     './supabase': { supabase },
     './cache-de-tela': { comCacheOffline: (_n, buscar) => buscar, invalidarRespostasAtrasadas() {} },
+    './format': formatReal,
     './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u-1' },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
     './lancamentos-alterados': { marcarLancamentosAlterados() {} },

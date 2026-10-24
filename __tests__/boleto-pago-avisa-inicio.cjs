@@ -12,6 +12,24 @@ const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
 const root = path.join(__dirname, '..');
+/* lib/format.ts real: lib/data.ts passou a importá-lo em 9bf7b28b (isoLocal). */
+const formatReal = (() => {
+  const e = {};
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root, 'lib/format.ts'), 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText, {
+    exports: e, Intl, Date, Math, Number, String, Array, Object, RegExp, JSON,
+    require: (id) => {
+      if (id !== './transaction-rules') throw new Error('import nao simulado em lib/format.ts: ' + id);
+      const regras = {};
+      vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root, 'lib/transaction-rules.ts'), 'utf8'), {
+        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+      }).outputText, { exports: regras, Math, Number, String });
+      return regras;
+    },
+  });
+  return e;
+})();
 
 function carregar(erro) {
   const marcas = { n: 0 };
@@ -24,6 +42,7 @@ function carregar(erro) {
   const deps = {
     './supabase': { supabase: { from: () => q, rpc: () => Promise.resolve(resposta) } },
     './cache-de-tela': { comCacheOffline: (_n, f) => f, invalidarRespostasAtrasadas() {}, atualizarTelaGuardada: async () => {} },
+    './format': formatReal,
     './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u-1' },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
     './lancamentos-alterados': { marcarLancamentosAlterados() { marcas.n++; } },
