@@ -397,24 +397,6 @@ function RotuloRolante({
   );
 }
 
-/** O "Entrar" do cabeçalho, com o mesmo rolling-text do CTA principal. */
-function LinkEntrar() {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <AppPressable
-      href="/sign-in"
-      scaleOnPress={false}
-      onHoverIn={() => setHovered(true)}
-      onHoverOut={() => setHovered(false)}
-      style={[styles.navLinkAlvo, styles.navEntrarAlvo, hovered && styles.navEntrarAlvoHover]}
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-    >
-      <RotuloRolante texto="Entrar" ativo={hovered} estilo={styles.navEntrarTexto} altura={type.nota * 1.2} />
-      <Ionicons name="arrow-forward" size={14} color={theme.inkSoft} aria-hidden />
-    </AppPressable>
-  );
-}
-
 /**
  * Altura de uma "dobra" — cada seção da página ocupa uma tela cheia na
  * proporção 16:9 (a mesma de 1920×1080), então rolar avança de uma cena pra
@@ -1164,14 +1146,14 @@ function ConteudoWeb() {
         style={[styles.cabecalhoSticky, reduzirTransparencia && styles.cabecalhoStickySolido]}
         onLayout={(e) => setAlturaCabecalho(e.nativeEvent.layout.height)}
       >
-        {/* O cabeçalho carrega a marca e "Entrar". O menu de seções é o botão
-            flutuante do canto inferior (fim deste componente). */}
+        {/* O cabeçalho carrega só a marca. O "Entrar" saiu em 24/10/2026 (autor):
+            por ele, quem vinha do anúncio podia criar conta sem passar pela compra
+            e parar na tela de assinatura. Assinante entra pelo "Entrar" do rodapé.
+            O menu de seções é o botão flutuante do canto inferior (fim deste
+            componente). */}
         <View style={[colunaConteudo, styles.faixa, ehCompacto && styles.faixaCompacta]}>
           <View style={[styles.cabecalho, { paddingTop: insets.top + spacing.sm }]}>
             <BrandLogotype width={104} />
-            <View style={styles.cabecalhoAcoes}>
-              <LinkEntrar />
-            </View>
           </View>
         </View>
       </View>
@@ -1806,7 +1788,6 @@ function ConteudoWeb() {
               </View>
               <View style={styles.rodapeColuna}>
                 <Text style={styles.rodapeTitulo}>Conta</Text>
-                <AppPressable href="/sign-up" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Criar conta</Text></AppPressable>
                 <AppPressable href="/baixar" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Baixar o app</Text></AppPressable>
                 <AppPressable href="/sign-in" style={styles.rodapeLinkAlvo}><Text style={styles.rodapeLink}>Entrar</Text></AppPressable>
               </View>
@@ -1916,24 +1897,6 @@ const styles = StyleSheet.create({
   // 8/4 (o `spacing.xs` que estava aqui, já que o `paddingTop` da linha de
   // cima sobrescreve só o topo) ficava 3px abaixo — visível no logotipo.
   cabecalho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, paddingBottom: spacing.sm - 1 },
-  cabecalhoAcoes: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: spacing.md, flex: 1 },
-  navLinkAlvo: {
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: theme.rule,
-    backgroundColor: theme.paperRaised,
-    ...({ transitionProperty: 'border-color, background-color, box-shadow', transitionDuration: '180ms' } as any),
-  },
-  // Secundário: quem chega pelo anúncio ainda não tem conta, então o verde fica com o botão de compra.
-  navEntrarAlvo: { borderColor: theme.ruleStrong },
-  navEntrarAlvoHover: { borderColor: theme.accent2, backgroundColor: theme.hover },
-  navEntrarTexto: { color: theme.ink, fontSize: type.nota, lineHeight: type.nota * 1.2, fontFamily: fonts.regular },
   instagramCabecalhoHover: { borderColor: theme.ruleStrong, backgroundColor: theme.hover },
 
   palcoHero: { position: 'relative' },
