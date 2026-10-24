@@ -1932,7 +1932,7 @@ const styles = StyleSheet.create({
   cabecalho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, paddingBottom: spacing.sm - 1 },
   cabecalhoAcoes: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: spacing.md, flex: 1 },
   navLinkAlvo: {
-    minHeight: 36,
+    minHeight: 44,
     paddingHorizontal: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',

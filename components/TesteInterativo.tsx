@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   passoFeito: { backgroundColor: theme.accent2 },
   passoNumeroTexto: { color: theme.accent2, fontFamily: fonts.regular, fontSize: type.micro },
   passoTexto: { flex: 1, color: theme.inkSoft, fontFamily: fonts.light, fontSize: type.nota, lineHeight: 21, ...({ textWrap: 'balance' } as any) },
-  copiar: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, alignSelf: 'flex-start', minHeight: 40, paddingHorizontal: spacing.md, borderRadius: radius.pill, borderWidth: 1, borderColor: theme.ruleStrong },
+  copiar: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, alignSelf: 'flex-start', minHeight: 44, paddingHorizontal: spacing.md, borderRadius: radius.pill, borderWidth: 1, borderColor: theme.ruleStrong },
   copiarTexto: { color: theme.accent2, fontFamily: fonts.regular, fontSize: type.nota },
   nota: { color: theme.inkSoft, fontFamily: fonts.light, fontSize: type.micro, ...({ textWrap: 'balance' } as any) },
 });
