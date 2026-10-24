@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import * as Linking from 'expo-linking';
+import { destinoSuporte } from '@/lib/checkout-assinatura';
 import { ActivityIndicator, StyleSheet, Text } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Alert } from '@/lib/alerta';
@@ -21,11 +23,25 @@ import AppPressable from './AppPressable';
  * O aviso de tabela indisponível aparece na tela, e não só dentro do arquivo:
  * uma cópia incompleta que se apresenta como completa é pior que um erro.
  */
-export default function BaixarMeusDadosBotao({ rotulo }: { rotulo?: string }) {
+export default function BaixarMeusDadosBotao({ rotulo, acessoBloqueado = false }: { rotulo?: string; acessoBloqueado?: boolean }) {
   const { session } = useSession();
   const [gerando, setGerando] = useState(false);
 
   async function baixar() {
+    // As leituras financeiras por RLS podem voltar vazias quando o acesso vence.
+    // Não apresentar essa resposta como uma exportação completa da conta.
+    if (acessoBloqueado) {
+      Alert.alert('Solicitar seus dados', 'O vencimento não apaga seus dados. O download direto não está disponível com o acesso bloqueado. Solicite uma cópia pelo suporte, sem precisar renovar a assinatura.', [
+        { text: 'Agora não', style: 'cancel' },
+        { text: 'Solicitar pelo suporte', onPress: () => {
+          void Linking.openURL(destinoSuporte).catch(() => {
+            console.warn('[dados] não foi possível abrir o e-mail de suporte');
+            Alert.alert('Fale com o suporte', 'Envie seu pedido de cópia para suporte@granaponto.com.br.');
+          });
+        } },
+      ]);
+      return;
+    }
     setGerando(true);
     try {
       const { nomeArquivo, contagem, indisponiveis, compartilhado } = await exportarMeusDados({
@@ -60,7 +76,7 @@ export default function BaixarMeusDadosBotao({ rotulo }: { rotulo?: string }) {
       onPress={baixar}
       disabled={gerando}
       accessibilityRole="button"
-      accessibilityLabel="Baixar uma cópia dos meus dados"
+      accessibilityLabel={acessoBloqueado ? 'Solicitar uma cópia dos meus dados pelo suporte' : 'Baixar uma cópia dos meus dados'}
       accessibilityState={{ busy: gerando, disabled: gerando }}
     >
       {gerando ? (
@@ -68,7 +84,7 @@ export default function BaixarMeusDadosBotao({ rotulo }: { rotulo?: string }) {
       ) : (
         <Ionicons name="download-outline" size={16} color={theme.inkSoft} aria-hidden />
       )}
-      <Text style={styles.texto}>{gerando ? 'Preparando seus dados…' : (rotulo ?? 'Baixar meus dados')}</Text>
+      <Text style={styles.texto}>{gerando ? 'Preparando seus dados…' : (rotulo ?? (acessoBloqueado ? 'Solicitar meus dados' : 'Baixar meus dados'))}</Text>
     </AppPressable>
   );
 }

@@ -34,7 +34,7 @@ const EMAIL_CONTATO = '[contato@granaponto.com.br](mailto:contato@granaponto.com
 
 export const POLITICA_PRIVACIDADE: DocumentoLegal = {
   titulo: 'Política de Privacidade',
-  atualizadoEm: '22 de outubro de 2026',
+  atualizadoEm: '24 de outubro de 2026',
   blocos: [
     {
       tipo: 'paragrafo',
@@ -104,7 +104,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
         'Google (Gemini), somente para gerar a resposta textual do Granabô a partir da pergunta, do contexto da conversa e dos resultados financeiros necessários para responder. O modelo não recebe acesso direto ao banco.',
         `Google (ML Kit), biblioteca que lê a foto da nota no próprio aparelho, no Android. Segundo a documentação do Google, o ML Kit não envia aos servidores do Google a imagem, o conteúdo lido nem o resultado da leitura. A biblioteca envia ao Google métricas de diagnóstico e uso: dados do aparelho e da versão do app, um identificador por instalação, configuração e tamanho da leitura, tempo de processamento, versão do recurso, eventos e códigos de erro. O Google informa que usa essas métricas para manter, melhorar e proteger as APIs. O Grana. não recebe essas métricas. A biblioteca faz parte do app e é iniciada sempre que ele abre, inclusive pelo widget, mesmo que você não use a foto da nota. Por isso, não garantimos que nenhuma métrica seja enviada sem o uso dessas funções. A base legal desse envio é o legítimo interesse (LGPD, art. 7º, IX, e art. 10): manter a leitura da foto da nota funcionando com segurança. Você pode se opor a esse tratamento. Deixar de usar a foto da nota, que é opcional, evita as métricas dessa leitura, e você também pode escrever para ${EMAIL_CONTATO}.`,
         'Google Ads e Meta, somente se você chegou por um anúncio e seguiu dali para a compra: recebem o identificador daquele clique e a informação de que a compra aconteceu, para medir a campanha. A Meta recebe ainda, se você aceitar no site, as visitas descritas na seção anterior pelo Pixel. Nenhuma das duas recebe seus dados financeiros nem seu uso do app.',
-        'Resend, serviço de e-mail: envia os e-mails da sua conta (confirmação de cadastro e troca de senha) e recebe as mensagens que você manda para contato@granaponto.com.br e suporte@granaponto.com.br. Para isso, recebe o seu endereço de e-mail e o conteúdo dessas mensagens.',
+        'Resend, serviço de e-mail: envia os e-mails da sua conta (confirmação de cadastro, troca de senha e avisos sobre prazo e estado da assinatura) e recebe as mensagens que você manda para contato@granaponto.com.br e suporte@granaponto.com.br. Para isso, recebe o seu endereço de e-mail e o conteúdo dessas mensagens. Os avisos de assinatura informam o prazo de acesso e como renovar ou atualizar a cobrança, sem incluir seus lançamentos, saldos, cartões ou metas.',
         'Google (Gmail), a caixa de e-mail em que o nosso atendimento lê e responde as suas mensagens. As mensagens que você manda para o atendimento, com os anexos, e as nossas respostas ficam guardadas nessa caixa.',
         'Cakto, se você assinar o Grana. como plano pago: o processamento do pagamento é feito inteiramente pela Cakto, que nos informa o e-mail usado na compra e o status da assinatura (ativa, atrasada, cancelada, reembolsada), só para liberar o acesso correspondente. O Grana. não recebe nem armazena dados de cartão.',
       ],

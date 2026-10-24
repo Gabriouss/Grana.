@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import * as Linking from 'expo-linking';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import SafeAreaView from '@/components/SafeAreaViewComFaixa';
@@ -8,6 +8,9 @@ import { Alert } from '@/lib/alerta';
 import BaixarMeusDadosBotao from '@/components/BaixarMeusDadosBotao';
 import ExcluirContaSheet from '@/components/ExcluirContaSheet';
 import { checkoutComEmail } from '@/lib/checkout';
+import { destinoCompra, destinoGerenciamento, destinoSuporte } from '@/lib/checkout-assinatura';
+import { calcularAvisoAssinatura, textoBloqueioAssinatura } from '@/lib/aviso-assinatura';
+import { obterResumoDadosGuardados, type ResumoDadosGuardados } from '@/lib/resumo-dados-guardados';
 import { fonts, radius, spacing, theme } from '@/lib/theme';
 import { useFlags } from '@/lib/feature-flags';
 
@@ -15,10 +18,6 @@ import { useFlags } from '@/lib/feature-flags';
    novo. A queda para os nomes da Kiwify saiu em 22/10/2026: a variável nova
    está na Vercel e no EAS desde 10/09, e a antiga só servia para mandar a
    compra a um checkout morto se a nova sumisse. */
-const checkoutConfigurado = process.env.EXPO_PUBLIC_CHECKOUT_URL;
-const destinoCompra = checkoutConfigurado?.startsWith('https://')
-  ? checkoutConfigurado
-  : 'https://granaponto.com.br/#precos';
 /* Plano anual. Só aparece quando há URL configurada: sem ela, a tela volta a
    ser exatamente o que era, com o mensal sozinho, em vez de mostrar um botão
    que leva a lugar nenhum. */
@@ -38,12 +37,6 @@ const PRECO_MENSAL = 9.9;
 const PRECO_ANUAL = 97.9;
 const reais = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 const economiaAnual = reais(PRECO_MENSAL * 12 - PRECO_ANUAL);
-
-const gerenciamentoConfigurado = process.env.EXPO_PUBLIC_BILLING_URL;
-const destinoGerenciamento = gerenciamentoConfigurado?.startsWith('https://')
-  ? gerenciamentoConfigurado
-  : null;
-const destinoSuporte = 'mailto:suporte@granaponto.com.br?subject=Ajuda%20com%20a%20cobran%C3%A7a%20do%20Grana.';
 
 export default function AssinarScreen() {
   const { ligado } = useFlags();
@@ -77,6 +70,29 @@ export default function AssinarScreen() {
     ]);
   }
   const cobrancaPendente = estado?.status === 'past_due';
+  const aviso = calcularAvisoAssinatura(estado);
+  const explicacao = textoBloqueioAssinatura(aviso);
+  const userId = session?.user.id ?? null;
+  const [resumo, setResumo] = useState<{ userId: string; dados: ResumoDadosGuardados } | null>(null);
+  const [consultandoResumo, setConsultandoResumo] = useState(false);
+  const dadosGuardados = resumo?.userId === userId ? resumo.dados : null;
+  useEffect(() => {
+    let atual = true;
+    setResumo(null);
+    if (!userId || !aviso.tipoBloqueio) { setConsultandoResumo(false); return; }
+    setConsultandoResumo(true);
+    void obterResumoDadosGuardados().then(dados => {
+      if (atual) { setResumo(dados ? { userId, dados } : null); setConsultandoResumo(false); }
+    });
+    return () => { atual = false; };
+  }, [userId, aviso.tipoBloqueio]);
+  const avisoEmail = emailDaConta && ligado('assinatura_checkout') ? (
+    <Text style={styles.avisoEmail}>
+      A compra é liberada pelo e-mail da conta. Já vai preenchido com {emailDaConta}.
+      Se mudar, o acesso não libera sozinho.
+    </Text>
+  ) : null;
+
 
   async function verificar() {
     setVerificando(true);
@@ -95,23 +111,28 @@ export default function AssinarScreen() {
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <ScrollView contentContainerStyle={styles.rolagem} keyboardShouldPersistTaps="handled">
       <View style={styles.card}>
-        <Text style={styles.eyebrow}>GRANA. COMPLETO</Text>
-        {/* O preço saiu do título e foi para os cartões de plano: com dois
-            preços na tela, cravar um deles aqui em cima contradiz o outro. */}
-        <Text style={styles.title} accessibilityRole="header">Seu controle financeiro continua.</Text>
+        <Text style={styles.eyebrow}>{explicacao ? 'SUA ASSINATURA' : 'GRANA. COMPLETO'}</Text>
+        <Text style={styles.title} accessibilityRole="header">{explicacao?.titulo ?? 'Seu controle financeiro continua.'}</Text>
         <Text style={styles.body}>
-          {/* Dizia "o assistente pelo WhatsApp". Esse canal está desligado
-              por decisão (flag `whatsapp`), e prometer num ecrã de COBRANÇA
-              algo que a pessoa não vai receber é o pior lugar possível pra
-              uma promessa vencida. O assistente agora é o Granabô, dentro do
-              próprio app. */}
-          A assinatura libera lançamentos, contas, cartões, metas e o Granabô, seu assistente dentro do app.
+          {explicacao?.corpo ?? 'A assinatura libera lançamentos, contas, cartões, metas e o Granabô, seu assistente dentro do app.'}
         </Text>
-        {estado?.status === 'past_due' && (
-          <Text style={styles.notice}>
-            O pagamento está pendente. Atualize a cobrança pelo link do e-mail da compra para manter o acesso.
-          </Text>
-        )}
+        {explicacao && consultandoResumo ? <ActivityIndicator color={theme.inkSoft} accessibilityLabel="Consultando seus dados guardados" /> : null}
+        {explicacao && dadosGuardados ? (
+          <View style={styles.resumo} accessibilityLiveRegion="polite">
+            <Text style={styles.resumoTitulo}>Guardados na sua conta</Text>
+            <View style={styles.resumoItens}>
+              {([
+                ['lancamentos', 'lançamento', 'lançamentos'], ['contas', 'conta', 'contas'],
+                ['cartoes', 'cartão', 'cartões'], ['metas', 'meta', 'metas'],
+              ] as const).map(([campo, singular, plural]) => (
+                <View key={campo} style={styles.resumoItem}>
+                  <Text style={styles.resumoNumero}>{dadosGuardados[campo].toLocaleString('pt-BR')}</Text>
+                  <Text style={styles.resumoRotulo}>{dadosGuardados[campo] === 1 ? singular : plural}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
         {sincronizacao.mensagem && (
           <Text style={styles.notice} accessibilityLiveRegion="polite">
             {sincronizacao.mensagem}
@@ -125,7 +146,7 @@ export default function AssinarScreen() {
           destinoGerenciamento ? (
             <Pressable
               accessibilityRole="button"
-              onPress={() => Linking.openURL(destinoGerenciamento)}
+              onPress={() => { if (destinoGerenciamento) void Linking.openURL(destinoGerenciamento); }}
               style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
             >
               <Text style={styles.primaryText}>Atualizar cobrança</Text>
@@ -144,6 +165,16 @@ export default function AssinarScreen() {
               </Pressable>
             </View>
           )
+        ) : explicacao ? (
+          <View style={styles.planos}>
+            <Pressable accessibilityRole="button" disabled={!ligado('assinatura_checkout')}
+              accessibilityState={{ disabled: !ligado('assinatura_checkout') }}
+              onPress={() => Linking.openURL(linkDoMensal)}
+              style={({ pressed }) => [styles.primary, pressed && styles.pressed, !ligado('assinatura_checkout') && { opacity: 0.5 }]}>
+              <Text style={styles.primaryText}>{ligado('assinatura_checkout') ? 'Renovar assinatura' : 'Pagamento indisponível no momento'}</Text>
+            </Pressable>
+            {avisoEmail}
+          </View>
         ) : (
           <View style={styles.planos}>
             {/* O anual é o foco: card com moldura de destaque, valor grande e o
@@ -200,12 +231,7 @@ export default function AssinarScreen() {
             {/* O campo continua editável do outro lado, então preencher não
                 basta: quem troca o e-mail paga e continua aqui. Dizer qual é o
                 e-mail custa uma linha e evita um suporte. */}
-            {emailDaConta && ligado('assinatura_checkout') ? (
-              <Text style={styles.avisoEmail}>
-                A compra é liberada pelo e-mail da conta. Já vai preenchido com {emailDaConta}.
-                Se mudar, o acesso não libera sozinho.
-              </Text>
-            ) : null}
+            {avisoEmail}
           </View>
         )}
         <Pressable
@@ -234,8 +260,8 @@ export default function AssinarScreen() {
       <View style={styles.saidas}>
         <Text style={styles.saidasTitulo}>Sua conta continua sua</Text>
         <Text style={styles.saidasTexto}>
-          Mesmo sem assinatura ativa, você pode sair, baixar uma cópia dos seus dados ou
-          excluir tudo de vez.
+          Mesmo sem assinatura ativa, você pode sair, solicitar seus dados ou
+          excluir a conta.
         </Text>
 
         <Pressable
@@ -252,7 +278,7 @@ export default function AssinarScreen() {
           )}
         </Pressable>
 
-        <BaixarMeusDadosBotao />
+        <BaixarMeusDadosBotao acessoBloqueado={estado?.allowed === false} />
 
         <Pressable
           accessibilityRole="button"
@@ -270,6 +296,12 @@ export default function AssinarScreen() {
 }
 
 const styles = StyleSheet.create({
+  resumo: { gap: spacing.sm },
+  resumoTitulo: { color: theme.inkSoft, fontFamily: fonts.regular, fontSize: 14, textAlign: 'center' },
+  resumoItens: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  resumoItem: { width: '44%', flexGrow: 1, alignItems: 'center', gap: spacing.xs },
+  resumoNumero: { color: theme.ink, fontFamily: fonts.regular, fontSize: 22, lineHeight: 28 },
+  resumoRotulo: { color: theme.inkSoft, fontFamily: fonts.light, fontSize: 14, lineHeight: 20 },
   avisoEmail: {
     color: theme.inkFaint,
     fontSize: 13,
