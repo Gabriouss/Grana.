@@ -59,6 +59,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
         'Notificações (opcional): guardamos o token técnico de push, o fuso horário, preferências de janela e o estado de entrega para enviar os lembretes que você ativou. O token pode ser removido pelo app ao sair da conta ou deixar de usar o aparelho.',
         'Atendimento por e-mail: quando você escreve para contato@granaponto.com.br ou suporte@granaponto.com.br, recebemos o seu endereço de e-mail, o nome que aparece no remetente, o assunto, o texto e os anexos da mensagem, e guardamos as respostas que trocamos com você.',
         'Dados técnicos mínimos: identificador interno da conta, horários de criação/atualização dos seus registros e recibos técnicos de operações, para o funcionamento normal do banco de dados.',
+        'Dados de acesso à conta: a data de cadastro, se o e-mail foi confirmado, a data e a hora do último login com e-mail e senha e a última vez que o app renovou a sua sessão.',
       ],
     },
     {
@@ -78,6 +79,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
         'Responder perguntas financeiras pelo Granabô, consultando somente os dados da sua própria conta e guardando o histórico para manter a conversa.',
         'Manter sua sessão conectada com segurança entre usos do app.',
         'Enviar os e-mails da sua conta (confirmação de cadastro e troca de senha) e responder às mensagens que você manda para o nosso atendimento.',
+        `Consultar os dados de acesso da sua conta numa ferramenta interna da equipe, para atender você no suporte e conferir o estado da sua assinatura, e acompanhar o uso do app, conta a conta e em números totais. A base legal é a execução do contrato (LGPD, art. 7º, V) e, para o acompanhamento de uso, o legítimo interesse (LGPD, art. 7º, IX, e art. 10). Você pode se opor a esse acompanhamento escrevendo para ${EMAIL_CONTATO}.`,
       ],
     },
     {
@@ -155,7 +157,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
     {
       tipo: 'paragrafo',
       texto:
-        'O acesso aos seus dados no banco é restrito por políticas de Row Level Security; cada conta só enxerga os próprios dados, mesmo internamente. No aparelho, a sessão de login é armazenada de forma criptografada. No Android, o bloqueio de captura de tela vem ligado e você pode desligá-lo em Perfil; no iPhone e na versão web o Grana. não bloqueia capturas de tela.',
+        'O acesso aos seus dados no banco é restrito por políticas de Row Level Security: pelo app, cada conta só enxerga os próprios dados. A equipe do Grana. usa uma ferramenta interna, protegida por senha e código de autenticação, que mostra de cada conta o e-mail, a data de cadastro, as datas do último login e do último acesso e o estado da assinatura, para atendimento e operação do serviço. Essa ferramenta não mostra lançamentos, saldos, cartões nem metas. A equipe só lida com os seus dados financeiros quando você pede uma cópia deles pelo atendimento, quando você os envia, por exemplo num print anexado a um feedback ou a um e-mail, ou quando é preciso investigar um problema que você relatou. No aparelho, a sessão de login é armazenada de forma criptografada. No Android, o bloqueio de captura de tela vem ligado e você pode desligá-lo em Perfil; no iPhone e na versão web o Grana. não bloqueia capturas de tela.',
     },
     { tipo: 'subtitulo', texto: '8. Crianças e adolescentes' },
     {
