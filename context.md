@@ -91,6 +91,23 @@ O histórico e a evidência da exposição permanecem na seção datada de 16/09
 
 ---
 
+## 24/10/2026 (M1, Claude direto com o autor): skill Leis de UI e auditoria da landing
+
+1. **Pedido:** o autor mandou a lista "20 leis de UX para o Claude melhorar suas interfaces" ("estuda todas esses conceitos") e depois: "Pode transformar em uma skill de auditoria, nomeie ela como Leis de UI. Use ela para auditar a landing page".
+2. **Feito:** skill `leis-de-ui` em `.claude/skills/leis-de-ui/` e cópia igual em `.agents/skills/leis-de-ui/` (o time Codex lê dali). `SKILL.md` com travas, as 20 leis com limiar e gravidade, formato do achado (regra 16) e relatório com placar 20/20. `scripts/medir.py` (Playwright em Python, só leitura) mede alvos de toque, interativos na primeira dobra, estilos de botão, LCP/CLS também com 4G lento + CPU 4x, elementos fixos, saídas da página, viúvas e parágrafos longos. Ele recusa o aviso de cookies (não gera `PageView` falso na campanha) e nunca clica em comprar.
+3. **Auditoria da landing** (produção, 390 e 1440 px; 360 e 768 na primeira passada). Relatório completo em `E:/Grana-temporarios/leis-de-ui/2026-10-24-landing/relatorio.md`, com prints e `medidas.json`. Nada foi corrigido: correção depende de pedido do autor.
+   - **A1 P1 confirmado (Von Restorff):** o "Entrar" do cabeçalho tem fundo verde sólido e a sombra do CTA principal (`app/index.tsx:1947-1951`), e os CTAs de compra são translúcidos com borda (`:2004-2024`). Sem decisão do autor achada; vem de `e0d7ce4e`.
+   - **A2 P1 confirmado (regra da landing):** "Ver detalhes do painel" abre `/telas/inicio-web.png` em aba nova (`components/PainelWebDestaque.tsx:62-66`), fora das exceções aceitas.
+   - **A3 P2 (Doherty):** LCP de 7,0 s em 4G lento + CPU 4x (0,76 s sem limitação); o LCP é `/notebook/tela-mobile-2-800.webp` (`app/index.tsx:862`), sem `preload`. Causa NÃO confirmada (hipóteses: pedido só depois do JS ou revelação do herói esperando a hidratação).
+   - **A4 P2 confirmado (regra 29):** seis viúvas reais em 390. O `text-wrap: pretty` está aplicado e não as tira no Chromium; `balance` tirou no mesmo elemento. O texto da regra 29 ("na web, o CSS garante") está errado e precisa de correção.
+   - **Recomendações que dependem do autor:** garantia de 7 dias perto do preço (A5), juntar as duas seções de perguntas num acordeão (A6), ação fixa "Ver os planos" no celular (A7). P3: Granabô narrador cobrindo texto (A8), alvos de 36 a 40 px (A9), aviso de cookies longo, mudança só com revisão de LGPD (A10), herói do celular com captura de computador ilegível (A11).
+   - **Pergunta ao autor:** os próximos Reels dizem "faz seu teste gratuito" e o preço diz "Sem período de teste".
+4. **Descartado:** apontar como defeito a ordem preço → objeções → garantia → FAQ e os rótulos dos CTAs, que têm decisão registrada no código (estrutura de 13 blocos de 13/09, rótulos de 17/09); entraram como recomendação. Viúvas dentro de mockup (nome de loja, "R$ 172,02/dia") foram descartadas.
+5. **O que deu errado:** a primeira passada do medidor tirou todos os prints iguais ao topo. A landing rola num contêiner com `scroll-snap`, onde `scrollTo()` não move; o medidor passou a usar `scrollTop`. A fonte dos botões saía "Times New Roman" porque o RNW põe a fonte no filho do botão; corrigido. Na leitura da campanha que veio antes, na mesma sessão, a paginação da Graph imprimiu o `META_ACCESS_TOKEN` na saída local; o JSON salvo foi limpo e o autor decidiu não trocar o token.
+6. **Não verificado:** aparelho real (Safari do iPhone, Chrome do Android, navegador interno do Instagram), rede real, leitor de tela, lançamento completo no simulador do celular, `prefers-reduced-motion`. O medidor foi validado só contra a landing.
+
+---
+
 ## 24/10/2026 (M1, Claude Code): API de Conversões na Cakto e método 1-1-10 adaptado para o próximo teste
 
 1. **Pedido:** o autor mandou um Reels de terceiro (Guilhermo Pressi, `instagram.com/p/De2eTBqNJHJ`, 23/10) sobre a estrutura 1-1-10 no Meta Ads e pediu "Adapte para nossa realidade"; depois, "Nós vamos fazer isso com os criativos novos que estamos produzindo com narrações e apresentadores reais", e "Atualiza tudo". Vídeo e transcrição local (faster-whisper, sem crédito) em `E:/Grana-temporarios/reels-instagram/De2eTBqNJHJ/`.
