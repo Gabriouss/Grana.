@@ -12,14 +12,14 @@ class Relogio extends Date { constructor(...a) { super(...(a.length ? a : [agora
 class ErroIntegracao extends Error { constructor(codigo, mensagem, status = 502) { super(mensagem); this.integracao = true; this.codigo = codigo; this.status = status; } }
 const PROIBIDO = 'CANARIO_NAO_PODE_SAIR';
 
-function carregarAdaptador(http, { configurado = true } = {}) {
+function carregarAdaptador(http, { configurado = true, simular = false } = {}) {
   const m = { exports: {} };
   vm.runInNewContext(fs.readFileSync(path.join(repo, 'tools/admin-local/adaptadores/supabase.cjs'), 'utf8'), {
     module: m, exports: m.exports, Date: Relogio, console, Buffer,
     process: { env: new Proxy({}, { get() { throw new Error('ENV REAL PROIBIDO'); } }) },
     fetch() { throw new Error('REDE REAL PROIBIDA'); },
     require: (id) => {
-      if (id === '../config.cjs') return { RAIZ: repo, ler: () => 'TOKEN_FICTICIO', tem: () => configurado, refSupabase: () => 'ref-ficticia' };
+      if (id === '../config.cjs') return { RAIZ: repo, SIMULAR: simular, ler: () => 'TOKEN_FICTICIO', tem: () => configurado, refSupabase: () => 'ref-ficticia' };
       if (id === './_http.cjs') return { pedirJson: async (...a) => http(...a), ErroIntegracao };
       if (id === './git-local.cjs' || id === './recibos-funcoes.cjs') return {};
       if (id === 'fs') return fs;
@@ -58,7 +58,7 @@ async function test(nome, fn) { await fn(); n++; console.log('OK ' + nome); }
     assert.ok(!/where lower\(u\.email\)/.test(q), 'lista não filtra por e-mail');
     assert.ok(!/\b(insert|update|delete|drop|alter|grant)\b/i.test(q), 'só leitura');
     assert.equal(JSON.stringify(r).includes(PROIBIDO), false, 'colunas extras não saem');
-    assert.deepEqual(r.contas.map((c) => c.email), ['an•••@example.com', 'b•••@example.org', 'c•••@example.net', 'se•••@example.com']);
+    assert.deepEqual(r.contas.map((c) => c.email), ['an•••@e•••.com', 'b•••@e•••.org', 'c•••@e•••.net', 'se•••@e•••.com']);
     assert.ok(!JSON.stringify(r).includes('ana.souza'), 'e-mail completo não sai na lista');
     assert.deepEqual(Object.keys(r.contas[0]).sort(), ['assinatura', 'cadastro', 'email', 'emailConfirmado', 'ultimoAcesso', 'ultimoLogin']);
     assert.equal(r.busca, false);
@@ -93,6 +93,21 @@ async function test(nome, fn) { await fn(); n++; console.log('OK ' + nome); }
     let chamadas = 0;
     const semToken = carregarAdaptador(() => { chamadas++; return { status: 201, dados: [] }; }, { configurado: false });
     assert.equal((await semToken.contas()).status, 'ausente'); assert.equal(chamadas, 0);
+  });
+
+  await test('modo simulado não lê contas reais, nem na busca (L-01 da revisão LGPD)', async () => {
+    let chamadas = 0;
+    const sb = carregarAdaptador(() => { chamadas++; return { status: 201, dados: [{ contas: linhas }] }; }, { simular: true });
+    assert.equal((await sb.contas()).status, 'ausente');
+    assert.equal((await sb.contas('ana.souza@example.com')).status, 'ausente');
+    assert.equal(chamadas, 0);
+  });
+
+  await test('máscara: domínio inteiro só nos provedores grandes (L-04 da revisão LGPD)', async () => {
+    const emails = ['fulano@gmail.com', 'fu@empresa.com.br', 'x@familia.org', 'maria@sub.dominio.net.br', 'jo@yahoo.com.br', 'ab@ex.co.uk'];
+    const sb = carregarAdaptador(() => ({ status: 201, dados: [{ contas: emails.map((email) => ({ email })) }] }));
+    assert.deepEqual((await sb.contas()).contas.map((c) => c.email),
+      ['fu•••@gmail.com', 'f•••@e•••.com.br', 'x•••@f•••.org', 'ma•••@s•••.net.br', 'j•••@yahoo.com.br', 'a•••@e•••.co.uk']);
   });
 
   await test('rota: sessão completa, só o filtro email, busca fora do cache', async () => {
@@ -159,7 +174,7 @@ async function test(nome, fn) { await fn(); n++; console.log('OK ' + nome); }
     await vm.runInNewContext('montar(raiz, ctx)', sandbox);
     const t = texto(raiz);
     assert.deepEqual(blocos, ['/api/supabase/contas']);
-    for (const esperado of ['an•••@example.com', '(e-mail não confirmado)', 'Cortesia', 'Assinatura paga vencida', 'Sem assinatura', 'nunca', 'sem registro', 'DH(2026-10-24T10:00:00.000Z)', 'Acessaram em 7 dias']) {
+    for (const esperado of ['an•••@e•••.com', '(e-mail não confirmado)', 'Cortesia', 'Assinatura paga vencida', 'Sem assinatura', 'nunca', 'sem registro', 'DH(2026-10-24T10:00:00.000Z)', 'Acessaram em 7 dias']) {
       assert.ok(t.includes(esperado), esperado);
     }
     assert.ok(!t.includes('ana.souza'));

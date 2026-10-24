@@ -8,7 +8,7 @@ export async function montar(raiz, ctx) {
     h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Atualizar', onclick: () => ctx.recarregar() }),
   ]);
 
-  raiz.appendChild(h('p', { class: 'nota-explicativa', texto: 'Na lista, o e-mail aparece só pelo começo. Para ver a conta inteira, busque pelo e-mail completo. Último login é a última vez que a pessoa entrou com e-mail e senha. Último acesso é a última vez que o app renovou a sessão dela, com precisão de cerca de uma hora. Os dados ficam só neste computador.' }));
+  raiz.appendChild(h('p', { class: 'nota-explicativa', texto: 'Na lista, o e-mail aparece cortado, e o domínio também, menos em provedores grandes como Gmail e Hotmail. Para ver a conta inteira, busque pelo e-mail completo. Último login é a última vez que a pessoa entrou com e-mail e senha. Último acesso é a última vez que o app renovou a sessão dela, com precisão de cerca de uma hora. Os dados ficam só neste computador.' }));
 
   const campo = h('input', { id: 'contas-email', type: 'email', placeholder: 'nome@example.com', autocomplete: 'off', spellcheck: 'false' });
   const limpar = h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Ver todas', hidden: true });

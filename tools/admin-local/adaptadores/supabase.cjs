@@ -9,7 +9,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { RAIZ, ler, tem, refSupabase } = require('../config.cjs');
+const { RAIZ, SIMULAR, ler, tem, refSupabase } = require('../config.cjs');
 const { pedirJson, ErroIntegracao } = require('./_http.cjs');
 const gitLocal = require('./git-local.cjs');
 const recibos = require('./recibos-funcoes.cjs');
@@ -123,13 +123,25 @@ const LIMITE_CONTAS = 500;
 const ORIGEM_ASSINATURA = { interno: 'cortesia', cakto: 'venda', kiwify: 'venda' };
 const isoOuNulo = (v) => typeof v === 'string' && Number.isFinite(Date.parse(v)) ? new Date(v).toISOString() : null;
 
+// Domínio de empresa ou de família identifica a pessoa mesmo com o começo do e-mail cortado
+// (revisão LGPD do Lynx, 24/10/2026, L-04): só os provedores grandes saem inteiros.
+const PROVEDORES_COMUNS = new Set(['gmail.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'yahoo.com', 'yahoo.com.br', 'live.com', 'uol.com.br', 'bol.com.br']);
+const SUFIXOS_DUPLOS = new Set(['com.br', 'net.br', 'org.br', 'gov.br', 'edu.br', 'co.uk']);
+
 function mascararEmail(email) {
   const [local, dominio] = email.split('@');
   if (!local || !dominio) return 'e-mail fora do padrão';
-  return `${local.slice(0, local.length > 2 ? 2 : 1)}•••@${dominio}`;
+  const inicio = `${local.slice(0, local.length > 2 ? 2 : 1)}•••@`;
+  if (PROVEDORES_COMUNS.has(dominio)) return inicio + dominio;
+  const partes = dominio.split('.');
+  const sufixo = partes.length > 2 && SUFIXOS_DUPLOS.has(partes.slice(-2).join('.')) ? partes.slice(-2).join('.') : partes.slice(-1)[0];
+  return `${inicio}${dominio[0]}•••.${sufixo}`;
 }
 
 async function contas(busca) {
+  // QA de agente opera o painel com o mesmo .env; no modo simulado esta tela não lê produção
+  // (revisão LGPD do Lynx, 24/10/2026, L-01).
+  if (SIMULAR) return ausente('A tela Contas não abre no modo simulado: ela só lê contas reais.');
   const falta = pronto();
   if (falta) return falta;
   const email = busca == null ? null : String(busca).trim().toLowerCase();
