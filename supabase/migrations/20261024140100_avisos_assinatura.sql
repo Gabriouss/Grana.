@@ -60,7 +60,10 @@ begin
       or (greatest(r.access_until,case when r.status='past_due' then r.grace_until end) = prazo
         and (r.status='active' or r.id<s.id)))) then return null;
   end if;
-  select coalesce(nullif(trim(u.email),''),nullif(trim(s.email_compra),'')) into email_destino
+  -- email_compra é histórico de cobrança e pode pertencer a quem presenteou
+  -- a assinatura. Sem e-mail atual da conta não existe prova segura para
+  -- usar esse endereço como reserva; conta apagada/ausente nunca recebe.
+  select nullif(trim(u.email),'') into email_destino
     from auth.users u where u.id=s.user_id and u.deleted_at is null and not coalesce(u.is_anonymous,false)
     and (u.banned_until is null or u.banned_until <= statement_timestamp());
   if email_destino is null then return null; end if;
