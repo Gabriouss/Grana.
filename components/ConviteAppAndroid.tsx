@@ -5,6 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
 import { obterUrlDownloadAndroid } from '@/lib/download-app';
 import { deveConvidarParaAppAndroid, plataformaDoNavegador } from '@/lib/plataforma-web';
+import { MODO_TESTE } from '@/lib/modo-teste';
 import AppModal from './AppModal';
 import AppPressable from './AppPressable';
 import AccessibleModalPanel from './AccessibleModalPanel';
@@ -39,7 +40,9 @@ export default function ConviteAppAndroid() {
   const urlDownload = obterUrlDownloadAndroid();
 
   useEffect(() => {
-    if (Platform.OS !== 'web' || !urlDownload) return;
+    /* Nunca no simulador da landing (autor, 24/10/2026): a sessão fictícia de
+       `lib/modo-teste.ts` abria o convite, e o botão tirava a pessoa da página. */
+    if (Platform.OS !== 'web' || !urlDownload || MODO_TESTE) return;
     /* Só no navegador de um Android (achado do Flare, 30/09/2026): no iPhone,
        no iPad e no computador o `.apk` não instala. Ver lib/plataforma-web.ts. */
     const nav = typeof navigator === 'undefined' ? undefined : navigator;

@@ -75,7 +75,7 @@ ok('só Android é convidado a baixar o APK');
 
 /* ── 2. O componente real ─────────────────────────────────────────────── */
 /** Monta o componente com um navegador e devolve o que ele fez. */
-async function montarConvite({ ua, toque = 0, os = 'web', url = 'https://granaponto.com.br/baixar', semNavigator = false, jaVisto = false }) {
+async function montarConvite({ ua, toque = 0, os = 'web', url = 'https://granaponto.com.br/baixar', semNavigator = false, jaVisto = false, modoTeste = false }) {
   const registro = { consultouArmazenamento: 0, abriu: false };
   const componente = executar('components/ConviteAppAndroid.tsx', {
     ...(semNavigator ? {} : { navigator: { userAgent: ua, maxTouchPoints: toque } }),
@@ -107,6 +107,7 @@ async function montarConvite({ ua, toque = 0, os = 'web', url = 'https://granapo
         },
         '@/lib/download-app': { obterUrlDownloadAndroid: () => url },
         '@/lib/plataforma-web': plataforma,
+        '@/lib/modo-teste': { MODO_TESTE: modoTeste },
         './AppModal': { __esModule: true, default: 'AppModal' },
         './AppPressable': { __esModule: true, default: 'AppPressable' },
         './AccessibleModalPanel': { __esModule: true, default: 'AccessibleModalPanel' },
@@ -151,6 +152,10 @@ async function montarConvite({ ua, toque = 0, os = 'web', url = 'https://granapo
   assert.deepEqual({ ...(await montarConvite({ ua: UA.androidChrome, url: null })) }, { consultouArmazenamento: 0, abriu: false }, 'sem endereço de download');
   assert.deepEqual({ ...(await montarConvite({ semNavigator: true })) }, { consultouArmazenamento: 0, abriu: false }, 'sem navigator');
   ok('app instalado, sem endereço de download ou sem navigator: nada muda');
+
+  /* Simulador da landing (autor, 24/10/2026): nem num Android o convite abre. */
+  assert.deepEqual({ ...(await montarConvite({ ua: UA.androidChrome, toque: 5, modoTeste: true })) }, { consultouArmazenamento: 0, abriu: false }, 'modo teste');
+  ok('simulador da landing: o convite não aparece nem no Android');
 
   console.log(`\n${checagens} checagens do convite do app Android passaram — 0 falhas`);
 })().catch((erro) => {
