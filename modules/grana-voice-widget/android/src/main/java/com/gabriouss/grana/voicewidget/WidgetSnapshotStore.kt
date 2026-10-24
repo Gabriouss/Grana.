@@ -25,6 +25,8 @@ data class CompromissoWidget(
   val dueDate: String,
   val overdue: Boolean,
   val recurring: Boolean,
+  /** Já paga; o app só manda paga que vence no mês atual. */
+  val paid: Boolean,
 )
 
 data class CofrinhoWidget(
@@ -42,7 +44,7 @@ data class SnapshotWidgets(
   val privacyHidden: Boolean,
   val safeToSpend: LivreWidget,
   val nextCommitment: CompromissoWidget?,
-  /** Atrasadas de qualquer mês e pendentes do mês atual, por vencimento. */
+  /** Atrasadas de qualquer mês e todas as do mês atual, pagas no fim. */
   val commitments: List<CompromissoWidget>,
   /** Quantas são ao todo; a lista vem limitada pelo app. */
   val commitmentsCount: Int,
@@ -142,6 +144,7 @@ object WidgetSnapshotStore {
     dueDate = objeto.getString("dueDate"),
     overdue = objeto.optBoolean("overdue"),
     recurring = objeto.optBoolean("recurring"),
+    paid = objeto.optBoolean("paid"),
   )
 
   private fun interpretar(json: String): SnapshotWidgets? {

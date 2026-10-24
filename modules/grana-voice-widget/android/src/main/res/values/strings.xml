@@ -35,7 +35,7 @@
   <string name="grana_central_boleto">Boleto</string>
 
   <!-- Widget de contas do mês (antes "Próximo compromisso", que mostrava uma
-       conta só). Lista as atrasadas de qualquer mês e as pendentes do mês. -->
+       conta só). Lista as atrasadas de qualquer mês e todas as do mês, pagas no fim. -->
   <string name="grana_compromisso_widget_rotulo">Grana. Contas do mês</string>
   <string name="grana_compromisso_widget_descricao">Veja as contas do mês e as que estão atrasadas.</string>
   <string name="grana_compromisso_titulo">Contas do mês</string>
@@ -45,6 +45,7 @@
   <string name="grana_compromisso_abrir">Toque para ver suas contas</string>
   <string name="grana_compromisso_linha_atrasado">%1$s · atrasado</string>
   <string name="grana_compromisso_linha_recorrente">%1$s · ↻</string>
+  <string name="grana_compromisso_linha_paga">%1$s · paga</string>
   <plurals name="grana_compromisso_atrasadas">
     <item quantity="one">%d ATRASADA</item>
     <item quantity="other">%d ATRASADAS</item>

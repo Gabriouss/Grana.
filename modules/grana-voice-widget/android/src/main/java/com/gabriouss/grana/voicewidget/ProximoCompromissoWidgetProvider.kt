@@ -8,8 +8,9 @@ import android.view.View
 import android.widget.RemoteViews
 
 /**
- * Widget de contas do mês: as atrasadas de qualquer mês e as pendentes do mês
- * atual, uma por linha, com "+N contas" quando não cabem todas.
+ * Widget de contas do mês: as atrasadas de qualquer mês e todas as do mês
+ * atual (as pagas no fim, escritas "paga"), uma por linha, com "+N contas"
+ * quando não cabem todas.
  *
  * Até 19/09/2026 mostrava UMA conta, a de vencimento mais antigo. Um único
  * boleto atrasado prendia o widget nele e as contas do mês nunca apareciam.
@@ -55,8 +56,12 @@ class ProximoCompromissoWidgetProvider : GranaResumoWidgetProvider() {
           context.resources.getQuantityString(R.plurals.grana_compromisso_atrasadas, atrasadas, atrasadas),
         )
         views.setTextColor(R.id.grana_compromisso_status, context.getColor(R.color.grana_widget_perigo))
-      } else {
+      } else if (contas.any { !it.paid }) {
         views.setTextViewText(R.id.grana_compromisso_status, context.getString(R.string.grana_compromisso_proximo))
+        views.setTextColor(R.id.grana_compromisso_status, context.getColor(R.color.grana_widget_menta))
+      } else {
+        /* Mês todo pago (24/10/2026): as contas aparecem, marcadas "paga". */
+        views.setTextViewText(R.id.grana_compromisso_status, context.getString(R.string.grana_compromisso_em_dia))
         views.setTextColor(R.id.grana_compromisso_status, context.getColor(R.color.grana_widget_menta))
       }
 
@@ -93,6 +98,7 @@ class ProximoCompromissoWidgetProvider : GranaResumoWidgetProvider() {
 
     val vencimento = WidgetText.vencimento(conta.dueDate)
     val data = when {
+      conta.paid -> context.getString(R.string.grana_compromisso_linha_paga, vencimento)
       conta.overdue -> context.getString(R.string.grana_compromisso_linha_atrasado, vencimento)
       conta.recurring -> context.getString(R.string.grana_compromisso_linha_recorrente, vencimento)
       else -> vencimento

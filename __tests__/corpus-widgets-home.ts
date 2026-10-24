@@ -74,19 +74,43 @@ conferir('ignora boletos pagos', selecionarProximoCompromisso([bill({ id: 'pago'
     bill({ id: 'setembro-pago', due_date: '2026-09-05', status: 'paid' }),
     bill({ id: 'setembro-19', due_date: '2026-09-19' }),
   ], dia19);
-  conferir('agosto atrasado aparece junto com as de setembro, em ordem de vencimento',
-    lista.itens.map((c) => c.id).join(',') === 'agosto-atrasado,setembro-10,setembro-19,setembro-25', lista.itens.map((c) => c.id));
+  conferir('agosto atrasado aparece junto com as de setembro, pendentes por vencimento e a paga no fim',
+    lista.itens.map((c) => c.id).join(',') === 'agosto-atrasado,setembro-10,setembro-19,setembro-25,setembro-pago', lista.itens.map((c) => c.id));
   conferir('agosto e o dia 10 de setembro saem como atrasados',
     lista.itens.filter((c) => c.overdue).map((c) => c.id).join(',') === 'agosto-atrasado,setembro-10', lista.itens);
   conferir('o que vence hoje ainda não é atrasado', lista.itens.find((c) => c.id === 'setembro-19')?.overdue === false);
   conferir('outubro fica fora da lista de setembro', !lista.itens.some((c) => c.id === 'outubro'));
-  conferir('boleto pago fica fora', !lista.itens.some((c) => c.id === 'setembro-pago'));
-  conferir('o total bate com a lista', lista.total === 4, lista.total);
+  /* Mudou em 24/10/2026. O autor: "widget de contas a pagar não está
+     mostrando todas as contas do mês". A tela Contas a pagar lista todas as
+     contas que vencem no mês, pagas inclusive (app/(app)/contas.tsx,
+     `monthBills`); o widget escondia as pagas e, com o mês todo pago, caía no
+     próximo vencimento, do mês SEGUINTE, sob o título "Contas do mês". */
+  conferir('conta paga do mês aparece, marcada como paga',
+    lista.itens.find((c) => c.id === 'setembro-pago')?.paid === true, lista.itens);
+  conferir('pendente não sai como paga', lista.itens.filter((c) => c.paid).map((c) => c.id).join(',') === 'setembro-pago', lista.itens);
+  conferir('paga de mês anterior fica fora', !selecionarCompromissosDoMes([bill({ id: 'agosto-pago', due_date: '2026-08-05', status: 'paid' })], dia19).itens.length);
+  conferir('o total bate com a lista', lista.total === 5, lista.total);
+
+  /* O caso do print de 24/10/2026: outubro inteiro pago, e a Cagece de
+     novembro gerada ao pagar a de outubro. O widget mostrava SÓ a de novembro. */
+  {
+    const dia24 = new Date(2026, 9, 24, 9, 57, 0);
+    const outubroPago = selecionarCompromissosDoMes([
+      bill({ id: 'cagece-out', due_date: '2026-10-07', status: 'paid', recurring: true }),
+      bill({ id: 'energia-out', due_date: '2026-10-12', status: 'paid' }),
+      bill({ id: 'internet-out', due_date: '2026-10-20', status: 'paid' }),
+      bill({ id: 'cagece-nov', due_date: '2026-11-07', recurring: true }),
+    ], dia24);
+    conferir('mês todo pago: as contas de outubro aparecem, todas pagas',
+      outubroPago.itens.map((c) => c.id).join(',') === 'cagece-out,energia-out,internet-out' && outubroPago.itens.every((c) => c.paid) && outubroPago.total === 3,
+      outubroPago.itens.map((c) => c.id));
+    conferir('a conta de novembro não entra em "Contas do mês" de outubro', !outubroPago.itens.some((c) => c.id === 'cagece-nov'));
+  }
 
   const soOutubro = selecionarCompromissosDoMes([bill({ id: 'outubro', due_date: '2026-10-02' })], dia19);
   conferir('sem nada no mês nem atrasado, mostra o próximo vencimento',
     soOutubro.itens.length === 1 && soOutubro.itens[0].id === 'outubro' && soOutubro.total === 1, soOutubro);
-  conferir('sem nenhum boleto pendente, lista vazia', selecionarCompromissosDoMes([], dia19).total === 0);
+  conferir('sem nenhum boleto, lista vazia', selecionarCompromissosDoMes([], dia19).total === 0);
 
   const muitos = selecionarCompromissosDoMes(
     Array.from({ length: 20 }, (_, i) => bill({ id: `b${String(i).padStart(2, '0')}`, due_date: `2026-09-${String(i + 1).padStart(2, '0')}` })),
@@ -238,6 +262,9 @@ conferir('rejeita depósito sem id', parseDeepLink('com.gabriouss.grana://deposi
   conferir('o provider mostra quantas ficaram de fora', /snapshot\.commitmentsCount - visiveis\.size/.test(provider));
   conferir('atrasada leva a palavra "atrasado", não só a cor', /grana_compromisso_linha_atrasado/.test(provider));
   conferir('o store lê a lista', /optJSONArray\("commitments"\)/.test(store));
+  conferir('o store lê se a conta está paga', /paid = objeto\.optBoolean\("paid"\)/.test(store));
+  conferir('paga leva a palavra "paga", não só a cor', /conta\.paid -> context\.getString\(R\.string\.grana_compromisso_linha_paga/.test(provider));
+  conferir('mês todo pago diz "EM DIA", não "A VENCER"', /contas\.any \{ !it\.paid \}/.test(provider) && /grana_compromisso_em_dia/.test(provider));
   conferir('o store aceita o snapshot antigo', /\?: listOfNotNull\(compromisso\)/.test(store));
   conferir('o layout tem o contêiner da lista', /android:id="@\+id\/grana_compromisso_lista"/.test(layout));
 }

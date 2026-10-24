@@ -8,6 +8,8 @@ export type CompromissoDoWidget = {
   dueDate: string;
   overdue: boolean;
   recurring: boolean;
+  /** Já paga. Entra só quando vence no mês atual, como na tela Contas a pagar. */
+  paid: boolean;
 };
 
 /** O widget mostra poucas linhas; o resto vira "+N contas". O teto só evita
@@ -28,8 +30,9 @@ export type SnapshotWidgetsV1 = {
   /** Mantido para o widget nativo de builds anteriores, que só lê este campo.
       É sempre o primeiro item de `commitments`. */
   nextCommitment: null | CompromissoDoWidget;
-  /** Atrasados de qualquer mês e os pendentes do mês atual, por vencimento.
-      Sem nenhum dos dois, o próximo vencimento sozinho. Limitado a
+  /** Atrasados de qualquer mês e TODAS as contas que vencem no mês atual,
+      pagas inclusive (pendentes primeiro). Sem nenhuma das duas, o próximo
+      vencimento sozinho. Limitado a
       LIMITE_COMPROMISSOS; `commitmentsCount` diz quantos são ao todo. */
   commitments: CompromissoDoWidget[];
   commitmentsCount: number;
@@ -64,8 +67,9 @@ function paraWidget(bill: Bill, hojeISO: string): CompromissoDoWidget {
     description: bill.description.trim() || 'Conta',
     amount: Number(bill.amount),
     dueDate: bill.due_date,
-    overdue: bill.due_date < hojeISO,
+    overdue: bill.status === 'due' && bill.due_date < hojeISO,
     recurring: !!bill.recurring,
+    paid: bill.status === 'paid',
   };
 }
 
@@ -76,8 +80,15 @@ export function selecionarProximoCompromisso(bills: Bill[], hoje: Date = new Dat
 }
 
 /**
- * As contas que o widget lista: as ATRASADAS, de qualquer mês, e as
- * pendentes do mês atual, em ordem de vencimento.
+ * As contas que o widget lista: as ATRASADAS, de qualquer mês, e TODAS as que
+ * vencem no mês atual, pagas inclusive. Pendentes primeiro, por vencimento;
+ * as pagas depois, para não tomarem as poucas linhas do widget.
+ *
+ * As pagas entraram em 24/10/2026. O autor: "widget de contas a pagar não está
+ * mostrando todas as contas do mês". A tela Contas a pagar lista o mês inteiro
+ * com o estado de cada conta (`monthBills`, app/(app)/contas.tsx); o widget
+ * escondia as pagas e, com o mês todo pago, mostrava só o próximo vencimento,
+ * do mês seguinte, sob o título "Contas do mês".
  *
  * Pedido do autor em 19/09/2026: "se a gente tem um boleto de agosto atrasado,
  * esse boleto de agosto precisa aparecer junto com os boletos de setembro, e
@@ -85,8 +96,8 @@ export function selecionarProximoCompromisso(bills: Bill[], hoje: Date = new Dat
  * compromisso, o de vencimento mais antigo, e um único atrasado prendia o
  * widget nele: as contas do mês nunca apareciam.
  *
- * Mês sem atrasado nem pendente: o próximo vencimento sozinho, para o widget
- * não dizer "nada pendente" no dia 30 com uma conta vencendo no dia 2.
+ * Mês sem conta nenhuma e sem atrasado: o próximo vencimento sozinho, para o
+ * widget não dizer "nada pendente" no dia 30 com uma conta vencendo no dia 2.
  */
 export function selecionarCompromissosDoMes(
   bills: Bill[],
@@ -95,7 +106,11 @@ export function selecionarCompromissosDoMes(
   const hojeISO = dataLocalISO(hoje);
   const mesAtual = hojeISO.slice(0, 7);
   const pendentes = pendentesPorVencimento(bills);
-  const doMes = pendentes.filter((bill) => bill.due_date < hojeISO || bill.due_date.slice(0, 7) === mesAtual);
+  const pendentesDoMes = pendentes.filter((bill) => bill.due_date < hojeISO || bill.due_date.slice(0, 7) === mesAtual);
+  const pagasDoMes = bills
+    .filter((bill) => bill.status === 'paid' && bill.due_date.slice(0, 7) === mesAtual)
+    .sort((a, b) => a.due_date.localeCompare(b.due_date) || a.id.localeCompare(b.id));
+  const doMes = [...pendentesDoMes, ...pagasDoMes];
   const escolhidas = doMes.length > 0 ? doMes : pendentes.slice(0, 1);
   return {
     itens: escolhidas.slice(0, LIMITE_COMPROMISSOS).map((bill) => paraWidget(bill, hojeISO)),
