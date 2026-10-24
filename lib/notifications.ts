@@ -606,8 +606,8 @@ export function sincronizarAvisosAssinatura(userId: string | null, estado?: Esta
       const cancelar = async (n: NotificationsModule.NotificationRequest) => {
         await Notifications.cancelScheduledNotificationAsync(n.identifier);
         const dados = n.content.data;
-        // Um vencimento futuro cancelado ainda não foi avisado, inclusive no logout.
-        if (dados?.etapa === 'venceu' && typeof dados.usuarioId === 'string' && typeof dados.prazo === 'string' && Date.parse(dados.prazo) > instante) {
+        // Um vencimento ainda listado no SO foi cancelado, não entregue.
+        if (dados?.etapa === 'venceu' && typeof dados.usuarioId === 'string' && typeof dados.prazo === 'string') {
           await AsyncStorage.removeItem(chaveVencimentoAvisado(dados.usuarioId));
         }
       };
