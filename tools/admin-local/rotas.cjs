@@ -261,6 +261,16 @@ const GET = {
   },
   '/api/visao-geral': async (req, res, url) => responderOk(res, await adaptador('visao-geral').resumo(comCache, forcar(url))),
   '/api/supabase/resumo': async (req, res, url) => responderOk(res, await comCache('sb-resumo', 30_000, () => adaptador('supabase').resumo(), forcar(url))),
+  // Busca por e-mail não entra no cache: dado pessoal não fica guardado no servidor local.
+  '/api/supabase/contas': async (req, res, url) => {
+    const chaves = [...url.searchParams.keys()];
+    if (chaves.some((k) => k !== 'email' && k !== 'atualizar') || url.searchParams.getAll('email').length > 1) {
+      return responderErro(res, 400, 'pedido-invalido', 'Esta leitura só aceita a busca por um e-mail.');
+    }
+    const email = url.searchParams.get('email');
+    if (email !== null) return responderOk(res, await adaptador('supabase').contas(email));
+    return responderOk(res, await comCache('sb-contas', 30_000, () => adaptador('supabase').contas(), forcar(url)));
+  },
   '/api/supabase/funcoes': async (req, res, url) => responderOk(res, await comCache('sb-funcoes', 30_000, () => adaptador('supabase').funcoes(), forcar(url))),
   '/api/supabase/migrations': async (req, res) => responderOk(res, adaptador('supabase').migrations()),
   '/api/supabase/app-release': async (req, res, url) => responderOk(res, await comCache('sb-release', 30_000, () => adaptador('supabase').appRelease(), forcar(url))),

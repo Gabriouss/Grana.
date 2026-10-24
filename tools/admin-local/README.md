@@ -60,7 +60,7 @@ está `ok`, `ausente` (falta a variável) ou com `erro`.
 
 | Integração | Variáveis usadas (só os nomes) | O que o painel faz |
 |---|---|---|
-| Supabase | `SUPABASE_ACCESS_TOKEN`, `EXPO_PUBLIC_SUPABASE_URL` | Lê projeto, Edge Functions e contagens por consultas SQL fixas, escritas no código |
+| Supabase | `SUPABASE_ACCESS_TOKEN`, `EXPO_PUBLIC_SUPABASE_URL` | Lê projeto, Edge Functions e contagens por consultas SQL fixas, escritas no código. A tela Contas (decisão do autor, 24/10/2026) lista cada conta com cadastro, último login, último acesso (renovação mais recente da sessão) e assinatura; o e-mail sai parcial na lista e completo só na busca pelo e-mail exato |
 | Vercel | `VERCEL_TOKEN` | Lê deployments e domínios; redeploy do último deployment de produção |
 | EAS | login da CLI nesta máquina (`npx eas-cli login`) | Lista builds; prepara build sem disparar |
 | GitHub | `GITHUB_TOKEN` (opcional, o repositório é público) | Lê releases do APK |
@@ -193,7 +193,7 @@ Todo pedido leva `X-Grana-Admin: 1`, menos `/api/saude`.
 - Sessão: `GET /api/sessao`, `POST /api/parear`, `POST /api/login`, `POST /api/login/totp`,
   `POST /api/sessao/renovar`, `POST /api/sair`. Contrato detalhado com o front em
   `E:/Grana-temporarios/2026-10-07-admin-panel/INTERFACE-login-anvil-keel.md`.
-- Leitura (login completo): `/api/visao-geral`, `/api/supabase/{resumo,funcoes,migrations,app-release}`,
+- Leitura (login completo): `/api/visao-geral`, `/api/supabase/{resumo,contas,funcoes,migrations,app-release}`,
   `/api/vercel/{deployments,projeto}`, `/api/eas/builds`, `/api/github/releases`,
   `/api/cakto/resumo`, `/api/git/estado`, `/api/design-system`,
   `/api/marketing/{pecas,feed,documento,calendario?mes=AAAA-MM,trafego}`.

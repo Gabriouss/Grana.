@@ -114,6 +114,70 @@ async function resumo() {
   };
 }
 
+// Lista por conta: decisão do autor em 24/10/2026 ("2 com ultimo acesso"). Rota e tela
+// próprias; resumo() continua só com números. Na lista o e-mail sai parcial, e completo só
+// na busca pelo e-mail exato. Último acesso é a renovação mais recente da sessão (o app
+// renova o token quando é usado depois de ~1 h): nada novo é gravado e o app não muda.
+const EMAIL_BUSCA = /^[a-z0-9._%+-]{1,64}@[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,24}$/;
+const LIMITE_CONTAS = 500;
+const ORIGEM_ASSINATURA = { interno: 'cortesia', cakto: 'venda', kiwify: 'venda' };
+const isoOuNulo = (v) => typeof v === 'string' && Number.isFinite(Date.parse(v)) ? new Date(v).toISOString() : null;
+
+function mascararEmail(email) {
+  const [local, dominio] = email.split('@');
+  if (!local || !dominio) return 'e-mail fora do padrão';
+  return `${local.slice(0, local.length > 2 ? 2 : 1)}•••@${dominio}`;
+}
+
+async function contas(busca) {
+  const falta = pronto();
+  if (falta) return falta;
+  const email = busca == null ? null : String(busca).trim().toLowerCase();
+  // O SQL vai como texto para a Management API: só passa e-mail sem aspas nem espaço.
+  if (email !== null && (email.length > 254 || !EMAIL_BUSCA.test(email))) {
+    throw new ErroIntegracao('pedido-invalido', 'Digite o e-mail completo da conta.', 400);
+  }
+  const linhas = await sql(`select coalesce(json_agg(c order by c.ultimo_acesso desc nulls last, c.cadastro desc), '[]'::json) as contas from (
+    select u.email, u.created_at as cadastro, u.email_confirmed_at is not null as email_confirmado,
+      u.last_sign_in_at as ultimo_login,
+      greatest(u.last_sign_in_at,
+        (select max(greatest(s.updated_at, s.refreshed_at at time zone 'UTC')) from auth.sessions s where s.user_id = u.id),
+        (select max(coalesce(t.updated_at, t.created_at)) from auth.refresh_tokens t where t.user_id = u.id::text)) as ultimo_acesso,
+      a.provider, a.status, a.access_until, a.grace_until
+    from auth.users u
+    left join lateral (select provider, status, access_until, grace_until from public.subscriptions s
+      where s.user_id = u.id order by s.access_until desc nulls last limit 1) a on true
+    ${email ? `where lower(u.email) = '${email}'` : ''}
+    order by ultimo_acesso desc nulls last, u.created_at desc
+    limit ${LIMITE_CONTAS}) c`);
+  const brutas = linhas[0] && linhas[0].contas;
+  if (!Array.isArray(brutas)) throw new ErroIntegracao('supabase-formato', 'Supabase: a lista de contas veio num formato inesperado.');
+  const agora = Date.now();
+  // DTO fechado: só estes campos saem, nunca id, IP ou aparelho da sessão.
+  const lista = brutas.map((r) => {
+    const acessoAte = isoOuNulo(r.access_until), carencia = isoOuNulo(r.grace_until);
+    const status = typeof r.status === 'string' && ['active', 'canceled', 'past_due'].includes(r.status) ? r.status : 'outro';
+    return {
+      email: typeof r.email === 'string' ? (email ? r.email : mascararEmail(r.email)) : null,
+      cadastro: isoOuNulo(r.cadastro),
+      emailConfirmado: r.email_confirmado === true,
+      ultimoLogin: isoOuNulo(r.ultimo_login),
+      ultimoAcesso: isoOuNulo(r.ultimo_acesso),
+      assinatura: typeof r.provider === 'string' ? {
+        origem: ORIGEM_ASSINATURA[r.provider] || 'outra',
+        status,
+        comAcesso: (!!acessoAte && Date.parse(acessoAte) >= agora) || (status === 'past_due' && !!carencia && Date.parse(carencia) >= agora),
+        acessoAte,
+      } : null,
+    };
+  });
+  const acessaramEm = (dias) => lista.filter((c) => c.ultimoAcesso && agora - Date.parse(c.ultimoAcesso) <= dias * 86_400_000).length;
+  return {
+    status: 'ok', busca: email !== null, contas: lista, limite: LIMITE_CONTAS,
+    acessaram: email !== null ? null : { ultimos7: acessaramEm(7), ultimos30: acessaramEm(30) },
+  };
+}
+
 function memo(fn) {
   const cache = new Map();
   return (k) => { if (!cache.has(k)) cache.set(k, fn(k)); return cache.get(k); };
@@ -236,4 +300,4 @@ async function regravarNotaRelease(versao, antes, aprovada) {
   return { status: 'ok', versao };
 }
 
-module.exports = { projeto, resumo, funcoes, migrations, appRelease, regravarNotaRelease, status };
+module.exports = { projeto, resumo, contas, funcoes, migrations, appRelease, regravarNotaRelease, status };
