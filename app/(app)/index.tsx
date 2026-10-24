@@ -19,6 +19,7 @@ import {
 import { Image } from 'expo-image';
 import AppModal from '@/components/AppModal';
 import FaixaOffline, { useRecarregarAoChegarDadoNovo } from '@/components/FaixaOffline';
+import FaixaAssinatura from '@/components/FaixaAssinatura';
 import LancamentosEmRevisao from '@/components/LancamentosEmRevisao';
 import { versaoDosLancamentos } from '@/lib/lancamentos-alterados';
 import { Alert } from '@/lib/alerta';
@@ -1668,6 +1669,8 @@ export default function InicioScreen() {
         contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudoComFab }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={theme.ink} />}
       >
+        <FaixaAssinatura />
+
         {/* Seletor Mês a Mês */}
         <FadeIn delay={30}>
           <MonthSelector
