@@ -91,6 +91,16 @@ O histórico e a evidência da exposição permanecem na seção datada de 16/09
 
 ---
 
+## 24/10/2026 (M1, direto com o autor): Microsoft Clarity na landing (`ymgmai34pz`)
+
+1. **Pedido:** `npm install @microsoft/clarity` e "quero colocar o clarity na LP", com código do projeto `ymgmai34pz` e cookies desligados por padrão nas configurações avançadas do Clarity ("foi, arrocha").
+2. **Sintoma e causa:** dos 16 cliques no link de hoje na campanha da Meta, apenas 1 gerou `ViewContent` no Pixel (que depende do aceite no aviso de cookies). Faltava visibilidade de rolagem, cliques e abandono na chegada à landing (`/`).
+3. **Arquivos:** `lib/clarity.ts` (`criarClarity`, `transporteClarityWeb`, `limparCookiesClarity`, `CLARITY_PROJECT_ID_PADRAO = 'ymgmai34pz'`), `components/ConsentimentoMarketing.tsx`, `vercel.json` (CSP para `https://www.clarity.ms`, `https://*.clarity.ms` e `https://c.bing.com` apenas na regra pública), `lib/legal-content.ts` (declaração do Microsoft Clarity na página inicial pública), `package.json` / `package-lock.json` (`@microsoft/clarity@^1.0.2`) e `__tests__/consentimento-marketing.cjs`.
+4. **Descartado:** iniciar o Clarity fora de `paginaPublicaLimpa` (nunca roda no app logado, `/sign-in`, `/admin` ou `/experimentar`); gravar cookies antes do aceite no banner (`consentV2` inicia negado e limpa `_clck`/`_clsk` ao recusar).
+5. **Verificado:** `tsc --noEmit` e suítes `consentimento-marketing`, `feedback-consentimento`, `cobranca-eventos-lgpd` e `assinatura-dados-bloqueados`. **Não verificado:** recepção da primeira sessão no painel web do Clarity em produção (depende do deploy na Vercel).
+
+---
+
 ## 24/10/2026 (M1, Claude direto com o autor): correções da auditoria Leis de UI na landing
 
 1. **Pedido:** "Pode corrigir os achados." Escolha do autor: os confirmados (A1, A2, A3, A4, A8, A9) mais as recomendações A5, A6 e A11; A7 (botão fixo "Ver os planos") ficou de fora, e A10 (texto do aviso de cookies) depende de revisão de LGPD. Esclarecimento do autor: o "teste" dos Reels é o simulador da landing, então a pergunta do relatório está resolvida. No meio do trabalho, mais dois pedidos com print: "pode remover esse botão aqui" ("Ver detalhes do painel") e "bota a cor dos botões na mesma cor do fundo dessa faixa no topo da hero".

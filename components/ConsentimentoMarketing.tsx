@@ -1,6 +1,7 @@
 import { createElement as h, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { fonts, theme } from '@/lib/theme';
 import { ABRIR_PREFERENCIAS_MARKETING, VALIDADE_CONSENTIMENTO_MS, consentimentoMarketingAtual, escolherMarketing, lerConsentimento, ouvirConsentimento } from '@/lib/consentimento-marketing';
+import { CLARITY_PROJECT_ID_PADRAO, criarClarity, limparCookiesClarity, transporteClarityWeb } from '@/lib/clarity';
 import { criarPixel, limparIdsMeta, paginaPublicaLimpa, transportePixelWeb, type PlanoPixel } from '@/lib/meta-pixel';
 
 const CHECKOUT = 'grana:checkout-marketing';
@@ -34,6 +35,12 @@ export default function ConsentimentoMarketing() {
       // Consentimento lido quando o script fica pronto: quem aceita no banner conta a visita em que aceitou.
       transportePixelWeb(window, document, () => { if (consentimentoMarketingAtual()) pixel.evento('PageView'); }),
       () => window.crypto.randomUUID());
+    const clarity = criarClarity(
+      process.env.EXPO_PUBLIC_CLARITY_PROJECT_ID || CLARITY_PROJECT_ID_PADRAO,
+      consentimentoMarketingAtual,
+      () => paginaPublicaLimpa(window.location, document.referrer),
+      transporteClarityWeb(window, document),
+    );
     let vencimento: ReturnType<typeof setTimeout>;
     function sincronizar() {
       clearTimeout(vencimento);
@@ -42,14 +49,22 @@ export default function ConsentimentoMarketing() {
       if (!escolha) setAberto(true);
       setMarketing(consentimentoMarketingAtual());
       pixel.sincronizar();
+      clarity.sincronizar();
       // O navegador limita setTimeout a ~24 dias; 180 dias direto virariam 1 ms.
       if (escolha) vencimento = setTimeout(sincronizar, Math.min(86400000, Math.max(1, escolha.data + VALIDADE_CONSENTIMENTO_MS - Date.now())));
     }
     const abrir = () => { setAberto(true); setConfigurar(true); setMarketing(consentimentoMarketingAtual()); };
-    const checkout = (evento: Event) => { pixel.evento('InitiateCheckout', (evento as CustomEvent).detail); };
+    const checkout = (evento: Event) => {
+      const plano = (evento as CustomEvent).detail as PlanoPixel;
+      pixel.evento('InitiateCheckout', plano);
+      clarity.evento(plano === 'anual' ? 'InitiateCheckout_anual' : 'InitiateCheckout_mensal');
+    };
     const alvo = document.getElementById('precos');
     const observer = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver((entries) => {
-      if (entries.some(e => e.isIntersecting)) pixel.evento('ViewContent');
+      if (entries.some(e => e.isIntersecting)) {
+        pixel.evento('ViewContent');
+        clarity.evento('ViewContent');
+      }
     }, { threshold: 0.25 });
     if (alvo) observer?.observe(alvo);
     const desligar = ouvirConsentimento(sincronizar);
@@ -57,8 +72,9 @@ export default function ConsentimentoMarketing() {
     window.addEventListener(CHECKOUT, checkout);
     document.addEventListener('visibilitychange', sincronizar);
     sincronizar();
+    clarity.evento('PageView');
     return () => {
-      clearTimeout(vencimento); desligar(); observer?.disconnect(); pixel.parar();
+      clearTimeout(vencimento); desligar(); observer?.disconnect(); pixel.parar(); clarity.parar();
       window.removeEventListener(ABRIR_PREFERENCIAS_MARKETING, abrir);
       window.removeEventListener(CHECKOUT, checkout);
       document.removeEventListener('visibilitychange', sincronizar);
@@ -66,7 +82,10 @@ export default function ConsentimentoMarketing() {
   }, []);
 
   function salvar(valor: boolean) {
-    if (!valor) limparIdsMeta(window, document);
+    if (!valor) {
+      limparIdsMeta(window, document);
+      limparCookiesClarity(window, document);
+    }
     if (!escolherMarketing(valor)) { setErro('Não foi possível guardar sua escolha neste navegador. A publicidade continua bloqueada. Tente novamente.'); return; }
     setErro(''); setAberto(false); setConfigurar(false);
     document.getElementById('preferencias-privacidade')?.focus({ preventScroll: true });

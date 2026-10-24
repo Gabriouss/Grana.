@@ -89,4 +89,80 @@ check(sdkCalls[0][0],'trackSingle');
 adapter.parar();check(adapter.pronto(),false);check(browser.fbq,undefined);check(scripts[0].removed,true);check(scripts[0].onload,null);check(sdkCalls[1][1],'revoke');check(cookies.length>0,true);
 for(const cookie of cookies)check(/^_fb[pc]=; Max-Age=0;/.test(cookie),true,'limpa só IDs de marketing');
 
+// Microsoft Clarity: inicia na landing sem cookies (consentV2 negado) e só libera cookies após aceite.
+const claritySdkCalls = [];
+const clarityMod = load('lib/clarity.ts', {
+  require: (id) => {
+    assert.equal(id, '@microsoft/clarity');
+    return {
+      default: {
+        init: (pid) => claritySdkCalls.push(['init', pid]),
+        consentV2: (opts) => claritySdkCalls.push(['consentV2', opts]),
+        event: (name) => claritySdkCalls.push(['event', name]),
+      },
+    };
+  },
+});
+check(clarityMod.CLARITY_PROJECT_ID_PADRAO, 'ymgmai34pz', 'ID padrão do Clarity configurado');
+let cConsent = false, cPublic = true, cCalls = [];
+const cTransport = {
+  iniciar: (id) => cCalls.push(['init', id]),
+  consentimento: (ok) => cCalls.push(['consent', ok]),
+  evento: (ev) => cCalls.push(['event', ev]),
+  parar: () => cCalls.push(['stop']),
+};
+for (const invalidId of ['', '   ', 'curto', 'id-invalido-com-traco']) {
+  cCalls = [];
+  const cInv = clarityMod.criarClarity(invalidId, () => true, () => true, cTransport);
+  cInv.sincronizar();
+  check(cInv.evento('PageView'), false);
+  check(cInv.estado(), 'Não configurado');
+  check(cCalls.length, 0);
+}
+cCalls = [];
+const c = clarityMod.criarClarity('ymgmai34pz', () => cConsent, () => cPublic, cTransport);
+c.sincronizar();
+check(c.estado(), 'Ativo sem cookies');
+check(cCalls, [['init', 'ymgmai34pz'], ['consent', false]], 'inicia sem cookies antes do aceite');
+check(c.evento('PageView'), true);
+check(c.evento('PageView'), false, 'PageView único por entrada');
+check(c.evento('ViewContent'), true);
+check(c.evento('ViewContent'), false, 'ViewContent único por entrada');
+check(c.evento('InitiateCheckout_mensal'), true);
+check(c.evento('InitiateCheckout_anual'), true);
+check(c.evento('Purchase'), false, 'evento fora da lista recusado');
+cConsent = true;
+c.sincronizar();
+check(c.estado(), 'Ativo com cookies');
+check(cCalls.at(-1), ['consent', true], 'aceite libera cookies no Clarity');
+cConsent = false;
+c.sincronizar();
+check(cCalls.at(-1), ['consent', false], 'revogação desliga cookies no Clarity');
+cPublic = false;
+c.sincronizar();
+check(c.estado(), 'Bloqueado fora da landing');
+check(cCalls.at(-1), ['stop'], 'sair da rota pública para o Clarity');
+
+const cCookies = [];
+let removedScript = false;
+const cWin = { location: { hostname: 'www.granaponto.com.br' }, clarity: () => {} };
+const cDoc = {
+  getElementById: (id) => (id === 'clarity-script' && claritySdkCalls.some((x) => x[0] === 'init') ? { remove() { removedScript = true; } } : null),
+  querySelector: () => null,
+  set cookie(v) { cCookies.push(v); },
+};
+const cAdapter = clarityMod.transporteClarityWeb(cWin, cDoc);
+cAdapter.iniciar('ymgmai34pz');
+check(claritySdkCalls[0], ['init', 'ymgmai34pz']);
+cAdapter.consentimento(false);
+check(JSON.parse(JSON.stringify(claritySdkCalls[1])), ['consentV2', { ad_Storage: 'denied', analytics_Storage: 'denied' }]);
+check(cCookies.every((ck) => /^_cl[cs]k=; Max-Age=0;/.test(ck)), true, 'limpa só cookies _clck e _clsk');
+cAdapter.consentimento(true);
+check(JSON.parse(JSON.stringify(claritySdkCalls[2])), ['consentV2', { ad_Storage: 'granted', analytics_Storage: 'granted' }]);
+cAdapter.evento('ViewContent');
+check(claritySdkCalls[3], ['event', 'ViewContent']);
+cAdapter.parar();
+check(removedScript, true);
+check(cWin.clarity, undefined);
+
 console.log(`consentimento-marketing: ${checks} verificações; módulos reais, zero rede/Meta.`);
