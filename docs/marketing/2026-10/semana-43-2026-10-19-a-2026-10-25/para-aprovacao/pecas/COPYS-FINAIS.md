@@ -55,3 +55,11 @@ Escrita em 21/10/2026. Aguarda aceite do autor no painel.
 **Título:** Capas dos destaques
 
 **Legenda:** Capas dos quatro destaques do perfil, na ordem Conheça, Recursos, Planos e Segurança. Elas não vão ao feed: entram só como capa de cada destaque, sem texto de publicação.
+
+## Antes de parcelar veja a fatura
+
+Escrita em 23/10/2026. Aguarda aceite do autor no painel.
+
+**Título:** Antes de parcelar veja a fatura
+
+**Legenda:** Parcelar parece leve quando a gente olha uma compra por vez. O peso aparece quando parcelas de meses diferentes chegam juntas na mesma fatura. Ver o que já está comprometido antes de passar o cartão muda a decisão. Manda pra quem parcela tudo. Link na bio.
