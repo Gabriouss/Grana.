@@ -17,6 +17,7 @@ const ROTAS_SEM_EFEITO = new Set(Object.values(ROTAS_SESSAO));
 const ROTAS = {
   'visao-geral': { modulo: 'visao-geral', titulo: 'Visão geral' },
   supabase: { modulo: 'supabase', titulo: 'Supabase' },
+  contas: { modulo: 'contas', titulo: 'Contas' },
   vercel: { modulo: 'vercel', titulo: 'Vercel' },
   eas: { modulo: 'eas', titulo: 'EAS e builds' },
   github: { modulo: 'github', titulo: 'GitHub' },
