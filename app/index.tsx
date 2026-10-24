@@ -1,4 +1,4 @@
-import { createContext, createElement, useContext, useEffect, useId, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useId, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Image, Platform, ScrollView, StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native';
 import { Redirect } from 'expo-router';
 import Head from 'expo-router/head';
@@ -9,6 +9,7 @@ import { CORTES, colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
 import AppPressable from '@/components/AppPressable';
 import BrandLogotype from '@/components/BrandLogotype';
 import NotebookAnimado from '@/components/NotebookAnimado';
+import MolduraCelular from '@/components/MolduraCelular';
 import GradeInterativa from '@/components/GradeInterativa';
 import { FaqItem } from '@/components/FaqItem';
 import RevealOnScroll from '@/components/RevealOnScroll';
@@ -855,23 +856,26 @@ function HeroStorytelling({
     </Text>
   );
 
+  /* No celular, a tela do app no celular, depois do botão (auditoria Leis de
+     UI, 24/10/2026, A11, aprovado pelo autor). Antes era a captura do painel
+     de computador reduzida a uns 326 px, ilegível, para um público que chega
+     pelo celular. Para a tela do app ficar legível o aparelho precisa de uns
+     260 px de largura; em cima do texto ele empurraria o botão para fora da
+     primeira tela, então vem embaixo dele. */
   if (ehCompacto) {
     return (
       <View style={[colunaConteudo, styles.faixa, styles.faixaCompacta, styles.heroBlocoCompacto]}>
-        {createElement('img', {
-          src: '/notebook/tela-mobile-2-800.webp',
-          alt: 'Painel do Grana. mostrando saldo, orçamento e gastos por categoria.',
-          width: 800,
-          height: 482,
-          fetchPriority: 'high',
-          style: { width: '100%', height: 'auto', maxWidth: 480, aspectRatio: 800 / 482, objectFit: 'contain', display: 'block' },
-        })}
         <View style={styles.heroTextoCompacto}>
           <Text style={[styles.eyebrow, styles.precoTextoCentralizado, styles.heroTextoSemMargem]}>{GANCHO_HERO}</Text>
           {titulo}
           <Text style={[styles.subheadline, styles.precoTextoCentralizado, styles.heroTextoSemMargem]}>{APOIO_HERO}</Text>
         </View>
         <BotaoCTA centralizado rotulo={ROTULO_CTA_DECISAO} />
+        <MolduraCelular
+          src="/telas/inicio-mobile.png?v=20260925"
+          legenda="Tela de Início do Grana. no celular, com Livre para Gastar, cofrinhos e comprometimento futuro"
+          largura={260}
+        />
       </View>
     );
   }
