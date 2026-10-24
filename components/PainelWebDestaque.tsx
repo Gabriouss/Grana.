@@ -8,20 +8,30 @@ import AppPressable from '@/components/AppPressable';
 
 const SRC = '/telas/inicio-web.png?v=20260925';
 const LEGENDA = 'Painel web do Grana. mostrando Livre para Gastar, comprometimento futuro e gastos por categoria de uma conta de exemplo';
+const ID_DETALHES = 'painel-web-ver-detalhes';
 
 /**
  * A captura do painel web, dentro de uma moldura de navegador.
  *
  * As legendas contextuais continuam fora da captura para manter a composição
- * limpa. O link para a imagem em tamanho real existe para toque, teclado e
- * leitura ampliada; no desktop, o ponteiro amplia o painel a 70% da tela
- * (PainelWebAmpliado.web.tsx).
+ * limpa. "Ver detalhes do painel" abre a captura em tamanho real numa camada
+ * da própria página (toque, teclado e leitura ampliada); antes era um link
+ * para o PNG em outra aba, e a landing não tira ninguém da página. No desktop,
+ * o ponteiro também amplia o painel a 70% da tela (PainelWebAmpliado.web.tsx).
  */
 export default function PainelWebDestaque({ compacto = false }: { compacto?: boolean }) {
   const { largura } = useBreakpoint();
   const larguraMoldura = compacto ? Math.min(largura - 64, 460) : 660;
   const camadaRef = useRef<HTMLDivElement | null>(null);
+  const detalheRef = useRef<HTMLDivElement | null>(null);
   const [aberta, setAberta] = useState(false);
+  const [detalhe, setDetalhe] = useState(false);
+
+  // Fecha e devolve o foco a quem abriu, para o teclado não recomeçar do topo.
+  function fecharDetalhe() {
+    setDetalhe(false);
+    setTimeout(() => document.getElementById(ID_DETALHES)?.focus(), 0);
+  }
 
   /* Sem hover no compacto: lá o ponteiro não existe, e um estado que só se
      alcança com mouse não deve sequer ser montado. Com Reduce Motion a
@@ -51,6 +61,14 @@ export default function PainelWebDestaque({ compacto = false }: { compacto?: boo
     };
   }, [aberta]);
 
+  // Na camada de detalhe, rolar é arrastar a captura: só Esc e o botão fecham.
+  useEffect(() => {
+    if (!detalhe || Platform.OS !== 'web') return;
+    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') fecharDetalhe(); };
+    window.addEventListener('keydown', tecla);
+    return () => window.removeEventListener('keydown', tecla);
+  }, [detalhe]);
+
   return (
     <View style={[styles.raiz, { width: larguraMoldura + 2 }]}>
       <View {...(permiteZoom ? { onMouseEnter: () => setAberta(true), onMouseLeave: saiuDoPainel } : null)}>
@@ -59,12 +77,12 @@ export default function PainelWebDestaque({ compacto = false }: { compacto?: boo
       {permiteZoom && (
         <PainelWebAmpliado src={SRC} legenda={LEGENDA} aberta={aberta} aoSair={() => setAberta(false)} camadaRef={camadaRef} />
       )}
+      <PainelWebAmpliado src={SRC} legenda={LEGENDA} aberta={detalhe} aoSair={fecharDetalhe} camadaRef={detalheRef} modo="detalhe" />
       <AppPressable
-        href={SRC}
-        target="_blank"
-        rel="noreferrer"
-        accessibilityRole="link"
-        accessibilityLabel="Abrir o painel web do Grana. em tamanho grande"
+        nativeID={ID_DETALHES}
+        onPress={() => { setAberta(false); setDetalhe(true); }}
+        accessibilityRole="button"
+        accessibilityLabel="Ver o painel web do Grana. em tamanho grande"
         style={({ hovered }) => [styles.linkAmpliar, hovered && styles.linkAmpliarHover]}
       >
         <View style={styles.linkAmpliarTexto}>

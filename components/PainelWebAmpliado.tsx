@@ -6,6 +6,10 @@ export type PropsPainelWebAmpliado = {
   aberta: boolean;
   aoSair: () => void;
   camadaRef: { current: HTMLDivElement | null };
+  /** 'ponteiro' (padrão): ampliação a 70% enquanto o mouse está no painel.
+      'detalhe': camada na própria página com a captura em tamanho real, para
+      arrastar, aberta pelo "Ver detalhes do painel". */
+  modo?: 'ponteiro' | 'detalhe';
 };
 
 export default function PainelWebAmpliado(_: PropsPainelWebAmpliado) {
