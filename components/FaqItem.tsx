@@ -4,6 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, spacing, fonts, type, lh } from '@/lib/theme';
 import AppPressable from '@/components/AppPressable';
 import { EASE_REVEAL, useReducedMotion } from '@/lib/motion';
+import { semViuva } from '@/lib/sem-viuva';
 
 type Props = {
   pergunta: string;
@@ -52,7 +53,7 @@ export function FaqItem({ pergunta, resposta, estiloExtra, abertoInicial = false
         aria-controls={respostaId}
         hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
       >
-        <Text style={styles.pergunta}>{pergunta}</Text>
+        <Text style={styles.pergunta}>{semViuva(pergunta)}</Text>
         <View style={styles.iconeWrapper} aria-hidden>
           <View
             style={
@@ -81,7 +82,7 @@ export function FaqItem({ pergunta, resposta, estiloExtra, abertoInicial = false
         style={estiloAnimado}
       >
         <View onLayout={aoMedirConteudo} style={styles.respostaMedidor}>
-          <Text style={styles.resposta}>{resposta}</Text>
+          <Text style={styles.resposta}>{semViuva(resposta)}</Text>
         </View>
       </View>
     </View>

@@ -6,6 +6,7 @@ import { corDaCategoria } from '@/lib/chart-colors';
 import { EXEMPLO_CONVERSA, EXEMPLO_LIVRE, emReais } from '@/lib/exemplo-landing';
 import RevealOnScroll from '@/components/RevealOnScroll';
 import { useEntradaNaTela } from '@/lib/motion';
+import { semViuva } from '@/lib/sem-viuva';
 
 const fonts = { regular: uiFonts.brandRegular, light: uiFonts.brandLight };
 
@@ -230,8 +231,8 @@ function Bloco({
             onLayout={(e) => aoMedirTexto(bloco.chave, Math.ceil(e.nativeEvent.layout.height))}
           >
             <Text style={styles.rotulo}>{bloco.rotulo}</Text>
-            <Text style={styles.titulo}>{bloco.titulo}</Text>
-            <Text style={styles.texto}>{bloco.texto}</Text>
+            <Text style={styles.titulo}>{semViuva(bloco.titulo)}</Text>
+            <Text style={styles.texto}>{semViuva(bloco.texto)}</Text>
           </View>
         </View>
       </View>
