@@ -1616,6 +1616,15 @@ function ConteudoWeb() {
                       centralizado={ehCompacto}
                     />
                   </View>
+                  {/* A garantia mora colada no botão (auditoria Leis de UI,
+                      24/10/2026, pedido do autor): é aqui que a pessoa pensa
+                      "e se eu não gostar?", e a faixa da garantia fica umas
+                      quatro telas abaixo. Os sete dias são o que a Cakto
+                      pratica (conferido no painel em 13/09/2026). */}
+                  <View style={[styles.precoGarantia, ehCompacto && styles.precoGarantiaCentralizada]}>
+                    <Ionicons name="shield-checkmark-outline" size={16} color={theme.accent2} aria-hidden />
+                    <Text style={styles.precoGarantiaTexto}>Garantia de sete dias: não gostou, reembolso garantido.</Text>
+                  </View>
                   {/* Condições confirmadas; detalhes de cancelamento dependem
                       da política apresentada no checkout. */}
                   <Text style={[styles.precoConfianca, ehCompacto && styles.precoTextoCentralizado]}>
@@ -2429,6 +2438,9 @@ const styles = StyleSheet.create({
   featureTexto: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: 20, fontFamily: fonts.light },
   precoCta: { marginTop: spacing.lg },
   precoConfianca: { color: theme.inkFaint, fontSize: type.legenda, fontFamily: fonts.light, marginTop: spacing.sm },
+  precoGarantia: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', gap: spacing.xs, marginTop: spacing.md },
+  precoGarantiaCentralizada: { justifyContent: 'center' },
+  precoGarantiaTexto: { flexShrink: 1, color: theme.inkSoft, fontSize: type.apoio, lineHeight: 20, fontFamily: fonts.light, ...({ textWrap: 'balance' } as any) },
 
   /* Os estilos `seguranca*` saíram com a dobra de Segurança (13/09/2026). */
 
