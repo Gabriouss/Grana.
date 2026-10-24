@@ -131,7 +131,7 @@ export default function NavFlutuanteLanding({
         >
           <View style={styles.botaoConteudo}>
             <Animated.View style={{ transform: [{ rotate: rotacao }] }}>
-              <Ionicons name={aberto ? 'close' : 'menu'} size={22} color={theme.paper} aria-hidden />
+              <Ionicons name={aberto ? 'close' : 'menu'} size={22} color={theme.accent2} aria-hidden />
             </Animated.View>
             {ehAmplo ? <Text style={styles.botaoTexto}>{aberto ? 'Fechar' : 'Explorar'}</Text> : null}
           </View>
@@ -175,20 +175,25 @@ const styles = StyleSheet.create({
   },
   itemHover: { backgroundColor: theme.paper },
   itemTexto: { color: theme.ink, fontSize: type.apoio, lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.light },
+  /* Escuro com borda, não verde: o verde sólido é só do botão de compra, para
+     ele ser o elemento de maior peso da página (auditoria Leis de UI, 24/10/2026). */
   botao: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: theme.accent,
+    backgroundColor: theme.paperRaised,
+    borderWidth: 1,
+    borderColor: theme.ruleStrong,
     alignItems: 'center',
     justifyContent: 'center',
-    ...({ boxShadow: sombras.navGatilho, transitionProperty: 'box-shadow, transform', transitionDuration: '180ms' } as any),
+    ...({ boxShadow: sombras.navGatilho, transitionProperty: 'border-color, box-shadow, transform', transitionDuration: '180ms' } as any),
   },
   botaoCompacto: { width: 44, height: 44, borderRadius: 22 },
   botaoAmplo: { width: 128, borderRadius: radius.pill },
   botaoConteudo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
-  botaoTexto: { color: theme.paper, fontSize: type.apoio, fontFamily: fonts.regular },
+  botaoTexto: { color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
   botaoHover: {
+    borderColor: theme.accent2,
     ...({ boxShadow: sombras.navGatilhoHover, transform: [{ translateY: -2 }] } as any),
   },
 });

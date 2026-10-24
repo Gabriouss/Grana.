@@ -354,7 +354,7 @@ function BotaoCTA({
             <Ionicons
               name={variante === 'secundario' ? 'arrow-down' : 'arrow-forward'}
               size={17}
-              color={variante === 'secundario' ? theme.inkFaint : theme.accent2}
+              color={variante === 'secundario' ? theme.inkFaint : theme.paper}
             />
           </View>
         </View>
@@ -409,7 +409,7 @@ function LinkEntrar() {
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
     >
       <RotuloRolante texto="Entrar" ativo={hovered} estilo={styles.navEntrarTexto} altura={type.nota * 1.2} />
-      <Ionicons name="arrow-forward" size={14} color={theme.paper} aria-hidden />
+      <Ionicons name="arrow-forward" size={14} color={theme.inkSoft} aria-hidden />
     </AppPressable>
   );
 }
@@ -1944,17 +1944,10 @@ const styles = StyleSheet.create({
     backgroundColor: theme.paperRaised,
     ...({ transitionProperty: 'border-color, background-color, box-shadow', transitionDuration: '180ms' } as any),
   },
-  navEntrarAlvo: {
-    borderColor: theme.accent,
-    backgroundColor: theme.accent,
-    ...({ boxShadow: sombras.ctaPrimario } as any),
-  },
-  navEntrarAlvoHover: {
-    borderColor: theme.accent2,
-    backgroundColor: theme.accent2,
-    ...({ boxShadow: sombras.ctaPrimarioHover } as any),
-  },
-  navEntrarTexto: { color: theme.paper, fontSize: type.nota, lineHeight: type.nota * 1.2, fontFamily: fonts.regular },
+  // Secundário: quem chega pelo anúncio ainda não tem conta, então o verde fica com o botão de compra.
+  navEntrarAlvo: { borderColor: theme.ruleStrong },
+  navEntrarAlvoHover: { borderColor: theme.accent2, backgroundColor: theme.hover },
+  navEntrarTexto: { color: theme.ink, fontSize: type.nota, lineHeight: type.nota * 1.2, fontFamily: fonts.regular },
   instagramCabecalhoHover: { borderColor: theme.ruleStrong, backgroundColor: theme.hover },
 
   palcoHero: { position: 'relative' },
@@ -2001,28 +1994,31 @@ const styles = StyleSheet.create({
   },
   subheadline: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, marginBottom: spacing.xl, maxWidth: 520 },
 
+  /* Verde sólido: o botão de compra é o elemento de maior peso da página
+     (Von Restorff, auditoria Leis de UI de 24/10/2026). Antes ele era vidro
+     escuro com borda e o "Entrar" do cabeçalho era o verde, e quem chegava do
+     anúncio sem conta via primeiro o botão de entrar numa conta. */
   ctaPrimario: {
     flexDirection: 'row',
     alignSelf: 'flex-start',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: 'rgba(5,34,41,0.72)',
+    backgroundColor: theme.accent,
     borderWidth: 1,
-    borderColor: 'rgba(174,255,227,0.72)',
+    borderColor: theme.accent,
     borderRadius: radius.md,
     paddingVertical: 16,
     paddingHorizontal: spacing.xl + spacing.xs,
     position: 'relative',
     overflow: 'hidden',
     ...({
-      boxShadow: sombras.planoDestaque,
-      backdropFilter: 'blur(12px)',
-      WebkitBackdropFilter: 'blur(12px)',
+      boxShadow: sombras.ctaPrimario,
       transitionProperty: 'border-color, background-color, box-shadow, transform',
       transitionDuration: '180ms',
     } as any),
   },
-  ctaPrimarioSolido: { ...({ backdropFilter: 'none', WebkitBackdropFilter: 'none' } as any), backgroundColor: 'rgba(5,34,41,0.94)' },
+  // Sem vidro no botão desde que ele virou sólido; fica para quem pede menos transparência.
+  ctaPrimarioSolido: { ...({ backdropFilter: 'none', WebkitBackdropFilter: 'none' } as any) },
   /* Secundário: mesma caixa do primário (altura, padding, raio — o par
      precisa parecer um par), mas sem preenchimento nem brilho. É borda
      discreta sobre fundo transparente; o primário continua sendo o único
@@ -2057,10 +2053,10 @@ const styles = StyleSheet.create({
   } as any,
   ctaPrimarioHover: {
     borderColor: theme.accent2,
-    backgroundColor: 'rgba(11,45,53,0.9)',
-    ...({ boxShadow: sombras.planoDestaqueHover, transform: [{ translateY: -2 }] } as any),
+    backgroundColor: theme.accent2,
+    ...({ boxShadow: sombras.ctaPrimarioHover, transform: [{ translateY: -2 }] } as any),
   },
-  ctaPrimarioTexto: { color: theme.ink, fontSize: type.corpo, lineHeight: type.corpo * 1.2, fontFamily: fonts.regular },
+  ctaPrimarioTexto: { color: theme.paper, fontSize: type.corpo, lineHeight: type.corpo * 1.2, fontFamily: fonts.regular },
   // A altura da janela (`height`) e o quanto a trilha sobe no hover vêm
   // inline, de `RotuloRolante` — precisam bater com o `lineHeight` real do
   // texto, que muda por lugar (CTA principal usa `type.corpo`, "Entrar" usa
