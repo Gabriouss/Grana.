@@ -67,8 +67,11 @@ function scenario(options={}){
  await s.run();ok(s.emails.length===0&&s.calls.filter(c=>c.name==='listar_assinaturas_para_avisos').length===2,'renovação na página seguinte impede envio');
  const copy=real.emailAvisoAssinatura(select([sub()])[0]);
  ok(!/[—–]/.test(copy.text)&&copy.text.includes('27/10/2026')&&copy.text.includes('https://granaponto.com.br/assinar'),'copy e link fixos/data BRT');
- const pendente=real.emailAvisoAssinatura(select([sub({status:'past_due'})])[0]);
- ok(pendente.text.includes('Atualizar cobrança')&&!pendente.text.includes('Renovar assinatura')&&!pendente.text.includes('renove'),'past_due regulariza cobrança sem nova compra');
- ok(copy.text.includes('responda a este e-mail para solicitar uma cópia'),'suporte explícito se exportação no app falhar');
+ const pendente=real.emailAvisoAssinatura(select([sub({status:'past_due',access_until:'2026-10-20T13:00:00Z',grace_until:'2026-10-27T13:00:00Z'})])[0]);
+ ok(pendente.text.includes('Falar com o suporte')&&pendente.text.includes('atualizar a cobrança')&&!pendente.text.includes('Renovar assinatura')&&!pendente.text.includes('renove'),'past_due regulariza cobrança sem nova compra');
+ ok(pendente.text.includes('link de cobrança recebido no e-mail da compra')&&pendente.html.includes('href="mailto:suporte@granaponto.com.br?subject='),'past_due encaminha link da compra ou suporte, sem rota de nova compra');
+ ok(copy.text.includes('suporte@granaponto.com.br')&&copy.html.includes('href="mailto:suporte@granaponto.com.br"')&&!copy.text.includes('entre no app'),'acesso aos dados tem contato explícito independente da exportação do app');
+ const aposCarencia=real.emailAvisoAssinatura(select([sub({status:'past_due',access_until:'2026-10-20T13:00:00Z',grace_until:'2026-10-24T12:00:00Z'})])[0]);
+ ok(aposCarencia.subject.includes('acesso foi interrompido')&&aposCarencia.text.includes('24/10/2026')&&!aposCarencia.text.includes('Renovar assinatura')&&!aposCarencia.html.includes('https://granaponto.com.br/assinar'),'após carência usa data da carência e suporte, sem encaminhar nova compra');
  console.log(`avisos-assinatura: ${checks} checagens OK (módulos reais, rede dublê)`);
 })().catch(e=>{console.error(e);process.exitCode=1;});

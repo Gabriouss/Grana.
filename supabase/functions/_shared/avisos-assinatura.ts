@@ -50,15 +50,17 @@ export function emailAvisoAssinatura(aviso: AvisoAssinatura): { subject:string; 
     : pendente ? `Seu prazo para regularizar o pagamento termina em ${dias} ${dias==='1'?'dia':'dias'}`
     : `Sua assinatura termina em ${dias} ${dias==='1'?'dia':'dias'}`;
   const situacao=aviso.assinatura.status==='past_due' ? 'O pagamento da sua assinatura não foi confirmado. ' : '';
-  const acao=pendente ? 'Atualizar cobrança' : 'Renovar assinatura';
-  const instrucao=pendente ? 'Atualize a cobrança para regularizar o pagamento.' : 'Renove sua assinatura para continuar usando o app.';
+  const acao=pendente ? 'Falar com o suporte' : 'Renovar assinatura';
+  const instrucao=pendente ? 'Use o link de cobrança recebido no e-mail da compra para atualizar a cobrança. Se precisar de ajuda, fale com o suporte.' : 'Renove sua assinatura para continuar usando o app.';
   const corpo=aviso.tipo==='venceu'
     ? `${situacao}Seu acesso ao Grana. terminou em ${data}. O vencimento não apaga seus dados. Seus lançamentos, contas e metas continuam guardados. ${instrucao}`
     : `${situacao}${pendente?'O prazo para regularizar o pagamento e manter o acesso':'Seu acesso ao Grana.'} termina em ${data}. ${instrucao}`;
-  const link='https://granaponto.com.br/assinar';
-  const rodape='Este é um aviso sobre sua assinatura do Grana. Para baixar seus dados ou excluir sua conta, entre no app e use as opções da sua conta. Se não conseguir baixar seus dados, responda a este e-mail para solicitar uma cópia. Dúvidas? Responda a este e-mail.';
+  const suporte='suporte@granaponto.com.br';
+  const link=pendente ? `mailto:${suporte}?subject=Ajuda%20com%20a%20cobran%C3%A7a%20do%20Grana.` : 'https://granaponto.com.br/assinar';
+  const rodape=`Este é um aviso sobre sua assinatura do Grana. Para solicitar uma cópia dos seus dados ou a exclusão da sua conta, escreva para ${suporte}. Você pode fazer essas solicitações mesmo com a assinatura vencida.`;
+  const rodapeHtml=rodape.replace(suporte,`<a href="mailto:${suporte}">${suporte}</a>`);
   return {subject,text:`${subject}\n\n${corpo}\n\n${acao}: ${link}\n\n${rodape}`,
-    html:`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><body style="font-family:Arial,sans-serif;font-weight:400;max-width:560px;margin:24px auto;padding:0 20px"><h1 style="font-size:24px;font-weight:400;text-wrap:balance">${subject}</h1><p style="line-height:1.6;text-wrap:pretty">${corpo}</p><p><a href="${link}">${acao}</a></p><p style="line-height:1.6;text-wrap:pretty">${rodape}</p></body></html>`};
+    html:`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><body style="font-family:Arial,sans-serif;font-weight:400;max-width:560px;margin:24px auto;padding:0 20px"><h1 style="font-size:24px;font-weight:400;text-wrap:balance">${subject}</h1><p style="line-height:1.6;text-wrap:pretty">${corpo}</p><p><a href="${link}">${acao}</a></p><p style="line-height:1.6;text-wrap:pretty">${rodapeHtml}</p></body></html>`};
 }
 type Deps = {
   env:(nome:string)=>string|undefined; cliente:(signal:AbortSignal)=>SupabaseClient;
