@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 import { comPrazo } from './fetch-com-prazo';
 import { MODO_TESTE, RedeDesligadaNoTeste } from './modo-teste';
+import { avisarAcessoNegado, respostaNegaAcesso } from './vigia-acesso';
 
 /**
  * expo-secure-store não guarda valores acima de ~2048 bytes, e a sessão do
@@ -111,6 +112,20 @@ export const CHAVE_SESSAO = `sb-${(supabaseUrl ?? '')
  */
 const RECUSA_POR_RELOGIO = /issued at future|jwt.*(not yet valid|iat)/i;
 
+/* Gravação recusada por falta de acesso (403 com `42501`) faz o app perguntar
+   de novo pela assinatura (lib/vigia-acesso.ts). Lê uma cópia do corpo por
+   fora, sem atrasar a resposta de quem chamou. */
+function vigiarRecusaDeAcesso(resposta: Response, input: RequestInfo | URL) {
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  resposta
+    .clone()
+    .text()
+    .then((corpo) => {
+      if (respostaNegaAcesso(resposta.status, url, corpo)) avisarAcessoNegado();
+    })
+    .catch((erro) => console.warn('[acesso] corpo da recusa ilegível', (erro as { name?: string })?.name ?? 'erro'));
+}
+
 async function fetchComRetentativaDeRelogio(
   input: RequestInfo | URL,
   init?: RequestInit
@@ -119,6 +134,7 @@ async function fetchComRetentativaDeRelogio(
      do navegador. Recusar aqui cobre leitura, gravação, RPC, auth e funções. */
   if (MODO_TESTE) throw new RedeDesligadaNoTeste();
   const resposta = await fetch(input, init);
+  if (resposta.status === 403) vigiarRecusaDeAcesso(resposta, input);
   if (resposta.status !== 401) return resposta;
 
   /* O corpo só pode ser lido uma vez; o clone preserva a resposta original

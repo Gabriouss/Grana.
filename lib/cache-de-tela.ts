@@ -206,6 +206,31 @@ export function assinarDadoNovo(ouvinte: () => void): () => void {
   return () => ouvintesDeDadoNovo.delete(ouvinte);
 }
 
+/* A busca voltou lista vazia e o disco desta tela tinha dados. Quase sempre é
+   a pessoa que esvaziou a lista, mas também é o rastro do acesso que caiu no
+   servidor com o app aberto: o RLS devolve vazio em vez de erro (24/10/2026).
+   Quem assina (lib/entitlement-context.tsx) pergunta de novo pelo acesso.
+   Sem ouvinte, nem o disco é lido. */
+const ouvintesDeEsvaziou = new Set<() => void>();
+
+export function assinarLeituraEsvaziou(ouvinte: () => void): () => void {
+  ouvintesDeEsvaziou.add(ouvinte);
+  return () => ouvintesDeEsvaziou.delete(ouvinte);
+}
+
+async function avisarSeEsvaziou(chave: string, dados: unknown): Promise<void> {
+  if (!ouvintesDeEsvaziou.size || !Array.isArray(dados) || dados.length > 0) return;
+  const antes = await lerTela<unknown>(chave);
+  if (!Array.isArray(antes?.dados) || antes.dados.length === 0) return;
+  for (const ouvinte of [...ouvintesDeEsvaziou]) {
+    try {
+      ouvinte();
+    } catch (erro) {
+      console.warn('[cache-de-tela] ouvinte de leitura vazia falhou', (erro as { name?: string })?.name ?? 'erro');
+    }
+  }
+}
+
 /** Exportado também para a fila offline avisar que um pendente subiu. */
 export function avisarDadoNovo() {
   /* Uma tela abre com várias buscas em paralelo (lançamentos, contas, metas),
@@ -362,6 +387,7 @@ export function comCacheOffline<A extends unknown[], T>(
           avisarDadoNovo();
           return;
         }
+        await avisarSeEsvaziou(chave, tardio.dados);
         await guardarTela(chave, tardio.dados);
         if (geracaoDoPedido !== geracao) return;
         atrasados.set(chave, { dados: tardio.dados, em: Date.now(), userId: donoDoPedido });
@@ -379,7 +405,10 @@ export function comCacheOffline<A extends unknown[], T>(
       if (desfecho.ok) {
         /* Mesma regra da resposta tardia: pedido anterior a uma escrita ou à
            saída da conta não vai para o disco. */
-        if (geracaoDoPedido === geracao) await guardarTela(chave, desfecho.dados);
+        if (geracaoDoPedido === geracao) {
+          await avisarSeEsvaziou(chave, desfecho.dados);
+          await guardarTela(chave, desfecho.dados);
+        }
         definirModo(null);
         return desfecho.dados;
       }

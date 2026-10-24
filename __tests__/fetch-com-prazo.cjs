@@ -82,6 +82,11 @@ const servidor = http.createServer((req, res) => {
       return;
     }
     if (modo === 'sem-conteudo') { res.writeHead(204); res.end(); return; }
+    if (modo === 'sem-acesso') {
+      res.writeHead(403, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ code: '42501', message: 'new row violates row-level security policy for table "transactions"' }));
+      return;
+    }
     const json = (status, dado) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(dado)); };
     if (req.url.startsWith('/auth/v1/token')) {
       const exp = agoraSeg() + 3600;
@@ -138,6 +143,7 @@ async function principal() {
   };
   const disco = new Map();
   const cofre = new Map();
+  const vigiaMod = carregar('lib/vigia-acesso.ts', {});
   const sb = carregar('lib/supabase.ts', {
     'react-native-get-random-values': {},
     'aes-js': require('aes-js'),
@@ -158,6 +164,7 @@ async function principal() {
     'react-native': { Platform: { OS: 'android' }, AppState: { addEventListener() {} } },
     './fetch-com-prazo': prazoMod,
     './modo-teste': { MODO_TESTE: false, RedeDesligadaNoTeste: class extends TypeError {} },
+    './vigia-acesso': vigiaMod,
   }, {
     fetch: fetchRegistrado,
     crypto: globalThis.crypto,
@@ -198,6 +205,24 @@ async function principal() {
   igual(t11.valor?.error ?? null, null, 'T11: e termina sem erro');
   igual(t11.valor?.data, [], 'T11: com os dados do servidor');
   ok(pedidos.some((p) => p.caminho === '/rest/v1/transactions'), 'T11: o pedido chegou ao banco');
+
+  /* Assinatura vencida com o app aberto (24/10/2026): a gravação volta 403
+     com `42501`. O app tem de perguntar de novo pelo acesso, e quem chamou
+     recebe o mesmo erro de antes, sem repetição da escrita. */
+  let recusasAvisadas = 0;
+  const pararDeOuvir = vigiaMod.ouvirAcessoNegado(() => { recusasAvisadas++; });
+  modo = 'sem-acesso';
+  pedidos.length = 0;
+  const negado = await desfecho(supabase.from('transactions').insert({ description: 'AUDIT' }).select().single(), 5_000);
+  await new Promise((r) => setTimeout(r, 20));
+  igual(negado.valor?.error?.code, '42501', 'gravação sem acesso: quem chamou recebe o 42501 intacto');
+  igual(recusasAvisadas, 1, 'gravação sem acesso: a vigia é avisada uma vez');
+  igual(pedidos.filter((p) => p.metodo === 'POST').length, 1, 'gravação sem acesso: a escrita não é repetida');
+  modo = 'ok';
+  await desfecho(supabase.from('transactions').select('id'), 5_000);
+  await new Promise((r) => setTimeout(r, 20));
+  igual(recusasAvisadas, 1, 'resposta normal não avisa a vigia');
+  pararDeOuvir();
 
   /* Token válido e o próprio insert preso: um único envio, sem repetição
      automática que pudesse duplicar o lançamento. */

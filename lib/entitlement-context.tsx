@@ -5,6 +5,9 @@ import { estadoAposFalha, guardarAcesso, lerAcessoGuardado, prazoOfflineAindaVal
 import { isLikelyNetworkError } from './offline-cache';
 import { supabase } from './supabase';
 import { MODO_TESTE } from './modo-teste';
+import { AppState } from 'react-native';
+import { assinarLeituraEsvaziou } from './cache-de-tela';
+import { avisarAcessoNegado, criarVigiaDoAcesso } from './vigia-acesso';
 
 export type EstadoAcesso = {
   enforced: boolean;
@@ -169,6 +172,42 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     void recarregar();
   }, [recarregar]);
+
+  /* Perguntar de novo com o app aberto (lib/vigia-acesso.ts): ao voltar ao
+     primeiro plano, no fim do prazo, depois de gravação recusada e quando uma
+     tela que tinha dados volta vazia (lib/cache-de-tela.ts). Sem isto,
+     a assinatura vencida com o app aberto mostrava as telas zeradas, porque o
+     RLS devolve leitura vazia em vez de erro. A recarga vai por ref para a
+     vigia não renascer a cada identidade nova de `recarregar`. */
+  const recarregarRef = useRef(recarregar);
+  recarregarRef.current = recarregar;
+  const vigiaRef = useRef<ReturnType<typeof criarVigiaDoAcesso> | null>(null);
+  useEffect(() => {
+    if (!userId) return;
+    const vigia = criarVigiaDoAcesso({
+      recarregar: () => recarregarRef.current(),
+      ouvirPrimeiroPlano: (fn) => {
+        const assinatura = AppState.addEventListener('change', (s) => {
+          if (s === 'active') fn();
+        });
+        return () => assinatura.remove();
+      },
+      agendar: (fn, ms) => setTimeout(fn, ms),
+      cancelar: (id) => clearTimeout(id as ReturnType<typeof setTimeout>),
+    });
+    vigiaRef.current = vigia;
+    vigia.acompanhar(estadoRef.current);
+    // Mesmo canal da recusa, com o mesmo intervalo mínimo entre consultas.
+    const pararLeitura = assinarLeituraEsvaziou(avisarAcessoNegado);
+    return () => {
+      pararLeitura();
+      vigia.parar();
+      vigiaRef.current = null;
+    };
+  }, [userId]);
+  useEffect(() => {
+    vigiaRef.current?.acompanhar(estado);
+  }, [estado]);
 
   return (
     <EntitlementContext value={{ estado, carregando, sincronizacao, modoOffline, recarregar }}>
