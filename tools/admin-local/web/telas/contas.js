@@ -8,8 +8,6 @@ export async function montar(raiz, ctx) {
     h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Atualizar', onclick: () => ctx.recarregar() }),
   ]);
 
-  raiz.appendChild(h('p', { class: 'nota-explicativa', texto: 'Na lista, o e-mail aparece cortado, e o domínio também, menos em provedores grandes como Gmail e Hotmail. Para ver a conta inteira, busque pelo e-mail completo. Último login é a última vez que a pessoa entrou com e-mail e senha. Último acesso é a última vez que o app renovou a sessão dela, com precisão de cerca de uma hora. Os dados ficam só neste computador.' }));
-
   const campo = h('input', { id: 'contas-email', type: 'email', placeholder: 'nome@example.com', autocomplete: 'off', spellcheck: 'false' });
   const limpar = h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Ver todas', hidden: true });
   const lugar = h('div');
@@ -21,11 +19,13 @@ export async function montar(raiz, ctx) {
   };
   limpar.addEventListener('click', () => { campo.value = ''; mostrar(null); });
 
+  // Busca primeiro, explicação depois: a barra de filtros já traz o respiro de baixo, e campo e
+  // botões ficam na mesma linha da barra (flex), sem a grade de .form-linha empurrando o botão.
   raiz.appendChild(h('form', { class: 'barra-filtros', onsubmit: (e) => { e.preventDefault(); const v = campo.value.trim(); mostrar(v || null); } },
-    h('div', { class: 'form-linha' },
-      h('div', { class: 'campo' }, h('label', { for: 'contas-email', texto: 'Buscar pelo e-mail completo' }), campo),
-      h('button', { class: 'botao', type: 'submit', texto: 'Buscar' }),
-      limpar)));
+    h('div', { class: 'campo' }, h('label', { for: 'contas-email', texto: 'Buscar pelo e-mail completo' }), campo),
+    h('button', { class: 'botao', type: 'submit', texto: 'Buscar' }),
+    limpar));
+  raiz.appendChild(h('p', { class: 'nota-explicativa', texto: 'Na lista, o e-mail aparece cortado, e o domínio também, menos em provedores grandes como Gmail e Hotmail. Para ver a conta inteira, busque pelo e-mail completo. Último login é a última vez que a pessoa entrou com e-mail e senha. Último acesso é a última vez que o app renovou a sessão dela, com precisão de cerca de uma hora. Os dados ficam só neste computador.' }));
   raiz.appendChild(lugar);
   mostrar(null);
 }
