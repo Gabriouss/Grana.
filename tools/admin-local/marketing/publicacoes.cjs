@@ -36,7 +36,11 @@ function validarPedido(p) {
   }
   if (p.acao === 'prever') {
     const reagendamento = p.jobId !== undefined;
-    fechado(p, ['acao', ...(reagendamento ? ['jobId'] : ['pecaId', 'versao']), 'destinos', 'agendarPara', 'fuso']);
+    fechado(p, ['acao', ...(reagendamento ? ['jobId'] : ['pecaId', 'versao', 'quadro']), 'destinos', 'agendarPara', 'fuso']);
+    // quadro: uma imagem de um conjunto vira um Story; só Stories cabem nessa prévia.
+    const quadro = p.quadro;
+    if (quadro !== undefined && (!Number.isInteger(quadro) || quadro < 0 || quadro > 9
+      || !Array.isArray(p.destinos) || p.destinos.some(d => d?.formato !== 'stories'))) invalido();
     if (reagendamento) uuid(p.jobId);
     if ((!reagendamento && (!/^[0-9a-f]{16}$/.test(p.pecaId || '') || !/^[0-9a-f]{40}$/.test(p.versao || '')))
       || !Array.isArray(p.destinos) || p.destinos.length < 1 || p.destinos.length > 8) invalido();
@@ -50,7 +54,7 @@ function validarPedido(p) {
       if (unicos.has(chave)) invalido(); unicos.add(chave);
       return { ...d, publicarEm, fuso: p.fuso };
     });
-    return { acao: 'previa', ...(reagendamento ? { jobId: p.jobId } : { pecaId: p.pecaId, versao: p.versao }), destinos };
+    return { acao: 'previa', ...(reagendamento ? { jobId: p.jobId } : { pecaId: p.pecaId, versao: p.versao, ...(quadro !== undefined ? { quadro } : {}) }), destinos };
   }
   const base = ['acao', 'revisaoEsperada', 'idempotencia', 'confirmacao'];
   const campos = p.acao === 'confirmar' ? ['previaId', 'previaHash']

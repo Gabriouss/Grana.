@@ -103,8 +103,11 @@ export function capacidadeDaConta(conta, formato) {
 
 // O catálogo informa MIME de transporte: a captura converte PNG aprovado em JPEG.
 // Capacidade da conta sozinha não comprova compatibilidade da peça selecionada.
-export function capacidadeDaPeca(peca, rede, formato) {
-  const midias = peca?.midias;
+// Story leva uma mídia: de um conjunto, vale só o quadro escolhido. Sem quadro, a regra
+// fica igual à do SQL (que confere o snapshot, já com uma mídia só).
+export const storyDeConjunto = (peca, formato) => formato === 'stories' && Array.isArray(peca?.midias) && peca.midias.length > 1;
+export function capacidadeDaPeca(peca, rede, formato, quadro) {
+  const midias = storyDeConjunto(peca, formato) && Number.isInteger(quadro) ? [peca.midias[quadro]].filter(Boolean) : peca?.midias;
   if (!Array.isArray(midias) || !midias.length) return { disponivel: false, motivos: ['midia-nao-conferida'] };
   const imagem = m => m?.tipo === 'imagem' && ['image/jpeg', 'image/png'].includes(m.mime);
   const video = m => m?.tipo === 'video' && m.mime === 'video/mp4';
@@ -250,14 +253,21 @@ export function criarClientePublicacoes(ctx) {
       const d = dadosCatalogo(await get(`${API_PUBLICACOES}/catalogo`));
       return { ...d, pecas: d.pecas.filter(validarPeca) };
     },
-    async prever({ peca, job, destinos, horarioLocal, contas, recuperacao2h = false }) {
+    async prever({ peca, job, destinos, horarioLocal, contas, recuperacao2h = false, quadro }) {
       if (!(job ? validarJob(job) : validarPeca(peca)) || !Array.isArray(destinos) || destinos.length < 1 || destinos.length > 8) {
         throw erroContrato('pedido-invalido', 'Escolha uma peça aprovada e ao menos um destino válido.');
       }
       if (!Array.isArray(contas) || destinos.some((d) => !validarDestino(d, contas))) {
         throw erroContrato('destino-invalido', 'Uma conta ou capacidade deixou de estar verificada. Atualize os destinos antes de continuar.');
       }
-      if (!job && peca.midias && destinos.some(d => !capacidadeDaPeca(peca, d.rede, d.formato).disponivel)) {
+      const conjunto = !job && destinos.some(d => storyDeConjunto(peca, d.formato));
+      if (quadro !== undefined && (!conjunto || !Number.isInteger(quadro) || quadro < 0 || quadro >= peca.midias.length)) {
+        throw erroContrato('pedido-invalido', 'Escolha qual imagem do conjunto vai no Story.');
+      }
+      if (conjunto && destinos.some(d => d.formato !== 'stories')) {
+        throw erroContrato('destino-invalido', 'O Story de um conjunto de imagens vai numa prévia própria. Desmarque os outros formatos.');
+      }
+      if (!job && peca.midias && destinos.some(d => !capacidadeDaPeca(peca, d.rede, d.formato, quadro ?? 0).disponivel)) {
         throw erroContrato('midia-incompativel', 'A mídia desta peça não é compatível com um dos destinos selecionados. Escolha os destinos novamente.');
       }
       const chaves = destinos.map((d) => `${d?.contaId}|${d?.formato}`);
@@ -272,7 +282,7 @@ export function criarClientePublicacoes(ctx) {
       }
       const publicarEm = horarioLocalParaUtc(horarioLocal);
       const pedido = {
-        acao: 'prever', ...(job ? { jobId: job.jobId } : { pecaId: peca.id, versao: peca.versao }),
+        acao: 'prever', ...(job ? { jobId: job.jobId } : { pecaId: peca.id, versao: peca.versao, ...(conjunto ? { quadro: quadro ?? 0 } : {}) }),
         destinos: destinos.map(({ contaId, rede, formato }) => ({ contaId, rede, formato })),
         agendarPara: publicarEm, fuso: FUSO_PUBLICACAO,
         ...(recuperacao2h ? { politicaExecucao: 'recuperacao-2h-v1', capacidadesCliente: ['execucao-2h-v1'], consentimentoExecucao: true } : {}),

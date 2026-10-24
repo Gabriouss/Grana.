@@ -3,7 +3,7 @@
 import { iconeSvg, montarMidia, topoDaPrevia } from './_previa-publicacao.js';
 import {
   API_PUBLICACOES, FORMATOS_PUBLICACAO, FUSO_PUBLICACAO, ROTULOS_ESTADO,
-  capacidadeDaConta, capacidadeDaPeca, caminhoMidia, criarClientePublicacoes, horarioLocalParaUtc,
+  capacidadeDaConta, capacidadeDaPeca, storyDeConjunto, caminhoMidia, criarClientePublicacoes, horarioLocalParaUtc,
   horarioUtcParaLocal, previaConfirmavel, resumirLote, rotuloDataHorario,
   antecedenciaMinima, conferirHorario, sugestaoHorario, mensagemHumana, fraseDoMotivo, descreverJobReal, jobAtivo, quandoCurto, reagendamentoPermitido, estadoApresentacaoJob,
   descreverPausas,
@@ -60,6 +60,20 @@ export async function montarReal(raiz, ctx, integracao = null) {
   let detalhe = null;
   let selecaoPeca = ctx.params?.peca || '';
   let selecaoDestinos = new Set();
+  // Imagens do conjunto que vão nos Stories (autor, 24/10/2026: "uma caixinha para marcar mais de um story").
+  // Cada imagem marcada vira uma prévia e um agendamento próprios, em fila, 1 minuto depois da anterior,
+  // para a ordem do conjunto se manter no destaque. Uma imagem agendada sai da seleção na hora: refazer a
+  // seleção no meio da fila nunca reagenda o que já foi confirmado.
+  let selecaoQuadros = new Set([0]);
+  let filaStories = null; // { quadros, indice, horarioBase }
+  const storySelecionadoDeConjunto = () => destinosSelecionados().some(d => storyDeConjunto(pecaSelecionada(), d.formato));
+  const quadrosMarcados = () => [...selecaoQuadros].sort((a, b) => a - b);
+  const quadroAtual = () => filaStories ? filaStories.quadros[filaStories.indice] : (quadrosMarcados()[0] ?? 0);
+  function somarMinutos(horarioLocal, minutos) {
+    const d = new Date(`${horarioLocal}:00Z`); // relógio de parede, sem fuso: só soma minutos
+    d.setUTCMinutes(d.getUTCMinutes() + minutos);
+    return d.toISOString().slice(0, 16);
+  }
   let previa = null;
   let reagendamento = null;
   let previewBlobs = [];
@@ -171,6 +185,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
   function invalidaSelecao() {
     const ativo = globalThis.document?.activeElement;
     const foco = ativo && compositor.contains(ativo) ? { name: ativo.name, value: ativo.value } : null;
+    filaStories = null;
     liberarPreview();
     conferirDestinosDaPeca();
     avisar('Seleção alterada. Gere uma nova prévia antes de confirmar.');
@@ -191,7 +206,13 @@ export async function montarReal(raiz, ctx, integracao = null) {
   function chaveDestino(contaId, formato) { return `${contaId}\u001f${formato}`; }
   function capacidadeSelecionada(conta, formato) {
     const cap = capacidadeDaConta(conta, formato);
-    return cap.disponivel ? capacidadeDaPeca(pecaSelecionada(), conta.rede, formato) : cap;
+    if (!cap.disponivel) return cap;
+    const peca = pecaSelecionada();
+    if (!storyDeConjunto(peca, formato)) return capacidadeDaPeca(peca, conta.rede, formato);
+    // Story de conjunto: toda imagem marcada precisa caber no Story.
+    const quadros = quadrosMarcados().length ? quadrosMarcados() : [0];
+    return quadros.map((q) => capacidadeDaPeca(peca, conta.rede, formato, q)).find((c) => !c.disponivel)
+      || capacidadeDaPeca(peca, conta.rede, formato, quadros[0]);
   }
   function conferirDestinosDaPeca() {
     selecaoDestinos = new Set([...selecaoDestinos].filter(key => {
@@ -229,6 +250,9 @@ export async function montarReal(raiz, ctx, integracao = null) {
       : pausaSemReleitura() ? 'A resposta de uma pausa não chegou. Atualize o estado real antes de iniciar outra operação.'
       : !pecaSelecionada() ? 'Escolha uma peça aprovada vigente.'
       : !destinosSelecionados().length ? 'Escolha ao menos uma conta e um formato compatível com a peça.'
+      : storySelecionadoDeConjunto() && destinosSelecionados().some(d => d.formato !== 'stories')
+        ? 'O Story de um conjunto de imagens vai numa prévia própria. Desmarque os outros formatos.'
+      : storySelecionadoDeConjunto() && !selecaoQuadros.size ? 'Marque ao menos uma imagem para os Stories.'
       : !r.ok ? r.texto : '';
     if (acaoPrevia) acaoPrevia.disabled = !!motivo;
     const ajuda = compositor.querySelector('#pub-real-previa-motivo');
@@ -267,7 +291,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
         const feed = feedPorPeca.get(item.id);
         return h('label', { class: `pub-real-peca${item.id === selecaoPeca ? ' selecionada' : ''}`, for: idRadio },
           h('input', { id: idRadio, type: 'radio', name: 'pecaAprovada', value: item.id, checked: item.id === selecaoPeca,
-            onchange: () => { selecaoPeca = item.id; invalidaSelecao(); } }),
+            onchange: () => { selecaoPeca = item.id; selecaoQuadros = new Set([0]); invalidaSelecao(); } }),
           thumb ? h('img', { class: 'pub-real-miniatura', src: thumb, alt: `Miniatura: ${item.titulo}`, loading: 'lazy' })
             : h('span', { class: 'pub-real-miniatura pub-real-miniatura-vazia', 'aria-label': 'Miniatura indisponível', texto: 'Sem miniatura' }),
           h('span', { class: 'pub-real-peca-texto' },
@@ -301,7 +325,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     const anterior = compositor.querySelector('.pub-real-compositor-conteudo');
     const valorHorario = anterior?.querySelector('[name="agendarParaLocal"]')?.value || horarioInicial('');
     const hora = h('input', { type: 'datetime-local', id: 'pub-real-agendar-para', name: 'agendarParaLocal', required: true, value: valorHorario,
-      'aria-describedby': 'pub-real-fuso-ajuda pub-real-horario-resumo', onchange: () => { liberarPreview(); atualizarResumoHorario(); }, oninput: atualizarResumoHorario });
+      'aria-describedby': 'pub-real-fuso-ajuda pub-real-horario-resumo', onchange: () => { filaStories = null; liberarPreview(); atualizarResumoHorario(); }, oninput: atualizarResumoHorario });
     const resumoHora = h('p', { class: 'pub-real-horario-resumo', id: 'pub-real-horario-resumo', role: 'status', 'aria-live': 'polite' });
     const previaBtn = h('button', { class: 'botao botao-primario', type: 'button', 'data-operacao': true,
       'data-acao-previa': true, texto: 'Gerar prévia dos destinos', disabled: ocupado || !peca || !destinosSelecionados().length,
@@ -316,6 +340,17 @@ export async function montarReal(raiz, ctx, integracao = null) {
         h('fieldset', { class: 'pub-real-selecao' }, h('legend', { texto: '2 · Contas e formatos disponíveis' }),
           capacidades.controles?.habilitado === false ? h('p', { class: 'alerta alerta-atencao', texto: 'A publicação remota está desabilitada no servidor.' }) : null,
           h('div', { class: 'pub-real-contas' }, contas)),
+        storySelecionadoDeConjunto() ? h('fieldset', { class: 'pub-real-selecao pub-real-quadro' },
+          h('legend', { texto: 'Imagens dos Stories' }),
+          h('p', { class: 'campo-ajuda', texto: 'Cada imagem marcada vira um Story, agendado em ordem com 1 minuto entre um e outro. Você confere e confirma um por vez. Colocar os Stories num destaque continua sendo feito no Instagram.' }),
+          h('div', { class: 'pub-real-formatos', role: 'group', 'aria-label': 'Imagens do conjunto que vão nos Stories' },
+            peca.midias.map((_, i) => h('label', { class: 'pub-real-formato' },
+              h('input', { type: 'checkbox', name: 'quadroStory', value: String(i), checked: selecaoQuadros.has(i),
+                onchange: (e) => { if (e.target.checked) selecaoQuadros.add(i); else selecaoQuadros.delete(i); invalidaSelecao(); } }),
+              h('span', null, h('strong', { texto: `Imagem ${i + 1} de ${peca.midias.length}` }))))),
+          peca.midias.length > 1 ? h('div', { class: 'pub-real-acoes' },
+            botao('Marcar todas', () => { selecaoQuadros = new Set(peca.midias.map((_, i) => i)); invalidaSelecao(); }, { operacao: false }),
+            botao('Desmarcar todas', () => { selecaoQuadros = new Set(); invalidaSelecao(); }, { operacao: false })) : null) : null,
         h('fieldset', { class: 'pub-real-selecao pub-real-horario' },
           h('legend', { texto: '3 · Data e hora' }),
           // Mesmo contrato de campo do painel (AUD-03): 44px, linha de base, rótulo ligado ao campo.
@@ -564,8 +599,15 @@ export async function montarReal(raiz, ctx, integracao = null) {
     const peca = pecaSelecionada();
     const destinos = destinosSelecionados();
     const input = compositor.querySelector('[name="agendarParaLocal"]');
-    const horarioLocal = reagendamento?.horarioLocal || input?.value;
     if (ocupado || pendencia || pausaSemReleitura()) return;
+    const emFila = !reagendamento && storySelecionadoDeConjunto();
+    if (!emFila) filaStories = null;
+    else if (!filaStories) {
+      if (!selecaoQuadros.size) { avisar('Marque ao menos uma imagem para os Stories.', true); return; }
+      filaStories = { quadros: quadrosMarcados(), indice: 0, horarioBase: input?.value };
+    }
+    const horarioLocal = reagendamento?.horarioLocal
+      || (filaStories && filaStories.horarioBase ? somarMinutos(filaStories.horarioBase, filaStories.indice) : input?.value);
     if (!peca || !destinos.length || !horarioLocal) {
       avisar(atualizarResumoHorario() || 'Confira a peça, os destinos e o horário antes de gerar a prévia.', true);
       return;
@@ -578,6 +620,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     avisar('Validando aceite, mídia, destinos e horário no servidor…');
     try {
       const resultado = await cliente.prever({ peca, ...(reagendamento ? { job: reagendamento.job } : {}), destinos, horarioLocal, contas: capacidades.contas,
+        ...(filaStories ? { quadro: quadroAtual() } : {}),
         recuperacao2h: capacidades.controles.recuperacao2hDisponivel === true });
       if (encerrada || ctx.obsoleta()) return;
       previa = resultado;
@@ -670,7 +713,9 @@ export async function montarReal(raiz, ctx, integracao = null) {
     const coerente = p.snapshot?.pecaId === peca?.id && p.snapshot?.versao === peca?.versao
       && p.destinos?.length === alvos.length && p.destinos.every((d, i) => d.contaId === alvos[i].contaId && d.rede === alvos[i].rede && d.formato === alvos[i].formato);
     const botaoConfirmar = h('button', { class: 'botao botao-primario', type: 'button', 'data-operacao': true,
-      texto: reagendamento ? 'Confirmar reagendamento' : 'Agendar', disabled: true, 'data-bloqueado': 'true',
+      texto: reagendamento ? 'Confirmar reagendamento'
+        : filaStories && filaStories.quadros.length > 1 ? `Agendar Story ${filaStories.indice + 1} de ${filaStories.quadros.length}` : 'Agendar',
+      disabled: true, 'data-bloqueado': 'true',
       'aria-describedby': 'pub-real-bloqueio-confirmacao', onclick: () => confirmarPrevia(p) });
     const prazo = h('div', { class: 'pub-real-prazo', 'aria-live': 'polite' });
     previaElRevisao(p, detalhePrevia);
@@ -679,6 +724,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
       h('h2', { class: 'secao-titulo', tabindex: '-1', texto: 'Prévia estimada por destino' }),
       h('p', { class: 'pub-real-aviso', texto: 'Confira como a publicação deve aparecer em cada rede. Revise as imagens, a ordem e a legenda antes de confirmar.' }),
       h('p', { class: 'pub-real-versao', texto: `${peca?.titulo || 'Peça'} · versão aprovada` }),
+      ...(filaStories ? [h('p', { class: 'pub-real-aviso', texto: `Story ${filaStories.indice + 1} de ${filaStories.quadros.length}: imagem ${quadroAtual() + 1} do conjunto.` })] : []),
       h('div', { class: 'pub-real-previews' }, cards),
       ...(motivo.length ? [h('div', { class: 'alerta alerta-atencao', role: 'alert' }, h('strong', { texto: 'Esta prévia não pode ser confirmada' }),
         h('ul', null, [...new Set(motivo)].map((m) => h('li', null, motivos([m]), detalhesTecnicos(`Código: ${typeof m === 'string' ? m : m?.codigo || 'sem-codigo'}`)))))] : []),
@@ -748,6 +794,7 @@ export async function montarReal(raiz, ctx, integracao = null) {
     try { definirPendencia({ idempotencia, previaId: p.previaId, chaveIntencao, tipo }); }
     catch (e) { erroLegivel(e, 'A preservação do pedido'); return; }
     busy(true);
+    let proximoStory = false;
     try {
       const lote = substituicao ? await cliente.comando('reagendar', {
         jobId: substituicao.job.jobId, revisaoEsperada: substituicao.job.revisao,
@@ -760,9 +807,23 @@ export async function montarReal(raiz, ctx, integracao = null) {
       definirPendencia(null);
       intencoes.delete(chaveIntencao);
       liberarPreview();
+      const fila = substituicao ? null : filaStories;
+      if (fila) {
+        selecaoQuadros.delete(fila.quadros[fila.indice]);
+        if (fila.indice < fila.quadros.length - 1) {
+          fila.indice++;
+          desenharCompositor();
+          for (const j of lote.jobs) estadosVistos.set(j.jobId, j.estado);
+          avisar(`Story ${fila.indice} de ${fila.quadros.length} agendado. Gerando a prévia do próximo…`);
+          proximoStory = true;
+          return;
+        }
+        filaStories = null;
+        desenharCompositor();
+      }
       // R9: fecha a janela, diz em uma linha o que foi agendado e leva ao mês da publicação no Calendário.
       const redes = [...new Set(destinos.map((d) => REDES[d.rede]))].join(' e ');
-      const texto = `${substituicao ? 'Reagendado' : 'Agendado'}: ${redes}, ${quandoCurto(Date.parse(data)).replace(/^às /, 'hoje às ')}. Acompanhe o andamento no Calendário.`;
+      const texto = `${substituicao ? 'Reagendado' : fila && fila.quadros.length > 1 ? `${fila.quadros.length} Stories agendados` : 'Agendado'}: ${redes}, ${quandoCurto(Date.parse(fila && fila.quadros.length > 1 ? horarioLocalParaUtc(fila.horarioBase) : data)).replace(/^às /, 'hoje às ')}. Acompanhe o andamento no Calendário.`;
       avisar(texto);
       ctx.aviso?.(texto, 'ok');
       estadosVistos.clear(); for (const j of lote.jobs) estadosVistos.set(j.jobId, j.estado);
@@ -786,7 +847,11 @@ export async function montarReal(raiz, ctx, integracao = null) {
         erroLegivel(err, 'A confirmação do agendamento');
         if (err?.status === 409 || err?.status === 422) await atualizarTudo();
       }
-    } finally { busy(false); }
+    } finally {
+      busy(false);
+      // Dentro do finally: o caminho da fila sai do try por return.
+      if (proximoStory && !encerrada && !ctx.obsoleta()) await gerarPrevia();
+    }
   }
 
   // Uma falha do servidor pode vir da leitura posterior a uma mutação já gravada.
@@ -822,6 +887,10 @@ export async function montarReal(raiz, ctx, integracao = null) {
       const reagendado = pendencia.tipo === 'reagendar';
       const confirmacao = ['confirmar', 'reagendar'].includes(pendencia.tipo);
       if (confirmacao) {
+        // A fila de Stories para aqui: a imagem desta chave já tem recibo e sai da seleção;
+        // as que faltam ficam marcadas para uma nova prévia.
+        if (filaStories && !reagendado) selecaoQuadros.delete(filaStories.quadros[filaStories.indice]);
+        filaStories = null;
         liberarPreview(); reagendamento = null;
         compositor.closest?.('dialog')?.close?.();
       }

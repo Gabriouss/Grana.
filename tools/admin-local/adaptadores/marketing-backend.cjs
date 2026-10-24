@@ -168,7 +168,7 @@ function criarPublicacoesReais({ env, remoto, cliente, relogio, log, rede, estad
         });
       }
       return comPrazo(PRAZO_PREVIA_MS, async ctx => {
-        const cap = await capturar(raiz, p.pecaId, p.versao, { signal: ctx.signal, jpeg: true });
+        const cap = await capturar(raiz, p.pecaId, p.versao, { signal: ctx.signal, jpeg: true, ...(p.quadro !== undefined ? { quadro: p.quadro } : {}) });
         try {
           const m = cap.manifesto;
           if (p.destinos.some(d => !midiaCompativel(m, d.rede, d.formato))) {

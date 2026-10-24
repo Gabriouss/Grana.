@@ -30,7 +30,8 @@ function criarCapturador({ obterPeca = catalogo.obterPeca, pastaTemporaria = os.
     if (path.dirname(destino) !== base || !path.basename(destino).startsWith('grana-snapshot-')) throw new Error('captura-limpeza-invalida');
     await fs.promises.rm(destino, { recursive: true, force: true });
   };
-  return async function capturar(raiz, pecaId, versao, { signal, jpeg = false } = {}) {
+  // quadro: índice de UMA mídia de um conjunto (Story leva uma só). O aceite continua o da peça.
+  return async function capturar(raiz, pecaId, versao, { signal, jpeg = false, quadro } = {}) {
     if (ativos >= 2) falhar('captura-ocupada', 429);
     ativos++;
     let pasta;
@@ -98,8 +99,13 @@ function criarCapturador({ obterPeca = catalogo.obterPeca, pastaTemporaria = os.
         } finally { await entrada.close(); }
       };
       const midias = [];
-      for (let i = 0; i < p.arquivos.length; i++) midias.push(await ler(p.arquivos[i], i));
-      const capa = p.capa ? await ler(p.capa, 'capa') : null;
+      if (quadro !== undefined) {
+        if (!Number.isInteger(quadro) || quadro < 0 || quadro >= p.arquivos.length || p.arquivos.length < 2) falhar('midia-invalida', 415);
+        midias.push(await ler(p.arquivos[quadro], 0));
+      } else {
+        for (let i = 0; i < p.arquivos.length; i++) midias.push(await ler(p.arquivos[i], i));
+      }
+      const capa = p.capa && quadro === undefined ? await ler(p.capa, 'capa') : null;
       const conferir = async () => {
         if (controller.signal.aborted) falhar('prazo-esgotado', 504);
         if (evidencia(await obterPeca(raiz, pecaId)) !== aceiteSha256) falhar('versao-divergente');
@@ -110,7 +116,8 @@ function criarCapturador({ obterPeca = catalogo.obterPeca, pastaTemporaria = os.
       const publico = ({ arquivo, indice, ...m }) => m;
       const manifesto = { legenda: p.legenda, legendaSha256: hash(p.legenda),
         midias: midias.map(publico), capa: capa ? publico(capa) : null };
-      return { pecaId, versao, titulo: p.titulo, aceite: structuredClone(p.aceite), aceiteSha256,
+      const titulo = quadro === undefined ? p.titulo : `${p.titulo} · Story ${quadro + 1}/${p.arquivos.length}`;
+      return { pecaId, versao, titulo, aceite: structuredClone(p.aceite), aceiteSha256,
         manifesto, midias, capa, conferir,
         abrir: indice => {
           const m = indice === 'capa' ? capa : midias[indice];
