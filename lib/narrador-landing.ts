@@ -15,7 +15,7 @@ export type FalaNarrador = { secao: string; texto: string; imagem: 'feliz' | 'pe
 export const FALAS_NARRADOR: FalaNarrador[] = [
   { secao: 'produto', imagem: 'pensando', texto: 'Café, app de corrida, um Pix aqui e ali. Somado, vira um bom pedaço do mês.' },
   { secao: 'registro-rapido', imagem: 'feliz', texto: 'Copiou o comprovante? Cola no Grana. que eu separo valor, data e tipo pra você.' },
-  { secao: 'painel-web', imagem: 'piscando', texto: 'No computador o mês inteiro cabe numa tela. Abre os detalhes do painel pra ver de perto.' },
+  { secao: 'painel-web', imagem: 'piscando', texto: 'No computador o mês inteiro cabe numa tela, do saldo às faturas do cartão.' },
   { secao: 'beneficios', imagem: 'feliz', texto: 'Cada cartão desses foi desenhado a partir de uma tela de verdade do app.' },
   { secao: 'no-bolso', imagem: 'saudacao', texto: 'No Android dá pra falar o gasto e fotografar a nota. Eu entendo e lanço.' },
   { secao: 'habitos', imagem: 'piscando', texto: 'Esqueceu de anotar ontem? Acontece. Aqui ninguém leva bronca.' },

@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
-import { fonts, radius, spacing, theme } from '@/lib/theme';
+import { Platform, StyleSheet, View } from 'react-native';
+import { spacing } from '@/lib/theme';
 import { useBreakpoint } from '@/lib/breakpoints';
 import MolduraNavegador from '@/components/MolduraNavegador';
 import PainelWebAmpliado from '@/components/PainelWebAmpliado';
-import AppPressable from '@/components/AppPressable';
 
 const SRC = '/telas/inicio-web.png?v=20260925';
 const LEGENDA = 'Painel web do Grana. mostrando Livre para Gastar, comprometimento futuro e gastos por categoria de uma conta de exemplo';
@@ -13,9 +12,10 @@ const LEGENDA = 'Painel web do Grana. mostrando Livre para Gastar, comprometimen
  * A captura do painel web, dentro de uma moldura de navegador.
  *
  * As legendas contextuais continuam fora da captura para manter a composição
- * limpa. O link para a imagem em tamanho real existe para toque, teclado e
- * leitura ampliada; no desktop, o ponteiro amplia o painel a 70% da tela
- * (PainelWebAmpliado.web.tsx).
+ * limpa. No desktop, o ponteiro amplia o painel a 70% da tela
+ * (PainelWebAmpliado.web.tsx). O botão "Ver detalhes do painel", que abria o
+ * PNG em outra aba, saiu a pedido do autor em 24/10/2026 (auditoria Leis de UI:
+ * a landing não tira ninguém da página).
  */
 export default function PainelWebDestaque({ compacto = false }: { compacto?: boolean }) {
   const { largura } = useBreakpoint();
@@ -59,37 +59,10 @@ export default function PainelWebDestaque({ compacto = false }: { compacto?: boo
       {permiteZoom && (
         <PainelWebAmpliado src={SRC} legenda={LEGENDA} aberta={aberta} aoSair={() => setAberta(false)} camadaRef={camadaRef} />
       )}
-      <AppPressable
-        href={SRC}
-        target="_blank"
-        rel="noreferrer"
-        accessibilityRole="link"
-        accessibilityLabel="Abrir o painel web do Grana. em tamanho grande"
-        style={({ hovered }) => [styles.linkAmpliar, hovered && styles.linkAmpliarHover]}
-      >
-        <View style={styles.linkAmpliarTexto}>
-          <View style={styles.linkAmpliarPonto} />
-          <Text style={styles.linkAmpliarRotulo}>Ver detalhes do painel</Text>
-        </View>
-      </AppPressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   raiz: { alignItems: 'center', alignSelf: 'center', gap: spacing.md },
-  linkAmpliar: {
-    minHeight: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: theme.ruleStrong,
-    backgroundColor: theme.paperRaised,
-  },
-  linkAmpliarHover: { borderColor: theme.accent2, backgroundColor: theme.hover },
-  linkAmpliarTexto: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  linkAmpliarPonto: { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.accent2 },
-  linkAmpliarRotulo: { color: theme.ink, fontSize: 12, fontFamily: fonts.regular },
 });
