@@ -647,12 +647,14 @@ const NOTIFICACAO_EXEMPLO = {
    reconhecimento erra e como o Livre para Gastar é calculado. A resposta
    comercial aponta para a seção de Preços, que concentra valor e forma de
    pagamento. */
-/* Quebra de objeções, dobra própria ANTES da FAQ.
+/* Objeções, no começo do acordeão da FAQ.
  *
- * A FAQ estava fazendo dois trabalhos ao mesmo tempo, e mal: dez perguntas
- * num acordeão fechado no fim da página. Objeção que trava a compra precisa
- * ser respondida onde a pessoa ainda está decidindo, e visível, não escondida
- * atrás de um clique. O que sobra de fato operacional continua na FAQ.
+ * Até 24/10/2026 eram uma dobra própria antes da FAQ, com os sete cartões
+ * abertos, porque "objeção escondida atrás de um clique é objeção não
+ * respondida". A auditoria Leis de UI (A6) mostrou duas seções seguidas de
+ * perguntas e respostas, em formatos diferentes, ocupando umas cinco telas no
+ * celular, e o autor aprovou juntar tudo num acordeão só, com as objeções
+ * primeiro (a primeira já abre).
  *
  * O formato "Mas [objeção]" é deliberado: escreve a frase que a pessoa diria
  * em voz alta, não a pergunta higienizada que uma empresa escreveria.
@@ -661,9 +663,6 @@ const NOTIFICACAO_EXEMPLO = {
  * retorno apontado na análise de concorrência: "por que é pago" (o Grana.
  * cobra desde o primeiro dia e nunca explicou o motivo) e a planilha, que é
  * o concorrente real de quem chega aqui. */
-/* Teto de largura de cada card de objeção; a grade (`objecoesGrade`) soma
-   três destes com os respiros. Acima disso a linha de texto fica longa. */
-const LARGURA_CARD_OBJECAO = 420;
 const OBJECOES = [
   {
     objecao: 'Mas eu já tentei planilha e larguei no meio.',
@@ -702,8 +701,7 @@ const OBJECOES = [
   },
 ];
 
-/* A FAQ que sobra depois das objeções saírem: só dúvida operacional de quem
-   já decidiu. O que travava a decisão virou dobra própria, acima. */
+/* Dúvida operacional de quem já decidiu; vem depois das objeções no acordeão. */
 const PERGUNTAS_FAQ = [
   {
     pergunta: 'Como funciona a assinatura?',
@@ -739,6 +737,8 @@ const PERGUNTAS_FAQ = [
       'Não pra começar: o Grana. roda direto no navegador, neste mesmo endereço. Pra ter os recursos do bolso, como os widgets da tela inicial e o lançamento por voz, é só baixar o aplicativo de Android.',
   },
 ];
+
+const PERGUNTAS_DA_PAGINA = [...OBJECOES.map((o) => ({ pergunta: o.objecao, resposta: o.resposta })), ...PERGUNTAS_FAQ];
 
 /**
  * O título de uma seção. Numa dobra de tela cheia (16:9) o corpo de 28pt que
@@ -1327,10 +1327,9 @@ function ConteudoWeb() {
 
       {/* A dobra de Segurança que ficava aqui foi retirada em 13/09/2026.
           Ela não existe na estrutura de 13 blocos definida pelo autor, e o
-          conteúdo dela não se perdeu: virou três das sete objeções da dobra
-          `#objecoes` ("não quero dar acesso à conta bancária", "meus dados
-          ficam seguros", "o Grana. mexe no meu dinheiro"), que é onde a
-          objeção de confiança de fato trava a compra. A dobra antiga gastava
+          conteúdo dela não se perdeu: virou três das sete objeções que abrem
+          a FAQ ("não quero dar acesso à conta bancária", "meus dados ficam
+          seguros", "o Grana. mexe no meu dinheiro"). A dobra antiga gastava
           uma tela inteira em dois cards com muito vazio em volta. */}
 
       {/* ───────── E no seu bolso, ainda mais (bloco 6 da estrutura) ─────────
@@ -1637,32 +1636,6 @@ function ConteudoWeb() {
         </Dobra>
       </View>
 
-      {/* ───────── Quebra de objeções ─────────
-          Vem DEPOIS da oferta e ANTES da FAQ de propósito: é a dobra que
-          responde o que trava a decisão, no momento em que a pessoa acabou
-          de ver o preço. Sem acordeão — objeção escondida atrás de um clique
-          é objeção não respondida. */}
-      <View nativeID="objecoes" style={styles.palcoComCamada}>
-        <GradeInterativa />
-        <Dobra levantada>
-          <View style={styles.secao}>
-            <RevealOnScroll variante="titulo" style={styles.precoIntroCentralizada}>
-              <TituloSecao estiloExtra={styles.precoTituloCentralizado}>As perguntas que você ainda não fez.</TituloSecao>
-            </RevealOnScroll>
-            <View style={styles.objecoesGrade}>
-              {OBJECOES.map((o, i) => (
-                <RevealOnScroll key={o.objecao} atraso={i * 60} variante="card" style={styles.objecaoCardPos}>
-                  <View style={styles.objecaoCard}>
-                    <Text style={styles.objecaoPergunta}>{o.objecao}</Text>
-                    <Text style={styles.objecaoResposta}>{o.resposta}</Text>
-                  </View>
-                </RevealOnScroll>
-              ))}
-            </View>
-          </View>
-        </Dobra>
-      </View>
-
       {/* ───────── Garantia ─────────
           O prazo de 7 dias é fato conferido no painel da Cakto em 13/09/2026,
           e é o mesmo que o e-mail de confirmação já promete a quem compra.
@@ -1672,7 +1645,7 @@ function ConteudoWeb() {
           descreve esse caminho, e "cancele quando quiser" já foi retirado
           desta página uma vez, em 05/09/2026, por falta exatamente disso. */}
       {/* Faixa compacta, NÃO uma `Dobra` de tela cheia. A garantia é um
-          respiro de tranquilização entre duas dobras densas (objeções e FAQ),
+          respiro de tranquilização entre duas dobras densas (preço e FAQ),
           e ocupa umas 350px de conteúdo: numa dobra de 840px ela vira uma
           ilhota cercada de vazio, que foi exatamente o defeito que derrubou a
           antiga dobra de Segurança ("ruim e feia", palavras do autor). Altura
@@ -1718,7 +1691,7 @@ function ConteudoWeb() {
               </RevealOnScroll>
 
               <View style={[styles.faqGrade, faqEmpilhado && styles.faqCompactoSemFlex, faqComNavLateral && styles.faqGradeComNavLateral]}>
-                {PERGUNTAS_FAQ.map((f, i) => (
+                {PERGUNTAS_DA_PAGINA.map((f, i) => (
                   <RevealOnScroll
                     key={f.pergunta}
                     atraso={i * 70}
@@ -2502,40 +2475,6 @@ const styles = StyleSheet.create({
   // divisória órfã cortando o card ao meio.
   faqItemSemBorda: { borderBottomWidth: 0, paddingVertical: 0 },
 
-  /* Objeções: colunas de CSS (alvenaria), até três, cada uma com pelo menos
-     300px; o navegador escolhe quantas cabem, sem breakpoint próprio.
-
-     Até 17/09/2026 era uma grade em linhas (3+3+1). Cada linha tomava a
-     altura do card mais alto, e a 1861×951 os sete cards passavam da tela:
-     o sétimo, sozinho na última linha, saía cortado no pé da dobra (print do
-     autor, "não estão devidamente encaixados na tela"). Em colunas, cada card
-     ocupa só a própria altura, e o sétimo entra na coluna mais curta.
-     A ordem de leitura desce pelas colunas. */
-  objecoesGrade: {
-    width: '100%',
-    maxWidth: 3 * LARGURA_CARD_OBJECAO + 2 * spacing.lg,
-    alignSelf: 'center',
-    marginTop: spacing.xxl,
-    ...({ display: 'block', columnCount: 3, columnWidth: 300, columnGap: spacing.lg } as any),
-  },
-  /* `breakInside` impede o card de começar numa coluna e terminar na outra;
-     o respiro vertical é margem porque `gap` não vale entre itens de coluna. */
-  objecaoCardPos: { marginBottom: spacing.lg, ...({ breakInside: 'avoid' } as any) },
-  objecaoCard: {
-    backgroundColor: theme.paperRaised,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: theme.rule,
-    padding: spacing.lg,
-    gap: spacing.sm,
-    ...sombraCard,
-  },
-  /* A objeção é a fala da pessoa, então ganha a cor de destaque e a fonte
-     regular; a resposta é a voz do produto, em tinta suave. Os tamanhos são
-     os do `FaqItem` (pergunta maior que a resposta); até 17/09/2026 estavam
-     invertidos, e a resposta em corpo grande ajudava a grade a passar da tela. */
-  objecaoPergunta: { color: theme.accent2, fontSize: type.corpo, fontFamily: fonts.regular, lineHeight: lh(type.corpo) },
-  objecaoResposta: { color: theme.inkSoft, fontSize: type.apoio, fontFamily: fonts.light, lineHeight: lh(type.apoio) },
 
   garantiaSelo: {
     width: 56,
