@@ -91,6 +91,26 @@ O histórico e a evidência da exposição permanecem na seção datada de 16/09
 
 ---
 
+## 24/10/2026 (M1, Claude direto com o autor): correções da auditoria Leis de UI na landing
+
+1. **Pedido:** "Pode corrigir os achados." Escolha do autor: os confirmados (A1, A2, A3, A4, A8, A9) mais as recomendações A5, A6 e A11; A7 (botão fixo "Ver os planos") ficou de fora, e A10 (texto do aviso de cookies) depende de revisão de LGPD. Esclarecimento do autor: o "teste" dos Reels é o simulador da landing, então a pergunta do relatório está resolvida. No meio do trabalho, mais dois pedidos com print: "pode remover esse botão aqui" ("Ver detalhes do painel") e "bota a cor dos botões na mesma cor do fundo dessa faixa no topo da hero".
+2. **Feito, um commit por mudança (regra 14):**
+   - `e7e19e17` e `836fdaf4` (A1): o botão de compra (`BotaoCTA`) fica sólido no menta da faixa do topo (`theme.accent2`), com texto escuro; "Entrar" e o botão "Explorar" ficam escuros com borda. Primeiro foi para o verde (`theme.accent`), depois para o menta a pedido do autor.
+   - `75b076c1` (A9): "Entrar", chips "Perguntar" e "Copiar Pix de teste" com 44 px.
+   - `24622c02` e `94d9c44a` (A2): a pílula "Ver detalhes do painel" virou camada na própria página e, a pedido do autor, foi removida com a camada; a ampliação pelo mouse no desktop continua. Nada mais abre aba nova nessa seção.
+   - `39d09405` (A8): o Granabô narrador fica sem fala na seção de preços, então some ali. A fala do painel, que mandava "passar o mouse", agora diz "No computador o mês inteiro cabe numa tela, do saldo às faturas do cartão."
+   - `e5835315` (A5): "Garantia de sete dias: não gostou, reembolso garantido." logo abaixo do botão de compra.
+   - `c283f3f5` (A6): as 7 objeções entram no começo do acordeão da FAQ (13 perguntas); sai a dobra `#objecoes`.
+   - `d2063c77` (A11): no celular, o topo mostra a tela de Início do app (`MolduraCelular`, `/telas/inicio-mobile.png`, 260 px) depois do botão; o botão continua na primeira tela em 390x844 e 360x640.
+   - `5f7a6756` e `3ac7f1af` (A4): `text-wrap: balance` nos textos curtos, e `lib/sem-viuva.ts` (`semViuva()`) nos títulos dos cartões de ferramentas e na FAQ, com o teste `__tests__/sem-viuva.cjs` (12 verificações) no `test:ci`.
+   - `8f4872b7`: o texto da regra 29 corrigido (na web o CSS ajuda mas não garante) e a armadilha na skill.
+3. **A3 NÃO corrigido, causa confirmada:** sem JavaScript a landing é uma tela vazia (HTML de 29 KB). O `app/_layout.tsx:103` desenha uma `View` vazia enquanto `useFonts` não carrega, e isso também vale na geração estática; todo o conteúdo espera o pacote JS (787 KB transferidos) baixar e rodar. A imagem do topo já tinha `fetchpriority="high"`; a hipótese anterior (falta de `preload`) estava errada. Corrigir mexe no layout raiz de toda a web e na escolha de layout pela largura, com risco de troca visível de fonte e de o layout de computador piscar no celular. Fica como plano separado, a decidir com o autor.
+4. **Descartado:** camada de tela cheia para os detalhes do painel no celular (feita, aprovada nos testes e removida pelo pedido do autor); `semViuva` em todo texto (a regra 29 manda reescrever no app; aqui só em texto fixo da landing).
+5. **O que deu errado:** a mensagem de commit em here-string do PowerShell 5.1 quebrou nas aspas e, por arquivo, saiu com BOM; o commit local do A9 foi corrigido com `--amend` antes de qualquer push, e as mensagens passaram a ser gravadas sem BOM.
+6. **Verificado:** `tsc --noEmit` sem erro; `exemplo-landing` (42), `entrada-na-tela` (9), `checkout-com-email` (15), `modo-teste` (22), `convite-app-android` (7), `feedback-consentimento` (24) e `sem-viuva` (12) passando; medidor no localhost em 360, 390, 768 e 1440: zero alvo abaixo de 44 px, uma saída só (Instagram, permitida), viúvas restantes só em conteúdo de exemplo. **Não verificado:** produção (nada publicado ainda: há cinco commits de outro agente intercalados no `main` local, tela Contas do admin e política de privacidade, e o push espera o aval do dono); aparelho real; leitor de tela.
+
+---
+
 ## 24/10/2026 (M1, Claude direto com o autor): skill Leis de UI e auditoria da landing
 
 1. **Pedido:** o autor mandou a lista "20 leis de UX para o Claude melhorar suas interfaces" ("estuda todas esses conceitos") e depois: "Pode transformar em uma skill de auditoria, nomeie ela como Leis de UI. Use ela para auditar a landing page".
