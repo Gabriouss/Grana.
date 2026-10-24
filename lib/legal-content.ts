@@ -144,7 +144,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
     {
       tipo: 'lista',
       itens: [
-        'Confirmar a existência e acessar os dados que temos sobre você, baixando uma cópia completa em Perfil → Baixar meus dados (também disponível na tela de assinatura);',
+        'Confirmar a existência e acessar os dados que temos sobre você. Com acesso liberado, use Perfil → Baixar meus dados. Com a assinatura vencida, solicite uma cópia pela tela de assinatura, em Solicitar meus dados, ou por suporte@granaponto.com.br, sem precisar renovar;',
         'Corrigir dados incompletos, inexatos ou desatualizados (editando-os diretamente no app);',
         'Solicitar a exclusão de dados desnecessários ou excessivos;',
         'Excluir sua conta e todos os dados associados, pelo próprio app ou pelo e-mail de contato acima;',
