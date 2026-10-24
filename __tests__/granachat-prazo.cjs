@@ -51,7 +51,13 @@ function montar(agora, linhasPorConta, contaRef, fonte) {
       return cadeia;
     },
   };
-  const mod = carregar('lib/assistente.ts', { './supabase': { supabase } }, { Date: DataFalsa }, fonte);
+  /* 2244e190 (21/10) trouxe o modo teste da landing para o assistente; fora dele,
+     o caminho real, que é o que este teste mede. */
+  const mod = carregar('lib/assistente.ts', {
+    './supabase': { supabase },
+    './modo-teste': { MODO_TESTE: false },
+    './assistente-teste': { respostaDoTeste: () => { throw new Error('modo teste fora do teste'); } },
+  }, { Date: DataFalsa }, fonte);
   return { mod, chamadas };
 }
 

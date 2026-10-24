@@ -46,7 +46,13 @@ function carregarAssistente() {
   vm.runInNewContext(transpilar(fs.readFileSync(path.join(repo, 'lib', 'assistente.ts'), 'utf8')), {
     exports, Date, process: { env: {} }, fetch: async () => { throw new Error('rede não usada'); },
     console: { error(...a) { logs.push(a); }, log() {} },
-    require(id) { if (id === './supabase') return { supabase }; throw new Error(`import inesperado: ${id}`); },
+    require(id) {
+      if (id === './supabase') return { supabase };
+      // 2244e190 (21/10): modo teste da landing; aqui vale o caminho real.
+      if (id === './modo-teste') return { MODO_TESTE: false };
+      if (id === './assistente-teste') return { respostaDoTeste: () => { throw new Error('modo teste fora do teste'); } };
+      throw new Error(`import inesperado: ${id}`);
+    },
   }, { filename: 'lib/assistente.ts' });
   return exports;
 }
