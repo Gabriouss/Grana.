@@ -5,6 +5,7 @@ import { estadoAposFalha, guardarAcesso, lerAcessoGuardado, prazoOfflineAindaVal
 import { isLikelyNetworkError } from './offline-cache';
 import { supabase } from './supabase';
 import { MODO_TESTE } from './modo-teste';
+import { sincronizarAvisosAssinatura } from './notifications';
 import { AppState } from 'react-native';
 import { assinarLeituraEsvaziou } from './cache-de-tela';
 import { avisarAcessoNegado, criarVigiaDoAcesso } from './vigia-acesso';
@@ -43,7 +44,7 @@ export function useEntitlement() {
 }
 
 export function EntitlementProvider({ children }: PropsWithChildren) {
-  const { session, sessaoNaoConfirmada } = useSession();
+  const { session, sessaoNaoConfirmada, isLoading: carregandoSessao } = useSession();
   const [estado, setEstado] = useState<EstadoAcesso | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [modoOffline, setModoOffline] = useState(false);
@@ -60,6 +61,11 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
      grupo de telas. */
   // No modo teste o acesso vem fixo de `useEntitlement`; o provedor não consulta nada.
   const userId = MODO_TESTE ? null : session?.user.id ?? null;
+  const usuarioDosAvisosRef = useRef(userId);
+  usuarioDosAvisosRef.current = userId;
+  useEffect(() => {
+    if (!MODO_TESTE && (!carregandoSessao || userId)) void sincronizarAvisosAssinatura(userId);
+  }, [userId, carregandoSessao]);
 
   /* Os dois valores abaixo são LIDOS dentro da recarga, nunca dependências
      dela. Como ref, a recarga enxerga sempre o valor do instante em que a
@@ -118,6 +124,8 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
       setEstado(confirmado);
       setModoOffline(false);
       await guardarAcesso(userId, confirmado);
+      // Só a palavra confirmada do servidor altera a agenda. Cache/falha de rede não reagendam.
+      if (usuarioDosAvisosRef.current === userId) void sincronizarAvisosAssinatura(userId, confirmado);
     } catch (error) {
       /* `sessaoNaoConfirmada` entra na mesma conta que a falta de rede porque a
          causa é a mesma: a sessão veio do disco, o token de acesso está

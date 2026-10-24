@@ -12,6 +12,8 @@ import {
 import { formatMoney } from './format';
 import { dataVencimentoFatura as vencimentoDoCiclo } from './faturaCiclo';
 import type { Bill, CreditCard } from './types';
+import type { EstadoAcesso } from './entitlement-context';
+import { calcularAvisoAssinatura, formatarDataAssinatura } from './aviso-assinatura';
 
 const CHANNEL_ID = 'lembretes-contas';
 
@@ -578,4 +580,93 @@ export async function cancelDailyHabitReminder(): Promise<void> {
     if (!Notifications) return;
     await cancelarHabitoInterno(Notifications, true);
   });
+}
+
+
+/* ---- prazo da assinatura, isolado dos lembretes financeiros/hábito ---- */
+const PREFIXO_ASSINATURA = 'assinatura-';
+const chaveVencimentoAvisado = (userId: string) => `grana:assinatura:vencimento-avisado:${userId}`;
+let filaAvisosAssinatura = Promise.resolve();
+let revisaoAvisosAssinatura = 0;
+
+/**
+ * Só uma confirmação do servidor cria/replaneja lembretes. Sem `estado`, apenas
+ * descarta avisos de OUTRA conta: a própria agenda sobrevive à abertura offline.
+ * userId nulo cancela somente avisos de assinatura, nunca contas/faturas/hábito.
+ */
+export function sincronizarAvisosAssinatura(userId: string | null, estado?: EstadoAcesso | null, agora = Date.now()): Promise<void> {
+  const revisao = ++revisaoAvisosAssinatura;
+  filaAvisosAssinatura = filaAvisosAssinatura.then(async () => {
+    try {
+      const Notifications = getNotifications();
+      if (!Notifications) return;
+      const agendadas = (await Notifications.getAllScheduledNotificationsAsync()).filter(n => n.identifier.startsWith(PREFIXO_ASSINATURA));
+      if (revisao !== revisaoAvisosAssinatura) return;
+      const instante = Math.max(agora, Date.now());
+      const cancelar = async (n: NotificationsModule.NotificationRequest) => {
+        await Notifications.cancelScheduledNotificationAsync(n.identifier);
+        const dados = n.content.data;
+        // Um vencimento futuro cancelado ainda não foi avisado, inclusive no logout.
+        if (dados?.etapa === 'venceu' && typeof dados.usuarioId === 'string' && typeof dados.prazo === 'string' && Date.parse(dados.prazo) > instante) {
+          await AsyncStorage.removeItem(chaveVencimentoAvisado(dados.usuarioId));
+        }
+      };
+      if (estado === undefined) {
+        for (const n of agendadas) {
+          if (!userId || n.content.data?.usuarioId !== userId) await cancelar(n);
+        }
+        return;
+      }
+      const aviso = calcularAvisoAssinatura(estado, instante);
+      const prazo = aviso.dataLimite?.toISOString() ?? null;
+      const chave = userId ? chaveVencimentoAvisado(userId) : null;
+      const jaAvisado = chave ? await AsyncStorage.getItem(chave) : null;
+      if (revisao !== revisaoAvisosAssinatura) return;
+      const desejadas: { id: string; tipo: string; quando: Date; titulo: string; corpo: string; assinaturaChave: string }[] = [];
+      if (userId && prazo) for (const item of aviso.lembretes) {
+        const id = `${PREFIXO_ASSINATURA}${userId}-${item.tipo}`;
+        const assinaturaChave = `${userId}|${estado?.status}|${prazo}|${item.tipo}`;
+        const futuro = item.quando.getTime() > instante;
+        // Se já foi entregue, não emite de novo a cada recarga/reabertura.
+        const pendente = agendadas.some(n => n.identifier === id && n.content.data?.assinaturaChave === assinaturaChave);
+        if (!(futuro && estado?.allowed) && !(item.tipo === 'venceu' && !futuro && estado?.allowed === false && (jaAvisado !== prazo || pendente))) continue;
+        const dias = item.tipo.replace('antes-', '');
+        desejadas.push({ id, tipo: item.tipo, quando: item.quando, assinaturaChave,
+          titulo: item.tipo === 'venceu' ? 'Sua assinatura venceu' : `Sua assinatura termina em ${dias} ${dias === '1' ? 'dia' : 'dias'}`,
+          corpo: item.tipo === 'venceu' ? 'Seus dados continuam guardados.'
+            : estado?.status === 'past_due' ? `O pagamento não foi confirmado. Atualize a cobrança até ${formatarDataAssinatura(aviso.dataLimite)}.`
+              : 'Renove para continuar usando o Grana.' });
+      }
+      const igual = (n: NotificationsModule.NotificationRequest, d: typeof desejadas[number]) =>
+        n.identifier === d.id && n.content.data?.assinaturaChave === d.assinaturaChave
+        && n.content.title === d.titulo && n.content.body === d.corpo;
+      for (const n of agendadas) {
+        if (desejadas.some(d => igual(n, d))) continue;
+        await cancelar(n);
+      }
+      if (!desejadas.length || revisao !== revisaoAvisosAssinatura) return;
+      const novas = desejadas.filter(d => !agendadas.some(n => igual(n, d)));
+      if (novas.length && !(await requestNotificationPermission())) {
+        console.warn('[assinatura] lembretes sem permissão de notificações');
+        return;
+      }
+      for (const d of desejadas) {
+        if (revisao !== revisaoAvisosAssinatura) return;
+        if (!agendadas.some(n => igual(n, d))) {
+          const futura = d.quando.getTime() > Date.now();
+          if (!futura && d.tipo !== 'venceu') continue;
+          await Notifications.scheduleNotificationAsync({ identifier: d.id,
+            content: { title: d.titulo, body: d.corpo, data: { tipo: 'assinatura', etapa: d.tipo, usuarioId: userId, prazo, assinaturaChave: d.assinaturaChave } },
+            trigger: futura ? { type: Notifications.SchedulableTriggerInputTypes.DATE, date: d.quando, channelId: CHANNEL_ID }
+              : { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1, channelId: CHANNEL_ID },
+          });
+        }
+        if (d.tipo === 'venceu' && chave) await AsyncStorage.setItem(chave, prazo!);
+      }
+    } catch {
+      // Não muda acesso/cache por causa de uma falha no subsistema de notificações.
+      console.warn('[assinatura] não foi possível reconciliar os lembretes locais');
+    }
+  });
+  return filaAvisosAssinatura;
 }
