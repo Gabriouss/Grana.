@@ -292,7 +292,7 @@ function voltarSemData(raiz, corpo = {}) {
     const nova = projetar(raiz, atual);
     const plano = nova.planejados.find((r) => r.id === corpo.id && r.versao === corpo.versao);
     if (!plano) throw new c.ErroMarketing('sem-planejamento', 'Esta peça não estava no calendário.', 404);
-    if (plano.estado !== 'planejado' || !plano.data) throw new c.ErroMarketing('sem-data-recusado', 'Só uma peça planejada com data volta para os aprovados sem data.', 409);
+    if (!['planejado', undefined].includes(plano.estado) || !plano.data) throw new c.ErroMarketing('sem-data-recusado', 'Só uma peça planejada com data volta para os aprovados sem data.', 409);
     const em = c.agoraLocalIso();
     if (plano.manifestoId) { plano.recibos = [...(plano.recibos || []), { tipo: 'sem-data', em }]; plano.semData = { em }; plano.estado = 'sem data'; plano.data = null; }
     else nova.planejados = nova.planejados.filter((r) => r !== plano);

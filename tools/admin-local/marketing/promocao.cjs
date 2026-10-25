@@ -112,8 +112,14 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
       c.exigirItemAutonomo(p, 'A promoção');
       require('./legenda-publicacao.cjs').exigirLegenda(p);
       if (p.estado !== 'para-aprovacao' || !PREFIXO.test(p.caminho)) throw new c.ErroMarketing('pasta-invalida', 'Só peça de para-aprovacao pode ser promovida.', 409);
-      // O vínculo explícito sobrevive à troca de pasta, inclusive para capas compartilhadas de outra semana.
-      if (p.composicao && !pecas.find((v) => v.id === p.capa.pecaId)?.vinculoCapa) throw new c.ErroMarketing('capa-sem-registro', 'Este Reel tem capa ligada só pelo nome do arquivo. Registre o vínculo da capa no registro de famílias antes de promover.', 409);
+      // O par local exclusivo por nome acompanha o vídeo na promoção: a cópia do
+      // composto é conferida abaixo antes de persistir o aceite ou limpar a origem.
+      // Capas compartilhadas ou fora desse par continuam exigindo vínculo explícito.
+      const capaDoComposto = p.capa && pecas.find((v) => v.id === p.capa.pecaId);
+      const parLocalExclusivo = capaDoComposto &&
+        capaDoComposto.caminho.toLowerCase() === p.caminho.replace(/\.[^/.]+$/, '-capa.png').toLowerCase() &&
+        !pecas.some((v) => v.id !== p.id && v.capa?.pecaId === capaDoComposto.id);
+      if (p.composicao && !capaDoComposto?.vinculoCapa && !parLocalExclusivo) throw new c.ErroMarketing('capa-sem-registro', 'Este Reel precisa de um vínculo explícito para a capa compartilhada ou de outra pasta antes de promover.', 409);
       const aceite = dados.aprovacoes.find((a) => aceiteValido(a, p, Date.now(), dados.aprovacoes));
       if (!aceite) throw new c.ErroMarketing('sem-aceite', 'A versão precisa do aceite datado do autor antes da promoção.', 409);
       // A fila usa ID físico. Pedido aberto bloqueia a mudança de caminho: não o deixar órfão.

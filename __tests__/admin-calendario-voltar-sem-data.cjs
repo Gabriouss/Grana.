@@ -52,6 +52,19 @@ const nenhum = async () => ({ jobs: [], limitado: false });
     const d2 = cal.obterCalendario(dir, '2099-01');
     assert.equal(d2.itens.length, 1); assert.equal(d2.itens[0].data, '2099-01-06');
     assert.equal(d2.aprovadosSemData.some((x) => x.id === p.id), false);
+
+    // Planejamento manual legado não tem estado persistido: a leitura o trata
+    // como planejado, e o comando de voltar precisa aceitar o mesmo contrato.
+    const arq = path.join(dir, 'docs/marketing/painel/calendario.json');
+    fs.writeFileSync(arq, JSON.stringify({ formato: 1, planejados: [{
+      id: p.id, versao: p.versao, caminho: p.caminho, data: '2099-01-06', hora: null, canal: 'instagram-feed',
+    }] }));
+    // Retira só o manifesto da fixture para exercitar o legado sem projeção.
+    fs.unlinkSync(path.join(dir, 'docs/marketing/painel/cronograma.json'));
+    assert.equal(cal.obterCalendario(dir, '2099-01').itens.length, 1);
+    await cal.voltarSemData(dir, { id: p.id, versao: p.versao }, { listar: nenhum });
+    assert.equal(cal.obterCalendario(dir, '2099-01').itens.length, 0);
+    assert.ok(cal.obterCalendario(dir, '2099-01').aprovadosSemData.some(x => x.id === p.id));
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 
   // Tela: botão no cartão planejado, ausente com job real.

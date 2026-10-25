@@ -226,9 +226,9 @@ async function test(nome, fn, nomes) { await fixture(fn, nomes); grupos++; conso
     etapa = 'ok'; assert.equal((await post({ ...body, confirmacao: 'sim' })).status, 400); assert.equal(chamados, 1); assert(!fs.existsSync(h.destino()));
     assert.equal((await post(body)).status, 200); assert.equal(chamados, 2); assert(fs.existsSync(h.destino())); assert.deepEqual(rede, []);
   });
-  // 21/10: Reel com capa ligada pelo registro de famílias. A cópia em aprovados precisa da mesma
-  // capa, senão a versão composta muda e a promoção recusa com destino-divergente.
-  {
+  // O par local por nome deve promover junto, sem exigir um registro manual de família.
+  // O vínculo explícito continua coberto pelo mesmo fluxo e pela mesma versão composta.
+  for (const comRegistro of [false, true]) {
     const tmpRoot = path.resolve(os.tmpdir());
     const dir = fs.mkdtempSync(path.join(tmpRoot, 'grana-promocao-'));
     try {
@@ -241,10 +241,25 @@ async function test(nome, fn, nomes) { await fixture(fn, nomes); grupos++; conso
       const painel = path.join(dir, 'docs/marketing/painel'); fs.mkdirSync(painel, { recursive: true });
       fs.writeFileSync(path.join(painel, 'calendario.json'), JSON.stringify({ diaD: '2099-01-01', planejados: [] }));
       const base = semana + '/para-aprovacao/pecas/reels/';
-      fs.writeFileSync(path.join(painel, 'familias.json'), JSON.stringify({ familias: [], capas: [{ capa: base + 'Pra onde foi-capa.png', reel: base + 'Pra onde foi.mp4' }] }));
+      if (comRegistro) fs.writeFileSync(path.join(painel, 'familias.json'), JSON.stringify({ familias: [], capas: [{ capa: base + 'Pra onde foi-capa.png', reel: base + 'Pra onde foi.mp4' }] }));
       const p = c.montarCatalogo(dir).find((x) => x.tipo === 'video');
       assert(p && p.composicao && p.capa, 'Reel com aceite composto');
       await ap.aprovar(dir, p.id, { versao: p.versao, confirmacao: true });
+      if (!comRegistro) {
+        const falha = await ap.aprovarEFechar(dir, p.id, { versao: p.versao, confirmacao: true }, {
+          promover: async () => { throw Object.assign(new Error('falha legada de capa'), { codigo: 'capa-sem-registro' }); },
+        });
+        assert.equal(falha.conclusao.estado, 'incompleta');
+        const calendario = path.join(painel, 'calendario.json');
+        fs.writeFileSync(calendario, JSON.stringify({ planejados: [{ id: p.id, versao: p.versao, data: '2099-01-02', canal: 'reels' }] }));
+        const antes = cal.obterCalendario(dir, '2099-01');
+        assert.equal(antes.itens.length, 0, 'aceite incompleto não aparece como planejado com data');
+        assert.equal(antes.suspensos[0]?.peca.id, p.id, 'Continuar preservado na lista de pendências');
+        const retomada = await ap.aprovarEFechar(dir, p.id, { versao: p.versao, confirmacao: true });
+        assert.equal(retomada.conclusao.estado, 'concluida', 'Continuar conclui promoção e calendário');
+        assert.equal(retomada.aprovacao.aprovadoEm, falha.aprovacao.aprovadoEm, 'aceite original imutável');
+        assert.equal(cal.obterCalendario(dir, '2099-01').itens.length, 1, 'só o destino concluído ocupa a data');
+      }
       const r = await promo.promover(dir, p.id, { versao: p.versao, confirmacao: true });
       assert.equal(r.promocao.versao, p.versao);
       const nova = c.obterPeca(dir, r.promocao.id);
@@ -258,7 +273,10 @@ async function test(nome, fn, nomes) { await fixture(fn, nomes); grupos++; conso
       const capaPeca = todas.find((x) => x.id === nova.capa.pecaId);
       assert.equal(capaPeca.estado, 'aprovados'); assert.equal(capaPeca.cobertaPeloReel, true);
       assert.equal(capaPeca.aprovada, true); assert.equal(capaPeca.estadoEfetivo, 'aprovada'); assert.equal(capaPeca.aceiteDeVersaoAnterior, false);
-      grupos++; console.log('OK Reel com capa so no registro promove com a mesma versao composta');
+      const retomada = await promo.promover(dir, p.id, { versao: p.versao, confirmacao: true });
+      assert.equal(retomada.jaExistia, true, 'Continuar retoma sem novo aceite ou promoção duplicada');
+      assert.equal(retomada.promocao.versao, p.versao);
+      grupos++; console.log('OK Reel com capa ' + (comRegistro ? 'no registro' : 'por nome local') + ' promove e retoma com a mesma versao composta');
     } finally {
       assert.equal(path.dirname(path.resolve(dir)), tmpRoot); assert(path.basename(dir).startsWith('grana-promocao-'));
       fs.rmSync(dir, { recursive: true, force: true });

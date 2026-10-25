@@ -112,6 +112,11 @@ function obterCalendario(raiz, mes) {
     }
     const registro = { data: plano.data, hora: plano.hora || null, canal: plano.canal, observacao: plano.observacao || null, peca: resumoPeca(p),
       estado: plano.estado || 'planejado', reciboAceite: resumoPeca(p).reciboAceite, ...detalhesPlano(plano) };
+    if (p.conclusaoAprovacao?.estado === 'incompleta') {
+      suspensos.push({ ...registro, data: null, estadoCronograma: 'aprovação incompleta',
+        motivo: 'aprovação incompleta', proximoPasso: 'Continue na Aprovação para concluir a etapa pendente.' });
+      continue;
+    }
     if (plano.estado === 'aguardando dia D') { aguardandoDiaD.push(registro); continue; }
     if (['cronograma inválido', 'vínculo inválido', 'vínculo duplicado', 'sem data no cronograma'].includes(plano.estado)) { suspensos.push(registro); continue; }
     if (!plano.data || !['planejado', undefined].includes(plano.estado)) continue;
