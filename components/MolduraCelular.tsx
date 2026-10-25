@@ -1,5 +1,6 @@
 import { createElement, useEffect, useId, useRef, useState } from 'react';
 import { AccessibilityInfo, View } from 'react-native';
+import { useMidia } from '@/lib/janela-hidratavel';
 import { theme, radius, sombras } from '@/lib/theme';
 import { EASE_LOOP } from '@/lib/motion';
 
@@ -58,9 +59,12 @@ const DURACAO_POR_TELA_S = 3.6;
  */
 export default function MolduraCelular({ src, legenda, quadros, largura = 280, indiceControlado }: Props) {
   const controlado = indiceControlado !== undefined;
-  const [reduzirMovimento, setReduzirMovimento] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
-  );
+  /* `useMidia`, e não `useState(() => matchMedia(...))`: o HTML do servidor
+     sai sem a preferência, e a hidratação precisa desenhar igual a ele (ver
+     lib/janela-hidratavel.ts). Logo depois vale a preferência real. */
+  const prefereMenosMovimento = useMidia('(prefers-reduced-motion: reduce)');
+  const [reduzirPeloSistema, setReduzirMovimento] = useState(false);
+  const reduzirMovimento = prefereMenosMovimento || reduzirPeloSistema;
   const [naTela, setNaTela] = useState(true);
   const ref = useRef<View>(null);
   const idBruto = useId();

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Stack, useRouter, type ErrorBoundaryProps } from 'expo-router';
+import { Stack, usePathname, useRouter, type ErrorBoundaryProps } from 'expo-router';
 import Head from 'expo-router/head';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
@@ -111,7 +111,7 @@ export default function RootLayout() {
     );
   }
 
-  return (
+  const arvore = (
     <>
       {identidadeWeb}
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
@@ -149,6 +149,31 @@ export default function RootLayout() {
       </SafeAreaProvider>
     </>
   );
+
+  /* Compensa, só no navegador, um desvio do `useId` entre o HTML do servidor
+     e a hidratação (A3, 24/10/2026). No export, o expo-router desenha a
+     página dentro do `<html>` de `app/+html.tsx`, cujos filhos são DOIS
+     (`<head>` e `<body>`): o React conta isso como uma bifurcação da árvore,
+     e todo `useId` abaixo dela ganha um trecho a mais no servidor. O navegador
+     hidrata a partir do `#root`, sem essa bifurcação. Sem a compensação, os ids
+     da landing divergiam (`brand-gradient-…`, `faq-resposta-…`, os nomes de
+     keyframe da névoa, do reflexo do CTA e da faixa de confiança), o React
+     não corrige atributo na hidratação, e a animação que procura o keyframe
+     pelo id do cliente parava. Um par `[null, árvore]` reproduz a mesma
+     bifurcação (dois filhos, a árvore no segundo), no ponto da árvore em que
+     ela não muda mais nada. Fora da hidratação o `useId` do cliente não
+     depende da posição, então o par não afeta as outras rotas. Conferido
+     comparando o `id` do DOM com o das props do React em todos os elementos
+     da landing do export de produção (script `ids2.py` da rodada `a3`, em Grana-temporarios). */
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    return (
+      <>
+        {null}
+        {arvore}
+      </>
+    );
+  }
+  return arvore;
 }
 
 /**
@@ -187,6 +212,19 @@ function RootNavigator() {
   const { session, isLoading, emRecuperacao } = useSession();
   const { estado: estadoAcesso } = useEntitlement();
   const router = useRouter();
+  const pathname = usePathname();
+  const landingNaWeb = Platform.OS === 'web' && pathname === '/';
+
+  /* A landing pode ter nascido escondida pelo script do `<head>`
+     (`app/+html.tsx`): quem tem sessão salva neste navegador, ou abre numa tela
+     larga, não pode ver o HTML do servidor piscar antes da área logada ou do
+     layout certo. Com a sessão resolvida, o que estiver na tela já é o
+     definitivo: o indicador e depois a área logada, ou a landing com a medida
+     real da janela. */
+  useEffect(() => {
+    if (isLoading || Platform.OS !== 'web' || typeof document === 'undefined') return;
+    document.documentElement.removeAttribute('data-grana-espera');
+  }, [isLoading]);
 
   useEffect(() => {
     const userId = session?.user.id;
@@ -297,7 +335,7 @@ function RootNavigator() {
      desmontava o painel no instante do Entrar e jogava a pessoa na Início. */
   const noAdmin =
     Platform.OS === 'web' && typeof window !== 'undefined' && ehRotaDeAdmin(window.location.pathname);
-  if (!noAdmin && deveSegurarRotas({ carregandoSessao: isLoading, temSessao: !!session, estadoAcesso })) {
+  if (!noAdmin && deveSegurarRotas({ carregandoSessao: isLoading, temSessao: !!session, estadoAcesso, landingNaWeb })) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.paper, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={theme.ink} />

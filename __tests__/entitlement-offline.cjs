@@ -162,6 +162,15 @@ const em = (dias) => new Date(AGORA + dias * 86400000).toISOString();
     ['com sessão e acesso liberado monta o app', { carregandoSessao: false, temSessao: true, estadoAcesso: base }, false],
     ['com sessão e acesso negado monta a tela de assinar', { carregandoSessao: false, temSessao: true, estadoAcesso: { ...base, allowed: false } }, false],
     ['sessão recarregando segura mesmo com estado antigo', { carregandoSessao: true, temSessao: true, estadoAcesso: base }, true],
+    // A3 da auditoria Leis de UI (24/10/2026): a landing na web não espera a
+    // sessão, senão o HTML do servidor sai só com o indicador e o LCP vai a 7 s.
+    ['landing na web sem sessão não espera a sessão carregar', { carregandoSessao: true, temSessao: false, estadoAcesso: null, landingNaWeb: true }, false],
+    // Com sessão o fluxo de hoje continua: indicador e depois a área logada.
+    ['landing na web COM sessão carregando segura', { carregandoSessao: true, temSessao: true, estadoAcesso: base, landingNaWeb: true }, true],
+    ['landing na web com sessão e sem estado segura', { carregandoSessao: false, temSessao: true, estadoAcesso: null, landingNaWeb: true }, true],
+    ['landing na web sem sessão, carregada, monta as rotas', { carregandoSessao: false, temSessao: false, estadoAcesso: null, landingNaWeb: true }, false],
+    // Fora da landing (outra rota, ou nativo) nada mudou.
+    ['outra rota sem sessão continua segurando enquanto carrega', { carregandoSessao: true, temSessao: false, estadoAcesso: null, landingNaWeb: false }, true],
   ];
   for (const [nome, entrada, esperado] of guardas) {
     assert.equal(api.deveSegurarRotas(entrada), esperado, nome);

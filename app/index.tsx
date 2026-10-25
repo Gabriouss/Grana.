@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useId, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Image, Platform, ScrollView, StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native';
+import { useMidia } from '@/lib/janela-hidratavel';
 import { Redirect } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -234,9 +235,12 @@ function BotaoCTA({
 }) {
   const { ehCompacto } = useBreakpoint();
   const irParaSecao = useContext(IrParaSecaoContexto);
-  const [reduzirMovimento, setReduzirMovimento] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
-  );
+  /* `useMidia`, e não `useState(() => matchMedia(...))`: o HTML do servidor
+     sai sem a preferência, e a hidratação precisa desenhar igual a ele (ver
+     lib/janela-hidratavel.ts). Logo depois vale a preferência real. */
+  const prefereMenosMovimento = useMidia('(prefers-reduced-motion: reduce)');
+  const [reduzirPeloSistema, setReduzirMovimento] = useState(false);
+  const reduzirMovimento = prefereMenosMovimento || reduzirPeloSistema;
   const reduzirTransparencia = usePrefersReducedTransparency();
   const [ponteiroAtivo, setPonteiroAtivo] = useState(false);
   const idBruto = useId();

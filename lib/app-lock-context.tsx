@@ -64,7 +64,11 @@ export function AppLockProvider({ children }: PropsWithChildren) {
   const [ativo, setAtivo] = useState(false);
   const [disponivel, setDisponivel] = useState(false);
   const [bloqueado, setBloqueado] = useState(false);
-  const [pronto, setPronto] = useState(false);
+  /* Na web já nasce pronto: não há trava num navegador (`checarDisponibilidade`
+     devolve false sempre), e a cobertura opaca do `AppLockGate` enquanto o
+     efeito abaixo não roda saía no HTML do servidor por cima da landing, que
+     ficava invisível até o JavaScript chegar (A3, 24/10/2026). */
+  const [pronto, setPronto] = useState(Platform.OS === 'web');
   const saiuEm = useRef<number | null>(null);
 
   useEffect(() => {

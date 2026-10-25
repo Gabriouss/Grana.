@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from 'react';
-import { AccessibilityInfo, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
+import { useJanela, useMidia } from '@/lib/janela-hidratavel';
 import { theme, spacing, fonts, type } from '@/lib/theme';
 import { CORTES, LARGURA_MAXIMA_CONTEUDO } from '@/lib/breakpoints';
 
@@ -46,11 +47,14 @@ const SEPARADOR = '   ·   ';
  * em px travado nesse instante ficava errado depois que a fonte trocava).
  */
 export default function TrustMarquee({ itens }: Props) {
-  const [reduzirMovimento, setReduzirMovimento] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
-  );
+  /* `useMidia`, e não `useState(() => matchMedia(...))`: o HTML do servidor
+     sai sem a preferência, e a hidratação precisa desenhar igual a ele (ver
+     lib/janela-hidratavel.ts). Logo depois vale a preferência real. */
+  const prefereMenosMovimento = useMidia('(prefers-reduced-motion: reduce)');
+  const [reduzirPeloSistema, setReduzirMovimento] = useState(false);
+  const reduzirMovimento = prefereMenosMovimento || reduzirPeloSistema;
   const [larguraUmaCopia, setLarguraUmaCopia] = useState(0);
-  const { width: larguraJanela } = useWindowDimensions();
+  const { width: larguraJanela } = useJanela();
   const idBruto = useId();
   const nomeKeyframe = `trustMarquee_${idBruto.replace(/[^a-zA-Z0-9]/g, '')}`;
 

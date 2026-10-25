@@ -1,5 +1,6 @@
 import { createElement, useEffect, useState } from 'react';
-import { Image, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
+import { useJanela } from '@/lib/janela-hidratavel';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { fonts, radius, spacing, theme, type } from '@/lib/theme';
 import AppPressable from '@/components/AppPressable';
@@ -49,7 +50,7 @@ export default function TesteInterativo({ compacto = false, cabecalho }: { compa
   const [aberto, setAberto] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const [lancou, setLancou] = useState(false);
-  const janela = useWindowDimensions();
+  const janela = useJanela();
   const bezel = compacto ? BEZEL_COMPACTO : Math.max(10, 300 * 0.045);
   const largura = compacto ? Math.round(janela.width - FOLGA_LATERAL_COMPACTA * 2 - bezel * 2) : 300;
   // No telefone o aparelho inteiro cabe na altura da janela, para a pessoa ver onde ele começa e termina.

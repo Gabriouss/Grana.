@@ -50,6 +50,20 @@ export default function Root({ children }: PropsWithChildren) {
             Light saía engrossada pelo subpixel rendering em produção, que é
             exatamente o que este CSS existe para evitar. */}
         <style id="grana-global" dangerouslySetInnerHTML={{ __html: CSS_GLOBAL }} />
+        {/* A landing sai desenhada no HTML do servidor (A3 da auditoria Leis de
+            UI, 24/10/2026), na medida de um celular. Duas pessoas não podem
+            ver esse HTML: quem já tem sessão neste navegador (veria a landing
+            piscar antes da área logada) e quem abre numa tela larga (veria o
+            layout de celular trocar pelo de computador). Para elas a raiz
+            nasce escondida, e `RootNavigator` (app/_layout.tsx) a mostra
+            quando a sessão resolve. O prazo de 10 s é a saída se o JavaScript
+            nunca chegar. Só roda em `/`, e qualquer erro (armazenamento
+            bloqueado) deixa a página como está.
+
+            ATENÇÃO: a CSP do `vercel.json` libera este script pelo hash do
+            conteúdo, nas duas entradas. Mudou um caractere, mude o hash; o
+            `scripts/inject-og-meta.js` para o build e diz o hash novo. */}
+        <script id="grana-espera" dangerouslySetInnerHTML={{ __html: SCRIPT_ESPERA }} />
 
         <ScrollViewStyleReset />
       </head>
@@ -58,7 +72,40 @@ export default function Root({ children }: PropsWithChildren) {
   );
 }
 
+const SCRIPT_ESPERA =
+  "(function(){try{var p=location.pathname;if(p!=='/'&&p!=='/index')return;var e=innerWidth>=768;" +
+  "if(!e){for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&/^sb-.+-auth-token$/.test(k)){e=true;break}}}" +
+  "if(!e)return;var d=document.documentElement;d.setAttribute('data-grana-espera','');" +
+  "setTimeout(function(){d.removeAttribute('data-grana-espera')},10000)}catch(_){}})();";
+
 const CSS_GLOBAL = `
+/* Ver SCRIPT_ESPERA: raiz escondida, no fundo da marca, até a sessão resolver. */
+html[data-grana-espera] {
+  background-color: #052229;
+}
+html[data-grana-espera] #root {
+  visibility: hidden;
+}
+/* O mesmo papel do indicador que o RootNavigator mostrava antes: sem ele a
+   tela larga ficava vazia até a sessão resolver (FCP de 1 s para 8 s em 4G
+   lento). Imagem e não borda, para contar como primeira pintura. */
+html[data-grana-espera]::after {
+  content: "";
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Ccircle cx='14' cy='14' r='11' fill='none' stroke='%23effffa' stroke-opacity='.25' stroke-width='3'/%3E%3Cpath d='M14 3a11 11 0 0 1 11 11' fill='none' stroke='%23effffa' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center / contain;
+  animation: grana-espera-giro 0.8s linear infinite;
+}
+@keyframes grana-espera-giro {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-grana-espera]::after { animation: none; }
+}
 html {
   -webkit-text-size-adjust: 100%;
   color-scheme: dark;

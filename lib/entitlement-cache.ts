@@ -156,11 +156,20 @@ export function deveSegurarRotas({
   carregandoSessao,
   temSessao,
   estadoAcesso,
+  landingNaWeb = false,
 }: {
   carregandoSessao: boolean;
   temSessao: boolean;
   estadoAcesso: EstadoAcesso | null;
+  /** A rota é a landing (`/`) e a plataforma é a web. */
+  landingNaWeb?: boolean;
 }): boolean {
-  if (carregandoSessao) return true;
+  /* A landing na web não espera a sessão (A3 da auditoria Leis de UI,
+     24/10/2026). Segurar aqui fazia o HTML do servidor sair só com o
+     indicador de carregamento, e o topo da página esperava o JavaScript
+     inteiro: LCP de 7 s em 4G lento. Sem sessão, que é quase todo visitante
+     do anúncio, nada muda depois de carregar. Se a sessão aparecer, a regra
+     volta a valer: com sessão e sem estado de acesso, segura, como sempre. */
+  if (carregandoSessao) return !(landingNaWeb && !temSessao);
   return temSessao && !estadoAcesso;
 }

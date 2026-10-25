@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { Platform, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
+import { Platform, type LayoutChangeEvent } from 'react-native';
+import { useJanela } from './janela-hidratavel';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { radius, spacing } from './theme';
 import { useKeyboardHeight } from './teclado';
@@ -392,7 +393,9 @@ const sheetFlutuantePainel = {
 } as const;
 
 export function useBreakpoint(): Breakpoint {
-  const { width, height } = useWindowDimensions();
+  /* `useJanela`, e não `useWindowDimensions`: na hidratação da landing a web
+     precisa desenhar com a medida do servidor (ver lib/janela-hidratavel.ts). */
+  const { width, height } = useJanela();
   const classe = classificarLargura(width);
 
   return {

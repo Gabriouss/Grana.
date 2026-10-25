@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useJanela } from '@/lib/janela-hidratavel';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, lh, sombras } from '@/lib/theme';
 import { CORTES } from '@/lib/breakpoints';
@@ -21,7 +22,7 @@ export default function NavFlutuanteLanding({
   const progresso = useRef(new Animated.Value(0)).current;
   const menuJaAbriu = useRef(false);
   const reduzirMovimento = useReducedMotion();
-  const largura = useWindowDimensions().width;
+  const largura = useJanela().width;
   const ehAmplo = largura >= CORTES.amplo;
   const ehCompacto = largura < CORTES.medio;
 

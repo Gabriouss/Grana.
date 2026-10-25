@@ -1,5 +1,6 @@
 import { createElement, useEffect, useId, useRef, useState } from 'react';
-import { AccessibilityInfo, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
+import { AccessibilityInfo, View, type LayoutChangeEvent } from 'react-native';
+import { useJanela, useMidia } from '@/lib/janela-hidratavel';
 import { EASE_LOOP } from '@/lib/motion';
 
 // Canvas original dos 3 PNGs (bg.png define o tamanho de referência) — todo
@@ -73,12 +74,15 @@ type Props = {
 };
 
 export default function NotebookAnimado({ variante = 'fundo' }: Props) {
-  const [reduzirMovimento, setReduzirMovimento] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
-  );
+  /* `useMidia`, e não `useState(() => matchMedia(...))`: o HTML do servidor
+     sai sem a preferência, e a hidratação precisa desenhar igual a ele (ver
+     lib/janela-hidratavel.ts). Logo depois vale a preferência real. */
+  const prefereMenosMovimento = useMidia('(prefers-reduced-motion: reduce)');
+  const [reduzirPeloSistema, setReduzirMovimento] = useState(false);
+  const reduzirMovimento = prefereMenosMovimento || reduzirPeloSistema;
   const [naTela, setNaTela] = useState(true);
   const [painel, setPainel] = useState({ width: 0, height: 0 });
-  const { width: winW, height: winH } = useWindowDimensions();
+  const { width: winW, height: winH } = useJanela();
   const containerRef = useRef<View>(null);
   const idBruto = useId();
   const prefixo = `notebookAnimado_${idBruto.replace(/[^a-zA-Z0-9]/g, '')}`;
