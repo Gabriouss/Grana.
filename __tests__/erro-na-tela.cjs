@@ -54,6 +54,13 @@ checar('sem rede tem frase humana',
   mensagemErro(new Error('Network request failed'), 'x'),
   'Sem conexão com a internet. Verifique e tente de novo.');
 
+/* `functions.invoke` sem resposta da Edge Function: a frase crua em inglês
+   apareceu na exclusão de conta pelo site em 24/10/2026. */
+const semFuncao = Object.assign(new Error('Failed to send a request to the Edge Function'), { name: 'FunctionsFetchError' });
+checar('falha ao chamar a Edge Function tem frase humana',
+  mensagemErro(semFuncao, 'x'),
+  'Não foi possível falar com o servidor. Verifique a internet e tente de novo.');
+
 /* Mesmo curta, uma mensagem com cara de JSON não é frase para ler. O teto de
    tamanho sozinho deixaria passar um objeto pequeno. */
 checar('json curto também é barrado', mensagemErro(new Error('{"user_id":"abc"}'), 'apoio'), 'apoio');

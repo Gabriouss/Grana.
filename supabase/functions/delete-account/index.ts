@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.112.3';
+import { corsHeaders } from 'npm:@supabase/supabase-js@2.112.3/cors';
 import { sessaoReautenticouRecentemente } from '../_shared/reautenticacao.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
@@ -12,7 +13,7 @@ const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 function json(body: Record<string, unknown>, status = 200): Response {
   return Response.json(body, {
     status,
-    headers: { 'Cache-Control': 'no-store' },
+    headers: { ...corsHeaders, 'Cache-Control': 'no-store' },
   });
 }
 
@@ -53,6 +54,10 @@ async function removerArquivosDoUsuario(userId: string): Promise<void> {
 }
 
 Deno.serve(async (req: Request) => {
+  // No site, o navegador pergunta antes (preflight) e só manda o POST se a resposta liberar.
+  // Sem isto a exclusão pela web falhava antes de sair, com "Failed to send a request to the
+  // Edge Function" (24/10/2026); no app Android não há preflight e ela funcionava.
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     console.error('[delete-account] configuração obrigatória ausente');

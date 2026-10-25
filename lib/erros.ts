@@ -69,6 +69,14 @@ export function mensagemErro(e: unknown, apoio = 'Tente novamente.'): string {
   if (isLikelyNetworkError(e)) {
     return 'Sem conexão com a internet. Verifique e tente de novo.';
   }
+  /* `functions.invoke` que não chega à Edge Function devolve, em inglês,
+     "Failed to send a request to the Edge Function". Em 24/10/2026 foi isso
+     que a pessoa leu ao excluir a conta pelo site (a função não respondia ao
+     preflight do navegador). Não entra em `isLikelyNetworkError` porque a
+     fila offline usa aquele critério para guardar e tentar depois. */
+  if ((e as { name?: unknown } | null)?.name === 'FunctionsFetchError') {
+    return 'Não foi possível falar com o servidor. Verifique a internet e tente de novo.';
+  }
   const bruta = textoDoErro(e);
   for (const [constraint, frase] of Object.entries(NOMES_LONGOS)) {
     if (bruta.includes(constraint)) return frase;
