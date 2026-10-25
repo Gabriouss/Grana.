@@ -19,6 +19,9 @@ Quando o autor fizer um pedido de ajuste novo, a lição entra aqui na hora.
 - **Não cite cofrinhos quando não ajudam a mensagem.** Copy enxuta. Aconteceu no card lumen-v6.
 - **Não use "O Grana. te ajuda!" como chamada no carrossel.** O padrão é "Arrasta pro lado!".
 - **Não escreva aviso de "dados de exemplo"** em arte, vídeo ou legenda (autor, 19/10/2026).
+- **Não deixe texto passar da borda do card.** Valores e rótulos ficam dentro da caixa com margem interna; confira no quadro em que o card salta para fora da tela (autor, 25/10/2026, Fatura e parcelas v3, card Livre para gastar).
+- **Não deixe texto sobrepor outra informação.** Etiqueta que cresce (1/3) não pode cobrir o valor; o valor vai para outra linha ou a escala fica menor (autor, 25/10/2026, Fatura e parcelas v3).
+- **Não encoste texto na borda do card nem na borda do quadro.** Margem interna generosa no card, e card inteiro dentro do vídeo com folga lateral, já contando a perspectiva 3D (autor, 25/10/2026, card "Vence em").
 
 ## Narração e vídeo
 

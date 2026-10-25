@@ -72,7 +72,7 @@ function meta(l, i, nome, v, de, w, pct, extra, cor) {
 }
 const barras = [[262, 70], [262, 70], [262, 70], [190, 0], [190, 0], [190, 0]].map((b, i) =>
   `<div class="abs" style="left:${70 + i * 152}px;top:${330 - b[0]}px;width:50px;height:${b[0]}px;border-radius:25px 25px 6px 6px;background:linear-gradient(180deg,#00a6ca 0,#00a6ca ${b[1]}px,#1fa98d ${b[1]}px)"></div>
-   <div class="abs" style="left:${70 + i * 152}px;top:342px;width:50px;text-align:center;font-size:22px;color:var(--faint)">${['Out', 'Nov', 'Dez', 'Jan', 'Fev', 'Mar'][i]}</div>`).join('');
+   <div class="abs" style="left:${70 + i * 152}px;top:342px;width:50px;text-align:center;font-size:22px;line-height:26px;color:var(--faint)">${['Out', 'Nov', 'Dez', 'Jan', 'Fev', 'Mar'][i]}</div>`).join('');
 $('#scrH').innerHTML = `
  <div class="abs" style="left:35px;top:120px;width:86px;height:86px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#9aa39f,#5a625f)"></div>
  <div class="abs" style="left:142px;top:118px;font-size:25px;color:var(--faint)">Início</div>
@@ -99,21 +99,21 @@ $('#scrH').innerHTML = `
  <div class="box" style="left:35px;top:1650px;width:1010px;height:520px;background:rgba(11,45,53,.7)">
    <div class="abs" style="left:46px;top:36px;font-size:32px">Comprometimento futuro</div>
    <div class="abs" style="left:0;top:80px;width:1010px;height:380px">${barras}</div>
-   <div class="abs" style="left:0;right:0;top:450px;text-align:center;font-size:23px;color:var(--faint)">Total comprometido nos próximos 6 meses: R$ 10.050,75</div></div>
+   <div class="abs" style="left:0;right:0;top:494px;text-align:center;font-size:23px;line-height:28px;color:var(--faint)">Total comprometido nos próximos 6 meses: R$ 10.050,75</div></div>
  <div class="abs" style="left:400px;top:2336px;width:280px;height:10px;border-radius:5px;background:rgba(239,255,250,.45)"></div>`;
 
 /* ---------- nuvem de compras (S2) ---------- */
 const COMPRAS = [
-  ['k1', 'Fone de ouvido', '1/3', '04 out 2026 • Outros', '− R$ 120,00', -150, -330, 120, 14, -4],
-  ['k2', 'Jantar com amigos', '', '03 out 2026 • Alimentação', '− R$ 112,00', 170, -70, -260, -16, 3],
-  ['k3', 'Livraria', '', '02 out 2026 • Lazer', '− R$ 74,90', -170, 200, -420, 18, -2],
-  ['k4', 'Notebook de trabalho', '1/3', '19 out 2026 • Outros', '− R$ 415,95', 140, 440, 60, -12, 4],
+  ['k1', 'Fone de ouvido', '1/3', '04 out 2026 • Outros', '− R$ 120,00', -90, -330, 40, 14, -4],
+  ['k2', 'Jantar com amigos', '', '03 out 2026 • Alimentação', '− R$ 112,00', 110, -70, -260, -16, 3],
+  ['k3', 'Livraria', '', '02 out 2026 • Lazer', '− R$ 74,90', -110, 200, -420, 18, -2],
+  ['k4', 'Notebook de trabalho', '1/3', '19 out 2026 • Outros', '− R$ 415,95', 90, 440, 20, -12, 4],
 ];
 $('#cloud').innerHTML = COMPRAS.map(([id, n, k, s, v]) =>
-  `<div class="card" id="${id}" style="left:-390px;top:-80px;width:780px;height:160px">
-    <div class="abs" style="left:40px;top:30px;font-size:40px">${n}${k ? ` <span class="pchip reg" id="${id}k" style="color:#052229;background:#ADFBE3;padding:0 14px;border-radius:14px;font-size:34px">${k}</span>` : ''}</div>
-    <div class="abs" style="left:40px;top:94px;font-size:28px;color:var(--faint)">${s}</div>
-    <div class="abs" style="right:40px;top:34px;font-size:38px;color:var(--down)">${v}</div></div>`).join('');
+  `<div class="card" id="${id}" style="left:-360px;top:-80px;width:720px;height:160px">
+    <div class="abs" style="left:40px;top:26px;font-size:36px;line-height:46px">${n}${k ? ` <span class="pchip reg" id="${id}k" style="transform-origin:0 60%;color:#052229;background:#ADFBE3;padding:0 14px;border-radius:14px;font-size:34px">${k}</span>` : ''}</div>
+    <div class="abs" style="left:40px;top:100px;font-size:27px;line-height:34px;color:var(--faint)">${s}</div>
+    <div class="abs" style="right:40px;top:96px;font-size:34px;line-height:40px;color:var(--down)">${v}</div></div>`).join('');
 
 /* ---------- legendas (S2 a S4) ---------- */
 const G = [
@@ -189,11 +189,11 @@ at('#cloud', { rotationY: -12, z: 0 }, { rotationY: 10, duration: 3.2, ease: 'no
 at('#cloud', { y: 0 }, { y: -40, duration: .12, ease: 'power2.out' }, 3.1);
 at('#cloud', { y: -40 }, { y: 0, duration: .4, ease: 'power2.out' }, 3.22);
 // "parcelas": as duas parceladas vem para a frente
-at('#k1', { z: 120 }, { x: -60, y: -150, z: 360, rotationY: 6, duration: .3, ease: 'power3.out' }, 3.82);
-at('#k4', { z: 60 }, { x: 60, y: 200, z: 340, rotationY: -6, duration: .3, ease: 'power3.out' }, 3.86);
+at('#k1', { z: 120 }, { x: 0, y: -150, z: 220, rotationY: 6, duration: .3, ease: 'power3.out' }, 3.82);
+at('#k4', { z: 60 }, { x: 0, y: 200, z: 200, rotationY: -6, duration: .3, ease: 'power3.out' }, 3.86);
 at('#k2, #k3', { opacity: 1, filter: 'blur(0px)' }, { opacity: .3, filter: 'blur(6px)', duration: .3 }, 3.82);
-at('#k1k, #k4k', { scale: 1, boxShadow: '0 0 0 rgba(173,251,227,0)' }, { scale: 1.45, boxShadow: '0 0 40px rgba(173,251,227,.9)', duration: .18, ease: 'back.out(3)' }, 3.86);
-at('#k1k, #k4k', { scale: 1.45 }, { scale: 1.12, duration: .3, ease: 'power2.out' }, 4.06);
+at('#k1k, #k4k', { scale: 1, boxShadow: '0 0 0 rgba(173,251,227,0)' }, { scale: 1.15, boxShadow: '0 0 40px rgba(173,251,227,.9)', duration: .18, ease: 'back.out(1.6)' }, 3.86);
+at('#k1k, #k4k', { scale: 1.15 }, { scale: 1.08, duration: .3, ease: 'power2.out' }, 4.06);
 // "esquece": somem na profundidade
 at('#k1, #k4', { opacity: 1, filter: 'blur(0px)' }, { opacity: .28, filter: 'blur(7px)', z: -500, duration: .5, ease: 'power2.inOut' }, 4.82);
 at('#k2, #k3', { z: 0 }, { z: -900, opacity: .12, duration: .5, ease: 'power2.inOut' }, 4.82);
@@ -226,10 +226,10 @@ at('#phone', { rotationY: -30 }, { rotationY: -22, duration: .7, ease: 'sine.inO
 // "em qual parcela": celular vai a esquerda, selo 1/3 entra
 ['#r1', '#r2', '#r3'].forEach((r, i) => { at(r, { z: 70 + i * 34 }, { z: 0, scale: 1, duration: .24, ease: 'power2.inOut' }, 9.18); at(r + ' .pbg', { opacity: 1 }, { opacity: 0, duration: .2 }, 9.18); });
 at('#r4', { z: 172 }, { z: 150, scale: 1.08, duration: .3 }, 9.18);
-at('#phone', { x: 40, rotationY: -22 }, { x: -210, rotationY: 20, rotationX: 4, duration: .5, ease: 'power3.inOut' }, 9.2);
+at('#phone', { x: 40, rotationY: -22 }, { x: -170, scale: 1.1, rotationY: 20, rotationX: 4, duration: .5, ease: 'power3.inOut' }, 9.2);
 at('#world', { z: 140 }, { z: 60, duration: .5, ease: 'power2.inOut' }, 9.2);
 tl.set('#badge', { opacity: 1 }, 9.5);
-at('#badge', { z: 600, rotationY: -100, x: 160, opacity: 0 }, { z: 220, rotationY: -14, x: 0, opacity: 1, duration: .36, ease: 'back.out(1.4)' }, 9.5);
+at('#badge', { z: 600, rotationY: -100, x: 160, opacity: 0 }, { z: 100, rotationY: -14, x: 0, opacity: 1, duration: .36, ease: 'back.out(1.4)' }, 9.5);
 at('#badge', { scale: 1 }, { scale: 1.12, duration: .14, ease: 'power2.out' }, 9.8);
 at('#badge', { scale: 1.12 }, { scale: 1, duration: .3, ease: 'power2.out' }, 9.94);
 at('#badge', { rotationY: -14 }, { rotationY: -6, duration: .7, ease: 'sine.inOut' }, 9.9);
@@ -237,7 +237,7 @@ at('#badge', { x: 0, opacity: 1 }, { x: 900, rotationY: 40, opacity: 0, duration
 at('#r4', { z: 150, scale: 1.08 }, { z: 0, scale: 1, duration: .26 }, 10.62); at('#r4 .pbg', { opacity: 1 }, { opacity: 0, duration: .2 }, 10.62);
 
 /* S4 10.7 a 15.3 */
-at('#phone', { x: -210, rotationY: 20 }, { x: 0, rotationY: -8, rotationX: 4, duration: .4, ease: 'power3.inOut' }, 10.66);
+at('#phone', { x: -170, scale: 1.1, rotationY: 20 }, { x: 0, scale: 1.28, rotationY: -8, rotationX: 4, duration: .4, ease: 'power3.inOut' }, 10.66);
 // "valor do cartao": total salta
 at('#cTot', { z: 0, scale: 1 }, { z: 150, scale: 1.1, duration: .22, ease: 'back.out(2)' }, 11.14);
 at('#cTot', { background: 'rgba(11,45,53,.55)', boxShadow: '0 0 0 rgba(0,0,0,0)' }, { background: 'rgba(14,54,64,1)', boxShadow: '0 0 70px rgba(173,251,227,.5)', duration: .2 }, 11.14);
@@ -261,7 +261,7 @@ at('#hVal', { color: '#effffa', textShadow: '0 0 0 rgba(0,0,0,0)', scale: 1 }, {
 at('#phone', { rotationY: 172, rotationX: 4 }, { rotationY: 186, rotationX: 2, duration: 1.6, ease: 'sine.inOut' }, 12.8);
 // "antes do vencimento chegar"
 tl.set('#venc', { opacity: 1 }, 13.92);
-at('#venc', { x: 500, z: 300, rotationY: -60, opacity: 0 }, { x: 0, z: 300, rotationY: -12, opacity: 1, duration: .34, ease: 'back.out(1.4)' }, 13.92);
+at('#venc', { x: 500, z: 160, rotationY: -60, opacity: 0 }, { x: 0, z: 160, rotationY: -12, opacity: 1, duration: .34, ease: 'back.out(1.4)' }, 13.92);
 at('#vring', { attr: { 'stroke-dashoffset': 302 } }, { attr: { 'stroke-dashoffset': 0 }, duration: .9, ease: 'power2.inOut' }, 14.3);
 at('#venc', { scale: 1 }, { scale: 1.1, duration: .14, ease: 'back.out(3)' }, 14.54);
 at('#venc', { scale: 1.1 }, { scale: 1, duration: .3 }, 14.7);
