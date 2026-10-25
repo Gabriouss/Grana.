@@ -38,6 +38,8 @@ import {
 /* Mesma curva de entrada e saída (plano 004 e skill `animate`): forte
    desaceleração no fim, que é o que faz a janela pousar em vez de parar. */
 const CURVA = Easing.bezier(...UI_OUT);
+// Na web, o placeholder inteiro cabe também no celular de teste da landing.
+const TAMANHO_TEXTO_CAMPO = Platform.OS === 'web' ? type.apoio : type.corpo;
 
 /**
  * Granachat: a janela flutuante de conversa com o Granabô.
@@ -743,6 +745,7 @@ export default function Granachat({
               placeholder="Pergunte ao Granabô…"
               placeholderTextColor={theme.inkFaint}
               multiline
+              numberOfLines={1}
               maxLength={500}
               editable={!enviando}
               returnKeyType="send"
@@ -1093,17 +1096,18 @@ const styles = StyleSheet.create({
      altura da janela, que só existem em tempo de execução (ver o componente). */
   input: {
     flex: 1,
+    minWidth: 0,
     backgroundColor: theme.paperRaised,
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: theme.rule,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     fontFamily: fonts.light,
-    fontSize: type.corpo,
-    /* Mesma entrelinha das bolhas: sem ela o campo usava a métrica crua da
+    fontSize: TAMANHO_TEXTO_CAMPO,
+    /* Mesma proporção de entrelinha das bolhas: sem ela o campo usava a métrica crua da
        fonte e, em 2 ou mais linhas, o texto digitado ficava colado. */
-    lineHeight: lh(type.corpo, 'corpo'),
+    lineHeight: lh(TAMANHO_TEXTO_CAMPO, 'corpo'),
     color: theme.ink,
   },
   /* 44 fixo aqui é proposital, ao contrário do campo ao lado: 44dp é o piso
@@ -1114,6 +1118,7 @@ const styles = StyleSheet.create({
   botaoEnviar: {
     width: 44,
     height: 44,
+    flexShrink: 0,
     borderRadius: 22,
     backgroundColor: theme.accent2,
     alignItems: 'center',
