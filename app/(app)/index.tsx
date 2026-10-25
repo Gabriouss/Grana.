@@ -147,8 +147,8 @@ export default function InicioScreen() {
     const nome = typeof meta?.nome === 'string' ? meta.nome.trim() : '';
     return nome || session?.user.email?.split('@')[0] || '';
   });
-  const [chartView, setChartView] = useState<ChartView>('in');
-  const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('month');
+  const [chartView, setChartView] = useState<ChartView>('both');
+  const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('year');
 
   // Mês e Ano Selecionados (inicializa com o mês atual)
   const now = new Date();

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import SafeAreaView from '@/components/SafeAreaViewComFaixa';
 import { useTabBarInset } from '@/lib/tab-bar';
@@ -88,7 +89,11 @@ export default function GraficosScreen() {
   const [walletModalVisible, setWalletModalVisible] = useState(false);
 
   const [tabModo, setTabModo] = useState<TabModo>('despesas');
-  const [granularidade, setGranularidade] = useState<Granularidade>('anos');
+  const [granularidade, setGranularidade] = useState<Granularidade>('meses');
+  useFocusEffect(useCallback(() => {
+    setTabModo('despesas');
+    setGranularidade('meses');
+  }, []));
   const hoje = todayISO();
   const [periodoInicio, setPeriodoInicio] = useState(() => {
     const d = new Date();
