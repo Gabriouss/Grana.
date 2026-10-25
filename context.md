@@ -91,6 +91,17 @@ O histórico e a evidência da exposição permanecem na seção datada de 16/09
 
 ---
 
+<!-- quill-aprovacao-incompleta-20261025:start -->
+## 25/10/2026 (M1, Quill pelo Ledger sem cota): aprovação incompleta no painel corrigida
+
+1. **Pedido:** ordem `00-ORDEM-compass.md` da rodada `E:/Grana-temporarios/painel-aprovacao-incompleta`: a aprovação da série reedição v3 ficava incompleta no painel (Reel com capa não promovia) e o calendário mostrava como datada uma peça que não terminou de ser aprovada. Executado pelo time Codex: Compass implementou, Harbor leu logs, Forge revisou o calendário. Registro feito pelo Quill porque o Ledger bateu o limite de uso.
+2. **Sintoma e causa (comprovadas por logs de 14h35 e testes RED):** `capa-sem-registro` recusava o par local exclusivo `video.mp4` + `video-capa.png` que o catálogo já reconhecia; o calendário datado ignorava `conclusaoAprovacao` incompleta; "voltar sem data" exigia estado persistido que planos manuais antigos não têm. O aviso do GitHub era só informativo, não a causa.
+3. **Correção (`763dcf6d`):** `tools/admin-local/marketing/promocao.cjs`: Reel com capa `<video>-capa.png` na mesma pasta e exclusiva promove sem vínculo explícito; capa compartilhada ou de outra pasta continua exigindo vínculo. `calendario.cjs`: peça com conclusão incompleta sai do calendário e vai para "suspensos", com próximo passo "Continue na Aprovação". `cronograma.cjs`: "voltar sem data" aceita plano legado com estado `undefined` além de `planejado`, mantendo a trava de jobs reais. Testes novos/ampliados: `__tests__/admin-meta-promocao.cjs` e `__tests__/admin-calendario-voltar-sem-data.cjs`. Commit só com esses cinco arquivos; WIP alheio preservado.
+4. **Retomada local:** só "Comprometimento futuro - reedicao v3" tinha aceite prévio do autor (14h35m13, imutável): concluído pelo fluxo normal, vídeo e capa em `aprovados`, hashes conferidos. Os outros quatro da série v3 seguem em `para-aprovacao`, sem aceite inventado. Recibos `retomada-local.json`, `readback-local.json` e backup `antes-retomada-local/` na pasta da rodada. Painel local reiniciado por fechamento normal da janela (reinício forçado foi barrado pela política), saúde HTTP 200 (`servidor-atualizado.json`).
+5. **Descartado / percurso:** encerramento forçado do processo do painel (barrado; trocado por `CloseMainWindow`). O export de teste precisou de caminho relativo no tar e da dependência do Supabase, corrigidos só na cópia externa.
+6. **Verificação:** `test:admin` inteiro exit 0, incluindo carrossel (rota de referência), promoção (24 grupos), sem-data e recibos de aprovação; regressões RED→GREEN; parecer favorável do Forge em `forge-calendario.md`; scanner sem achados. **Não verificado:** QA autenticado no navegador do painel e no aparelho. Sem Meta, deploy, build ou e-mail.
+<!-- quill-aprovacao-incompleta-20261025:end -->
+
 <!-- ledger-reels-cinco-60fps-20261025:start -->
 ## 25/10/2026 (M1, Ledger): ordem dos cinco Reels Tino em 60 fps
 
