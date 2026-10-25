@@ -9,7 +9,7 @@ const { Readable } = require('node:stream');
 const repo = path.resolve(__dirname, '..');
 const agora = Date.parse('2026-10-24T18:00:00Z');
 class Relogio extends Date { constructor(...a) { super(...(a.length ? a : [agora])); } static now() { return agora; } }
-class ErroIntegracao extends Error { constructor(codigo, mensagem, status = 502) { super(mensagem); this.integracao = true; this.codigo = codigo; this.status = status; } }
+class ErroIntegracao extends Error { constructor(codigo, mensagem, status = 502, causa) { super(mensagem); this.integracao = true; this.codigo = codigo; this.status = status; this.causa = causa; } }
 const PROIBIDO = 'CANARIO_NAO_PODE_SAIR';
 
 function carregarAdaptador(http, { configurado = true, simular = false } = {}) {
@@ -93,6 +93,24 @@ async function test(nome, fn) { await fn(); n++; console.log('OK ' + nome); }
     let chamadas = 0;
     const semToken = carregarAdaptador(() => { chamadas++; return { status: 201, dados: [] }; }, { configurado: false });
     assert.equal((await semToken.contas()).status, 'ausente'); assert.equal(chamadas, 0);
+  });
+
+  await test('erro do banco não leva o corpo do provedor para a causa (O-01 da revisão LGPD)', async () => {
+    const corpo = { message: `Failed to run sql query: ERROR:  22P02: invalid input syntax for type uuid: "${PROIBIDO}@example.com"` };
+    const direto = await carregarAdaptador(async () => ({ status: 400, dados: corpo })).contas().catch((e) => e);
+    const urls = [];
+    const fallback = await carregarAdaptador(async (_n, url) => {
+      urls.push(url);
+      return url.endsWith('/read-only') ? { status: 404, dados: null } : { status: 400, dados: corpo };
+    }).contas().catch((e) => e);
+    assert.match(urls[1], /\/database\/query$/, 'sem o read-only, cai no endpoint comum');
+    for (const e of [direto, fallback]) {
+      assert.equal(e.codigo, 'supabase-sql');
+      assert.equal(e.causa, 'HTTP 400 SQLSTATE 22P02');
+      assert.ok(!JSON.stringify({ ...e, message: e.message }).includes(PROIBIDO));
+    }
+    const semCodigo = await carregarAdaptador(async () => ({ status: 400, dados: { erro: PROIBIDO } })).contas().catch((e) => e);
+    assert.equal(semCodigo.causa, 'HTTP 400');
   });
 
   await test('modo simulado não lê contas reais, nem na busca (L-01 da revisão LGPD)', async () => {

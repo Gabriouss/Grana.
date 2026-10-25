@@ -36,17 +36,25 @@ async function mgmt(caminho) {
   return r.dados;
 }
 
+// Causa sem o corpo do provedor: a mensagem do Postgres pode citar o valor que falhou,
+// e a causa vai para a resposta e para o log do painel (O-01 da revisão LGPD, 24/10/2026).
+// Fica só o status e o código SQLSTATE, que bastam para achar a origem.
+function causaSql(r) {
+  const m = /ERROR:\s+([0-9A-Z]{5})\b/.exec(typeof r.dados?.message === 'string' ? r.dados.message : '');
+  return `HTTP ${r.status}${m ? ` SQLSTATE ${m[1]}` : ''}`;
+}
+
 let semReadOnly = false;
 async function sql(consulta) {
   const ref = refSupabase();
   if (!semReadOnly) {
     const r = await pedirJson('Supabase', `${API}/projects/${ref}/database/query/read-only`, { metodo: 'POST', cabecalhos: cab(), corpo: { query: consulta } });
     if (r.status === 404 || r.status === 405) semReadOnly = true;
-    else if (r.status >= 400) throw new ErroIntegracao('supabase-sql', `Supabase: consulta recusada (HTTP ${r.status}).`, 502, JSON.stringify(r.dados));
+    else if (r.status >= 400) throw new ErroIntegracao('supabase-sql', `Supabase: consulta recusada (HTTP ${r.status}).`, 502, causaSql(r));
     else return r.dados || [];
   }
   const r = await pedirJson('Supabase', `${API}/projects/${ref}/database/query`, { metodo: 'POST', cabecalhos: cab(), corpo: { query: consulta } });
-  if (r.status >= 400) throw new ErroIntegracao('supabase-sql', `Supabase: consulta recusada (HTTP ${r.status}).`, 502, JSON.stringify(r.dados));
+  if (r.status >= 400) throw new ErroIntegracao('supabase-sql', `Supabase: consulta recusada (HTTP ${r.status}).`, 502, causaSql(r));
   return r.dados || [];
 }
 

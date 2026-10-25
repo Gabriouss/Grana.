@@ -13,7 +13,7 @@ Serve também como registro da operação de tratamento (LGPD, art. 37) desta te
 | Na lista, o e-mail sai cortado, e o domínio só sai inteiro nos provedores grandes. O e-mail completo só aparece na busca pelo endereço exato. | `mascararEmail()`; commit `4b474342` |
 | Não saem id, IP nem aparelho da sessão. | DTO fechado em `contas()`; teste `__tests__/admin-local-contas.cjs` |
 | A tela só abre com o login completo do painel (senha e código de autenticação), num servidor que escuta só neste computador. | `tools/admin-local/rotas.cjs`; relatório do Lynx, pergunta 4 |
-| A leitura usa o endpoint read-only da Management API do Supabase. A lista fica 30 s na memória do servidor local; a busca não fica guardada. | `sql()` e rota `/api/supabase/contas` |
+| A consulta é um SELECT fixo, com o e-mail validado antes de entrar no filtro. Ela vai primeiro ao endpoint read-only da Management API do Supabase; se esse endpoint não existir (404 ou 405), a mesma consulta segue pelo endpoint comum, que não tem a barreira de só leitura. A lista fica 30 s na memória do servidor local; a busca não fica guardada. Erro do banco chega ao log só com o status e o código SQLSTATE, sem o texto do provedor. | `sql()` e `causaSql()` em `tools/admin-local/adaptadores/supabase.cjs`; rota `/api/supabase/contas` |
 | No modo simulado (`GRANA_ADMIN_SIMULAR=1`, o dos agentes de QA), a tela não lê produção. | `contas()`; commit `4b474342` |
 | A tela não mostra lançamentos, saldos, cartões nem metas. | DTO de `contas()` |
 
