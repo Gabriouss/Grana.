@@ -91,6 +91,16 @@ O histórico e a evidência da exposição permanecem na seção datada de 16/09
 
 ---
 
+<!-- ledger-aprovacao-incompleta-fechamento-20261025:start -->
+### Conferência documental Ledger após retomada de cota
+
+1. **Pedido:** item5 de 00-ORDEM-compass.md e fechamento recebido do Compass; retomar sem refazer o concluído. Registro Quill já publicado em3dad08fd durante limite do Ledger foi lido/preservado; este bloco acrescenta conferência dos recibos, sem duplicar implementação ou atribuir novo aceite.
+2. **Causa/resultado:** capa-sem-registro rejeitava par local exclusivo Reel/capa; calendário ignorava aprovação incompleta; planos legados não tinham estado persistido para voltarsemdata. Correções Compass no763dcf6d479842f00c60c2c4947a7f79c7b3f599, somente promocao/calendario/cronograma e2testes; três hunks prévios de promocao e demaisWIP ficaram FORA. Aviso GitHub não era causa. Carrossel preservado conforme regressões, sem operação Meta.
+3. **Retomada local identificada:** único aceite existente, Comprometimento futuro - reedicao v3, origem d4377e8a765e7bbc → aprovado b550bfb7f1f461d6, versão a5abfba1268d7d786ce8bb004fbc3a5ce344e7ec. Quatro etapas concluídas, aceite14h35m13 preservado; vídeo+capa movidos pelo fluxo normal, hashes conferidos pelo Compass. Outros4SEMaceite, não aprovados. Materiais eJSONs compostos gerados localmente ficaram fora do commit de código; isso não é entrega nova dos candidatos60fps.
+4. **Verificação lida, não repetida:** git-compass.json confirma basefetchb67edeb2/somente5arquivos/pushhashpróprio/remotoigual/índicevazio; test-admin.log.status.json confirma test:admin integralexit0; verificacao-staged.json confirma promoção24grupos, semdata e aprovação-recibos sobre exportHEAD+5hunks, exits0. Parecer independente Forge favorável conforme relatório. Ledger não executou suites ou QA de produto.
+5. **Percurso/servidor:** export de teste corrigido somente na cópia externa (tar relativo/dependência trackedSupabase). Encerramento forçado foi rejeitado automaticamente; Compass usou CloseMainWindow normal e reiniciou painel. servidor-atualizado.json e readback-local.json lidos: semforça/semmodelchange, PID85380→61108, serverHTTP200/identidadeconfirmada/conclusaoconcluida/originalApprovalUnchangedtrue/otherFourApprovalsNotCreatedtrue/remoteInvokedfalse. Readback HTTP antes emcurso está encerrado por esses recibos, sem nova sonda Ledger.
+6. **Limites/continuidade:** QA autenticado navegador/aparelho não executado. Sem envioMeta/deploy/build/email/novosaceites. Janela código Compass encerrada; esta publicação documental só inclui ESTE bloco emcontext.md, preservando M5 e todoWIP anterior. Espelhos/notas/vault atualizados no fechamento; recibo Git documental separado na rodada. A execução pertence ao timeCodex; registro Quill durante limite é histórico, sem delegação nova ao timeClaude.
+<!-- ledger-aprovacao-incompleta-fechamento-20261025:end -->
 <!-- quill-aprovacao-incompleta-20261025:start -->
 ## 25/10/2026 (M1, Quill pelo Ledger sem cota): aprovação incompleta no painel corrigida
 
