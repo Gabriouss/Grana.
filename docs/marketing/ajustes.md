@@ -10,6 +10,8 @@ Quando o autor fizer um pedido de ajuste novo, a lição entra aqui na hora.
 - **Não use print mal encaixado na tela do aparelho.** Cantos, perspectiva e proporção têm de bater. Aconteceu na capa v2 do "Desistiu": "print na tela do celular tá muito estranho, mal feito".
 - **Não deixe o celular maior que o notebook** na mesma cena. Aconteceu no carrossel "Olhar só o saldo", página 4.
 - **Não deixe o celular de frente, sem lateral.** Nos Reels em código o aparelho fica inclinado em 3D o tempo todo, com a espessura de alumínio e os botões visíveis na lateral. Pedido do autor em 25/10/2026 sobre a série reedição v3: "queria que o celular ficasse ainda mais realista, com aspecto 3D e efeito de profundidade nas laterais".
+- **Não invente a tela do Granachat.** Em vídeo feito em código, o chat é a janela real do app: flutua sobre o Início escurecido, com "Oi! Tudo na ponta do lápis por aqui", o Granabô, a saudação, as sugestões centralizadas e o campo "Pergunte ao Granabô...". Os botões não podem ficar no pé da tela nem se encostar ao saltar. Pedido do autor em 25/10/2026 sobre o Compra por impulso v3: "os botões ficaram muito pra baixo no vídeo e alguns estão se sobrepondo [...] coloca realmente a janela do Granachat".
+- **Não deixe a resposta do Granabô só dentro do celular.** Na resposta, o Granabô 3D vem para o centro do vídeo e fala o texto, digitado num balão de diálogo. Pedido do autor no mesmo dia: "seria interessante o Granabô 3D respondendo, o texto sendo digitado/falado por ele".
 - **Não use print de tela antiga.** A tela inicial mudou e agora tem o Granabô 3D. Toda peça nova usa captura atual do app. Aconteceu no Reel do Pix de 19/10.
 
 ## Texto e tipografia

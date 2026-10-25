@@ -47,7 +47,7 @@ with sync_playwright() as p:
         for j, (_, t, g) in enumerate(ev):
             d = round(t * 1000); fc += f'[{j + 2}:a]aformat=sample_rates=48000:channel_layouts=stereo,volume={g},adelay={d}|{d}[e{j}];'
         fc += '[voz][bed]' + ''.join(f'[e{j}]' for j in range(len(ev))) + f'amix=inputs={len(ev) + 2}:duration=longest:normalize=0,apad,atrim=duration={DUR}[m]'
-        subprocess.run(cmd + ['-filter_complex', fc, '-map', '[m]', '-ar', '48000', '-c:a', 'pcm_f32le', str(pre)], check=True)
+        subprocess.run(cmd + ['-filter_complex', fc, '-map', '[m]', '-t', str(DUR), '-ar', '48000', '-c:a', 'pcm_f32le', str(pre)], check=True, timeout=240)
         q = ln(pre)
         af = (f"loudnorm=I=-14:TP=-1.5:LRA=11:measured_I={q['input_i']}:measured_TP={q['input_tp']}:measured_LRA={q['input_lra']}"
               f":measured_thresh={q['input_thresh']}:offset={q['target_offset']}:linear=true")
