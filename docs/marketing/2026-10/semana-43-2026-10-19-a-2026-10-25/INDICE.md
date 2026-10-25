@@ -70,7 +70,8 @@ Mesmo pipeline do Fatura v3 (HTML/GSAP, dados reais da conta de teste, 60 fps), 
 
 - [Quanto pode gastar hoje - reedicao v3](para-aprovacao/pecas/reels/Quanto%20pode%20gastar%20hoje%20-%20reedicao%20v3.mp4): tema claro, assinatura "elevador". 19,8 s.
 - [Metas e cofrinhos - reedicao v3](para-aprovacao/pecas/reels/Metas%20e%20cofrinhos%20-%20reedicao%20v3.mp4): tema claro, cofrinhos em órbita, íris, mural montado em blocos. 20,2 s.
-- Compra por impulso e Comprometimento futuro (tema escuro): em render final.
+- [Compra por impulso - reedicao v3](para-aprovacao/pecas/reels/Compra%20por%20impulso%20-%20reedicao%20v3.mp4): tema escuro, assinatura "freada", chat do Granabô com débito e crédito separados. 20,6 s.
+- [Comprometimento futuro - reedicao v3](para-aprovacao/pecas/reels/Comprometimento%20futuro%20-%20reedicao%20v3.mp4): tema escuro, túnel dos seis meses, total em placa de aeroporto. 19,7 s.
 - Legendas em COPYS-FINAIS.md. Pendências do autor: logotipo petróleo no tema claro (regra 23 pede gradiente), Ultrabold em vídeo, celular CSS 3D e 60 fps.
 <!-- serie-reedicao-v3:end -->
 

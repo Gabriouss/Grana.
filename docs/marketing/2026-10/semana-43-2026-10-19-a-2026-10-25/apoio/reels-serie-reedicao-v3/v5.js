@@ -71,6 +71,7 @@ montar({
 
   /* gancho: atravessar os seis meses; os três primeiros já têm parcela */
   at(T, { z: -600 }, { z: 5100, duration: 3.7, ease: 'power2.inOut' }, 0);
+  at(T, { z: 5100 }, { z: 5650, duration: .96, ease: 'power1.in' }, 3.7);
   [0, 1, 2].forEach((i) => at('#gf' + i, { opacity: 0, scaleY: 0, transformOrigin: '50% 100%' }, { opacity: 1, scaleY: 1, duration: .3, ease: 'back.out(2)' }, .88 + i * .08));
   at('#tun', { rotationZ: -4 }, { rotationZ: 4, duration: 3.7, ease: 'sine.inOut' }, 0);
   /* contas do mês chegam pela esquerda, parcelas pela direita */
@@ -110,8 +111,9 @@ window.renderAt = function (t) {
   MESES.forEach((_, i) => {
     const zz = -i * 900 - 300 + T.z, el = document.getElementById('gt' + i);
     el.style.transform = `translateZ(${zz}px)`;
-    el.style.opacity = zz > 1000 ? 0 : zz > 300 ? (1000 - zz) / 700 : zz < -4200 ? Math.max(0, (zz + 5600) / 1400) : 1;
-    el.style.visibility = zz > 1000 || t > 4.2 ? 'hidden' : 'visible';
+    const f = t < 4.46 ? 1 : Math.max(0, 1 - (t - 4.46) / .2);
+    el.style.opacity = f * (zz > 1000 ? 0 : zz > 300 ? (1000 - zz) / 700 : zz < -4200 ? Math.max(0, (zz + 5600) / 1400) : 1);
+    el.style.visibility = zz > 1000 || t > 4.66 ? 'hidden' : 'visible';
   });
   [...TOTAL].forEach((c, i) => {
     if (!/\d/.test(c)) return;
