@@ -46,3 +46,12 @@ Pedido do autor em 21/10/2026: refazer os quatro destaques de um perfil de outro
 
 <!-- promocao:23894a0cb1724e68:42700d9bd3e0ee65d0b1e921d3290a60f6f307fd -->
 - Promoção 2026-10-21T20:30:35-03:00: [peça em aprovados](aprovados/pecas/reels/Conheça o Granabô.mp4); aceite do autor em 2026-10-19T23:21:49-03:00, versão `42700d9bd3e0ee65d0b1e921d3290a60f6f307fd`. Origem `docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Conheça o Granabô.mp4`. Nada publicado ou agendado.
+
+
+<!-- ph-fatura-reedicao-v2:start -->
+## Fatura e parcelas: reedição v2 (25/10/2026)
+
+- [Vídeo para aprovação](para-aprovacao/pecas/reels/Fatura%20e%20parcelas%20-%20reedicao%20v2.mp4): nova montagem Codex PH com meu-editor-de-video/Motion Supremo, por pedido direto do autor. Original preservado; nenhum aceite, agendamento ou publicação executados.
+- Voz do take1 bruto existente, sem alterar velocidade; gancho reorganizado, compras maiores, valores reais revelados sem sorteio, pausas menores e nova trilha local.20,29s/1080x1920/30fps/AAC48kHz estéreo.
+- QA: quality gate passed, −13,99LUFS, zero quadro preto, movimento nas5etapas; [receita, folha e limites](apoio/reels-fatura-reedicao-v2/README.md). OCR indisponível; escuta final e aprovação estética pendentes do autor. Legenda em COPYS-FINAIS.md; nenhuma capa produzida.
+<!-- ph-fatura-reedicao-v2:end -->

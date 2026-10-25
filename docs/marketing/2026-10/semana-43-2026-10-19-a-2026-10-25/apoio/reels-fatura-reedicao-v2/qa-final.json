@@ -1,0 +1,42 @@
+{
+  "arquivo": "E:\\Grana-temporarios\\2026-10-25-fatura-reedicao\\trabalho\\v2\\final\\Fatura e parcelas - reedicao v2.mp4",
+  "duracao": "20.290000",
+  "quadros": "608",
+  "formato": "1080x1920 30fps H264 yuv420p AAC48kHz stereo",
+  "loudness": {
+    "input_i": "-13.99",
+    "input_tp": "-5.10",
+    "input_lra": "4.60",
+    "input_thresh": "-24.47",
+    "output_i": "-14.16",
+    "output_tp": "-5.54",
+    "output_lra": "1.70",
+    "output_thresh": "-24.41",
+    "normalization_type": "dynamic",
+    "target_offset": "0.16"
+  },
+  "black": [],
+  "motion": {
+    "gancho": {
+      "deltaMedio": 0.6665677428245544,
+      "deltaMaximo": 2.0477912425994873
+    },
+    "compras": {
+      "deltaMedio": 2.262301445007324,
+      "deltaMaximo": 4.143148899078369
+    },
+    "celular": {
+      "deltaMedio": 3.8935465812683105,
+      "deltaMaximo": 26.08953857421875
+    },
+    "cta": {
+      "deltaMedio": 1.003766655921936,
+      "deltaMaximo": 4.910172462463379
+    },
+    "logo": {
+      "deltaMedio": 0.24970030784606934,
+      "deltaMaximo": 0.9009934663772583
+    }
+  },
+  "status": "PASS"
+}

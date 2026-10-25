@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="UTF-8"/><title>Grana. · __TITULO__</title></head>
+<body>
+<!-- Reels da série Tino (24/10/2026), motor comum dos cinco vídeos. Parte da cena aprovada do R3 v4/v5
+     (E:/Grana-temporarios/2026-10-23-reels-ganchos/edicao-r3/r3-v5.template.html): gancho em tipografia com
+     máscara palavra a palavra, contador estilo placa (E06), dor em motion, celular 3D com as telas reais e os
+     recortes que saltam (E04), legenda karaokê, CTA com o botão e fecho com o logo.
+     Gerado por motor/reel.py a partir de vN/config.py; não editar à mão. -->
+<template id="reel-template">
+<style>
+@font-face{font-family:"NM";src:url("assets/r/NeueMachina-Light.otf");font-weight:300;font-display:block}
+@font-face{font-family:"NM";src:url("assets/r/NeueMachina-Regular.otf");font-weight:400;font-display:block}
+#root{position:absolute;inset:0;overflow:hidden;font-family:"NM",sans-serif;color:#EFFFFE;background:#021721}
+#bg{position:absolute;inset:-40px;background:radial-gradient(60% 34% at 50% 93%,#0B4A5A 0%,rgba(11,74,90,0) 100%),linear-gradient(180deg,#021319 0%,#021721 50%,#021721 100%)}
+.ico{position:absolute;opacity:0;will-change:transform,opacity,filter}
+.big{position:absolute;left:84px;width:912px;font-weight:300;font-size:86px;line-height:104px;letter-spacing:.05em;opacity:0}
+.ln{display:block;overflow:hidden;white-space:nowrap;padding:0 0 14px;margin-bottom:-14px}
+.ln .w{display:inline-block;white-space:pre;transform:translateY(115%)}
+.d{color:#ADFBE3;font-weight:400;position:relative}
+.ul{position:absolute;left:0;right:.35em;bottom:4px;height:6px;border-radius:3px;background:#ADFBE3;transform:scaleX(0);transform-origin:0 50%}
+.k{position:absolute;left:60px;width:960px;top:270px;text-align:center;font-size:62px;line-height:76px;font-weight:300;
+   letter-spacing:.03em;text-shadow:0 4px 16px rgba(0,0,0,.45);opacity:0;white-space:nowrap}
+.k .kw{display:inline-block;white-space:pre}
+.k .kd{font-weight:400}
+/* pílula do contador: rótulo da tela real + valor na placa de aeroporto */
+.pill{position:absolute;left:140px;width:800px;padding:26px 0 30px;border-radius:44px;text-align:center;opacity:0;
+  background:linear-gradient(180deg,rgba(15,58,70,.92),rgba(6,36,46,.92));box-shadow:0 22px 60px rgba(0,0,0,.45),0 0 0 2px rgba(173,251,227,.28) inset}
+.pill .rot{font-size:36px;line-height:46px;letter-spacing:.04em;color:#9FC9C6;font-weight:300}
+.pill .val{font-size:84px;line-height:100px;letter-spacing:.02em;font-weight:400;color:#ADFBE3;white-space:nowrap}
+.pill .uni{font-size:40px;color:#9FC9C6;font-weight:300}
+.flap .c{display:inline-block;text-align:center;transform-origin:50% 50%}
+.flap .c.n{width:.62em}
+/* cartões da dor */
+#dor{position:absolute;left:0;top:0;width:1080px;height:1920px}
+.card{position:absolute;border-radius:30px;background:linear-gradient(180deg,#0F3A46 0%,#0A2B35 100%);
+  box-shadow:0 24px 60px rgba(0,0,0,.42),0 0 0 2px rgba(173,251,227,.16) inset;opacity:0;will-change:transform,opacity}
+.card .t1{font-size:40px;line-height:50px;font-weight:300;color:#EFFFFE;white-space:nowrap}
+.card .t2{font-size:30px;line-height:40px;font-weight:300;color:#8FB9B6;white-space:nowrap}
+.card .v{font-size:46px;line-height:56px;font-weight:400;color:#EFFFFE;white-space:nowrap}
+.card .neg{color:#7FD4F0}
+.card .tag{display:inline-block;margin-left:12px;padding:0 14px;border-radius:18px;font-size:30px;line-height:40px;color:#021721;background:#ADFBE3;font-weight:400}
+.barra{position:absolute;height:12px;border-radius:6px;background:rgba(173,251,227,.14);overflow:hidden}
+.barra i{position:absolute;left:0;top:0;bottom:0;width:100%;border-radius:6px;background:linear-gradient(90deg,#3FB8C9,#ADFBE3);transform:scaleX(0);transform-origin:0 50%}
+#persp{position:absolute;inset:0;perspective:2400px;perspective-origin:50% 40%}
+#cw{position:absolute;left:119px;top:480px;width:692px;height:1480px;transform:scale(1.216);transform-origin:0 0}
+#cel{position:absolute;left:0;top:0;width:692px;height:1480px;transform-origin:50% 8%;transform:translateY(1700px)}
+#sombra{position:absolute;left:-10px;top:40px;width:712px;height:1470px;border-radius:90px;background:#000;filter:blur(40px);opacity:.6}
+#moldura{position:absolute;left:0;top:0;width:692px;height:1480px}
+#tela{position:absolute;left:33px;top:40px;width:611px;height:1403px;border-radius:66px;overflow:hidden;background:#0a1e25}
+/* sobe 72 px: a barra de status com o cronômetro do gravador fica escondida sob a moldura */
+.tv{position:absolute;left:0;top:-72px;width:611px;height:1403px;object-fit:cover}
+#dim{position:absolute;inset:0;background:#000;opacity:0}
+#sweep{position:absolute;top:0;left:-611px;width:1222px;height:1403px;opacity:1;mix-blend-mode:screen;
+  background:linear-gradient(112deg,rgba(255,255,255,0) 38%,rgba(255,255,255,.14) 48%,rgba(255,255,255,.05) 53%,rgba(255,255,255,0) 60%)}
+#flash{position:absolute;inset:0;background:#ADFBE3;opacity:0}
+#furo{position:absolute;left:331px;top:62px;width:27px;height:27px;border-radius:50%;background:#020304;box-shadow:inset -4px -5px 0 #1d2c33}
+.pop{position:absolute;overflow:hidden;border-radius:18px;opacity:0;transform-origin:50% 50%;
+  outline:2px solid rgba(173,251,227,.0);will-change:transform}
+.pop video{position:absolute;width:611px;height:1403px;object-fit:cover}
+#btn{position:absolute;left:190px;top:930px;width:700px;height:150px;border-radius:75px;background:linear-gradient(180deg,#C9FFEF 0%,#ADFBE3 55%,#93EBD1 100%);
+  color:#021721;font-weight:400;font-size:64px;line-height:150px;text-align:center;letter-spacing:.02em;opacity:0;
+  box-shadow:0 22px 50px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.35) inset}
+#ring{position:absolute;left:190px;top:930px;width:700px;height:150px;border-radius:75px;border:3px solid #ADFBE3;opacity:0}
+#seta{position:absolute;left:510px;top:1112px;width:60px;height:60px;opacity:0}
+#logo{position:absolute;left:240px;top:882px;width:600px;opacity:0}
+__CSS__
+</style>
+<div id="root" data-composition-id="reel" data-width="1080" data-height="1920" data-duration="__DUR__">
+  <div id="bg"></div>
+  __ICONES__
+  __GANCHO__
+  __PILULA__
+  __DOR__
+
+  <div id="persp"><div id="cw"><div id="flut" style="position:absolute;inset:0"><div id="cel">
+    <div id="sombra"></div>
+    <div id="halo" style="position:absolute;left:6px;top:8px;width:680px;height:1464px;border-radius:96px;box-shadow:0 0 70px 12px rgba(173,251,227,.5);opacity:0"></div>
+    <img id="moldura" src="assets/r/celular-real-recorte.png"/>
+    <div id="tela">
+      __TELAS__
+      <div id="dim"></div>
+      <div id="sweep"></div>
+      <div id="flash"></div>
+    </div>
+    __POPS__
+    <div id="furo"></div>
+  </div></div></div></div>
+
+  __KARAOKE__
+
+  __CTA__
+  <div id="ring"></div>
+  <div id="btn">Saiba mais</div>
+  <svg id="seta" viewBox="0 0 60 60"><path id="setap" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100" d="M12 20 L30 40 L48 20" fill="none" stroke="#ADFBE3" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+
+  <img id="logo" src="assets/r/logo-gradiente-1200.png"/>
+</div>
+<script>
+(function () {
+  window.__timelines = window.__timelines || {};
+  const C = __DADOS__;
+  const P = C.palavras, T = i => P[i].a, E = i => P[i].b, DUR = C.dur;
+  const tl = gsap.timeline({ paused: true });
+  document.querySelectorAll('.flap .c').forEach(el => el.style.transform = 'none');
+  const W = '#EFFFFE', M = '#ADFBE3';
+  gsap.set('#cel', { transformPerspective: 2400 });
+  // o aparelho nunca fica parado: flutua de leve o vídeo inteiro
+  tl.fromTo('#flut', { y: 0, rotation: 0 }, { y: -12, rotation: .5, duration: 1.7, ease: 'sine.inOut', yoyo: true, repeat: Math.ceil(DUR / 1.7) }, 0);
+  tl.fromTo('#bg', { scale: 1 }, { scale: 1.06, duration: DUR, ease: 'none' }, 0);
+  function halo(t) {
+    tl.fromTo('#halo', { opacity: 0 }, { opacity: .6, duration: .22, ease: 'power2.out', immediateRender: false }, t);
+    tl.to('#halo', { opacity: 0, duration: .7, ease: 'power2.inOut' }, t + .22);
+  }
+
+  // tipografia grande: cada palavra sobe de dentro da própria linha (máscara) no instante em que é dita
+  function revela(sel, idx) {
+    tl.set(sel, { opacity: 1 }, Math.max(0, T(idx[0]) - .07));
+    document.querySelectorAll(sel + ' .w').forEach(function (w, k) {
+      const t0 = T(idx[k]) - .06;
+      // a primeira palavra do vídeo já nasce subindo, para o quadro 0 não sair vazio
+      if (t0 < 0.02) tl.fromTo(w, { y: '12%' }, { y: '0%', duration: .25, ease: 'power3.out' }, 0);
+      else tl.to(w, { y: '0%', duration: .32, ease: 'power3.out' }, t0);
+    });
+  }
+  function sai(sel, t) { tl.to(sel, { opacity: 0, y: -46, filter: 'blur(10px)', duration: .24, ease: 'power2.in' }, t); }
+
+  // E06, placa de aeroporto: cada dígito sorteia a 15 trocas/s e trava da esquerda para a direita (50 ms entre células)
+  function hash(a, b) { let h = (a * 374761393 + b * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0); }
+  function flap(sel, t0) {
+    const cs = Array.prototype.slice.call(document.querySelectorAll(sel + ' .c'));
+    const fin = cs.map(function (c) { return c.textContent; });
+    const nums = cs.map(function (c) { return c.classList.contains('n'); });
+    let ordem = 0; const trava = cs.map(function (c, i) { return nums[i] ? t0 + .55 + (ordem++) * .05 : t0; });
+    const o = { t: 0 }, fim = trava[trava.length - 1] + .1 - t0;
+    function pinta() {
+      const t = t0 + o.t;
+      cs.forEach(function (c, i) {
+        if (!nums[i]) return;
+        if (t >= trava[i]) { c.textContent = fin[i]; c.style.transform = 'none'; return; }
+        const passo = Math.floor((t - t0) / .066), fr = ((t - t0) / .066) % 1;
+        c.textContent = String(hash(i + 1, passo) % 10);
+        // lâmina dobrando na primeira metade de cada troca
+        c.style.transform = fr < .5 ? 'scaleY(' + (.55 + .9 * fr).toFixed(3) + ')' : 'none';
+      });
+    }
+    tl.fromTo(o, { t: 0 }, { t: fim, duration: fim, ease: 'none', onUpdate: pinta, immediateRender: false }, t0);
+  }
+  // número que muda de valor rolando (contador comum, sem sorteio)
+  function rola(el, de, para, t, d) {
+    const o = { v: de };
+    const fmt = function (v) { return 'R$ ' + v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
+    tl.fromTo(o, { v: de }, { v: para, duration: d, ease: 'power2.out', immediateRender: false,
+      onUpdate: function () { document.querySelector(el).textContent = fmt(o.v); } }, t);
+  }
+
+  // ---- ícones do arsenal derivando devagar na abertura e no CTA
+  C.icones.forEach(function (c) {
+    tl.fromTo('#' + c.id, { opacity: 0, y: c.dy[0], rotation: c.rot[0] }, { opacity: c.op, y: c.dy[1], rotation: c.rot[1], duration: c.b - c.a, ease: 'none' }, c.a);
+    tl.fromTo('#' + c.id, { y: c.dy[1] }, { opacity: 0, y: c.dy[1] - 60, duration: .3, ease: 'power2.in', immediateRender: false }, c.b);
+  });
+
+  // ---- gancho
+  const G0 = C.gancho;
+  tl.fromTo('#h1', { scale: 1 }, { scale: 1.035, duration: G0.sai, ease: 'none', transformOrigin: '0% 50%' }, 0);
+  revela('#h1', G0.idx);
+  if (G0.ul != null) tl.to('#h1 .ul', { scaleX: 1, duration: .38, ease: 'expo.out' }, T(G0.ul) + .05);
+  if (G0.pulso != null) tl.fromTo('#h1 .w[data-k="' + G0.pulso + '"]', { scale: 1 }, { scale: 1.07, duration: .14, yoyo: true, repeat: 1, ease: 'power2.out' }, T(G0.pulso) + .12);
+  sai('#h1', G0.sai);
+
+  // ---- pílula com o contador (E04 na entrada, E06 no valor)
+  if (C.pilula) {
+    const p = C.pilula;
+    tl.fromTo('#pill', { opacity: 0, scale: .94, y: 40 }, { opacity: 1, scale: 1, y: 0, duration: .32, ease: 'back.out(1.7)' }, p.a);
+    tl.fromTo('#pill .flap', {clipPath:'inset(0 100% 0 0)'}, {clipPath:'inset(0 0% 0 0)', duration:.38, ease:'power2.out'}, p.a + .05);
+    tl.to('#pill', { opacity: 0, y: 30, filter: 'blur(8px)', duration: .26, ease: 'power2.in' }, p.b);
+  }
+
+  // ---- celular: sobe com inércia, deriva de leve, desce pelo mesmo caminho
+  function sobe(t) {
+    tl.fromTo('#cel', { y: 1700, rotationX: 22, rotationY: -8, scale: 1 }, { y: 0, rotationX: 0, rotationY: 0, duration: .72, ease: 'back.out(1.05)', immediateRender: false }, t);
+    halo(t + .5);
+  }
+  function desce(t) { tl.to('#cel', { y: 1700, rotationX: 22, rotationY: 6, scale: 1, duration: .36, ease: 'power3.in' }, t); }
+  function brilho(t) { tl.fromTo('#sweep', { x: -150 }, { x: 1222, duration: 1.0, ease: 'power2.inOut', immediateRender: false }, t); }
+  function zoom(a, b, s) { tl.to('#cel', { scale: s || 1.07, duration: .8, ease: 'power2.inOut' }, a); tl.to('#cel', { scale: 1, duration: .45, ease: 'power2.inOut' }, b); }
+  // detalhe real da gravação levanta da tela e volta ao lugar pelo mesmo caminho
+  function salta(id, a, b, dim) {
+    tl.set(id, { opacity: 1 }, a);
+    tl.fromTo(id, { scale: 1, y: 0, boxShadow: '0 0 0 rgba(0,0,0,0)', outlineColor: 'rgba(173,251,227,0)' },
+      { scale: 1.1, y: -26, boxShadow: '0 34px 70px rgba(0,0,0,.6)', outlineColor: 'rgba(173,251,227,.85)', duration: .32, ease: 'back.out(1.7)', immediateRender: false }, a);
+    tl.to('#dim', { opacity: dim, duration: .3, ease: 'power2.out' }, a);
+    tl.to(id, { scale: 1, y: 0, boxShadow: '0 0 0 rgba(0,0,0,0)', outlineColor: 'rgba(173,251,227,0)', duration: .3, ease: 'power2.inOut' }, b - .3);
+    tl.to('#dim', { opacity: 0, duration: .3, ease: 'power2.inOut' }, b - .3);
+    tl.set(id, { opacity: 0 }, b);
+  }
+  // troca de tela: tranco de escala e um clarão menta discreto
+  function troca(t, de, para) {
+    tl.to('#cel', { scale: .955, duration: .16, ease: 'power2.in' }, t - .16);
+    tl.fromTo('#flash', { opacity: 0 }, { opacity: .2, duration: .08, yoyo: true, repeat: 1, immediateRender: false }, t - .06);
+    tl.set('#' + de, { opacity: 0 }, t);
+    tl.set('#' + para, { opacity: 1 }, t);
+    halo(t);
+    tl.to('#cel', { scale: 1, duration: .38, ease: 'back.out(2)' }, t);
+  }
+  const K = C.celular;
+  C.telas.forEach(function (s, i) { if (i) tl.set('#' + s.id, { opacity: 0 }, 0); tl.set('#' + s.id, { opacity: 0 }, s.fim); });
+  K.sobe.forEach(function (s) { tl.set('#' + s.tela, { opacity: 1 }, s.t - .1); sobe(s.t); });
+  K.desce.forEach(desce);
+  K.brilhos.forEach(brilho);
+  K.zooms.forEach(function (z) { zoom(z[0], z[1], z[2]); });
+  K.deriva.forEach(function (d) { tl.to('#cel', { rotationY: d[2], duration: d[1], ease: 'sine.inOut' }, d[0]); });
+  K.trocas.forEach(function (x) { troca(x.t, x.de, x.para); });
+  C.pops.forEach(function (p) { salta('#' + p.id, p.a, p.b, p.dim); });
+
+  // ---- dor em motion (própria de cada vídeo)
+  (function (tl, T, E, C, flap, rola, revela, sai) {
+    __DOR_JS__
+  })(tl, T, E, C, flap, rola, revela, sai);
+
+  // ---- CTA com o botão
+  const A = C.cta;
+  revela('#cta1', A.c1);
+  tl.fromTo('#btn', { opacity: 0, scale: .72, y: 34 }, { opacity: 1, scale: 1, y: 0, duration: .55, ease: 'back.out(1.5)' }, T(A.btn) - .04);
+  [T(A.btn) + .55, T(A.btn) + 1.35].forEach(function (t) {
+    tl.fromTo('#ring', { opacity: 0, scale: 1 }, { opacity: .85, scale: 1.02, duration: .06, ease: 'none', immediateRender: false }, t);
+    tl.to('#ring', { opacity: 0, scale: 1.22, duration: .7, ease: 'power2.out' }, t + .06);
+    tl.fromTo('#btn', { scale: 1 }, { scale: 1.035, duration: .18, yoyo: true, repeat: 1, ease: 'power1.out', immediateRender: false }, t);
+  });
+  tl.set('#seta', { opacity: 1 }, T(A.seta));
+  tl.fromTo('#setap', { attr: { 'stroke-dashoffset': 100 } }, { attr: { 'stroke-dashoffset': 0 }, duration: .14, ease: 'power2.out' }, T(A.seta));
+  [T(A.seta) + .3, T(A.seta) + .95].forEach(function (t) { tl.to('#seta', { y: 18, duration: .26, yoyo: true, repeat: 1, ease: 'power1.inOut' }, t); });
+  revela('#cta2', A.c2);
+  ['#cta1', '#cta2', '#btn', '#ring', '#seta'].forEach(function (s) {
+    tl.fromTo(s, { y: 0 }, { opacity: 0, y: -30, filter: 'blur(8px)', duration: .26, ease: 'power2.in', immediateRender: false }, A.sai);
+  });
+
+  // ---- fecho com o logo
+  tl.fromTo('#logo', { opacity: 0, scale: .9, filter: 'blur(14px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: .7, ease: 'expo.out' }, C.logo);
+  // o logo segue respirando até o fim, para o fecho não ficar parado (trava 4)
+  tl.to('#logo', { scale: 1.06, y: -10, duration: __DUR__ - C.logo - .7, ease: 'sine.inOut' }, C.logo + .7);
+
+  // ---- legenda karaokê: grupo entra com a primeira palavra, palavra dita fica menta, sai antes do próximo
+  const GR = C.grupos;
+  GR.forEach(function (g, n) {
+    const el = '#k' + n, a = T(g[0]) - .05;
+    const prox = n + 1 < GR.length ? T(GR[n + 1][0]) - .05 : 99;
+    const fim = Math.min(prox, P[g[g.length - 1]].b + .45, C.cortes.find(function (c) { return c > a; }) || 99);
+    // a entrada nunca passa da saída: grupo curto entra e sai mais rápido, sem ficar aceso por cima do próximo
+    const ent = Math.min(.18, (fim - a) / 2), sd = Math.min(.12, (fim - a) / 2);
+    tl.fromTo(el, { opacity: 0, y: 14, filter: 'blur(8px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: ent, ease: 'power3.out' }, a);
+    g.forEach(function (i, k) {
+      const sp = el + ' .kw:nth-child(' + (k + 1) + ')';
+      tl.set(sp, { color: M }, P[i].a);
+      if (!P[i].d && k + 1 < g.length) tl.set(sp, { color: W }, P[g[k + 1]].a);
+    });
+    tl.to(el, { opacity: 0, y: -10, duration: sd, ease: 'power2.in' }, fim - sd);
+  });
+
+  tl.to({}, { duration: DUR }, 0);
+  window.__timelines['reel'] = tl;
+})();
+</script>
+</template>
+</body></html>

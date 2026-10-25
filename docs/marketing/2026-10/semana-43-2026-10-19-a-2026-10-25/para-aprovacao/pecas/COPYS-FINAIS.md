@@ -63,3 +63,14 @@ Escrita em 23/10/2026. Aguarda aceite do autor no painel.
 **Título:** Antes de parcelar veja a fatura
 
 **Legenda:** Parcelar parece leve quando a gente olha uma compra por vez. O peso aparece quando parcelas de meses diferentes chegam juntas na mesma fatura. Ver o que já está comprometido antes de passar o cartão muda a decisão. Manda pra quem parcela tudo. Link na bio.
+
+
+<!-- ph-fatura-reedicao-v2:start -->
+## Fatura e parcelas - reedicao v2
+
+Escrita em25/10/2026. Versão separada para aprovação, sem postagem ou aceite presumidos.
+
+**Título:** Fatura e parcelas - reedicao v2
+
+**Legenda:** Uma compra pequena aqui, outra ali, e o próximo fechamento já começa cheio. Antes de assumir mais uma parcela, vale conferir quanto das próximas faturas já está ocupado. Esse hábito deixa a decisão de hoje mais clara e o mês seguinte mais previsível. Salve para lembrar antes da próxima compra. Link na bio.
+<!-- ph-fatura-reedicao-v2:end -->

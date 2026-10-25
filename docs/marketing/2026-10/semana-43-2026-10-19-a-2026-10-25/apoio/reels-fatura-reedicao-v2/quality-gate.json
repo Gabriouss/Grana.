@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "failures": [],
+  "duration": 20.29,
+  "volume": {
+    "lufs": -13.99,
+    "peak_db": -5.1
+  },
+  "quiet_threshold_db": -30.5,
+  "text_reader": null,
+  "sheet": "E:\\Grana-temporarios\\2026-10-25-fatura-reedicao\\quality-gate-folha.png"
+}

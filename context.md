@@ -91,6 +91,13 @@ O histórico e a evidência da exposição permanecem na seção datada de 16/09
 
 ---
 
+<!-- ph-fatura-reedicao-20261025:start -->
+## 25/10/2026 (M1, Codex PH): reedição de Fatura e parcelas
+
+Pedido direto do autor: reeditar Fatura e parcelas.mp4 com "meu editor de vídeo" e "motion supremo", procurando brutos em E:/Grana-temporarios/2026-10-24-tino-videos/trabalho/narracoes. Execução direta conforme orientação nesta conversa. Ambas as skills lidas (meu-editor incorporada à referência da Motion Supremo); doctor Editonny verde. Original preservado, nova peça para aprovação com nome distinto. Rodada externa E:/Grana-temporarios/2026-10-25-fatura-reedicao. Dois takes brutos copiados e comparados; escolhido take1, 20,32s bruto/18,23s após quatro cortes somente em silêncio, sem acelerar/esticar voz ou geração paga. Novo gancho, entrada de compras, revelação dos valores reais sem sorteio de dígitos, pausas menores, nova trilha local108bpm e novo fecho. Motor Editonny/HyperFrames e cenas da receita original reaproveitados numa cópia, sem alterar os outros quatro Reels. Narração/recursos financeiros preservados. Preparação/render/QA/publicação ainda em curso, sem aprovação ou postagem presumida. Fontes e hashes em fontes.json na rodada; nenhum gasto ElevenLabs ou outro provedor.
+**Conclusão da montagem:** variante Fatura e parcelas - reedicao v2.mp4 salva em para-aprovacao ao lado do original (hash original/takes preservados).20,29s/608quadros/1080x1920/30fps/H264/yuv420p/AAC48kHz estéreo; áudio −13,99LUFS/pico−5,10dBTP. Scanner/gates finais em fechamento; QA técnico já passou: Editonny passed=true/sem falhas, sem quadro preto, movimento medido em5etapas; folha10quadros vista diretamente. OCR indisponível (text_reader=null), sem novaASR nem escuta humana alegada. Capa não produzida; legenda nova contextual em COPYS-FINAIS.md. Receita/config/template/QA/folha em apoio/reels-fatura-reedicao-v2. Erros corrigidos: linha913px→4linhas; espera por objetoGSAP thenable→booleano; mockdepreview recuperou CSS de vídeo nos recortes; finalização herdada mono→estéreo. Renderer escreveu arquivo completo mas shell retornou1; arquivo final conferido por decodificação e quality gate exit0, sem promover mensagem do renderer a prova. Rodada E:/Grana-temporarios/2026-10-25-fatura-reedicao. Aprovação estética/escuta final permanecem com autor, sem publicação/agendamento ou gasto pago.
+<!-- ph-fatura-reedicao-20261025:end -->
+
 <!-- ledger-granachat-layout-20261024:start -->
 ## 24/10/2026 (M1, Ledger): Granachat no simulador da landing e no desktop
 
