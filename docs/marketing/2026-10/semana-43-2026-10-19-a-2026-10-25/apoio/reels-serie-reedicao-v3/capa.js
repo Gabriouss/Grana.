@@ -33,14 +33,17 @@ const CAPAS = {
       + put(box(560, 150, `${A(40, 30, 'Mural de conquistas', 'font-size:32px')}${A(40, 84, '7 de 12', 'font-size:34px;color:#ADFBE3')}<div class="bar" style="left:200px;top:100px;width:320px"><i style="width:58.3%"></i></div>`), 130, 1260, 1, -3)
       + put(box(330, 84, A(30, 22, 'Nível 3 · Aprendiz', 'font-size:28px;color:#ADFBE3'), 'border-radius:999px;border-color:rgba(173,251,227,.6)'), 600, 1440, 1, 4) },
   /* Compra por impulso (escuro) */
-  4: { claro: false, t: ['Cabe no', '<em>meu mês?</em>'], fs: 120,
-    G: { x: 380, y: 520, d: 1600, r: -30 }, ic: [['mercado', -90, 700, 240, -12], ['cartao', 920, 1440, 170, 15]],
+  4: { claro: false, t: ['Cabe no', '<em>meu mês?</em>'], fs: 110,
+    G: { x: 380, y: 520, d: 1600, r: -30 }, ic: [['mercado', -110, 1130, 230, -12], ['cartao', 920, 1180, 170, 15]],
     cards: () =>
-      put(`<div class="bal" style="position:absolute;left:0;top:0;background:#ADFBE3;color:#052229;border-radius:36px;border-bottom-right-radius:10px;font-size:38px;padding:26px 36px;white-space:nowrap">Quanto gastei com mercado?</div>`, 400, 715, 1, 2)
-      + put(box(720, 300, `${A(40, 34, 'Em outubro de 2026, você gastou <b class="pc" style="background:#ADFBE3;color:#052229">R$ 561,25</b> em Alimentação, sem contar compras no crédito. Houve também <b class="pc" style="background:#00a6ca;color:#052229">R$ 112,00</b> em compras no crédito nessa mesma categoria.', 'width:640px;font-size:30px;line-height:42px')}${A(40, 262, '<span class="dot" style="width:12px;height:12px"></span>Números conferidos', 'font-size:22px;color:var(--accent)')}`, 'height:310px;border-bottom-left-radius:10px'), 90, 850, 1, -2)
-      + `<img class="abs" src="assets/granabo-feliz.png" style="left:620px;top:1180px;width:320px;transform:rotate(6deg);filter:drop-shadow(0 30px 40px rgba(0,0,0,.5))">`
-      + put(`<div class="split" style="left:0;top:0"><small>Sem o crédito</small><b>R$ 561,25</b><small>Alimentação</small></div>`, 90, 1210, .82, -4)
-      + put(`<div class="split" style="left:0;top:0;border-color:rgba(0,166,202,.6)"><small>No crédito</small><b style="color:#7fdcf0">R$ 112,00</b><small>mesma categoria</small></div>`, 150, 1390, .82, 3) },
+      put(`<div class="bal" style="position:absolute;left:0;top:0;background:#ADFBE3;color:#052229;border-radius:30px;border-bottom-right-radius:8px;font-size:30px;padding:18px 28px;white-space:nowrap">Quanto gastei com mercado?</div>`, 500, 690, 1, 2)
+      + `<div class="cw" style="left:90px;top:790px;width:900px"><div style="position:relative;padding:34px 40px 26px;border-radius:40px;background:#0b2d35;border:2px solid rgba(173,251,227,.55);box-shadow:0 0 60px rgba(173,251,227,.18),0 40px 100px rgba(0,0,0,.55);font-size:31px;line-height:44px">
+         Em outubro de 2026, você gastou <b class="pc" style="background:#ADFBE3;color:#052229">R$ 561,25</b> em Alimentação, sem contar compras no crédito. Houve também <b class="pc" style="background:#00a6ca;color:#052229">R$ 112,00</b> em compras no crédito nessa mesma categoria e período.
+         <div style="margin-top:10px;font-size:22px;line-height:30px;color:var(--accent)"><span class="dot" style="width:12px;height:12px"></span>Números conferidos</div>
+         <div style="position:absolute;left:428px;bottom:-24px;width:44px;height:44px;background:#0b2d35;border-right:2px solid rgba(173,251,227,.55);border-bottom:2px solid rgba(173,251,227,.55);transform:rotate(45deg)"></div></div></div>`
+      + `<img class="abs" src="assets/granabo-feliz.png" style="left:385px;top:1110px;width:310px;filter:drop-shadow(0 30px 40px rgba(0,0,0,.5))">`
+      + put(`<div class="split" style="left:0;top:0"><small>Sem o crédito</small><b>R$ 561,25</b><small>Alimentação</small></div>`, 60, 1395, .82, -3)
+      + put(`<div class="split" style="left:0;top:0;border-color:rgba(0,166,202,.6)"><small>No crédito</small><b style="color:#7fdcf0">R$ 112,00</b><small>mesma categoria</small></div>`, 664, 1395, .82, 3) },
   /* Comprometimento futuro (escuro) */
   5: { claro: false, t: ['Quanto do seu dinheiro', '<em>já tem destino?</em>'], fs: 70,
     G: { x: -400, y: 300, d: 1640, r: 40 }, ic: [['calendario', 900, 620, 260, 12], ['graficos', -80, 1400, 180, -15]],
