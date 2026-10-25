@@ -1,0 +1,101 @@
+# Ordem de execução — cinco Reels Tino, reedição 60 fps
+
+Autorização explícita do autor nesta sessão, 25/10/2026. Estado: plano autorizado; produção e QA ainda não comprovados. Modelos: Sol 6.1 medium mantidos. Esta rodada não aprova nem publica peças.
+
+## Donos e fronteiras
+
+- Codex: coordenação, janela Git e consolidação. Mensagens curtas apontam arquivos, sem recibos de recibos.
+- Ledger: exclusivamente esta ordem/brief, context.md, notas e vault; registra marcos recebidos na hora. Não modifica produto, áudio ou render.
+- Prism: dono exclusivo de visual, cena, aparelho 3D, animação, montagem e render. Three.js + GSAP e Editonny locais. Não espera documentação de encerramento para iniciar.
+- Beacon: dono de áudio e fontes: localizar/conferir WAVs, planos, telas reais, fontes, logo, trilhas locais e direitos/origem; entregar mapa de tempos e mix conforme contratos. Não reescrever roteiro nem regenerar voz.
+- Sentinel: QA final uma única vez sobre os cinco arquivos finais congelados, após Prism e Beacon. Verificação técnica e julgamento de legibilidade/movimento; parecer não equivale a aceite do autor.
+
+## Plano criativo integral
+
+| Peça | Assunto e direção exclusiva | Trilha local distinta |
+| --- | --- | --- |
+| V1 | Quanto pode gastar hoje: fluxo tipográfico cinético, máscaras e recortes conectados | breakbeat, 116 BPM |
+| V2 | Fatura e parcelas: camadas tridimensionais que se separam e recompõem | electro, 124 BPM |
+| V3 | Metas e cofrinhos: percurso curvo, órbitas e traços | orgânico, 108 BPM |
+| V4 | Compra por impulso: frenagem cinética e conversa Granabô | percussão, 112 BPM |
+| V5 | Comprometimento futuro: viagem longitudinal por seis meses | synth, 100 BPM |
+
+Os cinco estilos devem se distinguir na composição e no movimento, preservando integralmente o roteiro e a velocidade das vozes existentes. V5 mostra somente os seis meses/dados existentes no plano e nas capturas; não inventar projeção.
+
+## Entradas preservadas
+
+- Rodada de origem: E:/Grana-temporarios/2026-10-24-tino-videos.
+- Para N de 1 a 5: trabalho/narracoes/vN-narracao-final.wav e trabalho/vN/plano.json na rodada de origem. Os cinco caminhos de plano foram localizados por Ledger; conteúdo não auditado. Beacon confere e registra fontes antes do uso; não deduz conteúdo ausente.
+- Originais e revisões anteriores permanecem intactos; nunca sobrescrever WAV, plano ou MP4 anterior. Pedido literal atual: `tema-reedicao-motion-60fps-v1.mp4`, em kebab-case. Preservar originais e incrementar a revisão se houver colisão. Esta orientação supera os nomes de M0.
+- Nove MP4 locais: E:/Referencias Motion; amostras: E:/Grana-temporarios/analise-referencias-motion. Referência histórica DeqHiQlxxRY: rodada de 24/10 de referências, E:/Grana-temporarios/2026-10-24-referencias-edicao. Extrair técnica; não copiar conteúdo nem tratar referência como autorização.
+- Limitação obrigatória: referência 8494 NÃO tem áudio. Nas demais houve somente RMS/transientes dos primeiros cinco segundos. Escuta direta ainda indisponível: ninguém deve alegar audição/análise auditiva completa.
+- Ler economia-de-tokens e motion-supremo, incluindo referencias/grana/meu-editor-de-video.md. O pedido atual substitui os padrões antigos de 30fps, mockup fotográfico e produção de capa somente para os cinco vídeos e nos pontos expressamente autorizados aqui.
+
+## Contrato visual e temporal
+
+- 1080 × 1920, 60 fps CONSTANTES e NATIVOS na cena/render. Não converter um render de 30fps duplicando/interpolando quadros para dizer que atende.
+- Gancho legível até 1s; aparelho e app presentes até 5s em todas as peças. Renovar foco relevante em intervalos de no máximo 2s, sem movimento decorativo substituir informação.
+- Abertura muda de 0,4 a 0,8s, seguida de 1 a 2s sem distração para leitura/entrada da fala. Narrações finais originais INTEIRAS desde inicio0, sem pausas adicionais, timings `inicio_real` originais e cauda visual de 1,5s. Usar exclusivamente `fontes/vN-inicio-real-original.json`; derivados normalizados e montagem anterior não selecionados. Não cortar, acelerar, esticar, reescrever ou deslocar a narração para acomodar a abertura. Ajustar somente o visual ao tempo original; qualquer incompatibilidade deve ser reportada, sem alterar o WAV.
+- Autor aprovou explicitamente aparelho modelado em 3D realista como exceção ao mockup fotográfico APENAS nestes cinco Reels. Tela REAL, frontal durante leitura; giro breve serve à transição. Nada de perspectiva que impeça ler.
+- Neue Machina Light e Regular; petróleo/menta e logo oficial. Sem palavra viúva, sobreposição, texto cortado, UI fictícia, valores aleatórios ou projeções inventadas. Dados reais da demonstração e valores fornecidos, sem sorteio de dígitos.
+- Entradas de texto de 80 a 160ms sincronizadas à fala; mapa de palavra/tempo com fonte explícita. Ritmo da música acompanha a voz preservada, sem time-stretch da narração.
+- Digitação da gravação a 6–7x; pensando no máximo 0,3s. Se necessário congelar o fundo do quadro interno, mantendo fidelidade da tela. Essa aceleração se aplica à gravação visual, nunca à voz.
+- Render determinístico por tempo/quadro (seek GSAP/Three.js), sem relógio ou acaso dependente do histórico de quadros. Renovação focal e animação verificadas no movimento, não só em quadro final.
+
+## Contrato de áudio e exportação
+
+- Cinco músicas distintas, locais, sem custo; registrar origem/licença e BPM por peça. Ducking sob fala. Voz original intocada em velocidade e roteiro, nenhuma nova geração.
+- Mix final: alvo −14 LUFS integrado, true peak ≤ −1 dBTP. Reportar medição do MP4 final, não apenas do WAV de trabalho.
+- MP4 H.264, yuv420p, 1080x1920, CFR 60/1; AAC 48kHz estéreo. Duração deriva do conteúdo existente e da abertura autorizada, sem truncar voz para caber em duração padrão antiga.
+- Sem dependência de app, EAS, ElevenLabs, rede ou serviço remoto. Nenhuma alteração de produto ou build.
+
+## Entregas e sequência
+
+1. Beacon inventaria entradas e resolve fontes/tempos; entrega `fontes-beacon.json` e `relatorio-beacon.md` na rodada, com os cinco WAVs e planos efetivos, telas, fontes, logo, trilhas distintas e limitações. Hash somente no freeze final, sem cerimônia repetida.
+2. Prism prepara cinco composições próprias em v1/ a v5/ nesta rodada, nativas em 60fps. Demonstra amostra com voz/título/troca de tela, confere quadros e continua a execução autorizada. Corrige problemas antes do freeze.
+3. Prism entrega os cinco MP4s novos em `E:/GranaPonto/docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/`, com nomes `quanto-pode-gastar-hoje-reedicao-motion-60fps-v1.mp4`, `fatura-e-parcelas-reedicao-motion-60fps-v1.mp4`, `metas-e-cofrinhos-reedicao-motion-60fps-v1.mp4`, `compra-por-impulso-reedicao-motion-60fps-v1.mp4`, `comprometimento-futuro-reedicao-motion-60fps-v1.mp4`. Se houver colisão, incrementar revisão; preservar originais.
+4. Apoio final novo em `E:/GranaPonto/docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/apoio/reels-cinco-estilos-60fps/`: brief/ordem, receitas, fontes, timings e provas úteis. Temporários pesados ficam fora do repo na rodada. Prism declara freeze dos cinco arquivos/hashes e caminhos; Beacon declara áudio/fontes encerrados.
+5. Sentinel recebe o freeze e faz QA final: ffprobe/decodificação, CFR e cadência nativa, dimensões/codecs/channels; LUFS/TP; integridade e velocidade da narração; quadros em volta das batidas; gancho/app/prazos de foco; movimento real; frontalidade/legibilidade; ausência de viúvas/overlaps/dados inventados; cinco estilos e músicas distintas. Rodar gate Editonny e julgar falhas, sem omitir detector indisponível. Entregar `qa-final-sentinel.md` e recibos. Se não puder ouvir, declarar escuta pendente e não aprovar essa dimensão.
+6. Ledger documenta cada marco recebido imediatamente, separando relato do dono, leitura própria e QA provado. Espelhos, nota de sessão e verificar-vault ao final documental. Sem capa, postagem, agendamento, promoção a aprovados ou aceite automático.
+
+## Registro por marco e Git
+
+Cada relato deve responder às seis perguntas: (1) pedido literal e fonte; (2) sintoma e causa separados, hipótese identificada; (3) arquivos/identificadores e commit se houver; (4) alternativa descartada e motivo; (5) erro no percurso e correção; (6) verificado versus pendente, com QA acionável.
+
+Base observada: main 6118451d; uma branch, um diretório de trabalho, nenhum stash; status amplo sujo com WIP alheio. Não criar branch/worktree/stash nem resetar. Git SOMENTE arquivos/hunks desta entrega, após janela coordenada de Codex. Antes do commit: fetch origin e comparar origin/main; se atrás, avisar e aguardar decisão do autor. Sem incluir skills/painel/mídias/índices alheios por associação. Ledger mantém allowlist no status-ledger.json; não presume commit/push enquanto não houver recibo.
+
+## Estado deste documento
+
+Estado vigente M2: primeira tentativa recusada internamente pela raiz após inspeção direta das cinco folhas; render final dessas amostras BLOQUEADO. Correções já encaminhadas a Prism. Áudio Beacon tecnicamente preparado (5 tracks/11 SFX), escuta direta não comprovada. Aguardar correções e novas provas, liberação coordenada, freeze, QA final Sentinel e aceite humano. Nomes finais em kebab-case `tema-reedicao-motion-60fps-v1.mp4`; este brief existente é atualizado sem duplicação.
+### M2 — primeira tentativa recusada internamente; render final bloqueado
+
+1. **Pedido/relato:** raiz informou nesta conversa que VIU diretamente as cinco folhas `v1/provas/folha.jpg` a `v5/provas/folha.jpg` e bloqueou o render final dessas amostras; correções encaminhadas a Prism, sem código pela raiz. Registrar como primeira tentativa recusada internamente, nunca vídeo final ou aceite.
+2. **Sintoma/causa:** raiz constatou repetição de título estático/celular central/POP superior. As direções distintas do plano precisam aparecer em objetos, escala e câmera; a montagem observada ainda não as comunica. V4: home719,81 versus chat716,73; V5: screenshot do gráfico recortado em seis fatias, cortando textos/total; V1 (RETIFICADO pela raiz após leitura de v1/config.py, textos.py e transcrição original): a observação de Pix modal/Ouvindo NÃO comprova defeito. O autor alterou ontem a fala para “ou falando o gasto”; lançar por voz DENTRO do APP era a opção b autorizada. Pix tem decisão anterior de mostrar a janela aberta antes de colar, por valores/privacidade; não forçar preenchimento/salvamento. A exigência de chat baseada na ordem antiga foi hipótese errada da raiz, agora refutada. Hooks abreviados estáticos substituem as palavras faladas sincronizadas. Mix inicial sem SFX e sem fade após corte. São achados da inspeção direta da raiz, não nova inspeção por Ledger; causas de implementação não investigadas aqui.
+3. **Arquivos/identificadores:** provas na rodada `E:/Grana-temporarios/2026-10-25-reels-cinco-estilos-60fps/vN/provas/folha.jpg` (N1..5); ordem e BRIEF existentes recebem este marco, sem cópias extras. Nomes finais mantidos em kebab-case `tema-reedicao-motion-60fps-v1.mp4`, conforme mensagem Prism. Beacon conferiu no frame atual de V5 total10.050,75, superando6691,35 da ordem antiga: qualquer valor deve vir do frame real, sem redesenhar UI. Não substituir números em screenshot para forçar consistência. Raiz relata fetch main0ahead/0behind; Ledger não repetiu Git.
+4. **Descartado:** render final das amostras recusadas, repetição do mesmo arranjo com variação só cosmética, hooks estáticos abreviados, fatiamento que corta informação, valor legado imposto ao frame atual e redesenho de tela. Aprovação técnica de áudio não vira escuta nem aceite visual.
+5. **Percurso/erro:** primeira tentativa não atingiu as cinco direções criativas nem a fidelidade de telas e sincronização exigidas; retorno já encaminhado a Prism. Mix inicial incompleto não invalida o pacote técnico separado de Beacon: cinco tracks e onze SFX prontos tecnicamente, custo0, originais intactos, conforme relato. Inserção/mix final dos recursos e fade após corte ainda dependem de correção/comprovação. Não afirmar correções concluídas.
+6. **Verificação/pendência:** inspeção visual direta atribuída à raiz; captura/áudio técnico atribuídos a Beacon. Escuta direta NÃO comprovada. Ledger só documenta, sem mais QA de produto. Permanecem correções Prism, novas provas aceitas internamente, freeze dos cinco, QA final Sentinel e aceite humano. Bloqueio do render final permanece até liberação coordenada após correções; nenhum vídeo final/aprovação/publicação neste marco. Sem Git write nesta atuação.
+### M2-R1 — hipóteses V1 refutadas; demais bloqueios mantidos
+
+1. **Pedido/fonte:** retificação explícita da raiz nesta conversa, após ler `v1/config.py`, `textos.py` e transcrição original. Prism já avisado para preservar voz e fontes autorizadas de V1.
+2. **Sintoma/causa:** a exigência de chat V1 se baseava na ORDEM antiga, superada pela fala alterada ontem pelo autor para “ou falando o gasto”. Lançar por voz DENTRO do APP era opção b autorizada. A folha com Ouvindo não comprova defeito; a hipótese de inadequação dessa superfície foi REFUTADA. Pix: mostrar janela aberta antes de colar é decisão anterior por valores/privacidade, não defeito comprovado nem ordem para preencher/salvar.
+3. **Arquivos/identificadores:** fontes lidas pela raiz: v1/config.py, textos.py e transcrição original de V1. Ledger não repetiu inspeção de produto. ORDEM-EXECUCAO.md/BRIEF.md/context.md/status-ledger.json e notas recebem a retificação, sem duplicar brief ou alterar mídia.
+4. **Descartado:** forçar chat em V1, preencher/salvar Pix ou reescrever voz/fontes autorizadas para atender à ordem antiga. Preservar narração original autorizada e decisões de privacidade.
+5. **Percurso/erro:** raiz reconheceu que sua exigência de chat estava ERRADA; Ledger havia registrado os dois itens como achados confirmados de M2. Registro técnico corrigido no lugar; nota de sessão histórica mantém o marco original com aviso de retificação e esta continuação, sem apagar a trilha do erro.
+6. **Estado/pendência:** bloqueios CONFIRMADOS mantidos: layouts pouco distintos e gancho estático, V4 Livre errado, V5 fatias cortando texto, SFX/fade ausentes no mix inicial. Render final das amostras continua bloqueado; áudio Beacon técnico não comprova escuta. Correções Prism, novas provas/liberação coordenada/freeze/QA Sentinel/aceite humano seguem pendentes. Sem novo QA de produto ou Git write por Ledger.
+### M3 — Beacon encerrado tecnicamente; integração/mix final pendentes
+
+1. **Pedido/fonte:** marco recebido nesta conversa; Ledger leu status-beacon.json e relatorio-beacon.md (seis respostas) e abriu como JSON audio-manifest.json/fontes-manifest.json. Beacon encerrou áudio/preparação de fontes, sem aceite das peças.
+2. **Sintoma/causa:** pacote técnico pronto não equivale a mix codificado ou escuta. Incompatibilidade comprovada pelo Beacon em V5: fonte mostra10.050,75, ordem antiga pedia6691.35; evidência beacon/v5-grafico-fonte.png, cuja existência Ledger conferiu sem abrir/imagem nova. Registrar fonte real e resolver composição/fonte com Prism/raiz; não redesenhar valores nem fabricar projeção. Áudio não fica bloqueado por essa divergência visual.
+3. **Arquivos/identificadores:** status-beacon.json, relatorio-beacon.md, audio-manifest.json SHA256 fe2b4d94be05d60bb476f15958cbebda96339c171b6495200d3ede148e25d4d0; fontes-manifest.json SHA256 13c55c5eb17de9e7b745c4f2ea57fadae0f64535f27499995b3401a35a6ccac1. Hashes calculados por Ledger coincidem com status do dono. Beacon registra5trilhas/15stems/11SFX/10vozes derivadas/41WAV decodificados,5mapas duplos e7capturas; originais com hashes intactos; custoR$0/API0/Git0. Medidas/decodificação dos WAVs são do Beacon, não repetidas por Ledger. Trilha/stems/SFX/vozes/mapas permanecem externos na rodada; somente Prism cria peças para aprovação.
+4. **Descartado:** interpretar derivados normalizados como autorização para trocar roteiro, velocidade, pausas ou timing original; mapa de montagem anterior não pode ser aplicado ao WAV original. Instruções do pacote Beacon para forçar chat V1 e permitir offset global foram escritas antes das retificações e estão SUPERADAS por M1/M2-R1: preservar voz e fontes V1 autorizadas, opção voz dentroAPP e janela Pix antescolar, sem pausas adicionais ou deslocamento de inicio_real. Não alterar arquivos do Beacon para apagar a trilha histórica; prevalece este contrato atualizado do autor.
+5. **Percurso/erros do dono:** relatório descreve falha inicial na normalização mono/estéreo, corrigida medindo estéreo antes do loudnorm em duas passadas; pico−0,99dBTP reprovou e margem adicional levou10derivados a no máximo−1,12dBTP. Só derivados externos alterados, sem regenerar/cortar/acelerar voz. Originais intactos conforme verificação Beacon; isso não afirma amplitude idêntica dos derivados. Ledger apenas consolidou os recibos e conferiu hashes dos manifestos.
+6. **Verificado/pendente:** Beacon relata41WAV48kHz/estéreo/PCM24 decodificados, somas de stems e diferenças musicais verificadas; nenhuma escuta direta comprovada, nem do gerado nem das referências. O relatório novo registra análise de sinal RMS/fluxo/transientes dos oito arquivos com áudio, sem comprovar audição/gênero/timbre/BPM ouvido; referência8494 continua sem áudio. Não promover a análise anterior dos primeiros5s a escuta. Mix final MP4, ducking/mascaramento, alinhamento dosSFX/fades e nova medição−14LUFS/TP≤−1 são responsabilidade Prism/QA final. Prism já avisado da pendência V5 segundo marco. Bloqueios M2 válidos permanecem; V1 refutado não retorna como defeito. Sem novo QA de produto, Git write ou aceite por Ledger.
+### M3-C1 — contrato Beacon fixado; originais inteiros desde zero
+
+1. **Pedido/fonte:** complemento Beacon recebido nesta conversa e lido no relatorio-beacon.md atualizado, status-beacon.json e manifestos. Prism usa WAV original INTEIRO, inicio0, zero pausas adicionais e cauda visual1,5s.
+2. **Sintoma/causa:** os dez derivados/mapas duplos anteriores eram opções de apoio, não seleção final. Contrato atual fixa cinco mapas EXCLUSIVOS `inicio_real` do original, eliminando ambiguidade entre montagem anterior e voz original. Normalizados e montagem anterior NÃO selecionados. Mix/loudnorm final permanece com Prism.
+3. **Arquivos/identificadores:** mapas `fontes/vN-inicio-real-original.json` (N1..5), NeueMachina-Light.otf, NeueMachina-Regular.otf e logotipo-gradiente.svg em fontes/. Segundo Beacon, três assets de marca copiados com hash idêntico; originais e áudio musical não alterados. Manifestos atualizados: audio-manifest.json SHA2569c71954bbbe36b1bb0ecf96f90ae7c8719b299cc4db71db0af3ed32cf5c6ed7d; fontes-manifest.json SHA25610e23a61d4d472e7640ef1c3a1e96f5eff284960284bc7deb046bcea1aef38a5. Ledger abriu JSONs/calculou hashes, coincidentes com status atual. Hashes M3 anteriores são históricos, não hashes do pacote atual.
+4. **Descartado:** usar derivados normalizados ou voz da montagem anterior como selecionados; adicionar pausa/offset ou misturar mapas. Para V1 o complemento seleciona chat granachat-registro, sem widget. Isso não transforma a antiga folha Ouvindo em defeito: permanece refutada a exigência anterior baseada em ordem desatualizada. Janela Pix antescolar e voz autorizada preservadas.
+5. **Percurso/limite de evidência:** Beacon localiza fala literal “ou falando o gasto.” em14,48–15,70s e confirmação real no chat em23,90s. Captura mostra texto digitado, NÃO comprova captação por microfone/transcrição de fala; não apresentar essa modalidade como demonstrada. Tempo23,90 é ponto na fonte, não prova de sincronização/montagem do MP4 final. Não confundir janela de recorte/montagem citada em instrução antiga com o tempo da confirmação; usar complemento atual.
+6. **Verificado/pendente:** leitura documental/JSON/hashes por Ledger; seleção e conferência de fonte atribuídas a Beacon. Escuta direta continua não comprovada. Contrato atualizado em ordem/brief/status/contexto/notas, sem produto/áudio/render ou Git write por Ledger. V5 fonte10.050,75 versus6691.35, bloqueios visuais M2 válidos e mix/QA final permanecem pendentes; sem aceite automático.
