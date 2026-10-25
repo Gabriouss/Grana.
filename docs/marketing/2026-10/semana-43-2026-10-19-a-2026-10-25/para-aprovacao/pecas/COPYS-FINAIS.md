@@ -74,3 +74,11 @@ Escrita em25/10/2026. Versão separada para aprovação, sem postagem ou aceite 
 
 **Legenda:** Uma compra pequena aqui, outra ali, e o próximo fechamento já começa cheio. Antes de assumir mais uma parcela, vale conferir quanto das próximas faturas já está ocupado. Esse hábito deixa a decisão de hoje mais clara e o mês seguinte mais previsível. Salve para lembrar antes da próxima compra. Link na bio.
 <!-- ph-fatura-reedicao-v2:end -->
+
+## Fatura e parcelas - reedicao v3
+
+Escrita em 25/10/2026. Versão separada para aprovação, sem postagem ou aceite presumidos.
+
+**Título:** Fatura e parcelas - reedicao v3
+
+**Legenda:** Parcelar parece leve porque cada compra chega sozinha. O fechamento junta tudo, e o valor do fim do mês vira a soma de decisões que ninguém lembrava mais. Ter as parcelas abertas na frente, com o número de cada uma, muda a conta antes da próxima compra. Salva este vídeo para conferir antes de parcelar de novo. Link na bio.

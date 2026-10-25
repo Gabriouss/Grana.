@@ -55,3 +55,11 @@ Pedido do autor em 21/10/2026: refazer os quatro destaques de um perfil de outro
 - Voz do take1 bruto existente, sem alterar velocidade; gancho reorganizado, compras maiores, valores reais revelados sem sorteio, pausas menores e nova trilha local.20,29s/1080x1920/30fps/AAC48kHz estéreo.
 - QA: quality gate passed, −13,99LUFS, zero quadro preto, movimento nas5etapas; [receita, folha e limites](apoio/reels-fatura-reedicao-v2/README.md). OCR indisponível; escuta final e aprovação estética pendentes do autor. Legenda em COPYS-FINAIS.md; nenhuma capa produzida.
 <!-- ph-fatura-reedicao-v2:end -->
+<!-- fatura-reedicao-v3:start -->
+## Fatura e parcelas: reedição v3, estilo novo (25/10/2026)
+
+- [Vídeo para aprovação](para-aprovacao/pecas/reels/Fatura%20e%20parcelas%20-%20reedicao%20v3.mp4): estilo totalmente novo pedido pelo autor, sem moldura realista nem gravação de tela; cards do app em HTML com dados reais da conta de teste, celular estilizado em 3D, texto cinético e transições em chicote. Original e v2 preservados; nenhum aceite, agendamento ou publicação.
+- Voz original inteira em t=0, trilha V2 electro 124 BPM (local) e SFX locais. 19,75 s, 1080x1920, 60 fps com motion blur, AAC 48 kHz estéreo, −14,05 LUFS.
+- QA e limites em [apoio/reels-fatura-reedicao-v3](apoio/reels-fatura-reedicao-v3/README.md). Legenda em COPYS-FINAIS.md. Escuta e aprovação estética com o autor.
+<!-- fatura-reedicao-v3:end -->
+
