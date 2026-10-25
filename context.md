@@ -119,6 +119,7 @@ O histórico e a evidência da exposição permanecem na seção datada de 16/09
 5. **O que deu errado:** a mensagem de commit em here-string do PowerShell 5.1 quebrou nas aspas e, por arquivo, saiu com BOM; o commit local do A9 foi corrigido com `--amend` antes de qualquer push, e as mensagens passaram a ser gravadas sem BOM.
 6. **Verificado:** `tsc --noEmit` sem erro; `exemplo-landing` (42), `entrada-na-tela` (9), `checkout-com-email` (15), `modo-teste` (22), `convite-app-android` (7), `feedback-consentimento` (24) e `sem-viuva` (12) passando; medidor no localhost em 360, 390, 768 e 1440: zero alvo abaixo de 44 px, uma saída só (Instagram, permitida), viúvas restantes só em conteúdo de exemplo. **Não verificado:** produção (nada publicado ainda: há cinco commits de outro agente intercalados no `main` local, tela Contas do admin e política de privacidade, e o push espera o aval do dono); aparelho real; leitor de tela.
 
+7. **Depois, pedido do autor com print ("aqui tem uma viúva"):** "teste." sozinho na última linha do texto do fecho ("Seu próximo gasto pode ser o primeiro passo."), numa largura entre 768 e 1440 que o medidor não cobre. `0f9d1177`: "de teste." unido por espaço não separável nas duas frases "Sem período de teste." e `text-wrap: balance` no texto do fecho. Publicado. Lição: viúva muda de lugar com a largura; as quatro larguras do medidor não bastam para afirmar ausência.
 ---
 
 ## 24/10/2026 (M1, Claude direto com o autor): skill Leis de UI e auditoria da landing
