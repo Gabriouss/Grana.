@@ -63,3 +63,14 @@ Pedido do autor em 21/10/2026: refazer os quatro destaques de um perfil de outro
 - QA e limites em [apoio/reels-fatura-reedicao-v3](apoio/reels-fatura-reedicao-v3/README.md). Legenda em COPYS-FINAIS.md. Escuta e aprovação estética com o autor.
 <!-- fatura-reedicao-v3:end -->
 
+<!-- serie-reedicao-v3:start -->
+## Série no estilo do Fatura v3 (25/10/2026)
+
+Mesmo pipeline do Fatura v3 (HTML/GSAP, dados reais da conta de teste, 60 fps), celular com moldura metálica realista e assinatura própria em cada vídeo. Metade em tema claro, medido do criativo do autor: [guia do tema claro](apoio/referencias/guia-de-estilo-reels-tema-claro.md). Receita e varreduras em [apoio/reels-serie-reedicao-v3](apoio/reels-serie-reedicao-v3/). Nenhum aceite, agendamento ou publicação.
+
+- [Quanto pode gastar hoje - reedicao v3](para-aprovacao/pecas/reels/Quanto%20pode%20gastar%20hoje%20-%20reedicao%20v3.mp4): tema claro, assinatura "elevador". 19,8 s.
+- [Metas e cofrinhos - reedicao v3](para-aprovacao/pecas/reels/Metas%20e%20cofrinhos%20-%20reedicao%20v3.mp4): tema claro, cofrinhos em órbita, íris, mural montado em blocos. 20,2 s.
+- Compra por impulso e Comprometimento futuro (tema escuro): em render final.
+- Legendas em COPYS-FINAIS.md. Pendências do autor: logotipo petróleo no tema claro (regra 23 pede gradiente), Ultrabold em vídeo, celular CSS 3D e 60 fps.
+<!-- serie-reedicao-v3:end -->
+

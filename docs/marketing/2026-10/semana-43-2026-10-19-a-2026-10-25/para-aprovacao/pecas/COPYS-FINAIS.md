@@ -82,3 +82,35 @@ Escrita em 25/10/2026. Versão separada para aprovação, sem postagem ou aceite
 **Título:** Fatura e parcelas - reedicao v3
 
 **Legenda:** Parcelar parece leve porque cada compra chega sozinha. O fechamento junta tudo, e o valor do fim do mês vira a soma de decisões que ninguém lembrava mais. Ter as parcelas abertas na frente, com o número de cada uma, muda a conta antes da próxima compra. Salva este vídeo para conferir antes de parcelar de novo. Link na bio.
+
+## Quanto pode gastar hoje - reedicao v3
+
+Escrita em 25/10/2026. Versão separada para aprovação, sem postagem ou aceite presumidos.
+
+**Título:** Quanto pode gastar hoje - reedicao v3
+
+**Legenda:** O saldo do banco mostra tudo o que entrou, inclusive o dinheiro que já tem destino. Para decidir o gasto de hoje, o número que importa aparece depois que a fatura em aberto e os cofrinhos saem da conta, dividido pelos dias que faltam. Com ele na tela de abertura, a escolha fica tranquila. Salva para lembrar antes da próxima compra. Link na bio.
+
+## Metas e cofrinhos - reedicao v3
+
+Escrita em 25/10/2026. Versão separada para aprovação, sem postagem ou aceite presumidos.
+
+**Título:** Metas e cofrinhos - reedicao v3
+
+**Legenda:** Meta que mora só na cabeça disputa espaço com todo gasto do mês e quase sempre perde. Quando cada objetivo tem valor, data e uma barra que anda, guardar vira um passo que dá para ver, e o dinheiro reservado deixa de parecer sobra. Comenta qual objetivo vai ganhar o primeiro cofrinho. Link na bio.
+
+## Compra por impulso - reedicao v3
+
+Escrita em 25/10/2026. Versão separada para aprovação, sem postagem ou aceite presumidos.
+
+**Título:** Compra por impulso - reedicao v3
+
+**Legenda:** A compra por impulso costuma acontecer quando falta um número na hora da dúvida. Com a resposta pronta, mostrando o que já saiu do caixa e o que ainda vai chegar na fatura, dá para decidir com calma se aquela compra cabe agora ou fica para o mês que vem. Salva para consultar na próxima vitrine. Link na bio.
+
+## Comprometimento futuro - reedicao v3
+
+Escrita em 25/10/2026. Versão separada para aprovação, sem postagem ou aceite presumidos.
+
+**Título:** Comprometimento futuro - reedicao v3
+
+**Legenda:** Os próximos meses começam a ser gastos muito antes de chegar, porque cada parcela e cada conta fixa já ocupa um pedaço deles. Ver esse peso somado com antecedência mostra onde existe folga para uma compra maior e onde vale esperar. Manda para quem já está planejando o fim do ano. Link na bio.
