@@ -1613,7 +1613,7 @@ function ConteudoWeb() {
                   {/* Condições confirmadas; detalhes de cancelamento dependem
                       da política apresentada no checkout. */}
                   <Text style={[styles.precoConfianca, ehCompacto && styles.precoTextoCentralizado]}>
-                    Assinatura recorrente. Sem período de teste.
+                    Assinatura recorrente. Sem período de{' '}teste.
                   </Text>
                 </View>
               </View>
@@ -1728,7 +1728,7 @@ function ConteudoWeb() {
                 </Text>
                 <Text style={[styles.ctaFinalTexto, styles.precoTextoCentralizado]}>
                   Organize seus gastos com o Grana. no plano anual, equivalente a {emReais(PRECO_ANUAL / 12)} por mês,
-                  ou {emReais(PRECO_MENSAL)} por mês no plano mensal. Sem período de teste.
+                  ou {emReais(PRECO_MENSAL)} por mês no plano mensal. Sem período de{' '}teste.
                 </Text>
                 <View style={[styles.ctaFinalFatos, styles.ctaFinalFatosCompacto]}>
                   {['Voz e Pix colado', 'Lançamentos organizados', 'Celular e computador'].map((fato) => (
@@ -2463,7 +2463,7 @@ const styles = StyleSheet.create({
   ctaFinalConteudo: { width: '100%', maxWidth: 760, alignItems: 'center' },
   ctaFinalConteudoCompacto: { minWidth: 0, width: '100%', alignItems: 'center' },
   ctaFinalTitulo: { color: theme.ink, ...({ fontSize: 'clamp(32px, 3.2vw, 52px)', lineHeight: '1.08', textWrap: 'balance' } as any), fontFamily: fonts.regular, marginBottom: spacing.lg },
-  ctaFinalTexto: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, maxWidth: 540 },
+  ctaFinalTexto: { color: theme.inkSoft, fontSize: type.destaque, lineHeight: type.destaque * 1.5, fontFamily: fonts.light, maxWidth: 540, ...({ textWrap: 'balance' } as any) },
   ctaFinalFatos: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginVertical: spacing.xl },
   ctaFinalFatosCompacto: { justifyContent: 'center' },
   ctaFinalFato: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: radius.pill, borderWidth: 1, borderColor: theme.rule, backgroundColor: theme.paperRaised },
