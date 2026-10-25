@@ -72,6 +72,7 @@ Mesmo pipeline do Fatura v3 (HTML/GSAP, dados reais da conta de teste, 60 fps), 
 - [Metas e cofrinhos - reedicao v3](para-aprovacao/pecas/reels/Metas%20e%20cofrinhos%20-%20reedicao%20v3.mp4): tema claro, cofrinhos em órbita, íris, mural montado em blocos. 20,2 s.
 - [Compra por impulso - reedicao v3](para-aprovacao/pecas/reels/Compra%20por%20impulso%20-%20reedicao%20v3.mp4): tema escuro, assinatura "freada", chat do Granabô com débito e crédito separados. 20,6 s.
 - [Comprometimento futuro - reedicao v3](para-aprovacao/pecas/reels/Comprometimento%20futuro%20-%20reedicao%20v3.mp4): tema escuro, túnel dos seis meses, total em placa de aeroporto. 19,7 s.
+- Capas 1080x1920 dos cinco (`<vídeo>-capa.png`, pareadas pelo nome): mesmo visual dos vídeos, claras para os claros e escuras para os escuros, com blocos do app feitos em HTML e dados reais, sem aparelho e sem print (pedido do autor em 25/10). Gerador `capa.html`/`capa.js`/`capas.py` no apoio da série, com checagem automática de margem.
 - Legendas em COPYS-FINAIS.md. Pendências do autor: logotipo petróleo no tema claro (regra 23 pede gradiente), Ultrabold em vídeo, celular CSS 3D e 60 fps.
 <!-- serie-reedicao-v3:end -->
 

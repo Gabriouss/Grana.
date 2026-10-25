@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Capas da série</title>
+<link rel="stylesheet" href="base.css">
+<style>
+.capa #stage{background:linear-gradient(180deg,#00303a 0%,#00222b 55%,#001820 100%)}
+#painelE{position:absolute;left:22px;top:22px;width:1036px;height:1876px;border-radius:29px;overflow:hidden;
+ background:radial-gradient(120% 70% at 30% 0%,#00525a 0%,#003841 45%,#002029 100%);box-shadow:0 0 0 1px rgba(173,251,227,.08) inset}
+#gsym{position:absolute;opacity:.07;filter:brightness(.55) saturate(.6)}
+.cw{position:absolute;transform-origin:0 0}
+.capa .box{background:#0b2d35;border-color:rgba(174,255,227,.3);box-shadow:0 40px 90px rgba(0,10,14,.55),0 0 0 1px rgba(174,255,227,.05) inset}
+.capa.claro .box{box-shadow:0 40px 80px rgba(0,60,70,.4)}
+.icf{position:absolute;filter:blur(7px)}
+#cantosC img{position:absolute}
+#cantosC .rot{position:absolute;font-family:NM;font-weight:400;font-size:22px;letter-spacing:.95em;color:#87F9CC}
+.capa.claro #cantosC .rot{color:#004C50}
+#tit{position:absolute;left:0;width:1080px;top:440px;text-align:center;font-family:NMU;font-weight:800;color:#ffffff;margin:0;letter-spacing:0;text-wrap:balance}
+#tit em{font-style:normal;color:#87F9CC}
+.capa.claro #tit{color:#013036}
+.capa.claro #tit em{color:#013036;background:linear-gradient(90deg,#87F7C7,#00ADC5);border-radius:.4em;padding:0 .22em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.tag{display:inline-block;margin-left:12px;padding:0 14px;border-radius:10px;font-size:24px;line-height:36px;color:#052229;background:#ADFBE3;vertical-align:middle}
+.pc{font-weight:400;border-radius:8px;padding:0 6px;white-space:nowrap}
+.split{position:absolute;width:430px;padding:30px 36px;border-radius:34px;background:#0b2d35;border:2px solid rgba(174,255,227,.3);box-shadow:0 40px 90px rgba(0,0,0,.5)}
+.split small{display:block;font-size:30px;color:var(--faint);line-height:40px}
+.split b{display:block;font-weight:400;font-size:60px;line-height:76px}
+.chipc{position:absolute}
+</style></head><body>
+<div id="stage"></div>
+<script src="assets/gsap.min.js"></script>
+<script src="base.js"></script>
+<script src="capa.js"></script>
+</body></html>
