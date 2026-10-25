@@ -27,16 +27,23 @@ const ic = {
 
 /* ---------- celular realista (corpo metálico, bezel, furo de câmera, botões, espessura, reflexo) ---------- */
 function celular(id, frente, verso, x = 262, y = 657) {
-  const edges = [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33].map((z) => `<div class="edge" style="transform:translateZ(-${z}px)"></div>`).join('');
+  /* lateral de alumínio arredondada: 24 camadas de 2 px; o meio da lateral sai mais e reflete mais luz (luz vem da esquerda) */
+  const N = 30, mix = (a, b, p) => '#' + [0, 2, 4].map((i) => Math.round(parseInt(a.substr(i + 1, 2), 16) * (1 - p) + parseInt(b.substr(i + 1, 2), 16) * p).toString(16).padStart(2, '0')).join('');
+  const edges = Array.from({ length: N - 1 }, (_, k) => {
+    const q = (k + 1) / N, p = Math.sin(Math.PI * q), ins = (5 * (1 - p)).toFixed(1);
+    const L = mix('#34434a', '#dfecef', Math.pow(p, 3)), R = mix('#141c1f', '#5d6f74', p);
+    return `<div class="edge" style="inset:${ins}px;border-radius:${80 - ins}px;transform:translateZ(-${(q * 60).toFixed(1)}px);background:linear-gradient(180deg,${L},${mix('#1b2427', '#7b8d92', p)} 50%,${L})"></div>`;
+  }).join('');
   const face = (conteudo, extra) => `<div class="metal"></div><div class="glassrim"></div><div class="screenbg"></div>${conteudo}<div class="punch"></div><div class="glare"><i></i></div>${extra || ''}`;
   return `<div class="pshadow" id="${id}Sh" style="left:${x - 32}px;top:${y + 1150}px"></div>
   <div class="phone" id="${id}" style="left:${x}px;top:${y}px">
-   <div class="btn" style="top:250px;height:110px;transform:translateZ(-16px) rotateY(90deg)"></div>
-   <div class="btn" style="top:400px;height:170px;transform:translateZ(-16px) rotateY(90deg)"></div>
+   <div class="tilt">
+   <div class="btn" style="left:-21px;top:250px;height:110px;transform:translateZ(-30px) rotateY(-90deg)"></div>
+   <div class="btn" style="left:-21px;top:400px;height:170px;transform:translateZ(-30px) rotateY(-90deg)"></div>
    ${edges}
    <div class="face" id="${id}F">${face(`<div class="scr" id="${id}A">${frente}</div>`)}</div>
-   <div class="face" id="${id}B" style="transform:translateZ(-36px) rotateY(180deg)">${verso ? face(`<div class="scr" id="${id}V">${verso}</div>`) : '<div class="back"></div>'}</div>
-  </div>`;
+   <div class="face" id="${id}B" style="transform:translateZ(-60px) rotateY(180deg)">${verso ? face(`<div class="scr" id="${id}V">${verso}</div>`) : '<div class="back"></div>'}</div>
+  </div></div>`;
 }
 
 /* ---------- peças de tela (1080 x 2388, medidas da captura real) ---------- */
@@ -191,7 +198,11 @@ function montar(cfg, cena) {
     });
     return t;
   };
-  document.fonts.ready.then(() => { window.renderAt(0); window.__ready = true; });
+  /* carrega as fontes de propósito antes de liberar a captura (a Ultrabold já faltou num render do V1) */
+  Promise.all(['300 40px NM', '400 40px NM', '800 40px NMU'].map((f) => document.fonts.load(f))).then(() => document.fonts.ready).then(() => {
+    if (document.body.classList.contains('claro') && !document.fonts.check('800 40px NMU')) throw new Error('Ultrabold ausente');
+    window.renderAt(0); window.__ready = true;
+  });
 }
 
 /* ---------- tema claro: moldura, painel com grade, disco claro, cantos fixos, ícones desfocados ---------- */

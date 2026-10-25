@@ -38,7 +38,7 @@ montar({
     ['synthetic/pop.wav', 14.16, .4], ['synthetic/whoosh.wav', 14.5, .3], ['synthetic/data.wav', 14.8, .25],
     ['synthetic/whoosh.wav', 15.5, .45], ['synthetic/rise.wav', 15.9, .3], ['synthetic/bass_drop.wav', 16.24, .4], ['mouse_click.wav', 16.5, .6], ['success.wav', 17.74, .35]],
 }, () => {
-  temaClaro({ disco: { x: -560, y: 60, r: 1420 }, gota: 980,
+  temaClaro({ disco: { x: -1000, y: -380, r: 2350 }, gota: 980,
     icones: [['dinheiro', 850, 420, 270, 12], ['calendario', -110, 1250, 240, -15], ['tempo', 880, 1470, 150, 18]] });
 
   const modal = `<div class="L" id="aDim" style="left:0;top:0;width:1080px;height:2388px;background:rgba(1,10,13,.6);opacity:0"></div>

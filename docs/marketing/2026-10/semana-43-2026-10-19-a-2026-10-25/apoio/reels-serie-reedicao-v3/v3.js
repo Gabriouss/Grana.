@@ -66,7 +66,7 @@ montar({
     ['synthetic/rise.wav', 14.9, .35], ['success.wav', 15.45, .3], ['synthetic/whoosh.wav', 15.9, .45],
     ['synthetic/bass_drop.wav', 16.32, .4], ['mouse_click.wav', 16.94, .6], ['success.wav', 18.24, .35]],
 }, () => {
-  temaClaro({ disco: { x: 180, y: -260, r: 1500 }, gota: 1320,
+  temaClaro({ disco: { x: -420, y: -560, r: 2400 }, gota: 1320,
     icones: [['desafios', -120, 660, 230, -14], ['salvo', 860, 1480, 230, 16], ['calendario', 60, 1660, 140, 10]] });
   $('#iris').style.background = '#013036';
 

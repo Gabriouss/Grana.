@@ -40,7 +40,8 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:#021319;font-fam
 .phone .glare{position:absolute;left:18px;top:18px;width:520px;height:1150px;border-radius:62px;overflow:hidden;pointer-events:none}
 .phone .glare i{position:absolute;left:-60%;top:-20%;width:70%;height:140%;transform:rotate(18deg);background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.075) 45%,rgba(255,255,255,.11) 50%,rgba(255,255,255,.04) 56%,rgba(255,255,255,0))}
 .phone .edge{position:absolute;inset:0;border-radius:80px;background:linear-gradient(90deg,#4b5b60,#141c1f 18%,#0b1114 50%,#141c1f 82%,#4b5b60)}
-.phone .btn{position:absolute;right:-5px;width:9px;border-radius:3px;background:linear-gradient(90deg,#1a2326,#6a7c81 60%,#28343a)}
+.phone .tilt{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateY(19deg) rotateX(3deg) rotateZ(-1.2deg)}
+.phone .btn{position:absolute;width:34px;border-radius:3px;background:linear-gradient(90deg,#26323a,#b9cacf 45%,#5d6f74 70%,#1d272a);box-shadow:0 0 0 1px rgba(0,0,0,.5)}
 .phone .back{position:absolute;inset:0;border-radius:80px;background:linear-gradient(150deg,#16262b,#0a1316 60%,#1d2e33)}
 .pshadow{position:absolute;width:620px;height:120px;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.55),rgba(0,0,0,0));filter:blur(8px)}
 /* ---------- telas ---------- */
@@ -70,7 +71,7 @@ body.claro #glow,body.claro #glow2,body.claro #floor{display:none}
 #painel .disco{position:absolute;border-radius:50%;background-color:#D3FCEA;
  background-image:linear-gradient(#E0FFF1 4px,transparent 4px),linear-gradient(90deg,#E0FFF1 4px,transparent 4px);background-size:62px 62px}
 #painel .gota{position:absolute;border-radius:50%;background:linear-gradient(160deg,#3FDFC7,#00B3C1)}
-#painel .brilho{position:absolute;left:-200px;top:1300px;width:1436px;height:900px;background:radial-gradient(closest-side,rgba(0,123,121,.65),rgba(0,123,121,0))}
+#painel .brilho{position:absolute;left:-200px;top:1300px;width:1436px;height:900px;background:radial-gradient(closest-side,rgba(0,123,121,.35),rgba(0,123,121,0))}
 #cantos{position:absolute;inset:0;pointer-events:none}
 #cantos .rot{position:absolute;font-size:22px;letter-spacing:.95em;color:#004C50;font-weight:400}
 #cantos img{position:absolute;left:84px;top:78px;width:178px}

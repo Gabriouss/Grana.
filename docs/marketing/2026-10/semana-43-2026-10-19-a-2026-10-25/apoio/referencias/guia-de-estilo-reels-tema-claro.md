@@ -51,7 +51,7 @@ Rótulos dos cantos: 22 px, espaçamento 0,95 em, cor `#004C50`. Nada importante
 | Texto da legenda | `#013036` | petróleo escuro, Ultrabold |
 | Pílula de destaque | `#87F7C7` a `#00ADC5` | texto petróleo por cima |
 | Rótulos fixos | `#004C50` | |
-| Logotipo | `#013036` | arquivo `logotipo-petroleo` derivado do oficial; ver pendência abaixo |
+| Logotipo | `#013036` | arquivo `logotipo-petroleo` derivado do oficial; aprovado pelo autor |
 | Ícones | disco petróleo com glifo menta | desfoque de 7 px, cortados pela borda |
 
 Nenhuma outra cor entra no fundo. O aparelho e os cards continuam com as cores do app.
@@ -77,7 +77,8 @@ Três ícones do arsenal (versão petróleo) por vídeo, entre 140 e 270 px, inc
 - [ ] Frase final legível sobre o disco claro
 - [ ] Nenhuma palavra viúva na última linha da legenda
 
-## Pendências para o autor
+## Decisões do autor (25/10/2026)
 
-1. O logotipo do tema claro é petróleo chapado, como no criativo dele; a regra 23 pede o gradiente oficial. Falta decidir qual vale nos Reels claros.
-2. A Ultrabold entrou em vídeo pela primeira vez, seguindo o criativo.
+1. Logotipo petróleo chapado nos Reels claros: aprovado ("é isso aí mesmo"). Exceção registrada em `docs/marketing/ajustes.md`.
+2. Neue Machina Ultrabold nas legendas em vídeo: aprovada ("fica").
+3. O gradiente aqua ocupa menos área do fundo e o disco claro com grade ocupa a maior parte (disco de 2350 a 2400 px de diâmetro, azul só nas margens). Aplicado ao V1 e ao V3 no mesmo dia.

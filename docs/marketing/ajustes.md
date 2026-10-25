@@ -9,6 +9,7 @@ Quando o autor fizer um pedido de ajuste novo, a lição entra aqui na hora.
 - **Não desenhe celular falso nem tela "chapada".** O celular é sempre o mockup fotográfico realista com a tela real aplicada por cima, em vídeo e em estático. Aconteceu no Reel do Pix v6 e no motion "Desistiu", narrado: "Celular não está realista na tela".
 - **Não use print mal encaixado na tela do aparelho.** Cantos, perspectiva e proporção têm de bater. Aconteceu na capa v2 do "Desistiu": "print na tela do celular tá muito estranho, mal feito".
 - **Não deixe o celular maior que o notebook** na mesma cena. Aconteceu no carrossel "Olhar só o saldo", página 4.
+- **Não deixe o celular de frente, sem lateral.** Nos Reels em código o aparelho fica inclinado em 3D o tempo todo, com a espessura de alumínio e os botões visíveis na lateral. Pedido do autor em 25/10/2026 sobre a série reedição v3: "queria que o celular ficasse ainda mais realista, com aspecto 3D e efeito de profundidade nas laterais".
 - **Não use print de tela antiga.** A tela inicial mudou e agora tem o Granabô 3D. Toda peça nova usa captura atual do app. Aconteceu no Reel do Pix de 19/10.
 
 ## Texto e tipografia
@@ -49,6 +50,8 @@ Quando o autor fizer um pedido de ajuste novo, a lição entra aqui na hora.
 
 ## Visual e acabamento
 
+- **Não deixe o gradiente aqua tomar a maior parte do fundo no tema claro.** O disco claro com grade ocupa a maior área e o azul fica nas margens. Observação do autor em 25/10/2026 sobre o V1 da série reedição v3 ("eu diminuiria a área de ocupação da cor azul com gradiente no background"), aplicada no mesmo dia ao V1 e ao V3 a pedido dele.
+- **Tema claro dos Reels (autor, 25/10/2026): logotipo petróleo chapado e legenda em Neue Machina Ultrabold.** É exceção à regra 23 (logotipo em gradiente) e vale só para os Reels em tema claro, como no criativo "Organize no computador, acompanhe pelo celular". O autor: "é isso aí mesmo" (logotipo) e "fica" (Ultrabold).
 - **Não use enfeite genérico no fundo.** Aconteceu nos feeds E02 e E05: "Esses enfeites estão horrorosos", "tá podre, remover". O fundo segue o guia de design estático (regra 26).
 - **Não repita a capa de outro Reel.** Cada capa é diferente da anterior.
 - **Não use logotipo grande disputando com a tela.** Na capa do Pix v6 o pedido foi logotipo menor, no topo, e o celular maior.
