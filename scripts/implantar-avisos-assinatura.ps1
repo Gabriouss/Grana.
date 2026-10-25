@@ -59,9 +59,14 @@ try {
   $Headers = @{ Authorization = ('Bearer ' + $Valores['SUPABASE_ACCESS_TOKEN']) }
   function Api([string]$Metodo, [string]$Rota, $Dados=$null) {
     try {
-      if ($null -eq $Dados) { return Invoke-RestMethod -Method $Metodo -Uri ($Base+$Rota) -Headers $Headers }
+      if ($null -eq $Dados) {
+        $Resposta = Invoke-RestMethod -Method $Metodo -Uri ($Base+$Rota) -Headers $Headers
+        return $Resposta
+      }
       $Bytes = [Text.Encoding]::UTF8.GetBytes(($Dados | ConvertTo-Json -Depth 8 -Compress))
-      return Invoke-RestMethod -Method $Metodo -Uri ($Base+$Rota) -Headers $Headers -ContentType 'application/json' -Body $Bytes
+      $Resposta = Invoke-RestMethod -Method $Metodo -Uri ($Base+$Rota) -Headers $Headers -ContentType 'application/json' -Body $Bytes
+      # Enumera o array JSON; retorno direto do cmdlet cria uma lista aninhada.
+      return $Resposta
     } catch { throw "Management API falhou em $Metodo $Rota. Confira o painel; não repetir escrita incerta." }
   }
   function Sql([string]$Texto) { return Api 'POST' '/database/query' @{ query=$Texto } }
