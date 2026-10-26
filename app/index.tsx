@@ -811,19 +811,23 @@ function HeroStorytelling({
   }, []);
 
   /* A revelação roda uma vez, na entrada. Com `prefers-reduced-motion` as
-     letras já nascem visíveis, sem animação nenhuma. */
+     letras já nascem visíveis, sem animação nenhuma. Depende de `ehCompacto`
+     porque a hidratação desenha o layout de celular e o computador troca de
+     ramo logo depois: o título antigo desmonta, o Animated para as letras no
+     meio, e o título ficava na cor apagada (autor, 26/10/2026). */
   useEffect(() => {
     if (reduzirMovimento) {
       letras.forEach((v) => v.setValue(1));
       return;
     }
+    letras.forEach((v) => v.setValue(0));
     Animated.stagger(
       18,
       letras.map((valor) =>
         Animated.timing(valor, { toValue: 1, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: false })
       )
     ).start();
-  }, [letras, reduzirMovimento]);
+  }, [letras, reduzirMovimento, ehCompacto]);
 
   const titulo = (
     <Text
