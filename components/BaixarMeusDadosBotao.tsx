@@ -11,7 +11,8 @@ import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import AppPressable from './AppPressable';
 
 /**
- * Baixa uma cópia de tudo o que o app guarda sobre a pessoa.
+ * Baixa as partes disponíveis e informa as limitações; com acesso bloqueado,
+ * encaminha a solicitação ao suporte sem exigir renovação.
  *
  * Existe nas duas telas por onde alguém pode querer levar os próprios dados: o
  * Perfil e a tela de assinatura, que é a única aberta para quem está no
@@ -27,21 +28,21 @@ export default function BaixarMeusDadosBotao({ rotulo, acessoBloqueado = false }
   const { session } = useSession();
   const [gerando, setGerando] = useState(false);
 
+  function solicitarPeloSuporte() {
+    Alert.alert('Solicitar seus dados', 'O vencimento não apaga seus dados. O download direto não está disponível com o acesso bloqueado. Solicite uma cópia pelo suporte, sem precisar renovar a assinatura.', [
+      { text: 'Agora não', style: 'cancel' },
+      { text: 'Solicitar pelo suporte', onPress: () => {
+        void Linking.openURL(destinoSuporte).catch(() => {
+          console.warn('[dados] não foi possível abrir o e-mail de suporte');
+          Alert.alert('Fale com o suporte', 'Envie seu pedido de cópia para suporte@granaponto.com.br.');
+        });
+      } },
+    ]);
+  }
+
   async function baixar() {
-    // As leituras financeiras por RLS podem voltar vazias quando o acesso vence.
-    // Não apresentar essa resposta como uma exportação completa da conta.
-    if (acessoBloqueado) {
-      Alert.alert('Solicitar seus dados', 'O vencimento não apaga seus dados. O download direto não está disponível com o acesso bloqueado. Solicite uma cópia pelo suporte, sem precisar renovar a assinatura.', [
-        { text: 'Agora não', style: 'cancel' },
-        { text: 'Solicitar pelo suporte', onPress: () => {
-          void Linking.openURL(destinoSuporte).catch(() => {
-            console.warn('[dados] não foi possível abrir o e-mail de suporte');
-            Alert.alert('Fale com o suporte', 'Envie seu pedido de cópia para suporte@granaponto.com.br.');
-          });
-        } },
-      ]);
-      return;
-    }
+    if (gerando) return;
+    if (acessoBloqueado) { solicitarPeloSuporte(); return; }
     setGerando(true);
     try {
       const { nomeArquivo, contagem, indisponiveis, compartilhado } = await exportarMeusDados({
@@ -51,10 +52,12 @@ export default function BaixarMeusDadosBotao({ rotulo, acessoBloqueado = false }
 
       if (indisponiveis.length > 0) {
         Alert.alert(
-          'Cópia gerada, com partes de fora',
-          `O arquivo ${nomeArquivo} tem ${linhas} registros, mas ${indisponiveis.length === 1 ? '1 parte não pôde ser lida' : `${indisponiveis.length} partes não puderam ser lidas`} agora: ${indisponiveis
+          'Cópia parcial gerada',
+          `O arquivo ${nomeArquivo} tem ${linhas} registros. Partes indisponíveis: ${indisponiveis
             .map((i) => i.tabela)
-            .join(', ')}. O motivo de cada uma está escrito dentro do arquivo. Tente de novo mais tarde para uma cópia completa.`
+            .join(', ')}. Os motivos estão no arquivo. ${indisponiveis.some((i) => i.tipo === 'permanente')
+              ? 'Solicite as partes com limitação permanente pelo suporte: suporte@granaponto.com.br.' : ''}${indisponiveis.some((i) => i.tipo === 'temporaria')
+              ? ' Verifique a conexão e tente novamente para obter as partes com falha temporária.' : ''}${!compartilhado ? ' O compartilhamento está indisponível; o arquivo ficou salvo no app.' : ''}`
         );
         return;
       }
@@ -64,6 +67,11 @@ export default function BaixarMeusDadosBotao({ rotulo, acessoBloqueado = false }
       }
       Alert.alert('Cópia gerada', `${linhas} registros em ${nomeArquivo}.`);
     } catch (erro) {
+      console.warn('[dados] download nao concluido');
+      if ((erro as { codigo?: string })?.codigo === 'acesso-negado') {
+        solicitarPeloSuporte();
+        return;
+      }
       Alert.alert('Não foi possível gerar a cópia', mensagemErro(erro, 'Tente de novo em instantes.'));
     } finally {
       setGerando(false);
@@ -76,7 +84,7 @@ export default function BaixarMeusDadosBotao({ rotulo, acessoBloqueado = false }
       onPress={baixar}
       disabled={gerando}
       accessibilityRole="button"
-      accessibilityLabel={acessoBloqueado ? 'Solicitar uma cópia dos meus dados pelo suporte' : 'Baixar uma cópia dos meus dados'}
+      accessibilityLabel={acessoBloqueado ? 'Solicitar uma cópia dos meus dados pelo suporte' : 'Baixar cópia parcial dos meus dados; feedbacks disponíveis pelo suporte'}
       accessibilityState={{ busy: gerando, disabled: gerando }}
     >
       {gerando ? (
@@ -84,7 +92,7 @@ export default function BaixarMeusDadosBotao({ rotulo, acessoBloqueado = false }
       ) : (
         <Ionicons name="download-outline" size={16} color={theme.inkSoft} aria-hidden />
       )}
-      <Text style={styles.texto}>{gerando ? 'Preparando seus dados…' : (rotulo ?? (acessoBloqueado ? 'Solicitar meus dados' : 'Baixar meus dados'))}</Text>
+      <Text style={styles.texto}>{gerando ? 'Preparando seus dados…' : (rotulo ?? (acessoBloqueado ? 'Solicitar meus dados' : 'Baixar meus dados (cópia parcial)'))}</Text>
     </AppPressable>
   );
 }
