@@ -428,6 +428,7 @@ export default function InicioScreen() {
       ]);
       if (!vigente()) return;
       setTransactions(tx);
+      setInvoicePayments(null);
       versaoLancamentosCarregada.current = versaoAoComecar;
       setBills(b);
       setBudgets(bg);
@@ -472,6 +473,7 @@ export default function InicioScreen() {
         setFontesLivreDisponiveis(cofrinhosConferidos);
       } catch (erro) {
         if (!vigente()) return;
+        setInvoicePayments(null);
         console.error('[inicio] fetchCardInvoicePayments falhou', erro);
       }
       if (!vigente()) return;
@@ -669,14 +671,14 @@ export default function InicioScreen() {
     () => calcularSafeToSpend(lancamentosDaCarteira(transactions, creditCards, activeWalletId), walletGoals, new Date(), { cards: creditCards, payments: invoicePayments ?? [] }),
     [transactions, creditCards, activeWalletId, walletGoals, invoicePayments]
   );
-  // `walletTransactions`, não `walletCashTransactions`: uma parcela de
-  // compra no crédito É um comprometimento futuro de verdade (a fatura vai
-  // vencer), mesmo não sendo saída de caixa HOJE — só essa projeção (e não o
-  // saldo atual) precisa enxergar o crédito, por isso não reaproveita a
-  // mesma lista "só caixa" usada acima.
+  // O núcleo resolve séries e ciclos com o histórico completo antes de filtrar a carteira.
   const comprometimentoFuturo = useMemo(
-    () => projetarComprometimentoFuturo(walletTransactions, walletBills),
-    [walletTransactions, walletBills]
+    () => invoicePayments === null ? [] : projetarComprometimentoFuturo(transactions, bills, 6, new Date(), {
+      cards: creditCards,
+      payments: invoicePayments,
+      walletId: activeWalletId,
+    }),
+    [transactions, bills, creditCards, invoicePayments, activeWalletId]
   );
   const sugestaoEvolucao = useMemo(
     () =>
@@ -1468,7 +1470,13 @@ export default function InicioScreen() {
         <View style={styles.cardHeadRow}>
           <Text style={styles.cardLabel}>Comprometimento futuro</Text>
         </View>
-        <FutureTimelineChart meses={comprometimentoFuturo} />
+        {invoicePayments === null ? (
+          <Text style={styles.emptyText}>Não consegui confirmar os pagamentos de fatura. Puxe a tela para tentar de novo.</Text>
+        ) : comprometimentoFuturo.some((mes) => mes.incompleto) ? (
+          <Text style={styles.emptyText}>Não consegui confirmar o ciclo de algumas parcelas. Puxe a tela para tentar de novo.</Text>
+        ) : (
+          <FutureTimelineChart meses={comprometimentoFuturo} />
+        )}
       </View>
     ),
     lancamentos: () => (

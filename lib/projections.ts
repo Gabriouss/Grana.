@@ -1,7 +1,9 @@
 import { ARQUETIPOS, type ArquetipoId } from './diagnostico';
-import type { Bill, Budget, Transaction } from './types';
-import { creditoSemCartao } from './transaction-rules';
+import type { Bill, Budget, CreditCard, CreditCardInvoicePayment, Transaction } from './types';
+import { creditoSemCartao, isCreditTx } from './transaction-rules';
 import { isoLocal } from './format';
+import { cicloDoLancamento, lancamentosDaCarteira } from './creditoFaturas';
+import { dataVencimentoFatura } from './faturaCiclo';
 
 export { calcularSafeToSpend, calcularSaldoAtual } from './safe-to-spend';
 export type { SafeToSpend } from './safe-to-spend';
@@ -19,59 +21,112 @@ export type MesProjetado = {
   contasRecorrentes: number;
   parcelasFuturas: number;
   total: number;
+  /** Parcela cuja compra original não foi carregada e impede confirmar o ciclo. */
+  incompleto?: boolean;
 };
 
 const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
-/**
- * Soma, para cada um dos próximos `meses` (padrão 6, incluindo o atual):
- *  - Contas marcadas como recorrentes: contam em TODO mês futuro pelo valor
- *    atual, já que só a próxima ocorrência existe como linha no banco (a
- *    seguinte só é criada quando esta for paga — ver payBill em lib/data.ts).
- *  - Parcelas futuras de compras parceladas: `addInstallmentPurchase`
- *    (lib/data.ts) já insere TODAS as parcelas como transações reais, cada
- *    uma na sua data futura — aqui é só somar por mês as que têm
- *    installment_total > 1.
+export type ContextoComprometimento = {
+  cards?: CreditCard[];
+  payments?: CreditCardInvoicePayment[];
+  walletId?: string;
+};
+
+const centavos = (valor: number) => Math.round(Number(valor) * 100);
+
+/** Uma ocorrência por série/competência; a última define valor, carteira e continuidade. */
+function recorrentesPorMes(bills: Bill[], competencias: string[], walletId: string): number[] {
+  const series = new Map<string, Bill[]>();
+  for (const b of new Map(bills.map(b => [b.id, b])).values()) {
+    if (!b.due_date) continue;
+    const chave = `${b.user_id ?? ''}:${b.parent_id ?? b.id}`;
+    const serie = series.get(chave) ?? [];
+    serie.push(b);
+    series.set(chave, serie);
+  }
+  const totais = competencias.map(() => 0);
+  for (const serie of series.values()) {
+    if (!serie.some(b => b.recurring)) continue;
+    serie.sort((a, b) => b.due_date.localeCompare(a.due_date) || String(b.created_at ?? '').localeCompare(String(a.created_at ?? '')) || b.id.localeCompare(a.id));
+    competencias.forEach((mes, i) => {
+      const existente = serie.find(b => b.due_date.slice(0, 7) === mes);
+      const anterior = existente ?? serie.find(b => b.due_date.slice(0, 7) < mes);
+      if (!anterior || (walletId !== 'total' && anterior.wallet_id !== walletId)) return;
+      // Paga não é compromisso pendente; desmarcar a última ocorrência encerra a previsão.
+      if (existente ? existente.status === 'paid' : !anterior.recurring) return;
+      totais[i] += centavos(anterior.amount);
+    });
+  }
+  return totais;
+}
+
+/** Seis competências incluindo a atual, por vencimento, sem gerar dados financeiros.
+ * Passe as listas completas e o contexto do cartão para resolver faturas e carteira.
+ * Sem cartões no contexto, chamadas antigas mantêm o mês civil das parcelas.
  */
 export function projetarComprometimentoFuturo(
   transactions: Transaction[],
   bills: Bill[],
   meses: number = 6,
-  hoje: Date = new Date()
+  hoje: Date = new Date(),
+  contexto: ContextoComprometimento = {}
 ): MesProjetado[] {
-  const contasRecorrentes = bills.filter((b) => b.recurring);
-  const totalRecorrentes = contasRecorrentes.reduce((soma, b) => soma + Number(b.amount), 0);
-
-  /* Crédito sem cartão (o cartão foi excluído e a compra ficou no histórico, V24,
-     decisão B do autor em 04/10/2026) não vence em fatura nenhuma: não é
-     comprometimento futuro. Continua no histórico e na lista de lançamentos.
-     Regra de `creditoSemCartao`, a mesma da guarda da camada de dados. */
-  const parcelasFuturas = transactions.filter(
-    (t) => t.type === 'out' && (t.installment_total ?? 1) > 1 && !creditoSemCartao(t)
-  );
-
   const resultado: MesProjetado[] = [];
   for (let i = 0; i < meses; i++) {
     const ref = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1);
-    const ano = ref.getFullYear();
-    const mes = ref.getMonth();
-
-    const totalParcelas = parcelasFuturas
-      .filter((t) => {
-        const d = new Date(t.occurred_on + 'T00:00:00');
-        return d.getFullYear() === ano && d.getMonth() === mes;
-      })
-      .reduce((soma, t) => soma + Number(t.amount), 0);
-
-    resultado.push({
-      ano,
-      mes,
-      label: MESES_ABREV[mes],
-      contasRecorrentes: totalRecorrentes,
-      parcelasFuturas: totalParcelas,
-      total: totalRecorrentes + totalParcelas,
-    });
+    resultado.push({ ano: ref.getFullYear(), mes: ref.getMonth(), label: MESES_ABREV[ref.getMonth()], contasRecorrentes: 0, parcelasFuturas: 0, total: 0 });
   }
+  const walletId = contexto.walletId ?? 'total';
+  const recorrentes = recorrentesPorMes(bills, resultado.map(m => `${m.ano}-${String(m.mes + 1).padStart(2, '0')}`), walletId);
+  const transacoes = [...new Map(transactions.map(t => [t.id, t])).values()];
+  const cards = contexto.cards ?? [];
+  const daCarteira = new Set(lancamentosDaCarteira(transacoes, cards, walletId).map(t => t.id));
+  const datas = new Map(transacoes.filter(t => (t.installment_current ?? 1) === 1).map(t => [t.id, t.occurred_on]));
+  const pagamentos = contexto.payments ?? [];
+  const saidasDePagamento = new Set([
+    ...bills.map(b => b.paid_transaction_id),
+    ...pagamentos.flatMap(p => [p.paid_transaction_id, ...(p.extra_transaction_ids ?? [])]),
+  ].filter(Boolean));
+  const indice = (data: Date) => (data.getFullYear() - hoje.getFullYear()) * 12 + data.getMonth() - hoje.getMonth();
+  const faturas = new Map<string, { indice: number; total: number; parcelas: number; pago: number; incerto: boolean }>();
+  for (const t of transacoes) {
+    if (t.type !== 'out' || creditoSemCartao(t) || saidasDePagamento.has(t.id)) continue;
+    const parcelada = (t.installment_total ?? 1) > 1;
+    if (isCreditTx(t) && contexto.cards !== undefined) {
+      const card = cards.find(c => c.id === t.card_id);
+      if (!card) continue; // Cartão excluído preserva histórico, não projeta vencimento.
+      const { ciclo, incerto } = cicloDoLancamento(t, card, datas);
+      const i = indice(dataVencimentoFatura(ciclo.year, ciclo.month, card.due_day, card.closing_day));
+      if (!resultado[i]) continue;
+      const chave = `${card.id}:${ciclo.year}:${ciclo.month}`;
+      let fatura = faturas.get(chave);
+      if (!fatura) {
+        const pago = pagamentos.filter(p => p.card_id === card.id && p.year === ciclo.year && p.month === ciclo.month && p.paid_on <= isoLocal(hoje))
+          .reduce((s, p) => s + centavos(p.amount), 0);
+        fatura = { indice: i, total: 0, parcelas: 0, pago, incerto: false };
+        faturas.set(chave, fatura);
+      }
+      fatura.total += centavos(t.amount);
+      if (parcelada && daCarteira.has(t.id)) {
+        fatura.parcelas += centavos(t.amount);
+        fatura.incerto ||= incerto;
+      }
+    } else if (parcelada && daCarteira.has(t.id)) {
+      const i = indice(new Date(t.occurred_on + 'T00:00:00'));
+      if (resultado[i]) resultado[i].parcelasFuturas += centavos(t.amount);
+    }
+  }
+  for (const fatura of faturas.values()) {
+    // Pagamento é da fatura inteira; parcelas não podem exceder o saldo ainda devido.
+    resultado[fatura.indice].parcelasFuturas += Math.max(0, Math.min(fatura.parcelas, fatura.total - fatura.pago));
+    if (fatura.incerto) resultado[fatura.indice].incompleto = true;
+  }
+  resultado.forEach((m, i) => {
+    m.contasRecorrentes = recorrentes[i] / 100;
+    m.total = (recorrentes[i] + m.parcelasFuturas) / 100;
+    m.parcelasFuturas /= 100;
+  });
   return resultado;
 }
 

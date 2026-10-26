@@ -63,8 +63,11 @@ assert.equal(debito[1].parcelasFuturas, 50);
 ok('parcela que nao e credito continua entrando (regra so atinge credito sem cartao)');
 
 // Contas recorrentes seguem iguais.
-const rec = projetarComprometimentoFuturo(orfas, [{ id: 'r', amount: 80, recurring: true }], 3, hoje);
+const rec = projetarComprometimentoFuturo(orfas, [{ id: 'r', amount: 80, recurring: true, due_date: '2026-10-10', status: 'due' }], 3, hoje);
 assert.equal(rec[0].contasRecorrentes, 80); assert.equal(rec[1].total, 80);
 ok('contas recorrentes nao mudam');
 
 console.log(`\n${n} checagens, 0 falhas`);
+
+// Este entrypoint ja roda no test:ci; inclui a regressao nova sem editar package.json compartilhado.
+require('./projecao-comprometimento.cjs');
