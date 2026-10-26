@@ -192,14 +192,16 @@ export async function exportarMeusDados(opcoes: Opcoes = {}): Promise<Exportacao
     }
     const { File, Paths } = await import('expo-file-system');
     const Sharing = await import('expo-sharing');
+    const { randomUUID } = await import('expo-crypto');
     const disponivel = await Sharing.isAvailableAsync();
     await validar();
-    const arquivo = new File(Paths.cache, exportacao.nomeArquivo);
-    if (arquivo.exists) arquivo.delete();
+    // Uma URI já compartilhada não pode passar a servir os dados de outra exportação/conta.
+    const nomeArquivo = exportacao.nomeArquivo.replace(/\.json$/, `-${randomUUID()}.json`);
+    const arquivo = new File(Paths.cache, nomeArquivo);
     arquivo.create();
     arquivo.write(exportacao.conteudo);
-    if (!disponivel) return { ...exportacao, compartilhado: false };
+    if (!disponivel) return { ...exportacao, nomeArquivo, compartilhado: false };
     await Sharing.shareAsync(arquivo.uri, { mimeType: 'application/json', dialogTitle: 'Meus dados do Grana.', UTI: 'public.json' });
-    return { ...exportacao, compartilhado: true };
+    return { ...exportacao, nomeArquivo, compartilhado: true };
   });
 }

@@ -4,28 +4,32 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
 const assert = require('node:assert/strict');
+let sequenciaArquivo = 0;
 
 function carregar(opcoes = {}) {
+  const dono = opcoes.dono ?? 'conta-A';
+  const token = `token-fixture-${dono === 'conta-A' ? 'A' : 'B'}`;
+  const arquivos = opcoes.arquivos ?? new Map();
   const ctx = {
-    sessao: { user: { id: 'conta-A' }, access_token: 'token-fixture-A' },
-    usuario: { id: 'conta-A', email: 'confirmado@invalid.test' },
+    sessao: { user: { id: dono }, access_token: token },
+    usuario: { id: dono, email: 'confirmado@invalid.test' },
     acesso: { allowed: true, enforced: true, access_until: '2026-11-01T00:00:00Z', status: 'active' },
     agora: Date.parse('2026-10-25T15:00:00Z'), chamadas: [], rpcs: [], usuarios: [], logs: [],
     efeitos: { blob: 0, url: 0, link: 0, click: 0, file: 0, create: 0, write: 0, delete: 0, share: 0 },
-    desinscricoes: 0, disponivel: true,
+    desinscricoes: 0, disponivel: true, compartilhamentos: [],
   };
   class Clock extends Date {
     constructor(...a) { super(...(a.length ? a : [ctx.agora])); }
     static now() { return ctx.agora; }
   }
   const promessavel = (pedido, resolver) => ({
-    setHeader(nome, valor) { assert.equal(nome, 'Authorization'); assert.equal(valor, 'Bearer token-fixture-A', 'HTTP fica fixo no token confirmado'); pedido.tokenFixo = true; return this; },
+    setHeader(nome, valor) { assert.equal(nome, 'Authorization'); assert.equal(valor, `Bearer ${token}`, 'HTTP fica fixo no token confirmado'); pedido.tokenFixo = true; return this; },
     then(a, b) { assert.equal(pedido.tokenFixo, true); return Promise.resolve().then(resolver).then(a, b); },
   });
   const supabase = {
     auth: {
       getSession: async () => { await opcoes.onSessao?.(ctx); return { data: { session: ctx.sessao }, error: null }; },
-      getUser: async token => { assert.equal(token, 'token-fixture-A'); ctx.usuarios.push(true); await opcoes.onUser?.(ctx); return { data: { user: ctx.usuario }, error: ctx.erroUser ?? null }; },
+      getUser: async recebido => { assert.equal(recebido, token); ctx.usuarios.push(true); await opcoes.onUser?.(ctx); return { data: { user: ctx.usuario }, error: ctx.erroUser ?? null }; },
       onAuthStateChange: fn => { ctx.ouvinte = fn; return { data: { subscription: { unsubscribe: () => { ctx.desinscricoes++; ctx.ouvinte = null; } } } }; },
     },
     rpc(nome) {
@@ -35,13 +39,13 @@ function carregar(opcoes = {}) {
     from(tabela) {
       const pedido = { tabela };
       const q = promessavel(pedido, async () => {
-        assert.equal(pedido.select, '*'); assert.equal(pedido.filtro, 'user_id'); assert.equal(pedido.dono, 'conta-A');
+        assert.equal(pedido.select, '*'); assert.equal(pedido.filtro, 'user_id'); assert.equal(pedido.dono, dono);
         assert.equal(pedido.ordem, tabela === 'user_gamification' ? 'user_id' : tabela === 'user_achievements' ? 'badge_id' : 'id');
         assert.equal(pedido.asc, true); assert.equal(pedido.ate, pedido.de + 999);
         ctx.chamadas.push(pedido);
         const n = (opcoes.linhas ?? {})[tabela] ?? 0;
         const data = Array.from({ length: Math.max(0, Math.min(1000, n - pedido.de)) }, (_, i) => ({
-          id: `${tabela}-${pedido.de + i}`, user_id: 'conta-A', badge_id: `badge-${pedido.de + i}`,
+          id: `${tabela}-${pedido.de + i}`, user_id: dono, badge_id: `badge-${pedido.de + i}`,
         }));
         const resposta = { data, error: null };
         await opcoes.onPagina?.(ctx, pedido, resposta);
@@ -70,13 +74,17 @@ function carregar(opcoes = {}) {
         if (nome === 'react-native') return { Platform: { OS: opcoes.plataforma ?? 'web' } };
         if (nome === './supabase') return { supabase };
         if (nome === './paginacao') return load('lib/paginacao.ts');
+        if (nome === 'expo-crypto') return { randomUUID: () => `fixture-arquivo-${++sequenciaArquivo}` };
         if (nome === 'expo-file-system') { opcoes.onModulo?.(ctx); return { Paths: { cache: 'cache' }, File: class {
-          constructor() { ctx.efeitos.file++; this.uri = 'cache/fixture'; this.exists = false; }
-          create() { ctx.efeitos.create++; } write() { ctx.efeitos.write++; } delete() { ctx.efeitos.delete++; }
+          constructor(...partes) { ctx.efeitos.file++; this.uri = partes.join('/'); }
+          get exists() { return arquivos.has(this.uri); }
+          create() { assert.equal(this.exists, false, 'criação não deve sobrescrever arquivo'); ctx.efeitos.create++; arquivos.set(this.uri, ''); }
+          write(v) { ctx.efeitos.write++; arquivos.set(this.uri, v); }
+          delete() { ctx.efeitos.delete++; arquivos.delete(this.uri); }
         } }; }
         if (nome === 'expo-sharing') return {
           isAvailableAsync: async () => { await opcoes.onDisponibilidade?.(ctx); return ctx.disponivel; },
-          shareAsync: async () => { ctx.efeitos.share++; },
+          shareAsync: async uri => { ctx.efeitos.share++; ctx.compartilhamentos.push(uri); await opcoes.onCompartilhar?.(ctx, uri); },
         };
         throw Error(`import não dublado: ${nome}`);
       },
@@ -159,6 +167,63 @@ async function main() {
   for (const alterar of ['modulo', 'disponibilidade']) {
     const c = carregar({ plataforma: 'android', [alterar === 'modulo' ? 'onModulo' : 'onDisponibilidade']: ctx => ctx.mudarSessao(null) });
     await aborta(c, 'sessao-alterada');
+  }
+  for (const donoSeguinte of ['conta-A', 'conta-B']) {
+    const arquivos = new Map();
+    const a = carregar({ plataforma: 'android', arquivos, linhas: { transactions: 1 } });
+    const primeira = await a.modulo.exportarMeusDados();
+    const uriA = a.compartilhamentos[0], conteudoA = arquivos.get(uriA);
+    a.mudarSessao(null);
+    const b = carregar({ plataforma: 'android', arquivos, dono: donoSeguinte, linhas: { transactions: 2 } });
+    const segunda = await b.modulo.exportarMeusDados();
+    const uriB = b.compartilhamentos[0];
+    ok(uriA !== uriB, 'URI única para cada operação, também entre duas contas');
+    eq(arquivos.get(uriA), conteudoA, 'o destinatário anterior continua lendo os mesmos bytes');
+    eq(JSON.parse(arquivos.get(uriA)).conta.id, 'conta-A');
+    eq(JSON.parse(arquivos.get(uriB)).conta.id, donoSeguinte);
+    eq(JSON.parse(arquivos.get(uriA)).dados.transactions.length, 1);
+    eq(JSON.parse(arquivos.get(uriB)).dados.transactions.length, 2);
+    ok(uriA.endsWith(primeira.nomeArquivo) && uriB.endsWith(segunda.nomeArquivo), 'nome retornado corresponde ao arquivo efetivo');
+    eq(a.efeitos.delete + b.efeitos.delete, 0, 'não apagar cópias anteriores');
+    eq(a.desinscricoes + b.desinscricoes, 2);
+  }
+  {
+    const arquivos = new Map();
+    const c = carregar({ plataforma: 'android', arquivos, linhas: { transactions: 1 } });
+    const resultados = await Promise.all([c.modulo.exportarMeusDados(), c.modulo.exportarMeusDados()]);
+    eq(new Set(c.compartilhamentos).size, 2, 'operações concorrentes da mesma conta recebem URIs diferentes');
+    eq(arquivos.size, 2, 'as duas cópias continuam presentes');
+    eq(new Set(resultados.map(r => r.nomeArquivo)).size, 2);
+    ok(c.compartilhamentos.every(uri => JSON.parse(arquivos.get(uri)).dados.transactions.length === 1));
+    eq(c.efeitos.delete, 0);
+  }
+  {
+    const arquivos = new Map();
+    let liberarShare, avisarShare;
+    const emVoo = new Promise(resolve => { liberarShare = resolve; });
+    const iniciou = new Promise(resolve => { avisarShare = resolve; });
+    const a = carregar({ plataforma: 'android', arquivos, linhas: { transactions: 1 },
+      onCompartilhar: () => { avisarShare(); return emVoo; } });
+    const primeira = a.modulo.exportarMeusDados();
+    await iniciou;
+    const uriA = a.compartilhamentos[0], originalA = arquivos.get(uriA);
+    a.mudarSessao(null);
+    const b = carregar({ plataforma: 'android', arquivos, dono: 'conta-B', linhas: { transactions: 2 },
+      // ExpoSharing Android recusa o segundo chooser enquanto o primeiro está aberto.
+      onCompartilhar: () => { throw Error('Sharing already in progress'); } });
+    try {
+      await assert.rejects(b.modulo.exportarMeusDados(), e => e.codigo === 'exportacao-falhou'); checks++;
+      const uriB = b.compartilhamentos[0];
+      ok(uriA !== uriB, 'segundo share recusado também não reutiliza URI em voo');
+      eq(arquivos.get(uriA), originalA, 'exportação B não modifica bytes do share A ainda aberto');
+      eq(JSON.parse(arquivos.get(uriA)).conta.id, 'conta-A');
+      eq(JSON.parse(arquivos.get(uriB)).conta.id, 'conta-B');
+      eq(a.efeitos.delete + b.efeitos.delete, 0);
+    } finally {
+      liberarShare();
+      await primeira;
+    }
+    eq(a.efeitos.share, 1); eq(b.efeitos.share, 1); eq(arquivos.get(uriA), originalA);
   }
   const c = carregar({ plataforma: 'android' }); c.disponivel = false;
   const e = await c.modulo.exportarMeusDados(); eq(e.compartilhado, false); eq(c.efeitos.write, 1); eq(c.efeitos.share, 0);
