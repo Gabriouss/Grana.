@@ -91,6 +91,27 @@ O histórico e a evidência da exposição permanecem na seção datada de 16/09
 
 ---
 
+<!-- compass-qa-android-20261026:start -->
+## 26/10/2026 (M1, Compass PH): concluir validação Android antes da build do autor
+
+1. **Pedido atual:** autor: “pois arrocha isso aí, meu fi. Preciso dessas correções pra disparar build nova”. Executar o QA/correções necessários; não é autorização para disparar EAS, preparar release, bump ou deploy.
+2. **Estado herdado:** código da rodada25 está publicado; freeze final de Prism conserva oito fontes e acrescenta duas invalidações Home, com focal8/8 e tsc0 posteriores ao push. CI/QA Beacon original não se estendem automaticamente ao delta. Não refazer implementação, CI ou publicação já concluídos.
+3. **Pendência concreta:** status Sentinel ficou sem PASS nativo, embora existam APK/host QA, Metro/CDP, dumps e testes parciais. Registros antigos têm export-error e ciclo de isolamento com listas vazias; isso não comprova sucesso. Home do host antigo era do freeze anterior. Reutilizar infraestrutura e comprovar código final/executado, separando defeito de produto e falha do host.
+4. **Execução atual:** somente Codex PH, modelos/efforts intactos, agentes existentes; Forge retoma QA nativo, Beacon revisa independentemente depois, Compass coordena. Ordem/status/recibos em E:/Grana-temporarios/2026-10-26-qa-android-pre-build/, canal arquivos e apontamentos curtos, sem callbacks bloqueantes nem contato Gabriel/Claude.
+5. **Preservação:** fixtures locais A/B e pacote com.gabriouss.grana.sentinelqa; não substituir/limpar o app real, mudar suas permissões ou acessar conta real. Preservar WIP admin/package/skills/marketing e código dos donos. Correção só mediante causa/regressão comprovadas; Git seletivo depois de gates e fetch/comparação, sem pull se behind, branch/worktree/stash/reset/stage amplo.
+6. **Limites atuais:** nenhum PASS Android herdado, nenhuma build/release liberada por inferência, exportação continua parcial explícita com feedbacks via suporte. Registrar File/share/JSON/cancelamento, defaults/visitas/refresh/carteira, falhas de pagamentos/ciclo, permissão/notificação/lifecycle e isolamento aplicáveis ao host; limitação não vira aprovação silenciosa.
+
+### Pausa explícita do autor — fechamento em 26/10/2026
+- **Pedido vigente:** “dá uma pausa nisso aí, preciso encerrar essa sessão de trabalho. Documenta as coisas”. A retomada após limite é somente documental; QA permanece suspenso até nova ordem. Restrição Codex PH e modelos/efforts atuais preservados.
+- **Realizado:** código anterior já publicado em e109914e, 39a6d050 e 2f5fcd43; nenhum código novo nesta rodada. Forge registrou execução parcial em APK QA separado, Home final SHA256 08d57930f5c0dc698d841757ecb3e4fe60b3945426093b875659ad77f5349917, provas source-map-proof.json/runtime-proof.json e adaptação externa do host. Não atribuir adaptações do host ao produto.
+- **Resultados parciais:** native-results-forge.json contém 20 tentativas, 17 verdes e três falhas, incluindo repetições. Uma falha de toque/foco teve sucesso posterior. Duas tentativas de projeção falharam; a última mostrou o cartão, mas também TypeError “Cannot read property 'data' of undefined”. Causa de produto não estabelecida; não converter contagem de tentativas em aprovação de casos.
+- **Pendências:** conclusão de comprometimento/projeção e falhas de pagamentos/ciclo no caminho não-demo; exportação completa/JSON/share/cancelamento no host; notificações, permissões, lifecycle e isolamento A/B com efeitos observáveis. Beacon confirmou PAUSADO_PELO_AUTOR, revisão final não iniciada e aprovação não emitida. Status Forge de 00h47 ainda dizia sem aprovação; pedido de pausa/recibo reapontado, sem executar novos testes.
+- **Retomada:** ler PAUSA-AUTOR.md, status/relatórios Forge e Beacon e provas desta rodada antes de qualquer ação; preservar tentativas e distinguir limite do host de defeito real. Nenhuma nova CI, build/EAS, preparar release/bump, deploy, cron, email ou conta real executada. Exportador continua parcial explícito. WIP alheio não incluído no fechamento.
+- **Processos e recibo:** npx expo start foi solicitado separadamente pelo autor e iniciou Metro8081 (exp://192.168.1.106:8081, web localhost:8081, health200 na inicialização); não é build, nem disponibilidade reconfirmada no fechamento. Serviços QA8096/8097 são infraestrutura anterior, sem encerramento forçado. Recibo único e ponto de retomada: E:/Grana-temporarios/2026-10-26-qa-android-pre-build/coordenacao-compass.md. Espelhos/nota atualizados no fechamento documental.
+
+<!-- compass-qa-android-20261026:end -->
+
+
 
 <!-- compass-graficos-ph-20261025:start -->
 ## 25/10/2026 (M1, Compass PH): coordenação contingente e documentação transferidas
