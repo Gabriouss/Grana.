@@ -151,8 +151,9 @@ function carregar() {
       setTimeout: (fn, ms) => { atrasos.push(ms); fn(); }, // Executa na hora e guarda o atraso pedido.
     });
     ligacao.exports.abrir(false);
-    conferir('sem escolha, o clique real não repassa identificadores', destinos.at(-1).search === '');
-    conferir('sem consentimento, a ida ao checkout não espera', atrasos.at(-1) === 0, atrasos.at(-1));
+    // Medição ligada por padrão desde 26/10/2026 (autor): sem escolha salva, repassa e espera o Pixel.
+    conferir('sem escolha, o clique real repassa os identificadores', destinos.at(-1).searchParams.get('fbclid') === 'cliqueMeta');
+    conferir('sem escolha, a ida ao checkout espera o Pixel', atrasos.at(-1) === 400, atrasos.at(-1));
     consent.exports.salvarConsentimento(janela.localStorage, true);
     conferir('o href copiável continua limpo mesmo após aceitar', ligacao.exports.href('https://pay.cakto.com.br/oferta?gclid=antigo') === 'https://pay.cakto.com.br/oferta');
     ligacao.exports.abrir(true);

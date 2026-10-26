@@ -15,9 +15,8 @@ export function registrarCheckoutMarketing(destino: string, plano: PlanoPixel) {
 }
 
 // Copy da Entrega 6 do Beacon; ativação ainda depende da revisão da política.
-const TEXTO = 'Quando o Pixel estiver configurado, ele mede, com sua autorização, visitas às páginas públicas, a visualização dos preços e o início do checkout. Se a integração de conversões for habilitada separadamente, a Meta também poderá receber a confirmação da compra da assinatura. A Meta pode receber identificadores do navegador e dados técnicos da conexão. Recusar ou retirar a autorização não impede a navegação nem a compra. Você pode mudar sua escolha em Preferências de privacidade.';
-// Resumo do texto final do Beacon, conforme a revisão de legibilidade do Lumen.
-const RESUMO = 'Você escolhe se a Meta pode medir suas visitas, a visualização dos preços e o início da compra. A Meta pode receber identificadores do navegador e dados técnicos da conexão. Recusar não impede navegar ou comprar.';
+const TEXTO = 'O Pixel da Meta mede visitas às páginas públicas, a visualização dos preços e o início do checkout. A Meta também pode receber a confirmação da compra da assinatura. A Meta pode receber identificadores do navegador e dados técnicos da conexão. Desligar não impede a navegação nem a compra.';
+const RESUMO = 'A Meta mede suas visitas, a visualização dos preços e o início da compra, e pode receber identificadores do navegador e dados técnicos da conexão. Você pode desligar essa medição aqui.';
 const botao: CSSProperties = { appearance: 'none', background: theme.paperRaised, color: theme.ink, border: `1px solid ${theme.inkFaint}`, borderRadius: 8, minHeight: 36, padding: '6px 12px', font: 'inherit', cursor: 'pointer', flex: '1 1 90px' };
 
 /** Montado somente em ConteudoWeb, nunca no layout compartilhado ou no app. */
@@ -45,8 +44,8 @@ export default function ConsentimentoMarketing() {
     function sincronizar() {
       clearTimeout(vencimento);
       let escolha = null;
-      try { escolha = lerConsentimento(window.localStorage); } catch { /* Sem storage, mostra aviso e bloqueia. */ }
-      if (!escolha) setAberto(true);
+      try { escolha = lerConsentimento(window.localStorage); } catch { /* Sem storage, segue o padrão ligado. */ }
+      // Sem banner (autor, 26/10/2026): o painel só abre pelo link do rodapé, para quem quiser desligar.
       setMarketing(consentimentoMarketingAtual());
       pixel.sincronizar();
       clarity.sincronizar();
@@ -99,13 +98,13 @@ export default function ConsentimentoMarketing() {
     h('div', { style: configurar ? { maxHeight: '38vh', overflowY: 'auto', paddingBottom: 8 } : undefined },
     configurar && h('div', { style: { marginBottom: 12 } },
       h('p', null, TEXTO),
-      h('p', null, 'Escolha se autoriza a medição publicitária da Meta. Essa opção fica desativada até você escolher. A navegação e a compra continuam disponíveis mesmo se você a mantiver desligada.'),
+      h('p', null, 'A medição publicitária da Meta vem ligada. Desmarque e salve para desligar. A navegação e a compra continuam disponíveis com ela desligada.'),
       h('p', null, 'Necessários: sempre ativos para lembrar sua escolha. Sem acesso ao armazenamento, a publicidade fica bloqueada.'),
       h('label', { style: { display: 'flex', alignItems: 'center', gap: 10, minHeight: 44 } }, h('input', { type: 'checkbox', checked: marketing, onChange: (e) => setMarketing(e.currentTarget.checked) }), 'Medição e publicidade da Meta'),
       h('button', { type: 'button', style: botao, onClick: () => salvar(marketing) }, 'Salvar minhas escolhas')),
     erro && h('p', { role: 'alert' }, erro)),
     h('div', { className: 'grana-consentimento-acoes' },
-      h('button', { type: 'button', style: botao, onClick: () => salvar(false) }, 'Recusar'),
-      h('button', { type: 'button', style: botao, onClick: () => salvar(true) }, 'Aceitar'),
+      h('button', { type: 'button', style: botao, onClick: () => salvar(false) }, 'Desligar'),
+      h('button', { type: 'button', style: botao, onClick: () => salvar(true) }, 'Manter ligado'),
       h('button', { type: 'button', className: 'grana-consentimento-configurar', style: botao, onClick: () => setConfigurar(true) }, 'Configurar')));
 }

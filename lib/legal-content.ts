@@ -34,7 +34,7 @@ const EMAIL_CONTATO = '[contato@granaponto.com.br](mailto:contato@granaponto.com
 
 export const POLITICA_PRIVACIDADE: DocumentoLegal = {
   titulo: 'Política de Privacidade',
-  atualizadoEm: '24 de outubro de 2026',
+  atualizadoEm: '26 de outubro de 2026',
   blocos: [
     {
       tipo: 'paragrafo',
@@ -95,7 +95,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
     {
       tipo: 'paragrafo',
       texto:
-        'No site (granaponto.com.br) usamos também o Pixel da Meta, somente se você aceitar no aviso de privacidade. Com o aceite, a Meta registra a sua visita à página inicial, a visualização dos preços e o início da compra, e grava no seu navegador os cookies _fbp e _fbc, que ela usa para ligar essas visitas aos anúncios. A Meta também recebe dados técnicos do navegador e da conexão, como o endereço IP. A base legal é o seu consentimento (LGPD, art. 7º, I). Sem o aceite, nada disso acontece, e recusar não impede navegar nem comprar. Você muda a escolha quando quiser em Preferências de privacidade, no rodapé do site. O Pixel não existe dentro do aplicativo e não recebe nada do que você registra no Grana.',
+        'No site (granaponto.com.br) usamos também o Pixel da Meta, ligado por padrão. Ele registra a sua visita à página inicial, a visualização dos preços e o início da compra, e grava no seu navegador os cookies _fbp e _fbc, que a Meta usa para ligar essas visitas aos anúncios. A Meta também recebe dados técnicos do navegador e da conexão, como o endereço IP. A base legal é o legítimo interesse em medir os nossos anúncios (LGPD, art. 7º, IX). Você pode desligar essa medição quando quiser em Preferências de privacidade, no rodapé do site, e desligar não impede navegar nem comprar. O Pixel não existe dentro do aplicativo e não recebe nada do que você registra no Grana.',
     },
     { tipo: 'subtitulo', texto: '4. Com quem os dados são compartilhados' },
     {

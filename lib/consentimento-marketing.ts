@@ -26,7 +26,8 @@ export function salvarConsentimento(storage: Armazenamento, marketing: boolean, 
 let bloqueioLocal = false;
 export function consentimentoMarketingAtual(): boolean {
   if (bloqueioLocal || typeof window === 'undefined') return false;
-  try { return lerConsentimento(window.localStorage)?.marketing === true; } catch { return false; }
+  // Medição ligada por padrão (autor, 26/10/2026); só a recusa salva em Preferências de privacidade desliga.
+  try { return lerConsentimento(window.localStorage)?.marketing ?? true; } catch { return true; }
 }
 
 export function escolherMarketing(marketing: boolean): boolean {
