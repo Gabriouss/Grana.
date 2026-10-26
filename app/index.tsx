@@ -138,7 +138,8 @@ function hrefCompra(): string {
    aqui envelheceria calado no dia em que o preço mudasse. */
 const PRECO_MENSAL = 9.9;
 const PRECO_ANUAL = 97.9;
-const emReais = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+// Espaço não separável: o R$ nunca quebra longe do número (autor, 26/10/2026).
+const emReais = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 /* Também derivada: o dia em que um dos dois preços mudar, a economia
    anunciada muda junto, sem ninguém precisar lembrar de refazer a conta. */
 const ECONOMIA_ANUAL = PRECO_MENSAL * 12 - PRECO_ANUAL;
@@ -511,7 +512,7 @@ const MOMENTOS_APAGAO = [
   {
     icone: 'cafe-outline' as const,
     titulo: 'O gasto pequeno some',
-    texto: 'Café, entrega, um Pix de R$ 12. Um por um não pesa, e somados viram o mês.',
+    texto: 'Café, entrega, um Pix de R$ 12. Um por um não pesa, e somados viram o mês.',
   },
   {
     icone: 'moon-outline' as const,
@@ -1507,7 +1508,7 @@ function ConteudoWeb() {
                   o pior caso possível). */}
               <TituloSecao estiloExtra={styles.precoTituloCentralizado}>
                 Seu assistente financeiro por{' '}
-                <Text style={styles.destaqueInline}>menos de R$ 0,37 por dia!</Text>
+                <Text style={styles.destaqueInline}>menos de R$&nbsp;0,37 por dia!</Text>
               </TituloSecao>
               <Text style={[styles.secaoTexto, ehCompacto && styles.secaoTextoCompacto, styles.precoTextoCentralizado]}>
                 {'Um único plano, com tudo incluído. Sem versão limitada, sem recurso trancado atrás de outro preço.'}
@@ -1732,7 +1733,7 @@ function ConteudoWeb() {
                 </Text>
                 <Text style={[styles.ctaFinalTexto, styles.precoTextoCentralizado]}>
                   Organize seus gastos com o Grana. no plano anual, equivalente a {emReais(PRECO_ANUAL / 12)} por mês,
-                  ou {emReais(PRECO_MENSAL)} por mês no plano mensal. Sem período de{' '}teste.
+                  ou {emReais(PRECO_MENSAL)} por mês no plano{' '}mensal.
                 </Text>
                 <View style={[styles.ctaFinalFatos, styles.ctaFinalFatosCompacto]}>
                   {['Voz e Pix colado', 'Lançamentos organizados', 'Celular e computador'].map((fato) => (
