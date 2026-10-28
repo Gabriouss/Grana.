@@ -34,6 +34,7 @@ As subpastas de apoio separam o tipo de material: briefings, pesquisas, relatori
 - [Semana 40 · 2026-09-28 a 2026-10-04](2026-10/semana-40-2026-09-28-a-2026-10-04/INDICE.md)
 - [Semana 41 · 2026-10-05 a 2026-10-11](2026-10/semana-41-2026-10-05-a-2026-10-11/INDICE.md)
 - [Semana 42 · 2026-10-12 a 2026-10-18](2026-10/semana-42-2026-10-12-a-2026-10-18/INDICE.md)
+- [Semana 44 · 2026-10-26 a 2026-11-01](2026-10/semana-44-2026-10-26-a-2026-11-01/INDICE.md)
 
 ## Regra para material futuro
 

@@ -1,0 +1,6 @@
+# Semana 44 (26/10 a 01/11/2026)
+
+## Para aprovação
+
+- `para-aprovacao/pecas/reels/Esse é um mês organizado.mp4`: Reels R5 com apresentador, 1080x1920, 20,3 s, 60 fps, −14,2 LUFS, produzido em 28/10/2026. O apresentador foi gerado no HeyGen pelo ElevenLabs com aval do autor (3.030 créditos) e abre e fecha o vídeo. No meio, telas do app recriadas em HTML e animadas: Gráficos, Colar comprovante ou Pix, Início com "Ouvindo…" e Nova entrada. A assinatura "explosão e ímã" usa notas, comprovantes, cartões e moedas renderizados no Blender. Legendas e Saiba mais ficam dentro da área segura de 1080x1440. A narração é a voz "Gabriel" da ElevenLabs, e a trilha house é local. Fonte da edição fora do repositório, em `E:\Grana-temporarios\2026-10-23-reels-ganchos\edicao-r5\` (`serie/v6.js`, `serie/telas6.js`, `blender/caos.py`). Legenda em `para-aprovacao/pecas/COPYS-FINAIS.md`. Nada publicado ou agendado.
+- `para-aprovacao/pecas/reels/Esse é um mês organizado-capa.png`: capa do R5, 1080x1920, tema escuro, arquétipo E do guia de design estático: título "Como fica um mês organizado?" e blocos do app em HTML (gráfico do período, composição por categoria, entrada do Pix de R$ 32,90 e "Lançar por voz"), sem celular. Gerada por `capas.py 6` (`capa.js`, n=6), na mesma pasta de edição.
