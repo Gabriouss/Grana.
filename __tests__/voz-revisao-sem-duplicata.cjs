@@ -91,7 +91,7 @@ function rpc(nome, args) {
     if (desfeitas.has(args.p_request_id)) return { data: { status: 'undone', operation_id: args.p_request_id, ids: [], replayed: true }, error: null };
     return { data: { status: 'committed', operation_id: args.p_request_id, ids: operacoes.get(args.p_request_id).ids, replayed: true }, error: null };
   };
-  return { abortSignal: () => executar() };
+  return { setHeader() { return this; }, abortSignal: () => executar() };
 }
 
 const transcricoes = {};
@@ -131,7 +131,7 @@ function carregar(arquivo) {
     './data': { fetchApelidosCategoria: async () => [], fetchCategories: async () => [], fetchCreditCards: async () => cartoes },
     './wallets': { fetchWallets: async () => [{ id: 'pessoal', name: 'Pessoal', is_default: true }] },
     './creditLimitAlert': { checarLimiteCartao: async () => {} },
-    './supabase': { supabase: { rpc, auth: { getUser: async () => ({ data: { user: null } }) } } },
+    './supabase': { supabase: { rpc, auth: { getUser: async () => ({ data: { user: null } }), getSession: async () => ({ data: { session: { user: { id: 'u-1' }, access_token: 't' } } }) } } },
     './widgets-home-sync': { sincronizarWidgetsHome: async () => {} },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
   };

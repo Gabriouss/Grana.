@@ -109,7 +109,7 @@ function novoProcesso({ operacoesReais = false, sessaoReal = false, supabase: su
     'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask() {} } },
     '@react-native-async-storage/async-storage': { __esModule: true, default: AsyncStorage },
     'expo-file-system/legacy': fsDuble,
-    '@/modules/grana-voice-widget': { definirEstado: (e) => { p.estados.push(e); } },
+    '@/modules/grana-voice-widget': { definirEstado: (e) => { p.estados.push(e); }, agendarRetomadaVoz: async () => true, cancelarRetomadaVoz: async () => {} },
     './offline-cache': { isLikelyNetworkError: (e) => /network request failed|failed to fetch/i.test(String(e?.message ?? e)) },
     './widget-voz-notificacoes': {
       podeNotificar: async () => ctl.podeNotificar,
@@ -294,7 +294,7 @@ function falaNova(id, source, extras = {}) {
     assert.deepEqual(filaBruta(), []);
     assert.deepEqual(audios(), []);
     assert.equal(p.escritas.length, 0);
-    if (source === 'widget') assert.equal(p.estados.at(-1), 'atencao');
+    if (source === 'widget') assert.equal(p.estados.at(-1), 'repetir');
     ok(`[${source}] "não entendi": recibo, nada lançado, nada guardado`);
 
     // 4b. Sem rede: guardada, visível na fila na hora, um recibo.
@@ -307,7 +307,7 @@ function falaNova(id, source, extras = {}) {
     assert.deepEqual(audios(), [`file:///files/voz-pendente/sr-${source}.m4a`], 'só a cópia da fila; o original do cache saiu');
     assert.equal(p.recibosDe('notificarPendenteOffline').length, 1);
     assert.equal(p.escritas.length, 0);
-    if (source === 'widget') assert.equal(p.estados.at(-1), 'atencao');
+    if (source === 'widget') assert.equal(p.estados.at(-1), 'pendente');
     // A rede volta: sobe com o mesmo id e a data da fala.
     ctl.transcrever = async () => ({ ok: true, transcript: 'Mercado R$ 120 no débito.' });
     await p.tarefa.tentarVozesPendentes();
@@ -342,7 +342,7 @@ function falaNova(id, source, extras = {}) {
     await p.tarefa.executarTarefa(falaNova('rp-' + source, source));
     assert.deepEqual(p.recibosDe('notificarRevisao').map((r) => r.args[0]), ['Não consegui salvar']);
     assert.match(p.recibosDe('notificarRevisao')[0].args[1], /Mercado/);
-    if (source === 'widget') assert.equal(p.estados.at(-1), 'atencao');
+    if (source === 'widget') assert.equal(p.estados.at(-1), 'repetir');
     ok(`[${source}] recusa do servidor: revisão com o que foi ouvido`);
 
     // 4e. Confirmação necessária: revisão, com a data da captura, sem gravar.
@@ -351,14 +351,14 @@ function falaNova(id, source, extras = {}) {
     ctl.cartoes = [{ id: 'c1', name: 'Nubank', bank: 'Nubank', closing_day: 5 }, { id: 'c2', name: 'C6', bank: 'C6 Bank', closing_day: 10 }];
     ctl.transcrever = async () => ({ ok: true, transcript: 'Uber 30 reais no crédito.' });
     d = await p.tarefa.executarTarefa(falaNova('cf-' + source, source));
-    assert.deepEqual({ ...d }, { guardada: false });
+    assert.deepEqual({ ...d }, { guardada: false, repetir: true });
     assert.equal(p.escritas.length, 0, 'nada gravado por conta própria');
     const revisao = p.recibosDe('notificarRevisao');
     assert.equal(revisao.length, 1);
     assert.equal(revisao[0].args[0], 'Qual cartão?');
     assert.equal(revisao[0].args[2], 'cf-' + source, 'o recibo é o desta fala');
     assert.equal(revisao[0].args[3]?.referencia, '2026-10-06', 'a revisão leva a data em que a fala foi dita');
-    if (source === 'widget') assert.equal(p.estados.at(-1), 'atencao');
+    if (source === 'widget') assert.equal(p.estados.at(-1), 'repetir');
     ok(`[${source}] confirmação: pergunta "Qual cartão?", com a data da fala, sem gravar`);
   }
   {
@@ -392,7 +392,7 @@ function falaNova(id, source, extras = {}) {
     assert.equal(d.guardada, true, 'a fala continua guardada');
     assert.equal(filaBruta().length, 1, 'o item da reserva continua na fila');
     assert.equal(disco.get('file:///files/voz-pendente/disco.m4a'), 'AUDIO-disco', 'o áudio não foi apagado');
-    assert.equal(p.estados.at(-1), 'atencao');
+    assert.equal(p.estados.at(-1), 'pendente');
     assert.ok(p.erros.length > 0, 'a falha deixou log');
     ok('falha ao regravar a fila no caminho de falha não apaga o áudio nem derruba a tarefa');
 
@@ -435,7 +435,7 @@ function falaNova(id, source, extras = {}) {
     assert.deepEqual({ ...d }, { guardada: true, motivo: 'demorou' });
     assert.deepEqual((await p.fila.listarVozesPendentes()).map((i) => i.requestId), ['lenta'], 'a fala ficou na fila, retomável');
     assert.equal(p.recibosDe('notificarPendenteOffline').length, 1, 'com recibo de fala guardada');
-    assert.equal(p.estados.at(-1), 'atencao');
+    assert.equal(p.estados.at(-1), 'pendente');
     assert.equal(audios().length, 1);
     ok('a tarefa tem prazo total menor que o teto do Android: estourou, guarda e avisa');
   }
@@ -476,9 +476,9 @@ function falaNova(id, source, extras = {}) {
     limparAparelho();
     escala = 1000; // 15 s viram 15 ms
     let chamadasRpc = 0;
-    const penduradoParaSempre = { abortSignal() { return new Promise(() => {}); } };
+    const penduradoParaSempre = { setHeader() { return this; }, abortSignal() { return new Promise(() => {}); } };
     const p = novoProcesso({ operacoesReais: true, supabase: { supabase: {
-      auth: { getUser: async () => ({ data: { user: null } }) },
+      auth: { getUser: async () => ({ data: { user: null } }), getSession: async () => ({ data: { session: { user: { id: 'u-1' }, access_token: 't' } } }) },
       // O cliente espera a renovação do token ANTES de chamar o fetch: o abort não o alcança.
       rpc: () => { chamadasRpc++; return penduradoParaSempre; },
     } } });
@@ -530,7 +530,7 @@ function falaNova(id, source, extras = {}) {
     assert.equal(p.escritas.length, 0, 'nada gravado por conta própria');
     assert.deepEqual((await p.fila.listarVozesPendentes()).map((i) => [i.requestId, i.transcricao]), [['rf-' + source, 'Uber 30 reais no crédito.']], 'na fila, visível, com o que foi ouvido');
     assert.deepEqual(audios(), [`file:///files/voz-pendente/rf-${source}.m4a`], 'o áudio continua no aparelho');
-    if (source === 'widget') assert.equal(p.estados.at(-1), 'atencao');
+    if (source === 'widget') assert.equal(p.estados.at(-1), 'repetir');
     // A notificação volta a funcionar: a retomada entrega a MESMA pergunta, sem transcrever de novo e sem gravar.
     ctl.falharNotificacao = new Set();
     const transcricoesAntes = p.chamadasTranscricao.length;
@@ -810,10 +810,10 @@ function falaNova(id, source, extras = {}) {
         ctl.transcrever = async () => ({ ok: true, transcript: 'Uber 30 reais no crédito.' });
         ctl.falharNotificacao = new Set(['notificarRevisao']);
         d = await p.tarefa.executarTarefa(falaNova('nada2-' + source, source));
-        assert.deepEqual({ ...d }, { guardada: false });
+        assert.deepEqual({ ...d }, { guardada: false, repetir: true });
         assert.equal(p.escritas.length, 0);
         assert.deepEqual(audios(), []);
-        if (source === 'widget') assert.equal(p.estados.at(-1), 'atencao', 'o estado de atenção é o recibo que resta');
+        if (source === 'widget') assert.equal(p.estados.at(-1), 'repetir', 'o estado de repetir é o recibo que resta');
         ok(`[${source}] revisão, recibo, fila e recuperação falham: nada anunciado como guardado`);
       }
     } finally { fsDuble.writeAsStringAsync = escritaReal; }

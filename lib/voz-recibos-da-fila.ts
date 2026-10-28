@@ -64,9 +64,9 @@ export async function listarRecibosDaFila(dono: string): Promise<ReciboDaFila[]>
   return (await ler()).filter((r) => r.dono === dono);
 }
 
-export async function removerReciboDaFila(id: string): Promise<void> {
+export async function removerReciboDaFila(id: string, dono?: string): Promise<void> {
   const itens = await ler();
-  const restantes = itens.filter((r) => r.id !== id);
+  const restantes = itens.filter((r) => r.id !== id || (dono && r.dono !== dono));
   if (restantes.length !== itens.length) await AsyncStorage.setItem(CHAVE, JSON.stringify(restantes));
 }
 

@@ -69,6 +69,7 @@ const supabaseDuble = {
     chamadasRpc.push(nome);
     const p = Promise.resolve().then(() => respostaRpc(nome, args));
     p.abortSignal = () => p;
+    p.setHeader = () => p;
     return p;
   },
 };

@@ -149,11 +149,11 @@ let task, texto = '', writes = [], revisoes = [];
 // sessao-offline REAL sobre um supabase de dublê: sem isso o loader seguia o import até lib/supabase.ts, falhava em
 // módulo de pacote e deixava sessao-offline pela metade (ReferenceError engolido pela reserva de fala).
 const sessaoOffline = carregar('lib/sessao-offline.ts', {
-  './supabase': { armazenamentoSessao: { getItem: async () => null, removeItem: async () => {} }, CHAVE_SESSAO: 'sessao', supabase: { auth: { getSession: async () => ({ data: { session: null } }) } } },
+  './supabase': { armazenamentoSessao: { getItem: async () => null, removeItem: async () => {} }, CHAVE_SESSAO: 'sessao', supabase: { auth: { getSession: async () => ({ data: { session: { user: { id: 'u-1' } } } }) } } },
 });
 carregar('lib/widget-voz-task.ts', {
   './sessao-offline': sessaoOffline,
-  'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (_, factory) => { task = factory(); } } },
+  'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (nome, factory) => { if (nome === 'GranaVoiceTask') task = factory(); } } },
   './offline-cache': { isLikelyNetworkError: () => false },
   '@/modules/grana-voice-widget': { definirEstado() {} },
   './voz': { transcreverAudio: async () => ({ ok: true, transcript: texto }) },
@@ -165,7 +165,7 @@ carregar('lib/widget-voz-task.ts', {
   './widget-voz-notificacoes': { podeNotificar: async () => true, notificarRevisao: async titulo => revisoes.push(titulo), notificarSucesso: async () => {}, notificarFalha: async () => assert.fail('falha inesperada') },
   './supabase': { supabase: { auth: { getUser: async () => ({ data: { user: null } }) } } },
   './widgets-home-sync': {}, '@react-native-async-storage/async-storage': {},
-  './widget-voz-pendentes': { removerVozPendente: async () => {} },
+  './widget-voz-pendentes': { reservarFalaEmAndamento: async () => false, removerVozPendente: async () => {} },
   './creditLimitAlert': { checarLimiteCartao: async () => {} },
   'expo-file-system/legacy': { deleteAsync: async () => {} },
 });

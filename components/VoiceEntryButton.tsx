@@ -15,7 +15,8 @@ import {
 import { theme, radius, spacing, fonts, type } from '@/lib/theme';
 import { hapticSuccess } from '@/lib/haptics';
 import { MAX_SEGUNDOS_GRAVACAO, mensagemDeErroVoz } from '@/lib/voz';
-import { amplitudeDoMetering, criarDetectorDeSilencio, gravacaoValida, INTERVALO_AMOSTRA_MS } from '@/lib/voz-captura';
+import { amplitudeDoMetering, criarDetectorDeSilencio, gravacaoValida, INTERVALO_AMOSTRA_MS, FONTE_ANDROID_VOZ } from '@/lib/voz-captura';
+import { iniciarMonitoramentoCaptura, capturaSilenciada, pararMonitoramentoCaptura } from '@/modules/grana-voice-widget';
 import AppPressable from './AppPressable';
 import AppDialog from './AppDialog';
 import { randomUUID } from 'expo-crypto';
@@ -40,7 +41,7 @@ const GRAVACAO_VOZ: RecordingOptions = {
   sampleRate: 44100,
   numberOfChannels: 1,
   bitRate: 64000,
-  android: { outputFormat: 'mpeg4', audioEncoder: 'aac' },
+  android: { outputFormat: 'mpeg4', audioEncoder: 'aac', audioSource: FONTE_ANDROID_VOZ },
   ios: {
     outputFormat: IOSOutputFormat.MPEG4AAC,
     audioQuality: AudioQuality.MEDIUM,
@@ -142,6 +143,7 @@ export default function VoiceEntryButton({
      duas preparações concorrentes no mesmo gravador. */
   const ocupado = useRef(false);
   const encerrando = useRef(false);
+  const microfoneSilenciado = useRef(false);
   /* A captura (data na voz, 30/09/2026): anotada quando a gravação COMEÇA e
      levada com a fala, para "ontem" contar do dia em que ela foi dita. É o
      mesmo par que o widget anota no Kotlin (regra 13). */
@@ -151,6 +153,7 @@ export default function VoiceEntryButton({
     return () => {
       if (cortePorTempo.current) clearTimeout(cortePorTempo.current);
       if (amostrador.current) clearInterval(amostrador.current);
+      pararMonitoramentoCaptura();
     };
   }, []);
 
@@ -193,6 +196,11 @@ export default function VoiceEntryButton({
         parouDireito = false;
       }
       const uri = gravador.uri;
+      if (microfoneSilenciado.current || capturaSilenciada()) {
+        if (uri) await descartarAudio(uri);
+        Alert.alert(RECIBOS_VOZ.capturaInterrompida.titulo, RECIBOS_VOZ.capturaInterrompida.texto);
+        return;
+      }
       if (!uri) {
         if (!parouDireito) {
           Alert.alert(RECIBOS_VOZ.naoOuvi.titulo, RECIBOS_VOZ.naoOuvi.texto);
@@ -252,6 +260,7 @@ export default function VoiceEntryButton({
         Alert.alert(msg.titulo, msg.texto);
       }
     } finally {
+      pararMonitoramentoCaptura();
       encerrando.current = false;
       setEnviando(false);
       ocupado.current = false;
@@ -306,6 +315,8 @@ export default function VoiceEntryButton({
       /* Sem isto o iOS grava em volume baixíssimo (a sessão de áudio fica em
          modo de reprodução) e o Whisper recebe quase silêncio. */
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      microfoneSilenciado.current = false;
+      iniciarMonitoramentoCaptura();
       await gravador.prepareToRecordAsync();
       const agora = Date.now();
       captura.current = { capturadoEm: agora, dataCaptura: dataLocal(agora) };
@@ -316,6 +327,11 @@ export default function VoiceEntryButton({
       }, MAX_SEGUNDOS_GRAVACAO * 1000);
       const detector = criarDetectorDeSilencio();
       amostrador.current = setInterval(() => {
+        if (capturaSilenciada()) {
+          microfoneSilenciado.current = true;
+          void encerrarEEnviar();
+          return;
+        }
         let amplitude: number | null = null;
         try {
           amplitude = amplitudeDoMetering(gravador.getStatus().metering);
@@ -325,6 +341,7 @@ export default function VoiceEntryButton({
         if (amplitude !== null && detector.amostrar(amplitude, Date.now())) void encerrarEEnviar();
       }, INTERVALO_AMOSTRA_MS);
     } catch {
+      pararMonitoramentoCaptura();
       ocupado.current = false;
       setGravando(false);
       Alert.alert(

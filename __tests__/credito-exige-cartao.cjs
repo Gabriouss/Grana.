@@ -139,7 +139,8 @@ async function recusaNaVoz() {
       if (revisaoFalha) throw new Error('canal indisponivel');
       revisoes.push([titulo, texto]);
     } },
-    './supabase': { supabase: { rpc: () => ({ abortSignal: async () => (
+    './voz-retomada': { agendarVoz: async () => true },
+    './supabase': { supabase: { auth: { getSession: async () => ({ data: { session: { user: { id: 'u-1' }, access_token: 't' } } }) }, rpc: () => ({ setHeader() { return this; }, abortSignal: async () => (
       modo === 'rede' ? { error: { message: 'Network request failed' } } : { error: recusa }
     ) }) } },
   });
@@ -191,7 +192,7 @@ async function nucleoDaVoz() {
     './voz-confiabilidade': { precisaRevisarValorVoz: () => false, transcricaoPareceLancamentoVoz: () => true,
     // A revisão de valor está desligada neste dublê; o valor segue a heurística pura.
     valorDaFalaVoz: (t) => carregar('lib/heuristics.ts').guessAmountFromText(t) },
-    'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (_, factory) => { tarefa = factory(); } } },
+    'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (nome, factory) => { if (nome === 'GranaVoiceTask') tarefa = factory(); } } },
     './offline-cache': { isLikelyNetworkError: () => false },
     '@/modules/grana-voice-widget': { definirEstado: () => {} },
     './voz': { transcreverAudio: async () => ({ ok: true, transcript: transcricao }) },

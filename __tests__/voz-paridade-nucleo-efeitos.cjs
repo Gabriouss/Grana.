@@ -84,7 +84,7 @@ function montar() {
     'expo-file-system': { File: class { get exists() { return true; } get size() { return 4; } async bytes() { return new Uint8Array(4); } } },
     'expo/fetch': { fetch: async () => { e.envios++; const r = e.servidor; if (r instanceof Error) throw r; return r; } },
     './sessao-offline': { tokenDeAcessoLocal: async () => 't', sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u1', lerSessaoDoDisco: async () => ({ access_token: 't' }) },
-    '@/modules/grana-voice-widget': { definirEstado(s) { e.estados.push(s); } },
+    '@/modules/grana-voice-widget': { definirEstado(s) { e.estados.push(s); }, agendarRetomadaVoz: async () => true, cancelarRetomadaVoz: async () => {} },
     './widget-voz-notificacoes': {
       podeNotificar: async () => true,
       notificarRevisao: async (titulo, transcricao) => { e.revisoes.push({ titulo, transcricao }); },
@@ -102,7 +102,7 @@ function montar() {
     /* A decisao "e erro de rede?" e regra do nucleo: delega ao modulo real. */
     './offline-cache': { isLikelyNetworkError: (...a) => real('lib/cache-de-tela.ts').isLikelyNetworkError(...a) },
     './supabase': { supabase: {
-      auth: { getUser: async () => ({ data: { user: null } }), getSession: async () => ({ data: { session: null } }) },
+      auth: { getUser: async () => ({ data: { user: null } }), getSession: async () => ({ data: { session: { user: { id: 'u1' }, access_token: 't' } } }) },
       rpc: (nome, args) => {
         e.rpc.push({ nome, args });
         const resp = e.rpcErro
@@ -110,6 +110,7 @@ function montar() {
           : { data: e.rpcResposta || { status: 'committed', operation_id: 'op-1', ids: ['tx-1'], replayed: false }, error: null };
         const p = Promise.resolve(resp);
         p.abortSignal = () => p;
+        p.setHeader = () => p;
         return p;
       },
     } },

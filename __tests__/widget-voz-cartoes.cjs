@@ -10,7 +10,7 @@ const deps = {
     transcricaoPareceLancamentoVoz: () => true,
     valorDaFalaVoz: () => 32,
   },
-  'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (_, factory) => { task = factory(); } } },
+  'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (nome, factory) => { if (nome === 'GranaVoiceTask') task = factory(); } } },
   './offline-cache': { isLikelyNetworkError: () => false },
   '@/modules/grana-voice-widget': { definirEstado: () => {} },
   './voz': { transcreverAudio: async () => ({ ok: true, transcript: 'mercado 32 no crédito' }) },

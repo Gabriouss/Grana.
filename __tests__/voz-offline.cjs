@@ -34,8 +34,9 @@ function carregar(file, deps) {
        a fala. Segue o mesmo `usuario` que este teste já troca para verificar
        o isolamento entre contas. */
     './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => usuario ?? null },
-    './supabase': { supabase: { auth: { getSession: async () => ({ data: { session: { user: { id: usuario } } } }) },
-      rpc: (_, args) => ({ abortSignal: async () => {
+    './voz-retomada': { agendarVoz: async () => true },
+    './supabase': { supabase: { auth: { getSession: async () => ({ data: { session: { user: { id: usuario }, access_token: 'token-' + usuario } } }) },
+      rpc: (_, args) => ({ setHeader() { return this; }, abortSignal: async () => {
         envios.push(args);
         if (erroRpc) return { error: erroRpc };
         if (offline) return { error: { message: 'Network request failed' } };

@@ -139,7 +139,7 @@ carregarVm('lib/widget-voz-task.ts', {
   './voz-confiabilidade': { precisaRevisarValorVoz: () => false, transcricaoPareceLancamentoVoz: () => true,
     // A revisão de valor está desligada neste dublê; o valor segue a heurística pura.
     valorDaFalaVoz: (t) => carregarVm('lib/heuristics.ts').guessAmountFromText(t) },
-  'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (_, factory) => { tarefa = factory(); } } },
+  'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (nome, factory) => { if (nome === 'GranaVoiceTask') tarefa = factory(); } } },
   './offline-cache': { isLikelyNetworkError: () => false },
   '@/modules/grana-voice-widget': { definirEstado: () => {} },
   './voz': { transcreverAudio: async () => ({ ok: true, transcript: transcricao }) },

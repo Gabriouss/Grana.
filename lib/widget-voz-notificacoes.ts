@@ -1,5 +1,5 @@
 import { getNotifications } from './notifications';
-import { ACAO_DA_NOTIFICACAO, RECIBOS_VOZ } from './voz-recibos';
+import { RECIBOS_VOZ } from './voz-recibos';
 import { mensagemDeErroVoz, type CodigoErroVoz } from './voz';
 import type { ReferenciaDaFala } from './data-da-fala';
 
@@ -159,16 +159,15 @@ export async function notificarSucesso(args: {
 }
 
 /**
- * Nada foi salvo, e o motivo depende de uma escolha da pessoa (valor não
- * reconhecido, categoria incerta, crédito sem cartão). Tocar abre o app com a
- * transcrição já preenchida, pra não obrigar a repetir a fala.
+ * Nada foi salvo: pede uma nova fala completa no widget. A notificação não
+ * encaminha à revisão do app; a decisão financeira continua no núcleo comum.
  */
 export async function notificarRevisao(titulo: string, transcricao: string, requestId?: string, ref?: ReferenciaDaFala) {
-  const recibo = RECIBOS_VOZ.revisao(titulo, transcricao);
+  const recibo = RECIBOS_VOZ.repetir(titulo, transcricao);
   await publicar(
     recibo.titulo,
-    `${recibo.texto} ${ACAO_DA_NOTIFICACAO.revisao}`,
-    { origem: 'voz', resultado: 'revisar', transcricao, ...(ref ? { referencia: ref.referencia, aproximada: ref.aproximada } : null) },
+    recibo.texto,
+    { origem: 'voz', resultado: 'pendente', transcricao: '' },
     undefined,
     requestId
   );
@@ -194,4 +193,10 @@ export async function notificarPendenteOffline(requestId?: string) {
 export async function notificarSalvoLocal(requestId?: string) {
   await publicar(RECIBOS_VOZ.salvoLocal.titulo, RECIBOS_VOZ.salvoLocal.texto,
     { origem: 'voz', resultado: 'pendente', transcricao: '' }, undefined, requestId);
+}
+
+/** Há uma intenção guardada, mas o serviço requer atenção: nunca pedir nova fala. */
+export async function notificarProblemaServico(mensagem: string, requestId: string): Promise<void> {
+  const recibo = RECIBOS_VOZ.problemaServico(mensagem);
+  await publicar(recibo.titulo, recibo.texto, { origem: 'voz', resultado: 'pendente', transcricao: '' }, undefined, requestId);
 }

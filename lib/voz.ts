@@ -2,6 +2,9 @@ import { Platform } from 'react-native';
 import { fetch as expoFetch } from 'expo/fetch';
 import { File } from 'expo-file-system';
 import { tokenDeAcessoLocal } from './sessao-offline';
+import type { ControleRetomadaVoz } from './voz-retomada';
+
+type OpcoesAudioVoz = { mimeType?: string; nomeArquivo?: string; tamanhoBytes?: number; userId?: string; controle?: ControleRetomadaVoz };
 
 /**
  * Cliente da Edge Function `processar-lancamento-voz`.
@@ -115,9 +118,10 @@ async function tentarUmaVez(
   url: string,
   token: string,
   uri: string,
-  opts: { mimeType?: string; nomeArquivo?: string },
+  opts: OpcoesAudioVoz,
   deadline: number,
 ): Promise<ResultadoTentativa> {
+  opts.controle?.conferir();
   if (Date.now() >= deadline) return { ok: false, codigo: 'demorou' };
   const nomeArquivo = opts.nomeArquivo ?? (Platform.OS === 'web' ? 'lancamento.webm' : 'lancamento.m4a');
 
@@ -146,7 +150,7 @@ async function tentarUmaVez(
       form.append('audio', {
         name: nomeArquivo,
         type: opts.mimeType ?? 'audio/mp4',
-        bytes: () => arquivo.bytes(),
+        bytes: () => { opts.controle?.conferir(); return arquivo.bytes(); },
       } as unknown as Blob);
     } catch (e: any) {
       if (__DEV__) console.warn('[voz:diag] falha ao ler arquivo', String(e?.message ?? e));
@@ -155,10 +159,14 @@ async function tentarUmaVez(
   }
 
   const controle = new AbortController();
+  const cancelar = () => controle.abort();
+  opts.controle?.signal.addEventListener('abort', cancelar, { once: true });
   const corte = setTimeout(() => controle.abort(), Math.max(1, Math.min(TIMEOUT_MS, deadline - Date.now())));
   let resposta: Response;
   let corpo: any = null;
   try {
+    opts.controle?.conferir();
+    if (Date.now() >= deadline) return { ok: false, codigo: 'demorou' };
     resposta = await expoFetch(url, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
@@ -184,6 +192,7 @@ async function tentarUmaVez(
     return { ok: false, codigo: falhaDeRede ? 'sem_rede' : 'erro_interno' };
   } finally {
     clearTimeout(corte);
+    opts.controle?.signal.removeEventListener('abort', cancelar);
   }
 
   if (!resposta.ok || corpo?.status !== 'ready') {
@@ -217,17 +226,20 @@ async function tentarUmaVez(
  */
 export async function transcreverAudio(
   uri: string,
-  opts: { mimeType?: string; nomeArquivo?: string; tamanhoBytes?: number } = {}
+  opts: OpcoesAudioVoz = {}
 ): Promise<ResultadoVoz> {
   // O reconhecimento local também consome este prazo.
-  const deadline = Date.now() + PRAZO_TRANSCRICAO_MS;
+  opts.controle?.conferir();
+  const deadline = Math.min(Date.now() + PRAZO_TRANSCRICAO_MS, opts.controle?.fim ?? Infinity);
   const { transcreverNoAparelho } = await import('./voz-local');
+  opts.controle?.conferir();
   /* Passa o que RESTA do prazo, e quem limita ao próprio teto é o módulo
      local. Ler a constante dele aqui criava um acoplamento silencioso: com um
      prazo de 15s, um teto local de 30s estouraria o prazo inteiro antes de
      a rede ser tentada, e um valor ausente pulava o reconhecimento no aparelho
      sem dizer nada, trocando trabalho de graça por chamada paga. */
   const local = await transcreverNoAparelho(uri, Math.max(0, deadline - Date.now() - RESERVA_SERVIDOR_MS));
+  opts.controle?.conferir();
   /* Texto sem cara de lançamento NÃO encerra a busca. Uma frase fluente e sem
      relação com a fala já chegou ao autor ("Acompanhe o processo de produção de
      um produto de qualidade", widget, 02/10/2026, no lugar de "Uber ... crédito
@@ -250,9 +262,10 @@ export async function transcreverAudio(
 
 async function transcreverNoServidor(
   uri: string,
-  opts: { mimeType?: string; nomeArquivo?: string; tamanhoBytes?: number },
+  opts: OpcoesAudioVoz,
   deadline: number
 ): Promise<ResultadoVoz> {
+  opts.controle?.conferir();
   const url = urlDaFuncao();
   if (!url) return { ok: false, codigo: 'erro_interno' };
 
@@ -274,7 +287,13 @@ async function transcreverNoServidor(
      máximo `PRAZO_TOKEN_MS`, e nunca além do que resta do prazo; depois
      disso vale o token do aparelho, e a tentativa acontece do mesmo jeito. */
   const token = await tokenDeAcessoLocal(Math.max(1, Math.min(PRAZO_TOKEN_MS, deadline - Date.now())));
+  opts.controle?.conferir();
   if (!token) return { ok: false, codigo: 'sem_sessao' };
+  if (opts.userId) {
+    const { idDoUsuarioLocal } = await import('./sessao-offline');
+    if ((await idDoUsuarioLocal(Math.max(1, deadline - Date.now()))) !== opts.userId) return { ok: false, codigo: 'sem_sessao' };
+    opts.controle?.conferir();
+  }
 
   const primeira = await tentarUmaVez(url, token, uri, opts, deadline);
   if (!('ambiguo' in primeira)) return primeira;

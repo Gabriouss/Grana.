@@ -348,7 +348,8 @@ const limpar8 = async () => { while (agendados.length) { agendados.shift().fn();
   cache.clear();
   const voz = carregar('lib/voice-operations.ts', {
     '@react-native-async-storage/async-storage': { __esModule: true, default: vozAsync },
-    './supabase': { supabase: { rpc: (_n, args) => ({ abortSignal: async () => {
+    './voz-retomada': { agendarVoz: async () => true },
+    './supabase': { supabase: { auth: { getSession: async () => ({ data: { session: { user: { id: estado.usuario }, access_token: 't' } } }) }, rpc: (_n, args) => ({ setHeader() { return this; }, abortSignal: async () => {
       rpcs.push(args.p_payload.description);
       if (!vozEstado.rede) return { error: { message: 'Network request failed' } };
       if (vozEstado.recusa && args.p_payload.description === vozEstado.recusa.alvo) return { error: vozEstado.recusa.erro };

@@ -79,7 +79,7 @@ let tarefa;
 const gravadosVoz = [];
 const revisoesVoz = [];
 carregarVm('lib/widget-voz-task.ts', {
-  'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (_, factory) => { tarefa = factory(); } } },
+  'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (nome, factory) => { if (nome === 'GranaVoiceTask') tarefa = factory(); } } },
   './offline-cache': { isLikelyNetworkError: () => false },
   '@/modules/grana-voice-widget': { definirEstado: () => {} },
   './voz': { transcreverAudio: async () => ({ ok: true, transcript: transcricao }) },

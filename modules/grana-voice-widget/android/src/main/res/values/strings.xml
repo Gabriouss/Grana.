@@ -3,6 +3,11 @@
   <string name="grana_voice_widget_descricao">Toque e fale o gasto. O Grana. lança sem abrir o app.</string>
   <string name="grana_voice_ocioso">Lançar por voz</string>
   <string name="grana_voice_ouvindo">Ouvindo…</string>
+  <string name="grana_voice_preparando">Preparando…</string>
+  <string name="grana_voice_pendente">Aguardando conexão</string>
+  <string name="grana_voice_repetir">Toque e repita a fala</string>
+  <string name="grana_voice_interrompida_titulo">O microfone foi interrompido</string>
+  <string name="grana_voice_interrompida_texto">Nada foi lançado. Toque no microfone e repita a fala.</string>
   <string name="grana_voice_processando">Lançando…</string>
   <string name="grana_voice_atencao">Toque para revisar</string>
   <string name="grana_voice_atencao_desc">O lançamento por voz precisa da sua atenção. Toque para abrir o Grana.</string>
@@ -16,7 +21,7 @@
   <string name="grana_voice_nao_ouvi_titulo">Não ouvi nada</string>
   <string name="grana_voice_nao_ouvi_texto">Nada foi lançado. Toque no microfone e fale o gasto.</string>
   <string name="grana_voice_guardada_titulo">Fala guardada no aparelho</string>
-  <string name="grana_voice_guardada_texto">Não deu para processar agora. Abra o Grana. para concluir o lançamento.</string>
+  <string name="grana_voice_guardada_texto">Não deu para processar agora. A fala será retomada quando houver conexão.</string>
 
   <string name="grana_widget_sem_dados">Ainda sem dados</string>
   <string name="grana_widget_abrir_atualizar">Abra o Grana. para atualizar</string>

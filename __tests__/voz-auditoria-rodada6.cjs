@@ -30,6 +30,8 @@ function carregar(arquivo, dependencias = {}, globais = {}) {
     Object, Array, Error, RegExp, AbortController, Blob, File, Response, Request,
     Uint8Array, TextEncoder, TextDecoder, __DEV__: false,
     require(id) {
+      // Fronteira Android; o adaptador real é exercitado em voz-retomada-autonoma.
+      if (id === './voz-retomada') return { agendarVoz: async () => true };
       if (id in dependencias) return dependencias[id];
       if (id in PUROS) return PUROS[id];
       throw new Error('Import nao simulado em ' + arquivo + ': ' + id);
@@ -93,12 +95,13 @@ function montarOperacoes(opts) {
       './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u1' },
     }),
     './supabase': { supabase: {
-      auth: { getSession: async () => ({ data: { session: { user: { id: 'u1' } } } }) },
+      auth: { getSession: async () => ({ data: { session: { user: { id: 'u1' }, access_token: 't' } } }) },
       rpc: () => {
         const p = Promise.resolve(o.erroRpc
           ? { data: null, error: o.erroRpc }
           : { data: { status: o.statusRpc || 'committed', ids: ['t1'], operation_id: 'op1', replayed: false }, error: null });
         p.abortSignal = () => p;
+        p.setHeader = () => p;
         return p;
       },
     } },
@@ -180,7 +183,7 @@ function montarWidget(opts) {
   const reg = { estados: [], notificacoes: [], apagados: [], fila: [], removidos: [], pendenteNotificado: 0 };
   let task;
   carregar('lib/widget-voz-task.ts', {
-    'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (_n, f) => { task = f(); } } },
+    'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (nome, f) => { if (nome === 'GranaVoiceTask') task = f(); } } },
     './offline-cache': { isLikelyNetworkError: (e) => /network|rede/i.test(String((e && e.message) || e)) },
     '@/modules/grana-voice-widget': { definirEstado: (e) => reg.estados.push(e) },
     './voz': { transcreverAudio: o.transcrever || (async () => ({ ok: true, transcript: 'mercado 32,50 no pix' })) },
@@ -251,7 +254,7 @@ async function parteB() {
        payload estruturado no aparelho antes de tentar a rede, entao a fala
        bruta nao e mais necessaria para concluir o lancamento. */
     check(F, 'pendente apaga o audio porque o payload ja esta salvo', reg.apagados.length, 1);
-    check(F, 'pendente volta ao repouso, nao acende atencao', reg.estados, ['ocioso']);
+    check(F, 'operação offline mostra pendente enquanto aguarda retomada', reg.estados, ['pendente']);
   }
 
   {
@@ -278,7 +281,7 @@ async function parteB() {
     check(F, 'sem rede preserva o requestId', reg.fila[0] && reg.fila[0].requestId, 'w5');
     check(F, 'sem rede preserva o arquivo', reg.apagados.length, 0);
     check(F, 'sem rede avisa quem falou', reg.pendenteNotificado, 1);
-    check(F, 'sem rede acende atencao', reg.estados, ['atencao']);
+    check(F, 'sem rede mostra pendente sem exigir abertura do app', reg.estados, ['pendente']);
   }
 
   {

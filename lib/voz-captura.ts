@@ -18,6 +18,9 @@
 /** De quanto em quanto tempo o volume é lido. Kotlin: `INTERVALO_AMOSTRA_MS`. */
 export const INTERVALO_AMOSTRA_MS = 200;
 
+/** Android prioriza comunicação de voz; no API30+ esta fonte já é privacy-sensitive. */
+export const FONTE_ANDROID_VOZ = 'voice_communication' as const;
+
 /** Silêncio, depois de ter ouvido fala, que encerra a gravação. Kotlin: `SILENCIO_PARA_CORTAR_MS`. */
 export const SILENCIO_PARA_CORTAR_MS = 1_600;
 

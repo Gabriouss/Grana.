@@ -4,6 +4,7 @@ import { notificarDadosDosWidgetsAlterados } from './widgets-home-events';
 import { lancamentoGravado } from './cache-de-tela';
 import { ITENS_POR_RODADA, ehErroPermanente } from './fila-pendente';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { ControleRetomadaVoz } from './voz-retomada';
 
 type BaseFinanceira = {
   description: string;
@@ -155,11 +156,14 @@ export async function registrarOperacaoVoz(
   source: 'app' | 'widget',
   payload: PayloadOperacaoVoz,
   transcricao?: string,
-  falaGuardada?: string
+  falaGuardada?: string,
+  donoEsperado?: string,
+  controle?: ControleRetomadaVoz,
 ): Promise<ResultadoOperacaoVoz> {
   let resultado: ResultadoOperacaoVoz;
   try {
-    resultado = await gravarOperacaoVoz(falaGuardada ?? requestId, source, payload, transcricao);
+    controle?.conferir();
+    resultado = await gravarOperacaoVoz(falaGuardada ?? requestId, source, payload, transcricao, donoEsperado, controle);
   } catch (erro) {
     /* Achado A1 do Lynx (29/09/2026): a fala revisada já tinha sido lançada
        por uma revisão anterior, voltou depois de reabrir o app, e esta
@@ -174,6 +178,7 @@ export async function registrarOperacaoVoz(
     resultado = { ...RESULTADO_DO_CONFLITO, operationId: falaGuardada, kind: payload.kind, ids: [] };
   }
   // As telas montadas (a aba Lançamentos) recarregam agora, não só no foco.
+  controle?.conferir();
   if ((resultado.status === 'committed' && !resultado.replayed) || resultado.status === 'pending') lancamentoGravado();
   if (falaGuardada) {
     try {
@@ -210,7 +215,9 @@ async function gravarOperacaoVoz(
   requestId: string,
   source: 'app' | 'widget',
   payload: PayloadOperacaoVoz,
-  transcricao?: string
+  transcricao?: string,
+  donoEsperado?: string,
+  controle?: ControleRetomadaVoz,
 ): Promise<ResultadoOperacaoVoz> {
   /* Pelo aparelho, e não pela rede. Este id só nomeia a chave local em que a
      fala fica guardada até o envio — e era aqui que a fila offline morria: com
@@ -221,9 +228,12 @@ async function gravarOperacaoVoz(
      ocupado renovando o token. Sem isso a gravação esperava a renovação
      inteira antes mesmo de começar a contar os 15 s do envio. */
   const userId = await idDoUsuarioLocal(PRAZO_DONO_MS);
+  controle?.conferir();
   if (!userId) throw new Error('Entre na conta para salvar o lançamento.');
+  if (donoEsperado && userId !== donoEsperado) throw new Error('A conta da fala mudou antes de guardar o lançamento.');
   const chave = `grana:voz:operacao:${userId}:${requestId}`;
   const existente = await AsyncStorage.getItem(chave);
+  controle?.conferir();
   /* `criadoEm` é o dia em que a pessoa falou: a lista mostra a fala guardada
      com ele (`lib/voz-pendente-na-lista.ts`), e a sequência conta por ele. */
   const operacao = existente
@@ -231,13 +241,18 @@ async function gravarOperacaoVoz(
     : { requestId, source, payload, criadoEm: new Date().toISOString(), ...(transcricao ? { transcricao } : null) };
   // Persiste ANTES da rede. O payload original permanece igual em toda retomada.
   await AsyncStorage.setItem(chave, JSON.stringify(operacao));
+  controle?.conferir();
   notificarDadosDosWidgetsAlterados();
+  // O watchdog existe antes da rede: morte do processo não perde a retomada.
+  await programarOperacao(requestId, userId, 150_000);
   try {
-    const resultado = await enviarOperacaoVoz(operacao.requestId, operacao.source, operacao.payload);
+    const resultado = await enviarOperacaoVoz(operacao.requestId, operacao.source, operacao.payload, userId, controle);
+    controle?.conferir();
     await AsyncStorage.removeItem(chave);
     notificarDadosDosWidgetsAlterados();
     return resultado;
   } catch (erro) {
+    controle?.conferir();
     const codigo = String((erro as { code?: string })?.code ?? '');
     // Recusa definitiva não pode reaparecer silenciosamente numa sincronização.
     /* Objeto ausente no servidor — PGRST202, PGRST205, 42883, 42P01 — NAO
@@ -251,6 +266,8 @@ async function gravarOperacaoVoz(
       await AsyncStorage.removeItem(chave);
       throw erro;
     }
+    console.warn('[voz] operação permanece no aparelho para retomada', requestId, codigo || 'temporaria');
+    await programarOperacao(requestId, userId);
     return { status: 'pending', operationId: requestId, kind: payload.kind, ids: [], replayed: false };
   }
 }
@@ -286,25 +303,54 @@ function explicarFalhaDeEnvio(erro: unknown): string {
   return 'O serviço não confirmou o lançamento. Ele continua salvo no aparelho.';
 }
 
-type ResumoSync = { sincronizadas: number; falhas: number; mensagem?: string };
+type ResumoSync = { sincronizadas: number; falhas: number; mensagem?: string; problemaServico?: boolean };
 let sincronizacao: Promise<ResumoSync> | null = null;
 export function sincronizarOperacoesVoz(): Promise<ResumoSync> {
   if (!sincronizacao) sincronizacao = executarSincronizacao().finally(() => { sincronizacao = null; });
   return sincronizacao;
 }
-async function executarSincronizacao(): Promise<ResumoSync> {
+type ConfirmarRetomada = (payload: PayloadOperacaoVoz, resultado: ResultadoOperacaoVoz) => Promise<void>;
+
+/** Uma intenção por Worker, usando a mesma sincronização do app e seu limite. */
+export async function retomarOperacaoVoz(requestId: string, userId: string, confirmar: ConfirmarRetomada, controle?: ControleRetomadaVoz, avisarProblema?: (mensagem: string) => Promise<void>): Promise<'ausente' | 'concluida' | 'tentar_novamente' | 'aguardar_usuario' | 'problema_servico'> {
+  controle?.conferir();
+  if ((await idDoUsuarioLocal(PRAZO_DONO_MS)) !== userId) return 'aguardar_usuario';
+  controle?.conferir();
+  const chave = `grana:voz:operacao:${userId}:${requestId}`;
+  if (!(await AsyncStorage.getItem(chave))) return 'ausente';
+  controle?.conferir();
+  const resumo = await executarSincronizacao({ requestId, userId, confirmar, controle });
+  controle?.conferir();
+  if (resumo.problemaServico) {
+    await avisarProblema?.(resumo.mensagem!);
+    controle?.conferir();
+    return 'problema_servico';
+  }
+  if (resumo.sincronizadas) return 'concluida';
+  return (await AsyncStorage.getItem(chave)) ? 'tentar_novamente' : 'aguardar_usuario';
+}
+
+async function executarSincronizacao(alvo?: { requestId: string; userId: string; confirmar: ConfirmarRetomada; controle?: ControleRetomadaVoz }): Promise<ResumoSync> {
   let sincronizadas = 0;
   let falhas = 0;
   let mensagem: string | undefined;
+  let problemaServico = false;
+  const conferir = () => alvo?.controle?.conferir();
+    conferir();
     const userId = await idDoUsuarioLocal();
+    conferir();
     if (!userId) return { sincronizadas, falhas: 1 };
+    if (alvo && alvo.userId !== userId) return { sincronizadas, falhas: 1 };
     /* No máximo `ITENS_POR_RODADA` por sincronização (parecer do Harbor,
        24/09/2026): o resto fica para a próxima. */
     const chaves = (await AsyncStorage.getAllKeys())
       .filter((key) => key.startsWith(`grana:voz:operacao:${userId}:`))
+      .filter((key) => !alvo || key === `grana:voz:operacao:${userId}:${alvo.requestId}`)
       .slice(0, ITENS_POR_RODADA);
+    conferir();
     for (const chave of chaves) {
       const raw = await AsyncStorage.getItem(chave);
+      conferir();
       if (!raw) continue;
       let item: { requestId: string; source: 'app' | 'widget'; payload: PayloadOperacaoVoz; transcricao?: string };
       try {
@@ -320,15 +366,27 @@ async function executarSincronizacao(): Promise<ResumoSync> {
          pelo aparelho para não confundir "trocou de conta" com "o token
          venceu e não há rede" — o segundo caso deve seguir tentando. */
       if ((await idDoUsuarioLocal()) !== userId) break;
+      conferir();
       try {
-        await enviarOperacaoVoz(item.requestId, item.source, item.payload);
+        const resultado = await enviarOperacaoVoz(item.requestId, item.source, item.payload, userId, alvo?.controle);
+        conferir();
+        if ((await idDoUsuarioLocal()) !== userId) break;
+        conferir();
+        if (alvo) await alvo.confirmar(item.payload, resultado);
+        conferir();
       } catch (erro) {
+        conferir();
         falhas++;
         mensagem = explicarFalhaDeEnvio(erro);
+        if (alvo && /^(PGRST202|PGRST205|42883|42P01|42501|PGRST30)/.test(String((erro as { code?: unknown })?.code ?? ''))) {
+          problemaServico = true;
+          break; // Intenção preservada; o Worker publica diagnóstico, sem repetir o gasto.
+        }
         if (!ehRecusaCartaoObrigatorio(erro) && !ehErroPermanente(erro)) {
           /* Temporário (rede, prazo, servidor): para aqui. Até 24/09/2026 a
              sincronização seguia pela fila inteira, e sem rede cada item virava
              um pedido; se o primeiro não saiu, os outros também não saem. */
+          await programarOperacao(item.requestId, userId);
           break;
         }
         /* Recusa do banco: tentar de novo não resolve. A fala vira revisão, e
@@ -337,8 +395,9 @@ async function executarSincronizacao(): Promise<ResumoSync> {
            Crédito sem cartão pergunta o cartão; o resto pede para revisar. */
         try {
           const { notificarRevisao } = await import('./widget-voz-notificacoes');
-          if (ehRecusaCartaoObrigatorio(erro)) await notificarRevisao('Qual cartão?', textoParaRevisao(item));
-          else await notificarRevisao('Não consegui salvar', item.transcricao || `${item.payload.description} ${String(item.payload.amount).replace('.', ',')}`);
+          conferir();
+          if (ehRecusaCartaoObrigatorio(erro)) await notificarRevisao('Qual cartão?', textoParaRevisao(item), item.requestId);
+          else await notificarRevisao('Não consegui salvar', item.transcricao || `${item.payload.description} ${String(item.payload.amount).replace('.', ',')}`, item.requestId);
         } catch (erroRecibo) {
           console.error('[voz] recibo de revisão não foi publicado; a fala fica na fila', erroRecibo);
           continue;
@@ -347,11 +406,12 @@ async function executarSincronizacao(): Promise<ResumoSync> {
         notificarDadosDosWidgetsAlterados();
         continue;
       }
+      conferir();
       await AsyncStorage.removeItem(chave);
       notificarDadosDosWidgetsAlterados();
       sincronizadas++;
     }
-  return { sincronizadas, falhas, mensagem };
+  return { sincronizadas, falhas, mensagem, ...(problemaServico ? { problemaServico } : null) };
 }
 
 /** Quanto a gravação espera o cliente dizer quem é o dono antes de ler o aparelho. */
@@ -359,10 +419,15 @@ const PRAZO_DONO_MS = 3_000;
 /** Prazo do envio de uma operação de voz, de ponta a ponta. */
 const PRAZO_ENVIO_MS = 15_000;
 
-async function enviarOperacaoVoz(requestId: string, source: 'app' | 'widget', payload: PayloadOperacaoVoz): Promise<ResultadoOperacaoVoz> {
+async function enviarOperacaoVoz(requestId: string, source: 'app' | 'widget', payload: PayloadOperacaoVoz, userId: string, execucao?: ControleRetomadaVoz): Promise<ResultadoOperacaoVoz> {
+  execucao?.conferir();
+  if ((await idDoUsuarioLocal(PRAZO_DONO_MS)) !== userId) throw new Error('A conta da fala mudou antes do envio.');
+  execucao?.conferir();
   const { kind, ...dados } = payload;
   const controle = new AbortController();
   const prazo = setTimeout(() => controle.abort(), PRAZO_ENVIO_MS);
+  const cancelar = () => controle.abort();
+  execucao?.signal.addEventListener('abort', cancelar, { once: true });
   /* O prazo vale para o envio INTEIRO (07/10/2026). O `abortSignal` só
      alcança o `fetch`, e o cliente espera a renovação do token ANTES de
      chamá-lo: com a renovação pendurada, os "15 s" viravam uns 40. A corrida
@@ -375,13 +440,28 @@ async function enviarOperacaoVoz(requestId: string, source: 'app' | 'widget', pa
   });
   estouro.catch(() => {});
   try {
+  // Supabase resolve o token quando o fetch começa. Fixar o token impede que
+  // uma renovação atrasada envie uma intenção de A autenticada como B.
+  const { data: credenciais, error: erroSessao } = await Promise.race([supabase.auth.getSession(), estouro]);
+  let sessao = credenciais.session;
+  if (!sessao) {
+    const { lerSessaoDoDisco } = await import('./sessao-offline');
+    sessao = await Promise.race([lerSessaoDoDisco(), estouro]);
+  }
+  if (!sessao && erroSessao) throw erroSessao;
+  if (!sessao?.access_token || sessao.user.id !== userId || (await idDoUsuarioLocal(PRAZO_DONO_MS)) !== userId) {
+    throw new Error('A sessão da conta da fala não está confirmada para envio.');
+  }
+  if (controle.signal.aborted) throw new Error('timeout ao sincronizar lançamento');
+  execucao?.conferir();
   const envio = supabase.rpc('registrar_operacao_voz', {
     p_request_id: requestId,
     p_source: source,
     p_kind: kind,
     p_payload: dados,
-  }).abortSignal(controle.signal);
+  }).setHeader('Authorization', `Bearer ${sessao.access_token}`).abortSignal(controle.signal);
   const { data, error } = await Promise.race([envio, estouro]);
+  execucao?.conferir();
   if (controle.signal.aborted) throw new Error('timeout ao sincronizar lançamento');
   if (error) throw error;
 
@@ -404,7 +484,16 @@ async function enviarOperacaoVoz(requestId: string, source: 'app' | 'widget', pa
   };
   if (status === 'committed' && !resultado.replayed) notificarDadosDosWidgetsAlterados();
   return resultado;
-  } finally { clearTimeout(prazo); }
+  } finally { clearTimeout(prazo); execucao?.signal.removeEventListener('abort', cancelar); }
+}
+
+async function programarOperacao(requestId: string, userId: string, atrasoMs?: number): Promise<void> {
+  try {
+    const { agendarVoz } = await import('./voz-retomada');
+    await agendarVoz(requestId, userId, atrasoMs);
+  } catch (erro) {
+    console.error('[voz] operação persistida ficou sem agendamento automático', requestId, erro);
+  }
 }
 
 /** Desfaz conta, compra ou todas as parcelas de uma vez, de forma idempotente. */

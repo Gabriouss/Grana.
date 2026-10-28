@@ -18,11 +18,31 @@ import expo.modules.kotlin.modules.ModuleDefinition
  */
 class GranaVoiceWidgetModule : Module() {
 
+  private var monitorCaptura: VoiceCaptureMonitor? = null
+
   private val context: Context
     get() = appContext.reactContext ?: throw Exceptions.ReactContextLost()
 
   override fun definition() = ModuleDefinition {
     Name("GranaVoiceWidget")
+
+    Function("iniciarMonitoramentoCaptura") {
+      monitorCaptura?.parar()
+      monitorCaptura = VoiceCaptureMonitor(context).also { it.iniciar() }
+    }
+    Function("capturaSilenciada") { monitorCaptura?.silenciada ?: false }
+    Function("pararMonitoramentoCaptura") { monitorCaptura?.parar(); monitorCaptura = null }
+    OnDestroy { monitorCaptura?.parar(); monitorCaptura = null }
+
+    AsyncFunction("agendarRetomadaVoz") { requestId: String, userId: String, atrasoMs: Double ->
+      VoiceRetryScheduler.agendar(context, requestId, userId, atrasoMs.toLong())
+    }
+    AsyncFunction("cancelarRetomadaVoz") { requestId: String, userId: String ->
+      VoiceRetryScheduler.cancelar(context, requestId, userId)
+    }
+    AsyncFunction("concluirRetomadaVoz") { execucaoId: String, resultado: String ->
+      GranaVoiceRetryWorker.concluir(execucaoId, resultado)
+    }
 
     AsyncFunction("prepararAudioLocal") { uri: String ->
       VoicePcmDecoder.decode(context, uri)
@@ -68,11 +88,13 @@ class GranaVoiceWidgetModule : Module() {
     }
 
     Function("limparSnapshot") {
+      VoiceRetryScheduler.definirDono(context, null)
       WidgetSnapshotStore.limpar(context)
       WidgetRegistry.redesenharTodos(context)
     }
 
     Function("garantirUsuario") { userId: String ->
+      VoiceRetryScheduler.definirDono(context, userId)
       WidgetSnapshotStore.garantirUsuario(context, userId)
       WidgetRegistry.redesenharTodos(context)
     }

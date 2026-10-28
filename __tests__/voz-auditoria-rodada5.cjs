@@ -46,11 +46,11 @@ let wallets = [{ id: 'p', name: 'Pessoal', is_default: true }];
 let cards = [{ id: 'c6', name: 'C6', bank: 'C6', wallet_id: 'p' }];
 // sessao-offline REAL sobre supabase de duble (ver voz-valores-regressao.cjs): sem isso o loader falha no import de lib/supabase.ts.
 const sessaoOffline = load('lib/sessao-offline.ts', {
-  './supabase': { armazenamentoSessao: { getItem: async () => null, removeItem: async () => {} }, CHAVE_SESSAO: 'sessao', supabase: { auth: { getSession: async () => ({ data: { session: null } }) } } },
+  './supabase': { armazenamentoSessao: { getItem: async () => null, removeItem: async () => {} }, CHAVE_SESSAO: 'sessao', supabase: { auth: { getSession: async () => ({ data: { session: { user: { id: 'u-1' } } } }) } } },
 });
 load('lib/widget-voz-task.ts', {
   './sessao-offline': sessaoOffline,
-  'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (_, factory) => { task = factory(); } } },
+  'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (nome, factory) => { if (nome === 'GranaVoiceTask') task = factory(); } } },
   './offline-cache': { isLikelyNetworkError: () => false },
   '@/modules/grana-voice-widget': { definirEstado() {} },
   './voz': { transcreverAudio: async () => { throw Error('Sem rede neste teste'); } },
@@ -65,7 +65,7 @@ load('lib/widget-voz-task.ts', {
     notificarFalha: async code => { throw Error(code); } },
   './supabase': { supabase: { auth: { getUser: async () => ({ data: { user: null } }) } } },
   './widgets-home-sync': {}, '@react-native-async-storage/async-storage': {},
-  './widget-voz-pendentes': { removerVozPendente: async () => {} },
+  './widget-voz-pendentes': { reservarFalaEmAndamento: async () => false, removerVozPendente: async () => {} },
   './creditLimitAlert': { checarLimiteCartao: async () => {} },
   'expo-file-system/legacy': { deleteAsync: async () => {} },
 });

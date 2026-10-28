@@ -40,13 +40,13 @@ export const RECIBOS_VOZ = {
   /** Gravado na fila do aparelho: faltou rede na hora de salvar. */
   salvoLocal: {
     titulo: 'Lançamento salvo no aparelho',
-    texto: 'Será sincronizado com sua conta quando o Grana. estiver aberto com conexão.',
+    texto: 'Será sincronizado com sua conta quando houver conexão.',
   } as ReciboVoz,
 
   /** O áudio ficou guardado: faltou rede para transcrever. */
   pendenteOffline: {
     titulo: 'Áudio guardado no aparelho',
-    texto: 'O reconhecimento será retomado quando o Grana. estiver aberto com conexão.',
+    texto: 'O reconhecimento será retomado quando houver conexão.',
   } as ReciboVoz,
 
   /** Gravação curta demais para ser fala (toque duplo, arquivo vazio). Nada foi enviado. */
@@ -70,8 +70,21 @@ export const RECIBOS_VOZ = {
 
   falaGuardada: {
     titulo: 'Fala guardada no aparelho',
-    texto: 'Não deu para processar agora. Abra o Grana. para concluir o lançamento.',
+    texto: 'Não deu para processar agora. A fala será retomada quando houver conexão.',
   } as ReciboVoz,
+
+  repetir: (titulo: string, transcricao: string): ReciboVoz => {
+    const ouvido = transcricao.trim().replace(/[\s.!?…,;:]+$/u, '');
+    return { titulo, texto: `${ouvido ? `Ouvi: "${ouvido}". ` : ''}Nada foi lançado. Toque no microfone e fale o lançamento completo.` };
+  },
+  capturaInterrompida: {
+    titulo: 'O microfone foi interrompido',
+    texto: 'Nada foi lançado. Toque no microfone e repita a fala.',
+  } as ReciboVoz,
+  problemaServico: (mensagem: string): ReciboVoz => ({
+    titulo: 'Lançamento aguardando o serviço',
+    texto: `${mensagem} Não repita este lançamento.`,
+  }),
 };
 
 /** O recibo da fala guardada que o reconhecimento não entendeu, com a

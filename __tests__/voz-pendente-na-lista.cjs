@@ -61,11 +61,12 @@ function rpc(nome) {
       ? { data: { status: 'committed', operation_id: 'op', ids: ['x'], replayed: false }, error: null }
       : { data: [], error: null })
     : semRede());
-  return { abortSignal: resposta, then: (res, rej) => resposta().then(res, rej) };
+  return { setHeader() { return this; }, abortSignal: resposta, then: (res, rej) => resposta().then(res, rej) };
 }
-const supabase = { from: () => consulta(), rpc };
+const supabase = { from: () => consulta(), rpc, auth: { getSession: async () => ({ data: { session: { user: { id: estado.usuario }, access_token: 't' } } }) } };
 
 const dubles = {
+  './voz-retomada': { agendarVoz: async () => true },
   '@react-native-async-storage/async-storage': { __esModule: true, default: AsyncStorage },
   './supabase': { supabase },
   './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => estado.usuario },

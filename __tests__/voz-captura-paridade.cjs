@@ -68,10 +68,16 @@ console.log('\nCaptura: mesmos números do widget');
 
   // V3: o ramo do arquivo curto (ou `stop()` que lançou) publica o recibo
   // "Não ouvi nada" antes de voltar ao repouso, como o botão do app.
-  const ramoCurto = kt.slice(kt.indexOf('if (!arquivoValido || destino == null || id == null) {'), kt.indexOf('EstadoWidget.definir(this, EstadoWidget.PROCESSANDO)'));
+  const ramoCurto = kt.slice(kt.indexOf('if (!arquivoValido || destino == null || id == null) {'), kt.indexOf('if (dono == null || VoiceRetryScheduler.dono(this) != dono)'));
   assert.ok(ramoCurto.includes('publicarRecibo(R.string.grana_voice_nao_ouvi_titulo, R.string.grana_voice_nao_ouvi_texto)'), 'o widget precisa do recibo curto');
   assert.ok(ramoCurto.indexOf('publicarRecibo') < ramoCurto.indexOf('finalizar(EstadoWidget.OCIOSO)'));
   ok('o widget também dá o recibo "Não ouvi nada" na gravação curta');
+  assert.equal(captura.FONTE_ANDROID_VOZ, 'voice_communication');
+  assert.ok(kt.includes('setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)'));
+  assert.ok(kt.includes('Build.VERSION_CODES.R) setPrivacySensitive(true)'));
+  assert.ok(kt.includes('registerAudioRecordingCallback(mainExecutor, it)'));
+  assert.ok(kt.includes('isClientSilenced'));
+  ok('fonte de comunicação, privacidade API30 e monitor de silenciamento API29 no nativo');
 
   // A mesma regra do `amostrador`: fala zera o silêncio; silêncio só conta
   // depois de ter ouvido fala; a primeira amostra calada só marca o início.
@@ -127,7 +133,7 @@ console.log('\nCaptura: o detector');
 
 }
 // ── 2. O botão real ────────────────────────────────────────────────────────
-function montarBotao({ tamanho = 50_000, stop = async () => {}, metering = () => -160, tarefaReal, aoCapturar, aoRevisar } = {}) {
+function montarBotao({ tamanho = 50_000, stop = async () => {}, metering = () => -160, tarefaReal, aoCapturar, aoRevisar, silenciada = () => false } = {}) {
   const reg = { tarefas: [], alertas: [], alertasCompletos: [], apagados: [], gravando: false, adaptador: null };
   let relogio = 1_000_000;
   const timers = [];
@@ -180,6 +186,11 @@ function montarBotao({ tamanho = 50_000, stop = async () => {}, metering = () =>
     '@/lib/haptics': { hapticSuccess: () => {} },
     '@/lib/voz': { MAX_SEGUNDOS_GRAVACAO: 20, mensagemDeErroVoz: (c) => ({ titulo: 'erro:' + c, texto: '' }) },
     '@/lib/voz-captura': captura,
+    '@/modules/grana-voice-widget': {
+      iniciarMonitoramentoCaptura: () => { reg.monitorando = true; },
+      capturaSilenciada: silenciada,
+      pararMonitoramentoCaptura: () => { reg.monitorando = false; },
+    },
     '@/lib/voz-recibos': recibos,
     './AppPressable': { __esModule: true, default: AppPressable },
     './AppDialog': { __esModule: true, default: function AppDialog() {} },
@@ -247,11 +258,27 @@ process.exitCode = 1;
     const b = montarBotao();
     await b.tocar();
     assert.equal(b.reg.opcoes.isMeteringEnabled, true, 'o botão precisa ler o volume');
+    assert.equal(b.reg.opcoes.android.audioSource, captura.FONTE_ANDROID_VOZ);
     assert.equal(b.reg.gravando, true);
     await b.passar(10_000);
     assert.equal(b.reg.gravando, true, 'silêncio sem fala nenhuma não encerra');
     assert.equal(b.reg.tarefas.length, 0);
     ok('silêncio antes de falar não encerra a gravação');
+  }
+
+  {
+    let bloqueada = false;
+    const b = montarBotao({ silenciada: () => bloqueada });
+    await b.tocar();
+    assert.equal(b.reg.monitorando, true);
+    bloqueada = true;
+    await b.passar(200);
+    assert.equal(b.reg.gravando, false);
+    assert.equal(b.reg.tarefas.length, 0, 'silenciamento não faz upload nem gravação financeira');
+    assert.deepEqual(b.reg.apagados, ['file:///cache/voz.m4a']);
+    assert.deepEqual(b.reg.alertas, ['O microfone foi interrompido']);
+    assert.equal(b.reg.monitorando, false);
+    ok('captura silenciada para, descarta áudio e pede nova fala sem upload');
   }
 
   {
@@ -343,11 +370,15 @@ process.exitCode = 1;
       const a = ultimaDoApp();
       const w = ultimaDoWidget();
       assert.equal(a.titulo, w.titulo, nome + ': título igual');
-      assert.equal(a.texto + acao, w.texto, nome + ': corpo igual (fora a instrução de ação da notificação)');
+      if (nome === 'revisão') {
+        assert.equal(w.texto, recibos.RECIBOS_VOZ.repetir('Qual cartão?', 'uber 25 no crédito').texto);
+        assert.match(a.texto, /Confira os dados antes de salvar/);
+        assert.doesNotMatch(w.texto, /Abra|abrir|Toque para revisar/);
+      } else assert.equal(a.texto + acao, w.texto, nome + ': corpo igual');
       assert.doesNotMatch(a.titulo + a.texto + w.texto, /[—–]/, nome + ': sem travessão');
       antes.push(nome);
     }
-    ok('revisão, sucesso, salvo no aparelho e aguardando conexão: mesmo título e mesmo corpo no app e no widget');
+    ok('mesmo desfecho e título; revisão do widget pede nova fala, demais recibos mantêm o corpo');
   }
 
   console.log('\n' + aprovadas + '/' + aprovadas + ' checagens da captura de voz passaram — 0 falhas\n');

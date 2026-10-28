@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.widget.RemoteViews
+import java.util.UUID
 
 /**
  * O widget 1x1 em si. Um toque alterna entre começar e encerrar a gravação.
@@ -39,11 +40,22 @@ class GranaVoiceWidgetProvider : AppWidgetProvider() {
             views.setTextViewText(R.id.grana_voice_rotulo, context.getString(R.string.grana_voice_ouvindo))
             views.setContentDescription(R.id.grana_voice_circulo, context.getString(R.string.grana_voice_ouvindo))
           }
-          EstadoWidget.PROCESSANDO -> {
+          EstadoWidget.PREPARANDO, EstadoWidget.PENDENTE, EstadoWidget.PROCESSANDO -> {
             views.setInt(R.id.grana_voice_circulo, "setBackgroundResource", R.drawable.grana_voice_fundo)
             views.setImageViewResource(R.id.grana_voice_circulo, R.drawable.ic_grana_voice_processando)
-            views.setTextViewText(R.id.grana_voice_rotulo, context.getString(R.string.grana_voice_processando))
-            views.setContentDescription(R.id.grana_voice_circulo, context.getString(R.string.grana_voice_processando))
+            val rotulo = when (estado) {
+              EstadoWidget.PREPARANDO -> R.string.grana_voice_preparando
+              EstadoWidget.PENDENTE -> R.string.grana_voice_pendente
+              else -> R.string.grana_voice_processando
+            }
+            views.setTextViewText(R.id.grana_voice_rotulo, context.getString(rotulo))
+            views.setContentDescription(R.id.grana_voice_circulo, context.getString(rotulo))
+          }
+          EstadoWidget.REPETIR -> {
+            views.setInt(R.id.grana_voice_circulo, "setBackgroundResource", R.drawable.grana_voice_fundo_gradiente)
+            views.setImageViewResource(R.id.grana_voice_circulo, R.drawable.ic_grana_voice_mic)
+            views.setTextViewText(R.id.grana_voice_rotulo, context.getString(R.string.grana_voice_repetir))
+            views.setContentDescription(R.id.grana_voice_circulo, context.getString(R.string.grana_voice_repetir))
           }
           EstadoWidget.ATENCAO -> {
             views.setInt(R.id.grana_voice_circulo, "setBackgroundResource", R.drawable.grana_voice_fundo)
@@ -60,13 +72,6 @@ class GranaVoiceWidgetProvider : AppWidgetProvider() {
         }
 
         when (estado) {
-          /* Durante o processamento, o toque não inicia outra gravação. Ele
-             abre o app para que a pessoa possa recuperar um estado preso,
-             em vez de apresentar um widget aparentemente morto. */
-          EstadoWidget.PROCESSANDO -> {
-            val abrir = pendingDeAbrirApp(context, id)
-            if (abrir != null) views.setOnClickPendingIntent(R.id.grana_voice_raiz, abrir)
-          }
           /* Em atenção o toque ABRE O APP, não o microfone: falta uma
              permissão, e permissão só se resolve numa tela. Abrir o microfone
              aqui daria a terceira gravação perdida seguida. */
@@ -115,26 +120,33 @@ class GranaVoiceWidgetProvider : AppWidgetProvider() {
     super.onReceive(context, intent)
     if (intent.action != ACAO_TOQUE) return
 
+    EstadoWidget.recuperarCapturaInterrompida(context)
+
+    // O trabalho já está duravelmente agendado. Um toque não abre Activity
+    // nem grava de novo o gasto cujo desfecho ainda não se conhece.
+    if (EstadoWidget.atual(context) in setOf(EstadoWidget.PREPARANDO, EstadoWidget.PROCESSANDO, EstadoWidget.PENDENTE)) return
+
     val servico = Intent(context, GranaVoiceCaptureService::class.java)
     if (EstadoWidget.atual(context) == EstadoWidget.OUVINDO) {
       servico.action = GranaVoiceCaptureService.ACAO_ENCERRAR
     } else {
       servico.action = GranaVoiceCaptureService.ACAO_INICIAR
-      /* O estado vira "ouvindo" já aqui, antes do serviço subir: o retorno
-         visual precisa ser imediato pro toque não parecer perdido, e o
-         serviço leva alguns instantes pra preparar o microfone. Se ele
-         falhar, ele mesmo devolve o widget pro ocioso. */
-      EstadoWidget.definir(context, EstadoWidget.OUVINDO)
+      // Só o serviço, depois de MediaRecorder.start(), pode dizer "Ouvindo".
+      val requestId = UUID.randomUUID().toString()
+      EstadoWidget.preparar(context, requestId)
+      servico.putExtra("requestId", requestId)
     }
 
     /* Iniciar serviço em primeiro plano a partir de um toque em widget é
        permitido pelo Android mesmo com o app fechado — interação do usuário
        com um widget está na lista de exceções à restrição de FGS em segundo
        plano. */
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      context.startForegroundService(servico)
-    } else {
-      context.startService(servico)
+    try {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(servico)
+      else context.startService(servico)
+    } catch (erro: Exception) {
+      android.util.Log.e("GranaVoz", "não consegui iniciar a captura do widget", erro)
+      EstadoWidget.definir(context, EstadoWidget.REPETIR)
     }
   }
 

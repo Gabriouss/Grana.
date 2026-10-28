@@ -74,9 +74,9 @@ function rpc(nome, args) {
     return { data: linhas, error: null };
   };
   const p = executar();
-  return { abortSignal: () => p, then: (a, b) => p.then(a, b) };
+  return { setHeader() { return this; }, abortSignal: () => p, then: (a, b) => p.then(a, b) };
 }
-const supabase = { from: () => consulta(), rpc, auth: { getUser: async () => ({ data: { user: { id: 'u-1' } } }) } };
+const supabase = { from: () => consulta(), rpc, auth: { getUser: async () => ({ data: { user: { id: 'u-1' } } }), getSession: async () => ({ data: { session: { user: { id: 'u-1' }, access_token: 't' } } }) } };
 
 /* Prazos encurtados: o corte de 4 s do cache e o agrupamento de 250 ms do
    aviso rodam em milissegundos; a nova tentativa da fila (30 s ou mais) fica
@@ -209,7 +209,7 @@ const payloadVoz = (d) => ({ kind: 'transaction', ...entrada(d), payment_method:
   {
     const recusa = { data: null, error: { code: '23514', message: 'recusado (simulado)' } };
     const original = supabase.rpc;
-    supabase.rpc = () => { const p = Promise.resolve(recusa); return { abortSignal: () => p, then: (a, b) => p.then(a, b) }; };
+    supabase.rpc = () => { const p = Promise.resolve(recusa); return { setHeader() { return this; }, abortSignal: () => p, then: (a, b) => p.then(a, b) }; };
     await esperar(30);
     avisos = 0;
     await assert.rejects(registrarOperacaoVoz(crypto.randomUUID(), 'app', payloadVoz('AUDIT recusa')));

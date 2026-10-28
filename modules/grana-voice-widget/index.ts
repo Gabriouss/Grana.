@@ -9,6 +9,12 @@ import { Platform, requireOptionalNativeModule } from 'expo-modules-core';
  * funções abaixo respondem "não dá" em vez de lançar.
  */
 type NativeGranaVoiceWidget = {
+  iniciarMonitoramentoCaptura?(): void;
+  capturaSilenciada?(): boolean;
+  pararMonitoramentoCaptura?(): void;
+  agendarRetomadaVoz?(requestId: string, userId: string, atrasoMs: number): Promise<boolean>;
+  cancelarRetomadaVoz?(requestId: string, userId: string): Promise<void>;
+  concluirRetomadaVoz?(execucaoId: string, resultado: ResultadoRetomadaVoz): Promise<void>;
   prepararAudioLocal?(uri: string): Promise<{ uri: string; sampleRate: number; audioChannels: number; audioEncoding: number }>;
   estadoAtual(): string;
   definirEstado(estado: string): void;
@@ -34,7 +40,21 @@ export async function prepararAudioLocal(uri: string) {
  * uma tela concede (hoje, permissão de notificação). Ele fica na tela inicial
  * até alguém tocar, e o toque abre o app em vez do microfone.
  */
-export type EstadoWidgetVoz = 'ocioso' | 'ouvindo' | 'processando' | 'atencao';
+export type EstadoWidgetVoz = 'ocioso' | 'preparando' | 'ouvindo' | 'processando' | 'pendente' | 'repetir' | 'atencao';
+export type ResultadoRetomadaVoz = 'concluida' | 'tentar_novamente' | 'aguardar_usuario';
+
+export async function agendarRetomadaVoz(requestId: string, userId: string, atrasoMs = 0): Promise<boolean> {
+  return nativo?.agendarRetomadaVoz ? nativo.agendarRetomadaVoz(requestId, userId, atrasoMs) : false;
+}
+export async function cancelarRetomadaVoz(requestId: string, userId: string): Promise<void> {
+  await nativo?.cancelarRetomadaVoz?.(requestId, userId);
+}
+export async function concluirRetomadaVoz(execucaoId: string, resultado: ResultadoRetomadaVoz): Promise<void> {
+  await nativo?.concluirRetomadaVoz?.(execucaoId, resultado);
+}
+export function iniciarMonitoramentoCaptura(): void { nativo?.iniciarMonitoramentoCaptura?.(); }
+export function capturaSilenciada(): boolean { return nativo?.capturaSilenciada?.() ?? false; }
+export function pararMonitoramentoCaptura(): void { nativo?.pararMonitoramentoCaptura?.(); }
 export type TipoWidget = 'voz' | 'livre' | 'central' | 'compromisso' | 'cofrinho';
 
 /** O widget existe nesta plataforma/build? */

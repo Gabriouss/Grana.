@@ -11,6 +11,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.media.MediaRecorder
+import android.media.AudioManager
+import android.media.AudioRecordingConfiguration
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -23,6 +25,7 @@ import java.util.Date
 import java.util.Locale
 import java.io.File
 import java.util.UUID
+import org.json.JSONObject
 
 /**
  * Grava o áudio do widget e entrega o arquivo ao JavaScript.
@@ -69,6 +72,9 @@ class GranaVoiceCaptureService : Service() {
   private var recorder: MediaRecorder? = null
   private var arquivo: File? = null
   private var requestId: String? = null
+  private var donoDaCaptura: String? = null
+  private var microfoneSilenciado = false
+  private var callbackGravacao: AudioManager.AudioRecordingCallback? = null
   /* A captura (data na voz, 30/09/2026): o instante e a data civil local do
      INÍCIO da gravação. Vão ao JavaScript com a fala, e ao lado da órfã em
      `<requestId>.json`, para "ontem" contar do dia em que ela foi dita, e
@@ -82,6 +88,8 @@ class GranaVoiceCaptureService : Service() {
   private var ouviuFala = false
   private var silencioDesde = 0L
   private var gravando = false
+  private var preparando = false
+  private var destruido = false
 
   /* Referência nomeada, e não uma lambda solta em postDelayed: sem poder
      remover o callback, uma gravação encerrada aos 5s deixaria um corte
@@ -91,6 +99,14 @@ class GranaVoiceCaptureService : Service() {
   private val amostrador = object : Runnable {
     override fun run() {
       val r = recorder ?: return
+      if (VoiceRetryScheduler.dono(this@GranaVoiceCaptureService) != donoDaCaptura) {
+        abortar("sessao_mudou_durante_captura", EstadoWidget.REPETIR)
+        return
+      }
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && r.activeRecordingConfiguration?.isClientSilenced == true) {
+        interromperPorSilenciamento()
+        return
+      }
       val amplitude = try { r.maxAmplitude } catch (_: Exception) { 0 }
       val agora = System.currentTimeMillis()
 
@@ -160,7 +176,7 @@ class GranaVoiceCaptureService : Service() {
     when (intent?.action) {
       ACAO_ENCERRAR -> if (gravando) encerrarEEntregar() else finalizar(EstadoWidget.OCIOSO)
       ACAO_CANCELAR -> abortar(null)
-      else -> iniciar()
+      else -> iniciar(intent?.getStringExtra("requestId"))
     }
     return START_NOT_STICKY
   }
@@ -168,8 +184,26 @@ class GranaVoiceCaptureService : Service() {
   private fun temPermissaoDeMicrofone(): Boolean =
     ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
-  private fun iniciar() {
-    if (gravando) return
+  private fun iniciar(idPedido: String?) {
+    val novoRequestId = idPedido ?: UUID.randomUUID().toString()
+    if (gravando || preparando) {
+      if (requestId == novoRequestId) return
+      gravando = false
+      preparando = false
+      cancelarAgendados()
+      liberar()
+      arquivo?.delete()
+      arquivo = null
+    }
+    requestId = novoRequestId
+    if (!EstadoWidget.pertenceACaptura(this, novoRequestId)) EstadoWidget.preparar(this, novoRequestId)
+    val dono = VoiceRetryScheduler.dono(this)
+    if (dono == null) {
+      abortar("sessao_ausente", EstadoWidget.ATENCAO)
+      return
+    }
+    donoDaCaptura = dono
+    microfoneSilenciado = false
 
     /* Continua aqui, além da checagem de `onStartCommand`: a permissão pode
        ser revogada entre uma coisa e outra, e esta função também é o caminho
@@ -196,13 +230,46 @@ class GranaVoiceCaptureService : Service() {
       return
     }
 
-    val destino = File(cacheDir, "voz-${System.currentTimeMillis()}.m4a")
-    val novoRequestId = UUID.randomUUID().toString()
+    val destino = File(File(filesDir, PASTA_ORFA), "$novoRequestId.capturando")
+
+    preparando = true
+    // Sem agenda durável não abre o microfone. Um processo morto entre o
+    // fechamento do M4A e o handoff já deixou uma retomada no WorkManager.
+    Thread {
+      try {
+        check(VoiceRetryScheduler.agendar(this, novoRequestId, dono, 150_000)) { "sessão mudou" }
+        destino.parentFile?.mkdirs()
+        // O sufixo .capturando nunca é adotado pela fila JS.
+        gravarMetadados(novoRequestId, dono, System.currentTimeMillis(), null, false)
+        handler.post {
+          if (requestId != novoRequestId || !EstadoWidget.pertenceACaptura(this, novoRequestId)) return@post
+          preparando = false
+          if (!destruido) {
+            if (VoiceRetryScheduler.dono(this) == dono) iniciarGravador(destino, novoRequestId)
+            else abortar("sessao_mudou_antes_da_captura", EstadoWidget.REPETIR)
+          }
+        }
+      } catch (erro: Exception) {
+        android.util.Log.e("GranaVoz", "não consegui preparar a retomada da captura", erro)
+        handler.post {
+          if (requestId != novoRequestId || !EstadoWidget.pertenceACaptura(this, novoRequestId)) return@post
+          preparando = false
+          if (!destruido) {
+            publicarRecibo(R.string.grana_voice_interrompida_titulo, R.string.grana_voice_interrompida_texto)
+            abortar("agenda_indisponivel", EstadoWidget.REPETIR)
+          }
+        }
+      }
+    }.start()
+  }
+
+  private fun iniciarGravador(destino: File, novoRequestId: String) {
 
     val novoRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(this) else @Suppress("DEPRECATION") MediaRecorder()
     try {
       novoRecorder.apply {
-        setAudioSource(MediaRecorder.AudioSource.MIC)
+        setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) setPrivacySensitive(true)
         setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
         setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
         /* Mesma configuração do gravador do app (components/VoiceEntryButton):
@@ -216,13 +283,22 @@ class GranaVoiceCaptureService : Service() {
            descartando uma gravação de 20 segundos perfeitamente boa. O corte
            é só nosso (`corteDuro`), que para pelo caminho normal. */
         setOutputFile(destino.absolutePath)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+          callbackGravacao = object : AudioManager.AudioRecordingCallback() {
+            override fun onRecordingConfigChanged(configs: MutableList<AudioRecordingConfiguration>?) {
+              if (configs.orEmpty().any { it.isClientSilenced }) interromperPorSilenciamento()
+            }
+          }.also { registerAudioRecordingCallback(mainExecutor, it) }
+        }
         prepare()
         start()
       }
     } catch (e: Exception) {
       try { novoRecorder.release() } catch (_: Exception) {}
       destino.delete()
-      abortar("microfone_ocupado")
+      android.util.Log.w("GranaVoz", "não consegui preparar a captura", e)
+      publicarRecibo(R.string.grana_voice_interrompida_titulo, R.string.grana_voice_interrompida_texto)
+      abortar("microfone_ocupado", EstadoWidget.REPETIR)
       return
     }
 
@@ -231,6 +307,14 @@ class GranaVoiceCaptureService : Service() {
     requestId = novoRequestId
     capturadoEm = System.currentTimeMillis()
     dataCaptura = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(capturadoEm))
+    try {
+      gravarMetadados(novoRequestId, checkNotNull(donoDaCaptura), capturadoEm, dataCaptura, false)
+    } catch (erro: Exception) {
+      android.util.Log.e("GranaVoz", "não consegui persistir a referência da captura", erro)
+      publicarRecibo(R.string.grana_voice_interrompida_titulo, R.string.grana_voice_interrompida_texto)
+      abortar("metadados_indisponiveis", EstadoWidget.REPETIR)
+      return
+    }
     gravando = true
     ouviuFala = false
     silencioDesde = 0L
@@ -243,7 +327,7 @@ class GranaVoiceCaptureService : Service() {
       acquire(LIMITE_MS + 5_000L)
     }
 
-    EstadoWidget.definir(this, EstadoWidget.OUVINDO)
+    EstadoWidget.definirDaCaptura(this, novoRequestId, EstadoWidget.OUVINDO)
     handler.postDelayed(amostrador, INTERVALO_AMOSTRA_MS)
     handler.postDelayed(corteDuro, LIMITE_MS)
   }
@@ -257,6 +341,7 @@ class GranaVoiceCaptureService : Service() {
     val id = requestId
     val inicio = capturadoEm
     val dataDaFala = dataCaptura
+    val dono = donoDaCaptura
     var arquivoValido = false
     try {
       recorder?.stop()
@@ -281,39 +366,62 @@ class GranaVoiceCaptureService : Service() {
       return
     }
 
-    EstadoWidget.definir(this, EstadoWidget.PROCESSANDO)
-
-    /* Entregue ao JavaScript ANTES de sair do primeiro plano: enquanto este
-       serviço está vivo o app conta como em primeiro plano, e é isso que
-       permite iniciar o serviço headless com o app fechado. Invertendo a
-       ordem, o start seria recusado. */
-    val ponte = Intent(this, GranaVoiceHeadlessService::class.java).apply {
-      putExtra("caminho", destino.absolutePath)
-      putExtra("requestId", id)
-      // Double: é o número que `Arguments.fromBundle` entrega ao JavaScript.
-      if (dataDaFala != null) {
-        putExtra("capturadoEm", inicio.toDouble())
-        putExtra("dataCaptura", dataDaFala)
-      }
-    }
-    try {
-      startService(ponte)
-    } catch (e: Exception) {
-      /* A fala é válida e o JavaScript não pôde recebê-la agora. Até 26/09/2026
-         o áudio era APAGADO aqui e o widget voltava ao repouso sem recibo
-         (achado V4 do Watchtower): uma fala perdida em silêncio. Agora ele vai
-         para `filesDir/voz-orfa/<requestId>.m4a`, e a fila do app o adota ao
-         abrir (`adotarVozesOrfas` em lib/widget-voz-pendentes.ts), com o mesmo
-         requestId, e o processa pelo núcleo comum. O widget fica em atenção:
-         o toque abre o app. */
-      android.util.Log.w("GranaVoz", "ponte recusada; fala guardada para o app", e)
-      guardarParaOApp(destino, id, inicio, dataDaFala)
-      publicarRecibo(R.string.grana_voice_guardada_titulo, R.string.grana_voice_guardada_texto)
-      finalizar(EstadoWidget.ATENCAO)
+    if (dono == null || VoiceRetryScheduler.dono(this) != dono) {
+      destino.delete()
+      finalizar(EstadoWidget.REPETIR)
       return
     }
+    EstadoWidget.definirDaCaptura(this, id, EstadoWidget.PROCESSANDO)
+    // O watchdog já está durável. Disco fora da UI; a tentativa imediata
+    // começa AINDA com o FGS vivo, e o Worker fica como proteção de retomada.
+    Thread {
+      var persistida = false
+      try {
+        guardarParaOApp(destino, id, dono, inicio, dataDaFala)
+        persistida = true
+      } catch (erro: Exception) {
+        android.util.Log.e("GranaVoz", "não consegui agendar a fala guardada", erro)
+      }
+      handler.post {
+        if (requestId != id || !EstadoWidget.pertenceACaptura(this, id)) return@post
+        if (VoiceRetryScheduler.dono(this) != dono) {
+          finalizar(EstadoWidget.REPETIR)
+          return@post
+        }
+        if (persistida) {
+          val ponte = Intent(this, GranaVoiceHeadlessService::class.java).apply {
+            putExtra("caminho", File(File(filesDir, PASTA_ORFA), "$id.m4a").absolutePath)
+            putExtra("requestId", id)
+            putExtra("userId", dono)
+            putExtra("source", "widget")
+            putExtra("capturadoEm", inicio.toDouble())
+            putExtra("dataCaptura", dataDaFala)
+          }
+          try {
+            startService(ponte)
+            finalizar(null)
+          } catch (erro: Exception) {
+            android.util.Log.w("GranaVoz", "ponte imediata recusada; watchdog preservado", erro)
+            publicarRecibo(R.string.grana_voice_guardada_titulo, R.string.grana_voice_guardada_texto)
+            finalizar(EstadoWidget.PENDENTE)
+            Thread {
+              try { VoiceRetryScheduler.agendar(this, id, dono, 0) }
+              catch (erroAgenda: Exception) { android.util.Log.e("GranaVoz", "watchdog não pôde ser antecipado", erroAgenda) }
+            }.start()
+          }
+        } else {
+          publicarRecibo(R.string.grana_voice_guardada_titulo, R.string.grana_voice_guardada_texto)
+          finalizar(EstadoWidget.PENDENTE)
+        }
+      }
+    }.start()
+  }
 
-    finalizar(null)
+  private fun interromperPorSilenciamento() {
+    if (!gravando) return
+    microfoneSilenciado = true
+    publicarRecibo(R.string.grana_voice_interrompida_titulo, R.string.grana_voice_interrompida_texto)
+    abortar("captura_silenciada_pelo_android", EstadoWidget.REPETIR)
   }
 
   /**
@@ -335,50 +443,34 @@ class GranaVoiceCaptureService : Service() {
 
   /** Move o áudio do cache para a pasta que o app adota ao abrir. Se nem isso
    *  der, o arquivo fica onde está: melhor sobrar no cache que sumir. */
-  private fun guardarParaOApp(arquivoGravado: File, id: String, inicio: Long, dataDaFala: String?) {
-    try {
+  private fun guardarParaOApp(arquivoGravado: File, id: String, userId: String, inicio: Long, dataDaFala: String?) {
       val pasta = File(filesDir, PASTA_ORFA).apply { mkdirs() }
-      /* Metadados ANTES do áudio: a fila do app só adota o `.m4a`, então um
-         `.json` sozinho nunca vira fala. Falhar aqui não pode custar o áudio;
-         sem o arquivo, o app usa a data do áudio como aproximada. */
-      if (dataDaFala != null) {
-        try {
-          File(pasta, "$id.json").writeText("{\"capturadoEm\":$inicio,\"dataCaptura\":\"$dataDaFala\"}")
-        } catch (e: Exception) {
-          android.util.Log.w("GranaVoz", "não consegui guardar a data da fala", e)
-        }
-      }
+      // Sem dono persistido não há áudio adotável. Nunca atribuir ao próximo login.
+      gravarMetadados(id, userId, inicio, dataDaFala, true)
       val alvo = File(pasta, "$id.m4a")
       if (!arquivoGravado.renameTo(alvo)) {
         arquivoGravado.copyTo(alvo, overwrite = true)
         arquivoGravado.delete()
       }
-    } catch (e: Exception) {
-      android.util.Log.e("GranaVoz", "não consegui guardar a fala para o app", e)
+  }
+
+  private fun gravarMetadados(id: String, userId: String, inicio: Long, dataDaFala: String?, finalizada: Boolean) {
+    val pasta = File(filesDir, PASTA_ORFA).apply { mkdirs() }
+    val texto = JSONObject().put("userId", userId).put("requestId", id)
+      .put("capturadoEm", inicio).put("dataCaptura", dataDaFala).put("source", "widget")
+      .put("capturaFinalizada", finalizada).toString()
+    val temporario = File(pasta, "$id.json.tmp")
+    java.io.FileOutputStream(temporario).use { saida ->
+      saida.write(texto.toByteArray(Charsets.UTF_8))
+      saida.fd.sync()
     }
+    check(temporario.renameTo(File(pasta, "$id.json"))) { "não consegui finalizar metadados" }
   }
 
   /** Recibo curto no canal do lançamento por voz. Tocar abre o app. Falhar ao
    *  publicar deixa log: o recibo não pode derrubar o resto da saída. */
   private fun publicarRecibo(titulo: Int, texto: Int) {
-    try {
-      val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-      val abrir = packageManager.getLaunchIntentForPackage(packageName)?.let {
-        it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        PendingIntent.getActivity(this, 3, it, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-      }
-      val recibo = NotificationCompat.Builder(this, CANAL)
-        .setContentTitle(getString(titulo))
-        .setContentText(getString(texto))
-        .setStyle(NotificationCompat.BigTextStyle().bigText(getString(texto)))
-        .setSmallIcon(android.R.drawable.ic_btn_speak_now)
-        .setAutoCancel(true)
-        .apply { if (abrir != null) setContentIntent(abrir) }
-        .build()
-      manager.notify(NOTIF_RECIBO_ID, recibo)
-    } catch (e: Exception) {
-      android.util.Log.e("GranaVoz", "recibo da voz não publicado", e)
-    }
+    VoiceCaptureReceipt.publicar(this, titulo, texto)
   }
 
   private fun cancelarAgendados() {
@@ -387,6 +479,14 @@ class GranaVoiceCaptureService : Service() {
   }
 
   private fun liberar() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      callbackGravacao?.let { callback ->
+        try { recorder?.unregisterAudioRecordingCallback(callback) } catch (erro: Exception) {
+          android.util.Log.w("GranaVoz", "não consegui remover monitor da captura", erro)
+        }
+      }
+    }
+    callbackGravacao = null
     try { recorder?.reset() } catch (_: Exception) {}
     try { recorder?.release() } catch (_: Exception) {}
     recorder = null
@@ -395,7 +495,10 @@ class GranaVoiceCaptureService : Service() {
   }
 
   private fun finalizar(estado: String?) {
-    if (estado != null) EstadoWidget.definir(this, estado)
+    if (estado != null) {
+      val id = requestId
+      if (id != null) EstadoWidget.definirDaCaptura(this, id, estado) else EstadoWidget.definir(this, estado)
+    }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
       stopForeground(STOP_FOREGROUND_REMOVE)
     } else {
@@ -444,6 +547,7 @@ class GranaVoiceCaptureService : Service() {
   }
 
   override fun onDestroy() {
+    destruido = true
     cancelarAgendados()
     liberar()
     super.onDestroy()
