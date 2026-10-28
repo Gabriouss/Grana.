@@ -76,3 +76,21 @@ Aprovada pelo autor ao fim de seis versões. Vale para os próximos vídeos de d
 5. **Celular grande e baixo**, cortado na borda de baixo (só no Reels; a capa mantém o aparelho inteiro), com zoom leve no aparelho inteiro quando a resposta aparece. Título em y ≈ 290, solto do celular.
 6. **Som:** voz em −14 LUFS no total, trilha pop local por baixo com compressão lateral (abaixa quando a voz fala), "plim" quando o lançamento é confirmado. O silêncio curto no fim, do fade da música, é intencional.
 7. **Capa:** gerador do guia de design estático (arquétipo A), com print do próprio vídeo e o Granabô do app. Fica ao lado do vídeo com o nome `<vídeo>-capa.png`.
+
+## Revisão do R5 v1 "Esse é um mês organizado" (autor, 28/10/2026)
+
+Reprovado com prints. Cada item é um "não faça" para todo Reels:
+
+- **Não incline o celular.** "o celular está muito inclinado para o lado, não dá para entender sobre o que se trata o vídeo"; "Celular reto na tela."
+- **Não mostre a tela do app pequena.** "Dá um zoom-in no celular inteiro para mostrar melhor a funcionalidade"; "Dê zoom-in nos acontecimentos, nas janelas importantes no vídeo."
+- **Não deixe o fundo vazar pela tela do celular**, nem tela translúcida: "sem vazamento do background na tela do celular".
+- **Não ponha moldura (anel de luz) em volta do celular.** "Essa moldura aí ao redor do celular também tá bem estranha."
+- **Não use fundo quase preto.** "O vídeo no geral está muito escuro, o background está quase preto, está fugindo da identidade visual do Grana." Fundo é o petróleo da marca.
+- **Não encha a tela de objetos 3D.** "tem que diminuir a densidade de objetos flutuando na tela"; "Os itens flutuando ao redor do vídeo tá competindo atenção com o visual que precisa estar em destaque."
+- **Não use objeto 3D vazio.** "esses 3Ds aqui de notas e moedas, tudo vazio está bem feio"; objeto 3D leva conteúdo legível (valor, nome, data).
+- **Não deixe objeto cruzar a legenda.** "objetos conflitando com a legenda".
+- **Não mostre tela sem dado quando a fala promete resultado.** "que mês organizado? Não tem dados, como que o público vai ver um mês organizado se não tem nenhum dado na tela do celular?"
+- **Não troque a cor da tela** (o "rebobinar" com `hue-rotate` deixou tudo roxo): "e esse roxo aqui do nada?"
+- **Não acelere.** "Desacelere um pouco o vídeo, tudo está acontecendo muito rápido e está deixando o vídeo confuso." Pausas entre frases e tempo para ler cada janela.
+- **Não aceite apresentador com pele de plástico.** "O rosto do apresentador está muito plástico, com cara de IA. Diferente da personagem do Reels da padaria que tinha mais textura." Tratar textura (grão, nitidez) e, se não bastar, gerar com modelo mais realista, com aprovação de custo.
+- **Antes de editar de novo, estudar as referências** (`instagram.com/p/DemYUtWgGhj`, `Def9pj5TWtA`, `De20rF0BLot`, `De6YZpBDapL`): aprendizado em `.claude/skills/motion-supremo/referencias/grana/reels-referencia-2026-10-28.md`.
