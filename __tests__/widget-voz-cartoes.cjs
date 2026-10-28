@@ -45,6 +45,24 @@ const deps = {
   './widgets-home-sync': {}, '@react-native-async-storage/async-storage': {},
   'expo-file-system/legacy': { deleteAsync: async () => { cleaned++; } },
 };
+/* Use the real confidence guard; the rest of this test keeps controlled
+   card heuristics and only needs accent folding for its transcript. */
+const confiabilidadeReal = {};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/voz-confiabilidade.ts', 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText, {
+  exports: confiabilidadeReal,
+  require: (id) => id === './heuristics'
+    ? { ...deps['./heuristics'], normalizarTexto: (texto) => String(texto).normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase() }
+    : (() => { throw new Error(`import not stubbed in voice reliability: ${id}`); })(),
+});
+deps['./voz-confiabilidade'].transcricaoTemNomeInformativo = confiabilidadeReal.transcricaoTemNomeInformativo;
+deps['./voz-confiabilidade'].textoVozSemDicaDeCategoria = confiabilidadeReal.textoVozSemDicaDeCategoria;
+const operacoesReais = require('./desfecho-voz-real.cjs');
+Object.assign(deps['./voice-operations'], {
+  desfechoDoErroVoz: operacoesReais.desfechoDoErroVoz,
+  ehRecusaCartaoObrigatorio: operacoesReais.ehRecusaCartaoObrigatorio,
+});
 vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/widget-voz-task.ts', 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText, { exports: {}, require: (id) => { if (id in require('./modulos-puros-reais.cjs')) return require('./modulos-puros-reais.cjs')[id]; if (!(id in deps)) throw new Error(id); return deps[id]; }, console, setTimeout, clearTimeout });

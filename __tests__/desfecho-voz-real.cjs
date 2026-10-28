@@ -30,3 +30,4 @@ if (typeof modulo.desfechoDaOperacaoVoz !== 'function') {
 module.exports = modulo.desfechoDaOperacaoVoz;
 /* O 22023 visto pelo núcleo (C3, 30/09/2026): o `catch` da tarefa lê daqui. */
 module.exports.desfechoDoErroVoz = modulo.desfechoDoErroVoz;
+module.exports.ehRecusaCartaoObrigatorio = modulo.ehRecusaCartaoObrigatorio;
