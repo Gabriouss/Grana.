@@ -78,7 +78,7 @@ const heuristics = (() => {
   }
   return load('lib/heuristics.ts');
 })();
-const { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz, valorDaFalaVoz } = carregar('lib/voz-confiabilidade.ts', { './heuristics': heuristics });
+const { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz, transcricaoTemNomeInformativo, textoVozSemDicaDeCategoria, valorDaFalaVoz } = carregar('lib/voz-confiabilidade.ts', { './heuristics': heuristics });
 
 /* =====================================================================
  * PARTE A - lib/voice-operations.ts: o que acontece quando o SERVIDOR
@@ -188,7 +188,7 @@ function montarWidget(opts) {
     '@/modules/grana-voice-widget': { definirEstado: (e) => reg.estados.push(e) },
     './voz': { transcreverAudio: o.transcrever || (async () => ({ ok: true, transcript: 'mercado 32,50 no pix' })) },
     './heuristics': heuristics,
-    './voz-confiabilidade': { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz, valorDaFalaVoz },
+    './voz-confiabilidade': { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz, transcricaoTemNomeInformativo, textoVozSemDicaDeCategoria, valorDaFalaVoz },
     './data': { fetchApelidosCategoria: async () => [], fetchCategories: async () => [], fetchCreditCards: async () => (o.cartoes || []) },
     './wallets': { fetchWallets: async () => (o.carteiras || [{ id: 'w1', name: 'Pessoal', is_default: true }]) },
     './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'), registrarOperacaoVoz: o.registrar || (async () => ({ status: 'committed', ids: ['t1'], operationId: 'op1' })) },
@@ -386,7 +386,7 @@ function montarVoz(opts) {
        decisão "texto do aparelho tem cara de lançamento?" sempre verdadeira,
        o texto local segue sendo aceito como antes. A decisão real (lixo do
        aparelho cai no servidor) é de voz-transcricao-sem-relacao.cjs. */
-    './voz-confiabilidade': { transcricaoPareceLancamentoVoz: () => true },
+    './voz-confiabilidade': { transcricaoPareceLancamentoVoz: () => true, transcricaoTemNomeInformativo: () => true },
     './voz-local': {
       /* O modulo real exporta o teto padrao, e `transcreverAudio` usa esse
          valor para caber no orcamento de quem chamou. Um duble sem ele fazia

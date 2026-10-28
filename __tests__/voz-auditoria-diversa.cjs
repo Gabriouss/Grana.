@@ -22,7 +22,7 @@ function load(file, deps = {}) {
   return exports;
 }
 const h = load('lib/heuristics.ts');
-const { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz, valorSeguroParaRevisaoVoz, valorDaFalaVoz } = load('lib/voz-confiabilidade.ts');
+const { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz, transcricaoTemNomeInformativo, textoVozSemDicaDeCategoria, valorSeguroParaRevisaoVoz, valorDaFalaVoz } = load('lib/voz-confiabilidade.ts');
 const { porExtenso } = load('__tests__/extenso.ts');
 let total = 0, failed = 0;
 const groups = new Map();
@@ -81,7 +81,7 @@ load('lib/widget-voz-task.ts', {
   './offline-cache': { isLikelyNetworkError: () => false },
   '@/modules/grana-voice-widget': { definirEstado() {} },
   './voz': { transcreverAudio: async () => { throw Error('não deve acessar transcrição remota'); } },
-  './heuristics': h, './voz-confiabilidade': { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz, valorDaFalaVoz },
+  './heuristics': h, './voz-confiabilidade': { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz, transcricaoTemNomeInformativo, textoVozSemDicaDeCategoria, valorDaFalaVoz },
   './data': { fetchApelidosCategoria: async () => [], fetchCategories: async () => categories, fetchCreditCards: async () => cards },
   './wallets': { fetchWallets: async () => wallets },
   './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'), registrarOperacaoVoz: async (_id, _source, payload) => {

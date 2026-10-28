@@ -1,4 +1,11 @@
-import { guessAmountFromText, guessCategoryFromText, normalizarTexto } from './heuristics';
+import {
+  descricaoDoLancamento,
+  guessAmountFromText,
+  guessCategoryFromText,
+  guessTypeFromText,
+  normalizarTexto,
+  semNomeDaCategoria,
+} from './heuristics';
 
 /**
  * Recusa transcrições típicas de silêncio antes que qualquer heurística
@@ -14,6 +21,70 @@ export function transcricaoPareceLancamentoVoz(texto: string): boolean {
   if (/\b(?:obrigad[oa]\s+por\s+assistir|inscreva-se|legendas?\s+(?:pela|por)|acesse\s+o\s+site|todos\s+os\s+direitos\s+reservados)\b/i.test(t)) return false;
   const valor = guessAmountFromText(t);
   return Number.isFinite(valor) && valor > 0;
+}
+
+/**
+ * A value and payment method alone do not identify a transaction name. The
+ * local recognizer may keep `R$ 53,54` but lose the purchase's first word;
+ * `descricaoDoLancamento` then fills the gap with "Pagamento" or leaves only
+ * a card identifier such as "C6". Ask the server while still in the local
+ * stage, and require review if no better transcript arrives. This protects
+ * incomplete transcripts without claiming a specific ASR lost a word.
+ *
+ * This does not reject "credito" in valid names such as "Recarga de credito"
+ * and "Credito do celular", or "Pagamento de internet". It only rejects an
+ * empty/generic name or a name made solely of payment/card metadata.
+ */
+export function textoVozSemDicaDeCategoria(texto: string): string {
+  return texto.replace(/(?:,\s*|\s+)\bcategoria\b.*$/iu, '').trim();
+}
+
+export function transcricaoTemNomeInformativo(
+  texto: string,
+  descricao?: string,
+  categoria?: string,
+): boolean {
+  const categoriaDaFala = categoria ?? guessCategoryFromText(texto).name;
+  const textoSemDica = textoVozSemDicaDeCategoria(texto);
+  const descricaoDaFala = (descricao ? textoVozSemDicaDeCategoria(descricao) : null) ?? semNomeDaCategoria(
+    descricaoDoLancamento(textoSemDica, guessTypeFromText(textoSemDica)),
+    categoriaDaFala,
+  );
+  const nome = normalizarTexto(semNomeDaCategoria(descricaoDaFala, categoriaDaFala))
+    .replace(/\b,?\s*categoria\b.*$/iu, '')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+  if (!nome) return false;
+
+  const genericos = new Set([
+    'pagamento', 'pix recebido', 'pix', 'credito', 'debito', 'cartao', 'categoria',
+    'dinheiro', 'compra', 'lancamento por voz',
+  ]);
+  if (genericos.has(nome)) return false;
+
+  /* The local stage has no card catalog. A reference immediately following a
+     payment marker cannot become the name when it is all that remains. */
+  const referencias = new Set<string>();
+  const t = normalizarTexto(texto);
+  const padraoCartao = /\b(?:(no|na|em|via)\s+)?(cartao(?:\s+de\s+credito)?|credito|debito)\s+(?:(do|da|de)\s+)?([\p{L}\d][\p{L}\d.-]{0,20})/giu;
+  for (const correspondencia of t.matchAll(padraoCartao)) {
+    const referencia = correspondencia[4].replace(/[.,]+$/g, '');
+    const chave = normalizarTexto(referencia);
+    if (!chave || /^(?:r|rs|real|reais|do|da|de|celular|categoria)$/u.test(chave)) continue;
+    if (/\d/u.test(chave) && !/[\p{L}]/u.test(chave)) continue;
+    if (guessCategoryFromText(chave).name !== 'Outros') continue;
+    const marcador = correspondencia[2];
+    const ligacaoExplicita = !!correspondencia[1] || !!correspondencia[3] || /^cartao/u.test(marcador);
+    if (!ligacaoExplicita && !/\d/u.test(chave)) continue;
+    referencias.add(chave);
+  }
+  const tokens = nome.split(/\s+/);
+  const metadados = new Set([
+    'pagamento', 'pix', 'recebido', 'credito', 'debito', 'cartao', 'dinheiro',
+    'no', 'na', 'em', 'via', 'do', 'da', 'de', 'dos', 'das', 'com',
+    ...referencias,
+  ]);
+  return tokens.some((token) => !metadados.has(token));
 }
 
 /**

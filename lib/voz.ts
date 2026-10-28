@@ -250,9 +250,11 @@ export async function transcreverAudio(
      ouve o mesmo áudio, dentro do MESMO prazo, e a frase nunca vira "ouvido".
      Vale para o botão do app e para o widget, que passam por aqui (regra 13). */
   if (local) {
-    const { transcricaoPareceLancamentoVoz } = await import('./voz-confiabilidade');
-    if (transcricaoPareceLancamentoVoz(local)) return { ok: true, transcript: local };
-    console.warn('[voz] o reconhecimento do aparelho devolveu texto sem lançamento; tentando o servidor');
+    const { transcricaoPareceLancamentoVoz, transcricaoTemNomeInformativo } = await import('./voz-confiabilidade');
+    if (transcricaoPareceLancamentoVoz(local) && transcricaoTemNomeInformativo(local)) {
+      return { ok: true, transcript: local };
+    }
+    console.warn('[voz] reconhecimento local sem nome aproveitavel; tentando o servidor');
   }
   /* Se o servidor também falha, a FALHA dele é o resultado, nunca o texto do
      aparelho que não presta: rede ausente ou prazo viram fila (a fala espera

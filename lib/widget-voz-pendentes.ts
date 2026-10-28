@@ -299,7 +299,9 @@ export async function guardarVozOrfa(item: Omit<VozPendente, 'criadoEm'> & { cri
     throw erro;
   }
   controle?.conferir();
-  await programar(item.requestId, item.userId);
+  // A órfã já está guardada e identificada. Antecipa também o watchdog que a
+  // captura nativa criou, sem alterar o default dos retries em andamento.
+  await programar(item.requestId, item.userId, 0);
 }
 
 /**
@@ -588,7 +590,9 @@ export const liberarFalaEmAndamento = (...args: SemVez<typeof liberarSemConcorre
 export const adicionarVozPendente = async (item: SemVez<typeof adicionarSemConcorrencia>[0], controle?: ControleRetomadaVoz) => {
   await naVez((vez) => adicionarSemConcorrencia(vez, item), controle);
   controle?.conferir();
-  await programar(item.requestId, item.userId);
+  // A fala já está pronta para retomar. Antecipa o watchdog de 150 s criado
+  // durante a reserva; o scheduler conserva a mesma WorkRequest e seu backoff.
+  await programar(item.requestId, item.userId, 0);
 };
 export const marcarVozEmRevisao = (requestId: string, transcricao?: string, controle?: ControleRetomadaVoz) => naVez((vez) => marcarSemConcorrencia(vez, requestId, transcricao), controle);
 export const tirarVozDaRevisao = (...args: SemVez<typeof tirarSemConcorrencia>) => naVez((vez) => tirarSemConcorrencia(vez, ...args));

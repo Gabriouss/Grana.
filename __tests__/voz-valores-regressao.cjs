@@ -20,7 +20,7 @@ function carregar(file, deps = {}) {
 }
 const h = carregar('lib/heuristics.ts');
 const server = carregar('supabase/functions/_shared/finance-command.ts');
-const { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz, valorSeguroParaRevisaoVoz, valorDaFalaVoz } = carregar('lib/voz-confiabilidade.ts');
+const { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz, transcricaoTemNomeInformativo, textoVozSemDicaDeCategoria, valorSeguroParaRevisaoVoz, valorDaFalaVoz } = carregar('lib/voz-confiabilidade.ts');
 let checks = 0;
 for (const frase of ['', 'Obrigado por assistir', 'Acesse o site www.exemplo.com', 'Todos os direitos reservados 2026']) {
   assert.equal(transcricaoPareceLancamentoVoz(frase), false, 'ruído não vira lançamento: ' + frase);
@@ -158,7 +158,7 @@ carregar('lib/widget-voz-task.ts', {
   '@/modules/grana-voice-widget': { definirEstado() {} },
   './voz': { transcreverAudio: async () => ({ ok: true, transcript: texto }) },
   './heuristics': h,
-  './voz-confiabilidade': { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz, valorDaFalaVoz },
+  './voz-confiabilidade': { precisaRevisarValorVoz, transcricaoPareceLancamentoVoz, transcricaoTemNomeInformativo, textoVozSemDicaDeCategoria, valorDaFalaVoz },
   './data': { fetchApelidosCategoria: async () => [], fetchCategories: async () => [], fetchCreditCards: async () => [{ id: 'c6', name: 'C6', bank: 'C6', wallet_id: 'pessoal' }] },
   './wallets': { fetchWallets: async () => [{ id: 'pessoal', name: 'Pessoal', is_default: true }] },
   './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'), registrarOperacaoVoz: async (_id, _source, payload) => { writes.push(payload); return { status: 'committed', ids: ['tx'], operationId: 'op' }; } },

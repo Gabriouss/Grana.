@@ -36,7 +36,7 @@ const FALA = 'Uber 82 credito C6';
 
 function montar(origem) {
   /* Bordas controladas pelo cenário. */
-  const e = { local: null, localConsome: false, desvio: 0, prazosLocais: [], localChamadas: 0, servidor: null, envios: 0, token: 't', fila: [], salvos: [], recibos: [], falhas: [], revisoes: [], apagados: 0 };
+  const e = { local: null, localConsome: false, desvio: 0, prazosLocais: [], localChamadas: 0, servidor: null, envios: 0, token: 't', fila: [], salvos: [], recibos: [], falhas: [], revisoes: [], apagados: 0, estados: [], removidas: [], falhaRevisao: false, erros: [] };
   const cartoes = [{ id: 'c6', name: 'C6 Bank', bank: 'C6', wallet_id: 'w' }, { id: 'nu', name: 'Nubank', bank: 'Nubank', wallet_id: 'w' }];
   const cache = new Map();
   const substitutos = {
@@ -50,10 +50,14 @@ function montar(origem) {
       lerSessaoDoDisco: async () => ({ access_token: 't' }),
     },
     './offline-cache': { isLikelyNetworkError: (x) => /network/i.test(String(x?.message ?? x)) },
-    '@/modules/grana-voice-widget': { definirEstado() {} },
+    '@/modules/grana-voice-widget': { definirEstado: (estado) => e.estados.push(estado) },
     './widget-voz-notificacoes': {
       podeNotificar: async () => true,
-      notificarRevisao: async (titulo, transcricao) => { e.revisoes.push({ titulo, transcricao }); },
+      notificarRevisao: async (titulo, transcricao) => {
+        if (e.falhaRevisao) throw new Error('notificacao indisponivel');
+        const recibo = real('lib/voz-recibos.ts').RECIBOS_VOZ.repetir(titulo, transcricao);
+        e.revisoes.push({ ...recibo, transcricao });
+      },
       notificarFalha: async (codigo) => { e.falhas.push(codigo); },
       notificarPendenteOffline: async () => { e.recibos.push('offline'); },
       notificarSucesso: async () => { e.recibos.push('sucesso'); },
@@ -62,7 +66,7 @@ function montar(origem) {
     './widget-voz-pendentes': {
       adicionarVozPendente: async (i) => { e.fila.push(i); },
       marcarVozEmRevisao: async (id, t) => { e.fila.push({ revisao: id, transcricao: t ?? null }); },
-      removerVozPendente: async () => {},
+      removerVozPendente: async (id) => { e.removidas.push(id); },
     },
     './voz-recibos-da-fila': { guardarReciboDaFila: async (r) => { e.recibos.push(r); } },
     './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'), registrarOperacaoVoz: async (_, __, input) => { e.salvos.push(input); return { ids: ['tx'], operationId: 'op' }; }, desfechoDoErroVoz: () => null, ehRecusaCartaoObrigatorio: () => false },
@@ -82,7 +86,7 @@ function montar(origem) {
     vm.runInNewContext(ts.transpileModule(fs.readFileSync(fonte, 'utf8'), {
       compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
     }).outputText, {
-      exports, console: { ...console, warn() {}, error() {} }, JSON, Date: class extends Date { static now() { return Date.now() + e.desvio; } }, String, Object, Array, Error, TypeError, Promise, RegExp, Number, Math, Set, Map, Intl, Uint8Array,
+      exports, console: { ...console, warn() {}, error: (...args) => e.erros.push(args) }, JSON, Date: class extends Date { static now() { return Date.now() + e.desvio; } }, String, Object, Array, Error, TypeError, Promise, RegExp, Number, Math, Set, Map, Intl, Uint8Array,
       FormData: class { append() {} }, AbortController, setTimeout, clearTimeout, __DEV__: false,
       process: { env: { EXPO_PUBLIC_SUPABASE_URL: 'https://example.invalid' } },
       require: (id) => {
@@ -98,24 +102,27 @@ function montar(origem) {
   const tarefa = real('lib/widget-voz-task.ts');
   const servidorDiz = (transcript) => Response.json({ status: 'ready', transcript });
   const servidorFalha = (code, status) => Response.json({ status: 'error', code }, { status });
-  return { e, tarefa, servidorDiz, servidorFalha, origem };
+  return { e, tarefa, confiabilidade: real('lib/voz-confiabilidade.ts'), servidorDiz, servidorFalha, origem };
 }
 
 /* Uma execução, na entrada pedida. Botão do app e widget chamam o MESMO
    `executarTarefa`; a diferença é só `source`. `daFila` simula a retomada
    ("Tentar de novo" e retomada automática usam o arquivo da pasta da fila). */
-async function rodar(origem, cenario, { daFila = false } = {}) {
+async function rodar(origem, cenario, { daFila = false, requestId = 'r-' + origem } = {}) {
   const m = montar(origem);
   Object.assign(m.e, cenario(m));
-  await m.tarefa.executarTarefa({ caminho: daFila ? '/voz-pendente/a.m4a' : '/a.m4a', requestId: 'r-' + origem, source: origem });
+  m.desfecho = await m.tarefa.executarTarefa({ caminho: daFila ? '/voz-pendente/a.m4a' : '/a.m4a', requestId, source: origem });
   return m;
 }
 /* Só o que a pessoa vê ou o que fica guardado; as entradas simuladas (local, servidor) ficam de fora. */
 const vazou = (m) => JSON.stringify({ f: m.e.fila, r: m.e.recibos, v: m.e.revisoes, x: m.e.falhas, s: m.e.salvos }).includes('Acompanhe');
 const resumo = (m) => JSON.stringify({
-  local: m.e.localChamadas, envios: m.e.envios, salvos: m.e.salvos.length,
+  local: m.e.localChamadas, envios: m.e.envios,
+  salvos: m.e.salvos.map((s) => ({ kind: s.kind, type: s.type, description: s.description, amount: s.amount, category: s.category, payment_method: s.payment_method, card_id: s.card_id })),
   falhas: m.e.falhas, revisoes: m.e.revisoes, fila: m.e.fila.map((i) => i.revisao ? { revisao: true, t: i.transcricao } : { pendente: true }),
   recibos: m.e.recibos.map((r) => (typeof r === 'string' ? r : { titulo: r.titulo, texto: r.texto, transcricao: r.transcricao ?? null })),
+  removidas: m.e.removidas.length,
+  desfecho: m.desfecho,
 });
 
 (async () => {
@@ -177,12 +184,56 @@ const resumo = (m) => JSON.stringify({
   }
 
   /* Paridade: mesma fala, mesma decisão e mesmos efeitos nas duas entradas. */
+  // Value alone does not prove that the name survived transcription.
+  const PARCIAL = 'credito R$53,54 no credito C6, categoria Alimentacao';
+  const COMPLETA = 'Merenda R$53,54 no credito C6, categoria Alimentacao';
+  for (const origem of ['app', 'widget']) {
+    let m = await rodar(origem, (x) => ({ local: PARCIAL, servidor: x.servidorDiz(COMPLETA) }));
+    ok(m.e.localChamadas === 1 && m.e.envios === 1 && m.e.salvos.length === 1 && m.e.salvos[0].description.toLowerCase().startsWith('merenda'), `${origem}: parcial local tenta servidor e salva Merenda da fala completa`);
+    const merenda = m.e.salvos[0];
+    ok(merenda.amount === 53.54 && merenda.category === 'Alimentação' && merenda.card_id === 'c6' && merenda.payment_method === 'credit', `${origem}: mantém R$ 53,54, Alimentacao e cartao C6 no credito`);
+
+    // If the server also heard only metadata, ask for a new recording without saving.
+    for (const daFila of [false, true]) {
+      m = await rodar(origem, (x) => ({ local: PARCIAL, servidor: x.servidorDiz(PARCIAL) }), { daFila });
+      ok(m.e.envios === 1 && m.e.salvos.length === 0, `${origem}${daFila ? ' fila' : ''}: parcial local e do servidor nao chamam RPC`);
+      ok(m.e.revisoes.length === 1 && m.e.revisoes[0].titulo === 'Repita a fala completa' && /Toque no microfone e fale o lan[cç]amento completo/.test(m.e.revisoes[0].texto), `${origem}${daFila ? ' fila' : ''}: recibo pede nova fala no microfone sem abrir app`);
+      ok(m.desfecho.repetir === true && m.e.apagados === 1, `${origem}${daFila ? ' fila' : ''}: desfecho pede repeticao e remove o audio incompleto`);
+      if (daFila) {
+        ok(m.e.removidas.includes('r-' + origem), `${origem}: a fala parcial sai da fila e nao sera reprocessada`);
+        const novaFala = await rodar(origem, () => ({ local: COMPLETA, servidor: new Error('nao deveria enviar') }), { requestId: 'nova-' + origem });
+        ok(novaFala.e.envios === 0 && novaFala.e.salvos.length === 1 && novaFala.e.salvos[0].description.toLowerCase().startsWith('merenda'), `${origem}: novo toque usa outra captura e request_id`);
+      }
+    }
+  }
+
+  const guard = montar('app').confiabilidade;
+  for (const texto of [
+    'Recarga de credito R$ 20,00',
+    'Credito do celular R$ 20,00',
+    'Pagamento de internet R$ 75,00',
+  ]) ok(guard.transcricaoTemNomeInformativo(texto), `nome legitimo preservado: ${texto}`);
+  ok(!guard.transcricaoTemNomeInformativo(PARCIAL), 'metadado de cartao/categoria sem nome fica incompleto');
+  ok(guard.transcricaoTemNomeInformativo(COMPLETA), 'Merenda continua como nome com metadado de categoria');
+  ok(guard.transcricaoTemNomeInformativo('Credito Maestri R$53,54 no credito C6, categoria Outros'), 'Credito Maestri nao confunde o estabelecimento com o cartao');
+  ok(guard.transcricaoTemNomeInformativo('Credito Netflix R$53,54 no credito C6, categoria Assinaturas'), 'Credito Netflix nao confunde o estabelecimento com o cartao');
+  for (const origem of ['app', 'widget']) {
+    const texto = 'Credito Maestri R$53,54 no credito C6, categoria Alimentacao';
+    const m = await rodar(origem, () => ({ local: texto, servidor: new Error('nao deveria enviar') }));
+    ok(m.e.envios === 0 && m.e.salvos.length === 1 && /maestri/i.test(m.e.salvos[0].description), `${origem}: Credito Maestri continua sendo nome valido`);
+  }
+  const reciboFalhou = await rodar('widget', (x) => ({ local: PARCIAL, servidor: x.servidorDiz(PARCIAL), falhaRevisao: true }));
+  ok(reciboFalhou.e.salvos.length === 0 && reciboFalhou.e.fila.some((i) => i.revisao), 'falha ao avisar preserva a captura como revisao, sem RPC');
+  ok(reciboFalhou.e.erros.some(([mensagem]) => String(mensagem).includes('recibo de repeticao da fala incompleta falhou')) && reciboFalhou.e.estados.includes('repetir'), 'falha do recibo tem log proprio e estado nativo repetir');
+
   console.log('Paridade app x widget');
   const cenarios = {
     lixoMaisServidorBom: (x) => ({ local: LIXO, servidor: x.servidorDiz('Uber 825 reais no credito C6') }),
     lixoSemRede: () => ({ local: LIXO, servidor: new TypeError('Network request failed') }),
     lixoDoServidor: (x) => ({ local: null, servidor: x.servidorDiz(LIXO) }),
     valorSolto: (x) => ({ local: LIXO, servidor: x.servidorDiz(FALA) }),
+    nomeParcial: (x) => ({ local: PARCIAL, servidor: x.servidorDiz(COMPLETA) }),
+    ambosParciais: (x) => ({ local: PARCIAL, servidor: x.servidorDiz(PARCIAL) }),
     aparelhoEsgotaPrazo: (x) => ({ local: null, localConsome: true, servidor: x.servidorDiz('...') }),
   };
   for (const [nome, c] of Object.entries(cenarios)) {

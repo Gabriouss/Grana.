@@ -108,6 +108,8 @@ function ambiente(persistido = {}) {
     igual(await m.real('widget-voz-task').executarTarefa({ caminho: 'file:///captura.m4a', requestId: 'rede', userId: 'a', source, dataCaptura: '2026-10-25', capturadoEm: m.e.agora - 172800000 }),
       { guardada: true, motivo: 'sem_rede' }, source + ' preserva fala offline');
     ok(m.e.agenda.some((a) => a[0] === 'rede' && a[1] === 'a' && a[2] === 150000), 'reserva tem watchdog durável');
+    igual(m.e.agenda.filter((a) => a[0] === 'rede').map((a) => a.slice(1)), [['a', 150000], ['a', 0]],
+      source + ' reserva com 150s e antecipa a mesma intenção/dono só quando fica pronta');
     igual(m.e.chamadas.length, 0, 'falha na transcrição não grava');
     m = m.reiniciar();
     m.e.transcript = 'mercado 43,48 no pix ontem';
@@ -157,6 +159,12 @@ function ambiente(persistido = {}) {
   m.arquivos.set('file:///docs/voz-orfa/identificada.m4a', 'dono a');
   m.arquivos.set('file:///docs/voz-orfa/identificada.json', JSON.stringify({ userId: 'a', capturadoEm: m.e.agora, dataCaptura: '2026-10-27' }));
   igual(await m.real('widget-voz-pendentes').adotarVozesOrfas('a'), 1, 'órfã identificada segue a fila real');
+
+  m = ambiente(); m.arquivos.set('file:///captura-orfa.m4a', 'audio');
+  m.e.agenda.push(['orfa-pronta', 'a', 150000]); // watchdog criado no começo da captura nativa
+  await m.real('widget-voz-pendentes').guardarVozOrfa({ caminho: 'file:///captura-orfa.m4a', requestId: 'orfa-pronta', userId: 'a' });
+  igual(m.e.agenda.filter((a) => a[0] === 'orfa-pronta').map((a) => a.slice(1)), [['a', 150000], ['a', 0]],
+    'órfã pronta antecipa watchdog preservando id e dono');
 
   for (const source of ['app', 'widget']) {
     m = ambiente(); m.arquivos.set('file:///captura.m4a', 'audio'); m.e.transcript = 'mercado';

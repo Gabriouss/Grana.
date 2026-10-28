@@ -180,6 +180,15 @@ function comReferencia(base: ReciboVoz, ref: ReferenciaDaFala): ReciboVoz {
   return { ...base, notificarRevisao: (titulo, transcricao) => base.notificarRevisao(titulo, transcricao, ref) };
 }
 
+async function pedirNovaFalaCompleta(notificacoes: ReciboVoz, requestId: string, transcricao: string): Promise<void> {
+  try {
+    await notificacoes.notificarRevisao('Repita a fala completa', transcricao);
+  } catch (erro) {
+    console.error('[voz] recibo de repeticao da fala incompleta falhou; audio preservado', requestId, erro);
+    throw new FalaParaRevisar(transcricao);
+  }
+}
+
 /** O erro da gravação visto pelo núcleo (`desfechoDoErroVoz`, a mesma
     decisão da revisão). Roda dentro do `catch` da tarefa: se a checagem
     falhar, a fala segue pelo caminho de falha de sempre, em vez de escapar
@@ -762,7 +771,13 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   /* A palavra que só repete a categoria sai do nome ("Meli+ assinatura" em
      Assinaturas vira "Meli+"), a mesma regra do Granabô. */
   const semCategoria = (nome: string) => (nome ? heuristics.semNomeDaCategoria(nome, categoria.name) : nome);
-  const descricao = semCategoria(heuristics.descricaoDoLancamento(textoFinanceiro, tipo)) || 'Lançamento por voz';
+  const textoParaDescricao = confiabilidade.textoVozSemDicaDeCategoria(textoFinanceiro);
+  const descricao = semCategoria(heuristics.descricaoDoLancamento(textoParaDescricao, tipo)) || 'Lançamento por voz';
+
+  if (!confiabilidade.transcricaoTemNomeInformativo(textoFinanceiro, descricao, categoria.name)) {
+    await pedirNovaFalaCompleta(notificacoes, requestId, transcricao.transcript);
+    return false;
+  }
 
   // Boleto antes de crédito: "boleto no cartão" é boleto. Mesma ordem do bot.
   if (heuristics.ehIntencaoBoleto(texto)) {
@@ -889,8 +904,14 @@ async function lancarNoCredito(args: {
   /* O nome sai de novo, agora que o cartão é conhecido: sem isso "crédito C6"
      ficava grudado no lançamento ("Almoço crédito C6"). Ver
      `descricaoDoLancamento`. */
-  const nomeNoCartao = heuristics.descricaoDoLancamento(texto, 'out', cartao);
+  const confiabilidade = await import('./voz-confiabilidade');
+  const textoParaDescricao = confiabilidade.textoVozSemDicaDeCategoria(texto);
+  const nomeNoCartao = heuristics.descricaoDoLancamento(textoParaDescricao, 'out', cartao);
   const descricaoNoCartao = (nomeNoCartao && heuristics.semNomeDaCategoria(nomeNoCartao, categoria.name)) || descricao;
+  if (!confiabilidade.transcricaoTemNomeInformativo(texto, descricaoNoCartao, categoria.name)) {
+    await pedirNovaFalaCompleta(notificacoes, requestId, args.transcricao);
+    return false;
+  }
 
   /* No crédito a data decide a fatura (data na voz, regras 3.5 e 3.6): uma
      data em outra fatura pode cair numa fatura fechada ou já paga, e o
