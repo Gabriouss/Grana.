@@ -43,6 +43,12 @@ class GranaVoiceWidgetModule : Module() {
     AsyncFunction("concluirRetomadaVoz") { execucaoId: String, resultado: String ->
       GranaVoiceRetryWorker.concluir(execucaoId, resultado)
     }
+    Function("reconciliarVozConcluida") { requestId: String, userId: String ->
+      EstadoWidget.reconciliarConcluida(context, requestId, userId)
+    }
+    Function("definirEstadoDaRetomada") { requestId: String, userId: String, estado: String ->
+      EstadoWidget.definirDaRetomada(context, requestId, userId, estado)
+    }
 
     AsyncFunction("prepararAudioLocal") { uri: String ->
       VoicePcmDecoder.decode(context, uri)

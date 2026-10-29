@@ -231,7 +231,14 @@ async function reciboSemLancamentoNovo(desfecho: DesfechoOperacaoVoz, notificaco
 /** Núcleo único de execução. A origem só identifica auditoria e apresentação. */
 export async function executarTarefa(payload: Payload, recibo?: ReciboVoz, controle?: ControleRetomadaVoz): Promise<DesfechoTarefa> {
   controle?.conferir();
-  const definirEstado = payload.source === 'app' ? (_estado: string) => {} : (await import('@/modules/grana-voice-widget')).definirEstado;
+  const nativo = payload.source === 'app' ? null : await import('@/modules/grana-voice-widget');
+  const definirEstado = (estado: import('@/modules/grana-voice-widget').EstadoWidgetVoz) => {
+    if (!nativo) return;
+    if (controle) {
+      controle.conferir();
+      if (payload.requestId && payload.userId) nativo.definirEstadoDaRetomada(payload.requestId, payload.userId, estado);
+    } else nativo.definirEstado(estado);
+  };
   const { idDoUsuarioLocal } = await import('./sessao-offline');
   const userId = await idDoUsuarioLocal(PRAZO_DONO_MS);
   controle?.conferir();
@@ -1158,6 +1165,49 @@ if (Platform.OS === 'android') {
 type PayloadRetomada = { requestId: string; userId: string; execucaoId: string };
 type ResultadoRetomada = 'concluida' | 'tentar_novamente' | 'aguardar_usuario';
 
+/** Mesmo recibo financeiro para a sincronização pelo app e pelo Worker.
+ * A limpeza vem antes do recibo em tela, pois concluirVozRevisada apaga o
+ * aviso antigo. Se qualquer passo falhar, a operação continua retomável. */
+export async function confirmarOperacaoVozSincronizada(
+  requestId: string, userId: string,
+  dados: import('./voice-operations').PayloadOperacaoVoz,
+  gravada: import('./voice-operations').ResultadoOperacaoVoz,
+  controle?: ControleRetomadaVoz, peloApp = false,
+): Promise<void> {
+  const { idDoUsuarioLocal } = await import('./sessao-offline');
+  const conferirDono = async () => {
+    controle?.conferir();
+    if ((await idDoUsuarioLocal(PRAZO_DONO_MS)) !== userId) throw new Error('A conta mudou antes do recibo da fala.');
+    controle?.conferir();
+  };
+  await conferirDono();
+  if (peloApp) {
+    const { concluirVozRevisada } = await import('./widget-voz-pendentes');
+    // Escopo de dono também quando o app não tem um prazo headless.
+    await concluirVozRevisada(requestId, controle ?? {
+      userId, signal: new AbortController().signal, fim: Infinity, conferir() {},
+    });
+  }
+  await conferirDono();
+  let recibo: ReciboVoz = daFala(await import('./widget-voz-notificacoes'), requestId);
+  if (!(await podeAvisar(recibo))) {
+    if (!peloApp) throw new Error('A permissão de notificação mudou antes do recibo.');
+    const { reciboDaFilaNaTela } = await import('./voz-recibos-da-fila');
+    recibo = reciboDaFilaNaTela(userId, requestId);
+  }
+  await conferirDono();
+  const { desfechoDaOperacaoVoz } = await import('./voice-operations');
+  const desfecho = desfechoDaOperacaoVoz(gravada);
+  if (desfecho === 'nova') await recibo.notificarSucesso({
+    titulo: `${dados.description} · ${formatarBRL(dados.amount)}`, texto: dados.category,
+    tipo: dados.kind === 'bill' ? 'bill' : 'transaction', ids: gravada.ids, operationId: gravada.operationId,
+  });
+  else if (desfecho === 'pendente') await recibo.notificarSalvoLocal();
+  else await recibo.notificarFalha(desfecho);
+  await conferirDono();
+  if (peloApp) await sincronizarResumoDepoisDaVoz(controle);
+}
+
 /** Uma intenção durável. O ACK é sempre enviado, inclusive em falha da fila. */
 export async function executarRetomadaVoz(payload: PayloadRetomada): Promise<void> {
   const cancelamento = new AbortController();
@@ -1193,6 +1243,10 @@ export async function executarRetomadaVoz(payload: PayloadRetomada): Promise<voi
 async function processarRetomadaVoz(payload: PayloadRetomada, controle: ControleRetomadaVoz): Promise<ResultadoRetomada> {
     controle.conferir();
     const nativo = await import('@/modules/grana-voice-widget');
+    const definirEstado = (estado: import('@/modules/grana-voice-widget').EstadoWidgetVoz) => {
+      controle.conferir();
+      nativo.definirEstadoDaRetomada(payload.requestId, payload.userId, estado);
+    };
     controle.conferir();
     const { idDoUsuarioLocal } = await import('./sessao-offline');
     controle.conferir();
@@ -1202,22 +1256,27 @@ async function processarRetomadaVoz(payload: PayloadRetomada, controle: Controle
     controle.conferir();
     const notificacoes = daFala(await import('./widget-voz-notificacoes'), payload.requestId);
     if (!(await podeAvisar(notificacoes))) {
-      nativo.definirEstado('atencao');
+      // O app pode já ter entregue o recibo na tela e consumido a intenção.
+      // Nesse caso não há novo lançamento/recibo a autorizar no Worker.
+      const operacoes = await import('./voice-operations');
+      if (!(await operacoes.listarOperacoesVozLocais()).some((item) => item.requestId === payload.requestId)) {
+        const pendentes = await import('./widget-voz-pendentes');
+        await pendentes.adotarVozesOrfas(payload.userId, payload.requestId, controle);
+        const fala = await pendentes.buscarVozPendente(payload.requestId, payload.userId, controle);
+        controle.conferir();
+        if (!fala) {
+          const { reconciliarVozConcluida } = await import('./voz-retomada');
+          await reconciliarVozConcluida(payload.requestId, payload.userId);
+          return 'concluida';
+        }
+      }
+      definirEstado('atencao');
       return 'aguardar_usuario';
     }
     controle.conferir();
     const operacoes = await import('./voice-operations');
     const operacao = await operacoes.retomarOperacaoVoz(payload.requestId, payload.userId, async (dados, gravada) => {
-      controle.conferir();
-      if ((await idDoUsuarioLocal(PRAZO_DONO_MS)) !== payload.userId) throw new Error('A conta mudou antes do recibo da fala.');
-      controle.conferir();
-      if (await reciboSemLancamentoNovo(operacoes.desfechoDaOperacaoVoz(gravada), notificacoes)) return;
-      await notificacoes.notificarSucesso({
-        titulo: `${dados.description} · ${formatarBRL(dados.amount)}`,
-        texto: dados.category,
-        tipo: dados.kind === 'bill' ? 'bill' : 'transaction',
-        ids: gravada.ids, operationId: gravada.operationId,
-      });
+      await confirmarOperacaoVozSincronizada(payload.requestId, payload.userId, dados, gravada, controle);
     }, controle, async (mensagem) => {
       controle.conferir();
       if ((await idDoUsuarioLocal(PRAZO_DONO_MS)) !== payload.userId) throw new Error('A conta mudou antes do aviso do serviço.');
@@ -1232,7 +1291,7 @@ async function processarRetomadaVoz(payload: PayloadRetomada, controle: Controle
     });
     controle.conferir();
     if (operacao !== 'ausente') {
-      if (operacao === 'problema_servico') { nativo.definirEstado('atencao'); return 'aguardar_usuario'; }
+      if (operacao === 'problema_servico') { definirEstado('atencao'); return 'aguardar_usuario'; }
       if (operacao === 'concluida') {
         await sincronizarResumoDepoisDaVoz(controle);
         controle.conferir();
@@ -1240,8 +1299,9 @@ async function processarRetomadaVoz(payload: PayloadRetomada, controle: Controle
         controle.conferir();
         await concluirVozRevisada(payload.requestId, controle);
         controle.conferir();
-        nativo.definirEstado('ocioso');
-      } else nativo.definirEstado(operacao === 'tentar_novamente' ? 'pendente' : 'repetir');
+        const { reconciliarVozConcluida } = await import('./voz-retomada');
+        await reconciliarVozConcluida(payload.requestId, payload.userId);
+      } else definirEstado(operacao === 'tentar_novamente' ? 'pendente' : 'repetir');
       return operacao;
     }
     const pendentes = await import('./widget-voz-pendentes');
@@ -1249,8 +1309,13 @@ async function processarRetomadaVoz(payload: PayloadRetomada, controle: Controle
     await pendentes.adotarVozesOrfas(payload.userId, payload.requestId, controle);
     const fala = await pendentes.buscarVozPendente(payload.requestId, payload.userId, controle);
     controle.conferir();
-    if (!fala) return 'concluida'; // Nativo reconcilia apenas o journal/estado desta intenção.
-    if (fala.item.revisao) { nativo.definirEstado('repetir'); return 'aguardar_usuario'; }
+    if (!fala) {
+      const { reconciliarVozConcluida } = await import('./voz-retomada');
+      controle.conferir();
+      await reconciliarVozConcluida(payload.requestId, payload.userId);
+      return 'concluida';
+    }
+    if (fala.item.revisao) { definirEstado('repetir'); return 'aguardar_usuario'; }
     if (fala.ocupada) return 'tentar_novamente';
     const desfecho = await executarTarefa(fala.item, undefined, controle);
     controle.conferir();

@@ -373,9 +373,14 @@ async function executarSincronizacao(alvo?: { requestId: string; userId: string;
         if ((await idDoUsuarioLocal()) !== userId) break;
         conferir();
         if (alvo) await alvo.confirmar(item.payload, resultado);
+        else {
+          const { confirmarOperacaoVozSincronizada } = await import('./widget-voz-task');
+          await confirmarOperacaoVozSincronizada(item.requestId, userId, item.payload, resultado, undefined, true);
+        }
         conferir();
       } catch (erro) {
         conferir();
+        console.error('[voz] sincronização não concluiu o envio ou recibo', item.requestId, erro);
         falhas++;
         mensagem = explicarFalhaDeEnvio(erro);
         if (alvo && /^(PGRST202|PGRST205|42883|42P01|42501|PGRST30)/.test(String((erro as { code?: unknown })?.code ?? ''))) {
@@ -410,6 +415,14 @@ async function executarSincronizacao(alvo?: { requestId: string; userId: string;
       await AsyncStorage.removeItem(chave);
       notificarDadosDosWidgetsAlterados();
       sincronizadas++;
+      if (!alvo) {
+        try {
+          const { reconciliarVozConcluida } = await import('./voz-retomada');
+          if ((await idDoUsuarioLocal()) === userId) await reconciliarVozConcluida(item.requestId, userId);
+        } catch (erro) {
+          console.error('[voz] operação sincronizada; widget não foi reconciliado, Worker tentará novamente', item.requestId, erro);
+        }
+      }
     }
   return { sincronizadas, falhas, mensagem, ...(problemaServico ? { problemaServico } : null) };
 }

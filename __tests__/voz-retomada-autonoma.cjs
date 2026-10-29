@@ -33,7 +33,15 @@ function ambiente(persistido = {}) {
     deleteAsync: async (p) => { arquivos.delete(p); },
   };
   const nativo = {
-    definirEstado: (s) => { e.estados.push(s); },
+    definirEstado: (s) => { e.estado = s; e.estados.push(s); },
+    reconciliarVozConcluida: (requestId, userId) => {
+      (e.reconciliacoes ||= []).push([requestId, userId]);
+      return nativo.definirEstadoDaRetomada(requestId, userId, 'ocioso');
+    },
+    definirEstadoDaRetomada: (requestId, userId, estado) => {
+      if ((e.donoNativo ?? e.dono) !== userId || e.requestNativo !== requestId || !['pendente', 'processando'].includes(e.estado)) return false;
+      nativo.definirEstado(estado); return true;
+    },
     agendarRetomadaVoz: async (...a) => { e.agenda.push(a); return true; },
     cancelarRetomadaVoz: async () => {},
     concluirRetomadaVoz: async (...a) => { e.acks.push(a); },
@@ -41,7 +49,7 @@ function ambiente(persistido = {}) {
   const notificacoes = {
     podeNotificar: async () => true,
     notificarRevisao: async (...a) => { e.avisos.push(['revisao', ...a]); },
-    notificarFalha: async (...a) => { e.avisos.push(['falha', ...a]); },
+    notificarFalha: async (...a) => { if (e.falharRecibo) throw Error('recibo indisponível'); e.avisos.push(['falha', ...a]); },
     notificarSucesso: async (...a) => { if (e.falharRecibo) throw Error('recibo indisponível'); e.avisos.push(['sucesso', ...a]); },
     notificarPendenteOffline: async (...a) => { e.avisos.push(['audio', ...a]); },
     notificarSalvoLocal: async (...a) => { e.avisos.push(['operacao', ...a]); },
@@ -101,7 +109,9 @@ function ambiente(persistido = {}) {
     worker: (requestId, userId = 'a') => real('widget-voz-task').executarRetomadaVoz({ requestId, userId, execucaoId: 'exec-' + requestId }) };
 }
 
-(async () => {
+module.exports = { ambiente };
+
+if (require.main === module) (async () => {
   for (const source of ['app', 'widget']) {
     let m = ambiente();
     m.arquivos.set('file:///captura.m4a', 'audio'); m.e.rede = false;
@@ -168,6 +178,7 @@ function ambiente(persistido = {}) {
 
   for (const source of ['app', 'widget']) {
     m = ambiente(); m.arquivos.set('file:///captura.m4a', 'audio'); m.e.transcript = 'mercado';
+    m.e.requestNativo = 'incompleta'; m.e.estado = 'pendente'; // journal nativo da intenção retomada
     await m.real('widget-voz-pendentes').adicionarVozPendente({ caminho: 'file:///captura.m4a', requestId: 'incompleta', userId: 'a', source });
     await m.worker('incompleta');
     igual(m.banco.size, 0, source + ' não inventa valor para fala incompleta');
@@ -282,6 +293,7 @@ function ambiente(persistido = {}) {
   m = ambiente(); m.e.rede = false;
   await m.real('voice-operations').registrarOperacaoVoz('servico', 'widget', payload);
   m = m.reiniciar(); m.e.rpcErro = { code: 'PGRST202', message: 'RPC ausente' };
+  m.e.requestNativo = 'servico'; m.e.estado = 'pendente'; // estado persistido, não uma escrita JS
   await m.worker('servico');
   igual(m.e.acks.at(-1), ['exec-servico', 'aguardar_usuario'], 'falha permanente não entra em retry benigno');
   ok(m.disco.has('grana:voz:operacao:a:servico'), 'falha permanente conserva intenção');

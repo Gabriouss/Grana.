@@ -1,5 +1,11 @@
 export type ControleRetomadaVoz = { signal: AbortSignal; conferir(): void; fim: number; userId?: string };
 
+/** Reconciliação por intenção/dono, sem cancelar um Worker ainda em execução. */
+export async function reconciliarVozConcluida(requestId: string, userId: string): Promise<void> {
+  const nativo = await import('@/modules/grana-voice-widget');
+  nativo.reconciliarVozConcluida(requestId, userId);
+}
+
 /** Adaptador do agendador Android. Nenhuma decisão financeira vive no Worker. */
 export async function agendarVoz(requestId: string, userId: string, atrasoMs = 30_000): Promise<boolean> {
   try {

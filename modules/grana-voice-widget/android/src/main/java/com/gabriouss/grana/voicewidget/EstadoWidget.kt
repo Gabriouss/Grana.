@@ -61,6 +61,21 @@ object EstadoWidget {
     return true
   }
 
+  /** Retorno do Worker só altera a intenção representada, nunca uma captura nova. */
+  @Synchronized
+  fun definirDaRetomada(context: Context, requestId: String, userId: String, estado: String): Boolean {
+    require(estado in setOf(OCIOSO, PROCESSANDO, PENDENTE, REPETIR, ATENCAO))
+    // Mesma trava da troca de dono: a conta não muda entre guarda e escrita.
+    synchronized(VoiceRetryScheduler) {
+      if (VoiceRetryScheduler.dono(context) != userId) return false
+      if (atual(context) !in setOf(PENDENTE, PROCESSANDO)) return false
+      return definirDaCaptura(context, requestId, estado)
+    }
+  }
+
+  fun reconciliarConcluida(context: Context, requestId: String, userId: String): Boolean =
+    definirDaRetomada(context, requestId, userId, OCIOSO)
+
   /** Recupera também a morte ANTES da agenda/journal. Nunca altera outra intenção. */
   @Synchronized
   fun recuperarCapturaInterrompida(context: Context, requestId: String? = null, agora: Long = System.currentTimeMillis()): Boolean {

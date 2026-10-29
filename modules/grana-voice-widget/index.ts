@@ -15,6 +15,8 @@ type NativeGranaVoiceWidget = {
   agendarRetomadaVoz?(requestId: string, userId: string, atrasoMs: number): Promise<boolean>;
   cancelarRetomadaVoz?(requestId: string, userId: string): Promise<void>;
   concluirRetomadaVoz?(execucaoId: string, resultado: ResultadoRetomadaVoz): Promise<void>;
+  reconciliarVozConcluida?(requestId: string, userId: string): boolean;
+  definirEstadoDaRetomada?(requestId: string, userId: string, estado: string): boolean;
   prepararAudioLocal?(uri: string): Promise<{ uri: string; sampleRate: number; audioChannels: number; audioEncoding: number }>;
   estadoAtual(): string;
   definirEstado(estado: string): void;
@@ -51,6 +53,13 @@ export async function cancelarRetomadaVoz(requestId: string, userId: string): Pr
 }
 export async function concluirRetomadaVoz(execucaoId: string, resultado: ResultadoRetomadaVoz): Promise<void> {
   await nativo?.concluirRetomadaVoz?.(execucaoId, resultado);
+}
+/** Builds antigas não têm a ponte; nunca substitua pela escrita global. */
+export function reconciliarVozConcluida(requestId: string, userId: string): boolean {
+  return nativo?.reconciliarVozConcluida?.(requestId, userId) ?? false;
+}
+export function definirEstadoDaRetomada(requestId: string, userId: string, estado: EstadoWidgetVoz): boolean {
+  return nativo?.definirEstadoDaRetomada?.(requestId, userId, estado) ?? false;
 }
 export function iniciarMonitoramentoCaptura(): void { nativo?.iniciarMonitoramentoCaptura?.(); }
 export function capturaSilenciada(): boolean { return nativo?.capturaSilenciada?.() ?? false; }
