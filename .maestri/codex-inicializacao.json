@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-28T23:54:30.134861-03:00",
+  "workspace": "Grana.",
+  "agents": [
+    {
+      "name": "Codex",
+      "account": "Gabriel Codex",
+      "model": "gpt-6.1-sol",
+      "effort": "ultra",
+      "maestro": true,
+      "preset": "Grana Codex - Codex",
+      "evidence": "maestri check Codex"
+    },
+    {
+      "name": "Compass",
+      "account": "Codex PH",
+      "model": "gpt-6.1-sol",
+      "effort": "xhigh",
+      "maestro": true,
+      "preset": "Grana Codex - Compass",
+      "evidence": "parent confirmou maestri check; corroborado pela metadata readonly da sessao atual"
+    },
+    {
+      "name": "Forge",
+      "account": "Codex PH",
+      "model": "gpt-6.1-sol",
+      "effort": "xhigh",
+      "maestro": false,
+      "preset": "Grana Codex - Forge",
+      "evidence": "maestri check Forge"
+    },
+    {
+      "name": "Prism",
+      "account": "Gabriel Codex",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "maestro": false,
+      "preset": "Grana Codex - Prism",
+      "evidence": "maestri check Prism"
+    },
+    {
+      "name": "Harbor",
+      "account": "Codex PH",
+      "model": "gpt-6.1-sol",
+      "effort": "xhigh",
+      "maestro": false,
+      "preset": "Grana Codex - Harbor",
+      "evidence": "maestri check Harbor"
+    },
+    {
+      "name": "Beacon",
+      "account": "Codex PH",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "maestro": false,
+      "preset": "Grana Codex - Beacon",
+      "evidence": "maestri check Beacon"
+    },
+    {
+      "name": "Ledger",
+      "account": "Gabriel Codex",
+      "model": "gpt-6.1-terra",
+      "effort": "low",
+      "maestro": false,
+      "preset": "Grana Codex - Ledger",
+      "evidence": "maestri check Ledger"
+    },
+    {
+      "name": "Sentinel",
+      "account": "Gabriel Codex",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "maestro": false,
+      "preset": "Grana Codex - Sentinel",
+      "evidence": "confirmado pelo parent: runtime maestri check e conta/vinculo salvo; ordem final 29/10/2026"
+    },
+    {
+      "name": "Codex PH",
+      "account": "Codex PH",
+      "model": "gpt-6.1-sol",
+      "effort": "high",
+      "maestro": true,
+      "preset": "Grana Codex - Codex PH",
+      "evidence": "confirmado pelo parent: runtime maestri check e conta/vinculo salvo; ordem final 29/10/2026"
+    },
+    {
+      "name": "Watchtower",
+      "account": "Gabriel Codex",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "maestro": false,
+      "preset": "Grana Codex - Watchtower",
+      "evidence": "confirmado pelo parent: runtime maestri check e conta/vinculo salvo; ordem final 29/10/2026"
+    }
+  ],
+  "unverifiedAgents": [],
+  "updatedAt": "2026-10-29T00:09:18.831914-03:00",
+  "partiallyVerifiedAgents": [],
+  "outOfScopeAgents": [
+    {
+      "name": "Codex #2",
+      "reason": "sem conexao; excluido pelo parent"
+    }
+  ]
+}
