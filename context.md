@@ -411,6 +411,27 @@ O histórico e a evidência da exposição permanecem na seção datada de 16/09
 
 Diretriz temporária do autor: a conta Codex PH atingiu o limite; continuar somente com Gabriel Codex até o limite PH ser restabelecido, sem alterar perfis ou modelos.
 
+<!-- ledger-release-widget-20261029:start -->
+### 29/10/2026 — nova build do widget autorizada, execução pendente
+
+- **Pedido do autor:** “dispara a build nova”. Somente conta Gabriel Codex até o limite PH ser restabelecido; Ledger mantém Terra low. Prism Gabriel/Sol medium é exclusivo de Git, release e EAS. Nenhuma troca de perfis ou acionamento PH.
+- **Escopo autorizado:** Prism conferirá cota esperada3/3 da semana, executará `npm run build:preparar` oficialmente UMA vez (versão esperada1.10.11→1.10.12), fará snapshot limpo do HEAD publicado e UMA chamada EAS preview Android APK. Aguardam-se recibos de cota, preparo, versão, snapshot, disparo, status e link final. Expectativas não são prova de execução; nenhum preparo ou build é declarado concluído neste corte.
+- Checks anteriores de voz/tipos/compilação/QA não serão repetidos; limites de QA funcional Android e físico permanecem como registrados, sem reabrir certeza do aparelho. Histórico e docs publicados até `3dd2a0f8` preservados. Sem Git write por Ledger durante janela Prism; somente este delta documental para futuro patch seletivo após resultado final. Registros novos sem mídia ou segredos.
+### Preparo oficial concluído — build ainda não disparada
+
+- Ledger leu `E:/Grana-temporarios/2026-10-29-release-widget-voz/preparo-oficial.log`: `build:preparar` oficial elevou `app.json` de **1.10.11 para 1.10.12**, validou a nota acentuada e informou build **3 de 3** da semana. Parent confirma execução única e exit0; commit de versão `c4951f29` já visível, com fontes FINAL2 e testes no histórico informado.
+- Prism prepara snapshot do HEAD publicado e `npm ci`. **Build ainda NÃO disparada neste corte**; aguardar ID EAS, status e link para fecho único. Nenhum Git write ou repetição de preparo, suíte, gate ou QA por Ledger; preservar WIP e janela exclusiva Prism.
+
+
+### Build 1.10.12 enviada — EM EXECUÇÃO
+
+- Prism publicou a versão em `c4951f299bd0cd07459d61d19023939140f994ca` após preparo oficial único, nota aprovada e cota3/3. Snapshot externo de462 arquivos, sem env/dados locais, teve hashes verificados; `npm ci` e verificador do pacote exit0. Manifesto e recibos estão na rodada local; envio NoVcs não fornece gitCommitHash, associação com fonte é operacional pelo snapshot.
+- UMA chamada EAS exit0 criou em29/10 às00h46 BRT a build **`99f1dbc1-07db-4dd2-b7cb-f29629580f68`**, Android1.10.12/code26, preview INTERNAL, perfil APK. `build-view-01.json` mostra **IN_PROGRESS**: [acompanhar build](https://expo.dev/accounts/gabriouss/projects/grana-app/builds/99f1dbc1-07db-4dd2-b7cb-f29629580f68). Nota de envio idêntica à aprovada. **APK ainda não pronto; QA funcional no aparelho e físico pendentes.**
+- Fonte: `E:/Grana-temporarios/2026-10-29-release-widget-voz/relatorio-prism-release.md` e recibo de status. Prism segue consulta readonly até resultado; Ledger não repetiu gates, testes, preparo ou build. Primeira leitura do inventário antecipou processo e encontrou JSON vazio; helper do preparo imprimiu erro Unicode após exit0, sem repetir preparo. Nenhum valor de segredo ou mídia neste registro.
+
+
+<!-- ledger-release-widget-20261029:end -->
+
 <!-- ledger-widget-pos-release-20261028:end -->
 
 <!-- beacon-ph-widget-voz-20261028:start -->
