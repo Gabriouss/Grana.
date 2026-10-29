@@ -409,6 +409,8 @@ O histórico e a evidência da exposição permanecem na seção datada de 16/09
 - **Fecho documental atual:** patches seletivos serão regenerados sobre `6c21e29b`, preservando WIP. Compass aguarda este fecho e sinal da raiz antes do segundo commit documental; patches anteriores desatualizados/suspensos não serão usados. Ledger não faz stage, commit ou push; nenhuma suíte, gate ou verificador repetido neste marco.
 
 
+Diretriz tempor?ria do autor: a conta Codex PH atingiu o limite; continuar somente com Gabriel Codex at? o limite PH ser restabelecido, sem alterar perfis ou modelos.
+
 <!-- ledger-widget-pos-release-20261028:end -->
 
 <!-- beacon-ph-widget-voz-20261028:start -->
