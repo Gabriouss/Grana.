@@ -402,6 +402,13 @@ O histórico e a evidência da exposição permanecem na seção datada de 16/09
 - **Fecho:** dois patches seletivos de contexto e regra AGENTS/topo são gerados sobre HEAD observado; Compass deve atualizar baseline após publicar os dois paths de configuração antes de aplicar docs. Sessão/espelhos atualizados e verificador uma vez conforme ordem final; não repetir gates, revisões ou testes de produto. Sem stage/Git write por Ledger, EAS, preparo, bump, APK ou deploy; WIP alheio preservado.
 
 
+### 29/10/2026 — configuração Compass publicada; docs aguardam sinal da raiz
+
+- Ledger leu `git-modelos-publicado.json`: Compass publicou **`6c21e29bd353ea7b087b82c95c440ac099afc521`**, somente `.maestri/codex-inicializacao.json` e `.maestri/codex-modelos.sh`. Recibo informa push normal, remoto igual ao HEAD, ahead/behind0/0 e índice vazio; 95 entradas de WIP alheio com status preservado. Nenhum restart ou suíte repetida.
+- Dez presets persistidos/relidos; regra exige helper/preset nas futuras inicializações. Comandos dos seis nós antigos ainda pendentes e Restart UI não corrigido; Codex #2 fora do inventário acessível. FINAL2 fonte/testes já publicado e aprovado; compilação Expo exit0; QA funcional Android/físico segue pendente.
+- **Fecho documental atual:** patches seletivos serão regenerados sobre `6c21e29b`, preservando WIP. Compass aguarda este fecho e sinal da raiz antes do segundo commit documental; patches anteriores desatualizados/suspensos não serão usados. Ledger não faz stage, commit ou push; nenhuma suíte, gate ou verificador repetido neste marco.
+
+
 <!-- ledger-widget-pos-release-20261028:end -->
 
 <!-- beacon-ph-widget-voz-20261028:start -->
