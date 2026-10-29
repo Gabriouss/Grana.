@@ -35,11 +35,26 @@ trabalho vai a agentes. Nas sessões da M2 os multiagentes NÃO são usados
 - **Regras 4 e 22:** build (`eas build`) só com pedido explícito do autor na
   sessão, e no máximo 3 por semana, de segunda a domingo.
 
-**Modelos do time Codex (sempre, e na inicialização).** Sol 6.1 medium
-(`gpt-6.1-sol`) em Forge, Harbor e Watchtower; Luna 6 xhigh (`gpt-6-luna`) nos
-demais. O modelo vai no `--command` ao recrutar, trocar ou reiniciar: reiniciar
-sem ele cai no padrão do `~/.codex/config.toml`. O script é
-`.maestri/codex-modelos.sh`.
+**Inicialização do time Codex (decisão do autor, 28/10/2026).** Preservar
+exatamente os modelos, esforços e contas atuais dos agentes ao inicializar,
+incluindo Gabriel Codex e Codex PH. Em futuras inicializações, usar o helper
+`.maestri/codex-modelos.sh` ou o preset salvo correspondente, consultando
+`.maestri/codex-inicializacao.json`. Esta decisão supera os padrões antigos por
+cargo. Não inventar dados ausentes, alterar esforços ou reiniciar agentes nesta
+rodada; Compass concluiu o manifesto e os dez presets.
+
+**Inventário Compass confirmado (28/10/2026):** Codex — Gabriel Codex,
+`gpt-6.1-sol` ultra; Compass e Forge — Codex PH, `gpt-6.1-sol` xhigh;
+Prism — Gabriel Codex, `gpt-6.1-sol` medium; Harbor — Codex PH,
+`gpt-6.1-sol` xhigh; Beacon — Codex PH, `gpt-6.1-sol` medium; Ledger —
+Gabriel Codex, `gpt-6.1-terra` low. Parent confirmou Sentinel, Gabriel Codex,
+`gpt-6.1-sol` medium, e terminal Codex PH, Codex PH, `gpt-6.1-sol` high.
+Watchtower confirmado pelo parent como Gabriel Codex, `gpt-6.1-sol` medium;
+Compass confirmado também por check do parent. Dez presets completos criados e
+relidos; Codex #2 fora por falta de conexão. Comandos dos nós existentes não
+foram alterados; plano anterior de edição na UI não foi executado. Não afirmar
+que Restart da UI já usa os comandos corrigidos: usar helper/preset correto em
+futuras inicializações.
 
 **Como enviar mensagem a um agente.**
 
@@ -90,6 +105,304 @@ Em 08/10/2026, o autor confirmou que os cinco segredos incluídos no pacote envi
 O histórico e a evidência da exposição permanecem na seção datada de 16/09/2026 abaixo. A rotação resolve a pendência de validade dos valores expostos, sem apagar o fato histórico de que o pacote de projeto foi enviado ao EAS.
 
 ---
+
+<!-- ledger-widget-pos-release-20261028:start -->
+## 28/10/2026 (M1, Ledger): incidente do widget após a release; correção autorizada
+
+1. **Pedido e escopo:** após enviar o vídeo das 19h47 e receber o diagnóstico, o autor pediu “resolve isso, pelo amor de cristo... erro nesse widget”. Compass coordena; dois agentes Codex executam retomada nativa e qualidade do nome/transcrição no núcleo compartilhado. Ledger assume somente documentação, substituindo qualquer contingência documental anterior nesta nova rodada. Pedido autoriza corrigir/testar/publicar seletivamente; NÃO autoriza outro EAS, preparo, bump, deploy ou operação no aparelho nesta rodada. A build histórica 1.10.11/code25 `ae51b874-bfa6-4836-8d5b-2f23403a4d67` permanece a já concluída; a versão instalada no vídeo não está comprovada.
+2. **Sintoma e causa separados:** o vídeo local mostra captura, espera por conexão e processamento após abrir o app. Diagnóstico nativo confirmou no código: captura pré-agenda watchdog150s; caminho JS de pendência agenda default30s; scheduler com `ExistingWorkPolicy.KEEP` só antecipa pedido com atraso0, conservando150s nessa sequência. Abrir o app aciona retomada independente. Isso explica a janela observada, mas não prova que o Worker nunca retomaria depois, nem a causa da primeira falha de rede. O nome incorreto observado NÃO foi reproduzido pela frase completa no módulo real: diagnóstico focal e histórico preservam o nome falado; transcrição efetivamente recebida pelo widget é desconhecida. ASRs locais do MP4 não equivalem ao M4A capturado pelo widget.
+3. **Fontes e baseline:** relatórios locais `E:/Grana-temporarios/2026-10-28-widget-voz-pos-release/relatorio-nativo-historico.md`, `relatorio-nome-historico.md` e `relatorio-video-compass.json`, lidos por Ledger. Baseline informado pela coordenação: HEAD `26f72552`, uma branch/um worktree/zero stash, WIP alheio preservado e fora do commit seletivo. Histórico focal: `a9158ac6` acrescentou WorkManager; `d059cb98` preparou1.10.11; `676c7ed3` e `08b55a72` delimitam ASR/prazos. Donos técnicos entregarão arquivos e testes concretos; nenhuma alteração de produto concluída é inferida deste diagnóstico.
+4. **Descartado:** atribuir causalidade à economia de bateria ou gravação da tela; afirmar que o parser perde o nome da frase completa; culpar o servidor que apenas transcreve; tratar ASR externo do vídeo como transcrição interna; repetir a release/gates anteriores ou incluir WIP alheio. A correção de voz deve alcançar app e widget pelo núcleo comum, conforme regra13. Vídeo, áudio, capturas e dados financeiros de terceiro permanecem SOMENTE locais, sem cópia ao vault.
+5. **Ocorrências e registro:** diagnósticos corrigiram busca de frames VFR por sequência PyAV com PTS, falha inicial de ASR/PyAV e passagem de acentos/sinal monetário pela shell; saídas incorretas foram descartadas. Ledger não repetiu análise audiovisual, testes, Git write, EAS ou chamadas de servidor. Lidos topo/contexto e sessão28 Maestri, convenções/índice do vault e passagens M2 pertinentes. Skills `economia-de-tokens` e `maestri` aplicadas; modelos/efforts mantidos. Snapshot externo preserva os bytes anteriores do contexto; novo bloco separado não reescreve os cortes históricos da release.
+6. **QA acionável neste corte:** [ ] receber correção e regressão da sequência watchdog150s → default30s, incluindo política KEEP/antecipação; [ ] receber correção/regressão de nome/transcrição/fallback no núcleo real compartilhado e paridade app/widget; [ ] registrar testes realmente executados e publicação seletiva quando houver recibo. [ ] Em futura reprodução autorizada no aparelho, confirmar versão instalada, capturar M4A/transcrição efetivos somente localmente e observar mesmo requestId/WorkManager/logcat após reconexão sem abrir o app. Nenhum aceite físico, ASR real ou escrita em produção foi comprovado nesta rodada.
+
+### Marco técnico recebido — regressão nativa reproduzida antes da correção
+
+- Coordenação informou que `widget_native_history` leu a documentação Expo57 e acrescentou PRIMEIRO a regressão em `__tests__/voz-retomada-autonoma.cjs`, exercitando módulos TypeScript reais e `executarTarefa` real com fronteira nativa simulada. Exige, para o mesmo request/dono, reserva150000ms seguida de READY0ms. Execução vermelha recebeu `[150000,30000]`; falhou primeiro na entrada app, antes de chegar à entrada widget. Confirma a lacuna do agendamento comum; ainda NÃO comprova correção ou paridade verde.
+- Próximo delta informado: alteração mínima em `lib/widget-voz-pendentes.ts`; Kotlin não muda neste plano. Resultado pós-correção, demais casos e publicação ainda pendentes. É relato técnico recebido, não teste reexecutado por Ledger; nenhuma suíte histórica repetida por rotina.
+
+
+### Marco de produto recebido — READY imediato; regressão comum verde
+
+- `widget_native_history` alterou somente `lib/widget-voz-pendentes.ts` no produto: pendência READY agenda atraso0, preservando RESERVA/watchdog150000ms. A antecipação usa o scheduler existente; nenhum Kotlin alterado neste corte. Correção alcança ambas as entradas pelo módulo compartilhado, sem política própria para widget.
+- Segundo o agente, `__tests__/voz-retomada-autonoma.cjs` passou **99 verificações**, incluindo app/widget e a sequência que antes devolvia `[150000,30000]`. São módulos reais com fronteira nativa simulada; NÃO equivalem a Worker observado em Android nem aparelho físico. Log/caminho final será recebido com a entrega do dono técnico; Ledger não repetiu o teste.
+- Próxima validação informada: cenário exato150s → READY0 → Worker sem Activity, no emulador; aparelho físico sem USB disponível. Nome/transcrição e motivo da primeira tentativa ainda em execução/sem resultado final. Conjunto final NÃO declarado pronto; sem novo EAS/preparo/bump/deploy.
+
+
+### Achado confirmado nos módulos reais — transcrição parcial passava pela aceitação
+
+- Agente de nome/ASR demonstrou que `transcricaoPareceLancamentoVoz` devolve true para entradas compostas só por forma de pagamento e valor, inclusive com cartão/categoria; o parser devolve descrição genérica “Pagamento” e o fluxo pode autossalvar com os demais campos presentes. A frase completa com nome continua correta. Isto confirma aceitação insuficiente de transcrição parcial, mas NÃO prova que essa foi a transcrição efetiva do vídeo ou a origem exata do nome observado.
+- Coordenação autorizou helper comum `lib/voz-confiabilidade.ts`: parcial local deve buscar fallback de servidor dentro do orçamento existente; parcial final deve impedir autogravação, com paridade app/widget. Implementação e testes de regressão ainda em curso neste corte. Nenhum produto novo concluído ou teste verde é inferido desta autorização; limites totais de tempo e recibo visível continuam obrigatórios.
+
+
+### Regressão vermelha do nome/ASR recebida — fallback local ausente
+
+- Dono técnico ampliou o teste existente `__tests__/voz-transcricao-sem-relacao.cjs`, carregando o módulo real. Execução falhou primeiro na entrada app: texto local parcial com valor/forma de pagamento/cartão/categoria NÃO acionou o servidor (asserção perto da linha186). Confirma o bypass da guarda que aceitava valor suficiente; widget ainda não foi alcançado nessa execução vermelha.
+- Implementação da guarda compartilhada é o próximo passo informado. Nenhum verde, paridade final ou causa do M4A do caso real comprovados por esse teste; Ledger somente registrou o marco recebido, sem reexecutar teste.
+
+
+### Avanço recebido — 63 verificações dirigidas; segundo caminho READY encontrado
+
+- Nome/ASR: após a regressão vermelha, o agente informou **63 verificações dirigidas verdes**: nome completo preservado e transcrição parcial do servidor sem autogravação/RPC ao vivo, mantendo fila. Delta AINDA NÃO congelado: segue refinamento de falsos positivos em nomes que incluem “Crédito” e comerciante de assinatura. Não atribuir aceite final a esse verde intermediário.
+- Achado adicional do parser com cartão: dica explícita de categoria sem acento podia deixar o sufixo literal “Categoria” na descrição. Plano informado: remover somente esse sufixo explícito antes da extração do nome, sem limpeza indiscriminada. Resultado final/regressões desse refinamento ainda pendentes.
+- Retomada: dono encontrou outro caminho READY em `guardarVozOrfa`, `lib/widget-voz-pendentes.ts` (aprox.277–302), ainda chamando o default30s. Correção/teste da sequência watchdog → READY0 também deve cobrir essa adoção, somente com áudio seguro e metadados do dono. O verde99 anterior não é estendido automaticamente a esse segundo caminho ainda em alteração. Ledger registrou relatos sem repetir testes.
+
+
+### Segundo caminho do mesmo defeito corrigido — retomada agora100 verificações
+
+- `guardarVozOrfa()` em `lib/widget-voz-pendentes.ts` também passou a chamar `programar(...,0)` após áudio seguro/metadados do dono, mantendo o mesmo requestId/dono. É o segundo caminho READY do MESMO defeito watchdog150s/default30s, não um incidente independente. Default30s e backoff geral de agendamento permanecem; Kotlin inalterado.
+- Regressão desse caminho primeiro reproduziu `[150000,30000]` em vermelho; após a alteração, dono informou **100 verificações verdes**, substituindo a contagem intermediária99. Limite: módulos reais com fronteiras nativas simuladas; observação Android exata ainda aguardada. Demais refinamentos de nome/ASR e conjunto final continuam abertos neste corte.
+
+
+### Decisão de recibo para fala incompleta — nova fala pelo microfone
+
+- Coordenação/dono decidiram que parcial final, inclusive vindo da fila, deve usar o recibo existente `RECIBOS_VOZ.repetir`: nada lançado e orientação para falar o lançamento completo. Não abre app, não usa `FalaParaRevisar`; limpa a captura somente após haver recibo e expõe desfecho repetir, com zero RPC.
+- Esta decisão refina o corte intermediário63 que ainda descrevia revisão/fila preservada. É implementação em curso neste marco, sem teste verde final inferido. A regra financeira exige nova fala completa para transcrição insuficiente; a apresentação continua adequada às duas superfícies e não converte insuficiência em autogravação.
+
+
+### Freeze técnico FINAL2 recebido — 79 verificações do nome e 100 da retomada
+
+- Nome/ASR congelado pelo dono em `lib/voz-confiabilidade.ts`, `lib/voz.ts`, `lib/widget-voz-task.ts` e `__tests__/voz-transcricao-sem-relacao.cjs`: **79 verificações dirigidas verdes**, substituindo o verde intermediário63. Incluem recibo normal REPETIR sem abrir app, remoção da fila antiga/nova fala com novo UUID, estado nativo repetir e zero RPC para parcial final. Falha do próprio recibo tem catch/log próprios, preserva áudio para revisão e continua zero RPC; esse caminho de falha não é confundido com a limpeza normal após recibo.
+- Retomada congelada em dois arquivos (`lib/widget-voz-pendentes.ts`, `__tests__/voz-retomada-autonoma.cjs`) com **100 verificações verdes** já relatadas. QA Android combinado está iniciando snapshot/build LOCAL com identificador isolado; compilação/início NÃO equivalem a cenário Android aprovado. Dono do nome executará `test:voz` e TypeScript UMA vez sobre o conjunto final; resultados ainda pendentes.
+- Coordenação consultou EAS readonly e confirmou duas builds nesta semana; última1.10.11 `ae51b874-bfa6-4836-8d5b-2f23403a4d67` FINISHED. Nenhum EAS, preparo ou bump novo autorizado/executado nesta correção. Commit técnico e patch documental final somente após QA/revisão/recibo; Ledger mantém bloco aberto, sem congelar patch por antecipação.
+
+
+### Check integrado encontrou fixture incompleta — produto congelado preservado
+
+- `test:voz` encontrou em `__tests__/voz-valores-regressao.cjs` uma fixture que injetava três exports do núcleo e não os dois novos exports reais usados pelo consumidor. O efeito foi zero writes/erros de mocks; o dono conferiu o módulo real e não reproduziu defeito de produto por essa falha da fixture.
+- Correção autorizada somente na fixture, passando a usar os dois exports REAIS, sem reimplementar a lógica. Allowlist técnica sobe para sete arquivos, incluindo essa fixture. Produto permanece no mesmo freeze; QA Android continua. TypeScript final em execução e resultado integrado final ainda NÃO verde neste corte. Ledger não rodou testes nem alterou produto/fixture.
+
+
+### Checks finais de voz e tipos recebidos — sem repetição por Ledger
+
+- Dono técnico confirmou `npm run test:voz` exit0 e `tsc --noEmit --pretty false` exit0/sem saída; fixture corrigida usa os exports REAIS do núcleo, sem mudar o produto congelado. Também informou `voz-desfecho-paridade`6 verificações exit0, `voz-paridade-nucleo-efeitos`67 exit0, focal de nome79 e regressão de valores22582. Retomada100 segue o resultado já recebido, sem nova execução por rotina.
+- Estes são checks do código/módulos e tipos, não captura física/ASR real ou observação do Worker. QA Android local combinado ainda em execução/preparação de build neste corte. Próximos marcos: resultado factual Android, revisão única do delta e Git seletivo após QA. Nenhum verde anterior reexecutado por Ledger ou promovido a aceite físico.
+
+
+### Entrega final de nome recebida — allowlist13 e revisão única iniciada
+
+- Ledger leu `relatorio-nome-resolucao.md`:11 arquivos/hash SHA256 do escopo nome (três produto, focal e sete fixtures). Somados os dois arquivos de retomada, delta técnico totaliza **13 arquivos: quatro de produto e nove de teste**. Complementa a allowlist intermediária7: as seis auditorias `__tests__/voz-auditoria-diversa.cjs` e `voz-auditoria-rodada2.cjs` até `rodada6.cjs`, além de `voz-valores-regressao.cjs`, precisaram injetar os dois helpers REAIS no loader do módulo real. Não mudam comportamento do produto nem reimplementam a regra.
+- Fonte final confirma fallback sem nova tentativa HTTP: prazo compartilhado15s com reserva8s do servidor mantidos, sem retry de POST ambíguo que poderia duplicar custo. Casos positivos de nomes contendo “Crédito”, recarga e pagamento de serviço passam. Logs concretos: `log-test-voz-final.txt` e `log-verificacoes-final.md` na mesma rodada externa; relatório contém todos os hashes dos11 arquivos. Nenhum ASR pago, build ou chamada de rede por esse dono.
+- Revisor `widget_final_review_git` iniciou a revisão FINAL ÚNICA readonly desses13 arquivos. Nenhum Git write até sinal após QA. Build LOCAL Gradle do APK QA isolado em curso; nenhum resultado Android inferido do PID/início. Commit técnico e patch documental final continuam aguardando resultado factual QA/revisão.
+
+
+### Revisão final única recebida — código aprovado; QA Android separado
+
+- Parecer `relatorio-revisao-final.md` recebido: **APPROVE dos13 arquivos, sem bloqueador estático**. Parent leu o parecer e conferiu diffs críticos; Ledger não repetiu revisão/testes. Este aceite é de código/delta e não prova execução Android, captura real ou comportamento no aparelho do autor.
+- Aceite Android permanece PENDENTE, aguardando Worker real no cenário combinado. Captura física está indisponível. Dono Git aguarda sinal específico para fetch/comparação e commit seletivo após QA; nenhum Git write feito neste marco. WIP alheio continua fora da allowlist e patch documental ainda não congelado.
+
+
+### Sinal Git recebido — publicação técnica seletiva com QA Android pendente
+
+- Coordenação autorizou `widget_final_review_git` a publicar AGORA somente os13 arquivos de código/teste, com revisão APPROVE/checks verdes e **QA Android ainda em curso e explicitamente pendente**. Esta nova ordem supera o corte anterior que aguardava QA antes do Git; não transforma pendência em aprovação. Publicar fonte não dispara APK nem atualiza instalação1.10.11.
+- Commit ainda iminente neste marco; hash/recibo serão recebidos do dono Git. Ledger não faz stage/commit/push. Fecho documental aguarda resultado QA e gerará somente o novo bloco contra HEAD posterior ao commit técnico, preservando bytes/WIP alheios.
+
+
+### Código publicado — `5970b638`; QA Android ainda em curso
+
+- Dono Git publicou **`5970b6387a4172e88dd82dcb58228287828f1d7c`**, exatamente os13 paths aprovados. Relatou fetch antes0/0 e pós-push0/0; WIP alheio intacto e unstaged. Base local também avançou em paralelo por outro trabalho até `6b88601a`, preservada sem sobrescrita. Fonte: `relatorio-revisao-final.md` atualizado com hash/paths; Ledger não executou Git write.
+- Publicação é do fonte/testes. **QA Android permanece em curso, aparelho físico não testado, nenhum EAS/preparo/bump/deploy novo.** Não confundir push com atualização do APK instalado nem afirmar causa exata da transcrição do vídeo. Patch documental final será gerado sobre HEAD vigente depois desse commit, contendo somente este novo bloco.
+
+
+### Build QA LOCAL concluído — ainda sem caso Android aprovado
+
+- Executor confirmou build QA LOCAL exit0, após bundle JavaScript47470ms/828módulos e empacotamento CMake. Está arquivando logs e conferindo identificador isolado, SHA/manifest/rede antes da instalação no emulador5554. **BUILD SUCCESS não equivale a Worker observado; nenhum caso Android aprovado neste marco.**
+- Código publicado permanece `5970b638`; nenhum EAS novo disparado. Resultado do cenário watchdog150s → READY0 → Worker sem Activity ainda aguardado; captura física/ASR real continuam sem evidência desta rodada.
+
+
+### Complemento dos testes sem script — fixtures adicionais; instalação QA ainda aberta
+
+- Disciplina da regra9: `voice-fallback.cjs` exit0 e `voz-offline.cjs` exit0. `widget-voz-cartoes.cjs` primeiro falhou por fixtures incompletas; agente alterou SOMENTE `__tests__/desfecho-voz-real.cjs` (dois helpers REAIS de voiceoperations) e `__tests__/widget-voz-cartoes.cjs` (guards REAIS de confiabilidade). Reteste de widget/cartões exit0. Produto congelado permanece inalterado; não exige rebuild QA por esse delta de fixtures. Relatórios/logs do nome atualizados.
+- Revisor Git recebeu complemento restrito a esses dois testes para revisar/publicar após fetch normal; commit principal `5970b638` continua o já publicado. Hash do complemento ainda pendente. Não é repetição da revisão dos13 paths intactos.
+- Instalação do APK QA no emulador falhou com erro ADB ainda sem motivo identificado. Dono nativo examina estado/storage/bateria em leitura; a falha não foi classificada como regressão de produto. **Nenhum caso Android aprovado**, Worker exato ainda pendente; não inferir causa nem contornar pelo app de produção.
+
+
+### Retomada após limite — complemento publicado e novo vídeo de 23h25
+
+1. **Pedido:** autor pediu continuar as correções do widget e assistir/escutar o MP4 WhatsApp de28/10 às23h25m11. Ledger é dono documental exclusivo; Compass analisa localmente em `E:/Grana-temporarios/2026-10-28-widget-voz-2325/relatorio-video.md`; Forge retoma somente QA Android pendente da rodada pós-release, sem refazer verdes. Modelos/efforts atuais preservados.
+2. **Estado e causa delimitados:** a espera pelo hash do complemento de fixtures no corte anterior ficou desatualizada. O relatório do revisor confirma publicação de `042a54c5d7c4083d0ede0bf7574298fe02ae5ce7`, APPROVE e pós-push0/0; leitura Git local confirma o commit e os dois paths. Este marco supera somente a pendência documental desse hash. Não diagnostica o novo vídeo nem transforma a falha de instalação ADB em regressão de produto.
+3. **Arquivos e prova:** `__tests__/desfecho-voz-real.cjs` expõe `ehRecusaCartaoObrigatorio` do módulo real; `__tests__/widget-voz-cartoes.cjs` injeta guardas reais de confiabilidade e helpers reais de erro. Fonte: `E:/Grana-temporarios/2026-10-28-widget-voz-pos-release/relatorio-revisao-final.md`, seção complemento de fixtures. Commit principal `5970b638` permanece separado. O complemento muda somente testes e não exige rebuild QA do produto congelado.
+4. **Descartado por ordem atual:** repetir gates/suítes/verificador, editar WIP alheio, stage amplo ou publicar tudo. Sem Git write até sinal; sem EAS, preparo, bump ou deploy. Delta documental isolado externamente para futuro commit seletivo; nenhuma autorização de publicação decorre deste registro.
+5. **Ocorrências:** retomada recuperou contexto, convenções, índice de sessões e registros anteriores. Inventário readonly: uma `main`, um worktree, nenhum stash; WIP alheio presente e preservado. Relatos verdes anteriores continuam atribuídos aos executores; Ledger não repetiu testes. O complemento já publicado não é novo reparo de produto.
+6. **QA aberto por evento:** [ ] receber análise audiovisual Compass e separar observação de hipótese; [ ] receber resultado factual Forge para o cenário watchdog150s → READY0 → Worker sem Activity; [ ] registrar instalação/identidade do host e limites do QA efetivamente observados. Até esses recibos, nenhum novo caso Android aprovado neste corte, captura física/ASR real sem comprovação. Imagens, áudio, transcrição e dados financeiros do vídeo permanecem somente locais; contexto/vault/fichário recebem apenas síntese técnica sem valores pessoais.
+
+
+### Novo vídeo — estado pendente observado; hipótese funcional em investigação
+
+1. **Pedido e observação recebida da coordenação:** parent conferiu `contact-00.jpg` e frames0/24 da rodada `E:/Grana-temporarios/2026-10-28-widget-voz-2325/`. O widget do Grana permanece em estado pendente, com “Aguardando conexão”, antes e depois de abrir o app. Essa observação é atribuída ao parent; Ledger não assistiu nem escutou o vídeo nesta etapa.
+2. **Áudio e limites da evidência:** ASR LOCAL turbo/medium concluídos segundo coordenação. A fala relata que o lançamento aparece no app, mas o widget não libera. É relato do autor no vídeo, ainda sem rastreamento funcional que vincule a gravação no app ao estado nativo persistente. Compass fecha o relatório audiovisual; não atribuir laudo final antes da entrega. Não reproduzir transcrição, valores, cartão ou nomes pessoais no contexto/vault/fichário.
+3. **Achado de código e nível de certeza:** Harbor foi acionado exclusivamente para JS/TS: conferir sincronização pelo app sem reset do estado e Worker que retorna concluída quando `!fala`, também sem reset nativo. Parent leu os trechos e confirmou a ausência dessas atualizações. A ausência no código está conferida pela coordenação; a regressão funcional e a relação causal exata com o vídeo ainda aguardam reprodução/teste do dono. Não declarar correção pronta, causa integral comprovada ou Android aprovado.
+4. **Donos e descartes:** Harbor investiga somente esse escopo JS/TS; Forge continua o QA Android pendente da rodada anterior, sem repetir verdes. Ledger mantém documentação exclusiva e delta seletivo. Nenhuma autorização de build nesta retomada; sem EAS, preparo, bump, deploy ou Git write. Sem dados financeiros pessoais em Git/vault.
+5. **Ocorrência:** o novo marco acrescenta evidência ao corte anterior que aguardava análise, sem substituir o recibo publicado das fixtures nem promover análise estática a prova de execução. Nenhum produto/teste foi alterado pelo Ledger.
+6. **Próximas evidências:** [ ] relatório audiovisual final Compass; [ ] regressão funcional Harbor e respectivos arquivos/efeitos reais; [ ] resultado factual Forge do QA antigo. Manter separados o estado pendente visível, a queixa falada, a ausência estática de atualização e a reprodução funcional ainda pendente.
+
+
+### Harbor — caminho reproduzido em quatro cenários; regressão VERMELHA, sem correção de produto
+
+1. **Pedido/fonte:** registrar diagnóstico JS/TS da rodada2325. Ledger leu `relatorio-harbor-sync-app-inicial.md` e `harbor-sync-app-vermelho.log`, em `E:/Grana-temporarios/2026-10-28-widget-voz-2325/`, sem repetir execução. Harbor não repetiu análise de mídia nem verdes históricos.
+2. **Fato reproduzido e limite:** módulos reais carregados por transpileModule/vm mostram `sincronizarOperacoesVoz` enviando/removendo a operação sem reconciliar o estado do widget; Worker tardio sem operação/áudio retorna `concluida`, mas o ACK também não reconcilia o estado. Quatro cenários: origem app/widget × operação nova/já existente no servidor. Em cada cenário, RPC1/banco1 em Map sintético, fila financeira removida, áudio vazio, estado pendente após app e Worker, ACK concluída e avisos0; nenhuma segunda RPC pelo Worker tardio. Android, disco, rede e relógio são fronteiras simuladas. **É caminho funcional reproduzido no harness, NÃO causa comprovada do vídeo nem validação de WorkManager/Android real.** Cancelamento antecipado NÃO confirmado: esse fluxo não chama cancelarVoz.
+3. **Arquivos concretos:** somente testes alterados neste corte: `__tests__/voz-sync-app-estado-widget.cjs` e `__tests__/voz-retomada-autonoma.cjs` (exporta ambiente e condiciona a suíte histórica a require.main). Nenhum produto corrigido. Caminhos diagnosticados: `app/_layout.tsx`, `lib/voice-operations.ts`, `lib/widget-voz-task.ts`, `GranaVoiceWidgetModule.kt`, `GranaVoiceRetryWorker.kt` e `EstadoWidget.kt`. **Regressão VERMELHA esperada:** estado observado pendente versus ocioso esperado; não registrar verde, entrega concluída ou aceite de release.
+4. **Alternativa descartada/contrato pendente:** reset global indiscriminado para ocioso pode apagar a captura nova quando uma operação antiga conclui. Harbor aponta necessidade de ponte nativa por requestId/dono para reconciliar somente a intenção correta, preservando captura concorrente. Ponte Kotlin fora de sua área JS/TS; Codex informado para definir dono/contrato. Não refazer correções publicadas `5970b638`/`042a54c5`, que cobrem outro caminho.
+5. **Ocorrências relatadas:** buscas iniciais com globs como paths no PowerShell falharam; corrigidas com rg -g. Nome de teste presumido não existia e foi substituído pelo harness encontrado. Leitura por ranges foi corrigida. Sem efeito no produto. Ledger apenas consolidou evidências; nenhum Git write, teste, build, preparo, bump ou deploy.
+6. **QA pendente:** [ ] dono/contrato nativo; [ ] implementação e regressão verde com replay/undone, falha de recibo, dono trocado e captura concorrente; [ ] observação Android de sync pelo app e Worker tardio com mesma intenção; [ ] eventual correlação autorizada de versão/requestId/transcrição do vídeo. Forge segue somente QA antigo. Dados financeiros pessoais continuam exclusivamente locais; esta síntese não contém valores, cartão ou nomes pessoais.
+
+
+### Coordenação confirma RED e autoriza Harbor a implementar a ponte mínima
+
+- **Conferência recebida:** parent leu `relatorio-harbor-sync-app-inicial.md` e `harbor-sync-app-vermelho.log` e confirmou os caminhos no código. Mantém quatro casos app/widget × operação nova/replay: RPC1, banco1 sintético, operação removida/áudio0, estado pendente antes e após Worker tardio e ACK concluída. São módulos reais com fronteiras simuladas, NÃO execução Android. Resultado permanece **RED; nenhum GREEN recebido**.
+- **Mudança de responsabilidade autorizada:** Harbor agora é dono também da **ponte nativa MÍNIMA, integração TS e teste Kotlin**, além do escopo anterior JS/TS. Esta ordem supera somente a limitação anterior de área que deixava a ponte sem dono. Implementação autorizada sem exigir novo aceite para começar. Forge permanece **SOMENTE QA externo**, sem implementação paralela; Ledger continua documental exclusivo.
+- **Contrato e limites:** reconciliação por requestId/dono deve preservar captura concorrente; reset global indiscriminado continua descartado. Autorização não prova implementação, regressão verde, aceite Android ou causa do vídeo. Aguardar entrega com arquivos, efeitos e testes concretos. Nenhum dado do vídeo incluído neste marco.
+- **Próximos recibos:** [ ] implementação Harbor/ponte TS-Kotlin; [ ] regressões e teste Kotlin com resultados identificados; [ ] QA externo autorizado Forge. Sem repetir gates anteriores, Git write, EAS, preparo, bump ou deploy por Ledger; autorização de implementar não autoriza build de release.
+
+
+### Harbor — implementação em andamento, ainda sem freeze
+
+- Coordenação informa início da correção autorizada na rodada2325: Harbor assumiu ponte nativa sem conflito com Forge, que segue somente QA externo. Delta em andamento: `EstadoWidget.kt`, `GranaVoiceWidgetModule.kt` e `modules/grana-voice-widget/index.ts` expõem `reconciliarVozConcluida` por requestId/dono/estado; `lib/voz-retomada.ts`, `lib/voice-operations.ts` e `lib/widget-voz-task.ts` integram recibo comum, limpeza scoped, snapshot e reconciliação sync-app/Worker vazio.
+- **Resultado parcial relatado:** quatro casos básicos passaram de RED para GREEN. Verificações de falha, concorrência e integradas ainda pendentes; delta NÃO congelado e correção NÃO declarada pronta. Esse relato não comprova execução Android nem causa do vídeo. Aguardar relatório final de Harbor com as seis respostas e recibos antes de atualizar o aceite.
+- Ledger registra o marco sem reexecutar testes, gates ou verificador; sem Git write, build, preparo, bump ou deploy. Sem dados do vídeo neste registro.
+
+
+### Harbor — verificações focais verdes; freeze e integração pendentes
+
+- Ledger leu `harbor-sync-app-verde.log`: **202 verificações focais JS verdes**, incluindo sync-app/Worker tardio, recibo, limpeza, replay/undone, dono e captura concorrente. Leu também `harbor-native-green.log`: **56 verificações JVM verdes de `EstadoWidget.kt` real**, com fronteiras Android/dono simuladas, conforme coordenação. Estes resultados substituem o RED básico anterior apenas no escopo exercitado; não comprovam Android ou ponte completa.
+- Implementação ainda **sem freeze e sem checks finais**. Aguardar relatório final Harbor, teste integrado e QA externo Forge; não declarar correção pronta nem causa do vídeo comprovada. Ledger não repetiu testes, gates ou verificador.
+- **Novo pedido do autor:** salvar definitivamente o formato para agentes Codex iniciarem sempre com os modelos atuais e contas Gabriel Codex/Codex PH. Compass é dono do inventário e da persistência e ainda prepara tabela. Regra documental definitiva só após receber fatos atuais; não inferir modelos de registros históricos nem alterar effort. Preservar WIP de `AGENTS.md` e `context.md`, com delta seletivo; sem Git write, EAS, preparo, bump ou deploy.
+
+
+### Harbor — caso sem permissão e checks integrados em andamento
+
+- Coordenação relata produto atual com **202 verificações JS verdes**, substituindo a contagem intermediária196, e **56 verificações JVM verdes** compilando `EstadoWidget.kt` real com Android, preferências e dono dublados. Caso adicional sem permissão: app entrega recibo em tela; Worker tardio vazio conclui sem trocar estado para ATENÇÃO nem apagar o recibo. Resultados atribuídos a Harbor; Ledger não repetiu execução.
+- `test:voz` passou a incluir a nova regressão; `test:voz` e `tsc` integrados estão em execução **uma vez**, sem códigos de saída recebidos neste corte. Aguardar relatório final e exit codes; não inferir freeze, aprovação integrada ou Android. Verificações JVM não exercitam Android real nem ponte completa. O APK instalado não recebe estas mudanças automaticamente.
+- Nenhum Git/EAS informado; sem Git write, preparo, bump, deploy ou repetição de gates pelo Ledger. Forge segue responsável exclusivo pelo QA externo.
+
+
+### Harbor — relatório final técnico recebido; tipos pendentes neste corte
+
+- Ledger leu `relatorio-harbor-sync-app-correcao.md`: `npm run test:voz` integrado **exit0**, executado uma vez por Harbor; inclui regressão nova202, retomada100 e segundo plano56. `tsc --noEmit` estava em execução ao fechar o relatório, sem exit code ali. Focais JS202 e JVM56 mantêm os limites anteriores. Não afirmar freeze ou aceite Android.
+- Relatório descreve recibo financeiro compartilhado antes de remover operação, limpeza por dono, snapshot e ponte `reconciliarVozConcluida(requestId,userId)`; guarda nativa limita reconciliação ao dono, request representado e estados PENDENTE/PROCESSANDO. Ponte indisponível em binário antigo retorna false sem reset global. Falha de recibo/limpeza preserva operação; falha da ponte tem log e mantém Worker como recuperação, conforme relato do dono. Nova captura e outra intenção representada são protegidas nos testes simulados.
+- Harness teve ajustes de reserva/READY e classpath/stubs JVM; não são bugs de produto. Pendentes: resultado tsc, revisão/freeze, módulo Expo completo e cenário Android real. Relatório não prova causalidade exata do vídeo, não altera APK instalado e não registra commit, EAS ou deploy. Ledger não repetiu testes.
+
+
+### Harbor — recibo de freeze candidato, TypeScript ainda pendente
+
+- Ledger leu `E:/Grana-temporarios/2026-10-28-widget-voz-2325/harbor-freeze-recibo.json` e `relatorio-harbor-sync-app-correcao.md`. O recibo identifica **nove arquivos com SHA-256**: `lib/voice-operations.ts`, `lib/widget-voz-task.ts`, `lib/voz-retomada.ts`, `modules/grana-voice-widget/index.ts`, `EstadoWidget.kt`, `GranaVoiceWidgetModule.kt`, `__tests__/voz-retomada-autonoma.cjs`, `__tests__/voz-sync-app-estado-widget.cjs` e `package.json`. Identidade exata e hashes estão no recibo; Ledger não repetiu hash nem testes. É **candidato**, não aceite final.
+- Resultados recebidos: JS real202, `EstadoWidget.kt` real em JVM56 com Android/prefs/dono simulados, e `test:voz` integrada uma vez exit0. `tsc` segue em execução sem diagnóstico neste corte: **não está verde**. Guardas de requestId/dono/estado, preservação de recibo em tela e retry após falha são cobertos nos testes descritos no relatório, com seus limites simulados.
+- Sem aceite Android, Git ou EAS nesta rodada. Ponte Kotlin requer binário futuro; não se torna disponível no APK instalado por esta alteração. Revisão e QA Android externo continuam pendentes; não inferir causa exata do vídeo. Sem novo gate/verificador por Ledger.
+
+
+### Harbor — freeze técnico final recebido; revisão e QA Android pendentes
+
+- **Pedido e diagnóstico:** corrigir caminho reproduzido no qual sync pelo app remove a operação sem reconciliar widget e Worker tardio vazio conclui sem reconciliar. Reprodução em módulos reais com fronteiras simuladas; não comprova causa exata do vídeo. Cancelamento antecipado não foi confirmado.
+- **Nove arquivos congelados:** `lib/voice-operations.ts`, `lib/widget-voz-task.ts`, `lib/voz-retomada.ts`, `modules/grana-voice-widget/index.ts`, `modules/grana-voice-widget/android/src/main/java/com/gabriouss/grana/voicewidget/EstadoWidget.kt`, `modules/grana-voice-widget/android/src/main/java/com/gabriouss/grana/voicewidget/GranaVoiceWidgetModule.kt`, `__tests__/voz-retomada-autonoma.cjs`, `__tests__/voz-sync-app-estado-widget.cjs` e `package.json`. SHA-256 por arquivo em `E:/Grana-temporarios/2026-10-28-widget-voz-2325/harbor-freeze-recibo.json`; detalhes e seis respostas em `relatorio-harbor-sync-app-correcao.md`. Ledger leu recibos, sem repetir testes ou hashes.
+- **Contrato relatado:** recibo financeiro comum e limpeza scoped precedem a remoção; falha de recibo/limpeza preserva operação para retry. Ponte nativa confere requestId, dono e estado, preservando nova captura e outra intenção representada; Worker vazio preserva recibo em tela sem permissão de notificação. Replay/undone não emitem sucesso de nova criação. Descartados reset global e cancelamento prematuro do Worker, que poderiam apagar outra captura ou perder recuperação.
+- **Verificações:** focal JS202 e `EstadoWidget.kt` real em JVM56 verdes, com Android/prefs/dono simulados. `test:voz` integrada exit0 e `tsc --noEmit` exit0, cada um executado uma vez, sem alteração de produto após o início das integradas, conforme relatório. Este marco supera apenas as esperas anteriores de TypeScript/freeze. Ajustes de fixture e classpath/stubs descritos no relatório não foram defeitos de produto.
+- **Limites e próximos passos:** freeze técnico pronto para revisão e QA Android; [ ] revisar nove hashes e delta; [ ] compilar módulo Expo completo e observar Android real; [ ] testar sync app, Worker tardio e preservação de captura/dono/pendência concorrentes; [ ] eventual correlação autorizada com incidente. Sem aceite físico ou causa exata do vídeo. Ponte Kotlin exige binário futuro; APK instalado não foi modificado. Sem Git/EAS/deploy; Ledger não repetiu gates/verificador.
+
+
+### Compass — inventário parcial de inicialização e presets persistidos
+
+- Pedido permanente do autor: iniciar agentes Codex sempre nos modelos e esforços atuais, nas contas Gabriel Codex/Codex PH. Ledger leu `relatorio-modelos-inicializacao.md` e registrou a tabela dos sete confirmados em `AGENTS.md` e no topo de `context.md`, superando os padrões antigos por cargo. Seis rodapés vieram de `maestri check`; Compass usa metadados readonly da própria sessão, pois check próprio indisponível. Fonte executável `.maestri/codex-inicializacao.json`; helper `.maestri/codex-modelos.sh` preparado por Compass.
+- Sete presets Maestri foram criados e relidos; helper/JSON preparados. **Comandos salvos dos nós atuais ainda antigos:** o caminho conhecido de substituição exige restart, proibido nesta rodada. Documentação e presets não comprovam que reinício pela interface dos nós existentes já usa os perfis. Quatro runtimes não confirmados no inventário Compass: Sentinel, Watchtower, Codex PH terminal e Codex #2; não preencher lacunas por suposição. Parent informou separadamente Sentinel Sol medium/Gabriel e Codex PH Sol high/PH, e Watchtower Sol medium sem conta comprovada; incorporação ao manifesto depende do recibo Compass atualizado.
+- Descartada partitura como garantia de conta/modelo por não preservar vínculo; criada apenas como layout. Compass relata `bash -n` PASS e validação de sete presets, sem restart/runtime/binário/credenciais/Git write. Primeiro preset foi recusado por CR no campo antes de salvar, corrigido; asserção da partitura também parou antes de escrever. Nenhum segredo ou dado de autenticação registrado.
+- Pendências: [ ] Compass complementar inventário com evidências atuais; [ ] solução segura para comandos dos nós existentes ou aplicação quando reinício for autorizado; [ ] atualizar tabela e regra após recibo final; [ ] publicação seletiva somente após sinal. Ledger não repetiu gates nem alterou runtime/effort.
+
+
+### 29/10/2026 — revisão Harbor e atualização de perfis
+
+- Parent conferiu `harbor-freeze-recibo.json`: `test:voz` e `tsc` exit0, uma execução cada; leu o delta de seis arquivos de produto e aprovou sem bloqueador. **QA Android permanece pendente.** Harbor recebeu janela Git EXCLUSIVA para os oito paths fora de `package.json` e somente a linha `test:voz` do package; publicação/commit ainda não confirmados neste corte. WIP alheio permanece fora. Nenhum EAS, deploy ou reinício autorizado.
+- Pedido permanente do autor: futuras inicializações usam helper ou preset salvo correspondente ao modelo/esforço/conta atuais. Compass persistiu e releu sete presets e está completando dez com Sentinel e Watchtower Sol medium/Gabriel e terminal Codex PH Sol high/PH; parent comprovou rodapés e Compass o vínculo do Watchtower. Manifesto ainda mostrava sete na leitura deste corte: três adicionais estão em execução, não declarados persistidos. Codex #2 permanece fora por falta de conexão. Comandos dos nós atuais permanecem antigos; Restart pela UI não está corrigido. Nenhum agente reiniciado.
+- `AGENTS.md` e topo de `context.md` atualizados com regra e perfis comprovados, preservando WIP; patches seletivos dependem do source/config Compass e do HEAD após publicação técnica. [ ] receber recibo de commit Harbor; [ ] receber manifesto/presets completos Compass; [ ] atualizar patch sobre HEAD final; [ ] QA Android. Ledger não executou Git write, testes, gates ou verificador.
+
+
+### 29/10/2026 — nova concorrência descoberta; FINAL2 em integração
+
+- **Pedido e sintoma:** no teste solicitado pelo parent de envio falho com nova captura, Harbor encontrou RED: Worker em retry escrevia PENDENTE global e sobrescrevia estado OUVINDO de nova captura. Ledger leu `harbor-concorrencia-falha-red.log`, que registra `pendente` observado versus `ouvindo` esperado; fronteiras e efeitos completos dependem do relatório Harbor final.
+- **Correção em andamento relatada:** `definirEstadoDaRetomada(req,dono,estado)` nativa usa a mesma guarda atômica/`definirDaCaptura`; todas as escritas de Worker, incluindo `executarTarefa` controlada e não apenas conclusão, passam a ter escopo. Teste Kotlin agora versionado em `__tests__/native/EstadoWidgetReconciliacaoTest.kt`, runner `__tests__/voz-widget-reconciliacao-nativa.cjs` e script `test:voz-nativo`. Nenhuma conclusão de revisão final inferida deste relato.
+- **Resultados e limite:** Harbor informa **292 verificações focais JS verdes** e **536 JVM** com nativo real incluindo threads. Freeze anterior de nove arquivos/202 JS/56 JVM e aprovação relativa àquele delta são históricos; não cobrem o novo delta de produto. Novo escopo informado: **11 arquivos**. Integradas FINAL2 iniciadas UMA vez; seus resultados, hashes finais e relatório complementar ainda aguardados. Ledger não repetiu testes ou gates.
+- **Pendências:** [ ] receber relatório, allowlist/hashes e exit codes FINAL2; [ ] revisão do novo delta; [ ] QA Android/risco em aparelho físico. Nenhum aceite Android, Git ou EAS atribuído a este corte. Ponte Kotlin exige binário futuro; APK instalado inalterado. Harbor retém responsabilidade técnica/Git conforme janela vigente, sem incluir WIP alheio.
+
+
+### 29/10/2026 — Harbor FINAL2 congelado, revisão e Android pendentes
+
+- Ledger leu `E:/Grana-temporarios/2026-10-28-widget-voz-2325/relatorio-harbor-sync-app-final2.md` e `harbor-freeze-final2.json`. **FINAL2 é o freeze técnico atual de 11 arquivos e respectivos SHA-256 no manifesto**; FINAL1 e sua revisão continuam históricos, sem cobrir o novo delta. Não houve Git por Harbor nesta etapa, segundo relatório; não inferir publicação.
+- **Causa reproduzida e correção relatada:** envio falho de operação antiga provocava escrita global PENDENTE sobre captura nova OUVINDO (RED documentado). `definirEstadoDaRetomada` usa guarda atômica de requestId/dono/estado também em falhas do Worker e `executarTarefa` controlada. Sem fallback global quando a ponte estiver ausente no binário antigo. A regra preserva nova captura, outro dono e outra intenção representada; não provar causalidade específica do vídeo.
+- **Checks FINAL2:** 292 verificações JS e 536 JVM verdes, usando módulos reais; JVM exercita `EstadoWidget.kt` real com fronteiras Android/prefs/dono simuladas e inclui100 disputas entre threads. `test:voz`, `test:voz-nativo` e `tsc --noEmit` exit0, cada integrada uma vez neste delta; nenhuma alteração de produto após início das integradas, segundo Harbor. Teste Kotlin `__tests__/native/EstadoWidgetReconciliacaoTest.kt` e runner `__tests__/voz-widget-reconciliacao-nativa.cjs` são versionados; `test:voz-nativo` usa Java e cache Kotlin local, sem APK ou download. Ajustes de fixture explicitam journal nativo e não negam o RED.
+- **Descartes e ocorrência:** não limitar guarda à conclusão, não usar reset global ou tratar FINAL1 como prova deste delta. Envio intermediário Harbor teve estado incerto; ele conferiu a tela antes de eventual reenvio, sem efeito no patch/checks. Ledger leu os recibos, sem repetir testes ou hashes.
+- **Próximos passos:** [ ] revisão parent do FINAL2 e hashes; [ ] QA Android do módulo Expo e ponte reais, sync app/Worker tardio e concorrência; [ ] eventual correlação autorizada com incidente. Sem aceite Android/físico, Git, EAS, deploy ou conta real. Ponte nativa exige binário futuro; APK instalado não foi modificado.
+
+
+### 29/10/2026 — FINAL2 aprovado pela raiz; publicação seletiva autorizada
+
+- Parent leu o delta incremental e **aprovou FINAL2 sem bloqueador**, incluindo proteção da captura nova contra PENDENTE, ATENÇÃO e REPETIR de Worker antigo. Fontes `relatorio-harbor-sync-app-final2.md` e `harbor-freeze-final2.json` na rodada2325. Focais atuais292 JS/536 JVM e `test:voz`, `test:voz-nativo`, `tsc` exit0, cada integrada uma vez; nativo focal Kotlin e runner versionados. FINAL1/202/56 e sua revisão permanecem históricos.
+- Harbor recebeu **janela Git EXCLUSIVA** para os11 paths do manifesto FINAL2, com `package.json` limitado aos dois scripts de teste. Publicação de fontes autorizada com **QA Android pendente**; hash/recibo ainda aguardados neste corte. Não confundir autorização com commit/push concluídos. WIP alheio fora do escopo; nenhum EAS ou nova versão.
+- Fecho documental aguarda [ ] recibo de publicação Harbor; [ ] configuração/inventário dos dez perfis Compass; [ ] resultado QA Forge. Ponte nativa exige binário futuro e APK instalado não foi modificado. Ledger não repetiu testes/gates nem executou Git write.
+
+
+### 29/10/2026 — correção factual: nove presets, Watchtower sem conta confirmada
+
+- Compass atualizou `relatorio-modelos-inicializacao.md` e `.maestri/codex-inicializacao.json`: Sentinel/Gabriel/sol medium e terminal Codex PH/PH/sol high confirmados pelo parent; Compass xhigh agora também por check parent. **Nove presets completos persistidos e relidos 9/9**. Watchtower sol medium, porém `maestri list` omite a conta: **conta NÃO CONFIRMADA e sem preset novo**. Codex #2 fora por falta de conexão.
+- **Correção de registro anterior:** a afirmação de que Compass identificou vínculo Gabriel do Watchtower estava errada; removida das regras atuais em `AGENTS.md` e topo `context.md`. Cortes históricos da sessão29 que a afirmavam são superados por este marco, não evidência de conta. Não afirmar dez presets aplicados.
+- **Lacuna real dos nós:** três comandos já coincidem (Prism, Beacon, Sentinel); seis ainda precisam salvar somente Comando na UI (Codex, Compass, Forge, Harbor, Ledger, terminal Codex PH). Compass verificou código nativo `TerminalEditSheet`/`node.patch`: Comando e Salvar preservando conta/papel/ambiente pode ser feito sem reinício. A conclusão anterior de que qualquer substituição exigia reinício estava errada. CLI não expõe patch; Compass não dispunha de ferramenta UI. `plano-comandos-terminais-existentes.json` está **NOT_APPLIED**, TSV entregue ao parent. Não confundir presets com seis comandos aplicados nem declarar Restart UI corrigido antes do recibo.
+- Sem restart, troca de runtime, alteração de binário de terceiro ou Git write por Compass/Ledger. [ ] aplicação UI autorizada e releitura dos seis comandos sem reiniciar; [ ] comprovar conta Watchtower; [ ] recibo Git Harbor e QA Forge; [ ] patch documental seletivo após source/config. Dados de autenticação não foram registrados.
+
+
+### 29/10/2026 — publicação seletiva Harbor `60507f47`; testes nativos continuam locais
+
+- Ledger leu `harbor-publicacao-seletiva-recibo.json`: commit **`60507f47ee1a35eec6c3a83ba23c63a7a91451f1`** publicado em `origin/main`; fetch final divergência0/0 e índice vazio, segundo recibo. Publicados oito arquivos integrais do FINAL2 mais SOMENTE a linha `test:voz` de `package.json`, nove paths ao todo. Docs/config e WIP alheio ficaram fora; WIP admin do package preservado. A autorização Git passou a publicação concluída neste corte; janela exclusiva liberada, conforme coordenação.
+- **Limite importante:** `__tests__/native/EstadoWidgetReconciliacaoTest.kt`, `__tests__/voz-widget-reconciliacao-nativa.cjs` e script `test:voz-nativo` NÃO entraram no commit, permanecendo locais. Menções anteriores a teste nativo “versionado” descrevem a intenção/conteúdo local do FINAL2, não publicação; este recibo corrige qualquer leitura contrária. Os 536 resultados JVM continuam evidência local, não teste disponível no commit publicado.
+- Checks recebidos do conteúdo FINAL2: `test:voz` e `tsc` exit0, 292 JS e 536 JVM; QA Android ainda pendente conforme autorização explícita. Não houve EAS/APK/deploy; ponte nativa precisa binário futuro e APK instalado segue inalterado. Ledger não repetiu gates, Git write ou publicação.
+- [ ] QA Forge; [ ] destinação seletiva dos dois testes nativos e do script, sob coordenação; [ ] atualização do patch documental para HEAD após source/config Compass. Não incluir WIP alheio nem inventar aceite Android.
+
+
+### 29/10/2026 — QA Android anterior aprovado; dez presets confirmados
+
+- **QA antigo Forge:** Ledger leu `E:/Grana-temporarios/2026-10-28-widget-voz-pos-release/relatorio-qa-android-incremental.md` e `qa-retomada-pendente/verification.json`. PASS Android isolado do corte `5970b638`: mesma WorkRequest delay150000→0, processo frio com novo PID, zero Activity START após corte frio, Headless START/END, Worker SUCCESS, uma RPC/um efeito em fixture e fila vazia, sucesso25,217s antes do prazo original. READY exigiu Activity foreground durante setup offline; servidor/transcrição sintéticos, APK QA com entradas nativas idênticas após repack de bundle. **Não valida rodada2325/FINAL2, ASR físico ou aparelho do autor.** Forge agora recebeu somente compilação do módulo Expo root FINAL2, sem APK; recibo ainda pendente. Ledger não repetiu QA.
+- **Publicação e complementos:** parent conferiu `60507f47` publicado 0/0 com nove paths e package somente linha voz. Harbor processará em separado dois testes nativos e script nativo segundo ordem final; hash ainda aguardado. Não tratar estes arquivos como já publicados.
+- **Compass fechamento:** relatório `relatorio-modelos-inicializacao.md` e `modelos-presets-validacao.json` informam **dez perfis/presets aplicados e relidos10/10**. Parent confirmou Watchtower Gabriel Codex/sol medium; isto supera o corte anterior de conta não confirmada. Codex #2 fora por falta de conexão. Fonte/helper `.maestri/codex-inicializacao.json` e `.maestri/codex-modelos.sh`; bash -n/listar PASS segundo Compass. Entrega restrita desses dois paths para dono Git Harbor; hash da publicação ainda aguardado.
+- **Regra e limite:** futuras inicializações exigem helper/preset correto; comandos dos nós existentes não foram alterados e Restart UI não foi corrigido. Nenhum restart foi pedido/executado. Compass desfez somente sua partitura auxiliar por CLI com backup local; notas e itens preexistentes intactos, segundo relatório. Sem binário terceiro, Git write por Compass/Ledger, EAS ou deploy. Regra atual corrigida no topo do contexto e AGENTS; cortes anteriores preservados como histórico.
+- **Fecho pendente:** [ ] recibos de publicação do complemento nativo e dos dois arquivos Compass; [ ] recibo da compilação Expo root FINAL2; [ ] regenerar patches documentais sobre HEAD final e entregar seletivamente, sem WIP alheio. Não transformar compilação em QA Android de comportamento.
+
+
+### 29/10/2026 — complemento de testes nativos publicado `cd5b33c0`
+
+- Ledger leu `harbor-testes-nativos-publicados-recibo.json`: commit **`cd5b33c085e86f4c59bbf68e7faab2ff2fbd5ffa`** publicado em `origin/main`, divergência final0/0, adiciona somente `__tests__/native/EstadoWidgetReconciliacaoTest.kt` e `__tests__/voz-widget-reconciliacao-nativa.cjs`. Supera apenas a pendência anterior de publicação desses dois testes; produto de `60507f47` permanece inalterado. Acumulado: 11 paths exatos desde `14ff79f2`, conforme recibo.
+- `package.json` publicado contém somente `test:voz`; script `test:voz-nativo` e WIP admin seguem locais, preservados pela restrição. Reprodução do teste nativo pelo runner publicado: `node __tests__/voz-widget-reconciliacao-nativa.cjs`, com Java/cache Kotlin necessários. Não afirmar que o script npm foi publicado.
+- Resultados FINAL2 preservados sem repetição: 292 JS/536 JVM, `test:voz` e `tsc` exit0; teste nativo exit0 no ambiente local anterior. QA Android novo permanece pendente, sem EAS/APK/deploy ou validação física. Ledger apenas leu o recibo; nenhum Git write ou gate repetido.
+- [ ] recibo de publicação source/config Compass; [ ] compilação módulo Expo root por Forge; [ ] regenerar e entregar patch documental seletivo após HEAD final.
+
+
+### 29/10/2026 — compilação Expo FINAL2 concluída; fecho documental
+
+- Ledger leu `relatorio-forge-compilacao-final2.md` e o parent conferiu o log. No Android da raiz real, Forge executou UMA vez `gradlew.bat :grana-voice-widget:compileDebugKotlin --console=plain --no-daemon`: **exit0, BUILD SUCCESSFUL 2m17s**, 45 tarefas, uma executada e44 up-to-date; a task do módulo foi efetivamente executada. Seis hashes FINAL2 iguais antes/depois. Compilou módulo Expo completo e suas duas Function novas. Recibo/log `forge-compilacao-final2-recibo.json` e `forge-compilacao-final2.log` na rodada2325.
+- **Limite:** compilação não gera APK nem prova ponte JSI ao vivo, comportamento Android, aparelho físico ou causa exata do vídeo. QA funcional FINAL2 continua pendente. QA Android anterior PASS limita-se a `5970b638`, conforme marco anterior. Não confundir tarefas up-to-date com cache remoto nem compilação com uso em aparelho.
+- Produto `60507f47` e testes nativos `cd5b33c0` publicados; novo Git de `test:voz-nativo` sob responsabilidade Harbor ainda pendente de recibo. Dez presets Compass aplicados/relidos; fonte e helper preparados para publicação seletiva, sem supor hash publicado. Parent leu e aprovou diff da regra AGENTS. Restart dos nós antigos não corrigido; nenhum reinício, EAS, APK ou deploy nesta etapa.
+- Fecho documental: sessão29, espelhos e patches seletivos de `context.md`/`AGENTS.md` preparados, sem stage e sem novo gate; Compass assume Git documental após janela Harbor e após fonte/config. Patches precisam estar sobre HEAD vigente quando forem aplicados. WIP alheio preservado. Ledger não repetiu testes, compilação ou verificador.
+
+
+### 29/10/2026 — Git suspenso; revisão incremental FINAL2 pendente
+
+- **Correção de estado:** Harbor relata bloqueio Git e nenhuma operação Git desde ele. As publicações `60507f47` e `cd5b33c0` ocorreram antes da suspensão; não foram revertidas nem republicadas. Último 0/0 é o dos recibos anteriores, não novo fetch. **Não presumir aprovação do parent para FINAL2 nem nova janela Git:** o relato anterior de aprovação FINAL2 e a janela então descrita ficam superados neste corte até revisão explícita do delta. Harbor reconheceu que deveria ter distinguido aprovação do primeiro freeze da autorização de caminhos antes de publicar o delta posterior.
+- **Pacote de revisão:** `E:/Grana-temporarios/2026-10-28-widget-voz-2325/relatorio-harbor-revisao-incremental.md`, `harbor-freeze-revisao-incremental.json` e `harbor-revisao-incremental/produto.patch` (SHA256 `7e8af52e92d7f011ca014ef4901176526d23a15e8932c5e7b9879f1dacd61482`). Patch contém somente quatro fontes; `testes.patch` separado. Baseline de nove arquivos foi reconstruído externamente e seus nove hashes originais conferidos por Harbor; fontes atuais conferidas contra FINAL2. Sem nova edição de produto nesta revisão.
+- **Provas atribuídas ao delta atual:** 292 JS/536 JVM e `test:voz`/`test:voz-nativo`/`tsc` exit0 foram executados depois das quatro fontes e correspondem aos hashes atuais, conforme recibo; não repetidos nesta revisão. Os 202/56 de FINAL1 NÃO validam o delta. Compilação Expo FINAL2 exit0 continua prova de compilação, não revisão aprovada, JSI ao vivo ou QA funcional Android.
+- `test:voz-nativo` segue como patch local de package, fora da proposta e não publicado; WIP admin e configurações preservados. Nenhum EAS, APK, deploy, nova versão ou alteração de modelo/conta. [ ] parent revisar as quatro fontes e testes separados; [ ] decisão de Git explicitamente comunicada; [ ] QA Android funcional. Ledger não repetiu testes nem executou Git.
+
+
+### 29/10/2026 — FINAL2 aprovado explicitamente e complemento publicado
+
+- Parent leu e aprovou explicitamente o delta FINAL2 e autorizou a publicação, superando o hold anterior. Ledger leu `harbor-final2-publicacao-autorizada-recibo.json` e `relatorio-harbor-final2-publicacao-autorizada.md`: commit **`b25eddca4288702c925223a392da29772b077fd1`** publicado em `origin/main`, fetch final0/0 e índice vazio. Janela Git Harbor liberada segundo recibo.
+- Complemento contém somente script `test:voz-nativo` em `package.json`; dez arquivos integrais e `test:voz` já estavam publicados em `60507f47`/`cd5b33c0`. Cumulativo exato desde `14ff79f2`:11 paths, package apenas os dois scripts de voz. WIP `test:admin` preservado. Este marco supera exclusivamente a pendência anterior do script e a revisão/hold anterior; histórico mantido.
+- Sem mudança de produto/teste, recongelamento ou repetição de checks. Resultados FINAL2 correspondentes ao delta aprovado preservados:292 JS/536 JVM e `test:voz`, `test:voz-nativo`, `tsc` exit0. Compilação Expo real Forge exit0 mantém limite próprio; QA funcional Android e físico pendentes. Nenhum APK, EAS ou deploy; fonte publicada não atualiza APK instalado. Ledger não repetiu gates ou Git write.
+
+
+### 29/10/2026 00h18 — ordem final vigente, sem hold
+
+- **Ordem da raiz:** SINAL FINAL2 superou a suspensão histórica; parent leu/aprovou delta das quatro fontes e `executarTarefa` sem bloqueador. Publicação de fontes/testes completa em `60507f47`, `cd5b33c0` e `b25eddca`, HEAD/origin0/0 conforme recibo. Sem hold ou espera para preparar a documentação; Compass tem Git exclusivo dos dois paths de configuração e, depois, do patch documental seletivo. Este marco supera os cortes de suspensão/revisão pendente anteriores.
+- **Verificações recebidas:** FINAL2 292 JS, 536 JVM e `test:voz`, `test:voz-nativo`, `tsc` exit0; Forge compilou o módulo Expo no Android da raiz real exit0 uma vez, BUILD SUCCESSFUL2m17, duas Function novas e seis hashes iguais antes/depois. QA antigo de Worker PASS cobre apenas o corte anterior, não o caso2325 nem aparelho físico. Permanecem pendentes QA funcional novo/físico; compilação não é execução JSI nem APK instalado.
+- **Inicialização:** dez perfis/presets Compass concluídos; tabela de dez em AGENTS. Futuras inicializações devem usar helper/preset correspondente. Seis comandos dos nós atuais ainda pendentes; Restart UI antigo não foi corrigido. Codex #2 fora do inventário acessível. Nenhum restart autorizado/executado.
+- **Fecho:** dois patches seletivos de contexto e regra AGENTS/topo são gerados sobre HEAD observado; Compass deve atualizar baseline após publicar os dois paths de configuração antes de aplicar docs. Sessão/espelhos atualizados e verificador uma vez conforme ordem final; não repetir gates, revisões ou testes de produto. Sem stage/Git write por Ledger, EAS, preparo, bump, APK ou deploy; WIP alheio preservado.
+
+
+<!-- ledger-widget-pos-release-20261028:end -->
 
 <!-- beacon-ph-widget-voz-20261028:start -->
 ## 28/10/2026 (M1, Beacon PH): continuidade documental; Codex coordena, QA aberto

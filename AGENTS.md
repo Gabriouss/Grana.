@@ -5,6 +5,25 @@
 
 Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before writing any code.
 
+# Inicialização dos agentes Codex
+
+Por decisão do autor em 28/10/2026, os agentes Codex devem iniciar com os modelos, esforços e contas atuais exatos, incluindo Gabriel Codex e Codex PH. Esta decisão supera os padrões antigos por cargo para inicialização. Em futuras inicializações, usar o helper `.maestri/codex-modelos.sh` ou o preset salvo correspondente, consultando `.maestri/codex-inicializacao.json`. Não presumir dados ausentes nem alterar esforços; nenhum reinício foi autorizado nesta rodada.
+
+| Agente | Conta | Modelo | Esforço |
+|---|---|---|---|
+| Codex | Gabriel Codex | gpt-6.1-sol | ultra |
+| Compass | Codex PH | gpt-6.1-sol | xhigh |
+| Forge | Codex PH | gpt-6.1-sol | xhigh |
+| Prism | Gabriel Codex | gpt-6.1-sol | medium |
+| Harbor | Codex PH | gpt-6.1-sol | xhigh |
+| Beacon | Codex PH | gpt-6.1-sol | medium |
+| Ledger | Gabriel Codex | gpt-6.1-terra | low |
+| Sentinel | Gabriel Codex | gpt-6.1-sol | medium |
+| Watchtower | Gabriel Codex | gpt-6.1-sol | medium |
+| Codex PH (terminal) | Codex PH | gpt-6.1-sol | high |
+
+Compass e parent confirmaram os dez perfis acima; dez presets completos foram criados e relidos. Os comandos dos nós existentes não foram alterados: não declarar que o restart pela interface já usa os comandos corrigidos. Inicializações futuras devem usar o helper ou preset correto. Codex #2 permanece fora por falta de conexão; não adivinhar conta ou configuração.
+
 # Este projeto é trabalhado em mais de uma máquina
 
 O autor alterna entre pelo menos duas máquinas neste mesmo repositório. Isso já
