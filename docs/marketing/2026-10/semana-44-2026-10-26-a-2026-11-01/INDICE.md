@@ -2,9 +2,12 @@
 
 ## Para aprovação
 
-- `para-aprovacao/pecas/reels/Esse é um mês organizado.mp4`: Reels R5 v6 (`serie/v11.js`), 28/10/2026, estendido a pedido do autor. Mantém a abertura e o fecho do v5 e acrescenta foto da nota (câmera e "Nova saída" lida da foto), importar o arquivo do banco (prévia de 8 lançamentos) e os botões do widget "Central de lançamentos" no Android, antes do gráfico. Narração nova da ElevenLabs. 1080x1920, 42,0 s, 60 fps, −14,16 LUFS, pico −1,29 dBTP.
 - `para-aprovacao/pecas/reels/Esse é um mês organizado-capa.png`: capa do R5, 1080x1920, tema escuro, arquétipo E do guia de design estático: título "Como fica um mês organizado?" e blocos do app em HTML (gráfico do período, composição por categoria, entrada do Pix de R$ 32,90 e "Lançar por voz"), sem celular. Gerada por `capas.py 6` (`capa.js`, n=6), na mesma pasta de edição. Vale também para o v2.
 - `para-aprovacao/pecas/feed/Falou o gasto, tá lançado.png`: card estático de feed, 1080x1440, 28/10/2026, sobre o lançamento por voz, baseado numa referência trazida pelo autor (texto pequeno no alto, título enorme, três etiquetas, celular sobre base nervurada com brilho atrás e um cartão saltando da tela). Sem o G no fundo e sem os textos de canto da série, a pedido do autor. Print real do app (Início com "Ouvindo…") colado na foto do celular vazio; o botão "Ouvindo…" é o recorte real ampliado. O balão "Você disse" com o resultado é ilustração, não uma tela do app. Fonte em `E:/Grana-temporarios/2026-10-28-card-voz/card.html`.
+
+## Aprovados
+
+- `aprovados/pecas/reels/Esse é um mês organizado.mp4`: Reels R5 v6 (`serie/v11.js`), 28/10/2026, estendido a pedido do autor. Mantém a abertura e o fecho do v5 e acrescenta foto da nota (câmera e "Nova saída" lida da foto), importar o arquivo do banco (prévia de 8 lançamentos) e os botões do widget "Central de lançamentos" no Android, antes do gráfico. Narração nova da ElevenLabs. 1080x1920, 42,0 s, 60 fps, −14,16 LUFS, pico −1,29 dBTP. **Aprovado pelo autor em 28/10/2026:** "essa versão ficou ótima [...] É assim que eu quero seguir."
 
 ## Histórico
 

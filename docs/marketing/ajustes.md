@@ -77,6 +77,15 @@ Aprovada pelo autor ao fim de seis versões. Vale para os próximos vídeos de d
 6. **Som:** voz em −14 LUFS no total, trilha pop local por baixo com compressão lateral (abaixa quando a voz fala), "plim" quando o lançamento é confirmado. O silêncio curto no fim, do fade da música, é intencional.
 7. **Capa:** gerador do guia de design estático (arquétipo A), com print do próprio vídeo e o Granabô do app. Fica ao lado do vídeo com o nome `<vídeo>-capa.png`.
 
+## Receita do R5 v6 "Esse é um mês organizado" (aprovado pelo autor em 28/10/2026)
+
+Autor: "essa versão ficou ótima [...] a gente conseguiu juntar o dinamismo do vídeo e mostrar de uma forma explicativa para o público sem deixar o vídeo entediante." "É assim que eu quero seguir." Cena de referência: `E:/Grana-temporarios/2026-10-23-reels-ganchos/edicao-r5/serie/v11.js` (telas em `telas6.js`).
+
+- **Tela do Grana. recriada em código, a partir do componente atual.** Ler o `.tsx` da tela (títulos, rótulos, chips, ordem dos campos) e reproduzir em HTML; nada de gravação tocando dentro do celular, que deixava a tela "vazada".
+- **Cards e botões saltam para fora do celular**, com o resto escurecido, uma função por vez, mostrando a ação real (toque, colar, câmera, prévia da importação, botões do widget).
+- **Dinâmico, mas com tempo para entender.** Os Reels rápidos anteriores eram gostosos de ver e ficavam confusos; cada função fica na tela até ser lida, e a pausa da narração cai só no silêncio entre frases.
+- **Skill:** a produção usou só a `motion-supremo` (que já absorveu a `meu-editor-de-video`) e saiu clara.
+
 ## Revisão do R5 v1 "Esse é um mês organizado" (autor, 28/10/2026)
 
 Reprovado com prints. Cada item é um "não faça" para todo Reels:
