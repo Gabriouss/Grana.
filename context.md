@@ -91,6 +91,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — ordem Watchtower 10
+
+O orquestrador aceitou provisoriamente o limite de escolha de data apontado na revisão 9 e atribuiu ao Watchtower a conferência do intervalo e decisão de push, condicionada à varredura de segredos. Relatou quatro falhas na execução integral de `test:ci`; a comparação de execução com a base remota não foi comprovada. A ordem não comprova publicação nem correção das falhas.
+
 ## 31/10 — atualização do plano
 
 O plano mantido fora do repositório incorporou o parecer de privacidade e obrigações legais; permanece proposta sujeita a validação e aprovação.
