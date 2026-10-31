@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppModal, { InsetsDoModal } from './AppModal';
 import AppPressable from './AppPressable';
+import PrivacyValue from './PrivacyValue';
 import TransactionSheet, { type ValoresLancamento } from './TransactionSheet';
 import { Alert } from '@/lib/alerta';
 import { listarCaixa, removerItemDaCaixa, sincronizarCaixa } from '@/lib/avisos-banco/caixa';
@@ -20,16 +20,17 @@ import {
 } from '@/lib/avisos-banco/decidir';
 import { gravarItem, pagarContaDoItem } from '@/lib/avisos-banco/gravar';
 import type { FormaDoAviso } from '@/lib/avisos-banco/interpretar';
-import { fetchApelidosCategoria, fetchBills, fetchCategories, fetchCreditCards, fetchTransactionsDoPeriodo } from '@/lib/data';
+import { lerTela } from '@/lib/cache-de-tela';
+import { getCachedTransactions } from '@/lib/offline-cache';
 import { useDemo } from '@/lib/demo-context';
 import { mensagemErro } from '@/lib/erros';
-import { usePublicarFaixaTopo } from '@/lib/faixa-topo';
 import { formatDateLabel, formatMoney, formatMoneyInput, parseAmount } from '@/lib/format';
 import { categoriaEscolhida, PERGUNTA_CATEGORIA } from '@/lib/heuristics';
 import { marcarLancamentosAlterados } from '@/lib/lancamentos-alterados';
+import { semViuva } from '@/lib/sem-viuva';
 import { fonts, lh, radius, spacing, theme, touchTarget, type } from '@/lib/theme';
 import type { Bill, CreditCard, Transaction, Wallet } from '@/lib/types';
-import { fetchWallets } from '@/lib/wallets';
+import { CATEGORIES } from '@/lib/types';
 import {
   avisosDisponivel,
   definirDonoAvisos,
@@ -51,6 +52,7 @@ type DadosDaLista = {
   lancamentos: Transaction[];
   /** Sem os lançamentos, não dá para dizer que não foi lançado antes: nada grava em um toque. */
   semConferenciaDeDuplicata: boolean;
+  semConferenciaDeContas: boolean;
 };
 
 const FORMA_ROTULO: Record<FormaDoAviso, string> = { credit: 'Crédito', debit: 'Débito', pix: 'Pix', boleto: 'Boleto' };
@@ -70,7 +72,6 @@ export default function AvisosAConferir({ dono, nomeDoPerfil }: { dono: string; 
   const [itens, setItens] = useState<ItemAConferir[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [aberta, setAberta] = useState(false);
-  const insets = useSafeAreaInsets();
 
   const carregar = useCallback(async () => {
     if (!avisosDisponivel) return;
@@ -86,19 +87,25 @@ export default function AvisosAConferir({ dono, nomeDoPerfil }: { dono: string; 
 
   useEffect(() => {
     if (!avisosDisponivel) return;
-    definirDonoAvisos(dono);
-    garantirListaInicialAvisos(PACOTES_INICIAIS);
+    try {
+      definirDonoAvisos(dono);
+      garantirListaInicialAvisos(PACOTES_INICIAIS);
+    } catch (e) {
+      console.error('[avisos] início do leitor falhou', e instanceof Error ? e.name : 'erro');
+      setErro('Não consegui iniciar o leitor de avisos');
+      return;
+    }
     void carregar();
     const evento = AppState.addEventListener('change', (estado) => { if (estado === 'active') void carregar(); });
-    return () => evento.remove();
+    const intervalo = setInterval(() => { if (AppState.currentState === 'active') void carregar(); }, 15000);
+    return () => { evento.remove(); clearInterval(intervalo); };
   }, [carregar, dono]);
 
   const faixaVisivel = avisosDisponivel && (itens.length > 0 || !!erro);
-  const ocupaTopo = usePublicarFaixaTopo(faixaVisivel, 2);
 
   return <>
     {faixaVisivel && (
-      <View style={[styles.faixa, { paddingTop: ocupaTopo ? Math.max(spacing.md, insets.top + spacing.sm) : spacing.md }]}>
+      <View style={styles.faixa}>
         <View style={styles.faixaLinha}>
           <Text style={styles.faixaTexto} numberOfLines={1} adjustsFontSizeToFit accessibilityLiveRegion="polite">
             {itens.length > 0 ? textoDaFaixa(itens) : erro}
@@ -140,6 +147,7 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
   const [revisao, setRevisao] = useState<{ item: ItemAConferir; forma: FormaDoAviso } | null>(null);
   /* Trava síncrona: o estado só muda no próximo render, e toque duplo cabe nesse intervalo. */
   const emAndamento = useRef(false);
+  const concluidos = useRef(new Set<string>());
 
   const recarregarItens = useCallback(async () => {
     const lista = await listarCaixa(dono);
@@ -151,30 +159,30 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
   const carregarTudo = useCallback(async () => {
     setFalha(null);
     try {
-      const lista = await recarregarItens();
+      await recarregarItens();
       const diario = await lerDiarioAvisos();
       setTextos(Object.fromEntries(diario.itens.map((a) => [a.id, [a.titulo, a.texto].filter(Boolean).join('\n')])));
-      const datas = lista.map((i) => i.data).sort();
+      // T2: abrir e editar só leem o aparelho. A rede fica na confirmação.
       const [carteiras, cartoes, categorias, apelidos, contasAbertas, lancamentos] = await Promise.all([
-        fetchWallets(),
-        fetchCreditCards(),
-        fetchCategories(),
-        fetchApelidosCategoria().catch(() => null),
-        fetchBills({ status: 'due' }),
-        (datas.length ? fetchTransactionsDoPeriodo(datas[0], datas[datas.length - 1]) : Promise.resolve([] as Transaction[]))
-          .then((t) => ({ t, falhou: false }))
-          .catch(() => ({ t: [] as Transaction[], falhou: true })),
+        lerTela<Wallet[]>('carteiras'),
+        lerTela<CreditCard[]>('cartoes'),
+        lerTela<{ name: string; color: string; is_default: boolean }[]>('categorias'),
+        lerTela<{ chave: string; valor: string }[]>('apelidos-categoria'),
+        lerTela<Bill[]>('boletos:todos').then(async (r) => r ?? await lerTela<Bill[]>('boletos:due')),
+        getCachedTransactions(),
       ]);
       setDados({
-        carteiras,
-        cartoes,
-        extras: categorias.filter((c) => !c.is_default).map((c) => ({ name: c.name, color: c.color })),
-        apelidos,
-        contasAbertas,
-        lancamentos: lancamentos.t,
-        semConferenciaDeDuplicata: lancamentos.falhou,
+        carteiras: (carteiras?.dados ?? []).filter((c) => c.id !== 'total'),
+        cartoes: cartoes?.dados ?? [],
+        extras: (categorias?.dados ?? []).filter((c) => !c.is_default).map((c) => ({ name: c.name, color: c.color })),
+        apelidos: apelidos?.dados ?? null,
+        contasAbertas: (contasAbertas?.dados ?? []).filter((c) => c.status === 'due'),
+        lancamentos: lancamentos ?? [],
+        semConferenciaDeDuplicata: lancamentos === null,
+        semConferenciaDeContas: contasAbertas === null,
       });
     } catch (e) {
+      console.error('[avisos] referências locais não foram lidas', e instanceof Error ? e.name : 'erro');
       setFalha(mensagemErro(e));
     }
   }, [recarregarItens]);
@@ -182,14 +190,16 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
   useEffect(() => { void carregarTudo(); }, [carregarTudo]);
 
   async function descartar(item: ItemAConferir) {
-    if (emAndamento.current) return;
+    if (emAndamento.current || concluidos.current.has(item.id)) return;
     emAndamento.current = true;
     setOcupado(item.id);
     try {
       await removerItemDaCaixa(dono, item.id);
+      concluidos.current.add(item.id);
       setRecibo('Aviso descartado');
       await recarregarItens();
     } catch (e) {
+      console.error('[avisos] descarte falhou', e instanceof Error ? e.name : 'erro');
       setRecibo(`Não consegui descartar: ${mensagemErro(e)}`);
     } finally {
       emAndamento.current = false;
@@ -198,7 +208,7 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
   }
 
   async function executar(item: ItemAConferir, tarefa: () => Promise<string>): Promise<boolean> {
-    if (emAndamento.current) return false;
+    if (emAndamento.current || concluidos.current.has(item.id)) return false;
     if (isDemoMode) {
       Alert.alert('Modo de exemplo ativo', 'Desative "Dados de exemplo" no Perfil para salvar este aviso na sua conta.');
       return false;
@@ -207,9 +217,11 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
     setOcupado(item.id);
     try {
       setRecibo(await tarefa());
+      concluidos.current.add(item.id);
       await recarregarItens();
       return true;
     } catch (e) {
+      console.error('[avisos] confirmação falhou', e instanceof Error ? e.name : 'erro');
       Alert.alert('Não consegui salvar', mensagemErro(e));
       return false;
     } finally {
@@ -234,7 +246,7 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
     });
     await executar(item, async () => {
       const { guardado } = await gravarItem(dono, item, entrada);
-      if (guardado) marcarLancamentosAlterados();
+      marcarLancamentosAlterados();
       return guardado ? 'Sem conexão. Lançamento salvo no aparelho' : 'Lançamento salvo';
     });
   }
@@ -242,10 +254,12 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
   /** Boleto: paga a conta casada ou vira saída. Nunca os dois. */
   function abrirBoleto(item: ItemAConferir, d: DadosDaLista) {
     if (item.contaEmPagamento) {
-      if (!d.contasAbertas.some((c) => c.id === item.contaEmPagamento)) {
-        void descartar(item);
-        return;
-      }
+      Alert.alert('Pagamento já iniciado', 'Confira a conta nos lançamentos antes de descartar este aviso.');
+      return;
+    }
+    if (d.semConferenciaDeContas) {
+      Alert.alert('Preciso conferir as contas', 'Abra as contas a pagar na Início e volte aqui para conferir este boleto.');
+      return;
     }
     const conta = d.contasAbertas.find((c) => Math.abs(Number(c.amount) - (item.valor ?? 0)) < 0.005);
     if (!conta) {
@@ -259,6 +273,7 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
         text: 'Sim, marcar como paga',
         onPress: () => void executar(item, async () => {
           await pagarContaDoItem(dono, item, conta);
+          marcarLancamentosAlterados();
           return 'Conta marcada como paga';
         }),
       },
@@ -268,12 +283,16 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
   function perguntarForma(item: ItemAConferir) {
     Alert.alert('Como foi pago?', 'O aviso não diz a forma de pagamento.', [
       { text: 'Crédito', onPress: () => setRevisao({ item, forma: 'credit' }) },
-      { text: 'Débito', onPress: () => setRevisao({ item, forma: 'debit' }) },
-      { text: 'Pix', onPress: () => setRevisao({ item, forma: 'pix' }) },
+      ...(!item.parcelas ? [
+        { text: 'Débito', onPress: () => setRevisao({ item, forma: 'debit' as const }) },
+        { text: 'Pix', onPress: () => setRevisao({ item, forma: 'pix' as const }) },
+      ] : []),
+      { text: 'Cancelar', style: 'cancel' },
     ]);
   }
 
   function abrirRevisao(item: ItemAConferir, d: DadosDaLista) {
+    if (item.contaEmPagamento) { abrirBoleto(item, d); return; }
     const forma = formaDoItem(item, d.cartoes);
     if (forma === 'boleto') abrirBoleto(item, d);
     else if (!forma) perguntarForma(item);
@@ -323,7 +342,7 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
     });
     const salvou = await executar(item, async () => {
       const { guardado } = await gravarItem(dono, item, entrada);
-      if (guardado) marcarLancamentosAlterados();
+      marcarLancamentosAlterados();
       return guardado ? 'Sem conexão. Lançamento salvo no aparelho' : 'Lançamento salvo';
     });
     if (salvou) setRevisao(null);
@@ -369,6 +388,7 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
           )}
           {!dados && !falha && <ActivityIndicator color={theme.ink} style={styles.carregando} />}
           {vazio && <Text style={styles.corpo}>Nada para conferir agora.</Text>}
+          {dados && !dados.carteiras.length && <Text style={styles.corpo}>{semViuva('Abra a Início para carregar suas carteiras antes de confirmar.')}</Text>}
           <ScrollView contentContainerStyle={styles.lista}>
             {dados && itens.map((item) => (
               <CartaoDoAviso
@@ -377,7 +397,7 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
                 dados={dados}
                 texto={textos[item.avisoIds[0]]}
                 entreContas={pareceEntreContas(item, nomeDoPerfil)}
-                ocupado={ocupado === item.id}
+                ocupado={ocupado !== null}
                 aoConfirmar={() => confirmar(item, dados)}
                 aoEditar={() => abrirRevisao(item, dados)}
                 aoDescartar={() => void descartar(item)}
@@ -390,7 +410,7 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
     {revisao && dados && (
       <TransactionSheet
         visible
-        onClose={() => setRevisao(null)}
+        onClose={() => { if (!ocupado) setRevisao(null); }}
         modo={revisao.forma === 'credit' ? 'credito' : 'carteira'}
         editando={false}
         inicial={valoresIniciais(revisao.item, revisao.forma, dados)}
@@ -402,6 +422,16 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
         seloDaData="lida do aviso"
         descricaoPadrao={revisao.item.direcao === 'in' ? 'Entrada' : 'Saída'}
         focoNoValor
+        categoriasLocais={[
+          ...CATEGORIES.map((c) => ({ ...c, is_default: true })),
+          ...dados.extras.filter((c) => !CATEGORIES.some((padrao) => padrao.name === c.name)),
+        ]}
+        avisoDeOrigem={<View style={styles.cartao}>
+          <Text style={styles.corpo}>{textos[revisao.item.avisoIds[0]] ?? 'Texto do aviso indisponível.'}</Text>
+          {pareceJaLancado(revisao.item, dados.lancamentos) && <Text style={styles.selo}>{semViuva('Parece já lançado. Confira antes de salvar.')}</Text>}
+          {dados.semConferenciaDeDuplicata && <Text style={styles.corpo}>{semViuva('Histórico indisponível neste aparelho. Confira se já lançou este gasto.')}</Text>}
+          {pareceEntreContas(revisao.item, nomeDoPerfil) && <Text style={styles.corpo}>{semViuva('Pode ser dinheiro entre suas contas. Descarte se só mudou de lugar.')}</Text>}
+        </View>}
       />
     )}
   </>;
@@ -423,7 +453,7 @@ function CartaoDoAviso({ item, dados, texto, entreContas, ocupado, aoConfirmar, 
       <View style={styles.cartao}>
         <Text style={styles.selo}>Não entendi este aviso</Text>
         <Text style={styles.legenda}>{app} · {formatDateLabel(item.data)}</Text>
-        <Text style={styles.corpo}>{texto ?? 'O texto deste aviso já foi apagado.'}</Text>
+        <Text style={styles.corpo}>{texto ?? semViuva('O texto deste aviso já foi apagado.')}</Text>
         <View style={styles.botoes}>
           <Botao rotulo="Descartar" onPress={aoDescartar} desligado={ocupado} />
           <Botao rotulo="Preencher" onPress={aoEditar} desligado={ocupado} destaque />
@@ -446,7 +476,7 @@ function CartaoDoAviso({ item, dados, texto, entreContas, ocupado, aoConfirmar, 
     <View style={styles.cartao}>
       {jaLancado && <Text style={styles.selo}>Parece já lançado</Text>}
       {entreContas && <Text style={styles.selo}>Entre suas contas?</Text>}
-      <Text style={styles.valor}>{entrada ? '+ ' : ''}R$&nbsp;{formatMoney(item.valor ?? 0)}</Text>
+      <PrivacyValue><Text style={styles.valor}>{entrada ? '+ ' : ''}R${formatMoney(item.valor ?? 0)}</Text></PrivacyValue>
       <Text style={styles.corpo}>{item.descricao || 'Sem descrição'}</Text>
       <Text style={styles.legenda}>{detalhes}</Text>
       <Text style={styles.legenda}>{app} · {formatDateLabel(item.data)}</Text>
@@ -474,7 +504,7 @@ function Botao({ rotulo, onPress, desligado, destaque }: { rotulo: string; onPre
 }
 
 const styles = StyleSheet.create({
-  faixa: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, backgroundColor: theme.paperRaised },
+  faixa: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, backgroundColor: theme.paperRaised },
   faixaLinha: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   faixaTexto: { flex: 1, minWidth: 0, color: theme.ink, fontFamily: fonts.regular, fontSize: type.apoio, lineHeight: lh(type.apoio, 'apoio') },
   faixaBotao: { minHeight: touchTarget, flexShrink: 0, justifyContent: 'center', paddingHorizontal: spacing.sm },

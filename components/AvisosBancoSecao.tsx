@@ -44,7 +44,8 @@ export default function AvisosBancoSecao() {
       setEstado(estadoAvisos());
       setApps(listarAppsAvisos());
       setFalha(null);
-    } catch {
+    } catch (erro) {
+      console.error('[avisos] estado não foi lido', erro instanceof Error ? erro.name : 'erro');
       setFalha('Não consegui ler o estado dos avisos.');
     }
   }, []);
@@ -62,12 +63,20 @@ export default function AvisosBancoSecao() {
     try {
       definirAppAvisos(app.pacote, !app.ligado);
       carregar();
-    } catch {
+    } catch (erro) {
+      console.error('[avisos] escolha de app falhou', erro instanceof Error ? erro.name : 'erro');
       Alert.alert('Não consegui mudar', 'Tente de novo em instantes.');
     }
   }
 
   const ordenados = [...apps].sort((a, b) => Number(b.ligado) - Number(a.ligado) || b.contagem - a.contagem);
+  function abrirAjustes(abrir: () => void) {
+    try { abrir(); }
+    catch (erro) {
+      console.error('[avisos] ajustes não abriram', erro instanceof Error ? erro.name : 'erro');
+      setFalha('Não consegui abrir os ajustes. Abra as informações do Grana no Android.');
+    }
+  }
 
   return <>
     <Text style={styles.rotulo}>Anotar pelos avisos do banco</Text>
@@ -76,21 +85,23 @@ export default function AvisosBancoSecao() {
       {falha && <Text style={styles.corpo}>{falha}</Text>}
       <View style={styles.linha}>
         <Text style={styles.chave}>{estado?.acesso ? 'Acesso liberado' : 'Acesso desligado'}</Text>
-        <AppPressable style={styles.acaoAlvo} accessibilityRole="button" onPress={abrirAcessoAvisos}>
+        <AppPressable style={styles.acaoAlvo} accessibilityRole="button" onPress={() => abrirAjustes(abrirAcessoAvisos)}>
           <Text style={styles.acao}>{estado?.acesso ? 'Ajustar' : 'Liberar'}</Text>
         </AppPressable>
       </View>
-      {estado?.acesso ? (
-        <Text style={styles.legenda}>{textoDoSinal(estado)}</Text>
-      ) : (
+      {estado && <Text style={styles.legenda}>{textoDoSinal(estado)}</Text>}
+      {!estado?.acesso && (
         <>
           <Text style={styles.legenda}>{RESTRITA}</Text>
-          <AppPressable style={styles.acaoAlvo} accessibilityRole="button" onPress={abrirInformacoesDoAppAvisos}>
+          <AppPressable style={styles.acaoAlvo} accessibilityRole="button" onPress={() => abrirAjustes(abrirInformacoesDoAppAvisos)}>
             <Text style={styles.acao}>Abrir informações do app</Text>
           </AppPressable>
         </>
       )}
       {estado?.ultimaFalha && <Text style={styles.legenda}>Última falha ao ler: {estado.ultimaFalha.split('@')[0]}</Text>}
+      <AppPressable style={styles.acaoAlvo} accessibilityRole="button" onPress={carregar}>
+        <Text style={styles.acao}>Atualizar estado</Text>
+      </AppPressable>
       <AppPressable style={styles.linha} accessibilityRole="button" onPress={() => setDiarioAberto(true)}>
         <Text style={styles.chave}>Diário do teste</Text>
         <Text style={styles.acao}>Abrir</Text>
@@ -99,6 +110,7 @@ export default function AvisosBancoSecao() {
 
     <Text style={styles.rotulo}>Apps que notificaram</Text>
     <View style={styles.cartao}>
+      {!ordenados.length && <Text style={styles.corpo}>Nenhum app notificou ainda.</Text>}
       {ordenados.map((app) => (
         <View key={app.pacote} style={styles.linha}>
           <View style={styles.appTexto}>
@@ -120,6 +132,7 @@ function DiarioDoTeste({ aoFechar }: { aoFechar: () => void }) {
   const [ilegiveis, setIlegiveis] = useState(0);
   const [falha, setFalha] = useState<string | null>(null);
   const [recibo, setRecibo] = useState<string | null>(null);
+  const [apagando, setApagando] = useState(false);
 
   const carregar = useCallback(async () => {
     setFalha(null);
@@ -127,7 +140,8 @@ function DiarioDoTeste({ aoFechar }: { aoFechar: () => void }) {
       const lido = await lerDiarioAvisos();
       setAvisos([...lido.itens].sort((a, b) => b.quando - a.quando));
       setIlegiveis(lido.ilegiveis);
-    } catch {
+    } catch (erro) {
+      console.error('[avisos] diário não foi lido', erro instanceof Error ? erro.name : 'erro');
       setFalha('Não consegui ler o diário. Os avisos seguem guardados no aparelho.');
     }
   }, []);
@@ -135,18 +149,22 @@ function DiarioDoTeste({ aoFechar }: { aoFechar: () => void }) {
   useEffect(() => { void carregar(); }, [carregar]);
 
   function apagar() {
-    Alert.alert('Apagar o diário?', 'Os avisos lidos saem deste aparelho.', [
+    Alert.alert('Apagar o diário?', 'Os textos dos avisos serão apagados. Os gastos a conferir continuam na lista.', [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Apagar tudo',
         style: 'destructive',
         onPress: async () => {
+          setApagando(true);
           try {
             await apagarDiarioAvisos();
             setRecibo('Diário apagado');
             await carregar();
-          } catch {
+          } catch (erro) {
+            console.error('[avisos] apagar diário falhou', erro instanceof Error ? erro.name : 'erro');
             setRecibo('Não consegui apagar. Tente de novo.');
+          } finally {
+            setApagando(false);
           }
         },
       },
@@ -154,11 +172,12 @@ function DiarioDoTeste({ aoFechar }: { aoFechar: () => void }) {
   }
 
   async function copiar(aviso: AvisoDoDiario) {
-    const entendido = resumoDoEntendido(interpretarAviso(aviso));
+    const entendido = resumoDoEntendido(interpretarAviso(aviso)).replace(/R\$\s+/g, 'R$');
     try {
       await Clipboard.setStringAsync(`${nomeDoApp(aviso.pacote)}\n${aviso.titulo}\n${aviso.texto}\nEntendi: ${entendido}`);
       setRecibo('Copiado');
-    } catch {
+    } catch (erro) {
+      console.error('[avisos] cópia falhou', erro instanceof Error ? erro.name : 'erro');
       setRecibo('Não consegui copiar.');
     }
   }
@@ -173,9 +192,12 @@ function DiarioDoTeste({ aoFechar }: { aoFechar: () => void }) {
               <Text style={styles.acao}>Fechar</Text>
             </AppPressable>
           </View>
-          <Text style={styles.legenda}>Fica só neste aparelho e some depois de 7 dias.</Text>
+          <Text style={styles.legenda}>{semViuva('Fica só neste aparelho e some depois de 7 dias.')}</Text>
           {recibo && <Text style={styles.acao} accessibilityLiveRegion="polite">{recibo}</Text>}
           {falha && <Text style={styles.corpo}>{falha}</Text>}
+          <AppPressable style={styles.acaoAlvo} accessibilityRole="button" disabled={apagando} onPress={() => void carregar()}>
+            <Text style={styles.acao}>Atualizar diário</Text>
+          </AppPressable>
           {ilegiveis > 0 && <Text style={styles.corpo}>{ilegiveis} avisos não puderam ser lidos.</Text>}
           {avisos === null && !falha && <ActivityIndicator color={theme.ink} />}
           {avisos?.length === 0 && <Text style={styles.corpo}>Nenhum aviso lido ainda.</Text>}
@@ -186,14 +208,14 @@ function DiarioDoTeste({ aoFechar }: { aoFechar: () => void }) {
                 <Text style={styles.legenda}>{new Date(aviso.quando).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</Text>
                 {!!aviso.titulo && <Text style={styles.corpo}>{aviso.titulo}</Text>}
                 {!!aviso.texto && <Text style={styles.corpo}>{aviso.texto}</Text>}
-                <Text style={styles.entendido}>{resumoDoEntendido(interpretarAviso(aviso))}</Text>
+                <Text style={styles.entendido}>{resumoDoEntendido(interpretarAviso(aviso)).replace(/R\$\s+/g, 'R$')}</Text>
                 <AppPressable style={styles.acaoAlvo} accessibilityRole="button" onPress={() => void copiar(aviso)}>
                   <Text style={styles.acao}>Copiar</Text>
                 </AppPressable>
               </View>
             ))}
             {!!avisos?.length && (
-              <AppPressable style={styles.acaoAlvo} accessibilityRole="button" onPress={apagar}>
+              <AppPressable style={styles.acaoAlvo} accessibilityRole="button" disabled={apagando} accessibilityState={{ disabled: apagando, busy: apagando }} onPress={apagar}>
                 <Text style={styles.acao}>Apagar tudo</Text>
               </AppPressable>
             )}

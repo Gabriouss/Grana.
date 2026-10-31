@@ -82,6 +82,8 @@ type Props = {
   semCarteiraPadrao?: boolean;
   /** Abre com o teclado no valor quando ele chega vazio. */
   focoNoValor?: boolean;
+  /** Captura de avisos: escolher categoria sem consultar ou alterar o servidor. */
+  categoriasLocais?: { name: string; color: string; is_default?: boolean }[];
   /** Esconde o seletor de carteira quando quem chama decide a carteira por
       outra regra (foto paga no crédito vai para a carteira do cartão;
       decisão do autor de 08/10/2026). A validação continua. */
@@ -116,6 +118,7 @@ export default function TransactionSheet({
   descricaoPadrao,
   semCarteiraPadrao = false,
   focoNoValor = false,
+  categoriasLocais,
   ocultarCarteira = false,
 }: Props) {
   const [type, setType] = useState<TxType>(inicial.type);
@@ -480,7 +483,7 @@ export default function TransactionSheet({
 
               {installment && !!parseAmount(amount) && (
                 <Text style={styles.installmentHint}>
-                  {parcelas}x de R$ {formatMoney(parseAmount(amount) / parcelas)}
+                  {parcelas}x de R${formatMoney(parseAmount(amount) / parcelas)}
                 </Text>
               )}
             </View>
@@ -520,6 +523,7 @@ export default function TransactionSheet({
 
       <CategoryPickerModal
         visible={catPickerOpen}
+        categoriasLocais={categoriasLocais}
         tipo={somenteSaida ? 'out' : type}
         currentCategory={category}
         onSelectCategory={({ name, color }) => {

@@ -38,7 +38,6 @@ import {
   fetchTransactions,
 } from '@/lib/data';
 import ExcluirContaSheet from '@/components/ExcluirContaSheet';
-import AvisosBancoPerfil from '@/components/AvisosBancoPerfil';
 import BaixarMeusDadosBotao from '@/components/BaixarMeusDadosBotao';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
 import { useReducedMotion } from '@/lib/motion';
@@ -547,9 +546,7 @@ export default function PerfilScreen() {
           </AppPressable>
         </View>
 
-        <AvisosBancoSecao />
-
-        {!isDemoMode && <AvisosBancoPerfil />}
+        {!isDemoMode && <AvisosBancoSecao />}
 
         {/* O Android também lista estes itens no seletor nativo, mas esta
             vitrine deixa claro o que cada tamanho resolve e tenta fixá-lo com

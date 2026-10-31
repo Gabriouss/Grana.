@@ -34,6 +34,7 @@ export default function CategoryPickerModal({
   onSelectCategory,
   mode = 'pick',
   tipo,
+  categoriasLocais,
 }: {
   visible: boolean;
   /** Só faz sentido no modo "pick" — o modo "manage" não tem uma categoria "atual" pra destacar. */
@@ -48,6 +49,8 @@ export default function CategoryPickerModal({
       vice-versa. Categorias criadas pela pessoa continuam disponíveis nos
       dois tipos, pois não têm natureza fixa. */
   tipo?: TxType;
+  /** Seleção local, sem semeadura, busca nem gerenciamento no servidor. */
+  categoriasLocais?: { name: string; color: string; is_default?: boolean }[];
 }) {
   const { isDemoMode } = useDemo();
   const keyboardHeight = useKeyboardHeight();
@@ -76,7 +79,9 @@ export default function CategoryPickerModal({
      — as padrão chegam aqui semeadas por seedDefaultCategories(), marcadas
      com is_default. Como a semeadura roda a cada abertura e casa pelo nome,
      padrão só troca de cor: sem lixeira e sem renomear (achados G10 e G10b). */
-  const items: ListItem[] = custom.map((c) => ({ id: c.id, name: c.name, color: c.color, isDefault: c.is_default }));
+  const items: ListItem[] = categoriasLocais
+    ? categoriasLocais.map((c) => ({ id: c.name, name: c.name, color: c.color, isDefault: c.is_default ?? false }))
+    : custom.map((c) => ({ id: c.id, name: c.name, color: c.color, isDefault: c.is_default }));
   const itemsVisiveis = mode === 'manage' || !tipo
     ? items
     : items.filter((item) => categoriaServeAoTipo(item.name, item.isDefault, tipo));
@@ -95,7 +100,7 @@ export default function CategoryPickerModal({
       resetForms();
       return;
     }
-    if (isDemoMode) return;
+    if (isDemoMode || categoriasLocais !== undefined) return;
     setLoading(true);
     /* Falha em `seedDefaultCategories` não pode ficar muda: RLS negada ou
        erro de servidor faz as 8 categorias padrão nunca existirem para essa
@@ -113,9 +118,10 @@ export default function CategoryPickerModal({
         setCustom([]);
       })
       .finally(() => setLoading(false));
-  }, [visible, isDemoMode]);
+  }, [visible, isDemoMode, categoriasLocais]);
 
   function blockInDemo(): boolean {
+    if (categoriasLocais !== undefined) return true;
     if (!isDemoMode) return false;
     Alert.alert(
       'Modo de exemplo ativo',
@@ -272,7 +278,7 @@ export default function CategoryPickerModal({
                       {selected && <Ionicons name="checkmark" size={16} color={theme.ink} />}
                       {item.isDefault && <Text style={styles.defaultTag}>padrão</Text>}
                     </AppPressable>
-                    <View style={styles.rowActions}>
+                    {categoriasLocais === undefined && <View style={styles.rowActions}>
                       <AppPressable
                         onPress={() => openEdit(item)}
                         style={styles.rowActionBtn}
@@ -296,7 +302,7 @@ export default function CategoryPickerModal({
                           <Ionicons name="trash-outline" size={15} color={theme.inkFaint} />
                         </AppPressable>
                       )}
-                    </View>
+                    </View>}
                   </View>
 
                   {isEditing && (
@@ -353,7 +359,7 @@ export default function CategoryPickerModal({
             })}
           </ScrollView>
 
-          {!creatingNew ? (
+          {categoriasLocais === undefined && (!creatingNew ? (
             <AppPressable onPress={() => { resetForms(); setCreatingNew(true); }}>
               <Text style={styles.createToggle}>+ Criar categoria</Text>
             </AppPressable>
@@ -378,7 +384,7 @@ export default function CategoryPickerModal({
                 {saving ? <ActivityIndicator color={theme.paper} /> : <Text style={styles.addBtnText}>Adicionar categoria</Text>}
               </AppPressable>
             </View>
-          )}
+          ))}
         </AccessibleModalPanel>
       </Pressable>
       )}</JanelaFlutuante>

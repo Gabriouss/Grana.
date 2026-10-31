@@ -21,6 +21,7 @@ import AppModal from '@/components/AppModal';
 import FaixaOffline, { useRecarregarAoChegarDadoNovo } from '@/components/FaixaOffline';
 import FaixaAssinatura from '@/components/FaixaAssinatura';
 import LancamentosEmRevisao from '@/components/LancamentosEmRevisao';
+import AvisosAConferir from '@/components/AvisosAConferir';
 import { versaoDosLancamentos } from '@/lib/lancamentos-alterados';
 import { Alert } from '@/lib/alerta';
 import { mensagemErro } from '@/lib/erros';
@@ -1663,6 +1664,8 @@ export default function InicioScreen() {
         }
       />
       <FaixaOffline estilo={[colunaConteudo, { marginTop: spacing.sm }]} />
+      {!isDemoMode && session?.user.id && <AvisosAConferir key={session.user.id} dono={session.user.id}
+        nomeDoPerfil={nomeExibicao} />}
       <LancamentosEmRevisao
         estilo={[colunaConteudo, { marginTop: spacing.sm }]}
         aberta={revisaoAberta}
