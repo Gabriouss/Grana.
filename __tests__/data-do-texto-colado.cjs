@@ -267,11 +267,11 @@ ok('descrição do Colar sem o resto da data: inteiro ou nada, parcela e valor i
   assert.equal(limpo(livre), livre, 'qualificadores não são uma lista fechada');
   ok('contexto qualificado termina em pagamento, outra data ou fim de trecho, sem lista de qualificadores');
 
-  /* Parecer 6 (31/10/2026). Fecha pelo mecanismo, em três partes:
+  /* Pareceres 6 e 7 (31/10/2026). Fecha pelo mecanismo, em três partes:
      1. "do pagamento" e "da compra" qualificam o rótulo e não abrem outro campo;
      2. "até" e "para" colados na data apontam para a frente, em qualquer rótulo;
-     3. dd/mm no futuro só vira ano anterior se o trecho diz que o pagamento
-        aconteceu. Sem isso é dúvida: cai em hoje, sem inventar data. */
+     3. dd/mm nunca fica a mais de 180 dias atrás de hoje. Passou disso, é ignorado:
+        vale o próximo candidato ou hoje, e ele continua na descrição. */
   const limpoHoje = (t, hoje = OUT) => semDatasDoTexto(t, hoje);
   const conferirPrazo = (prazo) => {
     assert.deepEqual(lida(prazo), { data: null, recusada: false }, 'sozinho: ' + prazo);
@@ -296,7 +296,43 @@ ok('descrição do Colar sem o resto da data: inteiro ou nada, parcela e valor i
     'Boleto para 05/11 às 23:59', 'Fatura fecha em 05/11', 'Conta de luz em 05/11 às 23:59', 'Mensalidade 05/11 às 23:59',
     'Pague até dia 05/11', 'Taxa em 15/12 às 08:00'];
   for (const prazo of naoListados) conferirPrazo(prazo);
-  ok('data no futuro sem pagamento declarado não vira ano anterior, mesmo com rótulo fora de qualquer lista');
+  ok('data no futuro não vira ano anterior, mesmo com rótulo fora de qualquer lista');
+
+  /* Parecer 7: a palavra Pix ou pagamento não prova que a operação aconteceu. */
+  for (const prazo of ['Pix programado em 05/11 às 23:59', 'Pagamento pendente em 05/11 às 23:59', 'Pagamento a realizar em 05/11 às 23:59']) {
+    conferirPrazo(prazo);
+  }
+  ok('operação programada ou pendente não vira data, sozinha e nas duas ordens');
+
+  /* Limite de 180 dias, com recuo de ano e dentro do mesmo ano. */
+  const ddmm = (hoje, dias) => {
+    const d = new Date(Date.parse(hoje) - dias * 864e5);
+    return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  };
+  for (const hoje of ['2026-10-30', '2027-01-02', '2026-03-01']) {
+    const dentro = `Mercado em ${ddmm(hoje, 180)}`;
+    const fora = `Mercado em ${ddmm(hoje, 181)}`;
+    assert.equal(lida(dentro, hoje).data, new Date(Date.parse(hoje) - 180 * 864e5).toISOString().slice(0, 10), `180 dias passa: ${dentro}, hoje ${hoje}`);
+    assert.notEqual(limpoHoje(dentro, hoje), dentro, '180 dias sai do texto');
+    assert.deepEqual(lida(fora, hoje), { data: null, recusada: false }, `181 dias não: ${fora}, hoje ${hoje}`);
+    assert.equal(limpoHoje(fora, hoje), fora, '181 dias fica no texto');
+  }
+  for (const [t, hoje, data] of [
+    ['Pix enviado\n05/11 às 10:15', '2026-10-30', null],
+    ['Data do pagamento:\n05/11 às 10:15', '2026-10-30', null],
+    ['Pix enviado\n28/12 às 10:15', '2027-01-02', '2026-12-28'],
+    ['Data do pagamento:\n28/12 às 10:15', '2027-01-02', '2026-12-28'],
+    ['Mercado em 28/12', '2027-01-02', '2026-12-28'],
+    ['Mercado em 05/01', '2026-12-28', null],
+  ]) {
+    assert.deepEqual(lida(t, hoje), { data, recusada: false }, t);
+    if (data === null) assert.equal(limpoHoje(t, hoje), t, 'ignorada fica no texto: ' + t);
+  }
+  /* Candidato ignorado não esconde o seguinte, nem com a data antiga vindo primeiro. */
+  assert.equal(lida('Mercado em 05/01; Pago em 20/12', '2026-12-28').data, '2026-12-20');
+  /* Data com ano explícito não muda: segue o prazo de um ano. */
+  assert.equal(lida('Pix em 05/01/2026', '2026-12-28').data, '2026-01-05');
+  ok('dd/mm a mais de 180 dias atrás é ignorado na leitura e na limpeza, e data com ano não muda');
 
   /* Prazo que já passou: não é futuro, então quem protege é o rótulo ou o "até". */
   for (const prazo of ['Pague até 15/10 às 23:59', 'Boleto para 15/10 às 23:59', 'Fatura fecha em 15/10',
@@ -305,28 +341,28 @@ ok('descrição do Colar sem o resto da data: inteiro ou nada, parcela e valor i
   }
   ok('prazo já vencido também não vira data do pagamento');
 
-  /* O outro lado: pagamento declarado continua valendo, inclusive no futuro. */
+  /* O outro lado: data recente de pagamento continua valendo. */
   for (const [t, data] of [
     ['Data do pagamento: 28/10 às 10:15', '2026-10-28'],
     ['Data da compra: 28/10 às 10:15', '2026-10-28'],
     ['Vencimento do boleto, data do pagamento 28/10 às 10:15', '2026-10-28'],
-    ['Pix enviado em 05/11 às 10:15', '2025-11-05'],
-    ['Pago em 05/11', '2025-11-05'],
-    ['Pagamento em 05/11', '2025-11-05'],
-    ['Data do pagamento: 05/11 às 10:15', '2025-11-05'],
-    ['Compra aprovada em 05/11', '2025-11-05'],
-    ['Transferência realizada em 05/11', '2025-11-05'],
     ['Mercado em 15/10 às 10:15', '2026-10-15'],
   ]) {
     assert.deepEqual(lida(t), { data, recusada: false }, t);
     assert.doesNotMatch(limpoHoje(t), /\d{1,2}\/\d{1,2}/, 'a data lida sai do texto: ' + t);
+  }
+  /* Decisão de 31/10/2026: declarar o pagamento não autoriza recuar 360 dias. */
+  for (const t of ['Pix enviado em 05/11 às 10:15', 'Pago em 05/11', 'Pagamento em 05/11', 'Data do pagamento: 05/11 às 10:15',
+    'Compra aprovada em 05/11', 'Transferência realizada em 05/11']) {
+    assert.deepEqual(lida(t), { data: null, recusada: false }, t);
+    assert.equal(limpoHoje(t), t, t);
   }
   /* Na virada, o recuo do comprovante recente continua. */
   assert.equal(lida('Pix em 28/12 às 10:15', '2027-01-02').data, '2026-12-28');
   assert.equal(lida('Pago em 28/12', '2027-01-02').data, '2026-12-28');
   /* Impossível continua recusada, mesmo sem pagamento declarado. */
   assert.deepEqual(lida('Conta em 31/02 às 10:15'), { data: null, recusada: true });
-  ok('pagamento declarado vale, no futuro recua um ano, e data impossível segue recusada');
+  ok('data recente vale, recuo só dentro de 180 dias, e data impossível segue recusada');
 
   /* Leitura e limpeza usam a mesma decisão quando sabem que dia é hoje. */
   for (const t of [...naoListados, 'Pago em 28/10', 'Pix em 05/11', 'Mercado em 15/10', 'TV 03/12']) {
@@ -335,13 +371,13 @@ ok('descrição do Colar sem o resto da data: inteiro ou nada, parcela e valor i
   }
   ok('leitura e limpeza tomam a mesma decisão');
 
-  /* Futuro vira ano anterior; hoje continua no ano corrente. */
+  /* Futuro vira ano anterior só até 180 dias; hoje continua no ano corrente. */
   assert.equal(lida('Pix em 30/10 R$ 1').data, '2026-10-30', 'hoje é do ano corrente');
-  assert.equal(lida('Pix em 31/10 R$ 1').data, '2025-10-31', 'amanhã é do ano anterior');
+  assert.equal(lida('Pix em 31/10 R$ 1').data, null, 'amanhã daria 364 dias atrás: sem data (decisão de 31/10/2026)');
   assert.equal(lida('Pix em 28/12 R$ 1', '2027-01-05').data, '2026-12-28', 'virada de ano');
   assert.equal(lida('Pix em 05/01 R$ 1', '2027-01-05').data, '2027-01-05');
-  assert.equal(lida('Pix em 06/01 R$ 1', '2027-01-05').data, '2026-01-06');
-  ok('no futuro é do ano anterior, inclusive na virada do ano');
+  assert.equal(lida('Pix em 06/01 R$ 1', '2027-01-05').data, null, 'amanhã daria 364 dias atrás: sem data (decisão de 31/10/2026)');
+  ok('no futuro recua um ano só se ficar dentro de 180 dias, inclusive na virada do ano');
 
   /* Data impossível: não vira data válida, não rola de mês, sai da descrição
      e recebe a mesma recusa da data com ano (o campo pede a escolha). */

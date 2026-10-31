@@ -382,16 +382,16 @@ const PAGAMENTO_DECLARADO = /\b(?:pago|paga|efetuado|realizado)\b|\b(?:data|dia)
 const FIM_DO_CONTEXTO_DO_ROTULO = new RegExp(`[\\r\\n;]|[.!?](?:\\s|$)|${PAGAMENTO_DECLARADO.source}|\\b(?:\\d{1,2}\\/\\d{1,2}|\\d{4}-\\d{1,2}-\\d{1,2})\\b`, 'iu');
 /** "até" e "para" colados na data apontam para a frente, em qualquer rótulo. */
 const APONTA_PARA_A_FRENTE = /\b(?:ate|para|pra)\s*:?\s*$/iu;
-/* Sinal de que o trecho fala de um pagamento feito. Débito e crédito ficam de fora
-   de propósito: "débito automático em 05/11" ainda vai acontecer. */
-const ACONTECEU = new RegExp(`${PAGAMENTO_DECLARADO.source}|\\b(?:pix|pagou|paguei|comprei|comprou|transfer\\p{L}*|enviad\\p{L}*|recebid\\p{L}*)\\b`, 'iu');
+/** Decisão de 31/10/2026: data sem ano nunca fica a mais disto atrás de hoje. */
+const DIAS_MAXIMOS_DA_DATA_SEM_ANO = 180;
 
 /**
  * Candidatos a data do pagamento, e a mesma decisão vale para leitura e limpeza.
  * Qualificações são livres; pagamento, outra data ou fim de trecho encerram o rótulo.
- * Com `hojeISO`, `dd/mm` no futuro só continua se o trecho diz que o pagamento
- * aconteceu: sem isso é quase sempre um prazo, e o recuo ao ano anterior gravaria
- * o gasto um ano antes. Na dúvida fica de fora e a tela usa hoje.
+ * Com `hojeISO`, data a mais de 180 dias atrás é ignorada, sem recusa: sem ano
+ * escrito, ela é quase sempre um prazo futuro, e nenhuma palavra do texto prova o
+ * contrário ("Pix programado"). Fica na descrição; vale o próximo candidato ou hoje.
+ * Data impossível continua candidata, para receber a recusa de `dataSemAno`.
  */
 function datasSemAnoDoTexto(texto: string, hojeISO?: string): RegExpExecArray[] {
   return [...texto.matchAll(new RegExp(DATA_SEM_ANO.source, 'giu'))].filter((m) => {
@@ -404,12 +404,17 @@ function datasSemAnoDoTexto(texto: string, hojeISO?: string): RegExpExecArray[] 
       if (LIGACAO_DO_ROTULO.test(entre) || !FIM_DO_CONTEXTO_DO_ROTULO.test(entre)) return false;
     }
     if (!hojeISO) return true;
-    const iso = isoValido(Number(m[1] ?? m[3]), Number(m[2] ?? m[4]), Number(hojeISO.slice(0, 4)));
-    if (!iso || iso <= hojeISO) return true;
-    // Outra data também fecha o trecho: "Pago em 28/10 Conta em 05/11" não prova a segunda.
-    const trecho = antes.split(/[\r\n;]|[.!?](?:\s|$)|\b\d{1,2}\/\d{1,2}\b/).at(-1) ?? '';
-    return ACONTECEU.test(trecho);
+    const iso = isoSemAno(Number(m[1] ?? m[3]), Number(m[2] ?? m[4]), hojeISO);
+    if (!iso) return true;
+    return (Date.parse(hojeISO) - Date.parse(iso)) / 86_400_000 <= DIAS_MAXIMOS_DA_DATA_SEM_ANO;
   });
+}
+
+/** O ano que deixa a data no passado: o corrente ou, se cair no futuro, o anterior. */
+function isoSemAno(dia: number, mes: number, hojeISO: string): string | null {
+  const ano = Number(hojeISO.slice(0, 4));
+  const iso = isoValido(dia, mes, ano);
+  return iso && iso > hojeISO ? isoValido(dia, mes, ano - 1) : iso;
 }
 
 /**
@@ -417,9 +422,7 @@ function datasSemAnoDoTexto(texto: string, hojeISO?: string): RegExpExecArray[] 
  * 31/02 ou 29/02 fora de ano bissexto, é recusada e nunca rola para outro mês.
  */
 function dataSemAno(dia: number, mes: number, hojeISO: string): { data: string | null; recusada: boolean } {
-  const ano = Number(hojeISO.slice(0, 4));
-  const iso = isoValido(dia, mes, ano);
-  return dentroDoPrazo(iso && iso > hojeISO ? isoValido(dia, mes, ano - 1) : iso, hojeISO);
+  return dentroDoPrazo(isoSemAno(dia, mes, hojeISO), hojeISO);
 }
 
 /**
