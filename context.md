@@ -91,6 +91,12 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — publicação e novas frentes
+
+Watchtower informa publicação de `9966bfcf` em `origin/main`, com varredura do intervalo sem achados e confirmação remota; conclusão da implantação web não foi verificada. Não houve deploy manual de funções nem migration. A versão de teste foi instalada no aparelho do autor; avisos bancários reais ainda aguardam teste.
+
+Foram atribuídas frentes para investigar suítes de voz e registros do widget, estado de carregamento do Livre, validação visual do lançamento e Perfil, e pesquisa complementar. As ordens não comprovam conclusão; quatro falhas relatadas na `test:ci` ainda exigem investigação.
+
 ## 31/10 — ordem Watchtower 10
 
 O orquestrador aceitou provisoriamente o limite de escolha de data apontado na revisão 9 e atribuiu ao Watchtower a conferência do intervalo e decisão de push, condicionada à varredura de segredos. Relatou quatro falhas na execução integral de `test:ci`; a comparação de execução com a base remota não foi comprovada. A ordem não comprova publicação nem correção das falhas.
