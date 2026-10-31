@@ -345,6 +345,12 @@ export default function InicioScreen() {
      "+" mudava o saldo, mas "Últimos lançamentos" ficava sem o item). */
   const versaoLancamentosCarregada = useRef(-1);
 
+  /* Só `load()` recalcula as fontes do Livre: depois de uma falha, a carga leve
+     deixaria "Livre indisponível" até a pessoa puxar a tela, com a rede já de
+     volta (B3 do Vigil). Baixada ao começar a carga, para um foco no meio dela
+     não sobrepor; e erguida de novo se ela falhar. Cada foco tenta uma vez. */
+  const repetirFontesNoFoco = useRef(false);
+
   const carregarDadosLeves = useCallback(async () => {
     if (isDemoMode) return; // dados de exemplo já são fixos, nada aqui muda sozinho
     const cargaDeLoadAoComecar = cargaAtualInicio.current;
@@ -384,6 +390,7 @@ export default function InicioScreen() {
   const load = useCallback(async () => {
     const minhaCarga = ++cargaAtualInicio.current;
     const vigente = () => minhaCarga === cargaAtualInicio.current;
+    repetirFontesNoFoco.current = false;
     /* Lida ANTES da busca: uma gravação que aconteça durante a carga sobe a
        versão de novo e o próximo foco recarrega, em vez de ser engolida. */
     const versaoAoComecar = versaoDosLancamentos();
@@ -463,6 +470,7 @@ export default function InicioScreen() {
         cofrinhosConferidos = true;
       } catch (erro) {
         if (!vigente()) return;
+        repetirFontesNoFoco.current = true;
         if (ehTabelaNovaAusente(erro)) setGoals([]);
         console.error('[inicio] fetchGoals falhou', erro);
       }
@@ -477,6 +485,7 @@ export default function InicioScreen() {
         setFontesLivreDisponiveis(cofrinhosConferidos);
       } catch (erro) {
         if (!vigente()) return;
+        repetirFontesNoFoco.current = true;
         setInvoicePayments(null);
         console.error('[inicio] fetchCardInvoicePayments falhou', erro);
       }
@@ -493,6 +502,7 @@ export default function InicioScreen() {
       }
     } catch (e: any) {
       if (!vigente()) return;
+      repetirFontesNoFoco.current = true;
       setCarregandoFontesLivre(false);
       setError(mensagemErro(e, 'Erro ao carregar dados'));
     } finally {
@@ -612,7 +622,7 @@ export default function InicioScreen() {
   useRecarregarAoChegarDadoNovo(() => { void load(); });
   useFocusEffect(
     useCallback(() => {
-      if (ultimoModoCarregadoRef.current === isDemoMode && versaoLancamentosCarregada.current === versaoDosLancamentos()) {
+      if (ultimoModoCarregadoRef.current === isDemoMode && versaoLancamentosCarregada.current === versaoDosLancamentos() && !repetirFontesNoFoco.current) {
         carregarDadosLeves();
       } else {
         ultimoModoCarregadoRef.current = isDemoMode;

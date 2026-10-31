@@ -15,6 +15,7 @@ function find(predicate) {
 const callback = find(n => ts.isVariableDeclaration(n) && n.name.getText(ast) === 'load').initializer;
 const card = find(n => ts.isJsxSelfClosingElement(n) && n.tagName.getText(ast) === 'SafeToSpendCard');
 const timeline = find(n => ts.isPropertyAssignment(n) && n.name.getText(ast) === 'timeline').initializer;
+const foco = find(n => ts.isCallExpression(n) && n.expression.getText(ast) === 'useFocusEffect').arguments[0];
 const jsx = (type, props) => typeof type === 'function' ? type(props) : ({ type, props });
 const runtime = { jsx, jsxs: jsx, Fragment: 'Fragment' };
 function compile(code, filename, env = {}, mocks = {}) {
@@ -47,13 +48,13 @@ function visible(node) {
 }
 function deferred() { let resolve, reject; const promise = new Promise((r, j) => { resolve = r; reject = j; }); return { promise, resolve, reject }; }
 const turn = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
-function scenario(failCore = false) {
+function scenario(failCore = { on: false }) {
   const calls = [], states = { fontesLivreDisponiveis: true, carregandoFontesLivre: false, invoicePayments: [{ old: true }] };
-  const goals = deferred(), payments = deferred();
+  let goals = deferred(), payments = deferred();
   const env = {
-    useCallback: fn => fn, cargaAtualInicio: { current: 0 }, versaoLancamentosCarregada: { current: -1 },
+    useCallback: fn => fn, cargaAtualInicio: { current: 0 }, versaoLancamentosCarregada: { current: -1 }, repetirFontesNoFoco: { current: false },
     versaoDosLancamentos: () => 7, isDemoMode: false,
-    fetchTransactions: async () => { calls.push('transactions'); if (failCore) throw Error('rede indisponivel'); return [{ id: 'novo' }]; },
+    fetchTransactions: async () => { calls.push('transactions'); if (failCore.on) throw Error('rede indisponivel'); return [{ id: 'novo' }]; },
     fetchBills: async () => { calls.push('bills'); return []; },
     fetchBudgets: async () => { calls.push('budgets'); return []; },
     fetchCreditCards: async () => { calls.push('cards'); return []; },
@@ -76,7 +77,13 @@ function scenario(failCore = false) {
     const timelineTree = compile(`exports.render = ${timeline.getText(ast)};`, 'timeline.tsx', scope).render();
     return { card: visible(cardTree), timeline: visible(timelineTree), cardTree, timelineTree };
   }
-  return { load, states, calls, goals, payments, render, env };
+  const leves = [];
+  const focar = compile(`exports.focar = ${foco.getText(ast)};`, 'foco.tsx', { ...env, load, carregarDadosLeves: async () => { leves.push(1); },
+    ultimoModoCarregadoRef: { current: false }, carregarPerfil: async () => null, carregarDiagnostico: async () => null, setDiagnostico() {},
+    carregarLayoutHome: async () => null, setHomeLayout() {}, pieAnim: { setValue() {} }, reduzirMovimento: true }).focar;
+  const cargas = () => calls.filter(c => c === 'transactions').length;
+  return { load, states, calls, get goals() { return goals; }, get payments() { return payments; }, render, env, focar, leves, cargas,
+    renovar() { goals = deferred(); payments = deferred(); } };
 }
 async function main() {
   const s = scenario(), work = s.load(); await turn();
@@ -124,13 +131,78 @@ async function main() {
     assert.equal(/Não consegui confirmar os pagamentos/.test(s.render().timeline), fail === 'payments');
     console.log('ok: falha real de ' + fail + ' visivel sem derrubar lista');
   }
-  const failedCore = scenario(true);
+  const failedCore = scenario({ on: true });
   Object.assign(failedCore.states, { fontesLivreDisponiveis: false, carregandoFontesLivre: true, invoicePayments: null });
   await failedCore.load();
   assert.deepEqual(failedCore.calls, ['transactions', 'bills', 'budgets', 'cards']);
   assert.equal(failedCore.states.error, 'falha principal');
   assert.match(failedCore.render().card, /Livre indisponível/, 'falha principal nao deixa recibo de busca pendente');
   console.log('ok: falha da busca principal encerra carregamento');
+
+  // Carga substituída: quem encerra a espera é a carga vigente.
+  const sucesso = scenario(); let a = sucesso.load(); await turn(); let b = sucesso.load(); await turn();
+  assert.equal(sucesso.states.carregandoFontesLivre, true);
+  sucesso.goals.resolve([]); await turn(); sucesso.payments.resolve([]); await Promise.all([a, b]);
+  assert.equal(sucesso.states.carregandoFontesLivre, false);
+  assert.match(sucesso.render().card, /10.00/);
+  const corte = { on: false }, comCorte = scenario(corte); a = comCorte.load(); await turn(); corte.on = true; await comCorte.load();
+  assert.equal(comCorte.states.carregandoFontesLivre, false, 'substituta com falha principal nao prende em Conferindo');
+  assert.match(comCorte.render().card, /Livre indisponível/);
+  comCorte.goals.reject(Error('resposta velha')); await a;
+  assert.equal(comCorte.states.carregandoFontesLivre, false);
+  console.log('ok: carga substituida nunca prende o estado neutro');
+
+  // Responde às fontes da carga em andamento; `falhar` diz qual delas recusa.
+  async function fontes(s, falhar) {
+    if (falhar === 'goals') s.goals.reject(Error('cofrinhos indisponiveis')); else s.goals.resolve([]);
+    await turn();
+    if (falhar === 'payments') s.payments.reject(Error('pagamentos indisponiveis')); else s.payments.resolve([]);
+    await turn();
+  }
+
+  const leve = scenario(); leve.load(); await turn(); await fontes(leve);
+  leve.focar(); leve.focar(); await turn();
+  assert.equal(leve.cargas(), 1, 'sem falha o foco nao refaz a carga pesada');
+  assert.equal(leve.leves.length, 2);
+  console.log('ok: sem falha o foco continua leve');
+
+  for (const falha of ['goals', 'payments']) {
+    const s = scenario(); s.load(); await turn(); await fontes(s, falha);
+    assert.match(s.render().card, /Livre indisponível/);
+    await turn();
+    assert.equal(s.cargas(), 1, 'falha nao dispara nova tentativa sozinha');
+
+    s.renovar(); s.focar(); await turn();
+    assert.equal(s.cargas(), 2, 'foco depois de falha tenta de novo com carga completa');
+    assert.equal(s.leves.length, 0);
+    assert.match(s.render().card, /Conferindo/);
+    s.focar(); await turn();
+    assert.equal(s.cargas(), 2, 'foco nao sobrepoe a nova tentativa em andamento');
+
+    await fontes(s, falha);
+    assert.equal(s.states.carregandoFontesLivre, false, 'nova falha nao prende em Conferindo');
+    assert.match(s.render().card, /Livre indisponível/, 'nova falha mantem a mensagem');
+    await turn();
+    assert.equal(s.cargas(), 2, 'nova falha nao vira laco');
+
+    s.renovar(); s.focar(); await turn(); await fontes(s);
+    assert.equal(s.cargas(), 3, 'cada foco faz uma tentativa');
+    assert.match(s.render().card, /10\.00/, 'fonte de volta devolve o Livre sem puxar');
+    assert.doesNotMatch(s.render().timeline, /Não consegui/);
+    s.focar(); await turn();
+    assert.equal(s.cargas(), 3, 'depois de recuperar, o foco volta a ser leve');
+    console.log('ok: falha de ' + falha + ' recupera no foco, sem laco nem sobreposicao');
+  }
+
+  const corteNoFoco = { on: false }, s2 = scenario(corteNoFoco); s2.load(); await turn(); await fontes(s2, 'payments');
+  corteNoFoco.on = true; s2.renovar(); s2.focar(); await turn();
+  assert.equal(s2.cargas(), 2);
+  assert.equal(s2.states.carregandoFontesLivre, false);
+  assert.match(s2.render().card, /Livre indisponível/);
+  corteNoFoco.on = false; s2.renovar(); s2.focar(); await turn(); await fontes(s2);
+  assert.equal(s2.cargas(), 3, 'falha da busca principal na nova tentativa nao perde a proxima');
+  assert.match(s2.render().card, /10\.00/);
+  console.log('ok: falha principal na nova tentativa nao perde a proxima');
 }
 module.exports = main;
 if (require.main === module) main().catch(e => { console.error(e); process.exitCode = 1; });
