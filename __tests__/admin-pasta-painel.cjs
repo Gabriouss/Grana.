@@ -9,24 +9,43 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const vm = require('node:vm');
+const { createRequire, wrap } = require('node:module');
 
-const base = fs.mkdtempSync(path.join(process.env.GRANA_TEMP || os.tmpdir(), 'grana-pasta-painel-'));
+const temporarios = path.resolve(process.env.GRANA_TEMP || os.tmpdir());
+const base = fs.mkdtempSync(path.join(temporarios, 'grana-pasta-painel-'));
 const legado = path.join(base, 'repo'), painel = path.join(base, 'Grana - Painel');
+const R = path.join(base, 'repo-novo');
 process.env.GRANA_ADMIN_PASTA_CONTA = path.join(base, 'conta');
 process.env.GRANA_ADMIN_PASTA_PAINEL = painel;
-fs.mkdirSync(legado, { recursive: true }); fs.mkdirSync(path.join(painel, 'Registros'), { recursive: true });
+fs.mkdirSync(legado, { recursive: true }); fs.mkdirSync(R); fs.mkdirSync(path.join(painel, 'Registros'), { recursive: true });
 // O layout novo só liga com o recibo de uma migração conferida (gravado por último pelo script).
 fs.writeFileSync(path.join(painel, 'Registros', 'migracao-AUDIT.json'), '{"formato":1}\n');
 const configPath = require.resolve('../tools/admin-local/config.cjs');
 require.cache[configPath] = { id: configPath, filename: configPath, loaded: true, exports: {
-  RAIZ: path.resolve(__dirname, '..'), RAIZ_DADOS: path.resolve(__dirname, '..'), ler: () => null, tem: () => false,
+  RAIZ: R, RAIZ_DADOS: R, ler: () => null, tem: () => false,
   ocultar: (s) => String(s), registrarSegredo() {}, refSupabase: () => null } };
 global.fetch = () => { throw Error('rede proibida'); };
+// Fonte real, com __dirname na fixture: o tradutor e os writers compartilham a raiz isolada.
+const catalogoPath = require.resolve('../tools/admin-local/marketing/catalogo.cjs');
+const catalogoModulo = { id: catalogoPath, filename: catalogoPath, loaded: true, exports: {} };
+require.cache[catalogoPath] = catalogoModulo;
+vm.runInThisContext(wrap(fs.readFileSync(catalogoPath, 'utf8')), { filename: catalogoPath })(
+  catalogoModulo.exports, createRequire(catalogoPath), catalogoModulo, catalogoPath, path.join(R, 'tools/admin-local/marketing'));
 const pp = require('../tools/admin-local/marketing/pasta-painel.cjs');
-const R = pp.REPO; // o servidor passa a raiz do repositório; a pasta do painel vem do ambiente
+assert.equal(pp.REPO, R);
 const cat = require('../tools/admin-local/marketing/catalogo.cjs');
 const ap = require('../tools/admin-local/marketing/aprovacoes.cjs');
 const promo = require('../tools/admin-local/marketing/promocao.cjs');
+const abrirOriginal = fs.openSync;
+let reservas = 0;
+fs.openSync = (arquivo, ...args) => {
+  if (path.basename(String(arquivo)) === '.grana-admin-writer.lock') {
+    assert.equal(path.resolve(arquivo), path.join(R, '.grana-admin-writer.lock'), 'writer só pode reservar a raiz temporária');
+    reservas++;
+  }
+  return abrirOriginal(arquivo, ...args);
+};
 
 const MES = '2026-10', SEM = 'semana-42-2026-10-12-a-2026-10-18', S = `docs/marketing/${MES}/${SEM}`;
 const TOPO = { 'para-aprovacao': 'Para aprovar', aprovados: 'Aprovados', historico: 'Histórico' };
@@ -105,8 +124,13 @@ const vazias = (d) => fs.readdirSync(d, { withFileTypes: true }).filter((e) => e
     assert.ok(!fs.existsSync(path.join(painel, 'docs')));
     assert.ok(!fs.existsSync(path.join(pp.REPO, 'docs/marketing', MES, SEM, 'aprovados/pecas/reels/Junto.mp4')), 'repositório intocado');
     assert.deepEqual(vazias(painel), []);
-    console.log('admin-pasta-painel: tradutor ida/volta (peças, registros, índice, apoio e arsenal no repositório), mesmo catálogo nos dois layouts, Reel e capa pareados entre Aprovados e Para aprovar, capa sozinha órfã, promoção leva a capa e preserva aceite e versão, índice e registros na pasta do painel, sem pasta vazia OK');
+    assert.ok(reservas > 0, 'aprovação e promoção exercitaram o writer real');
+    assert.ok(!fs.existsSync(path.join(R, '.grana-admin-writer.lock')), 'writer liberou a reserva temporária');
+    console.log('admin-pasta-painel: tradutor ida/volta (peças, registros, índice, apoio e arsenal no repositório), mesmo catálogo nos dois layouts, Reel e capa pareados entre Aprovados e Para aprovar, capa sozinha órfã, promoção leva a capa e preserva aceite e versão, índice e registros na pasta do painel, sem pasta vazia e writer somente na raiz temporária OK');
   } finally {
+    fs.openSync = abrirOriginal;
+    assert.equal(path.dirname(base), temporarios);
+    assert.ok(path.basename(base).startsWith('grana-pasta-painel-'));
     fs.rmSync(base, { recursive: true, force: true });
   }
 })().catch((e) => { console.error(e); process.exitCode = 1; });
