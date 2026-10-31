@@ -91,6 +91,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — revisão Anvil e QA seguinte
+
+Anvil revisou o delta sem achado P1 ou P2 e corrigiu dois P3: proteção do teste de versão (`7f010b94`) e espaço no card (`6029a964`). Relata `test:ci` e TypeScript verdes e varredura sem achados. Não publicou: as correções ainda não tinham sido vistas em tela. Vigil recebeu nova ordem de QA na web local; resultado pendente, sem prova nativa.
+
 ## 31/10 — QA Vigil 3 não verificado
 
 Vigil não conseguiu testar as correções atuais: o aplicativo disponível carregou código anterior e a alternativa web não carregou sob pressão de memória. Nenhum defeito novo foi confirmado, nenhum lançamento de teste foi gravado e o emulador foi fechado. As telas, o salto no Perfil e a regra 20 após alterações seguem sem validação nesta rodada.
