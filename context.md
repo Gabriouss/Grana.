@@ -91,6 +91,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — investigação do CI remoto
+
+O fechamento documental foi publicado em `476ca2d2`, com varredura limpa. O orquestrador relata falhas do job de testes no GitHub apesar da suíte local verde e atribuiu a Anvil investigação, reprodução e correção conforme a causa. A origem ainda não foi comprovada; a ordem não comprova correção nem CI remoto verde.
+
 ## 31/10 — fechamento e pendências
 
 A revisão e prova web da retomada estão registradas abaixo. Permanecem sem verificação: correções no Android, conclusão da publicação Vercel e aviso bancário real; `330641ef` não teve segundo revisor. A decisão de aceitar o limite de datas é do orquestrador e pode ser revista pelo autor; oito asserções foram atualizadas na mudança. O histórico local foi saneado antes do push, sem force.
