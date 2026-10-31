@@ -55,7 +55,104 @@ const NUBANK = 'com.nu.production';
 const WALLET = 'com.google.android.apps.walletnfcrel';
 const aviso = (id, titulo, texto, extra = {}) => ({ id: id.padEnd(64, '0'), pacote: NUBANK, chave: `k-${id}`, quando: AGORA, titulo, texto, ...extra });
 
+/** Canal alfa de um PNG RGBA de 8 bits, sem dependência nova. */
+function alfaDoPng(arquivo) {
+  const png = fs.readFileSync(arquivo);
+  const idat = [];
+  let largura, altura;
+  for (let i = 8; i < png.length;) {
+    const tamanho = png.readUInt32BE(i);
+    const tipo = png.toString('latin1', i + 4, i + 8);
+    const dados = png.subarray(i + 8, i + 8 + tamanho);
+    if (tipo === 'IHDR') {
+      largura = dados.readUInt32BE(0);
+      altura = dados.readUInt32BE(4);
+      assert.deepEqual([dados[8], dados[9], dados[12]], [8, 6, 0], `${arquivo}: precisa ser RGBA de 8 bits, sem entrelaçar`);
+    }
+    if (tipo === 'IDAT') idat.push(dados);
+    i += 12 + tamanho;
+  }
+  const cru = require('node:zlib').inflateSync(Buffer.concat(idat));
+  const linha = largura * 4;
+  const alfa = new Uint8Array(largura * altura);
+  let anterior = Buffer.alloc(linha);
+  for (let y = 0; y < altura; y++) {
+    const filtro = cru[y * (linha + 1)];
+    const atual = Buffer.from(cru.subarray(y * (linha + 1) + 1, (y + 1) * (linha + 1)));
+    for (let x = 0; x < linha; x++) {
+      const a = x >= 4 ? atual[x - 4] : 0;
+      const b = anterior[x];
+      const c = x >= 4 ? anterior[x - 4] : 0;
+      const p = a + b - c;
+      const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+      const previsto = [0, a, b, (a + b) >> 1, pa <= pb && pa <= pc ? a : pb <= pc ? b : c][filtro];
+      atual[x] = (atual[x] + previsto) & 255;
+    }
+    for (let x = 0; x < largura; x++) alfa[y * largura + x] = atual[x * 4 + 3];
+    anterior = atual;
+  }
+  return { largura, altura, alfa };
+}
+
+/** Quantas peças separadas a imagem tem. O G e o ponto são duas. */
+function pecasDoDesenho({ largura, altura, alfa }) {
+  const visto = new Uint8Array(alfa.length);
+  let pecas = 0;
+  for (let inicio = 0; inicio < alfa.length; inicio++) {
+    if (visto[inicio] || alfa[inicio] < 128) continue;
+    const pilha = [inicio];
+    visto[inicio] = 1;
+    let area = 0;
+    while (pilha.length) {
+      const i = pilha.pop();
+      area++;
+      const x = i % largura;
+      const vizinhos = [x > 0 ? i - 1 : -1, x < largura - 1 ? i + 1 : -1, i - largura, i + largura];
+      for (const v of vizinhos) {
+        if (v >= 0 && v < alfa.length && !visto[v] && alfa[v] >= 128) { visto[v] = 1; pilha.push(v); }
+      }
+    }
+    if (area >= alfa.length * 0.001) pecas++;
+  }
+  return pecas;
+}
+
+function conferirSilhueta(arquivo, rotulo) {
+  const imagem = alfaDoPng(arquivo);
+  const { largura, altura, alfa } = imagem;
+  const cantos = [0, largura - 1, (altura - 1) * largura, altura * largura - 1].map((i) => alfa[i]);
+  assert.deepEqual(cantos, [0, 0, 0, 0], `${rotulo}: cantos têm de ser transparentes, senão o Android desenha um quadrado`);
+  const cheios = alfa.reduce((soma, a) => soma + (a >= 128 ? 1 : 0), 0) / alfa.length;
+  assert.ok(cheios > 0.1 && cheios < 0.5, `${rotulo}: forma com ${(cheios * 100).toFixed(1)}% da área`);
+  assert.equal(pecasDoDesenho(imagem), 2, `${rotulo}: o G e o ponto, separados`);
+}
+
+function testarIconeDaNotificacao() {
+  const fonte = fs.readFileSync(path.join(root, 'modules/grana-avisos/android/src/main/java/com/gabriouss/grana/avisos/GranaAvisosListener.kt'), 'utf8');
+  assert.deepEqual(fonte.match(/\.setSmallIcon\([^)]*\)+/g), ['.setSmallIcon(iconeDaNotificacao())']);
+  const recurso = fonte.indexOf('getIdentifier("notification_icon", "drawable", packageName)');
+  const checagem = fonte.indexOf('if (icone != 0) return icone', recurso);
+  const registro = fonte.indexOf('Log.w(TAG', checagem);
+  const reserva = fonte.indexOf('return applicationInfo.icon', registro);
+  assert.ok(recurso >= 0 && checagem > recurso && registro > checagem && reserva > registro, 'recurso monocromático primeiro; ícone do app só como reserva, com log');
+  ok('listener usa o recurso monocromático primeiro e o ícone do app só como reserva');
+
+  const plugin = fs.readFileSync(path.join(root, 'node_modules/expo-notifications/plugin/build/withNotificationsAndroid.js'), 'utf8');
+  assert.match(plugin, /exports\.NOTIFICATION_ICON = 'notification_icon'/, 'o nome tem de ser o que o plugin gera');
+  const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'));
+  const declarado = app.expo.plugins.find((p) => Array.isArray(p) && p[0] === 'expo-notifications')[1].icon;
+  conferirSilhueta(path.join(root, declarado), declarado);
+  ok('o asset que o plugin usa tem cantos transparentes, o G e o ponto');
+
+  /* android/ é gerada e fica fora do git: sem a pasta, vale só a checagem do asset. */
+  const res = path.join(root, 'android/app/src/main/res');
+  const densidades = ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi'].filter((d) => fs.existsSync(path.join(res, `drawable-${d}/notification_icon.png`)));
+  for (const d of densidades) conferirSilhueta(path.join(res, `drawable-${d}/notification_icon.png`), `notification_icon ${d}`);
+  ok(`PNG gerado com a mesma silhueta em ${densidades.length} densidades (0 quando não há android/)`);
+}
+
 async function main() {
+  testarIconeDaNotificacao();
   const disco = discoFalso();
   const diario = { itens: [], ilegiveis: 0, falhar: false };
   const carregar = carregador({

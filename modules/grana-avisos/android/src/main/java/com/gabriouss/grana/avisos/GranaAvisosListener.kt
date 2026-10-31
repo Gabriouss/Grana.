@@ -94,13 +94,25 @@ class GranaAvisosListener : NotificationListenerService() {
       @Suppress("DEPRECATION") Notification.Builder(this)
     }
     val notificacao = construtor
-      .setSmallIcon(applicationInfo.icon)
+      .setSmallIcon(iconeDaNotificacao())
       .setContentTitle(getString(R.string.grana_avisos_titulo))
       .setContentText(if (valorEscondido()) getString(R.string.grana_avisos_texto) else valor)
       .setContentIntent(abrir)
       .setAutoCancel(true)
       .build()
     manager.notify(ID_NOTIFICACAO, notificacao)
+  }
+
+  /**
+   * O Android desenha o ícone pequeno só pelo alfa, então o do launcher perde a forma.
+   * O `notification_icon` é gerado no app pelo plugin do expo-notifications, e um módulo
+   * não enxerga o `R` do app. Sem o recurso, o aviso sai do mesmo jeito.
+   */
+  private fun iconeDaNotificacao(): Int {
+    val icone = resources.getIdentifier("notification_icon", "drawable", packageName)
+    if (icone != 0) return icone
+    Log.w(TAG, "notification_icon ausente, usando o icone do app")
+    return applicationInfo.icon
   }
 
   /**
