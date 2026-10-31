@@ -141,6 +141,10 @@ O histórico e a evidência da exposição permanecem na seção datada de 16/09
 - Conforme coordenação, prebuild do Beacon sujou o clone duas vezes e travou o envio do Harbor antes do EAS; nenhuma build enviada até 23h13. Limites às 23h11: Claude 91% usados em 5h, retorno às 02h30, 16% semanal; PH 13% restantes em 5h; Gabriel às 22h45, 61% restantes em 5h e 37% semanal.
 - Uma aba de ajuda Git abriu no Firefox do autor; pelo título, `git checkout-index --help`, mas agente responsável não confirmado. Nenhuma inferência adicional.
 
+### Atualização — Colar, entrega Prism
+
+- Prism entregou `3964c328` para tratar contexto qualificado de vencimento/parcela: regressão vermelha antes, oito suítes focais e `tsc` verdes segundo relatório, usando corpus sintético. Sem `test:ci`, aparelho, comprovante real ou deploy. Revisão independente Watchtower 6 pendente; não inferir liberação do push.
+
 <!-- ledger-widget-pos-release-20261028:start -->
 ## 28/10/2026 (M1, Ledger): incidente do widget após a release; correção autorizada
 
