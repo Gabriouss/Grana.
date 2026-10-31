@@ -91,6 +91,12 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — pareceres Watchtower 7 e 8
+
+Watchtower considerou a publicação da main não apta: reproduziu no parser real datas incorretas para operações futuras e perda de data com rótulo em outra linha; também encontrou conteúdo público no intervalo incompatível com a regra 15. Seis suítes específicas passaram; não houve push. O saneamento precisa considerar o histórico inteiro a publicar, não apenas o conteúdo atual.
+
+Na revisão separada de avisos, veredito não apto: A6 e A7 fechados nos caminhos examinados, mas A4 ainda duplica visualmente parcela futura em reprodução com módulo real; não foi demonstrada duplicação persistida. Duas suítes passaram; sem teste em aparelho, merge ou push. Limites do seletor de carteira e recibo não foram revalidados.
+
 ## 31/10 — revisão atribuída ao Watchtower
 
 A ordem 7 atribui ao Watchtower a revisão do delta de Colar e testes de voz, com decisão de publicação após conferências, e depois revisão separada das correções A6, A4 residual e A7 na linha de teste. A atribuição não comprova revisão, aprovação ou publicação; aguardar os pareceres e marcadores correspondentes.
