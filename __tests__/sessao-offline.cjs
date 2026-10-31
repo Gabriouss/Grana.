@@ -116,6 +116,7 @@ vm.runInNewContext(compilar('lib/fila-pendente.ts'), {
   },
 });
 
+const recibosDaFila = [];
 const voiceOps = {};
 vm.runInNewContext(compilar('lib/voice-operations.ts'), {
   exports: voiceOps,
@@ -127,6 +128,12 @@ vm.runInNewContext(compilar('lib/voice-operations.ts'), {
     if (nome === './sessao-offline') return { ...sessaoOffline, __esModule: true };
     if (nome === './fila-pendente') return filaPendente;
     if (nome === './cache-de-tela') return { lancamentoGravado() {} };
+    /* Fronteiras da retomada e do recibo (a9158ac6 e 60507f47). O recibo real é
+       coberto por voz-sync-app-estado-widget.cjs. */
+    if (nome === './voz-retomada') return { agendarVoz: async () => true, reconciliarVozConcluida: async () => {}, __esModule: true };
+    if (nome === './widget-voz-task') {
+      return { confirmarOperacaoVozSincronizada: async (requestId) => { recibosDaFila.push(requestId); }, __esModule: true };
+    }
     if (nome === './widgets-home-events') {
       return { notificarDadosDosWidgetsAlterados: () => {}, __esModule: true };
     }
@@ -258,6 +265,7 @@ const gravarNoDisco = (s) => disco.set(CHAVE_SESSAO, JSON.stringify(s));
   });
   const resumo = await voiceOps.sincronizarOperacoesVoz();
   igual(resumo.sincronizadas, 1, 'com a rede de volta, a fala guardada é enviada');
+  igual(recibosDaFila, ['req-1'], 'e a pessoa recebe o recibo dela');
   igual(loja.has(chave), false, 'e sai da fila depois de confirmada');
 
   // ── Trocar de conta não pode herdar a fila da anterior ────────────────

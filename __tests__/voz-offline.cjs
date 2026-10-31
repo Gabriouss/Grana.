@@ -12,7 +12,7 @@ function carregar(file, deps) {
 }
 (async () => {
   const storage = new Map();
-  let usuario = 'a', offline = true, envios = [], erroRpc = null;
+  let usuario = 'a', offline = true, envios = [], erroRpc = null, confirmadas = [], reconciliadas = [];
   const operacoes = carregar('lib/voice-operations.ts', {
     '@react-native-async-storage/async-storage': { __esModule: true, default: {
       getItem: async k => storage.get(k) ?? null,
@@ -34,7 +34,10 @@ function carregar(file, deps) {
        a fala. Segue o mesmo `usuario` que este teste já troca para verificar
        o isolamento entre contas. */
     './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => usuario ?? null },
-    './voz-retomada': { agendarVoz: async () => true },
+    /* Fronteira do recibo (desde 60507f47). O recibo real é coberto por
+       voz-sync-app-estado-widget.cjs. */
+    './widget-voz-task': { confirmarOperacaoVozSincronizada: async (requestId, _dono, _dados, _resultado, _controle, peloApp) => { confirmadas.push([requestId, peloApp]); } },
+    './voz-retomada': { agendarVoz: async () => true, reconciliarVozConcluida: async (requestId) => { reconciliadas.push(requestId); } },
     './supabase': { supabase: { auth: { getSession: async () => ({ data: { session: { user: { id: usuario }, access_token: 'token-' + usuario } } }) },
       rpc: (_, args) => ({ setHeader() { return this; }, abortSignal: async () => {
         envios.push(args);
@@ -65,11 +68,14 @@ function carregar(file, deps) {
   await operacoes.registrarOperacaoVoz('id3', source, payload);
   storage.set('grana:voz:operacao:a:corrompida', '{');
   offline = false;
+  confirmadas = []; reconciliadas = [];
   const primeiraSync = operacoes.sincronizarOperacoesVoz();
   const segundaSync = operacoes.sincronizarOperacoesVoz();
   assert.equal(primeiraSync, segundaSync, 'toques simultâneos aguardam a mesma tentativa');
   const resumo = await primeiraSync;
   assert.equal(resumo.sincronizadas, 2, 'fila realmente sincroniza após retorno da rede');
+  assert.deepEqual(confirmadas, [['id2', true], ['id3', true]], 'cada fala enviada recebe recibo, pelo caminho do app, nas duas origens');
+  assert.deepEqual(reconciliadas, ['id2', 'id3'], 'e reconcilia o widget só depois de sair da fila');
   assert.equal(resumo.falhas, 1, 'item corrompido permanece recuperável');
   assert.equal(storage.size, 1, 'só remove operações confirmadas');
   assert.ok(!resumo.mensagem.includes('conexão'), 'erro local não é apresentado como falta de internet');

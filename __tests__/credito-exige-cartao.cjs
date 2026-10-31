@@ -189,7 +189,9 @@ async function nucleoDaVoz() {
   let tarefa;
   const recusa = { code: '23514', message: 'Lancamento no credito exige cartao', hint: 'cartao_obrigatorio' };
   const dubles = {
-    './voz-confiabilidade': { precisaRevisarValorVoz: () => false, transcricaoPareceLancamentoVoz: () => true,
+    /* Módulo real por baixo: dublê escrito à mão ficou sem funções novas, e a
+       tarefa de voz engole o TypeError como "tarefa interrompida" (5970b638). */
+    './voz-confiabilidade': { ...carregar('lib/voz-confiabilidade.ts'), precisaRevisarValorVoz: () => false, transcricaoPareceLancamentoVoz: () => true,
     // A revisão de valor está desligada neste dublê; o valor segue a heurística pura.
     valorDaFalaVoz: (t) => carregar('lib/heuristics.ts').guessAmountFromText(t) },
     'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (nome, factory) => { if (nome === 'GranaVoiceTask') tarefa = factory(); } } },
