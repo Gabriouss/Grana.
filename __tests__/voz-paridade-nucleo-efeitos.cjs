@@ -65,6 +65,7 @@ function montar() {
   const e = {
     local: null, localChamadas: 0, servidor: null, envios: 0, rpc: [], rpcResposta: null, rpcErro: null,
     recibos: [], arquivos: [], falhas: [], revisoes: [], sucessos: [], apagados: 0, dadoNovo: 0, estados: [],
+    recibosRemovidos: [], reconciliadas: [],
   };
   const disco = new Map();
   const asyncStorage = {
@@ -84,7 +85,7 @@ function montar() {
     'expo-file-system': { File: class { get exists() { return true; } get size() { return 4; } async bytes() { return new Uint8Array(4); } } },
     'expo/fetch': { fetch: async () => { e.envios++; const r = e.servidor; if (r instanceof Error) throw r; return r; } },
     './sessao-offline': { tokenDeAcessoLocal: async () => 't', sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u1', lerSessaoDoDisco: async () => ({ access_token: 't' }) },
-    '@/modules/grana-voice-widget': { definirEstado(s) { e.estados.push(s); }, agendarRetomadaVoz: async () => true, cancelarRetomadaVoz: async () => {} },
+    '@/modules/grana-voice-widget': { definirEstado(s) { e.estados.push(s); }, agendarRetomadaVoz: async () => true, cancelarRetomadaVoz: async () => {}, reconciliarVozConcluida: async (id, dono) => { e.reconciliadas.push([id, dono]); } },
     './widget-voz-notificacoes': {
       podeNotificar: async () => true,
       notificarRevisao: async (titulo, transcricao) => { e.revisoes.push({ titulo, transcricao }); },
@@ -93,7 +94,10 @@ function montar() {
       notificarSucesso: async (...a) => { e.sucessos.push(a); },
       notificarSalvoLocal: async () => { e.recibos.push('salvo-local'); },
     },
-    './voz-recibos-da-fila': { guardarReciboDaFila: async (r) => { e.recibos.push(r); } },
+    /* `removerReciboDaFila` e `reconciliarVozConcluida` (acima): desde 60507f47
+       a sincronizacao pelo app chama os dois ao confirmar a operacao, e o duble
+       sem eles fazia o reenvio parecer falha. */
+    './voz-recibos-da-fila': { guardarReciboDaFila: async (r) => { e.recibos.push(r); }, removerReciboDaFila: async (id, dono) => { e.recibosRemovidos.push([id, dono]); } },
     './data': { fetchCreditCards: async () => cartoes, fetchApelidosCategoria: async () => [], fetchCategories: async () => [] },
     './wallets': { fetchWallets: async () => [{ id: 'w', name: 'Pessoal', is_default: true }] },
     './creditLimitAlert': { checarLimiteCartao: async () => {} },
@@ -305,6 +309,10 @@ const CENARIOS = {
   const [sa, sw] = [await sincronizar('app'), await sincronizar('widget')];
   igual({ resumo: JSON.parse(JSON.stringify(sa.resumo)), ...instantaneo(sa.m) }, { resumo: JSON.parse(JSON.stringify(sw.resumo)), ...instantaneo(sw.m) }, 'reenvio: mesmo resumo, mesmo RPC e disco limpo nas duas entradas');
   ok(sa.resumo.sincronizadas === 1 && operacoesNoDisco(sa.m).length === 0 && sa.m.e.rpc[0].args.p_source === 'app' && sw.m.e.rpc[0].args.p_source === 'widget', 'reenvio: 1 sincronizada, fila vazia, e cada operacao volta ao servidor com a SUA origem');
+  for (const s of [sa, sw]) {
+    ok(JSON.stringify(s.m.e.recibosRemovidos) === '[["req-1","u1"]]' && JSON.stringify(s.m.e.reconciliadas) === '[["req-1","u1"]]',
+      'reenvio: tira o recibo da fila e reconcilia o widget, so para o dono e a fala certos');
+  }
   const [la, lw] = [await sincronizar('app', { lixoNoDisco: true }), await sincronizar('widget', { lixoNoDisco: true })];
   igual({ resumo: JSON.parse(JSON.stringify(la.resumo)), ...instantaneo(la.m) }, { resumo: JSON.parse(JSON.stringify(lw.resumo)), ...instantaneo(lw.m) }, 'item ilegivel: igual nas duas entradas');
   ok(la.resumo.sincronizadas === 1 && la.resumo.falhas === 1 && la.m.disco.has('grana:voz:operacao:u1:aaa-ilegivel'), 'item ilegivel: nao impede o valido e e preservado no disco (nao apagado)');
