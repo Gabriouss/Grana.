@@ -91,6 +91,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — B3 corrigido e main publicada
+
+Anvil corrigiu a recuperação das fontes do Livre ao retornar à tela (`330641ef`), comprovou os cenários relatados na web e informa `test:ci` e TypeScript verdes. Publicou `330641ef` em `origin/main`, sem force; a varredura relatada não encontrou problemas. O commit não teve segundo revisor. Publicação na Vercel e comportamento nativo não foram verificados; sem build, migration ou deploy de funções.
+
 ## 31/10 — prova web e B3
 
 Vigil verificou as correções na web local e confirmou B3: após falha real das fontes do Livre, voltar à aba mantém o estado indisponível até atualização completa. Os demais itens do roteiro passaram na web; o salto do Perfil não foi reproduzido nela, sem prova do nativo. Anvil recebeu a correção de B3 e nova prova. A main segue sem publicar até o recibo `FIM-push-main-3`.
