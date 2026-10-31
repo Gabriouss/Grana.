@@ -91,6 +91,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — CI remoto corrigido
+
+Anvil identificou ausência do Playwright no runner desde `18fe4747` e corrigiu o workflow em `130f3eb1`; relata CI remoto verde nos jobs de testes e segredos, sem defeito de produto identificado. O orquestrador informou conclusão da Vercel nesse hash. A execução em UTC passou, mas comportamento na virada do dia e em outros fusos continua sem prova específica; build e nativo não foram testados.
+
 ## 31/10 — investigação do CI remoto
 
 O fechamento documental foi publicado em `476ca2d2`, com varredura limpa. O orquestrador relata falhas do job de testes no GitHub apesar da suíte local verde e atribuiu a Anvil investigação, reprodução e correção conforme a causa. A origem ainda não foi comprovada; a ordem não comprova correção nem CI remoto verde.
