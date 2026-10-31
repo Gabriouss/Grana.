@@ -115,8 +115,11 @@ ok('a foto da nota lê a data como antes (mesma função de prazo)');
   assert.equal(limpo('Mercado 26 de setembro de 2026 R$ 10'), 'Mercado R$ 10');
   assert.equal(limpo('Mercado 26 SET 2026 R$ 10'), 'Mercado R$ 10');
   assert.equal(limpo('Mercado em 26/09/2026. R$ 10'), 'Mercado. R$ 10');
-  /* Inteiro ou nada: sufixo estranho, ISO sem minuto, dd/mm sem ano e
-     sequência maior ficam como estão (sem prefixo limpo pela metade). */
+  /* Inteiro ou nada: sufixo estranho, ISO sem minuto, dd/mm sem ano e sem
+     sinal de data e sequência maior ficam como estão (sem prefixo limpo pela
+     metade). "Loja 03/09" continua aqui por decisão de 30/10/2026: sem "em",
+     "dia", "data" ou hora, ele tem a mesma forma da parcela "TV 03/12", e o
+     lado escolhido é o que não inventa data (seção 4c). */
   for (const t of ['Loja 2026-09-03T18:00Zx R$ 10,00', 'Loja 2026-09-03T18 R$ 10', 'Loja 03/09 R$ 10', 'Loja 1203/09/20260 R$ 10', 'Loja a/03/09/2026/b R$ 10']) {
     assert.equal(limpo(t), t, `"${t}" fica inteiro`);
   }
@@ -131,6 +134,112 @@ ok('a foto da nota lê a data como antes (mesma função de prazo)');
   assert.equal(dataDoTexto('AUDIT Pix recebido em 29/09/2026 R$ 500,00', '2026-09-30').data, '2026-09-29');
 }
 ok('descrição do Colar sem o resto da data: inteiro ou nada, parcela e valor intactos');
+
+/* ── 4c. dd/mm sem ano (decisão de 30/10/2026) ─────────────────────────────
+   Ano corrente; no futuro, ano anterior. Só com sinal de data (conectivo antes
+   ou hora depois), porque a forma sozinha é a mesma da parcela. */
+{
+  const OUT = '2026-10-30';
+  const lida = (t, hoje = OUT) => ({ ...dataDoTexto(t, hoje) });
+  const limpo = (t) => semDatasDoTexto(t);
+  const desc = (t) => heuristicas.guessDescFromText(limpo(t), 'out');
+
+  /* O defeito reproduzido. */
+  /* "no debito" na cauda também sai: forma de pagamento não é nome. */
+  assert.equal(desc('Mercado no debito em 08/10 R$ 829,00'), 'Mercado');
+  assert.deepEqual(lida('Mercado no debito em 08/10 R$ 829,00'), { data: '2026-10-08', recusada: false });
+  assert.equal(heuristicas.guessAmountFromText(limpo('Mercado no debito em 08/10 R$ 829,00')), 829);
+  assert.equal(desc('Pix enviado em 05/10 R$ 50,00'), 'Pix enviado');
+  assert.deepEqual(lida('Pix enviado em 05/10 R$ 50,00'), { data: '2026-10-05', recusada: false });
+  ok('dd/mm com "em": data do ano corrente e descrição sem resto');
+
+  /* Os outros sinais. */
+  for (const [t, data, resto] of [
+    ['Mercado dia 08/10 R$ 10,00', '2026-10-08', 'Mercado R$ 10,00'],
+    ['Mercado no dia 8/10 R$ 10,00', '2026-10-08', 'Mercado R$ 10,00'],
+    ['Mercado data: 08/10 R$ 10,00', '2026-10-08', 'Mercado R$ 10,00'],
+    ['Pix 08/10 às 18:42 R$ 10,00', '2026-10-08', 'Pix R$ 10,00'],
+    ['Pix 08/10 18:42 R$ 10,00', '2026-10-08', 'Pix R$ 10,00'],
+    ['Pix em 08/10 14h30 R$ 10,00', '2026-10-08', 'Pix R$ 10,00'],
+    ['Mercado em 08/10. R$ 10', '2026-10-08', 'Mercado. R$ 10'],
+    ['MERCADO EM 08/10 R$ 10,00', '2026-10-08', 'MERCADO R$ 10,00'],
+    ['Mercado parcela 1/3 em 08/10 R$ 10', '2026-10-08', 'Mercado parcela 1/3 R$ 10'],
+  ]) {
+    assert.deepEqual(lida(t), { data, recusada: false }, t);
+    assert.equal(limpo(t), resto, t);
+  }
+  ok('conectivo ou hora marcam a data, e a parcela ao lado fica');
+
+  /* Futuro vira ano anterior; hoje continua no ano corrente. */
+  assert.equal(lida('Pix em 30/10 R$ 1').data, '2026-10-30', 'hoje é do ano corrente');
+  assert.equal(lida('Pix em 31/10 R$ 1').data, '2025-10-31', 'amanhã é do ano anterior');
+  assert.equal(lida('Pix em 28/12 R$ 1', '2027-01-05').data, '2026-12-28', 'virada de ano');
+  assert.equal(lida('Pix em 05/01 R$ 1', '2027-01-05').data, '2027-01-05');
+  assert.equal(lida('Pix em 06/01 R$ 1', '2027-01-05').data, '2026-01-06');
+  ok('no futuro é do ano anterior, inclusive na virada do ano');
+
+  /* Data impossível: não vira data válida, não rola de mês, sai da descrição
+     e recebe a mesma recusa da data com ano (o campo pede a escolha). */
+  for (const t of ['Mercado em 32/01 R$ 10,00', 'Mercado em 31/02 R$ 10,00', 'Mercado em 00/10 R$ 10,00',
+    'Mercado em 10/13 R$ 10,00', 'Mercado em 10/00 R$ 10,00', 'Mercado em 29/02 R$ 10,00']) {
+    assert.deepEqual(lida(t), { data: null, recusada: true }, t);
+    assert.equal(desc(t), 'Mercado', t);
+  }
+  assert.deepEqual(lida('Mercado em 31/02/2026 R$ 10,00'), { data: null, recusada: true }, 'com ano, a mesma recusa');
+  ok('data impossível é recusada, sem rolar para outro mês');
+
+  /* 29/02: vale só no ano bissexto, sem cair em 28/02 nem 01/03. */
+  assert.deepEqual(lida('Pix em 29/02 R$ 1', '2028-03-01'), { data: '2028-02-29', recusada: false });
+  assert.deepEqual(lida('Pix em 29/02 R$ 1', '2028-01-15'), { data: null, recusada: true }, '2028 no futuro, 2027 não é bissexto');
+  ok('29/02 só em ano bissexto');
+
+  /* Parcela: não vira data nem some do texto. */
+  for (const t of ['TV 03/12 R$ 100,00', 'TV 3/12 R$ 100,00', 'TV parcela 03/12 R$ 100,00', 'TV parcela em 03/12 R$ 100,00',
+    'TV parcelado 03/12 às 18:42 R$ 100,00', 'TV 2/3 R$ 100,00', 'TV em 10x de R$ 100,00', 'TV em 3/12 parcelas R$ 100,00',
+    'TV 2/12 parcelas R$ 100,00', 'TV de 03/12 R$ 100,00']) {
+    assert.deepEqual(lida(t), { data: null, recusada: false }, t);
+    assert.equal(limpo(t), t, t);
+  }
+  ok('parcela não vira data nem some do texto');
+
+  /* Hora, valor, cartão, código e vencimento não são a data do pagamento. */
+  for (const t of ['Pix as 18:42 R$ 10,00', 'Mercado R$ 12,10', 'Mercado em 12,10', 'Mercado em 12.10', 'Mercado em 12-10',
+    'Cartao final 1234 R$ 12,10', 'Cartao 5500 0000 0000 0004 R$ 1,00', 'Validade 12/28 R$ 1,00', 'Doc em 123/45 R$ 1,00',
+    'Doc em 12/345 R$ 1,00', 'item 08/10 R$ 1,00', 'Boleto vence em 05/11 R$ 100,00', 'Vencimento em 05/11 R$ 100,00', 'Loja 32/01 R$ 10']) {
+    assert.deepEqual(lida(t), { data: null, recusada: false }, t);
+    assert.equal(limpo(t), t, t);
+  }
+  ok('hora, valor, cartão, código e vencimento não viram data');
+
+  /* A data com ano não muda, nem a recusa dela, e tem prioridade. */
+  assert.deepEqual(lida('Mercado em 26/09/2026 R$ 10,00'), { data: '2026-09-26', recusada: false });
+  assert.equal(desc('Mercado em 26/09/2026 R$ 10,00'), 'Mercado');
+  for (const t of ['Pix em 31/10/2026', 'Pix em 10/09/2024', 'Pix em 32/01/2026']) {
+    assert.deepEqual(lida(t), { data: null, recusada: true }, t);
+  }
+  assert.equal(lida('Pix em 08/10 pago em 26/09/2026').data, '2026-09-26', 'a data com ano vence a sem ano');
+  assert.equal(lida('Pix em 08/10 pago em 26 de setembro de 2026').data, '2026-09-26', 'por extenso também');
+  ok('dd/mm/aaaa continua igual, inclusive a recusa');
+
+  /* Regra 13: a voz não passa por aqui. Valores medidos ANTES desta mudança. */
+  const dataDaFala = carregar('lib/data-da-fala.ts');
+  for (const [t, data, texto] of [
+    ['Mercado no debito em 08/10 R$ 829,00', '2026-10-08', 'Mercado no debito em R$ 829,00'],
+    ['Pix enviado em 05/10 R$ 50,00', '2026-10-05', 'Pix enviado em R$ 50,00'],
+    ['TV 03/12 R$ 100,00', null, 'TV R$ 100,00'],
+    ['mercado 50 reais dia 8 de outubro', '2026-10-08', 'mercado 50 reais'],
+    ['mercado 50 reais ontem', '2026-10-29', 'mercado 50 reais'],
+  ]) {
+    const r = dataDaFala.dataInicialDaRevisao(t, { referencia: OUT, aproximada: false });
+    assert.deepEqual([r.data, r.textoSemData], [data, texto], t);
+  }
+  assert.equal(heuristicas.guessDescFromText('Mercado no debito em 08/10 R$ 829,00', 'out'), 'Mercado no debito em /',
+    'a heurística dividida com a voz não muda: quem limpa é o Colar');
+  for (const a of ['lib/data-da-fala.ts', 'lib/heuristics.ts']) {
+    assert.doesNotMatch(fs.readFileSync(path.join(root, a), 'utf8'), /nota-foto-parser/, a + ' não usa as funções do Colar');
+  }
+  ok('a voz não muda (regra 13): mesmo resultado do núcleo dela, sem depender do Colar');
+}
 
 /* ── 5. A tela: grava na data lida, só no texto colado ──────────────────── */
 {

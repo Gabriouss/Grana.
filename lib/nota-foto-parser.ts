@@ -359,6 +359,32 @@ const MESES: Record<string, number> = {
   jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6, jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12,
 };
 
+const HORA_DO_TEXTO = '\\s*,?\\s*(?:[àa]s\\s+)?\\d{1,2}(?::\\d{2}(?::\\d{2})?|h\\d{2})';
+/**
+ * `dd/mm` sem ano no texto colado (decisão de 30/10/2026). Sozinho ele tem a
+ * mesma forma de parcela ("TV 03/12"), então só é data com sinal: "em", "dia",
+ * "no dia" ou "data" antes, ou a hora depois. Na dúvida fica como parcela e não
+ * se inventa data. "parcela em 03/12" e "em 3/12 parcelas" ficam de fora, e
+ * "vence em 05/11" também: vencimento não é a data do pagamento, e leria uma
+ * data futura como a do ano passado.
+ */
+const DATA_SEM_ANO = new RegExp(
+  '(?<![\\p{L}\\d/.,-])(?<!(?:parc|venc)\\p{L}*\\s*)' +
+    `(?:(?:em|no\\s+dia|dia|data)\\s*:?\\s+(\\d{1,2})/(\\d{1,2})(?:${HORA_DO_TEXTO})?|(\\d{1,2})/(\\d{1,2})${HORA_DO_TEXTO})` +
+    '(?![\\p{L}\\d/:-]|[.,]\\d|\\s*parc)',
+  'iu',
+);
+
+/**
+ * Do ano corrente; se cair no futuro, do ano anterior. Data impossível, como
+ * 31/02 ou 29/02 fora de ano bissexto, é recusada e nunca rola para outro mês.
+ */
+function dataSemAno(dia: number, mes: number, hojeISO: string): { data: string | null; recusada: boolean } {
+  const ano = Number(hojeISO.slice(0, 4));
+  const iso = isoValido(dia, mes, ano);
+  return dentroDoPrazo(iso && iso > hojeISO ? isoValido(dia, mes, ano - 1) : iso, hojeISO);
+}
+
 /**
  * Data de um texto colado (comprovante de Pix, transferência, e-mail de
  * compra). Decisão do autor de 27/09/2026: o Colar comprovante grava na data
@@ -385,8 +411,10 @@ export function dataDoTexto(texto: string, hojeISO: string): { data: string | nu
     return dentroDoPrazo(isoValido(dia, mes, ano), hojeISO);
   }
   const m = texto.match(/\b(\d{1,2})\s+(?:de\s+)?(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-zç]*\.?\s+(?:de\s+)?(\d{4})\b/i);
-  if (!m) return { data: null, recusada: false };
-  return dentroDoPrazo(isoValido(Number(m[1]), MESES[m[2].toLowerCase()], Number(m[3])), hojeISO);
+  if (m) return dentroDoPrazo(isoValido(Number(m[1]), MESES[m[2].toLowerCase()], Number(m[3])), hojeISO);
+  const semAno = texto.match(DATA_SEM_ANO);
+  if (!semAno) return { data: null, recusada: false };
+  return dataSemAno(Number(semAno[1] ?? semAno[3]), Number(semAno[2] ?? semAno[4]), hojeISO);
 }
 
 /**
@@ -400,8 +428,8 @@ export function dataDoTexto(texto: string, hojeISO: string): { data: string | nu
  * de `dataDoTexto` (ISO com hora, `d/m/aaaa`, "26 de setembro de 2026"),
  * junto com o conectivo e a hora ligados a ele ("em", "dia", "às 18:42").
  * Formato que não casa inteiro fica inteiro: ISO com sufixo estranho,
- * `dd/mm` sem ano, número dentro de sequência maior. Parcela ("parcela 2/12")
- * e valor ("1.250,50") nunca casam.
+ * `dd/mm` sem sinal de data (`DATA_SEM_ANO`), número dentro de sequência
+ * maior. Parcela ("parcela 2/12") e valor ("1.250,50") nunca casam.
  */
 export function semDatasDoTexto(texto: string): string {
   const MES = '(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-zç]*\\.?';
@@ -414,7 +442,7 @@ export function semDatasDoTexto(texto: string): string {
     `(?<![\\p{L}\\d/.,-])(?<!parc\\p{L}*\\s*)${CONECTIVO}(?:${ISO}|${DMA}|${EXTENSO})${HORA}(?![\\p{L}\\d/:-]|[.,]\\d)`,
     'giu',
   );
-  return texto.replace(DATA, ' ').replace(/[ \t]+([.,;])/g, '$1').replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+$/gm, '').replace(/^[ \t]+/gm, '');
+  return texto.replace(DATA, ' ').replace(new RegExp(DATA_SEM_ANO.source, 'giu'), ' ').replace(/[ \t]+([.,;])/g, '$1').replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+$/gm, '').replace(/^[ \t]+/gm, '');
 }
 
 /** Linhas do topo que não são o nome da loja. */
