@@ -212,6 +212,31 @@ ignorado('', 'Empréstimo de R$ 1.000,00 na sua conta', 'oferta');
 tipo('', 'Debitamos R$ 10,00 da sua conta.', 'nao_entendi');
 tipo('', 'R$ 10,00 da sua conta corrente', 'nao_entendi');
 
+/* Limite ou saldo depois da saída são rodapé: a compra não some nem troca de valor */
+lancamento('', 'Compra de R$ 10,00 em Loja Exemplo. Seu limite de crédito disponível é R$ 900,00', { ...compra('credit'), descricao: 'Loja Exemplo' });
+lancamento('', 'Compra de R$ 10,00 em Loja Exemplo, seu limite de crédito disponível agora é R$ 900,00', { ...compra('credit'), descricao: 'Loja Exemplo' });
+lancamento('', 'Compra de R$ 10,00 em Loja Exemplo. Confira seu limite no app', { ...compra(null), descricao: 'Loja Exemplo' });
+lancamento('', 'Compra de R$ 10,00 em Loja Exemplo. Seu saldo disponível em conta agora é R$ 900,00', { ...compra('debit'), descricao: 'Loja Exemplo' });
+lancamento('Você pagou Loja Exemplo', 'R$ 10,00 no débito. Seu saldo disponível em conta agora é R$ 900,00', compra('debit'));
+lancamento('Pix enviado', 'Pix enviado de R$ 10,00 para Maria Exemplo. Seu limite Pix disponível para hoje é R$ 900,00', { ...compra('pix'), descricao: 'Maria Exemplo' });
+/* "Limite" antes de qualquer compra continua descartado, e nunca vira compra de R$ 5.000,00 */
+ignorado('', 'Seu limite disponível para compras é de R$ 5.000,00', 'limite');
+ignorado('', 'Aumentamos seu limite para R$ 5.000,00', 'limite');
+/* Recusa vence, com o limite em qualquer lugar */
+ignorado('', 'Compra de R$ 10,00 negada por falta de limite', 'recusada');
+ignorado('', 'Compra de R$ 10,00 negada. Seu limite de crédito disponível é R$ 900,00', 'recusada');
+ignorado('', 'Limite insuficiente, compra de R$ 10,00 negada', 'limite');
+/* Vírgula logo depois do valor não pode fazer a compra sumir */
+lancamento('', 'Compra de R$ 10,00, em Loja Exemplo', { ...compra(null), descricao: 'Loja Exemplo' });
+/* Na dúvida entre compra e descarte: visível, nunca lançamento */
+tipo('', 'Para compras acima de R$ 500,00, aumente seu limite', 'nao_entendi');
+tipo('', 'Compras de até R$ 5.000,00. Seu limite aumentou', 'nao_entendi');
+tipo('', 'Você gastou R$ 500,00 do seu limite', 'nao_entendi');
+tipo('', 'Seu saldo disponível em conta agora é R$ 900,00', 'nao_entendi');
+tipo('', 'Seu saldo disponível em conta agora é R$ 900,00. Compra de R$ 10,00', 'nao_entendi');
+/* T5: fatura paga continua sem virar gasto, com rodapé longo */
+tipo('', 'Pagamento de R$ 500,00 da fatura. Seu limite de crédito disponível é R$ 3.000,00', 'fatura_paga');
+
 /* A data é a da hora local do aviso, mesmo perto da meia-noite */
 const r = interpretarAviso({ pacote: NUBANK, titulo: 'Compra', texto: 'Compra de R$ 10,00 em Loja Modelo', quando: QUANDO });
 if ('data' in r && r.data === '2026-10-30') passaram++;

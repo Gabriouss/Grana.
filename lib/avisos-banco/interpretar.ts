@@ -40,7 +40,7 @@ export type AvisoEntendido =
 export type AvisoParaInterpretar = { pacote: string; titulo: string; texto: string; quando: number };
 
 const ESPACOS = /[   ]/g;
-const VALOR = /r\$\s?(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{2}))?(?![\d,])/g;
+const VALOR = /r\$\s?(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{2}))?(?!\d|,\d)/g;
 /** Verbo e valor separados por mais que isto, ou por fim de frase, não contam como colados. */
 const FOLGA_MAXIMA = 50;
 
@@ -138,6 +138,31 @@ function valorColado(base: string, verbo: RegExp, valores: ValorAchado[]): Valor
   return melhor;
 }
 
+const SAIDA = new RegExp(`${COMPRA.source}|${SAIDA_PIX.source}|${BOLETO.source}`);
+/* "Para compras acima de R$ 500,00" é condição, não um gasto. */
+const PROPOSTA = /\bpara\s+compras?\b|\b(?:ate|acima\s+de|a\s+partir\s+de|mais\s+de|menos\s+de)\s+r\$/;
+const FIM_DE_FRASE = /[.!?](?:\s|$)|\n/;
+const RODAPE = /\b(?:limite|saldo)\b(?:(?![.!?](?:\s|$)|\n).)*?r\$\s?[\d.,]*\d/g;
+
+/**
+ * Limite ou saldo depois de uma saída colada ao valor são rodapé: a compra não some
+ * nem troca de valor. Antes da saída, nada muda. `duvida` vira "Não entendi", que fica
+ * visível, quando não dá para separar a saída do limite. Recusa continua vencendo.
+ */
+function tirarRodapes(texto: string): { texto: string; duvida: boolean } {
+  const inicio = texto.search(/\b(?:limite|saldo)\b/);
+  if (inicio < 0) return { texto, duvida: false };
+  const antes = texto.slice(0, inicio);
+  const saida = valorColado(antes, SAIDA, valoresDe(antes));
+  if (!saida) return { texto, duvida: false };
+  if (PROPOSTA.test(antes)) return { texto, duvida: true };
+  const limpo = antes + texto.slice(inicio).replace(RODAPE, (m) => ' '.repeat(m.length));
+  const solto = limpo.search(/\blimite\b/);
+  if (solto < 0) return { texto: limpo, duvida: false };
+  if (!FIM_DE_FRASE.test(limpo.slice(saida.fim, solto))) return { texto: limpo, duvida: true };
+  return { texto: limpo.replace(/\blimite\b/g, (m) => ' '.repeat(m.length)), duvida: false };
+}
+
 function dataLocal(quando: number): string {
   const d = new Date(quando);
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -223,7 +248,7 @@ export function interpretarAviso(aviso: AvisoParaInterpretar): AvisoEntendido {
      da compra. Troca por espaços para as posições continuarem valendo. */
   const apagar = (trecho: string) => ' '.repeat(trecho.length);
   const base = completo.replace(/\blimite(?:\s+\S+){0,3}?[\s:]*r\$\s?[\d.,]*\d/g, apagar);
-  const semSaldo = base.replace(/\bsaldo(?:\s+\S+){0,3}?[\s:]*r\$\s?[\d.,]*\d/g, apagar);
+  const { texto: semSaldo, duvida } = tirarRodapes(base.replace(/\bsaldo(?:\s+\S+){0,3}?[\s:]*r\$\s?[\d.,]*\d/g, apagar));
   const valores = valoresDe(semSaldo);
   if (!valores.length) {
     return { tipo: 'ignorar', motivo: base === completo ? 'saldo' : 'limite' };
@@ -244,8 +269,10 @@ export function interpretarAviso(aviso: AvisoParaInterpretar): AvisoEntendido {
   const ehCompra = COMPRA.test(semSaldo);
 
   for (const [padrao, motivo] of NEGATIVOS) {
+    if (motivo === 'limite' && duvida) continue;
     if (padrao.test(semSaldo)) return { tipo: 'ignorar', motivo };
   }
+  if (duvida) return { tipo: 'nao_entendi', data };
 
   let direcao: TxType = 'out';
   let forma: FormaDoAviso | null = null;

@@ -428,6 +428,7 @@ async function main() {
     ['R$ 30,00 com Pix', 'Você pagou Mercado Modelo', /Pix/, 'pix'],
     ['Compra de R$ 30,00 em Mercado Modelo. Saldo atual: R$ 90,00', 'Compra aprovada', /Débito/, 'debit'],
     ['Debitamos R$ 30,00 da sua conta.', 'Você pagou Mercado Modelo', /Débito/, 'debit'],
+    ['Compra de R$ 30,00 em Mercado Modelo. Seu saldo disponível em conta agora é R$ 900,00', 'Compra aprovada', /Débito/, 'debit'],
   ]) {
     ({ ctx, card } = await lista(aviso(textoDoAviso, titulo)));
     assert.match(detalhe(card), rotulo, 'a forma aparece antes do toque');
