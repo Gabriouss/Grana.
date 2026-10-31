@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="grana_avisos_servico">Grana. avisos do banco</string>
+  <string name="grana_avisos_canal">Avisos para conferir</string>
+  <string name="grana_avisos_titulo">Novo aviso para conferir</string>
+  <string name="grana_avisos_texto">Toque para ver no Grana.</string>
+</resources>

@@ -570,9 +570,10 @@ export function agendarNovaTentativa(ms: number = proximaEspera(falhasSeguidas))
  * (validação, crédito sem cartão) sobe como erro.
  */
 export async function salvarOuGuardarNoAparelho(
-  input: PendingInput
+  input: PendingInput,
+  chaveDaOrigem?: string
 ): Promise<{ lancamento: Transaction; guardado: boolean }> {
-  const chave = novaChaveIdempotencia();
+  const chave = chaveDaOrigem ?? novaChaveIdempotencia();
   let resultado: { lancamento: Transaction; guardado: boolean };
   try {
     resultado = { lancamento: await addTransaction({ ...input, client_request_id: chave }), guardado: false };
@@ -590,9 +591,10 @@ export async function salvarOuGuardarNoAparelho(
     (crédito sem cartão, parcelamento inválido) sobe como erro, sem entrar
     na fila. */
 export async function salvarOuGuardarParceladaNoAparelho(
-  input: PendingInput
+  input: PendingInput,
+  chaveDaOrigem?: string
 ): Promise<{ lancamentos: Transaction[]; guardado: boolean }> {
-  const chave = novaChaveIdempotencia();
+  const chave = chaveDaOrigem ?? novaChaveIdempotencia();
   let resultado: { lancamentos: Transaction[]; guardado: boolean };
   try {
     resultado = { lancamentos: await enviarParcelaPendente({ ...input, client_request_id: chave }), guardado: false };

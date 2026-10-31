@@ -30,6 +30,8 @@ export type EtapasDeSaida = {
   /** Dono da sessão atual, para limpar só as vozes dele. */
   idDoUsuario: () => Promise<string | null>;
   limparVozesDaConta: (userId: string) => Promise<void>;
+  /** Diário, lista "A conferir" e apps ligados da leitura de avisos do banco. */
+  limparAvisosDoBanco?: (userId: string | null) => Promise<void>;
   /** Síncrona: o widget some da tela inicial antes de qualquer espera. */
   limparWidgets: () => void;
   esquecerAcesso: () => Promise<void>;
@@ -88,6 +90,9 @@ export async function sairDaConta(etapas: EtapasDeSaida, prazoMs = PRAZO_ETAPA_S
     await Promise.all([
       userId
         ? comPrazo('limpar as vozes pendentes', () => etapas.limparVozesDaConta(userId), prazoMs, avisar)
+        : Promise.resolve(),
+      etapas.limparAvisosDoBanco
+        ? comPrazo('limpar os avisos do banco', () => etapas.limparAvisosDoBanco!(userId ?? null), prazoMs, avisar)
         : Promise.resolve(),
       comPrazo('esquecer o acesso guardado', etapas.esquecerAcesso, prazoMs, avisar),
       comPrazo('esquecer o cache das telas', etapas.esquecerTelas, prazoMs, avisar),

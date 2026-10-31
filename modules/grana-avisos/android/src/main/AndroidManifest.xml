@@ -1,0 +1,28 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <!-- Só para mostrar o nome do app em "Apps que notificaram". Sem isto o
+       Android 11+ esconde os outros apps, e a lista ficaria só com o pacote. -->
+  <queries>
+    <intent>
+      <action android:name="android.intent.action.MAIN" />
+      <category android:name="android.intent.category.LAUNCHER" />
+    </intent>
+  </queries>
+
+  <application>
+    <!-- Conversa e notificação contínua não chegam ao serviço a partir do
+         Android 12. Quem filtra por app é a primeira linha do serviço. -->
+    <service
+      android:name="com.gabriouss.grana.avisos.GranaAvisosListener"
+      android:label="@string/grana_avisos_servico"
+      android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.service.notification.NotificationListenerService" />
+      </intent-filter>
+      <meta-data
+        android:name="android.service.notification.disabled_filter_types"
+        android:value="conversations|ongoing" />
+    </service>
+  </application>
+</manifest>

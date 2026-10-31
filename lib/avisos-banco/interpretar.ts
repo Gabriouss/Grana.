@@ -1,0 +1,263 @@
+import { descricaoDoLancamento, parseParcelas } from '../heuristics';
+import type { TxType } from '../types';
+import { classeDoApp } from './catalogo';
+
+/**
+ * Entende o texto de um aviso do banco. Função pura: não chama rede, não lê
+ * disco e não guarda nada (trava T2).
+ *
+ * Falha fechada: só vira lançamento com verbo de transação e valor em R$ colados
+ * na mesma frase. O valor sai de um padrão estrito de R$, e não de
+ * `guessAmountFromText`, feita para fala e texto solto. O que tem R$ e não foi
+ * entendido vira "Não entendi", para a pessoa preencher à mão.
+ */
+export type FormaDoAviso = 'credit' | 'debit' | 'pix' | 'boleto';
+
+export type MotivoIgnorado =
+  | 'sem_valor' | 'moeda_estrangeira' | 'recusada' | 'estorno' | 'agendado' | 'limite' | 'saldo'
+  | 'oferta' | 'codigo' | 'aplicacao' | 'resgate' | 'fatura';
+
+export type AvisoEntendido =
+  | {
+      tipo: 'lancamento';
+      direcao: TxType;
+      /** null quando o aviso não diz: a pessoa escolhe antes de gravar. */
+      forma: FormaDoAviso | null;
+      /** Sempre o total, também na compra parcelada. */
+      valor: number;
+      parcelas: number | null;
+      /** Loja ou pessoa, como veio no aviso. */
+      contraparte: string | null;
+      descricao: string | null;
+      digitos: string | null;
+      /** Da hora local do aviso, nunca da hora em que foi processado. */
+      data: string;
+    }
+  | { tipo: 'nao_entendi'; data: string }
+  | { tipo: 'fatura_paga'; data: string }
+  | { tipo: 'ignorar'; motivo: MotivoIgnorado };
+
+export type AvisoParaInterpretar = { pacote: string; titulo: string; texto: string; quando: number };
+
+const ESPACOS = /[   ]/g;
+const VALOR = /r\$\s?(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{2}))?(?![\d,])/g;
+/** Verbo e valor separados por mais que isto, ou por fim de frase, não contam como colados. */
+const FOLGA_MAXIMA = 50;
+
+const NEGATIVOS: [RegExp, MotivoIgnorado][] = [
+  [/\b(?:recusad|negad|nao autorizad|nao aprovad|nao concluid|nao realizad|nao efetuad|falhou|bloquead|cancelad)/, 'recusada'],
+  [/\b(?:estorn|reembols|devoluc|devolvid)/, 'estorno'],
+  [/\b(?:agendad|agendament|programad)/, 'agendado'],
+  [/\blimite\b/, 'limite'],
+  [/\b(?:oferta|promoc|aproveite|ganhe|cashback|desconto|pre-?aprovad|emprestimo|consignado|cupom|convite|indique|sorteio)/, 'oferta'],
+  [/\b(?:codigo (?:de )?(?:verificacao|seguranca|confirmacao|acesso)|token|senha)\b/, 'codigo'],
+  [/\b(?:aplicac|aplicou|aplicad|investiment|investiu|cdb|tesouro|caixinha|cofrinho)/, 'aplicacao'],
+  [/\b(?:resgat|rendeu|rendimento|dividendo)/, 'resgate'],
+];
+
+const FATURA_PAGA = /(?:pagamento|pagou|pago|paga|quit\w*)\b.{0,30}\bfatura\b|\bfatura\b.{0,30}\b(?:pagamento|paga|pago|quitad\w*)\b/;
+
+const BOLETO = /\bboleto\b.{0,30}\b(?:pago|paga|pagamento|quitado)\b|\b(?:pagou|pagamento|paguei|pago)\b.{0,30}\bboleto\b/;
+const ENTRADA = /\b(?:pix|transferencia|ted|doc)\s+recebid[oa]\b|\brecebeu\b|\brecebemos\b/;
+const SAIDA_PIX = /\bpix\s+(?:enviado|realizado|feito|efetuado|confirmado|concluido)\b|\b(?:enviou|fez|realizou)\s+(?:um\s+)?pix\b|\btransferencia\s+(?:enviada|realizada|efetuada|concluida|feita)\b|\btransferiu\b|\benviou\b|\bpagamento\s+(?:via|por|de|com)\s+pix\b|\bpix\s+(?:no\s+valor\s+)?de\b(?=[^.!?\n]*\bpara\b)/;
+const COMPRA = /\bcompras?\b|\bcomprou\b|\bgastou\b|\bvoce\s+pagou\b|\bpagamento\s+(?:aprovado|realizado|efetuado|confirmado|de)\b|\bdebitad[oa]\b/;
+
+/** Mesmo tamanho do original: as posições do texto normalizado valem nos dois. */
+function normalizar(texto: string): string {
+  return Array.from(texto.normalize('NFC').replace(ESPACOS, ' '))
+    .map((c) => {
+      const base = c.normalize('NFD')[0];
+      return base.length === c.length ? base.toLowerCase().slice(0, c.length) : c;
+    })
+    .join('');
+}
+
+type ValorAchado = { valor: number; inicio: number; fim: number };
+
+function valoresDe(base: string): ValorAchado[] {
+  const achados: ValorAchado[] = [];
+  for (const m of base.matchAll(VALOR)) {
+    const reais = Number(m[1].replace(/\./g, ''));
+    const valor = reais + (m[2] ? Number(m[2]) / 100 : 0);
+    if (valor > 0) achados.push({ valor, inicio: m.index, fim: m.index + m[0].length });
+  }
+  return achados;
+}
+
+/** O valor mais próximo do verbo, sem fim de frase no meio. */
+function valorColado(base: string, verbo: RegExp, valores: ValorAchado[]): ValorAchado | null {
+  let melhor: ValorAchado | null = null;
+  let menor = Infinity;
+  for (const m of base.matchAll(new RegExp(verbo.source, 'g'))) {
+    const inicio = m.index;
+    const fim = inicio + m[0].length;
+    for (const v of valores) {
+      const entre = v.inicio >= fim ? base.slice(fim, v.inicio) : v.fim <= inicio ? base.slice(v.fim, inicio) : '';
+      if (entre.length > FOLGA_MAXIMA || /[.!?\n]/.test(entre)) continue;
+      if (entre.length < menor) {
+        menor = entre.length;
+        melhor = v;
+      }
+    }
+  }
+  return melhor;
+}
+
+function dataLocal(quando: number): string {
+  const d = new Date(quando);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function digitosDe(base: string): string | null {
+  const m = base.match(/\bfinal\s*:?\s*(\d{4})\b/)
+    ?? base.match(/(?:\*{2,}|•+|\.{2,})\s?(\d{4})\b/)
+    ?? base.match(/\bcartao\s+(\d{4})\b/);
+  return m ? m[1] : null;
+}
+
+const CORTE_DA_CONTRAPARTE = /\s+(?:com|no|na|pelo|pela|usando|utilizando|para)\s+(?:o\s+|a\s+|seu\s+|sua\s+)*(?:cart|final\b|conta\b)|\s+final\b|\s+em\s+\d|\s+as\s+\d|\s+às\s+\d|[.!;\n]|,\s|\s+-\s/;
+const INICIO_DEPOIS = /^[\s,:-]*(?:(?:foi\s+)?(?:aprovad[ao]s?|realizad[ao]s?|efetuad[ao]s?|autorizad[ao]s?|confirmad[ao]s?|recebid[ao]s?|enviad[ao]s?)\s+)?(?:em|no|na|nos|nas|para|pra|de|do|da)\s+/;
+const NAO_E_NOME = /^(?:cart|credito|debito|valor|sua|seu|conta|pix\b)/;
+
+function contraparteDe(original: string, base: string, valor: ValorAchado): string | null {
+  const depois = base.slice(valor.fim);
+  const inicio = depois.match(INICIO_DEPOIS);
+  let nome: string | null = null;
+  if (inicio) {
+    const resto = depois.slice(inicio[0].length);
+    const corte = resto.search(CORTE_DA_CONTRAPARTE);
+    const tamanho = corte >= 0 ? corte : resto.length;
+    const comeco = valor.fim + inicio[0].length;
+    nome = original.slice(comeco, comeco + tamanho).trim();
+  }
+  if (!nome || NAO_E_NOME.test(normalizar(nome))) {
+    const antes = base.slice(0, valor.inicio).match(/\b(?:compra|pagamento)\s+(?:aprovad[ao]\s+|realizad[ao]\s+)?(?:em|no|na)\s+(.+?)\s+(?:no\s+valor|de\s*$|valor)/);
+    if (antes && !NAO_E_NOME.test(antes[1])) {
+      const comeco = base.indexOf(antes[1]);
+      nome = original.slice(comeco, comeco + antes[1].length).trim();
+    } else {
+      nome = null;
+    }
+  }
+  if (!nome) return null;
+  /* Banco costuma mandar a loja toda em maiúscula. */
+  return nome === nome.toUpperCase() && /\p{L}/u.test(nome)
+    ? nome.toLowerCase().replace(/(^|\s)(\p{L})/gu, (_, espaco: string, letra: string) => espaco + letra.toUpperCase())
+    : nome;
+}
+
+/** `3x de R$ 100,00` e `R$ 300,00 em 3x` dão o mesmo total. */
+function parcelamentoDe(base: string, valor: ValorAchado): { parcelas: number; total: number } | null {
+  if (!/\bparcel|\d\s*x\b|\bvezes\b/.test(base)) return null;
+  const parcelas = parseParcelas(base);
+  if (!parcelas) return null;
+  const antes = base.slice(0, valor.inicio);
+  const porParcela = new RegExp(`\\b${parcelas}\\s*x\\s*(?:de\\s*)?$`).test(antes);
+  return { parcelas, total: porParcela ? Math.round(valor.valor * parcelas * 100) / 100 : valor.valor };
+}
+
+export function interpretarAviso(aviso: AvisoParaInterpretar): AvisoEntendido {
+  const original = `${aviso.titulo} ${aviso.texto}`.normalize('NFC').replace(ESPACOS, ' ').trim();
+  const completo = normalizar(original);
+  const data = dataLocal(aviso.quando);
+
+  if (/(?:us\$|u\$s|\busd\b|\beur\b|€|£|\bdolar|\beuro|moeda estrangeira)/.test(completo)) {
+    return { tipo: 'ignorar', motivo: 'moeda_estrangeira' };
+  }
+  if (!valoresDe(completo).length) return { tipo: 'ignorar', motivo: 'sem_valor' };
+
+  /* "Limite disponível: R$ 900,00" no fim de um aviso de compra não é o valor
+     da compra. Troca por espaços para as posições continuarem valendo. */
+  const apagar = (trecho: string) => ' '.repeat(trecho.length);
+  const base = completo.replace(/\blimite(?:\s+\S+){0,3}?[\s:]*r\$\s?[\d.,]*\d/g, apagar);
+  const semSaldo = base.replace(/\bsaldo(?:\s+\S+){0,3}?[\s:]*r\$\s?[\d.,]*\d/g, apagar);
+  const valores = valoresDe(semSaldo);
+  if (!valores.length) {
+    return { tipo: 'ignorar', motivo: base === completo ? 'saldo' : 'limite' };
+  }
+
+  if (FATURA_PAGA.test(semSaldo)) return { tipo: 'fatura_paga', data };
+
+  const ehCompra = COMPRA.test(semSaldo);
+  if (/\bfatura\b/.test(semSaldo) && !ehCompra) return { tipo: 'ignorar', motivo: 'fatura' };
+
+  for (const [padrao, motivo] of NEGATIVOS) {
+    if (padrao.test(semSaldo)) return { tipo: 'ignorar', motivo };
+  }
+
+  let direcao: TxType = 'out';
+  let forma: FormaDoAviso | null = null;
+  let achado: ValorAchado | null = null;
+
+  if (BOLETO.test(semSaldo)) {
+    achado = valorColado(semSaldo, BOLETO, valores);
+    forma = 'boleto';
+  } else if (ENTRADA.test(semSaldo)) {
+    achado = valorColado(semSaldo, ENTRADA, valores);
+    direcao = 'in';
+    forma = 'pix';
+  } else if (SAIDA_PIX.test(semSaldo)) {
+    achado = valorColado(semSaldo, SAIDA_PIX, valores);
+    forma = 'pix';
+  } else if (ehCompra) {
+    achado = valorColado(semSaldo, COMPRA, valores);
+    if (/\bcredito\b/.test(semSaldo)) forma = 'credit';
+    else if (/\bdebito\b|\bdebitad[oa]\b/.test(semSaldo)) forma = 'debit';
+  }
+
+  const parcelamento = achado ? parcelamentoDe(semSaldo, achado) : null;
+  if (parcelamento) forma = 'credit';
+
+  /* Dois valores sem ser parcelamento: não dá para saber qual é o certo. */
+  const distintos = new Set(valores.map((v) => v.valor));
+  if (achado && !parcelamento && distintos.size > 1) achado = null;
+
+  let contraparte = achado ? contraparteDe(original, semSaldo, achado) : null;
+
+  /* Carteira costuma mandar só "R$ 30,00 com Visa ••1234", com a loja no título. */
+  if (!achado && classeDoApp(aviso.pacote) === 'carteira' && distintos.size === 1
+    && /r\$\s?[\d.,]+\s+(?:com|with|via|no|na)\b/.test(semSaldo) && digitosDe(semSaldo)) {
+    achado = valores[0];
+    contraparte = aviso.titulo.trim() || null;
+  }
+
+  if (!achado) return { tipo: 'nao_entendi', data };
+
+  const descricao = contraparte ? descricaoDoLancamento(contraparte, direcao) || contraparte : null;
+  return {
+    tipo: 'lancamento',
+    direcao,
+    forma,
+    valor: parcelamento?.total ?? achado.valor,
+    parcelas: parcelamento?.parcelas ?? null,
+    contraparte,
+    descricao,
+    digitos: digitosDe(semSaldo),
+    data,
+  };
+}
+
+/** A frase do diário do teste. */
+export function resumoDoEntendido(e: AvisoEntendido): string {
+  const FORMAS: Record<FormaDoAviso, string> = { credit: 'crédito', debit: 'débito', pix: 'Pix', boleto: 'boleto' };
+  const MOTIVOS: Record<MotivoIgnorado, string> = {
+    sem_valor: 'sem valor em R$', moeda_estrangeira: 'moeda estrangeira', recusada: 'recusada ou cancelada',
+    estorno: 'estorno', agendado: 'agendamento', limite: 'aviso de limite', saldo: 'aviso de saldo',
+    oferta: 'oferta', codigo: 'código de segurança', aplicacao: 'aplicação', resgate: 'resgate ou rendimento',
+    fatura: 'aviso de fatura',
+  };
+  if (e.tipo === 'nao_entendi') return 'Não entendi. Foi para a lista, para preencher à mão.';
+  if (e.tipo === 'fatura_paga') return 'Fatura paga. Não vira lançamento.';
+  if (e.tipo === 'ignorar') return `Ignorado: ${MOTIVOS[e.motivo]}.`;
+  const valor = `R$ ${e.valor.toFixed(2).replace('.', ',')}`;
+  const partes = [
+    e.direcao === 'in' ? 'Entrada' : 'Saída',
+    valor,
+    e.forma ? FORMAS[e.forma] : 'forma não informada',
+    e.parcelas ? `em ${e.parcelas}x` : null,
+    e.descricao,
+    e.digitos ? `final ${e.digitos}` : null,
+  ].filter(Boolean);
+  return `${partes.join(', ')}.`;
+}
