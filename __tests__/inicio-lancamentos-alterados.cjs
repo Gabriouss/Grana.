@@ -181,6 +181,8 @@ function inicio() {
   const gravaVersao = load.indexOf('versaoLancamentosCarregada.current = versaoAoComecar;', recebeTransacoes);
   assert.ok(recebeTransacoes > load.indexOf('await Promise.all('), 'recebe o resultado da busca real');
   assert.ok(gravaVersao > recebeTransacoes, 'registra a versao capturada para as transacoes recebidas');
+  // Mesma etapa síncrona: uma fonte auxiliar lenta ou com falha não pode impedir o registro.
+  assert.doesNotMatch(load.slice(recebeTransacoes, gravaVersao), /\bawait\b|\breturn\b/, 'versão registrada junto com as transações');
   assert.match(load, /setCreditCards\(DEMO_CREDIT_CARDS\);\s*versaoLancamentosCarregada\.current = versaoAoComecar;/);
   ok('carga completa grava a versão lida antes da busca (real e exemplo)');
 }
