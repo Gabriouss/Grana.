@@ -133,6 +133,14 @@ O histórico e a evidência da exposição permanecem na seção datada de 16/09
 - Conforme coordenação, Meridian, Lumen, Vigil, Flare, Quill e Lynx reapareceram abertos às 22h30 em 36 segundos, sem tarefa; encerrados de novo junto com Anvil. Memória disponível subiu de 1,4 GB para mais de 4 GB. Quem ou o que reabriu não foi confirmado. Cada sessão parada ocupa perto de 650 MB, incluindo MCP do REA.
 - Autor pediu balanceamento entre duas contas Codex e uma Claude. Limites informados às 22h45: Gabriel Codex 37% semanal e 61% em 5h; Codex PH 47% e 62%; Claude não medido. Beacon (PH) compila e testa no emulador, Harbor (PH) corrige data, Watchtower revisa, Prism fez telas e Keel lógica e nativo.
 
+### Registro contínuo — 30/10, corte dos relatórios recebidos
+
+- Autor pediu: “Eu quero que o Codex, sempre que disponível documente o trabalho em tempo real”. A regra 19 passa a prever outro Codex na ausência ou falta de limite do Ledger.
+- Colar: Harbor corrigiu exemplos curtos em `e5371f7a`, com oito suítes focais relatadas verdes; `tsc` não rodou por memória. Watchtower reproduziu que vencimentos qualificados por “do boleto” ou “da fatura” ainda podem virar data de pagamento incorreta, inclusive com pagamento explícito. Parecer 4 NÃO APTO; Prism recebeu correção da classe e nova revisão. Push permanece barrado neste corte.
+- Autor perguntou “Cadê o app pra eu instalar?”; coordenação decidiu não aguardar emulador, pelo pedido “mesmo travando”. Também pediu simular no emulador para conferir se trava de verdade. Beacon relatou que a ferramenta recusou abrir Chrome por política, antes do instalador; isso não prova bloqueio nem liberação de Play Protect. Teste repassado a Sentinel pelo gerenciador de arquivos.
+- Conforme coordenação, prebuild do Beacon sujou o clone duas vezes e travou o envio do Harbor antes do EAS; nenhuma build enviada até 23h13. Limites às 23h11: Claude 91% usados em 5h, retorno às 02h30, 16% semanal; PH 13% restantes em 5h; Gabriel às 22h45, 61% restantes em 5h e 37% semanal.
+- Uma aba de ajuda Git abriu no Firefox do autor; pelo título, `git checkout-index --help`, mas agente responsável não confirmado. Nenhuma inferência adicional.
+
 <!-- ledger-widget-pos-release-20261028:start -->
 ## 28/10/2026 (M1, Ledger): incidente do widget após a release; correção autorizada
 
