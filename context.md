@@ -91,6 +91,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — revisão integrada e QA atribuídos
+
+Anvil recebeu a revisão do delta das frentes, condicionando eventual publicação à CI integral, ausência de achados relevantes e resultado do QA. Vigil recebeu a conferência das telas e da regra 20 no emulador. Atribuições não comprovam aprovação, testes ou publicação.
+
 ## 31/10 — CI concluída
 
 Beacon corrigiu o dublê que quebrava a trava de paridade no commit `29ba5f53`. Relata `test:ci` integral com exit 0 após a correção, além de testes focais verdes. A execução ocorreu na árvore compartilhada, sem congelamento de checkout; não substitui revisão integrada nem QA em aparelho. Sem push informado.
