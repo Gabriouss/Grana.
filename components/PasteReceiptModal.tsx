@@ -179,7 +179,7 @@ export default function PasteReceiptModal({
     /* Valor e descrição leem o texto SEM a data (achado do P2, 30/09/2026:
        "Pix recebido em 29/09/2026" virava "Pix recebido em / /"); a data
        continua lida do texto original, logo abaixo. A voz não passa aqui. */
-    processText(origemVoz ? text : semDatasDoTexto(text), origemVoz);
+    processText(origemVoz ? text : semDatasDoTexto(text, todayISO()), origemVoz);
     /* Só no texto colado. A fala revisada aqui lê a data pelo núcleo da voz,
        no efeito de `initialText` abaixo, como a tarefa do widget (regra 13). */
     const lida = origemVoz ? { data: null, recusada: false } : dataDoTexto(text, todayISO());

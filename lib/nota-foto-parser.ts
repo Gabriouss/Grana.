@@ -374,20 +374,41 @@ const DATA_SEM_ANO = new RegExp(
   'iu',
 );
 
-const ROTULO_SEM_DATA_DE_PAGAMENTO = /\b(?:(?:parc|venc|valid|expir|agend|previs)\p{L}*|proximo\s+pagamento|pagar)\b/giu;
+const ROTULO_SEM_DATA_DE_PAGAMENTO = /\b(?:(?:parc|venc|valid|expir|agend|previs|fechamento|prazo|limite)\p{L}*|fecha|proximo\s+pagamento|pagar)\b/giu;
 const LIGACAO_DO_ROTULO = /^(?:[\s\p{P}]|\b(?:em|no|dia|para|ate|de)\b)*$/iu;
-const FIM_DO_CONTEXTO_DO_ROTULO = /[\r\n;]|[.!?](?:\s|$)|\b(?:pago|paga|pagamento|efetuado|realizado|compra)\b|\b(?:\d{1,2}\/\d{1,2}|\d{4}-\d{1,2}-\d{1,2})\b/iu;
+/* "Vencimento do pagamento" e "Validade da compra" qualificam o rótulo: depois de
+   preposição, a palavra só abre um campo efetivo em "data do pagamento". */
+const PAGAMENTO_DECLARADO = /\b(?:pago|paga|efetuado|realizado)\b|\b(?:data|dia)\s+(?:de|do|da)\s+(?:pagamento|compra)\b|(?<!\b(?:de|do|da|para|pra)\s+)\b(?:pagamento|compra)\b/iu;
+const FIM_DO_CONTEXTO_DO_ROTULO = new RegExp(`[\\r\\n;]|[.!?](?:\\s|$)|${PAGAMENTO_DECLARADO.source}|\\b(?:\\d{1,2}\\/\\d{1,2}|\\d{4}-\\d{1,2}-\\d{1,2})\\b`, 'iu');
+/** "até" e "para" colados na data apontam para a frente, em qualquer rótulo. */
+const APONTA_PARA_A_FRENTE = /\b(?:ate|para|pra)\s*:?\s*$/iu;
+/* Sinal de que o trecho fala de um pagamento feito. Débito e crédito ficam de fora
+   de propósito: "débito automático em 05/11" ainda vai acontecer. */
+const ACONTECEU = new RegExp(`${PAGAMENTO_DECLARADO.source}|\\b(?:pix|pagou|paguei|comprei|comprou|transfer\\p{L}*|enviad\\p{L}*|recebid\\p{L}*)\\b`, 'iu');
 
-/** Qualificações são livres; pagamento, outra data ou fim de trecho encerram o rótulo. */
-function datasSemAnoDoTexto(texto: string): RegExpExecArray[] {
+/**
+ * Candidatos a data do pagamento, e a mesma decisão vale para leitura e limpeza.
+ * Qualificações são livres; pagamento, outra data ou fim de trecho encerram o rótulo.
+ * Com `hojeISO`, `dd/mm` no futuro só continua se o trecho diz que o pagamento
+ * aconteceu: sem isso é quase sempre um prazo, e o recuo ao ano anterior gravaria
+ * o gasto um ano antes. Na dúvida fica de fora e a tela usa hoje.
+ */
+function datasSemAnoDoTexto(texto: string, hojeISO?: string): RegExpExecArray[] {
   return [...texto.matchAll(new RegExp(DATA_SEM_ANO.source, 'giu'))].filter((m) => {
     const antes = texto.slice(0, m.index).normalize('NFD').replace(/\p{M}/gu, '');
+    if (APONTA_PARA_A_FRENTE.test(antes)) return false;
     const rotulo = [...antes.matchAll(ROTULO_SEM_DATA_DE_PAGAMENTO)].at(-1);
-    if (!rotulo) return true;
-    const entre = antes.slice(rotulo.index + rotulo[0].length);
-    // Pontuação sem conteúdo ainda liga o rótulo à data ("Vencimento. em 05/11").
-    if (LIGACAO_DO_ROTULO.test(entre)) return false;
-    return FIM_DO_CONTEXTO_DO_ROTULO.test(entre);
+    if (rotulo) {
+      const entre = antes.slice(rotulo.index + rotulo[0].length);
+      // Pontuação sem conteúdo ainda liga o rótulo à data ("Vencimento. em 05/11").
+      if (LIGACAO_DO_ROTULO.test(entre) || !FIM_DO_CONTEXTO_DO_ROTULO.test(entre)) return false;
+    }
+    if (!hojeISO) return true;
+    const iso = isoValido(Number(m[1] ?? m[3]), Number(m[2] ?? m[4]), Number(hojeISO.slice(0, 4)));
+    if (!iso || iso <= hojeISO) return true;
+    // Outra data também fecha o trecho: "Pago em 28/10 Conta em 05/11" não prova a segunda.
+    const trecho = antes.split(/[\r\n;]|[.!?](?:\s|$)|\b\d{1,2}\/\d{1,2}\b/).at(-1) ?? '';
+    return ACONTECEU.test(trecho);
   });
 }
 
@@ -428,7 +449,7 @@ export function dataDoTexto(texto: string, hojeISO: string): { data: string | nu
   }
   const m = texto.match(/\b(\d{1,2})\s+(?:de\s+)?(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-zç]*\.?\s+(?:de\s+)?(\d{4})\b/i);
   if (m) return dentroDoPrazo(isoValido(Number(m[1]), MESES[m[2].toLowerCase()], Number(m[3])), hojeISO);
-  const semAno = datasSemAnoDoTexto(texto)[0];
+  const semAno = datasSemAnoDoTexto(texto, hojeISO)[0];
   if (!semAno) return { data: null, recusada: false };
   return dataSemAno(Number(semAno[1] ?? semAno[3]), Number(semAno[2] ?? semAno[4]), hojeISO);
 }
@@ -447,7 +468,7 @@ export function dataDoTexto(texto: string, hojeISO: string): { data: string | nu
  * `dd/mm` sem sinal de data (`DATA_SEM_ANO`), número dentro de sequência
  * maior. Parcela ("parcela 2/12") e valor ("1.250,50") nunca casam.
  */
-export function semDatasDoTexto(texto: string): string {
+export function semDatasDoTexto(texto: string, hojeISO?: string): string {
   const MES = '(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-zç]*\\.?';
   const ISO = '\\d{4}-\\d{1,2}-\\d{1,2}(?:T\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d+)?)?(?:Z|[+-]\\d{2}:?\\d{2})?)?';
   const DMA = '\\d{1,2}[/.-]\\d{1,2}[/.-](?:\\d{4}|\\d{2})';
@@ -458,7 +479,7 @@ export function semDatasDoTexto(texto: string): string {
     `(?<![\\p{L}\\d/.,-])(?<!parc\\p{L}*\\s*)${CONECTIVO}(?:${ISO}|${DMA}|${EXTENSO})${HORA}(?![\\p{L}\\d/:-]|[.,]\\d)`,
     'giu',
   );
-  const semAno = datasSemAnoDoTexto(texto).reduceRight(
+  const semAno = datasSemAnoDoTexto(texto, hojeISO).reduceRight(
     (limpo, m) => limpo.slice(0, m.index) + ' ' + limpo.slice(m.index + m[0].length), texto,
   );
   return semAno.replace(DATA, ' ').replace(/[ \t]+([.,;])/g, '$1').replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+$/gm, '').replace(/^[ \t]+/gm, '');

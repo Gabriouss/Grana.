@@ -267,6 +267,74 @@ ok('descrição do Colar sem o resto da data: inteiro ou nada, parcela e valor i
   assert.equal(limpo(livre), livre, 'qualificadores não são uma lista fechada');
   ok('contexto qualificado termina em pagamento, outra data ou fim de trecho, sem lista de qualificadores');
 
+  /* Parecer 6 (31/10/2026). Fecha pelo mecanismo, em três partes:
+     1. "do pagamento" e "da compra" qualificam o rótulo e não abrem outro campo;
+     2. "até" e "para" colados na data apontam para a frente, em qualquer rótulo;
+     3. dd/mm no futuro só vira ano anterior se o trecho diz que o pagamento
+        aconteceu. Sem isso é dúvida: cai em hoje, sem inventar data. */
+  const limpoHoje = (t, hoje = OUT) => semDatasDoTexto(t, hoje);
+  const conferirPrazo = (prazo) => {
+    assert.deepEqual(lida(prazo), { data: null, recusada: false }, 'sozinho: ' + prazo);
+    assert.equal(limpoHoje(prazo), prazo, 'sozinho fica inteiro: ' + prazo);
+    for (const separador of ['\n', '; ', '. ', ' ']) {
+      for (const [t, resto] of [
+        [`${prazo}${separador}${pagamento}`, `${prazo}${separador}Pago`],
+        [`${pagamento}${separador}${prazo}`, `Pago${separador}${prazo}`],
+      ]) {
+        assert.deepEqual(lida(t), { data: '2026-10-28', recusada: false }, t);
+        assert.equal(limpoHoje(t), resto, 'só sai o pagamento: ' + t);
+      }
+    }
+  };
+  for (const rotulo of ['Vencimento do pagamento', 'Data de vencimento para pagamento', 'Agendamento de pagamento',
+    'Previsão de pagamento', 'Parcelamento da compra', 'Validade da compra']) {
+    conferirPrazo(`${rotulo}: 05/11 às 23:59`);
+  }
+  ok('qualificação com pagamento ou compra continua sendo prazo, sozinha e nas duas ordens');
+
+  const naoListados = ['Pague até 05/11 às 23:59', 'Limite para pagamento: 05/11 às 23:59', 'Pagável até 05/11 às 23:59',
+    'Boleto para 05/11 às 23:59', 'Fatura fecha em 05/11', 'Conta de luz em 05/11 às 23:59', 'Mensalidade 05/11 às 23:59',
+    'Pague até dia 05/11', 'Taxa em 15/12 às 08:00'];
+  for (const prazo of naoListados) conferirPrazo(prazo);
+  ok('data no futuro sem pagamento declarado não vira ano anterior, mesmo com rótulo fora de qualquer lista');
+
+  /* Prazo que já passou: não é futuro, então quem protege é o rótulo ou o "até". */
+  for (const prazo of ['Pague até 15/10 às 23:59', 'Boleto para 15/10 às 23:59', 'Fatura fecha em 15/10',
+    'Limite para pagamento: 15/10 às 23:59', 'Prazo: 15/10 às 23:59', 'Pagável até 15/10']) {
+    conferirPrazo(prazo);
+  }
+  ok('prazo já vencido também não vira data do pagamento');
+
+  /* O outro lado: pagamento declarado continua valendo, inclusive no futuro. */
+  for (const [t, data] of [
+    ['Data do pagamento: 28/10 às 10:15', '2026-10-28'],
+    ['Data da compra: 28/10 às 10:15', '2026-10-28'],
+    ['Vencimento do boleto, data do pagamento 28/10 às 10:15', '2026-10-28'],
+    ['Pix enviado em 05/11 às 10:15', '2025-11-05'],
+    ['Pago em 05/11', '2025-11-05'],
+    ['Pagamento em 05/11', '2025-11-05'],
+    ['Data do pagamento: 05/11 às 10:15', '2025-11-05'],
+    ['Compra aprovada em 05/11', '2025-11-05'],
+    ['Transferência realizada em 05/11', '2025-11-05'],
+    ['Mercado em 15/10 às 10:15', '2026-10-15'],
+  ]) {
+    assert.deepEqual(lida(t), { data, recusada: false }, t);
+    assert.doesNotMatch(limpoHoje(t), /\d{1,2}\/\d{1,2}/, 'a data lida sai do texto: ' + t);
+  }
+  /* Na virada, o recuo do comprovante recente continua. */
+  assert.equal(lida('Pix em 28/12 às 10:15', '2027-01-02').data, '2026-12-28');
+  assert.equal(lida('Pago em 28/12', '2027-01-02').data, '2026-12-28');
+  /* Impossível continua recusada, mesmo sem pagamento declarado. */
+  assert.deepEqual(lida('Conta em 31/02 às 10:15'), { data: null, recusada: true });
+  ok('pagamento declarado vale, no futuro recua um ano, e data impossível segue recusada');
+
+  /* Leitura e limpeza usam a mesma decisão quando sabem que dia é hoje. */
+  for (const t of [...naoListados, 'Pago em 28/10', 'Pix em 05/11', 'Mercado em 15/10', 'TV 03/12']) {
+    const lidaAgora = lida(t).data;
+    assert.equal(limpoHoje(t) !== t, lidaAgora !== null, 'leitura e limpeza concordam: ' + t);
+  }
+  ok('leitura e limpeza tomam a mesma decisão');
+
   /* Futuro vira ano anterior; hoje continua no ano corrente. */
   assert.equal(lida('Pix em 30/10 R$ 1').data, '2026-10-30', 'hoje é do ano corrente');
   assert.equal(lida('Pix em 31/10 R$ 1').data, '2025-10-31', 'amanhã é do ano anterior');
@@ -371,6 +439,8 @@ ok('descrição do Colar sem o resto da data: inteiro ou nada, parcela e valor i
      é de fonte: a revisão da voz não lê a data do texto colado. */
   assert.match(tela, /const lida = origemVoz \? \{ data: null, recusada: false \} : dataDoTexto\(text, todayISO\(\)\);/,
     'só o texto colado tem a data lida; a revisão da voz segue hoje, como o widget');
+  assert.match(tela, /origemVoz \? text : semDatasDoTexto\(text, todayISO\(\)\)/,
+    'a limpeza do Colar usa o mesmo hoje da leitura; a voz não passa por ela');
   /* 4c (Flare e Beacon, 30/09/2026) e campo de data (30/09): a data saiu dos
      chips de "Também reconhecido"; recusada, ela vira a dica do campo. */
   assert.doesNotMatch(tela, /data do texto ignorada|vai com a de hoje/, 'nenhum chip de data recusada');
