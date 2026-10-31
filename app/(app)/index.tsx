@@ -134,6 +134,7 @@ export default function InicioScreen() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [fontesLivreDisponiveis, setFontesLivreDisponiveis] = useState(false);
+  const [carregandoFontesLivre, setCarregandoFontesLivre] = useState(true);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [lifetimeXp, setLifetimeXp] = useState(0);
   const [diagnostico, setDiagnostico] = useState<DiagnosticoCarregado | null>(null);
@@ -394,6 +395,7 @@ export default function InicioScreen() {
       setLifetimeXp(DEMO_LIFETIME_XP);
       setInvoicePayments([]);
       setFontesLivreDisponiveis(true);
+      setCarregandoFontesLivre(false);
       setCreditCards(DEMO_CREDIT_CARDS);
       versaoLancamentosCarregada.current = versaoAoComecar;
       setError(null);
@@ -428,6 +430,8 @@ export default function InicioScreen() {
       ]);
       if (!vigente()) return;
       setTransactions(tx);
+      // A lista nova invalida os pagamentos anteriores, mas buscar não é falhar.
+      setCarregandoFontesLivre(true);
       setInvoicePayments(null);
       versaoLancamentosCarregada.current = versaoAoComecar;
       setBills(b);
@@ -477,6 +481,7 @@ export default function InicioScreen() {
         console.error('[inicio] fetchCardInvoicePayments falhou', erro);
       }
       if (!vigente()) return;
+      setCarregandoFontesLivre(false);
       try {
         const xp = (await fetchGamification()).lifetime_xp;
         if (!vigente()) return;
@@ -488,6 +493,7 @@ export default function InicioScreen() {
       }
     } catch (e: any) {
       if (!vigente()) return;
+      setCarregandoFontesLivre(false);
       setError(mensagemErro(e, 'Erro ao carregar dados'));
     } finally {
       if (vigente()) {
@@ -1213,7 +1219,7 @@ export default function InicioScreen() {
         }}
         collapsable={false}
       >
-        <SafeToSpendCard indisponivel={!fontesLivreDisponiveis} data={safeToSpend} sugestaoArquetipo={arquetipoSugerido} />
+        <SafeToSpendCard carregando={carregandoFontesLivre} indisponivel={!fontesLivreDisponiveis} data={safeToSpend} sugestaoArquetipo={arquetipoSugerido} />
       </View>
     ),
     cofrinhos: () => (
@@ -1470,13 +1476,17 @@ export default function InicioScreen() {
         <View style={styles.cardHeadRow}>
           <Text style={styles.cardLabel}>Comprometimento futuro</Text>
         </View>
-        {invoicePayments === null ? (
-          <Text style={styles.emptyText}>Não consegui confirmar os pagamentos de fatura. Puxe a tela para tentar de novo.</Text>
-        ) : comprometimentoFuturo.some((mes) => mes.incompleto) ? (
-          <Text style={styles.emptyText}>Não consegui confirmar o ciclo de algumas parcelas. Puxe a tela para tentar de novo.</Text>
-        ) : (
-          <FutureTimelineChart meses={comprometimentoFuturo} />
-        )}
+        <View style={{ minHeight: 168, justifyContent: 'center' }}>
+          {invoicePayments === null ? (
+            <Text style={styles.emptyText} accessibilityRole={carregandoFontesLivre ? undefined : 'alert'}>
+              {carregandoFontesLivre ? 'Conferindo os pagamentos de fatura…' : 'Não consegui confirmar os pagamentos de fatura. Puxe a tela para tentar de novo.'}
+            </Text>
+          ) : comprometimentoFuturo.some((mes) => mes.incompleto) ? (
+            <Text style={styles.emptyText}>Não consegui confirmar o ciclo de algumas parcelas. Puxe a tela para tentar de novo.</Text>
+          ) : (
+            <FutureTimelineChart meses={comprometimentoFuturo} />
+          )}
+        </View>
       </View>
     ),
     lancamentos: () => (

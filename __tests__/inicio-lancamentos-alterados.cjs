@@ -177,7 +177,10 @@ function inicio() {
   const leitura = load.indexOf('const versaoAoComecar = versaoDosLancamentos()');
   assert.ok(leitura > 0, 'load lê a versão');
   assert.ok(leitura < load.indexOf('fetchTransactions()'), 'a versão é lida antes da busca');
-  assert.match(load, /setTransactions\(tx\);\s*versaoLancamentosCarregada\.current = versaoAoComecar;/);
+  const recebeTransacoes = load.indexOf('setTransactions(tx);');
+  const gravaVersao = load.indexOf('versaoLancamentosCarregada.current = versaoAoComecar;', recebeTransacoes);
+  assert.ok(recebeTransacoes > load.indexOf('await Promise.all('), 'recebe o resultado da busca real');
+  assert.ok(gravaVersao > recebeTransacoes, 'registra a versao capturada para as transacoes recebidas');
   assert.match(load, /setCreditCards\(DEMO_CREDIT_CARDS\);\s*versaoLancamentosCarregada\.current = versaoAoComecar;/);
   ok('carga completa grava a versão lida antes da busca (real e exemplo)');
 }
@@ -186,6 +189,7 @@ function inicio() {
   await camadaDeDados();
   await filaOffline();
   inicio();
+  await require('./inicio-livre-carregamento.cjs')();
   console.log(`\n${aprovadas} checagens de "Últimos lançamentos" passaram — 0 falhas`);
 })().catch((e) => {
   console.error(e);

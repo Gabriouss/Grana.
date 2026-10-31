@@ -16,10 +16,12 @@ export default function SafeToSpendCard({
   data,
   sugestaoArquetipo,
   indisponivel = false,
+  carregando = false,
 }: {
   data: SafeToSpend;
   sugestaoArquetipo?: Arquetipo | null;
   indisponivel?: boolean;
+  carregando?: boolean;
 }) {
   const { livrePorDia, livreTotal, saldoAtual, reservadoEmMetas, creditoNaoPago, diasRestantes } = data;
   const semSaldo = saldoAtual <= 0;
@@ -28,7 +30,19 @@ export default function SafeToSpendCard({
     <View style={styles.card}>
       <Text style={styles.label}>Livre para gastar</Text>
 
-      {indisponivel ? <Text style={styles.zeroText} accessibilityRole="alert">Livre indisponível. Atualize a Início para conferir cofrinhos e pagamentos.</Text> : <>
+      <View style={styles.corpo}>
+      {(carregando || indisponivel) && (
+        <View style={styles.estado}>
+          <Text style={styles.zeroText} accessibilityRole={carregando ? undefined : 'alert'}>
+            {carregando ? 'Conferindo cofrinhos e pagamentos…' : 'Livre indisponível. Atualize a Início para conferir cofrinhos e pagamentos.'}
+          </Text>
+        </View>
+      )}
+      {/* Mantém o espaço dos dados, sem expor valores de fontes ainda não conferidas. */}
+      <View style={{ gap: spacing.sm, opacity: carregando || indisponivel ? 0 : 1 }}
+        aria-hidden={carregando || indisponivel}
+        accessibilityElementsHidden={carregando || indisponivel}
+        importantForAccessibility={carregando || indisponivel ? 'no-hide-descendants' : 'auto'}>
 
       {semSaldo ? (
         <Text style={styles.zeroText}>Sem saldo disponível este mês ainda.</Text>
@@ -62,7 +76,8 @@ export default function SafeToSpendCard({
           <PrivacyValue><Text style={[styles.rowVal, styles.rowValStrong]}>{`R$ ${formatMoney(livreTotal)}`}</Text></PrivacyValue>
         </View>
       </View>
-      </>}
+      </View>
+      </View>
 
       {sugestaoArquetipo && (
         <Text style={styles.hint}>
@@ -85,6 +100,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   label: { color: theme.inkFaint, fontSize: type.legenda, letterSpacing: 0.5, fontFamily: fonts.light },
+  corpo: { minHeight: 160 },
+  estado: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, justifyContent: 'center' },
   headline: { color: theme.ink, fontSize: type.cabecalho, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
   headlineSuffix: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },
   zeroText: { color: theme.inkFaint, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.light },
