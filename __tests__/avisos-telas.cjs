@@ -443,6 +443,16 @@ async function main() {
   }
   ok('forma pela palavra e pelo sinal: aparece antes do toque, não pergunta e grava certo');
 
+  ({ ctx, card } = await lista(aviso('Debitamos R$ 30,00 da sua conta.', 'Você pagou Mercado Modelo')));
+  assert.match(detalhe(card), /Mercado Modelo/);
+  assert.match(detalhe(card), /Débito/);
+  card().props.aoConfirmar(); await ctx.settle();
+  assert.equal(folhaDe(ctx), undefined, 'grava em um toque');
+  assert.equal(gravados()[0].description, 'Mercado Modelo');
+  assert.equal(gravados()[0].payment_method, 'debit');
+  assert.equal(gravados()[0].amount, 30);
+  ok('aviso do banco sozinho: um toque grava a loja do título, em débito');
+
   ({ ctx, card } = await lista(aviso('Compra de R$ 30,00 em Mercado Modelo. Limite disponível: R$ 900,00')));
   assert.match(detalhe(card), /Crédito/);
   card().props.aoConfirmar(); await ctx.settle();

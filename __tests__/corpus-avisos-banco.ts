@@ -243,6 +243,23 @@ tipo('', 'Seu saldo disponível em conta agora é R$ 900,00. Compra de R$ 10,00'
 /* T5: fatura paga continua sem virar gasto, com rodapé longo */
 tipo('', 'Pagamento de R$ 500,00 da fatura. Seu limite de crédito disponível é R$ 3.000,00', 'fatura_paga');
 
+/* "Você pagou" no título: o resto dele é a loja, na caixa original, só se o texto não trouxer */
+lancamento('Você pagou Loja Exemplo', 'Debitamos R$ 10,00 da sua conta.', { ...compra('debit'), descricao: 'Loja Exemplo' });
+lancamento('Você pagou KFC', 'Debitamos R$ 10,00 da sua conta.', { ...compra('debit'), descricao: 'KFC' });
+lancamento('VOCÊ PAGOU Loja Exemplo', 'Debitamos R$ 10,00 da sua conta.', { ...compra('debit'), descricao: 'Loja Exemplo' });
+lancamento('Você pagou Loja Exemplo', 'Compra de R$ 10,00 em Mercado Modelo', { ...compra(null), descricao: 'Mercado Modelo' });
+/* O que sobra do título precisa parecer nome */
+lancamento('Você pagou R$ 10,00', 'Debitamos R$ 10,00 da sua conta.', { ...compra('debit'), descricao: null });
+lancamento('Você pagou com Pix', 'R$ 10,00 da sua conta', { ...compra('pix'), descricao: null });
+lancamento('Você pagou', 'Debitamos R$ 10,00 da sua conta.', { ...compra('debit'), descricao: null });
+/* Outro título não responde pela loja */
+lancamento('Pagamento feito Loja Exemplo', 'Compra de R$ 10,00.', { ...compra(null), descricao: null });
+lancamento('Compra aprovada', 'Debitado R$ 10,00 da sua conta.', { ...compra('debit'), descricao: null });
+/* O título continua entrando na procura de forma, como antes */
+lancamento('Você pagou Pix Modelo', 'R$ 10,00 na loja', compra('pix'));
+lancamento('Você pagou Crédito Modelo', 'Debitamos R$ 10,00 da sua conta.', compra(null));
+lancamento('Você pagou Débito Modelo', 'R$ 10,00 na loja', compra('debit'));
+
 /* A data é a da hora local do aviso, mesmo perto da meia-noite */
 const r = interpretarAviso({ pacote: NUBANK, titulo: 'Compra', texto: 'Compra de R$ 10,00 em Loja Modelo', quando: QUANDO });
 if ('data' in r && r.data === '2026-10-30') passaram++;

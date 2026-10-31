@@ -164,6 +164,20 @@ function tirarRodapes(texto: string): { texto: string; duvida: boolean } {
   return { texto: limpo.replace(/\blimite\b/g, (m) => ' '.repeat(m.length)), duvida: false };
 }
 
+/**
+ * "Você pagou Loja Exemplo" no título, com o valor só no texto: é o único formato
+ * real visto com a loja no título, e por isso o único aceito. Mantém a caixa original.
+ */
+function lojaDoTitulo(titulo: string): string | null {
+  const limpo = titulo.normalize('NFC').replace(ESPACOS, ' ').trim();
+  const comeco = normalizar(limpo).match(/^voce\s+pagou\s+/);
+  if (!comeco) return null;
+  const resto = limpo.slice(comeco[0].length).trim();
+  const chave = normalizar(resto);
+  if (!resto || /r\$/.test(chave) || NAO_E_NOME.test(chave) || /^(?:com|via|por|no|na|um|uma|o|a)\b/.test(chave)) return null;
+  return resto;
+}
+
 function dataLocal(quando: number): string {
   const d = new Date(quando);
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -305,6 +319,7 @@ export function interpretarAviso(aviso: AvisoParaInterpretar): AvisoEntendido {
   if (achado && !parcelamento && distintos.size > 1) achado = null;
 
   let contraparte = achado ? contraparteDe(original, semSaldo.replace(TRECHO_DE_PARCELAS, apagar), achado) : null;
+  if (achado && !contraparte && direcao === 'out') contraparte = lojaDoTitulo(aviso.titulo);
 
   /* Carteira costuma mandar só "R$ 30,00 com Visa ••1234", com a loja no título. */
   if (!achado && classeDoApp(aviso.pacote) === 'carteira' && distintos.size === 1

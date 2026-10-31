@@ -52,9 +52,17 @@ export const CAIXA_VAZIA: EstadoDaCaixa = { itens: [], vistos: {} };
 
 export type AvisoDoDiarioParaCaixa = AvisoParaInterpretar & { id: string; chave: string };
 
+const semCaixa = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const mesmoNome = (a: string, b: string) => semCaixa(a) === semCaixa(b);
+const emMaiusculas = (s: string) => s === s.toUpperCase();
+
 function melhorDescricao(a?: string | null, b?: string | null): string | null {
   if (!a) return b ?? null;
   if (!b) return a;
+  if (mesmoNome(a, b)) {
+    if (emMaiusculas(a) && !emMaiusculas(b)) return b;
+    if (emMaiusculas(b) && !emMaiusculas(a)) return a;
+  }
   return b.length > a.length ? b : a;
 }
 

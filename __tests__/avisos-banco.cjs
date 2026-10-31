@@ -330,12 +330,35 @@ async function main() {
     assert.equal(decidir.confirmaEmUmToque(semCategoria, contexto(semCategoria)), false);
     ok('um toque com categoria e carteira conhecidas, grava débito sem cartão; sem categoria, revisão');
 
-    /* O título não vira descrição: sozinho, o aviso abre a revisão mesmo em débito. */
-    const [sozinho] = itensDe(doBanco('deb10', 'Mercado Modelo'));
+    /* "Você pagou" no título responde pela loja: sozinho, o aviso do banco já basta. */
+    const [sozinho] = itensDe(doBanco('deb10', 'Loja Exemplo'));
     assert.equal(sozinho.forma, 'debit');
-    assert.equal(sozinho.descricao, null);
-    assert.equal(decidir.confirmaEmUmToque(sozinho, { ...contexto(sozinho), categoria: 'Alimentação' }), false);
-    ok('sem o aviso da carteira, o item fica sem descrição e abre a revisão');
+    assert.equal(sozinho.descricao, 'Loja Exemplo');
+    assert.equal(decidir.confirmaEmUmToque(sozinho, { ...contexto(sozinho), categoria: 'Alimentação' }), true);
+    assert.equal(decidir.confirmaEmUmToque(sozinho, { ...contexto(sozinho), categoria: null }), false);
+    ok('o aviso do banco sozinho traz a loja do título, em débito, e grava em um toque com categoria');
+
+    /* O mesmo nome nos dois avisos: fica o que não está todo em maiúsculas, nas duas ordens */
+    for (const [noBanco, naCarteira, esperado] of [
+      ['LOJA EXEMPLO', 'Loja Exemplo', 'Loja Exemplo'],
+      ['Loja Exemplo', 'LOJA EXEMPLO', 'Loja Exemplo'],
+      ['CAFE MODELO', 'Café Modelo', 'Café Modelo'],
+      ['KFC', 'KFC', 'KFC'],
+      /* Nomes diferentes: a regra de antes, o mais longo */
+      ['LOJA EXEMPLO', 'Loja Exemplo Centro', 'Loja Exemplo Centro'],
+      ['LOJA EXEMPLO CENTRO', 'Loja Exemplo', 'LOJA EXEMPLO CENTRO'],
+    ]) {
+      for (const ordem of [
+        [doBanco('nome1', noBanco), daCarteira('nome2', naCarteira, AGORA + 1000)],
+        [daCarteira('nome2', naCarteira), doBanco('nome1', noBanco, AGORA + 1000)],
+      ]) {
+        const itens = itensDe(...ordem);
+        assert.equal(itens.length, 1, 'um item só');
+        assert.equal(itens[0].descricao, esperado);
+        assert.equal(itens[0].contraparte, esperado);
+      }
+    }
+    ok('par de avisos: mesmo nome fica sem as maiúsculas, nome diferente segue a regra de antes');
 
     /* Passo 3: o outro aviso completa, e discordar deixa para a pessoa */
     const semForma = (id, quando = AGORA) => aviso(id, 'Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo', { quando });
