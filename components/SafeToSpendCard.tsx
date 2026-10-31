@@ -30,7 +30,7 @@ export default function SafeToSpendCard({
     <View style={styles.card}>
       <Text style={styles.label}>Livre para gastar</Text>
 
-      <View style={styles.corpo}>
+      <View>
       {(carregando || indisponivel) && (
         <View style={styles.estado}>
           <Text style={styles.zeroText} accessibilityRole={carregando ? undefined : 'alert'}>
@@ -100,7 +100,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   label: { color: theme.inkFaint, fontSize: type.legenda, letterSpacing: 0.5, fontFamily: fonts.light },
-  corpo: { minHeight: 160 },
   estado: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, justifyContent: 'center' },
   headline: { color: theme.ink, fontSize: type.cabecalho, fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
   headlineSuffix: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },

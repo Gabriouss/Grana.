@@ -93,9 +93,10 @@ async function main() {
     if (node.type === 'View') out.push(node);
     views(node.props?.children, out); return out;
   }
-  const pendingCardBody = views(s.render().cardTree).find(n => n.props.style?.minHeight === 160);
-  assert.ok(pendingCardBody, 'espaco do Livre reservado');
-  const hiddenValues = views(pendingCardBody).find(n => n.props.importantForAccessibility === 'no-hide-descendants');
+  // O espaço vem dos próprios valores, que seguem no fluxo: altura fixa sobrava no card normal.
+  assert.equal(views(s.render().cardTree).some(n => n.props.style?.minHeight), false, 'card sem altura minima escrita a mao');
+  const hiddenValues = views(s.render().cardTree).find(n => n.props.importantForAccessibility === 'no-hide-descendants');
+  assert.ok(hiddenValues, 'valores continuam no fluxo durante a espera');
   assert.equal(hiddenValues.props.style.opacity, 0, 'dados antigos invisiveis e fora da acessibilidade');
   assert.equal(hiddenValues.props['aria-hidden'], true);
   const reservedTimeline = views(s.render().timelineTree).find(n => n.props.style?.minHeight === 168);
@@ -105,7 +106,7 @@ async function main() {
   assert.doesNotMatch(s.render().timeline, /Não consegui/);
   s.payments.resolve([]); await work;
   assert.match(s.render().card, /10\.00/); assert.match(s.render().timeline, /PROJECAO/);
-  assert.ok(views(s.render().cardTree).find(n => n.props.style?.minHeight === 160));
+  assert.equal(views(s.render().cardTree).some(n => n.props.style?.minHeight), false, 'sem sobra de altura no sucesso');
   assert.ok(views(s.render().timelineTree).find(n => n.props.style?.minHeight === 168), 'mesmo espaco no sucesso');
   assert.equal(s.env.versaoLancamentosCarregada.current, 7);
   console.log('ok: pendente de cofrinhos e pagamentos, depois sucesso sem valor misturado');
