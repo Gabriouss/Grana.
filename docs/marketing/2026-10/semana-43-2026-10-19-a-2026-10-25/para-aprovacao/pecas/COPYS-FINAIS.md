@@ -64,6 +64,54 @@ Escrita em 23/10/2026. Aguarda aceite do autor no painel.
 
 **Legenda:** Parcelar parece leve quando a gente olha uma compra por vez. O peso aparece quando parcelas de meses diferentes chegam juntas na mesma fatura. Ver o que já está comprometido antes de passar o cartão muda a decisão. Manda pra quem parcela tudo. Link na bio.
 
+## Antes de parcelar veja a fatura v5
+
+Escrita em 23/10/2026 para a v4 e repetida em 24/10/2026 para a v5, que só muda efeitos e trilha. Aguarda aceite do autor no painel.
+
+**Título:** Antes de parcelar veja a fatura
+
+**Legenda:** Parcelar parece leve quando a gente olha uma compra por vez. O peso aparece quando parcelas de meses diferentes chegam juntas na mesma fatura. Ver o que já está comprometido antes de passar o cartão muda a decisão. Manda pra quem parcela tudo. Link na bio.
+
+## Quanto pode gastar hoje
+
+Escrita em 24/10/2026. Aguarda aceite do autor no painel.
+
+**Título:** Quanto pode gastar hoje
+
+**Legenda:** Olhar só o saldo da conta engana porque mistura o dinheiro das contas fixas, da fatura aberta e do que você queria guardar com o que realmente sobrou para a semana. Quando esse cálculo fica pronto na tela de abertura e cada saída entra na hora em que acontece, você decide o próximo gasto com calma, sem fazer conta de cabeça no caixa. Salve para testar hoje mesmo. Link na bio.
+
+## Fatura e parcelas
+
+Escrita em 24/10/2026. Aguarda aceite do autor no painel.
+
+**Título:** Fatura e parcelas
+
+**Legenda:** Uma parcela de cem reais isolada quase nunca assusta. O susto vem quando três ou quatro compras de meses diferentes se encontram no mesmo fechamento e tomam metade do que parecia disponível. Enxergar todas as faturas somadas e o impacto direto no valor diário antes de parcelar de novo evita o aperto do mês seguinte. Manda pra quem vive parcelando no automático. Link na bio.
+
+## Metas e cofrinhos
+
+Escrita em 24/10/2026. Aguarda aceite do autor no painel.
+
+**Título:** Metas e cofrinhos
+
+**Legenda:** Guardar o que sobra no fim do mês quase nunca funciona porque raramente sobra alguma coisa por acaso. Quando o objetivo tem nome, valor, data e sai primeiro do cálculo do dia a dia, o dinheiro da meta fica protegido da rotina e você acompanha cada passo avançando. Comenta qual meta você quer tirar do papel neste ano. Link na bio.
+
+## Compra por impulso
+
+Escrita em 24/10/2026. Aguarda aceite do autor no painel.
+
+**Título:** Compra por impulso
+
+**Legenda:** A dúvida na frente da vitrine ou do carrinho online quase sempre vem de faltar um número simples na mão: quanto já saiu naquela categoria neste mês, somando o que passou no débito e o que entrou no crédito. Ter essa resposta em segundos transforma o impulso em escolha consciente, sem culpa depois. Salve para consultar antes da próxima compra. Link na bio.
+
+## Comprometimento futuro
+
+Escrita em 24/10/2026. Aguarda aceite do autor no painel.
+
+**Título:** Comprometimento futuro
+
+**Legenda:** Quem olha apenas para o mês atual descobre tarde demais que os próximos meses já começaram cheios de boletos recorrentes e parcelas antigas. Ver numa única linha do tempo o peso somado do semestre inteiro dá margem para segurar uma compra nova ou renegociar uma assinatura enquanto ainda existe folga no orçamento. Manda pra quem gosta de planejar o mês com antecedência. Link na bio.
+
 
 <!-- ph-fatura-reedicao-v2:start -->
 ## Fatura e parcelas - reedicao v2

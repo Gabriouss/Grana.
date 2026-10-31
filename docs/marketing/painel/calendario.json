@@ -29,6 +29,25 @@
           "canal": "reels"
         }
       ]
+    },
+    {
+      "id": "3128ff5fb6809313",
+      "caminho": "docs/marketing/2026-10/semana-41-2026-10-05-a-2026-10-11/aprovados/Organize no computador, acompanhe pelo celular.png",
+      "versao": "9fe45c4c01524f1a7c51ac28802833ca8c23a632",
+      "data": "2026-10-23",
+      "hora": "12:00",
+      "canal": "instagram-feed",
+      "observacao": null,
+      "planejadoEm": "2026-10-23T10:58:21-03:00",
+      "recibos": [
+        {
+          "tipo": "data-marcada",
+          "em": "2026-10-23T10:58:21-03:00",
+          "data": "2026-10-23",
+          "hora": "12:00",
+          "canal": "instagram-feed"
+        }
+      ]
     }
   ],
   "referenciaFunilFonte": "FUNIL.md, seção 5 (Calendário único da campanha, após o dia D). Posições relativas em dias úteis; não autorizam publicar nem gastar.",
@@ -196,5 +215,6 @@
       "situacao": "Estático: título e arte revistos; captura da Início reconferida."
     }
   ],
-  "avisosCronograma": []
+  "avisosCronograma": [],
+  "versaoOperacional": 2
 }

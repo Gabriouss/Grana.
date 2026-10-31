@@ -656,6 +656,503 @@
         }
       ],
       "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "833ed1b6a9b67cda",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/destaques/capas dos destaques-*",
+      "versao": "a46b162971f624200451956ac643e8b4cf402755",
+      "aprovadoEm": "2026-10-23T11:02:58-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos e legenda desta versão",
+      "manifesto": {
+        "versao": "a46b162971f624200451956ac643e8b4cf402755",
+        "legenda": "Capas dos quatro destaques do perfil, na ordem Conheça, Recursos, Planos e Segurança. Elas não vão ao feed: entram só como capa de cada destaque, sem texto de publicação.",
+        "midias": [
+          {
+            "ordem": 0,
+            "tipo": "imagem",
+            "sha1": "f454c87eb5b0ecc0eb0a3b9045d1c554be22a458"
+          },
+          {
+            "ordem": 1,
+            "tipo": "imagem",
+            "sha1": "4df015bf40b45629ac187506e29881ab07eee6cd"
+          },
+          {
+            "ordem": 2,
+            "tipo": "imagem",
+            "sha1": "ff98716a73fa6dae7b5db0e561b31285cf582eda"
+          },
+          {
+            "ordem": 3,
+            "tipo": "imagem",
+            "sha1": "e312009fbb3992571ba4be411ea6322b088d371f"
+          }
+        ],
+        "capa": null
+      },
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "e3ca88bb6a382562",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/destaques/capas dos destaques-*",
+      "versao": "a46b162971f624200451956ac643e8b4cf402755",
+      "aprovadoEm": "2026-10-23T11:02:58-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos e legenda desta versão",
+      "manifesto": {
+        "versao": "a46b162971f624200451956ac643e8b4cf402755",
+        "legenda": "Capas dos quatro destaques do perfil, na ordem Conheça, Recursos, Planos e Segurança. Elas não vão ao feed: entram só como capa de cada destaque, sem texto de publicação.",
+        "midias": [
+          {
+            "ordem": 0,
+            "tipo": "imagem",
+            "sha1": "f454c87eb5b0ecc0eb0a3b9045d1c554be22a458"
+          },
+          {
+            "ordem": 1,
+            "tipo": "imagem",
+            "sha1": "4df015bf40b45629ac187506e29881ab07eee6cd"
+          },
+          {
+            "ordem": 2,
+            "tipo": "imagem",
+            "sha1": "ff98716a73fa6dae7b5db0e561b31285cf582eda"
+          },
+          {
+            "ordem": 3,
+            "tipo": "imagem",
+            "sha1": "e312009fbb3992571ba4be411ea6322b088d371f"
+          }
+        ],
+        "capa": null
+      },
+      "promovidoEm": "2026-10-23T11:02:59-03:00",
+      "origem": {
+        "id": "833ed1b6a9b67cda",
+        "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/destaques/capas dos destaques-*",
+        "aprovadoEm": "2026-10-23T11:02:58-03:00"
+      },
+      "arquivosPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/destaques/Capas dos destaques-1.png",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/destaques/Capas dos destaques-1.png",
+          "sha1": "f454c87eb5b0ecc0eb0a3b9045d1c554be22a458"
+        },
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/destaques/Capas dos destaques-2.png",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/destaques/Capas dos destaques-2.png",
+          "sha1": "4df015bf40b45629ac187506e29881ab07eee6cd"
+        },
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/destaques/Capas dos destaques-3.png",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/destaques/Capas dos destaques-3.png",
+          "sha1": "ff98716a73fa6dae7b5db0e561b31285cf582eda"
+        },
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/destaques/Capas dos destaques-4.png",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/destaques/Capas dos destaques-4.png",
+          "sha1": "e312009fbb3992571ba4be411ea6322b088d371f"
+        }
+      ],
+      "substituicoes": [],
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "d4377e8a765e7bbc",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Comprometimento futuro - reedicao v3.mp4",
+      "versao": "a5abfba1268d7d786ce8bb004fbc3a5ce344e7ec",
+      "aprovadoEm": "2026-10-25T14:35:13-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "vídeo, capa e legenda desta versão (aceite composto)",
+      "manifesto": {
+        "versao": "a5abfba1268d7d786ce8bb004fbc3a5ce344e7ec",
+        "legenda": "Os próximos meses começam a ser gastos muito antes de chegar, porque cada parcela e cada conta fixa já ocupa um pedaço deles. Ver esse peso somado com antecedência mostra onde existe folga para uma compra maior e onde vale esperar. Manda para quem já está planejando o fim do ano. Link na bio.",
+        "midias": [
+          {
+            "ordem": 0,
+            "tipo": "video",
+            "sha1": "d58d332e1c2586db474da96762950067a7e5814d"
+          }
+        ],
+        "capa": {
+          "sha1": "0bdb3d08dec69e8bc608ad15ccf8130d291de090"
+        }
+      },
+      "composicao": {
+        "video": [
+          "d58d332e1c2586db474da96762950067a7e5814d"
+        ],
+        "capa": "0bdb3d08dec69e8bc608ad15ccf8130d291de090",
+        "capaPecaId": "462247bba78c5184",
+        "legenda": "incluida"
+      },
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "462247bba78c5184",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Comprometimento futuro - reedicao v3-capa.png",
+      "versao": "ab8205c96fb58c3807e5e0a32006d2cbf17eeb89",
+      "aprovadoEm": "2026-10-25T14:35:54-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "arquivos e legenda desta versão",
+      "manifesto": {
+        "versao": "ab8205c96fb58c3807e5e0a32006d2cbf17eeb89",
+        "legenda": "Os próximos meses começam a ser gastos muito antes de chegar, porque cada parcela e cada conta fixa já ocupa um pedaço deles. Ver esse peso somado com antecedência mostra onde existe folga para uma compra maior e onde vale esperar. Manda para quem já está planejando o fim do ano. Link na bio.",
+        "midias": [
+          {
+            "ordem": 0,
+            "tipo": "imagem",
+            "sha1": "0bdb3d08dec69e8bc608ad15ccf8130d291de090"
+          }
+        ],
+        "capa": null
+      },
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "b550bfb7f1f461d6",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Comprometimento futuro - reedicao v3.mp4",
+      "versao": "a5abfba1268d7d786ce8bb004fbc3a5ce344e7ec",
+      "aprovadoEm": "2026-10-25T14:35:13-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "vídeo, capa e legenda desta versão (aceite composto)",
+      "manifesto": {
+        "versao": "a5abfba1268d7d786ce8bb004fbc3a5ce344e7ec",
+        "legenda": "Os próximos meses começam a ser gastos muito antes de chegar, porque cada parcela e cada conta fixa já ocupa um pedaço deles. Ver esse peso somado com antecedência mostra onde existe folga para uma compra maior e onde vale esperar. Manda para quem já está planejando o fim do ano. Link na bio.",
+        "midias": [
+          {
+            "ordem": 0,
+            "tipo": "video",
+            "sha1": "d58d332e1c2586db474da96762950067a7e5814d"
+          }
+        ],
+        "capa": {
+          "sha1": "0bdb3d08dec69e8bc608ad15ccf8130d291de090"
+        }
+      },
+      "promovidoEm": "2026-10-25T14:46:22-03:00",
+      "origem": {
+        "id": "d4377e8a765e7bbc",
+        "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Comprometimento futuro - reedicao v3.mp4",
+        "aprovadoEm": "2026-10-25T14:35:13-03:00"
+      },
+      "arquivosPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Comprometimento futuro - reedicao v3.mp4",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Comprometimento futuro - reedicao v3.mp4",
+          "sha1": "d58d332e1c2586db474da96762950067a7e5814d"
+        }
+      ],
+      "componentesPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Comprometimento futuro - reedicao v3-capa.png",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Comprometimento futuro - reedicao v3-capa.png",
+          "sha1": "0bdb3d08dec69e8bc608ad15ccf8130d291de090"
+        }
+      ],
+      "substituicoes": [],
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "b8f94bbed27c61a0",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Compra por impulso - reedicao v3.mp4",
+      "versao": "cdc08d5ba1dba25c589db6e7c73c0c2cc1a0da07",
+      "aprovadoEm": "2026-10-26T09:27:21-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "vídeo, capa e legenda desta versão (aceite composto)",
+      "manifesto": {
+        "versao": "cdc08d5ba1dba25c589db6e7c73c0c2cc1a0da07",
+        "legenda": "A compra por impulso costuma acontecer quando falta um número na hora da dúvida. Com a resposta pronta, mostrando o que já saiu do caixa e o que ainda vai chegar na fatura, dá para decidir com calma se aquela compra cabe agora ou fica para o mês que vem. Salva para consultar na próxima vitrine. Link na bio.",
+        "midias": [
+          {
+            "ordem": 0,
+            "tipo": "video",
+            "sha1": "7dbe1b7d12f8449f315fcf1e86292de5a7e0ba8e"
+          }
+        ],
+        "capa": {
+          "sha1": "fbfc0c4c1e69ad30e71b66f48d49527f54d22b95"
+        }
+      },
+      "composicao": {
+        "video": [
+          "7dbe1b7d12f8449f315fcf1e86292de5a7e0ba8e"
+        ],
+        "capa": "fbfc0c4c1e69ad30e71b66f48d49527f54d22b95",
+        "capaPecaId": "34e6246328a4288e",
+        "legenda": "incluida"
+      },
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "0e9235b1b8c36678",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Compra por impulso - reedicao v3.mp4",
+      "versao": "cdc08d5ba1dba25c589db6e7c73c0c2cc1a0da07",
+      "aprovadoEm": "2026-10-26T09:27:21-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "vídeo, capa e legenda desta versão (aceite composto)",
+      "manifesto": {
+        "versao": "cdc08d5ba1dba25c589db6e7c73c0c2cc1a0da07",
+        "legenda": "A compra por impulso costuma acontecer quando falta um número na hora da dúvida. Com a resposta pronta, mostrando o que já saiu do caixa e o que ainda vai chegar na fatura, dá para decidir com calma se aquela compra cabe agora ou fica para o mês que vem. Salva para consultar na próxima vitrine. Link na bio.",
+        "midias": [
+          {
+            "ordem": 0,
+            "tipo": "video",
+            "sha1": "7dbe1b7d12f8449f315fcf1e86292de5a7e0ba8e"
+          }
+        ],
+        "capa": {
+          "sha1": "fbfc0c4c1e69ad30e71b66f48d49527f54d22b95"
+        }
+      },
+      "promovidoEm": "2026-10-26T09:27:23-03:00",
+      "origem": {
+        "id": "b8f94bbed27c61a0",
+        "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Compra por impulso - reedicao v3.mp4",
+        "aprovadoEm": "2026-10-26T09:27:21-03:00"
+      },
+      "arquivosPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Compra por impulso - reedicao v3.mp4",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Compra por impulso - reedicao v3.mp4",
+          "sha1": "7dbe1b7d12f8449f315fcf1e86292de5a7e0ba8e"
+        }
+      ],
+      "componentesPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Compra por impulso - reedicao v3-capa.png",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Compra por impulso - reedicao v3-capa.png",
+          "sha1": "fbfc0c4c1e69ad30e71b66f48d49527f54d22b95"
+        }
+      ],
+      "substituicoes": [],
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "a195f16d6b050411",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Fatura e parcelas - reedicao v3.mp4",
+      "versao": "a4c35bd50cd7b883516c074dbbd6336c29327ecb",
+      "aprovadoEm": "2026-10-26T09:28:03-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "vídeo, capa e legenda desta versão (aceite composto)",
+      "manifesto": {
+        "versao": "a4c35bd50cd7b883516c074dbbd6336c29327ecb",
+        "legenda": "Parcelar parece leve porque cada compra chega sozinha. O fechamento junta tudo, e o valor do fim do mês vira a soma de decisões que ninguém lembrava mais. Ter as parcelas abertas na frente, com o número de cada uma, muda a conta antes da próxima compra. Salva este vídeo para conferir antes de parcelar de novo. Link na bio.",
+        "midias": [
+          {
+            "ordem": 0,
+            "tipo": "video",
+            "sha1": "17e017a04b42a5f7cda38d33ac942818a82395cb"
+          }
+        ],
+        "capa": {
+          "sha1": "291b5332c5bf772a46c45413bf0d40fc8dd85f6e"
+        }
+      },
+      "composicao": {
+        "video": [
+          "17e017a04b42a5f7cda38d33ac942818a82395cb"
+        ],
+        "capa": "291b5332c5bf772a46c45413bf0d40fc8dd85f6e",
+        "capaPecaId": "2b16dbe727a5c754",
+        "legenda": "incluida"
+      },
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "318402f8d7eba68c",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Fatura e parcelas - reedicao v3.mp4",
+      "versao": "a4c35bd50cd7b883516c074dbbd6336c29327ecb",
+      "aprovadoEm": "2026-10-26T09:28:03-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "vídeo, capa e legenda desta versão (aceite composto)",
+      "manifesto": {
+        "versao": "a4c35bd50cd7b883516c074dbbd6336c29327ecb",
+        "legenda": "Parcelar parece leve porque cada compra chega sozinha. O fechamento junta tudo, e o valor do fim do mês vira a soma de decisões que ninguém lembrava mais. Ter as parcelas abertas na frente, com o número de cada uma, muda a conta antes da próxima compra. Salva este vídeo para conferir antes de parcelar de novo. Link na bio.",
+        "midias": [
+          {
+            "ordem": 0,
+            "tipo": "video",
+            "sha1": "17e017a04b42a5f7cda38d33ac942818a82395cb"
+          }
+        ],
+        "capa": {
+          "sha1": "291b5332c5bf772a46c45413bf0d40fc8dd85f6e"
+        }
+      },
+      "promovidoEm": "2026-10-26T09:28:04-03:00",
+      "origem": {
+        "id": "a195f16d6b050411",
+        "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Fatura e parcelas - reedicao v3.mp4",
+        "aprovadoEm": "2026-10-26T09:28:03-03:00"
+      },
+      "arquivosPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Fatura e parcelas - reedicao v3.mp4",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Fatura e parcelas - reedicao v3.mp4",
+          "sha1": "17e017a04b42a5f7cda38d33ac942818a82395cb"
+        }
+      ],
+      "componentesPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Fatura e parcelas - reedicao v3-capa.png",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Fatura e parcelas - reedicao v3-capa.png",
+          "sha1": "291b5332c5bf772a46c45413bf0d40fc8dd85f6e"
+        }
+      ],
+      "substituicoes": [],
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "07cc9a400dd5a8e5",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Metas e cofrinhos - reedicao v3.mp4",
+      "versao": "41dd6374df68c5673ae6dc36563dcb8dd5870bc3",
+      "aprovadoEm": "2026-10-26T09:28:26-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "vídeo, capa e legenda desta versão (aceite composto)",
+      "manifesto": {
+        "versao": "41dd6374df68c5673ae6dc36563dcb8dd5870bc3",
+        "legenda": "Meta que mora só na cabeça disputa espaço com todo gasto do mês e quase sempre perde. Quando cada objetivo tem valor, data e uma barra que anda, guardar vira um passo que dá para ver, e o dinheiro reservado deixa de parecer sobra. Comenta qual objetivo vai ganhar o primeiro cofrinho. Link na bio.",
+        "midias": [
+          {
+            "ordem": 0,
+            "tipo": "video",
+            "sha1": "e2d6dde545c58927bfd6c45ae912b09aa28786ae"
+          }
+        ],
+        "capa": {
+          "sha1": "eddf94d475b63c8705260c5cc41b35b72ec4adc3"
+        }
+      },
+      "composicao": {
+        "video": [
+          "e2d6dde545c58927bfd6c45ae912b09aa28786ae"
+        ],
+        "capa": "eddf94d475b63c8705260c5cc41b35b72ec4adc3",
+        "capaPecaId": "480f6a1f2745791f",
+        "legenda": "incluida"
+      },
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "cbb5aa48c81a51c1",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Metas e cofrinhos - reedicao v3.mp4",
+      "versao": "41dd6374df68c5673ae6dc36563dcb8dd5870bc3",
+      "aprovadoEm": "2026-10-26T09:28:26-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "vídeo, capa e legenda desta versão (aceite composto)",
+      "manifesto": {
+        "versao": "41dd6374df68c5673ae6dc36563dcb8dd5870bc3",
+        "legenda": "Meta que mora só na cabeça disputa espaço com todo gasto do mês e quase sempre perde. Quando cada objetivo tem valor, data e uma barra que anda, guardar vira um passo que dá para ver, e o dinheiro reservado deixa de parecer sobra. Comenta qual objetivo vai ganhar o primeiro cofrinho. Link na bio.",
+        "midias": [
+          {
+            "ordem": 0,
+            "tipo": "video",
+            "sha1": "e2d6dde545c58927bfd6c45ae912b09aa28786ae"
+          }
+        ],
+        "capa": {
+          "sha1": "eddf94d475b63c8705260c5cc41b35b72ec4adc3"
+        }
+      },
+      "promovidoEm": "2026-10-26T09:28:27-03:00",
+      "origem": {
+        "id": "07cc9a400dd5a8e5",
+        "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Metas e cofrinhos - reedicao v3.mp4",
+        "aprovadoEm": "2026-10-26T09:28:26-03:00"
+      },
+      "arquivosPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Metas e cofrinhos - reedicao v3.mp4",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Metas e cofrinhos - reedicao v3.mp4",
+          "sha1": "e2d6dde545c58927bfd6c45ae912b09aa28786ae"
+        }
+      ],
+      "componentesPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Metas e cofrinhos - reedicao v3-capa.png",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Metas e cofrinhos - reedicao v3-capa.png",
+          "sha1": "eddf94d475b63c8705260c5cc41b35b72ec4adc3"
+        }
+      ],
+      "substituicoes": [],
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "b7b5846bb4b57d3b",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Quanto pode gastar hoje - reedicao v3.mp4",
+      "versao": "aa35bfdd370d1d2e9d6d4954d04de06c4a8c0ebd",
+      "aprovadoEm": "2026-10-26T09:28:38-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "vídeo, capa e legenda desta versão (aceite composto)",
+      "manifesto": {
+        "versao": "aa35bfdd370d1d2e9d6d4954d04de06c4a8c0ebd",
+        "legenda": "O saldo do banco mostra tudo o que entrou, inclusive o dinheiro que já tem destino. Para decidir o gasto de hoje, o número que importa aparece depois que a fatura em aberto e os cofrinhos saem da conta, dividido pelos dias que faltam. Com ele na tela de abertura, a escolha fica tranquila. Salva para lembrar antes da próxima compra. Link na bio.",
+        "midias": [
+          {
+            "ordem": 0,
+            "tipo": "video",
+            "sha1": "7071dcc19146b788bd45992f408d1d6b85853805"
+          }
+        ],
+        "capa": {
+          "sha1": "4254b037d5c88a17d917fa3ced5b1288c22de015"
+        }
+      },
+      "composicao": {
+        "video": [
+          "7071dcc19146b788bd45992f408d1d6b85853805"
+        ],
+        "capa": "4254b037d5c88a17d917fa3ced5b1288c22de015",
+        "capaPecaId": "40841450e1a61146",
+        "legenda": "incluida"
+      },
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "5be72489c3793f65",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Quanto pode gastar hoje - reedicao v3.mp4",
+      "versao": "aa35bfdd370d1d2e9d6d4954d04de06c4a8c0ebd",
+      "aprovadoEm": "2026-10-26T09:28:38-03:00",
+      "evidencia": "aceite pelo autor no painel local",
+      "escopo": "vídeo, capa e legenda desta versão (aceite composto)",
+      "manifesto": {
+        "versao": "aa35bfdd370d1d2e9d6d4954d04de06c4a8c0ebd",
+        "legenda": "O saldo do banco mostra tudo o que entrou, inclusive o dinheiro que já tem destino. Para decidir o gasto de hoje, o número que importa aparece depois que a fatura em aberto e os cofrinhos saem da conta, dividido pelos dias que faltam. Com ele na tela de abertura, a escolha fica tranquila. Salva para lembrar antes da próxima compra. Link na bio.",
+        "midias": [
+          {
+            "ordem": 0,
+            "tipo": "video",
+            "sha1": "7071dcc19146b788bd45992f408d1d6b85853805"
+          }
+        ],
+        "capa": {
+          "sha1": "4254b037d5c88a17d917fa3ced5b1288c22de015"
+        }
+      },
+      "promovidoEm": "2026-10-26T09:28:39-03:00",
+      "origem": {
+        "id": "b7b5846bb4b57d3b",
+        "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Quanto pode gastar hoje - reedicao v3.mp4",
+        "aprovadoEm": "2026-10-26T09:28:38-03:00"
+      },
+      "arquivosPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Quanto pode gastar hoje - reedicao v3.mp4",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Quanto pode gastar hoje - reedicao v3.mp4",
+          "sha1": "7071dcc19146b788bd45992f408d1d6b85853805"
+        }
+      ],
+      "componentesPromovidos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Quanto pode gastar hoje - reedicao v3-capa.png",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/aprovados/pecas/reels/Quanto pode gastar hoje - reedicao v3-capa.png",
+          "sha1": "4254b037d5c88a17d917fa3ced5b1288c22de015"
+        }
+      ],
+      "substituicoes": [],
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
     }
   ],
   "ajustes": [
@@ -728,6 +1225,163 @@
       "pedidoEm": "2026-10-07T10:31:14-03:00",
       "motivo": "Copy tá estranha. Prefiro (Organize no computador e acompanhe no seu celular, na mesma conta!) Remover informação de dados fictícios",
       "origem": "pedido do autor no painel local"
+    }
+  ],
+  "conclusoes": [
+    {
+      "id": "833ed1b6a9b67cda",
+      "versao": "a46b162971f624200451956ac643e8b4cf402755",
+      "destinoId": "e3ca88bb6a382562",
+      "estado": "concluida",
+      "etapas": {
+        "aceite": {
+          "estado": "concluido",
+          "aprovadoEm": "2026-10-23T11:02:58-03:00"
+        },
+        "ajuste": {
+          "estado": "concluido"
+        },
+        "promocao": {
+          "estado": "concluido"
+        },
+        "plano": {
+          "estado": "concluido"
+        }
+      },
+      "atualizadoEm": "2026-10-23T11:02:59-03:00"
+    },
+    {
+      "id": "462247bba78c5184",
+      "versao": "ab8205c96fb58c3807e5e0a32006d2cbf17eeb89",
+      "destinoId": "462247bba78c5184",
+      "estado": "incompleta",
+      "etapas": {
+        "aceite": {
+          "estado": "concluido",
+          "aprovadoEm": "2026-10-25T14:35:54-03:00"
+        },
+        "ajuste": {
+          "estado": "concluido"
+        },
+        "promocao": {
+          "estado": "pendente",
+          "codigo": "componente-do-reel"
+        },
+        "plano": {
+          "estado": "pendente"
+        }
+      },
+      "atualizadoEm": "2026-10-25T14:35:57-03:00"
+    },
+    {
+      "id": "d4377e8a765e7bbc",
+      "versao": "a5abfba1268d7d786ce8bb004fbc3a5ce344e7ec",
+      "destinoId": "b550bfb7f1f461d6",
+      "estado": "concluida",
+      "etapas": {
+        "aceite": {
+          "estado": "concluido",
+          "aprovadoEm": "2026-10-25T14:35:13-03:00"
+        },
+        "ajuste": {
+          "estado": "concluido"
+        },
+        "promocao": {
+          "estado": "concluido"
+        },
+        "plano": {
+          "estado": "concluido"
+        }
+      },
+      "atualizadoEm": "2026-10-25T14:46:22-03:00"
+    },
+    {
+      "id": "b8f94bbed27c61a0",
+      "versao": "cdc08d5ba1dba25c589db6e7c73c0c2cc1a0da07",
+      "destinoId": "0e9235b1b8c36678",
+      "estado": "concluida",
+      "etapas": {
+        "aceite": {
+          "estado": "concluido",
+          "aprovadoEm": "2026-10-26T09:27:21-03:00"
+        },
+        "ajuste": {
+          "estado": "concluido"
+        },
+        "promocao": {
+          "estado": "concluido"
+        },
+        "plano": {
+          "estado": "concluido"
+        }
+      },
+      "atualizadoEm": "2026-10-26T09:27:24-03:00"
+    },
+    {
+      "id": "a195f16d6b050411",
+      "versao": "a4c35bd50cd7b883516c074dbbd6336c29327ecb",
+      "destinoId": "318402f8d7eba68c",
+      "estado": "concluida",
+      "etapas": {
+        "aceite": {
+          "estado": "concluido",
+          "aprovadoEm": "2026-10-26T09:28:03-03:00"
+        },
+        "ajuste": {
+          "estado": "concluido"
+        },
+        "promocao": {
+          "estado": "concluido"
+        },
+        "plano": {
+          "estado": "concluido"
+        }
+      },
+      "atualizadoEm": "2026-10-26T09:28:04-03:00"
+    },
+    {
+      "id": "07cc9a400dd5a8e5",
+      "versao": "41dd6374df68c5673ae6dc36563dcb8dd5870bc3",
+      "destinoId": "cbb5aa48c81a51c1",
+      "estado": "concluida",
+      "etapas": {
+        "aceite": {
+          "estado": "concluido",
+          "aprovadoEm": "2026-10-26T09:28:26-03:00"
+        },
+        "ajuste": {
+          "estado": "concluido"
+        },
+        "promocao": {
+          "estado": "concluido"
+        },
+        "plano": {
+          "estado": "concluido"
+        }
+      },
+      "atualizadoEm": "2026-10-26T09:28:27-03:00"
+    },
+    {
+      "id": "b7b5846bb4b57d3b",
+      "versao": "aa35bfdd370d1d2e9d6d4954d04de06c4a8c0ebd",
+      "destinoId": "5be72489c3793f65",
+      "estado": "concluida",
+      "etapas": {
+        "aceite": {
+          "estado": "concluido",
+          "aprovadoEm": "2026-10-26T09:28:38-03:00"
+        },
+        "ajuste": {
+          "estado": "concluido"
+        },
+        "promocao": {
+          "estado": "concluido"
+        },
+        "plano": {
+          "estado": "concluido"
+        }
+      },
+      "atualizadoEm": "2026-10-26T09:28:39-03:00"
     }
   ]
 }
