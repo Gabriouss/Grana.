@@ -1,0 +1,133 @@
+{
+  "formato": 1,
+  "conteudos": [
+    {
+      "conteudoId": "cb6a193f-8539-4899-af60-905ee50bb6dd",
+      "aliases": [
+        {
+          "pecaId": "e3ca88bb6a382562",
+          "versao": "a46b162971f624200451956ac643e8b4cf402755"
+        },
+        {
+          "pecaId": "833ed1b6a9b67cda",
+          "versao": "a46b162971f624200451956ac643e8b4cf402755"
+        }
+      ],
+      "geracaoEditorial": 0,
+      "remoto": false,
+      "estadoEditorial": "rascunho",
+      "pendentes": {},
+      "recibos": []
+    },
+    {
+      "conteudoId": "8a69710c-8d34-487a-9005-9b7bb417cfc1",
+      "aliases": [
+        {
+          "pecaId": "b550bfb7f1f461d6",
+          "versao": "a5abfba1268d7d786ce8bb004fbc3a5ce344e7ec"
+        },
+        {
+          "pecaId": "d4377e8a765e7bbc",
+          "versao": "a5abfba1268d7d786ce8bb004fbc3a5ce344e7ec"
+        },
+        {
+          "pecaId": "e56dfd3e52663bed",
+          "versao": "a5abfba1268d7d786ce8bb004fbc3a5ce344e7ec"
+        }
+      ],
+      "geracaoEditorial": 0,
+      "remoto": false,
+      "estadoEditorial": "rascunho",
+      "pendentes": {},
+      "recibos": []
+    },
+    {
+      "conteudoId": "f08ec368-6072-4bf3-b450-e0e8bb8682ad",
+      "aliases": [
+        {
+          "pecaId": "0e9235b1b8c36678",
+          "versao": "cdc08d5ba1dba25c589db6e7c73c0c2cc1a0da07"
+        },
+        {
+          "pecaId": "b8f94bbed27c61a0",
+          "versao": "cdc08d5ba1dba25c589db6e7c73c0c2cc1a0da07"
+        },
+        {
+          "pecaId": "494a1ea4cced9511",
+          "versao": "cdc08d5ba1dba25c589db6e7c73c0c2cc1a0da07"
+        }
+      ],
+      "geracaoEditorial": 0,
+      "remoto": false,
+      "estadoEditorial": "rascunho",
+      "pendentes": {},
+      "recibos": []
+    },
+    {
+      "conteudoId": "cd8cd85a-caf6-4369-8125-aa2cdd4070aa",
+      "aliases": [
+        {
+          "pecaId": "318402f8d7eba68c",
+          "versao": "a4c35bd50cd7b883516c074dbbd6336c29327ecb"
+        },
+        {
+          "pecaId": "a195f16d6b050411",
+          "versao": "a4c35bd50cd7b883516c074dbbd6336c29327ecb"
+        },
+        {
+          "pecaId": "80154d8e0e3f61a1",
+          "versao": "a4c35bd50cd7b883516c074dbbd6336c29327ecb"
+        }
+      ],
+      "geracaoEditorial": 0,
+      "remoto": false,
+      "estadoEditorial": "rascunho",
+      "pendentes": {},
+      "recibos": []
+    },
+    {
+      "conteudoId": "d6eec053-97e7-40c6-9112-71ce59810abe",
+      "aliases": [
+        {
+          "pecaId": "cbb5aa48c81a51c1",
+          "versao": "41dd6374df68c5673ae6dc36563dcb8dd5870bc3"
+        },
+        {
+          "pecaId": "07cc9a400dd5a8e5",
+          "versao": "41dd6374df68c5673ae6dc36563dcb8dd5870bc3"
+        },
+        {
+          "pecaId": "df009974c59cb219",
+          "versao": "41dd6374df68c5673ae6dc36563dcb8dd5870bc3"
+        }
+      ],
+      "geracaoEditorial": 0,
+      "remoto": false,
+      "estadoEditorial": "rascunho",
+      "pendentes": {},
+      "recibos": []
+    },
+    {
+      "conteudoId": "b3ed6590-1b3b-4828-8fd9-c70648c14233",
+      "aliases": [
+        {
+          "pecaId": "5be72489c3793f65",
+          "versao": "aa35bfdd370d1d2e9d6d4954d04de06c4a8c0ebd"
+        },
+        {
+          "pecaId": "b7b5846bb4b57d3b",
+          "versao": "aa35bfdd370d1d2e9d6d4954d04de06c4a8c0ebd"
+        },
+        {
+          "pecaId": "ab5a43282f1f2d6c",
+          "versao": "aa35bfdd370d1d2e9d6d4954d04de06c4a8c0ebd"
+        }
+      ],
+      "geracaoEditorial": 0,
+      "remoto": false,
+      "estadoEditorial": "rascunho",
+      "pendentes": {},
+      "recibos": []
+    }
+  ]
+}

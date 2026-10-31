@@ -91,6 +91,140 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
+
+## 31/10 — formas de pagamento em teste
+
+O autor pediu identificação automática das formas de pagamento; a confirmação por toque permanece e boleto continua em revisão. Keel relata ajustes e testes focais verdes na linha local de teste, sem aviso real, aparelho ou compilação nativa. Há situações ainda ambíguas que podem exigir revisão; uma suspeita induzida por sinais genéricos foi retirada. As mudanças financeiras aguardam revisão independente antes de publicação e não estão em build.
+
+## 31/10 — continuidade do teste real
+
+O autor perguntou sobre identificar automaticamente a forma do gasto. A resposta: depende do conteúdo do aviso ou de correspondência com cartão; continua exigido um toque antes de gravar. Correções de ícone e identificação de débito foram feitas apenas na linha local de teste, sem build nem validação em aparelho. A causa do uso do ícone foi confirmada no código; a aparência observada ainda é dedução. O orquestrador corrigiu sua suspeita anterior de escolha automática de cartão: a análise ampliada e a sonda indicam que houve escolha. Permanece hipótese de classificação incorreta quando um cartão com múltiplas funções é inferido como crédito; o item mostra a forma antes do toque.
+
+## 31/10 — teste real de avisos
+
+O autor enviou vídeo de teste no celular, examinado por quadros amostrados e sem áudio. Avisos de dois aplicativos geraram itens sem duplicata, e a confirmação abriu revisão e gravou nos dois tipos testados. O autor relatou logotipo incorreto na notificação; causa ainda não confirmada e correção atribuída. Permanecem em análise a sugestão de cartão sem correspondência e o reconhecimento de um aviso de débito. Nenhum dado financeiro ou de terceiros é registrado aqui.
+
+## 31/10 — publicação dos arquivos e cópia da skill
+
+A pedido de “Commita tudo”, Anvil publicou cinco commits: `08430cb8`, `400401de`, `28d65361`, `b87494d7` e `ff67c97f`; relatou árvore limpa, CI verde e Vercel concluída em `ff67c97f`. A pendência dos caminhos sem commit foi encerrada. O gancho `.codex/hooks.json` usa caminhos da M1 e não foi testado na M2; licenças de terceiros da skill ainda não foram verificadas na origem.
+
+A cópia Codex de `motion-supremo` foi igualada à cópia Claude em `c57ca141`, com comparação de arquivos sem diferenças. O validador de skills rejeitou a descrição existente por exceder seu limite; ela foi preservada para manter as cópias iguais. Não houve teste de comportamento da skill.
+
+## 31/10 — CI remoto corrigido
+
+Anvil identificou ausência do Playwright no runner desde `18fe4747` e corrigiu o workflow em `130f3eb1`; relata CI remoto verde nos jobs de testes e segredos, sem defeito de produto identificado. O orquestrador informou conclusão da Vercel nesse hash. A execução em UTC passou, mas comportamento na virada do dia e em outros fusos continua sem prova específica; build e nativo não foram testados.
+
+## 31/10 — investigação do CI remoto
+
+O fechamento documental foi publicado em `476ca2d2`, com varredura limpa. O orquestrador relata falhas do job de testes no GitHub apesar da suíte local verde e atribuiu a Anvil investigação, reprodução e correção conforme a causa. A origem ainda não foi comprovada; a ordem não comprova correção nem CI remoto verde.
+
+## 31/10 — fechamento e pendências
+
+A revisão e prova web da retomada estão registradas abaixo. Permanecem sem verificação: correções no Android, conclusão da publicação Vercel e aviso bancário real; `330641ef` não teve segundo revisor. A decisão de aceitar o limite de datas é do orquestrador e pode ser revista pelo autor; oito asserções foram atualizadas na mudança. O histórico local foi saneado antes do push, sem force.
+
+Pendências: verificar o regime Gemini e identificar o responsável pelo serviço; decidir o destino da branch remota com trabalho exclusivo e dos caminhos locais não commitados; testar widget de voz com app fechado, online e offline; decidir o destino do Reel pendente; planejar janela do painel administrativo; testar avisos bancários reais e depois desligar a depuração sem fio. Na versão de teste, A6, A4 e A7 não estão incluídos; permanece risco de duplicação visual de parcela futura na linha de teste, sem revisão final. A comparação das falhas antigas de CI com a base remota não foi executada; a CI posterior passou.
+
+## 31/10 — B3 corrigido e main publicada
+
+Anvil corrigiu a recuperação das fontes do Livre ao retornar à tela (`330641ef`), comprovou os cenários relatados na web e informa `test:ci` e TypeScript verdes. Publicou `330641ef` em `origin/main`, sem force; a varredura relatada não encontrou problemas. O commit não teve segundo revisor. Publicação na Vercel e comportamento nativo não foram verificados; sem build, migration ou deploy de funções.
+
+## 31/10 — prova web e B3
+
+Vigil verificou as correções na web local e confirmou B3: após falha real das fontes do Livre, voltar à aba mantém o estado indisponível até atualização completa. Os demais itens do roteiro passaram na web; o salto do Perfil não foi reproduzido nela, sem prova do nativo. Anvil recebeu a correção de B3 e nova prova. A main segue sem publicar até o recibo `FIM-push-main-3`.
+
+## 31/10 — decisão de publicação
+
+O orquestrador determinou manter a main sem publicar até a prova das correções na web local. Vigil 3 não verificou o código atual; Vigil 4 recebeu a nova prova. A revisão Anvil e a CI verde não substituem essa verificação em tela, que também não comprovará o comportamento nativo.
+
+## 31/10 — revisão Anvil e QA seguinte
+
+Anvil revisou o delta sem achado P1 ou P2 e corrigiu dois P3: proteção do teste de versão (`7f010b94`) e espaço no card (`6029a964`). Relata `test:ci` e TypeScript verdes e varredura sem achados. Não publicou: as correções ainda não tinham sido vistas em tela. Vigil recebeu nova ordem de QA na web local; resultado pendente, sem prova nativa.
+
+## 31/10 — QA Vigil 3 não verificado
+
+Vigil não conseguiu testar as correções atuais: o aplicativo disponível carregou código anterior e a alternativa web não carregou sob pressão de memória. Nenhum defeito novo foi confirmado, nenhum lançamento de teste foi gravado e o emulador foi fechado. As telas, o salto no Perfil e a regra 20 após alterações seguem sem validação nesta rodada.
+
+## 31/10 — revisão integrada e QA atribuídos
+
+Anvil recebeu a revisão do delta das frentes, condicionando eventual publicação à CI integral, ausência de achados relevantes e resultado do QA. Vigil recebeu a conferência das telas e da regra 20 no emulador. Atribuições não comprovam aprovação, testes ou publicação.
+
+## 31/10 — CI concluída
+
+Beacon corrigiu o dublê que quebrava a trava de paridade no commit `29ba5f53`. Relata `test:ci` integral com exit 0 após a correção, além de testes focais verdes. A execução ocorreu na árvore compartilhada, sem congelamento de checkout; não substitui revisão integrada nem QA em aparelho. Sem push informado.
+
+## 31/10 — adendo e verificação de CI
+
+Compass concluiu a incorporação da decisão de preservar usuários atuais ao plano externo; a compatibilidade ainda precisa ser demonstrada em testes. Uma execução integral de `test:ci` parou em dublê introduzido na frente Beacon; a correção e nova execução foram atribuídas ao responsável, sem resultado ainda.
+
+## 31/10 — decisão sobre usuários atuais
+
+O autor determinou que, por enquanto, o trabalho de adaptação à loja não afete quem já usa o aplicativo; mudanças devem ocorrer aos poucos e quando ele decidir. Compass incorporou pesquisa complementar ao plano externo. O adendo para explicitar a decisão nas fases foi atribuído; sua conclusão ainda não está comprovada pelo marcador recebido. Nada do plano foi implementado por essa entrega.
+
+## 31/10 — resultados Beacon, Forge, Prism e Compass
+
+Beacon relata correção de dublês nas três suítes de voz (`e6cd6ae6`) e diagnóstico filtrado no widget (`03d666dd`), com testes focais e TypeScript verdes. Forge relata distinção entre carregamento e falha no Livre (`d7197384`), sem alterar fórmula; a causa da persistência observada no QA segue não confirmada. Prism corrigiu mensagem antiga de validação (`4d8cc872`); causa do salto no Perfil sem confiabilidade suficiente. Testes focais passaram segundo os relatórios; falta revisão integrada e QA visual/aparelho. Compass entregou pesquisa complementar fora do repositório; ela não comprova operação em produção.
+
+## 31/10 — publicação e novas frentes
+
+Watchtower informa publicação de `9966bfcf` em `origin/main`, com varredura do intervalo sem achados e confirmação remota; conclusão da implantação web não foi verificada. Não houve deploy manual de funções nem migration. A versão de teste foi instalada no aparelho do autor; avisos bancários reais ainda aguardam teste.
+
+Foram atribuídas frentes para investigar suítes de voz e registros do widget, estado de carregamento do Livre, validação visual do lançamento e Perfil, e pesquisa complementar. As ordens não comprovam conclusão; quatro falhas relatadas na `test:ci` ainda exigem investigação.
+
+## 31/10 — ordem Watchtower 10
+
+O orquestrador aceitou provisoriamente o limite de escolha de data apontado na revisão 9 e atribuiu ao Watchtower a conferência do intervalo e decisão de push, condicionada à varredura de segredos. Relatou quatro falhas na execução integral de `test:ci`; a comparação de execução com a base remota não foi comprovada. A ordem não comprova publicação nem correção das falhas.
+
+## 31/10 — atualização do plano
+
+O plano mantido fora do repositório incorporou o parecer de privacidade e obrigações legais; permanece proposta sujeita a validação e aprovação.
+
+## 31/10 — Vigil 2 e Watchtower 9
+
+Vigil relata que avisos comuns de app auxiliar chegaram ao emulador e A conferir permitiu confirmar e descartar; não houve crash observado. A falha anterior com SMS foi atribuída ao filtro de conversas. Banco real e confirmação no servidor da sincronização offline não foram testados; houve alerta temporário de atualização após exclusões, sem reprodução deliberada.
+
+Watchtower mantém a main não apta: reproduziu no parser real uma operação futura interpretada no ano anterior perto da virada, apesar do limite de 180 dias. Seis suítes passaram; sem push. O parecer também entregou análise de privacidade e obrigações legais para revisão; situação de serviços em produção não foi confirmada.
+
+## 31/10 — Colar
+
+O Colar recebeu limite de 180 dias para data sem ano no commit `1b4302a1`. Referências aos hashes foram atualizadas antes da publicação.
+
+## 31/10 — QA funcional Vigil
+
+Vigil relata que o aplicativo abriu e navegou no emulador sem travamento observado ou registro de crash. O acesso ao serviço foi concedido, mas notificações de SMS de teste não chegaram ao diário, embora avisos de serviço do mesmo app tenham chegado; causa não identificada. Não se alcançou a etapa de confirmar ou descartar, nem se testaram banco real, modo avião ou reinício do emulador. O resultado não comprova o funcionamento com notificações bancárias reais.
+
+## 31/10 — pareceres Watchtower 7 e 8
+
+Watchtower considerou a publicação da main não apta: reproduziu no parser real datas incorretas para operações futuras e perda de data com rótulo em outra linha; também encontrou conteúdo público no intervalo incompatível com a regra 15. Seis suítes específicas passaram; não houve push. O saneamento precisa considerar o histórico inteiro a publicar, não apenas o conteúdo atual.
+
+Na revisão separada de avisos, veredito não apto: A6 e A7 fechados nos caminhos examinados, mas A4 ainda duplica visualmente parcela futura em reprodução com módulo real; não foi demonstrada duplicação persistida. Duas suítes passaram; sem teste em aparelho, merge ou push. Limites do seletor de carteira e recibo não foram revalidados.
+
+## 31/10 — revisão atribuída ao Watchtower
+
+A ordem 7 atribui ao Watchtower a revisão do delta de Colar e testes de voz, com decisão de publicação após conferências, e depois revisão separada das correções A6, A4 residual e A7 na linha de teste. A atribuição não comprova revisão, aprovação ou publicação; aguardar os pareceres e marcadores correspondentes.
+
+## 31/10 — Anvil: Colar e suítes de voz
+
+Anvil relata correção de datas de prazo interpretadas como pagamento no Colar (`858d2207`) e de dublês nas quatro suítes antes vermelhas (`c8eff6ae`); fila em `9c29054e`. As quatro passaram individualmente, mas `test:ci` integral não rodou. Testes de data, suítes relacionadas e TypeScript passaram segundo o relatório; não houve teste em aparelho, emulador ou comprovante real. Permanecem casos ambíguos de data e descrição e a revisão do Watchtower; sem push informado. O relato anterior de quatro suítes ainda falhando foi superado por esta correção.
+
+## 31/10 — relatório Keel: A6, A4 residual e A7
+
+Keel relata correções em trabalho de teste para pagamento repetido, duplicação em cache offline e recibos após salvamento parcial, com testes de módulos reais, regressões de fila e voz e TypeScript aprovados. O relatório identifica limites ainda não testados em parcelas futuras e seletor de carteira, além de texto de recibo impreciso num caso. Não houve revisão independente do delta, teste em aparelho ou emulador, `test:ci` ou `test:parser`; as correções não estão no aplicativo instalado.
+
+## 31/10 — resultados recebidos de Anvil, Compass e Forge
+
+Anvil relata que a falha de `fila-endurecida.cjs` vinha de dublê ausente no teste; corrigiu o teste e informou 81 verificações aprovadas, além de testes relacionados e TypeScript. Não houve teste em aparelho nem execução integral de `test:ci`; outras quatro suítes ainda falham, com causas de confiança variável. A hipótese de bloqueio da rodada por falha permanente de recibo permanece sem comprovação em aparelho.
+
+Compass entregou pesquisa de requisitos oficiais da Play; aplicação ao Grana e aprovação permanecem por validar. Forge entregou inventário por leitura: acesso atual é global no cliente e no banco, e a integração Play exigiria evolução do controle de acesso e dos provedores. Não sondou produção nem testou o aplicativo. Os relatórios são insumos para plano fora do repositório, não implementação nem aprovação.
+
+## Retomada de 31/10/2026 — registro recebido do orquestrador
+
+Às 09h05 a máquina foi religada e o Maestri reabriu os terminais. O orquestrador informou 1,8 GB livres antes de encerrar terminais parados e 3,9 GB depois; informou também a configuração do Ledger em Terra low. Às 09h10 registrou os limites: Claude 2% em cinco horas e 18% na semana; Gabriel Codex 100% e 27%; Codex PH 100% e 37%. Estes são dados relatados para aquele horário, não medições atuais.
+
+A distribuição relatada foi: Watchtower revisa Colar e publicação; Anvil investiga fila; Keel trata pendências de teste; Vigil faz QA no emulador; Compass, Forge e Beacon levantam insumos para o plano Play; o orquestrador escreve o plano. Atribuição não comprova conclusão.
+
+Às 00h12, segundo o relato, o autor decidiu testar pessoalmente a instalação por cabo USB no próprio celular; a restrição T6 para usuários finais permanece. Correção do corte das 00h45: a referência a “R$ 10, conferido contra a nota” era arredondamento do pedido do autor e não reproduzia o valor exato da nota de preço. A fonte de preço permanece a nota própria no vault.
+
 ---
 
 # Exposição histórica do .env ao EAS — situação atual
@@ -105,6 +239,79 @@ Em 08/10/2026, o autor confirmou que os cinco segredos incluídos no pacote envi
 O histórico e a evidência da exposição permanecem na seção datada de 16/09/2026 abaixo. A rotação resolve a pendência de validade dos valores expostos, sem apagar o fato histórico de que o pacote de projeto foi enviado ao EAS.
 
 ---
+
+## 31/10/2026, 00h45 (M1): Estado da sessão, estado dos agentes e ponto de continuidade
+
+> **Corte de encerramento antes de desligar a máquina a pedido do autor (00h42 BRT).** Como o computador foi desligado, os processos de espera (`entrega-sem-modelo.cjs` e `acordar-orquestrador.sh`) deixam de rodar em segundo plano e a retomada na próxima sessão deve partir diretamente do roteiro abaixo.
+
+### 1. Decisões e pedidos novos do autor no fim da sessão (00h03–00h12 de 31/10)
+- **Versão de teste (00h03):** a instalação pelo navegador no celular do autor foi bloqueada pelo sistema. Build nova não resolve, e a autorização de builds extras foi encerrada.
+- **Teste no aparelho do autor (00h12):** o autor decidiu testar por cabo no próprio celular, ao retomar. Isso nunca é orientação para usuário final.
+- **Prioridade 1 na retomada (00h05 e 00h10):** plano de publicação na loja de aplicativos, escrito fora do repositório, com nota em `06 - Produto` no vault.
+
+### 2. Estado exato de todos os agentes no momento do desligamento
+- **Orquestrador Supremo (Gabriel Claude, Opus 5.5 medium):** atingiu 100% da janela de 5h às 00h10 BRT (reset previsto às 02h30 BRT de 31/10; uso semanal em 16%–17%, maior folga da semana). Deixou as instruções consolidadas em `00-ACORDAR-orquestrador.md` e `00-PASSAGEM-para-gabriel-codex.md`.
+- **Codex (maestro Gabriel Codex, `gpt-6.1-sol` medium):** recebeu a passagem às 23h16 BRT, leu o inventário (`main` com commits locais não publicados, 1 worktree, 0 stash) e as notas de contexto, e parou às 23h17 BRT ao atingir o limite de 5h da conta Gabriel Codex (reset às 02h51 BRT de 31/10; ~37% restantes na semana às 22h45).
+- **Harbor (Codex PH):** concluiu o envio único da build de teste às 23h15 BRT e a conferência estática às 23h30 BRT, sem alteração no aviso de atualização nem no APK público. Conta Codex PH ficou com cerca de 1%–10% da janela de 5h (reset ~02h50 BRT; ~47% semanais às 22h45).
+- **Prism (Gabriel Codex):** concluiu na `main` o commit `3964c328` (`fix(colar): encerra contexto de prazo antes da data de pagamento`), tocando apenas `lib/nota-foto-parser.ts` e `__tests__/data-do-texto-colado.cjs`. Relatou (`relatorio-prism-colar.md`, `FIM-prism-colar.txt`) regressão vermelha antes e verde depois (23 grupos, incluindo 546 casos qualificados e 504 combinações anteriores), 7 suítes relacionadas verdes e `npx tsc --noEmit` verde (exit 0). Acionou o Watchtower para a revisão 6 e bateu o limite da conta Gabriel Codex às 23h17 BRT.
+- **Watchtower (Gabriel Codex):** entregou antes do limite o parecer sobre a versão de teste, com três riscos P2 em caminhos de falha parcial de disco. Iniciou a revisão 6 do commit `3964c328` na `main` e bateu o limite às 23h17 BRT, sem gerar o relatório.
+- **Sentinel (Gabriel Codex):** registrou o estado inicial em `relatorio-sentinel-teste.md`, recebeu a confirmação da build do Harbor e os avisos do Watchtower 5 para `PARA-O-AUTOR-instalar.md`, mas parou no limite de 5h às 23h17 BRT antes de abrir o emulador `Pixel_8`. `FIM-sentinel.txt` não foi criado.
+- **Beacon (Codex PH):** concluiu a compilação e os testes nativos da versão de teste. No emulador, a abertura do Chrome foi bloqueada por política da ferramenta. Encerrou Metro e emulador e ficou parado para preservar a conta.
+- **Keel (Gabriel Claude):** concluiu as correções da versão de teste e relatou que `__tests__/fila-endurecida.cjs` falha (`com rede, a recusa não trava os outros`, `2 !== 3`) desde `cbf58833`. Permanece parado.
+- **Ledger (Gabriel Codex):** atualizou `AGENTS.md` (`df9730d2`), `context.md` (`df6bc39a`, `3e56215e`), nota do vault e fichário até o corte de `3964c328`, e parou no limite de 5h às 23h18 BRT enquanto monitorava novos relatórios.
+- **Demais terminais no canvas (`Codex PH`, `Claude Code #2`, `Lumen`, `Flare`):** no shell bash, sem processo de agente ativo.
+
+### 3. Ponto exato de continuidade para a próxima sessão (em ordem de prioridade)
+1. **Escrever o plano de publicação na loja, fora do repositório (Prioridade 1).**
+2. **Concluir a revisão `relatorio-watchtower-6.md` do Colar (`3964c328`) e fazer push da `main`:**
+   - Retomar no **Watchtower** a revisão do commit `3964c328` contra o parecer 4 sobre `origin/main..HEAD` (sem rodar `tsc`), gerando `E:/Grana-temporarios/2026-10-30-pendencias/relatorio-watchtower-6.md` com veredito `APTO PARA PUSH` ou `NAO APTO`.
+   - Se `APTO PARA PUSH`: rodar `git fetch origin`, conferir `origin/main..HEAD` (apenas os commits desta rodada), varrer segredos no intervalo e publicar (`git push origin main`). Sem deploy de Edge Function nem migration (lembrar na próxima publicação que `assistente-financeiro` e `whatsapp-webhook` no repositório estão à frente da produção por `20d5d073`, regra 11).
+3. **Testar a versão de teste no emulador e, com o autor presente, no celular dele.**
+4. **Investigar a falha preexistente em `__tests__/fila-endurecida.cjs` (voz, regra 13):**
+   - Falha na asserção `com rede, a recusa não trava os outros` (`2 !== 3`), presente desde `cbf58833` (código da 1.10.12) e parte da `test:ci`. Delegar ao Keel (Opus 5.5 medium) respeitando a paridade app/widget da regra 13.
+5. **Tratar os três riscos da versão de teste, sem build nova, antes de qualquer publicação da função.**
+6. **Preservar árvore de trabalho e pendências que dependem do autor:**
+   - Em `E:\GranaPonto` (`main`), preservar intocados os arquivos não commitados de outras frentes (47 caminhos de marketing da semana 43/painel, remoções/adições de skills em `.agents/skills` e `.claude/skills`, `CLAUDE.md`, `.codex/`, `test-shot.png` e o trecho de 28/10 em `context.md`).
+   - Continuam aguardando decisão/teste do autor: teste do widget de voz no celular real com app fechado (com e sem internet); decisão sobre reagendar ou descartar o Reel do Facebook *"Conheça o Granabô"*; e janela coordenada para implantação do painel admin (migration, readback, Edge e Node).
+
+## 30/10/2026 (M1, Ledger): registro de pendências
+
+- O autor pediu: “Pode resolver as pendências aí. Pode utilizar os dois times”. Ordens em `E:/Grana-temporarios/2026-10-30-pendencias/`.
+- Plano de leitura de avisos do banco aprovado e inicialmente pausado pelo autor em 30/10 (“pausa esse trabalho aí, vamos fazer ele depois”); depois retomado, com decisão atual de um app só. Plano em `C:/Users/user/.maestri-local/accounts/CDB6270A-1E24-49F6-9D3D-50FB376956DB/plans/leitura-de-notifica-es-de-fluttering-hearth.md`; análise em `E:/Grana-temporarios/2026-10-30-concorrente-notificacoes/analise-finbot.md`.
+- Segundo o Orquestrador, dez terminais Codex ficaram fora após atualização automática por volta das 11h: nove no shell, Codex PH parado no aviso da 0.165.0; instalada 0.166.0. Watchtower, Harbor e Ledger reabertos com contas, modelos e esforços da tabela do AGENTS; outros sete fechados por economia e memória baixa (1,2 GB livres de 15,4 GB).
+- Segundo o Orquestrador, `test:ci` interrompido pelo sistema por memória baixa após 21 de 152 etapas verdes; `tsc` não rodou nessa execução. Não reiniciada.
+- Segundo conferência do Orquestrador, release `v1.10.12` publicada no GitHub em 29/10 às 00h56 BRT com `grana.apk` de 176 MB; `app_release` anuncia 1.10.12, atualizado às 00h55 BRT. Quatro operações do widget em `voice_operations` aparecem como `committed` em 29/10; isso não identifica versão instalada nem falhas anteriores ao servidor. [ ] Autor testar no celular real com app fechado, gasto com nome de loja; [ ] repetir sem internet. Ledger não revalidou servidor nem aparelho.
+
+### Pendências — segundo registro de 30/10
+
+- Colar: Anvil corrigiu data sem ano com sinal em `a79296d3`; ambiguidade de parcela sem sinal continua sem data inferida. Data impossível é recusada. Em `20d5d073`, barra solta removida nas heurísticas compartilhadas; sem build ou deploy, versões instaladas e servidor mantêm código anterior. Testes focais atribuídos a Anvil; sem aparelho ou comprovante real.
+- Segundo Harbor, dois feedbacks de teste AUDIT foram excluídos individualmente após conferência e leitura posterior preservou o terceiro. `ff594ab9` corrigiu fixture e texto de `__tests__/admin-agendamento-ux-dom.cjs`, verde em 1440 e 390 px; continua fora de qualquer script de teste.
+- Monitor e e-mail de incidentes: Harbor comparou pacotes publicados e concluiu que a diferença de Stories não é alcançada por essas funções; não precisam ser publicadas por esse delta. Não executou as funções.
+- Painel: freeze H01-H02-v3 revisado, P2 do retorno fechado; pacote de 27 caminhos commitado em `e6d9c360`, fixture isolada em `9f94a8f8`. Publicação/ativação NÃO APTA: migração, readback, Edge e Node exigem sequência coordenada e H02 isolado ou produtores parados. Não houve migração real, deploy ou ativação. Runbook vigente em `E:/Grana-temporarios/2026-10-22-meta-confiabilidade/runbook-harbor-ajustes-sem-git.md`.
+- Reel Facebook “Conheça o Granabô”: Harbor encontrou preparo sem tentativa de publicar e nenhum Reel correspondente nas listagens consultadas; publicação não comprovada. Aguardar decisão do autor sobre reagendar só Facebook ou manter pendente.
+- Widget e paridade: registro de investigação superado pelo terceiro registro abaixo. `tsc` passou na árvore compartilhada segundo Anvil; CI integral não rodou.
+- Memória baixa: a pedido do autor foram encerrados Meridian, Lumen, Vigil, Flare, Quill, Lynx, Claude Code e Claude Code #2, removido o portal Pixel 8 e fechado o emulador. `ChatGPT.exe` é o app Codex (`OpenAI.Codex`), não encerrar; o portal mantém o emulador vivo e pode reabri-lo.
+- Versão de teste local da leitura de avisos em branch separada, sem merge e sem publicação; detalhes na nota da sessão do vault.
+
+### Pendências — terceiro registro de 30/10
+
+- Anvil corrigiu o teste do widget em `0c46d3b5`: a lista agora exige explicitamente `EstadoWidget.REPETIR`, com mutações reprovadas; as cinco falhas anteriores deixam de ser pendência. O recibo físico no aparelho não foi testado nesta rodada.
+- Segundo Anvil, `voz-paridade-nucleo-efeitos.cjs` estava desatualizado desde `60507f47`: faltavam métodos nos dublês, não nos aparelhos. Corrigido apenas no teste em `e0243537`, 73 checagens verdes, sem necessidade de build para essa correção. O reenvio no aparelho não foi executado. `test:parser` passou inteiro; `test:ci` não rodou.
+- Watchtower considerou quatro dos cinco commits revisados aptos individualmente, com P2 em `a79296d3`: vencimento pontuado com hora pode virar data de pagamento no ano anterior. Coordenador conferiu a expressão e relata que o problema é mais amplo; Harbor recebeu `00-ORDEM-harbor-4.md`. Push da main barrado até revisão do delta; parecer não autoriza deploy nem ativação do painel.
+- Conforme coordenação, Meridian, Lumen, Vigil, Flare, Quill e Lynx reapareceram abertos às 22h30 em 36 segundos, sem tarefa; encerrados de novo junto com Anvil. Memória disponível subiu de 1,4 GB para mais de 4 GB. Quem ou o que reabriu não foi confirmado. Cada sessão parada ocupa perto de 650 MB, incluindo MCP do REA.
+- Autor pediu balanceamento entre duas contas Codex e uma Claude. Limites informados às 22h45: Gabriel Codex 37% semanal e 61% em 5h; Codex PH 47% e 62%; Claude não medido. Beacon (PH) compila e testa no emulador, Harbor (PH) corrige data, Watchtower revisa, Prism fez telas e Keel lógica e nativo.
+
+### Registro contínuo — 30/10, corte dos relatórios recebidos
+
+- Autor pediu: “Eu quero que o Codex, sempre que disponível documente o trabalho em tempo real”. A regra 19 passa a prever outro Codex na ausência ou falta de limite do Ledger.
+- Colar: Harbor corrigiu exemplos curtos em `e5371f7a`, com oito suítes focais relatadas verdes; `tsc` não rodou por memória. Watchtower reproduziu que vencimentos qualificados por “do boleto” ou “da fatura” ainda podem virar data de pagamento incorreta, inclusive com pagamento explícito. Parecer 4 NÃO APTO; Prism recebeu correção da classe e nova revisão. Push permanece barrado neste corte.
+- Autor perguntou “Cadê o app pra eu instalar?”; coordenação decidiu não aguardar emulador, pelo pedido “mesmo travando”. Também pediu simular no emulador para conferir se trava de verdade. Beacon relatou que a ferramenta recusou abrir Chrome por política, antes do instalador; isso não prova bloqueio nem liberação de Play Protect. Teste repassado a Sentinel pelo gerenciador de arquivos.
+- Conforme coordenação, prebuild do Beacon sujou o clone duas vezes e travou o envio do Harbor antes do EAS; nenhuma build enviada até 23h13. Limites às 23h11: Claude 91% usados em 5h, retorno às 02h30, 16% semanal; PH 13% restantes em 5h; Gabriel às 22h45, 61% restantes em 5h e 37% semanal.
+- Uma aba de ajuda Git abriu no Firefox do autor; pelo título, `git checkout-index --help`, mas agente responsável não confirmado. Nenhuma inferência adicional.
+
+### Atualização — Colar, entrega Prism
+
+- Prism entregou `3964c328` para tratar contexto qualificado de vencimento/parcela: regressão vermelha antes, oito suítes focais e `tsc` verdes segundo relatório, usando corpus sintético. Sem `test:ci`, aparelho, comprovante real ou deploy. Revisão independente Watchtower 6 pendente; não inferir liberação do push.
 
 <!-- ledger-widget-pos-release-20261028:start -->
 ## 28/10/2026 (M1, Ledger): incidente do widget após a release; correção autorizada
@@ -423,11 +630,11 @@ Diretriz temporária do autor: a conta Codex PH atingiu o limite; continuar some
 - Prism prepara snapshot do HEAD publicado e `npm ci`. **Build ainda NÃO disparada neste corte**; aguardar ID EAS, status e link para fecho único. Nenhum Git write ou repetição de preparo, suíte, gate ou QA por Ledger; preservar WIP e janela exclusiva Prism.
 
 
-### Build 1.10.12 enviada — EM EXECUÇÃO
+### Build 1.10.12 enviada — release publicada (atualização de 30/10)
 
 - Prism publicou a versão em `c4951f299bd0cd07459d61d19023939140f994ca` após preparo oficial único, nota aprovada e cota3/3. Snapshot externo de462 arquivos, sem env/dados locais, teve hashes verificados; `npm ci` e verificador do pacote exit0. Manifesto e recibos estão na rodada local; envio NoVcs não fornece gitCommitHash, associação com fonte é operacional pelo snapshot.
-- UMA chamada EAS exit0 criou em29/10 às00h46 BRT a build **`99f1dbc1-07db-4dd2-b7cb-f29629580f68`**, Android1.10.12/code26, preview INTERNAL, perfil APK. `build-view-01.json` mostra **IN_PROGRESS**: [acompanhar build](https://expo.dev/accounts/gabriouss/projects/grana-app/builds/99f1dbc1-07db-4dd2-b7cb-f29629580f68). Nota de envio idêntica à aprovada. **APK ainda não pronto; QA funcional no aparelho e físico pendentes.**
-- Fonte: `E:/Grana-temporarios/2026-10-29-release-widget-voz/relatorio-prism-release.md` e recibo de status. Prism segue consulta readonly até resultado; Ledger não repetiu gates, testes, preparo ou build. Primeira leitura do inventário antecipou processo e encontrou JSON vazio; helper do preparo imprimiu erro Unicode após exit0, sem repetir preparo. Nenhum valor de segredo ou mídia neste registro.
+- UMA chamada EAS exit0 criou em29/10 às00h46 BRT a build **`99f1dbc1-07db-4dd2-b7cb-f29629580f68`**, Android1.10.12/code26, preview INTERNAL, perfil APK. `build-view-01.json` mostrava **IN_PROGRESS** naquele momento: [acompanhar build](https://expo.dev/accounts/gabriouss/projects/grana-app/builds/99f1dbc1-07db-4dd2-b7cb-f29629580f68). Nota de envio idêntica à aprovada. **Atualização de 30/10, conforme Orquestrador:** release publicada em 29/10 às 00h56 BRT com APK de 176 MB; `app_release` anuncia 1.10.12 desde 00h55 BRT. Quatro operações do widget `committed` em 29/10 não identificam versão instalada nem falhas anteriores ao servidor. Testes em celular real, com app fechado e nome de loja, com e sem internet, dependem do autor.
+- Fonte: `E:/Grana-temporarios/2026-10-29-release-widget-voz/relatorio-prism-release.md` e recibo de status. Prism seguia consulta readonly até resultado naquele corte; Ledger não repetiu gates, testes, preparo ou build. Primeira leitura do inventário antecipou processo e encontrou JSON vazio; helper do preparo imprimiu erro Unicode após exit0, sem repetir preparo. Nenhum valor de segredo ou mídia neste registro.
 
 
 <!-- ledger-release-widget-20261029:end -->
@@ -508,6 +715,12 @@ Diretriz temporária do autor: a conta Codex PH atingiu o limite; continuar some
 - `release_finish` conferiu por `aapt dump badging`, exit0: pacote `com.gabriouss.grana`, versionName1.10.11/versionCode25, minSdk24, targetSdk36 e compileSdk36. APK apenas baixado e conferido readonly; **NÃO instalado no app real**. Ledger leu o recibo, sem repetir download/hash/aapt, dependências, gates ou verificador.
 - Rastreabilidade externa do envio único: commit publicado `d059cb982929404f9f6bfc62e3494c387f7ec432`; manifesto SHA256 `b57b7aba887da85219800b262573ddf7ab2bdf5b091faba8e40d9e2389b75d82`; identidade do pacote SHA256 `682d8ba8af6201af423190acbe9314e0c129444dc01c218b2cb71ce9975882df`. EAS não reporta gitCommitHash neste envio NoVcs; não inferir esse campo. Download teve HTTP200 com User-Agent de navegador; urllib padrão respondeu403 antes de criar arquivo, conforme dono operacional.
 - **Limites finais:** QA PARCIAL e parecer sem bloqueio novo preservados. V06 aprovado apenas no cenário observado; captura física com/sem gravação de tela, fala/ASR real e matriz15 integral continuam PENDENTES. FINISHED, hash e identidade do APK não equivalem a instalação ou aceite físico. UMA build autorizada já executada nesta release; NUNCA repetir preparo/disparo. `/fast` nativo OFF confirmado antes desta ordem, continuar standard e somente time Codex. `release_finish` exclusivo Git final; Ledger entrega patch limitado aos blocos27/28 sobre baseline HEAD byte exato, preservando topo e WIP anterior.
+
+### Complemento agrupado final — fast OFF comprovado e documentação congelada
+
+- Fonte `fast-off-20261028.md`: nove terminais Codex acessíveis conferidos sem fast (Compass, Forge, Prism, Sentinel, Harbor, Beacon, Ledger, Watchtower e Codex PH); comando nativo respondeu `Service tier set to default`, modelos/efforts preservados. Três configurações persistidas em default e fast_mode=false, com backups, conforme recibo operacional; nenhum segredo registrado. Runtime do maestro/API e de `Codex #2` NÃO verificável; padrão sem fast persistido não comprova esses runtimes. Nenhum Claude acionado nem topologia alterada. Ledger leu o relato, não repetiu operação/UI/gate.
+- Beacon retomou ordem antiga e publicou complemento factual externo/contexto às18h35; raiz já mandou parar. **Ledger continua DOCUMENTAÇÃO exclusiva.** Complemento histórico Beacon preservado, inclusive seus cortes anteriores de espera; os recibos finais Ledger acima superam a espera de V06/hash/build. Não reabrir rodada nem apagar WIP válido. `release_finish` relatou apply-check cached PASS no patch17KB `417d22aa…`; esse aceite não é automaticamente atribuído ao novo delta, que o substitui e segue para conferência de aplicação pelo dono Git.
+- **Estado final congelado:** APK SHA256 `f98b0a5b9f96e4f78d31b8f7876bf45a088566a46bc7427185bdf713811fd38b`,176300795bytes, aapt1.10.11/code25, apenas baixado/conferido e NÃO instalado no app real. Build `ae51b874-bfa6-4836-8d5b-2f23403a4d67` FINISHED10h43m12 BRT. QA PARCIAL/físico/fala/ASR/gravação de tela/matriz15 pendentes, conforme limites acima. Hash já recebido; **não está AGUARDA_HASH_APK**. Sessão/espelhos recebem esta passagem final agrupada; patch/recibo congelados para commit/push exclusivo `release_finish`. Sem outro verificador, suite, gate, dependência, preparo ou EAS.
 
 <!-- beacon-ph-widget-voz-20261028:end -->
 
@@ -797,8 +1010,6 @@ Diretriz temporária do autor: a conta Codex PH atingiu o limite; continuar some
 - **Processos e recibo:** npx expo start foi solicitado separadamente pelo autor e iniciou Metro8081 (exp://192.168.1.106:8081, web localhost:8081, health200 na inicialização); não é build, nem disponibilidade reconfirmada no fechamento. Serviços QA8096/8097 são infraestrutura anterior, sem encerramento forçado. Recibo único e ponto de retomada: E:/Grana-temporarios/2026-10-26-qa-android-pre-build/coordenacao-compass.md. Espelhos/nota atualizados no fechamento documental.
 
 <!-- compass-qa-android-20261026:end -->
-
-
 
 <!-- compass-graficos-ph-20261025:start -->
 ## 25/10/2026 (M1, Compass PH): coordenação contingente e documentação transferidas

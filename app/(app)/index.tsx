@@ -135,6 +135,7 @@ export default function InicioScreen() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [fontesLivreDisponiveis, setFontesLivreDisponiveis] = useState(false);
+  const [carregandoFontesLivre, setCarregandoFontesLivre] = useState(true);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [lifetimeXp, setLifetimeXp] = useState(0);
   const [diagnostico, setDiagnostico] = useState<DiagnosticoCarregado | null>(null);
@@ -345,6 +346,12 @@ export default function InicioScreen() {
      "+" mudava o saldo, mas "Últimos lançamentos" ficava sem o item). */
   const versaoLancamentosCarregada = useRef(-1);
 
+  /* Só `load()` recalcula as fontes do Livre: depois de uma falha, a carga leve
+     deixaria "Livre indisponível" até a pessoa puxar a tela, com a rede já de
+     volta (B3 do Vigil). Baixada ao começar a carga, para um foco no meio dela
+     não sobrepor; e erguida de novo se ela falhar. Cada foco tenta uma vez. */
+  const repetirFontesNoFoco = useRef(false);
+
   const carregarDadosLeves = useCallback(async () => {
     if (isDemoMode) return; // dados de exemplo já são fixos, nada aqui muda sozinho
     const cargaDeLoadAoComecar = cargaAtualInicio.current;
@@ -384,6 +391,7 @@ export default function InicioScreen() {
   const load = useCallback(async () => {
     const minhaCarga = ++cargaAtualInicio.current;
     const vigente = () => minhaCarga === cargaAtualInicio.current;
+    repetirFontesNoFoco.current = false;
     /* Lida ANTES da busca: uma gravação que aconteça durante a carga sobe a
        versão de novo e o próximo foco recarrega, em vez de ser engolida. */
     const versaoAoComecar = versaoDosLancamentos();
@@ -395,6 +403,7 @@ export default function InicioScreen() {
       setLifetimeXp(DEMO_LIFETIME_XP);
       setInvoicePayments([]);
       setFontesLivreDisponiveis(true);
+      setCarregandoFontesLivre(false);
       setCreditCards(DEMO_CREDIT_CARDS);
       versaoLancamentosCarregada.current = versaoAoComecar;
       setError(null);
@@ -429,6 +438,8 @@ export default function InicioScreen() {
       ]);
       if (!vigente()) return;
       setTransactions(tx);
+      // A lista nova invalida os pagamentos anteriores, mas buscar não é falhar.
+      setCarregandoFontesLivre(true);
       setInvoicePayments(null);
       versaoLancamentosCarregada.current = versaoAoComecar;
       setBills(b);
@@ -460,6 +471,7 @@ export default function InicioScreen() {
         cofrinhosConferidos = true;
       } catch (erro) {
         if (!vigente()) return;
+        repetirFontesNoFoco.current = true;
         if (ehTabelaNovaAusente(erro)) setGoals([]);
         console.error('[inicio] fetchGoals falhou', erro);
       }
@@ -474,10 +486,12 @@ export default function InicioScreen() {
         setFontesLivreDisponiveis(cofrinhosConferidos);
       } catch (erro) {
         if (!vigente()) return;
+        repetirFontesNoFoco.current = true;
         setInvoicePayments(null);
         console.error('[inicio] fetchCardInvoicePayments falhou', erro);
       }
       if (!vigente()) return;
+      setCarregandoFontesLivre(false);
       try {
         const xp = (await fetchGamification()).lifetime_xp;
         if (!vigente()) return;
@@ -489,6 +503,8 @@ export default function InicioScreen() {
       }
     } catch (e: any) {
       if (!vigente()) return;
+      repetirFontesNoFoco.current = true;
+      setCarregandoFontesLivre(false);
       setError(mensagemErro(e, 'Erro ao carregar dados'));
     } finally {
       if (vigente()) {
@@ -607,7 +623,7 @@ export default function InicioScreen() {
   useRecarregarAoChegarDadoNovo(() => { void load(); });
   useFocusEffect(
     useCallback(() => {
-      if (ultimoModoCarregadoRef.current === isDemoMode && versaoLancamentosCarregada.current === versaoDosLancamentos()) {
+      if (ultimoModoCarregadoRef.current === isDemoMode && versaoLancamentosCarregada.current === versaoDosLancamentos() && !repetirFontesNoFoco.current) {
         carregarDadosLeves();
       } else {
         ultimoModoCarregadoRef.current = isDemoMode;
@@ -1214,7 +1230,7 @@ export default function InicioScreen() {
         }}
         collapsable={false}
       >
-        <SafeToSpendCard indisponivel={!fontesLivreDisponiveis} data={safeToSpend} sugestaoArquetipo={arquetipoSugerido} />
+        <SafeToSpendCard carregando={carregandoFontesLivre} indisponivel={!fontesLivreDisponiveis} data={safeToSpend} sugestaoArquetipo={arquetipoSugerido} />
       </View>
     ),
     cofrinhos: () => (
@@ -1471,13 +1487,17 @@ export default function InicioScreen() {
         <View style={styles.cardHeadRow}>
           <Text style={styles.cardLabel}>Comprometimento futuro</Text>
         </View>
-        {invoicePayments === null ? (
-          <Text style={styles.emptyText}>Não consegui confirmar os pagamentos de fatura. Puxe a tela para tentar de novo.</Text>
-        ) : comprometimentoFuturo.some((mes) => mes.incompleto) ? (
-          <Text style={styles.emptyText}>Não consegui confirmar o ciclo de algumas parcelas. Puxe a tela para tentar de novo.</Text>
-        ) : (
-          <FutureTimelineChart meses={comprometimentoFuturo} />
-        )}
+        <View style={{ minHeight: 168, justifyContent: 'center' }}>
+          {invoicePayments === null ? (
+            <Text style={styles.emptyText} accessibilityRole={carregandoFontesLivre ? undefined : 'alert'}>
+              {carregandoFontesLivre ? 'Conferindo os pagamentos de fatura…' : 'Não consegui confirmar os pagamentos de fatura. Puxe a tela para tentar de novo.'}
+            </Text>
+          ) : comprometimentoFuturo.some((mes) => mes.incompleto) ? (
+            <Text style={styles.emptyText}>Não consegui confirmar o ciclo de algumas parcelas. Puxe a tela para tentar de novo.</Text>
+          ) : (
+            <FutureTimelineChart meses={comprometimentoFuturo} />
+          )}
+        </View>
       </View>
     ),
     lancamentos: () => (

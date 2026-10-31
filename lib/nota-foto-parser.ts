@@ -359,6 +359,72 @@ const MESES: Record<string, number> = {
   jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6, jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12,
 };
 
+const HORA_DO_TEXTO = '\\s*,?\\s*(?:[àa]s\\s+)?\\d{1,2}(?::\\d{2}(?::\\d{2})?|h\\d{2})';
+/**
+ * `dd/mm` sem ano no texto colado (decisão de 30/10/2026). Sozinho ele tem a
+ * mesma forma de parcela ("TV 03/12"), então só é data com sinal: "em", "dia",
+ * "no dia" ou "data" antes, ou a hora depois. Na dúvida fica como parcela e não
+ * se inventa data. O contexto de prazo/parcela é conferido em uma função só,
+ * compartilhada com a limpeza do texto: hora e pontuação não mudam o rótulo.
+ */
+const DATA_SEM_ANO = new RegExp(
+  '(?<![\\p{L}\\d/.,-])' +
+    `(?:(?:em|no\\s+dia|dia|data)\\s*:?\\s+(\\d{1,2})/(\\d{1,2})(?![ \\t]*parc)(?:${HORA_DO_TEXTO})?|(\\d{1,2})/(\\d{1,2})(?![ \\t]*parc)${HORA_DO_TEXTO})` +
+    '(?![\\p{L}\\d/:-]|[.,]\\d)',
+  'iu',
+);
+
+const ROTULO_SEM_DATA_DE_PAGAMENTO = /\b(?:(?:parc|venc|valid|expir|agend|previs|fechamento|prazo|limite)\p{L}*|fecha|proximo\s+pagamento|pagar)\b/giu;
+const LIGACAO_DO_ROTULO = /^(?:[\s\p{P}]|\b(?:em|no|dia|para|ate|de)\b)*$/iu;
+/* "Vencimento do pagamento" e "Validade da compra" qualificam o rótulo: depois de
+   preposição, a palavra só abre um campo efetivo em "data do pagamento". */
+const PAGAMENTO_DECLARADO = /\b(?:pago|paga|efetuado|realizado)\b|\b(?:data|dia)\s+(?:de|do|da)\s+(?:pagamento|compra)\b|(?<!\b(?:de|do|da|para|pra)\s+)\b(?:pagamento|compra)\b/iu;
+const FIM_DO_CONTEXTO_DO_ROTULO = new RegExp(`[\\r\\n;]|[.!?](?:\\s|$)|${PAGAMENTO_DECLARADO.source}|\\b(?:\\d{1,2}\\/\\d{1,2}|\\d{4}-\\d{1,2}-\\d{1,2})\\b`, 'iu');
+/** "até" e "para" colados na data apontam para a frente, em qualquer rótulo. */
+const APONTA_PARA_A_FRENTE = /\b(?:ate|para|pra)\s*:?\s*$/iu;
+/** Decisão de 31/10/2026: data sem ano nunca fica a mais disto atrás de hoje. */
+const DIAS_MAXIMOS_DA_DATA_SEM_ANO = 180;
+
+/**
+ * Candidatos a data do pagamento, e a mesma decisão vale para leitura e limpeza.
+ * Qualificações são livres; pagamento, outra data ou fim de trecho encerram o rótulo.
+ * Com `hojeISO`, data a mais de 180 dias atrás é ignorada, sem recusa: sem ano
+ * escrito, ela é quase sempre um prazo futuro, e nenhuma palavra do texto prova o
+ * contrário ("Pix programado"). Fica na descrição; vale o próximo candidato ou hoje.
+ * Data impossível continua candidata, para receber a recusa de `dataSemAno`.
+ */
+function datasSemAnoDoTexto(texto: string, hojeISO?: string): RegExpExecArray[] {
+  return [...texto.matchAll(new RegExp(DATA_SEM_ANO.source, 'giu'))].filter((m) => {
+    const antes = texto.slice(0, m.index).normalize('NFD').replace(/\p{M}/gu, '');
+    if (APONTA_PARA_A_FRENTE.test(antes)) return false;
+    const rotulo = [...antes.matchAll(ROTULO_SEM_DATA_DE_PAGAMENTO)].at(-1);
+    if (rotulo) {
+      const entre = antes.slice(rotulo.index + rotulo[0].length);
+      // Pontuação sem conteúdo ainda liga o rótulo à data ("Vencimento. em 05/11").
+      if (LIGACAO_DO_ROTULO.test(entre) || !FIM_DO_CONTEXTO_DO_ROTULO.test(entre)) return false;
+    }
+    if (!hojeISO) return true;
+    const iso = isoSemAno(Number(m[1] ?? m[3]), Number(m[2] ?? m[4]), hojeISO);
+    if (!iso) return true;
+    return (Date.parse(hojeISO) - Date.parse(iso)) / 86_400_000 <= DIAS_MAXIMOS_DA_DATA_SEM_ANO;
+  });
+}
+
+/** O ano que deixa a data no passado: o corrente ou, se cair no futuro, o anterior. */
+function isoSemAno(dia: number, mes: number, hojeISO: string): string | null {
+  const ano = Number(hojeISO.slice(0, 4));
+  const iso = isoValido(dia, mes, ano);
+  return iso && iso > hojeISO ? isoValido(dia, mes, ano - 1) : iso;
+}
+
+/**
+ * Do ano corrente; se cair no futuro, do ano anterior. Data impossível, como
+ * 31/02 ou 29/02 fora de ano bissexto, é recusada e nunca rola para outro mês.
+ */
+function dataSemAno(dia: number, mes: number, hojeISO: string): { data: string | null; recusada: boolean } {
+  return dentroDoPrazo(isoSemAno(dia, mes, hojeISO), hojeISO);
+}
+
 /**
  * Data de um texto colado (comprovante de Pix, transferência, e-mail de
  * compra). Decisão do autor de 27/09/2026: o Colar comprovante grava na data
@@ -385,8 +451,10 @@ export function dataDoTexto(texto: string, hojeISO: string): { data: string | nu
     return dentroDoPrazo(isoValido(dia, mes, ano), hojeISO);
   }
   const m = texto.match(/\b(\d{1,2})\s+(?:de\s+)?(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-zç]*\.?\s+(?:de\s+)?(\d{4})\b/i);
-  if (!m) return { data: null, recusada: false };
-  return dentroDoPrazo(isoValido(Number(m[1]), MESES[m[2].toLowerCase()], Number(m[3])), hojeISO);
+  if (m) return dentroDoPrazo(isoValido(Number(m[1]), MESES[m[2].toLowerCase()], Number(m[3])), hojeISO);
+  const semAno = datasSemAnoDoTexto(texto, hojeISO)[0];
+  if (!semAno) return { data: null, recusada: false };
+  return dataSemAno(Number(semAno[1] ?? semAno[3]), Number(semAno[2] ?? semAno[4]), hojeISO);
 }
 
 /**
@@ -400,10 +468,10 @@ export function dataDoTexto(texto: string, hojeISO: string): { data: string | nu
  * de `dataDoTexto` (ISO com hora, `d/m/aaaa`, "26 de setembro de 2026"),
  * junto com o conectivo e a hora ligados a ele ("em", "dia", "às 18:42").
  * Formato que não casa inteiro fica inteiro: ISO com sufixo estranho,
- * `dd/mm` sem ano, número dentro de sequência maior. Parcela ("parcela 2/12")
- * e valor ("1.250,50") nunca casam.
+ * `dd/mm` sem sinal de data (`DATA_SEM_ANO`), número dentro de sequência
+ * maior. Parcela ("parcela 2/12") e valor ("1.250,50") nunca casam.
  */
-export function semDatasDoTexto(texto: string): string {
+export function semDatasDoTexto(texto: string, hojeISO?: string): string {
   const MES = '(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-zç]*\\.?';
   const ISO = '\\d{4}-\\d{1,2}-\\d{1,2}(?:T\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d+)?)?(?:Z|[+-]\\d{2}:?\\d{2})?)?';
   const DMA = '\\d{1,2}[/.-]\\d{1,2}[/.-](?:\\d{4}|\\d{2})';
@@ -414,7 +482,10 @@ export function semDatasDoTexto(texto: string): string {
     `(?<![\\p{L}\\d/.,-])(?<!parc\\p{L}*\\s*)${CONECTIVO}(?:${ISO}|${DMA}|${EXTENSO})${HORA}(?![\\p{L}\\d/:-]|[.,]\\d)`,
     'giu',
   );
-  return texto.replace(DATA, ' ').replace(/[ \t]+([.,;])/g, '$1').replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+$/gm, '').replace(/^[ \t]+/gm, '');
+  const semAno = datasSemAnoDoTexto(texto, hojeISO).reduceRight(
+    (limpo, m) => limpo.slice(0, m.index) + ' ' + limpo.slice(m.index + m[0].length), texto,
+  );
+  return semAno.replace(DATA, ' ').replace(/[ \t]+([.,;])/g, '$1').replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+$/gm, '').replace(/^[ \t]+/gm, '');
 }
 
 /** Linhas do topo que não são o nome da loja. */

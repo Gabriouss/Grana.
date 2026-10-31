@@ -68,6 +68,7 @@ function trilhaPublica(p, pedidos, eventos, aprovacoes, planejados, recusas = []
 function pedidoPublico(p, pecaAtual, contexto = {}) {
   if (!p || typeof p !== 'object') return null;
   return {
+    ...(p.provaCorrecao ? { provaCorrecao: require('./ajustes-prova-local.cjs').validarResumo(p.provaCorrecao) } : {}),
     id: uuid(p.id), pai: uuid(p.pai), pecaId: formato(p.pecaId, /^[0-9a-f]{16}$/),
     estado: ESTADOS.has(p.estado) ? p.estado : 'precisa-de-atencao',
     motivo: p.estado === 'falha-de-envio' && MOTIVOS.has(p.motivoFalha) ? p.motivoFalha : null,

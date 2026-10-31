@@ -18,4 +18,7 @@ const numero = Math.ceil(((quinta - Date.UTC(quinta.getUTCFullYear(), 0, 1)) / 8
 const iso = (d) => d.toISOString().slice(0, 10);
 const semana = `semana-${pad(numero)}-${iso(segunda)}-a-${iso(domingo)}`;
 
-module.exports = (estado, ...partes) => path.resolve(__dirname, '../docs/marketing', iso(quinta).slice(0, 7), semana, estado, ...partes);
+// Peças (para-aprovacao, aprovados, historico) vão para a pasta do painel quando ela existe;
+// apoio continua no repositório (pasta-painel.cjs).
+const pp = require('../tools/admin-local/marketing/pasta-painel.cjs');
+module.exports = (estado, ...partes) => pp.fisico(pp.REPO, ['docs/marketing', iso(quinta).slice(0, 7), semana, estado, ...partes].join('/'));

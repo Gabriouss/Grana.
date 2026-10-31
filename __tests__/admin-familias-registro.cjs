@@ -13,6 +13,8 @@ const path = require('node:path');
 const base = fs.mkdtempSync(path.join(process.env.GRANA_TEMP || os.tmpdir(), 'grana-familias-'));
 process.env.GRANA_ADMIN_PASTA_CONTA = path.join(base, 'conta'); // fila privada isolada
 const raiz = path.join(base, 'repo');
+// A fila padrao agora preserva bytes reais: apontar para o mesmo acervo sintetico.
+process.env.GRANA_ADMIN_RAIZ_DADOS = raiz;
 const cat = require('../tools/admin-local/marketing/catalogo.cjs');
 const aprovacoes = require('../tools/admin-local/marketing/aprovacoes.cjs');
 const calendario = require('../tools/admin-local/marketing/calendario.cjs');

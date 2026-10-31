@@ -65,8 +65,12 @@ function rpc(nome) {
 }
 const supabase = { from: () => consulta(), rpc, auth: { getSession: async () => ({ data: { session: { user: { id: estado.usuario }, access_token: 't' } } }) } };
 
+const confirmadas = [];
 const dubles = {
-  './voz-retomada': { agendarVoz: async () => true },
+  /* Fronteira do recibo (desde 60507f47). O recibo real é coberto por
+     voz-sync-app-estado-widget.cjs. */
+  './widget-voz-task': { confirmarOperacaoVozSincronizada: async (requestId) => { confirmadas.push(requestId); } },
+  './voz-retomada': { agendarVoz: async () => true, reconciliarVozConcluida: async () => {} },
   '@react-native-async-storage/async-storage': { __esModule: true, default: AsyncStorage },
   './supabase': { supabase },
   './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => estado.usuario },
@@ -160,6 +164,7 @@ const soma = (itens) => itens.reduce((s, t) => s + (t.type === 'in' ? t.amount :
 
   /* A sincronização real apaga as chaves e a lista fica só com o servidor. */
   await voz.sincronizarOperacoesVoz();
+  assert.deepEqual([...confirmadas].sort(), ['req-app', 'req-widget'], 'as duas entradas recebem recibo ao subir');
   assert.equal((await data.fetchTransactions()).some((t) => t.id.startsWith('local-voz-')), false);
   ok('depois de subir, nenhuma fala local sobra na lista');
 

@@ -17,4 +17,14 @@
 - Whenever a deliverable is finished, add it to the approval panel (para-aprovacao) without being asked.
 - Never break existing working behavior; every change must avoid regressions and keep current passing functionality green.
 - Never redirect users or open new windows to any destination except the Cakto checkout; keep them on the page. Allowed exceptions on the landing (author, 22/10/2026): the header "Entrar" button, the footer links (Criar conta, Baixar o app, Entrar, Termos de Uso, Privacidade, Excluir dados) and the Instagram link in a new tab.
+- After every project change, update the fichário, the Vault, and context.md in real time so work context isn't lost.
+- Keep the overall video style consistent across the series, but vary some visual aspects in each video so they are not identical.
+- For GranaPonto covers, match the video's visual style and brightness, and avoid phone mockups or cropped screenshots; build app blocks instead.
+- Always keep the R$ currency symbol directly next to price numbers in GranaPonto UI and copy.
+- Keep all essential content inside the 1080×1440 safe area; outside it, use only decorative elements that keep their meaning in other Facebook/Instagram ad formats.
+- For reels, keep all on-screen content within a 1080x1440 safe area inside the 1080x1920 frame.
+- Keep layout content within a 1080x1440 px margin inside the 1080x1920 px space.
+- Keep all GranaPonto project information local on this PC; never create Claude artifacts or send project content to the Claude site.
+- Remember that this project has two Codex accounts and one Claude account available.
+- Keep Play Store release work from affecting current users; make changes incrementally and adapt as we go.
 <!-- end claude-reflect -->

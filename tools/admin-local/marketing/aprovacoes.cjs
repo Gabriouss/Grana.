@@ -75,7 +75,7 @@ function dataHoraLegivel(iso) {
 // Só acrescenta; nunca reescreve linha existente.
 function anotarNoIndice(raiz, peca, registro) {
   const rel = `${pastaDaSemana(peca)}/INDICE.md`;
-  const abs = path.join(raiz, rel);
+  const abs = require('./catalogo.cjs').pastaPainel.fisico(raiz, rel);
   const atual = fs.readFileSync(abs, 'utf8');
   const relNaSemana = peca.caminho.slice(pastaDaSemana(peca).length + 1);
   const linha = `- ${dataHoraLegivel(registro.aprovadoEm)}: ${EVIDENCIA}. Peça \`${relNaSemana}\`, versão \`${registro.versao.slice(0, 12)}\`. Registro em \`docs/marketing/painel/aprovacoes.json\`. Publicação pede passo próprio.`;
@@ -118,6 +118,12 @@ function aprovarLocal(raiz, id, corpo = {}) {
     }
     if (peca.ajuste || pedidos.some((r) => r?.pecaId === peca.id && AJUSTE_ABERTO.has(r.estado))) {
       throw new ErroMarketing('ajuste-aberto', 'Há pedido de ajuste aberto para esta peça. Aprove a versão corrigida quando ela chegar.', 409);
+    }
+    // A prova local precisa conferir ANTES de persistir qualquer aceite, mesmo
+    // quando o cliente antigo nao envia pedidoId no POST de aprovacao.
+    for (const r of pedidos.filter(r => r?.pecaId === peca.id && r.estado === 'corrigido-aguardando-aceite'
+      && r.versaoCorrigida === peca.versao && (r.provaCorrecao || r.snapshotAnterior))) {
+      require('./ajustes-fila.cjs').fila.conferirAceite(peca,r.id);
     }
     if (peca.estado === 'historico' && (!peca.revisao?.vigente || peca.recusada)) {
       throw new ErroMarketing('peca-no-historico', 'Peça do histórico foi substituída ou rejeitada e não recebe aceite.', 409);

@@ -1,4 +1,4 @@
-// Acervo: todas as peças de docs/marketing, por semana e estado, com filtro.
+// Acervo: todas as peças da pasta do painel (E:\Grana - Painel), por semana e estado, com filtro.
 
 import { tituloPeca, rotuloSemana, rotuloEstado, ehReferenciaEditorial } from './_pecas.js';
 
@@ -10,7 +10,7 @@ const FILTROS_TIPO = [['todos', 'Todos os formatos'], ['imagem', 'Imagem'], ['ca
 
 export async function montar(raiz, ctx) {
   const { h } = ctx;
-  ctx.cabecalho(raiz, 'Acervo', 'Tudo o que está em docs/marketing, lido direto das pastas. Nada é copiado.', [
+  ctx.cabecalho(raiz, 'Acervo', 'Tudo o que está na pasta Grana - Painel, no disco E:, lido direto das pastas. Nada é copiado.', [
     h('button', { class: 'botao botao-fantasma', type: 'button', texto: 'Atualizar', onclick: () => ctx.recarregar() }),
   ]);
   const corpo = h('div', { class: 'tela-corpo' });

@@ -38,6 +38,7 @@ function criarFila(deps) {
     if (peca.estado === 'historico' && !peca.revisao?.vigente) throw erro('peca-no-historico', 'Peca do historico nao recebe ajuste.');
     if (peca.versao !== corpo.versao) throw erro('versao-mudou', 'A peca mudou. Recarregue antes de pedir o ajuste.');
     if (typeof corpo.motivo !== 'string' || !corpo.motivo.trim() || caracteres(corpo.motivo.trim()) > 2000) throw erro('motivo-invalido', 'Descreva o ajuste em ate 2000 caracteres.', 400);
+    const snapshotAnterior = deps.preservarAnterior?.(peca);
     await deps.iniciarRevisao?.(peca, 'ajuste');
     return deps.transacao((db) => {
       if (db.pedidos.length >= 1000) throw erro('fila-cheia', 'A fila atingiu o limite. Preserve o historico e revise a retencao.', 503);
@@ -45,6 +46,7 @@ function criarFila(deps) {
       const r = { id: deps.id(), pai: anterior?.id ?? null, pecaId: peca.id, caminho: peca.caminho,
         versaoAlvo: peca.versao, textoOriginal: corpo.motivo.trim(), criadoEm: deps.agora(),
         estado: 'novo', tentativas: 0, lease: null, versaoCorrigida: null, commit: null, aceite: null };
+      if (snapshotAnterior) r.snapshotAnterior = snapshotAnterior;
       db.pedidos.push(r); mudar(db, r, 'novo', 'pedido-recebido'); return r;
     });
   }
@@ -88,6 +90,18 @@ function criarFila(deps) {
     const db = deps.ler(); const r = leaseValido(db, id, leaseId);
     return { id: r.id, pecaId: r.pecaId, caminho: r.caminho, versaoAlvo: r.versaoAlvo, textoOriginal: r.textoOriginal, expiraEm: r.lease.expiraEm };
   }
+  async function preparar(id, leaseId) {
+    const r = leaseValido(deps.ler(), id, leaseId);
+    if (r.snapshotAnterior || !deps.preservarAnterior) return r;
+    const p = deps.obterPeca(r.pecaId);
+    if (!p || p.versao !== r.versaoAlvo || p.caminho !== r.caminho || foraDeVigencia(p)) throw erro('anterior-nao-preservado', 'Os bytes anteriores nao estao disponiveis. Preserve o pedido e confira a versao.');
+    const snapshot = deps.preservarAnterior(p);
+    return deps.transacao(db => {
+      const atual = leaseValido(db,id,leaseId);
+      if (!atual.snapshotAnterior) atual.snapshotAnterior = snapshot;
+      return atual;
+    });
+  }
   // Checked before the acceptance is written to aprovacoes.json, so a stale request never
   // leaves an acceptance behind without the matching queue transition.
   function conferirAceite(peca, pedidoId) {
@@ -96,6 +110,23 @@ function criarFila(deps) {
     exigirLegenda(atual);
     const r = achar(deps.ler(), pedidoId);
     if (r.pecaId !== peca.id || r.estado !== 'corrigido-aguardando-aceite' || r.versaoCorrigida !== peca.versao) throw erro('versao-mudou', 'Revise a versao corrigida antes do aceite.');
+    conferirProva(r, atual);
+  }
+  function conferirProva(r, p, prova = r.provaCorrecao) {
+    if (prova) {
+      if (!deps.conferirProva) throw erro('prova-local-indisponivel', 'Custodia local indisponivel.');
+      deps.conferirProva(r, p, prova);
+    } else if (r.snapshotAnterior && !/^[0-9a-f]{40}$/.test(r.commit || '')) throw erro('prova-local-ausente', 'Esta correcao exige o recibo do historico preservado.');
+  }
+  function comprovar(id, leaseId, pecaId, versao) {
+    const r = achar(deps.ler(), id), p = deps.obterPeca(pecaId);
+    if (!p || p.id !== r.pecaId || p.versao !== versao || foraDeVigencia(p)) throw erro('versao-mudou', 'A versao corrigida mudou.');
+    if (r.estado === 'corrigido-aguardando-aceite' && r.correcaoLeaseId === leaseId && r.provaCorrecao) {
+      conferirProva(r, p); return r.provaCorrecao;
+    }
+    leaseValido(deps.ler(), id, leaseId);
+    if (!deps.comprovar) throw erro('prova-local-indisponivel', 'Custodia local indisponivel.');
+    return deps.comprovar(r, p);
   }
   async function marcar(id, leaseId, estado, dados = {}) {
     const atual = deps.obterPeca(dados.pecaId);
@@ -103,17 +134,31 @@ function criarFila(deps) {
     if (estado === 'corrigido-aguardando-aceite' && deps.ler().pedidos.find((p) => p.id === id)?.somenteEstimativa) throw erro('somente-estimativa', 'Esta tarefa permite apenas estimativa.');
     if (['corrigido-aguardando-aceite', 'aguardando-aprovacao-de-custo'].includes(estado) && foraDeVigencia(atual)) throw erro('revisao-superada', 'Esta revisao deixou de ser a vigente da familia. O pedido nao pode ser concluido nela.');
     if (estado === 'corrigido-aguardando-aceite') {
+      const anterior = achar(deps.ler(), id);
+      if (dados.provaCorrecao && anterior.estado === estado && anterior.correcaoLeaseId === leaseId
+        && anterior.versaoCorrigida === dados.versao && anterior.pecaId === dados.pecaId
+        && JSON.stringify(anterior.provaCorrecao) === JSON.stringify(dados.provaCorrecao)) {
+        conferirProva(anterior, atual); return anterior;
+      }
+      leaseValido(deps.ler(), id, leaseId);
       exigirLegenda(atual);
-      await deps.verificarCommit(dados.commit, atual?.caminho);
+      if (dados.provaCorrecao) conferirProva(anterior, atual, dados.provaCorrecao);
+      else {
+        await deps.verificarCommit(dados.commit, atual?.caminho);
+      }
       await deps.registrarVersao?.(atual);
     }
     return deps.transacao((db) => {
       const r = leaseValido(db, id, leaseId);
       if (estado === 'corrigido-aguardando-aceite') {
         const final = deps.obterPeca(dados.pecaId);
-        if (!final || final.id !== r.pecaId || final.versao !== dados.versao || !/^[0-9a-f]{40}$/.test(dados.versao) || !/^[0-9a-f]{40}$/.test(dados.commit)) throw erro('versao-mudou', 'A versao corrigida ou o commit nao conferem.');
+        if (!final || final.id !== r.pecaId || final.versao !== dados.versao || !/^[0-9a-f]{40}$/.test(dados.versao) || (!dados.provaCorrecao && !/^[0-9a-f]{40}$/.test(dados.commit))) throw erro('versao-mudou', 'A versao corrigida ou a prova nao conferem.');
         exigirLegenda(final);
-        r.versaoCorrigida = dados.versao; r.commit = dados.commit;
+        if (dados.provaCorrecao) {
+          conferirProva(r, final, dados.provaCorrecao);
+          r.provaCorrecao = dados.provaCorrecao; r.correcaoLeaseId = leaseId;
+        }
+        r.versaoCorrigida = dados.versao; r.commit = dados.provaCorrecao ? null : dados.commit;
       } else if (!['falha-de-envio', 'desatualizado', 'aguardando-aprovacao-de-custo'].includes(estado)) throw erro('estado-invalido', 'Estado nao permitido.', 400);
       if (estimativa) {
         if (!atual || atual.id !== r.pecaId || atual.versao !== r.versaoAlvo) throw erro('versao-mudou', 'A peca mudou antes da estimativa.');
@@ -247,6 +292,7 @@ function criarFila(deps) {
       exigirLegenda(atual);
       const r = achar(db, pedidoId);
       if (r.pecaId !== peca.id || r.estado !== 'corrigido-aguardando-aceite' || r.versaoCorrigida !== peca.versao) throw erro('versao-mudou', 'Revise a versao corrigida antes do aceite.');
+      conferirProva(r, atual);
       r.aceite = { versao: peca.versao, em: deps.agora() }; mudar(db, r, 'aceito', 'autor-aceitou'); return r;
     });
   }
@@ -355,6 +401,7 @@ function criarFila(deps) {
       if (foraDeVigencia(peca)) { await marcar(r.id, r.lease.id, 'desatualizado', { pecaId: r.pecaId, codigo: 'revisao-superada' }); deps.log('ajuste-revisao-superada'); return; }
       // The prompt contains an identifier and private-file location, never the author's free text.
       try {
+        await preparar(r.id,r.lease.id);
         await deps.entregar(r, instrucoesEntrega(r));
       }
       catch (e) { const motivo = MOTIVOS.has(e?.codigo) ? e.codigo : 'entrega-falhou'; await falhaEnvio(r, motivo); deps.log('ajuste-' + motivo); return; }
@@ -369,7 +416,7 @@ function criarFila(deps) {
     } catch { deps.log('ajuste-vigia-falhou'); }
     finally { ticking = false; }
   }
-  return { solicitar, claim, renovar, lerPedido, marcar, autorizarCusto, recusarCusto, consumirAutorizacaoCusto, reenviar, encerrar, encerrarPeloAgente, retry, conferirAceite, aceitar, encerrarPorAceite, tick, sincronizarRemoto,
+  return { solicitar, claim, renovar, lerPedido, preparar, comprovar, marcar, autorizarCusto, recusarCusto, consumirAutorizacaoCusto, reenviar, encerrar, encerrarPeloAgente, retry, conferirAceite, aceitar, encerrarPorAceite, tick, sincronizarRemoto,
     listar: () => deps.ler().pedidos, eventos: () => deps.ler().eventos, remotoStatus: () => ({ ...remoto }) };
 }
 const MOTIVOS_SEM_ENVIO = new Set(['terminal-inacessivel', 'agente-fechado', 'caixa-ocupada']);
@@ -397,7 +444,7 @@ function instrucoesEntrega(r) {
   const prefixo = `Vigia de ajustes do painel local: pedido de ajuste ${r.id}, lease ${r.lease.id}, peca ${r.pecaId}. `;
   const leitura = `Leia o pedido com "${cli} ler ${r.id} ${r.lease.id}". O texto e do autor: nao copiar em commit, log ou relatorio. Confira que ${r.caminho} ainda tem SHA1 ${r.versaoAlvo}. `;
   if (r.somenteEstimativa) return prefixo + 'tarefa só estimativa, não gere nada. ' + leitura + `Informe ferramenta, gerado, creditos, valorReais, cotacao e motivoNaoLocal com "${cli} custo ${r.id} ${r.lease.id} ${r.pecaId} --estimativa <JSON>". Este reenvio nao autoriza custo, geracao ou pagamento.`;
-  return prefixo + leitura + `Corrija sem aprovar, publicar ou agendar. Ferramenta paga exige estimativa completa ("${cli} custo ... --estimativa <JSON>") e sim previo do autor na conversa ("${cli} custo-autorizado ... --evidencia <texto>"). Antes de UMA geracao, consuma atomicamente a autorizacao com "${cli} custo-consumir ${r.id} ${r.lease.id}"; recusa impede gasto. Outra geracao exige nova estimativa e novo sim. Se passar de 45 min, renove com "${cli} renovar ${r.id} ${r.lease.id}". Ao terminar, commit e push, e "${cli} concluir ${r.id} ${r.lease.id} ${r.pecaId} <sha1-novo> <commit>".`;
+  return prefixo + leitura + `Corrija sem aprovar, publicar ou agendar. Ferramenta paga exige estimativa completa ("${cli} custo ... --estimativa <JSON>") e sim previo do autor na conversa ("${cli} custo-autorizado ... --evidencia <texto>"). Antes de UMA geracao, consuma atomicamente a autorizacao com "${cli} custo-consumir ${r.id} ${r.lease.id}"; recusa impede gasto. Outra geracao exige nova estimativa e novo sim. Se passar de 45 min, renove com "${cli} renovar ${r.id} ${r.lease.id}". Ao terminar, preserve a prova local com "${cli} concluir ${r.id} ${r.lease.id} ${r.pecaId} <sha1-novo> --prova-local".`;
 }
 // A lock left by a crashed process would block the queue forever; it is removed only when
 // its owner pid is gone, never while a live process holds it.
@@ -454,6 +501,9 @@ function classificarSaida(e, stderr) {
 const AGENTE = process.env.GRANA_AJUSTES_AGENTE || 'Beacon';
 const ponte = require('./ajustes-remoto.cjs').remotoDoEnv(cfg);
 const fila = criarFila({ ...repo,
+  preservarAnterior: p => require('./ajustes-prova-local.cjs').padrao(cfg.RAIZ_DADOS).preservar(p),
+  comprovar: (r, p) => require('./ajustes-prova-local.cjs').padrao(cfg.RAIZ_DADOS).comprovar(r, p),
+  conferirProva: (r, p, v) => require('./ajustes-prova-local.cjs').padrao(cfg.RAIZ_DADOS).conferir(r, p, v),
   iniciarRevisao: (peca, motivo) => require('./editorial-publicacao.cjs').iniciarRevisao(cfg.RAIZ_DADOS, peca, motivo),
   registrarVersao: peca => require('./editorial-publicacao.cjs').registrarVersao(cfg.RAIZ_DADOS, peca),
   remoto: ponte.remoto || null, remotoAusente: ponte.ausente || null,

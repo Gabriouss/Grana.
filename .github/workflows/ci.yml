@@ -38,6 +38,16 @@ jobs:
       - name: Verificação de tipos
         run: npx tsc --noEmit
 
+      # As suítes de tela do painel abrem um navegador de verdade. O Playwright não
+      # é dependência do app (não pode pesar na build), e na máquina local ele vem
+      # do cache do npx, que o runner não tem: sem este passo, a primeira delas
+      # morre com "Playwright indisponível" e o job para ali. --no-save mantém o
+      # package.json e o lock intactos.
+      - name: Navegador das suítes de tela do painel
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.63.0
+          npx playwright install --with-deps chromium
+
       - name: Suítes determinísticas do app, voz, widget, assistente e schema
         run: npm run test:ci
 

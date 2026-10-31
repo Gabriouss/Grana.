@@ -38,7 +38,7 @@ function criarHistorico(io = fs, log = (codigo) => console.error(JSON.stringify(
         const de = seguro(raiz, a.origem), para = seguro(raiz, a.destino);
         // Recheck destination and original immediately before each removal.
         if (!io.existsSync(para) || sha(para) !== a.sha1) throw new c.ErroMarketing('prova-invalida', 'Confira os arquivos preservados no historico.', 409);
-        try { if (io.existsSync(de)) { if (sha(de) !== a.sha1) pendente = true; else io.unlinkSync(de); } }
+        try { if (io.existsSync(de)) { if (sha(de) !== a.sha1) pendente = true; else { io.unlinkSync(de); c.pastaPainel.podar(de, io); } } }
         catch { pendente = true; }
       }
       if (pendente) { log('recusa-limpeza-pendente'); avisos.push('Recusa registrada; copia de origem pendente de conferencia.'); }

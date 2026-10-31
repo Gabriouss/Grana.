@@ -76,7 +76,10 @@ const FASES = [
       atualizadoEm: iso(1), confirmadoEm: iso(1), codigoErro: estado === 'precisa-conferir' ? 'resultado-desconhecido' : null,
       permalink: estado === 'publicado' ? 'https://www.instagram.com/p/AUDIT/' : null,
       destino: { contaId: rede === 'instagram' ? 'ig-1' : 'fb-1', rede, formato: 'carrossel', publicarEm: agendarPara, fuso: 'America/Sao_Paulo' },
-      peca: { pecaId: PECA.id, versao: PECA.versao }, recibos: [],
+      peca: { pecaId: PECA.id, versao: PECA.versao },
+      // Publicado exige o ID remoto e a leitura de volta confirmada do mesmo ID.
+      remotoId: estado === 'publicado' ? '12345678901234567' : null,
+      recibos: estado === 'publicado' ? [{ operacao: 'verificar-publicacao', estado: 'confirmado', remotoId: '12345678901234567' }] : [],
     });
     const jobsAgora = () => (confirmado ? ['instagram', 'facebook'].map((r) => job(r, FASES[Math.min(fase, FASES.length - 1)][r])) : []);
     const envelope = (dados, status = 200, codigo = 'qa') => ({ status, contentType: 'application/json',
@@ -195,7 +198,7 @@ const FASES = [
     const avisoFb = await page.locator('.avisos .aviso-erro').last().innerText();
     ok(!/tente de novo agora|reenvi|repita o envio/i.test(avisoFb), `${width}px: atenção não sugere repetir o envio`);
     await page.clock.runFor(30000);
-    await page.waitForFunction(() => [...document.querySelectorAll('.avisos .aviso')].some((a) => a.textContent.startsWith('Instagram: publicado.')), null, { timeout: 15000 });
+    await page.waitForFunction(() => [...document.querySelectorAll('.avisos .aviso')].some((a) => a.textContent.startsWith('Instagram: publicado e comprovado.')), null, { timeout: 15000 });
     await page.screenshot({ path: path.join(OUT, `publicado-${width}.png`), fullPage: true });
     const leiturasFinais = leiturasCalendario;
     await page.clock.runFor(120000);

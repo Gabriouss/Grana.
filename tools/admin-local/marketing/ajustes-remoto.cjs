@@ -51,6 +51,7 @@ function criarRemoto({ url, chave, fetch: fazer = fetch, agora = () => new Date(
         aceite_versao: r.estado === 'aceito' && r.aceite ? r.aceite.versao : null,
         aceite_em: r.estado === 'aceito' && r.aceite ? r.aceite.em : null,
       };
+      if (r.provaCorrecao) corpo.prova_correcao = require('./ajustes-prova-local.cjs').validarResumo(r.provaCorrecao);
       try {
         await pedir(`/admin_ajuste_pedidos?id=eq.${encodeURIComponent(r.remotoId)}`, {
           method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(corpo),

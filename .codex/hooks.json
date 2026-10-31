@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"E:/GranaPonto/scripts/espelhar-vault.sh\" \"/g/Meu Drive/Obsidian/Gabriel/Grana/01 - Código\"",
+            "timeout": 30,
+            "statusMessage": "Espelhando context.md, AGENTS.md e PRODUCT.md no vault"
+          }
+        ]
+      }
+    ]
+  }
+}

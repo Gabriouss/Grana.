@@ -50,12 +50,14 @@ Quando o autor fizer um pedido de ajuste novo, a lição entra aqui na hora.
 - **Não entregue a revisão de uma peça já aprovada com o mesmo nome de arquivo dela.** O painel identifica a peça pelo caminho sem a pasta de estado: com a v3 em `aprovados` e a v4 em `para-aprovacao` com o mesmo nome, o aceite da v4 é gravado mas a promoção para (destino já existe) e o painel mostra "A movimentação para aprovados não foi confirmada". Aconteceu com o fim do mês em 21/10/2026 (autor: "essa porra ainda tá com essa merda desse problema"). Até o painel tratar a substituição sozinho, quem coordena, no aceite da revisão, move a aprovada para `historico/...-vN` e repete a promoção pelos módulos do painel (`promocao.cjs`), levando a data do calendário para a versão nova com `calendario.cjs` (`planejar`).
 - **Não corte trecho de gravação de tela sem normalizar o quadro antes.** A gravação do celular tem taxa de quadros variável; trecho de tela parada termina no último quadro gravado e encurta. Use `fps=60` antes do `trim`. Aconteceu na primeira montagem da v4 do fim do mês: a tela do Pix saiu 0,23 s curta.
 
+- **Na tela do app dentro do vídeo, nada se move além do que a narração mostra (autor, 24/10/2026).** Carrossel deslizando, lista rolando sozinha ou seleção trocando de item tiram o foco. Congele o trecho (quadro parado) ou escolha outro trecho da gravação. Aconteceu no R3 v2, no carrossel de "Cofrinhos e metas" do Início; o autor pediu que os recortes continuassem e só o carrossel ficasse parado (v4).
+
 ## Visual e acabamento
 
 - **Não deixe o gradiente aqua tomar a maior parte do fundo no tema claro.** O disco claro com grade ocupa a maior área e o azul fica nas margens. Observação do autor em 25/10/2026 sobre o V1 da série reedição v3 ("eu diminuiria a área de ocupação da cor azul com gradiente no background"), aplicada no mesmo dia ao V1 e ao V3 a pedido dele.
-- **Tema claro dos Reels (autor, 25/10/2026): logotipo petróleo chapado e legenda em Neue Machina Ultrabold.** É exceção à regra 23 (logotipo em gradiente) e vale só para os Reels em tema claro, como no criativo "Organize no computador, acompanhe pelo celular". O autor: "é isso aí mesmo" (logotipo) e "fica" (Ultrabold).
 - **Não use enfeite genérico no fundo.** Aconteceu nos feeds E02 e E05: "Esses enfeites estão horrorosos", "tá podre, remover". O fundo segue o guia de design estático (regra 26).
 - **Não repita a capa de outro Reel.** Cada capa é diferente da anterior.
+- **Não trate a capa como aprovada junto com o vídeo.** O aceite do vídeo não aprova a capa: ela só vai para `aprovados` com aceite próprio do autor, e nunca "segue o par". Aconteceu no R3 em 24/10/2026: a capa entrou em `aprovados` com o vídeo v4 e foi copiada para a v5; o autor: "essa capa aí do reels não está aprovada. Vou fazer outra manualmente".
 - **Não use logotipo grande disputando com a tela.** Na capa do Pix v6 o pedido foi logotipo menor, no topo, e o celular maior.
 - **Não produza fora do manual.** Peça nova segue as instruções oficiais de produção de materiais (`GUIA-DE-PRODUCAO-DE-CRIATIVOS.md` e o guia de design estático).
 - **Não use o Granabô do modelo "chapado" (sprites do gerador) em capa ou estático.** Use o render do app, com brilho no visor: `assets/granabo/granabo-*.png` ou os quadros do Blender do vídeo. Aconteceu na capa do Granabô de 19/10: "O do vídeo tá muito melhor, mais brilhoso".
@@ -77,6 +79,20 @@ Aprovada pelo autor ao fim de seis versões. Vale para os próximos vídeos de d
 6. **Som:** voz em −14 LUFS no total, trilha pop local por baixo com compressão lateral (abaixa quando a voz fala), "plim" quando o lançamento é confirmado. O silêncio curto no fim, do fade da música, é intencional.
 7. **Capa:** gerador do guia de design estático (arquétipo A), com print do próprio vídeo e o Granabô do app. Fica ao lado do vídeo com o nome `<vídeo>-capa.png`.
 
+## Receita do R3 v4 (aprovado pelo autor em 24/10/2026)
+
+Modelo para os próximos Reels da série. Fonte: `E:/Grana-temporarios/2026-10-23-reels-ganchos/edicao-r3/` (`preparar.py`, `r3.template.html`, `gerar_cena.py`, `projeto/`). Peça aprovada: `reel-antes-de-parcelar-veja-a-fatura-v4.mp4`, commit `a0f17e22`.
+
+- **Abertura:** gancho em tipografia grande, com máscara palavra a palavra no instante da fala (88/106 px, tracking 0,05 em, até 3 linhas sem quebra automática) e destaque em menta sublinhado.
+- **Dor em motion:** a dor animada entra antes do celular.
+- **Celular:** sobe com perspectiva 3D real (`transformPerspective` 2400) e `back.out`; halo menta ao assentar; flutuação leve do vídeo inteiro; varreduras de luz; zoom de 7% (até 10%) só no aparelho.
+- **Tela do app:** os recortes reais saltam da tela (escala 1,1, sobem 26 px) e voltam pelo mesmo caminho, com o resto escurecido. Nada mais se move; se houver movimento fora do assunto, congela o quadro.
+- **Troca de tela:** tranco de escala e clarão menta de 0,2.
+- **Legenda karaokê:** 2 a 3 palavras, 62 px, em y 290; a palavra falada em menta, as palavras-chave em Regular.
+- **CTA:** tipografia com o botão "Saiba mais" desenhado em menta, dois pulsos de anel e uma seta; depois o logo materializa (desfoque e escala, `expo.out`).
+- **Som:** whoosh em cada movimento, tic em cada recorte, plim no botão; voz a −14 LUFS (`loudnorm` em 2 passadas no render final).
+- **Armadilhas técnicas:** `fromTo` tardio aplica o estado inicial no quadro 0, então o estado inicial precisa ser igual ao anterior; id duplicado entre um bloco e a legenda; posição negativa na timeline; vídeo com `data-start` exige `id`, e o recorte usa `data-media-start`.
+
 ## Receita do R5 v6 "Esse é um mês organizado" (aprovado pelo autor em 28/10/2026)
 
 Autor: "essa versão ficou ótima [...] a gente conseguiu juntar o dinamismo do vídeo e mostrar de uma forma explicativa para o público sem deixar o vídeo entediante." "É assim que eu quero seguir." Cena de referência: `E:/Grana-temporarios/2026-10-23-reels-ganchos/edicao-r5/serie/v11.js` (telas em `telas6.js`).
@@ -85,6 +101,18 @@ Autor: "essa versão ficou ótima [...] a gente conseguiu juntar o dinamismo do 
 - **Cards e botões saltam para fora do celular**, com o resto escurecido, uma função por vez, mostrando a ação real (toque, colar, câmera, prévia da importação, botões do widget).
 - **Dinâmico, mas com tempo para entender.** Os Reels rápidos anteriores eram gostosos de ver e ficavam confusos; cada função fica na tela até ser lida, e a pausa da narração cai só no silêncio entre frases.
 - **Skill:** a produção usou só a `motion-supremo` (que já absorveu a `meu-editor-de-video`) e saiu clara.
+
+## Exceções datadas
+
+- **Legenda da fala em karaokê liberada nos Reels da série dos 6 ganchos (autor, 23/10/2026).** A legenda da fala pode aparecer sobre o apresentador gerado por IA. É exceção à regra de 04/10 (sem texto sobre vídeo filmado), e vale só para essa série; o resto segue a regra.
+
+- **Tema claro dos Reels (autor, 25/10/2026): logotipo petróleo chapado e legenda em Neue Machina Ultrabold.** É exceção à regra 23 (logotipo em gradiente) e vale só para os Reels em tema claro, como no criativo "Organize no computador, acompanhe pelo celular". O autor: "é isso aí mesmo" (logotipo) e "fica" (Ultrabold).
+
+## Regras permanentes de produção
+
+- **ElevenLabs só para o que não sai localmente (autor, 23/10/2026, C21).** Vai à ElevenLabs apenas voz humana em pt-BR (narrações), cenas do apresentador com lip-sync e um clipe realista curto quando o realismo não sai localmente. Efeitos sonoros, celular 3D, caos em volta do aparelho, trilha, capas, legendas, cartões e tipografia são feitos localmente (ffmpeg, numpy, OpenCV, motion do Lumen, arsenal e identidade sonora). Toda geração segue a regra 24: estimativa primeiro e "sim" do autor antes.
+- **Todo vídeo gerado sai nativamente em 9:16 vertical (autor, 23/10/2026, C22).** Cada clipe gerado sai em 9:16, com 1080x1920 ou a maior resolução vertical que o modelo aceitar. O aspecto vai no parâmetro do modelo, além do prompt. Modelo sem 9:16 nativo fica de fora. Não se gera em 16:9 para recortar, porque o corte perde resolução e enquadramento.
+- **Gerações de vídeo em 720p (autor, 23/10/2026, C23).** Todo clipe gerado sai em 9:16 a 720p (720x1280). O Reel final continua 1080x1920, com upscale na montagem (`ffmpeg` com `scale` lanczos); a tela real do app entra na resolução nativa da gravação. Modelo cuja única resolução é outra fica marcado na estimativa, para o autor decidir.
 
 ## Revisão do R5 v1 "Esse é um mês organizado" (autor, 28/10/2026)
 

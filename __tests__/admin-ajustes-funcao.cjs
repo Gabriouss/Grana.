@@ -84,6 +84,28 @@ const semSegredo = (v) => { const s = JSON.stringify(v); assert.equal(s.includes
 let n = 0;
 async function test(nome, fn) { await fn(); n++; console.log('OK ' + nome); }
 (async () => {
+  await test('H01 matriz autenticada conserva caminhos e recusa perigosos sem RPC', async () => {
+    const {casos}=require('./admin-ajustes-prova-local-sql.cjs');
+    for(const c of casos){
+      const h=harness(),r=await h.request({...CRIAR,caminho:c.caminho});
+      assert.equal(r.r.status,c.aceito?200:400,JSON.stringify(c.caminho));
+      assert.equal(h.calls.length,c.aceito?1:0);if(c.aceito)assert.equal(h.calls[0].args.p_caminho,c.caminho);
+      semSegredo(r.json);
+    }
+  });
+  await test('prova local: DTO real vincula pedido e hash sem aceitar prova adulterada', async () => {
+    const p = { tipo: 'historico-local-v1', pedidoId: PEDIDO, pecaId: PECA, caminho: CRIAR.caminho,
+      versaoAnterior: SHA, versaoCorrigida: 'b'.repeat(40), anteriorSha256: 'c'.repeat(64), atualSha256: 'd'.repeat(64) };
+    p.reciboSha256 = require('node:crypto').createHash('sha256').update(require('../tools/admin-local/marketing/ajustes-prova-local.cjs').chave(p)).digest('hex');
+    const linha = { id: PEDIDO, peca_id: PECA, caminho: CRIAR.caminho, versao_alvo: SHA, estado: 'corrigido-aguardando-aceite', tentativas: 1,
+      versao_corrigida: p.versaoCorrigida, commit_correcao: null, prova_correcao: p };
+    const h = harness({ lista: [linha] }); const r = await h.request({ recurso: 'ajustes-listar' });
+    assert.equal(r.r.status,200); assert.deepEqual(r.json.dados.pedidos[0].provaCorrecao,p);
+    for (const delta of [{ reciboSha256:'0'.repeat(64) },{ pedidoId:OUTRO },{ versaoCorrigida:SHA },{ texto_original:SEGREDO }]) {
+      const k = harness({ lista:[{ ...linha,prova_correcao:{ ...p,...delta } }] });
+      const recusado = await k.request({ recurso:'ajustes-listar' }); assert.equal(recusado.r.status,503); semSegredo(recusado.json);
+    }
+  });
   await test('criar: uma RPC, texto aparado, autor do JWT, resposta e log sem texto', async () => {
     const h = harness(); const { r, json } = await h.request(CRIAR);
     assert.equal(r.status, 200); assert.deepEqual(json.dados, { pedido: { id: PEDIDO, estado: 'novo', criadoEm: '2026-10-08T21:00:00.000Z' } });

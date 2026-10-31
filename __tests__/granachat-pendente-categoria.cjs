@@ -137,7 +137,8 @@ let tarefa;
 const gravadosVoz = [];
 const reservas = [];
 carregarVm('lib/widget-voz-task.ts', {
-  './voz-confiabilidade': { precisaRevisarValorVoz: () => false, transcricaoPareceLancamentoVoz: () => true,
+  // Preserva as funções novas do núcleo real; só a revisão de valor é simulada.
+  './voz-confiabilidade': { ...carregarVm('lib/voz-confiabilidade.ts'), precisaRevisarValorVoz: () => false, transcricaoPareceLancamentoVoz: () => true,
     // A revisão de valor está desligada neste dublê; o valor segue a heurística pura.
     valorDaFalaVoz: (t) => carregarVm('lib/heuristics.ts').guessAmountFromText(t) },
   'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (nome, factory) => { if (nome === 'GranaVoiceTask') tarefa = factory(); } } },
@@ -151,6 +152,7 @@ carregarVm('lib/widget-voz-task.ts', {
   './data': { fetchCreditCards: async () => CARTOES, fetchApelidosCategoria: async () => [], fetchCategories: async () => [] },
   './wallets': { fetchWallets: async () => CARTEIRAS },
   './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'),
+    desfechoDoErroVoz: require('./desfecho-voz-real.cjs').desfechoDoErroVoz,
     ehRecusaCartaoObrigatorio: () => false,
     registrarOperacaoVoz: async (_id, _fonte, entrada) => { gravadosVoz.push(entrada); return { status: 'committed', ids: ['tx'], operationId: 'op' }; },
   },

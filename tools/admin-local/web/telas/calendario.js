@@ -954,7 +954,7 @@ export async function escolherData(ctx, peca, dataInicial, canais) {
         { nome: 'hora', rotulo: 'Horário (opcional)', tipo: 'time', valor: '' },
         { nome: 'canal', rotulo: 'Onde', tipo: 'select', valor: peca.tipo === 'video' ? 'reels' : 'instagram-feed',
           opcoes: canais.map((c) => ({ valor: c, rotulo: rotuloCanal(c) })) },
-        { nome: 'observacao', rotulo: 'Observação (opcional)', tipo: 'textarea', linhas: 2, ajuda: 'Este texto fica gravado em docs/marketing/painel e vai para o GitHub público no próximo commit.' },
+        { nome: 'observacao', rotulo: 'Observação (opcional)', tipo: 'textarea', linhas: 2, ajuda: 'Este texto fica gravado na pasta do painel, no disco E:, fora do GitHub.' },
       ],
       rotuloBotao: 'Marcar data',
     });

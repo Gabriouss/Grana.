@@ -308,17 +308,24 @@ conferir('rejeita depósito sem id', parseDeepLink('com.gabriouss.grana://deposi
      volte ao repouso calado derruba este teste, que é o ponto.
 
      `abortar(null)` é o cancelamento pedido pela pessoa, e volta ao repouso. */
-  const PODE_TENTAR_DE_NOVO = ['"microfone_ocupado"'];
+  /* REPETIR também é recibo visível: o widget fica em "Toque e repita a fala"
+     até o próximo toque (a9158ac6, 28/10/2026). Nesses caminhos o áudio
+     incompleto é descartado de propósito: áudio cortado pode virar valor errado,
+     e o de outra conta não passa para o próximo login. Voltar ao repouso calado
+     continua reprovado, inclusive nos motivos desta lista. */
+  const PODE_TENTAR_DE_NOVO = ['"microfone_ocupado"', '"sessao_mudou_durante_captura"',
+    '"sessao_mudou_antes_da_captura"', '"agenda_indisponivel"',
+    '"metadados_indisponiveis"', '"captura_silenciada_pelo_android"'];
   const chamadas = [...servico.matchAll(/(?<!fun )abortar\(([^)]*)\)/g)].map((m) => m[1].trim());
   const comMotivo = chamadas.filter(
     (args) => args !== 'null' && args !== '' && !args.startsWith('motivo:')
   );
   conferir('há abortos com motivo para conferir', comMotivo.length >= 3, chamadas);
   for (const args of comMotivo) {
-    if (PODE_TENTAR_DE_NOVO.includes(args.split(',')[0].trim())) continue;
+    const podeRepetir = PODE_TENTAR_DE_NOVO.includes(args.split(',')[0].trim());
     conferir(
       `abortar(${args}) deixa recibo na tela, em vez de voltar ao repouso`,
-      args.includes('EstadoWidget.ATENCAO'),
+      args.includes('EstadoWidget.ATENCAO') || (podeRepetir && args.includes('EstadoWidget.REPETIR')),
       args
     );
   }

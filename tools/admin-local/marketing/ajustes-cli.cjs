@@ -2,8 +2,9 @@
 // Agent completion tool: arguments are data, never shell commands. Only "ler" prints the
 // author's text, and only for the request whose lease the caller holds.
 const { fila } = require('./ajustes-fila.cjs');
-const USO = 'Uso: ajustes-cli.cjs encerrar pedidoId --motivo atendido|superado --evidencia texto | ler|renovar|custo-consumir pedidoId leaseId | concluir|desatualizado pedidoId leaseId pecaId [sha1novo commit] | custo pedidoId leaseId pecaId --estimativa JSON | custo-autorizado pedidoId leaseId --evidencia texto | custo-recusado pedidoId leaseId [--seguir-local]';
-const recibo = (r) => ({ id: r.id, estado: r.estado, versaoAlvo: r.versaoAlvo, versaoCorrigida: r.versaoCorrigida });
+const USO = 'Uso: ajustes-cli.cjs encerrar pedidoId --motivo atendido|superado --evidencia texto | ler|renovar|custo-consumir pedidoId leaseId | concluir|desatualizado pedidoId leaseId pecaId [sha1novo commit|--prova-local] | custo pedidoId leaseId pecaId --estimativa JSON | custo-autorizado pedidoId leaseId --evidencia texto | custo-recusado pedidoId leaseId [--seguir-local]';
+const recibo = (r) => ({ id: r.id, estado: r.estado, versaoAlvo: r.versaoAlvo, versaoCorrigida: r.versaoCorrigida,
+  ...(r.provaCorrecao ? { provaCorrecao: r.provaCorrecao } : {}) });
 async function main(args) {
   const [acao, pedidoId, leaseId, pecaId, versao, commit] = args;
   if (acao === 'encerrar') {
@@ -13,6 +14,7 @@ async function main(args) {
   }
   if (!pedidoId || !leaseId) throw new Error(USO);
   if (acao === 'ler') {
+    await fila.preparar?.(pedidoId,leaseId);
     const pedido = fila.lerPedido(pedidoId, leaseId);
     const editorial = require('./editorial-publicacao.cjs'), cfg = require('../config.cjs');
     {
@@ -41,7 +43,9 @@ async function main(args) {
     if (args.length !== 6 || args[4] !== '--estimativa') throw new Error(USO);
     try { estimativa = JSON.parse(args[5]); } catch { throw new Error(USO); }
   }
-  const r = await fila.marcar(pedidoId, leaseId, estados[acao], { pecaId, versao, commit, estimativa });
+  const local = acao === 'concluir' && commit === '--prova-local' && args.length === 6;
+  const provaCorrecao = local ? await fila.comprovar(pedidoId, leaseId, pecaId, versao) : undefined;
+  const r = await fila.marcar(pedidoId, leaseId, estados[acao], { pecaId, versao, commit: local ? undefined : commit, estimativa, ...(provaCorrecao ? { provaCorrecao } : {}) });
   return recibo(r);
 }
 if (require.main === module) main(process.argv.slice(2)).then((r) => console.log(JSON.stringify(r))).catch((e) => { console.error(e.codigo || (e.message === USO ? USO : 'ajuste-cli-falhou')); process.exitCode = 1; });

@@ -324,6 +324,160 @@
         }
       ],
       "indice": "docs/marketing/2026-10/semana-42-2026-10-12-a-2026-10-18/INDICE.md"
+    },
+    {
+      "id": "be6fedb1efb2d8c2",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/historico/pecas/reels/Antes de parcelar veja a fatura v5.mp4",
+      "versao": "3f386bf883a621c20479cb509aef8aeeff34fc13",
+      "motivo": "Desatualizado",
+      "sucessora": null,
+      "recusadoEm": "2026-10-25T14:20:23-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "ea7002a2e79f96e4",
+        "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Antes de parcelar veja a fatura v5.mp4",
+        "versao": "3f386bf883a621c20479cb509aef8aeeff34fc13"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Antes de parcelar veja a fatura v5.mp4",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/historico/pecas/reels/Antes de parcelar veja a fatura v5.mp4",
+          "sha1": "906742b88c843c6339786070fb2a193d97b4c7f6"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "0ccdc9c51523cdc3",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/historico/pecas/reels/Compra por impulso.mp4",
+      "versao": "e80cad3a4d3289768c237cf003ed595c1c15f604",
+      "motivo": "Desatualizado",
+      "sucessora": null,
+      "recusadoEm": "2026-10-25T14:20:40-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "10c766f320a78252",
+        "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Compra por impulso.mp4",
+        "versao": "e80cad3a4d3289768c237cf003ed595c1c15f604"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Compra por impulso.mp4",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/historico/pecas/reels/Compra por impulso.mp4",
+          "sha1": "3e24d88a4ac67152d996dbbdbac06e694a7ee003"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "cc695ade10be713c",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/historico/pecas/reels/Comprometimento futuro.mp4",
+      "versao": "d8927759a44aa23da73c5819c97bfd60f1ef39ac",
+      "motivo": "Desatualizado",
+      "sucessora": null,
+      "recusadoEm": "2026-10-25T14:20:50-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "dec8f66f3644f0eb",
+        "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Comprometimento futuro.mp4",
+        "versao": "d8927759a44aa23da73c5819c97bfd60f1ef39ac"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Comprometimento futuro.mp4",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/historico/pecas/reels/Comprometimento futuro.mp4",
+          "sha1": "110551ce313a8fcfa633fbeb346db27f4e49d8b9"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "e2257aadd92258d4",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/historico/pecas/reels/Fatura e parcelas - reedicao v2.mp4",
+      "versao": "3849f6869e6348a65ccca81d32f533653b3c1025",
+      "motivo": "Desatualizado",
+      "sucessora": null,
+      "recusadoEm": "2026-10-25T14:20:57-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "bfdd69c22fef38ce",
+        "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Fatura e parcelas - reedicao v2.mp4",
+        "versao": "3849f6869e6348a65ccca81d32f533653b3c1025"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Fatura e parcelas - reedicao v2.mp4",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/historico/pecas/reels/Fatura e parcelas - reedicao v2.mp4",
+          "sha1": "cab982e77dda3530bece02988f9b1ac4bb685ddd"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "1eb1662cef942383",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/historico/pecas/reels/Fatura e parcelas.mp4",
+      "versao": "e4bc2954a9b5bcbc9bb75eb77a3754cebf212207",
+      "motivo": "Desatualizado",
+      "sucessora": null,
+      "recusadoEm": "2026-10-25T14:21:05-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "26b0ee652f71db1d",
+        "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Fatura e parcelas.mp4",
+        "versao": "e4bc2954a9b5bcbc9bb75eb77a3754cebf212207"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Fatura e parcelas.mp4",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/historico/pecas/reels/Fatura e parcelas.mp4",
+          "sha1": "68f4e27157d32dba41b7cf071aa8d378bf1bb3c9"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "8a89581b49ac6bc0",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/historico/pecas/reels/Metas e cofrinhos.mp4",
+      "versao": "d3f1d5b598ea3b89b875d7586d6776c5fdf28b80",
+      "motivo": "Desatualizado",
+      "sucessora": null,
+      "recusadoEm": "2026-10-25T14:21:12-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "53df01a942059996",
+        "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Metas e cofrinhos.mp4",
+        "versao": "d3f1d5b598ea3b89b875d7586d6776c5fdf28b80"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Metas e cofrinhos.mp4",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/historico/pecas/reels/Metas e cofrinhos.mp4",
+          "sha1": "88cc41bf30e4b23474cd06a715604be1f3683192"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
+    },
+    {
+      "id": "0a6978c8221bf4ba",
+      "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/historico/pecas/reels/Quanto pode gastar hoje.mp4",
+      "versao": "9810928ad2cb620d1dff02a821e6bdf8085496fe",
+      "motivo": "Desatualizado",
+      "sucessora": null,
+      "recusadoEm": "2026-10-25T14:21:21-03:00",
+      "evidencia": "recusa pelo autor no painel local",
+      "origem": {
+        "id": "7524007aae41be01",
+        "caminho": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Quanto pode gastar hoje.mp4",
+        "versao": "9810928ad2cb620d1dff02a821e6bdf8085496fe"
+      },
+      "arquivos": [
+        {
+          "origem": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/para-aprovacao/pecas/reels/Quanto pode gastar hoje.mp4",
+          "destino": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/historico/pecas/reels/Quanto pode gastar hoje.mp4",
+          "sha1": "026179bd8850a440579aea81595b04e403a7be95"
+        }
+      ],
+      "indice": "docs/marketing/2026-10/semana-43-2026-10-19-a-2026-10-25/INDICE.md"
     }
   ]
 }

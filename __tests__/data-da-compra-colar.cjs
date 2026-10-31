@@ -207,6 +207,15 @@ async function salvar() {
   ok(porRotulo(tela, /^Valor do lançamento em reais$/)?.props.value === '1.250,50', 'valor decimal intacto');
   ok(/parcela/i.test(porRotulo(tela, /^Descrição do lançamento$/)?.props.value ?? ''), 'a parcela "2/12" não é lida como data');
   ok(linhaData(tela)?.props.accessibilityLabel === 'Data do lançamento: 26 set 2026, lida do texto', 'e a data certa é a 26/09');
+  /* dd/mm sem ano (30/10/2026): a tela real lê a data e grava a descrição limpa. */
+  tela = colar('AUDIT Mercado no debito em 08/09 R$ 829,00');
+  ok(porRotulo(tela, /^Descrição do lançamento$/)?.props.value === 'AUDIT Mercado', 'dd/mm sem ano: a descrição sai sem "em /"');
+  ok(linhaData(tela)?.props.accessibilityLabel === 'Data do lançamento: 08 set 2026, lida do texto', 'dd/mm sem ano: data do ano corrente, com o selo');
+  tela = colar('AUDIT Mercado em 31/02 R$ 10,00');
+  ok(linhaData(tela)?.props.accessibilityLabel === 'Data do lançamento: Escolha a data', 'dd/mm impossível: o campo fica sem data');
+  ok(textos(tela).includes('A data do texto não foi usada. Escolha a data.'), 'dd/mm impossível: com a dica');
+  tela = colar('AUDIT TV 03/12 R$ 100,00');
+  ok(linhaData(tela)?.props.accessibilityLabel === 'Data do lançamento: 30 set 2026', 'parcela sem palavra: hoje e sem selo');
 
   /* ── 2. Sem data no texto: hoje, sem selo ─────────────────────────────── */
   tela = colar('Pix enviado para Mercado AUDIT R$ 50,00');
