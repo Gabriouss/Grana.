@@ -15,6 +15,116 @@ const path = require('path');
 const crypto = require('crypto');
 const os = require('node:os');
 
+// Pasta própria do painel (autor, 23/10/2026): peças, registros e índices saem de
+// docs/marketing (repositório público) para E:\Grana - Painel, fora do git.
+//
+// Só muda o lugar FÍSICO. O caminho LÓGICO continua docs/marketing/... porque o id
+// da peça é o sha1 dele e os aceites, recibos e Edge Functions o guardam. Todo
+// acesso a disco passa por resolver(raiz, logico).
+//
+//   docs/marketing/<mes>/<semana>/para-aprovacao/<resto> -> <painel>/Para aprovar/<mes>/<semana>/<resto>
+//   …/aprovados/<resto>                                   -> <painel>/Aprovados/<mes>/<semana>/<resto>
+//   …/historico/<resto>                                   -> <painel>/Histórico/<mes>/<semana>/<resto>
+//   docs/marketing/<mes>/<semana>/INDICE.md                -> <painel>/Registros/Índices semanais/<semana>.md
+//   docs/marketing/painel/<nome>.json                      -> <painel>/Registros/<nome>.json
+//   qualquer outro caminho (arsenal, apoio, guias)         -> repositório, como antes
+//
+// Layout novo só quando a raiz é o repositório e a pasta do painel existe. Qualquer outra
+// raiz (GRANA_ADMIN_RAIZ_DADOS de QA, fixtures de teste) segue o layout antigo, inteiro dentro dela.
+// Mora dentro do catalogo.cjs porque os testes carregam o catálogo em sandbox sem imports novos.
+const pp = (() => {
+// Sandboxes de teste podem não ter __dirname e podem proibir process.env: aí vale o layout antigo.
+const REPO = typeof __dirname === 'string' ? path.resolve(__dirname, '..', '..', '..') : null;
+const PADRAO = 'E:\\Grana - Painel';
+const ESTADO_PASTA = { 'para-aprovacao': 'Para aprovar', aprovados: 'Aprovados', historico: 'Histórico' };
+const PASTA_ESTADO = Object.fromEntries(Object.entries(ESTADO_PASTA).map(([k, v]) => [v, k]));
+const INDICES = path.join('Registros', 'Índices semanais');
+const RE_ESTADO = /^docs\/marketing\/(\d{4}-\d{2})\/(semana-[^/]+)\/(para-aprovacao|aprovados|historico)(?:\/(.*))?$/;
+const RE_INDICE = /^docs\/marketing\/(\d{4}-\d{2})\/(semana-[^/]+)\/INDICE\.md$/;
+const RE_REGISTRO = /^docs\/marketing\/painel\/([^/]+\.json)$/;
+
+function pasta() {
+  let env = null;
+  try { env = process.env.GRANA_ADMIN_PASTA_PAINEL || null; } catch { /* ambiente proibido */ }
+  return path.resolve(env || PADRAO);
+}
+const igual = (a, b) => !!a && !!b && path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
+
+// Liga só depois de uma migração CONFERIDA: o recibo Registros/migracao-*.json é gravado por
+// último pelo script. Pasta criada à mão (um LEIA-ME, por exemplo) não esvazia o acervo.
+const conferida = new Map();
+function ativo(raiz) {
+  if (!igual(raiz, REPO)) return false; // fixture e cópia de QA: layout antigo, sem ler o ambiente
+  const p = pasta(), ultimo = conferida.get(p);
+  if (ultimo === true || (ultimo && Date.now() - ultimo < 5000)) return ultimo === true;
+  let ok = false;
+  try { ok = fs.readdirSync(path.join(p, 'Registros')).some((n) => /^migracao-.+\.json$/.test(n)); } catch { /* sem pasta: layout antigo */ }
+  conferida.set(p, ok || Date.now());
+  return ok;
+}
+
+// Devolve a raiz física (para a conferência de "dentro") e o caminho absoluto.
+function resolver(raiz, logico) {
+  if (!ativo(raiz)) return { root: path.resolve(raiz), abs: path.resolve(raiz, logico) };
+  return mapear(pasta(), logico);
+}
+// Tradução pura para uma pasta do painel dada (a migração usa antes de a pasta existir).
+function mapear(p, logico) {
+  let m = RE_ESTADO.exec(logico);
+  if (m) return { root: p, abs: path.join(p, ESTADO_PASTA[m[3]], m[1], m[2], ...(m[4] ? m[4].split('/') : [])) };
+  if ((m = RE_INDICE.exec(logico))) return { root: p, abs: path.join(p, INDICES, `${m[2]}.md`) };
+  if ((m = RE_REGISTRO.exec(logico))) return { root: p, abs: path.join(p, 'Registros', m[1]) };
+  return { root: REPO, abs: path.resolve(REPO, logico) };
+}
+const fisico = (raiz, logico) => resolver(raiz, logico).abs;
+
+// Inverso, para quem lista arquivos e precisa do caminho lógico (id da peça).
+function logico(raiz, abs) {
+  if (!ativo(raiz)) return path.relative(raiz, abs).split(path.sep).join('/');
+  const p = pasta();
+  const rel = path.relative(p, abs);
+  if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
+    const [topo, mes, semana, ...resto] = rel.split(path.sep);
+    if (PASTA_ESTADO[topo] && mes && semana) return ['docs/marketing', mes, semana, PASTA_ESTADO[topo], ...resto].join('/');
+  }
+  return path.relative(REPO, abs).split(path.sep).join('/');
+}
+
+// Semanas que existem no layout novo: as pastas <Estado>/<mes>/<semana> e os índices.
+// O mês do índice sem peça vem da quinta-feira da semana (regra 25).
+function semanasDoPainel(raiz, reMes, reSemana) {
+  if (!ativo(raiz)) return null;
+  const p = pasta(), achadas = new Map();
+  const ler = (d) => { try { return fs.readdirSync(d, { withFileTypes: true }).filter((e) => e.isDirectory()); } catch { return []; } };
+  for (const estado of Object.values(ESTADO_PASTA))
+    for (const m of ler(path.join(p, estado))) if (reMes.test(m.name))
+      for (const s of ler(path.join(p, estado, m.name))) if (reSemana.test(s.name) && !achadas.has(s.name)) achadas.set(s.name, m.name);
+  let indices = [];
+  try { indices = fs.readdirSync(path.join(p, INDICES)); } catch { /* sem índice ainda */ }
+  for (const n of indices) {
+    const s = n.replace(/\.md$/, '');
+    const r = reSemana.exec(s);
+    if (!r || achadas.has(s)) continue;
+    const quinta = new Date(`${r[2]}T12:00:00Z`); quinta.setUTCDate(quinta.getUTCDate() + 3);
+    achadas.set(s, quinta.toISOString().slice(0, 7));
+  }
+  return [...achadas].map(([semana, mes]) => ({ mes, semana }));
+}
+
+// Pasta só existe com arquivo dentro (autor): depois de mover um arquivo para fora,
+// apaga as pastas que ficaram vazias, até a raiz do painel (exclusive). Fora dela, nada.
+function podar(abs, io = fs) {
+  const p = pasta();
+  for (let d = path.dirname(abs); ; d = path.dirname(d)) {
+    const rel = path.relative(p, d);
+    if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return;
+    try { if (io.readdirSync(d).length) return; io.rmdirSync(d); } catch { return; }
+  }
+}
+
+  return { REPO, PADRAO, ESTADO_PASTA, pasta, ativo, resolver, mapear, fisico, logico, semanasDoPainel, podar };
+})();
+
 const PASTA_MARKETING = 'docs/marketing';
 const PASTA_PAINEL = 'docs/marketing/painel';
 const ESTADOS = ['para-aprovacao', 'aprovados', 'historico'];
@@ -49,7 +159,7 @@ function hojeLocal(d = new Date()) {
 }
 
 function caminhoPainel(raiz, nome) {
-  return path.join(raiz, PASTA_PAINEL, nome);
+  return pp.fisico(raiz, `${PASTA_PAINEL}/${nome}`);
 }
 
 // Codec único para destinos Markdown do índice; recebe caminho local já validado.
@@ -393,7 +503,7 @@ function caminhoSeguro(raiz, relativo, io = fs) {
   const ruim = (s) => !s || s.startsWith('.') || /[\\:\u0000-\u001f\u007f<>"|?*]/.test(s) || /[. ]$/.test(s)
     || /^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\.|$)/i.test(s) || /~\d/.test(s);
   if (typeof relativo !== 'string' || relativo.normalize('NFKC') !== relativo || relativo.split('/').some(ruim)) throw new ErroMarketing('caminho-invalido', 'Caminho do acervo invalido.', 403);
-  const root = path.resolve(raiz), abs = path.resolve(root, relativo);
+  const { root, abs } = pp.resolver(raiz, relativo);
   const dentro = (r, p) => { const rel = path.relative(r, p); return !rel.startsWith('..') && !path.isAbsolute(rel); };
   if (!dentro(root, abs) || abs === root) throw new ErroMarketing('caminho-invalido', 'Caminho fora do acervo.', 403);
   for (let cur = abs; cur !== root; cur = path.dirname(cur)) {
@@ -403,6 +513,12 @@ function caminhoSeguro(raiz, relativo, io = fs) {
 }
 
 function listarSemanas(raiz) {
+  const doPainel = pp.semanasDoPainel(raiz, RE_MES, RE_SEMANA);
+  if (doPainel) {
+    return doPainel.map(({ mes, semana }) => { const r = RE_SEMANA.exec(semana);
+      return { mes, pasta: semana, numero: Number(r[1]), inicio: r[2], fim: r[3], relativo: `${PASTA_MARKETING}/${mes}/${semana}` }; })
+      .sort((a, b) => a.inicio.localeCompare(b.inicio));
+  }
   const base = path.join(raiz, PASTA_MARKETING);
   const semanas = [];
   let meses;
@@ -468,7 +584,7 @@ function copyDaPeca(copys, codigo, nome) {
 function lerCopys(raiz, semana, ler = fs.readFileSync) {
   const mapa = {};
   for (const estado of ESTADOS) {
-    const arq = path.join(raiz, semana.relativo, estado, 'pecas', 'COPYS-FINAIS.md');
+    const arq = pp.fisico(raiz, `${semana.relativo}/${estado}/pecas/COPYS-FINAIS.md`);
     let texto;
     try {
       // CRLF (checkout do Windows com autocrlf) não pode mudar a legenda nem, por ela, a versão.
@@ -630,7 +746,7 @@ function codigoDaPeca(relNaSemana) {
 function lerIndice(raiz, semana) {
   let texto;
   try {
-    texto = fs.readFileSync(path.join(raiz, semana.relativo, 'INDICE.md'), 'utf8');
+    texto = fs.readFileSync(pp.fisico(raiz, `${semana.relativo}/INDICE.md`), 'utf8');
   } catch {
     return [];
   }
@@ -662,7 +778,7 @@ function montarCatalogo(raiz) {
     const copys = lerCopys(raiz, semana);
     const indice = lerIndice(raiz, semana);
     for (const estado of ESTADOS) {
-      const absEstado = path.join(raiz, semana.relativo, estado);
+      const absEstado = pp.fisico(raiz, `${semana.relativo}/${estado}`);
       const porDiretorio = new Map();
       for (const abs of listarArquivos(absEstado)) {
         const nome = path.basename(abs);
@@ -686,7 +802,7 @@ function montarCatalogo(raiz) {
           if (c) { capaDoVideo.set(v.nome, c); capasPareadas.add(c.nome); }
         }
         for (const grupo of agrupar(arquivos)) {
-          const relRepo = (a) => path.relative(raiz, a.abs).split(path.sep).join('/');
+          const relRepo = (a) => pp.logico(raiz, a.abs);
           const primeiro = grupo[0];
           const ehCarrossel = grupo.length > 1;
           const relPeca = ehCarrossel
@@ -995,7 +1111,8 @@ function documento(raiz) {
 
 // Read a bounded historical snapshot; no checkout, temporary files or shell.
 // resolver is the same static-file guard used by the local server.
-function lerAnterior(raiz, pedido, peca, { resolver, executar, arquivo } = {}) {
+function lerAnterior(raiz, pedido, peca, { resolver, executar, arquivo, custodia } = {}) {
+  if (pedido?.provaCorrecao) return (custodia || require('./ajustes-prova-local.cjs').padrao(raiz)).lerAnterior(pedido, peca, { resolver, arquivo });
   if (!pedido || !peca || pedido.pecaId !== peca.id || pedido.caminho !== peca.caminho
     || pedido.estado !== 'corrigido-aguardando-aceite' || !/^[0-9a-f]{40}$/.test(pedido.commit || '')
     || !/^[0-9a-f]{40}$/.test(pedido.versaoAlvo || '') || pedido.versaoCorrigida !== peca.versao) {
@@ -1025,7 +1142,7 @@ function lerAnterior(raiz, pedido, peca, { resolver, executar, arquivo } = {}) {
   }
   const conteudos = new Map();
   function ler(abs, encoding) {
-    const caminho = path.relative(raiz, abs).split(path.sep).join('/');
+    const caminho = pp.logico(raiz, abs);
     const e = entradas.get(caminho);
     if (!e || e.modo === '120000') throw new ErroMarketing('anterior-indisponivel', 'Arquivo anterior ausente ou nao regular.', 409);
     if (e.bytes > 64 * 1024 * 1024 || bytes + e.bytes > 256 * 1024 * 1024) throw new ErroMarketing('anterior-limite', 'Arquivo anterior excede o limite de leitura.', 413);
@@ -1058,6 +1175,7 @@ function lerAnterior(raiz, pedido, peca, { resolver, executar, arquivo } = {}) {
 
 module.exports = {
   ErroMarketing,
+  pastaPainel: pp,
   ESTADOS,
   agoraLocalIso,
   hojeLocal,

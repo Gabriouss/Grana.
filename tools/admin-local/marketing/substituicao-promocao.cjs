@@ -77,7 +77,7 @@ function substituir(raiz, p, io = fs) {
     if (hash(io, para) !== a.sha1) throw erro('substituicao-historico-divergente');
   }
   // O manifesto conserva legenda e ordem mesmo quando a copy da semana mudar.
-  c.gravarJsonAtomico(path.join(raiz, path.posix.dirname(r.caminhoHistorico), '.revisao.json'), r);
+  c.gravarJsonAtomico(c.pastaPainel.fisico(raiz, `${path.posix.dirname(r.caminhoHistorico)}/.revisao.json`), r);
   const familiasArq = c.caminhoPainel(raiz, 'familias.json');
   const familias = c.lerJson(familiasArq, { formato: 1, familias: [], capas: [] });
   let familia = familias.familias.find(f => f.revisoes.some(x => chave(x.caminho) === chave(r.caminhoAnterior)));
@@ -108,7 +108,7 @@ function substituir(raiz, p, io = fs) {
     if (removerCapa && pecas.some(x => x.id !== r.id && x.id !== p.id && x.capa?.pecaId === c.idDe(capaPreservada.origem))) throw erro('capa-compartilhada');
     for (const a of r.arquivos.filter(x => !x.componente || removerCapa)) {
       const de = c.caminhoSeguro(raiz, a.origem, io);
-      if (io.existsSync(de)) { if (hash(io, de) !== a.sha1) throw erro('substituicao-origem-divergente'); io.unlinkSync(de); }
+      if (io.existsSync(de)) { if (hash(io, de) !== a.sha1) throw erro('substituicao-origem-divergente'); io.unlinkSync(de); c.pastaPainel.podar(de, io); }
     }
     r.estado = 'preservada'; c.gravarJsonAtomico(arq, db);
   }

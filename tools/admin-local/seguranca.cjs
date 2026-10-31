@@ -477,12 +477,17 @@ function resolverEstatico(pathname) {
   if (EXT_BLOQUEADA.has(ext)) return null;
   if (m.ext && !m.ext.has(ext)) return null;
   if (!MIME[ext]) return null;
-  const alvo = path.resolve(m.raiz, resto);
-  if (!dentro(m.raiz, alvo)) return null;
+  // Acervo de marketing: o caminho da URL é lógico; a pasta do painel guarda as peças.
+  // Cópia de QA (RAIZ_DADOS fora do repositório) continua montada direto, como antes.
+  const { root, abs } = m.prefixo === '/docs/marketing/' && path.resolve(RAIZ_DADOS) === path.resolve(RAIZ)
+    ? require(path.join(__dirname, 'marketing', 'catalogo.cjs')).pastaPainel.resolver(RAIZ_DADOS, 'docs/marketing/' + resto)
+    : { root: m.raiz, abs: path.resolve(m.raiz, resto) };
+  const alvo = abs;
+  if (!dentro(root, alvo)) return null;
   let real;
   try {
     real = fs.realpathSync(alvo);
-    const raizReal = fs.realpathSync(m.raiz);
+    const raizReal = fs.realpathSync(root);
     if (!dentro(raizReal, real)) return null; // junção ou atalho apontando para fora
     const st = fs.lstatSync(real);
     if (!st.isFile()) return null;

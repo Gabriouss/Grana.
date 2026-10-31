@@ -10,7 +10,7 @@ const PREFIXO = /^docs\/marketing\/\d{4}-\d{2}\/semana-\d{2}-\d{4}-\d{2}-\d{2}-a
 function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({ codigo }))) {
   function sha(abs) { return crypto.createHash('sha1').update(io.readFileSync(abs)).digest('hex'); }
   function seguro(raiz, rel) {
-    const abs = path.resolve(raiz, rel), root = path.resolve(raiz);
+    const { abs, root } = c.pastaPainel.resolver(raiz, rel);
     if (!abs.startsWith(root + path.sep)) throw new c.ErroMarketing('caminho-invalido', 'O arquivo precisa ficar no acervo.', 409);
     // Não seguir links no destino, mesmo que o link aponte para dentro do acervo.
     for (let cur = abs; cur !== root; cur = path.dirname(cur)) {
@@ -24,7 +24,7 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
       try {
         if (io.existsSync(a.de)) {
           if (sha(a.de) !== a.sha1) { pendente = true; continue; }
-          io.unlinkSync(a.de);
+          io.unlinkSync(a.de); c.pastaPainel.podar(a.de, io);
         }
       } catch { pendente = true; }
     }
@@ -54,7 +54,7 @@ function criarPromocao(io = fs, log = (codigo) => console.error(JSON.stringify({
       const marcador = `<!-- promocao:${registro.id}:${registro.versao} -->`;
       if (!texto.includes(marcador)) texto = texto.trimEnd() + `\n\n${marcador}\n- Promoção ${registro.promovidoEm}: [peça em aprovados](${registro.arquivosPromovidos[0].destino.slice(base.length)}); aceite do autor em ${registro.aprovadoEm}, versão \`${registro.versao}\`. Origem \`${registro.origem.caminho}\`. Nada publicado ou agendado.\n`;
       const tmp = `${indice}.${crypto.randomUUID()}.tmp`; io.writeFileSync(tmp, texto, 'utf8'); io.renameSync(tmp, indice);
-      registro.indice = path.relative(raiz, indice).split(path.sep).join('/');
+      registro.indice = base + 'INDICE.md';
       c.gravarJsonAtomico(c.caminhoPainel(raiz, 'aprovacoes.json'), dados);
       const relida = c.lerJson(c.caminhoPainel(raiz, 'aprovacoes.json'), {}).aprovacoes?.find((a) => a.id === registro.id && a.versao === registro.versao);
       if (!relida || JSON.stringify(relida) !== JSON.stringify(registro)) throw new Error('indice-sem-prova');

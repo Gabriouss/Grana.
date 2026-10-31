@@ -142,7 +142,7 @@ async function editar(ctx, c, disponiveis) {
   const periodo = c?.periodo || {};
   const v = await ctx.formulario({
     titulo: c ? `Editar ${c.nome}` : 'Nova campanha',
-    texto: 'Só planejamento local. Nada vai para a Meta. Tudo o que você escrever aqui fica em docs/marketing/painel e vai para o GitHub público no próximo commit.',
+    texto: 'Só planejamento local. Nada vai para a Meta. Tudo o que você escrever aqui fica na pasta do painel, no disco E:, fora do GitHub.',
     campos: [
       { nome: 'nome', rotulo: 'Nome', obrigatorio: true, valor: c?.nome },
       { nome: 'objetivo', rotulo: 'Objetivo', tipo: 'textarea', linhas: 2, valor: c?.objetivo },
