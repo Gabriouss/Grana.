@@ -53,6 +53,8 @@ export type CreditCard = {
 
 export type Transaction = {
   id: string;
+  /** Chave de idempotência da linha. Vem do banco; item otimista não tem. */
+  client_request_id?: string | null;
   user_id: string;
   type: TxType;
   description: string;

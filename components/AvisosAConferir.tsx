@@ -18,7 +18,15 @@ import {
   pareceJaLancado,
   type ItemAConferir,
 } from '@/lib/avisos-banco/decidir';
-import { gravarItem, pagarContaDoItem } from '@/lib/avisos-banco/gravar';
+import {
+  concluirLimpeza,
+  ContaJaEmPagamento,
+  gravarItem,
+  itensJaGravados,
+  LimpezaPendente,
+  pagarContaDoItem,
+  PagamentoIncerto,
+} from '@/lib/avisos-banco/gravar';
 import type { FormaDoAviso } from '@/lib/avisos-banco/interpretar';
 import { lerTela } from '@/lib/cache-de-tela';
 import { getCachedTransactions } from '@/lib/offline-cache';
@@ -53,6 +61,13 @@ type DadosDaLista = {
   /** Sem os lançamentos, não dá para dizer que não foi lançado antes: nada grava em um toque. */
   semConferenciaDeDuplicata: boolean;
   semConferenciaDeContas: boolean;
+};
+
+const AVISO_PAGAMENTO_INICIADO = 'Confira a conta nos lançamentos antes de descartar este aviso.';
+
+const reciboDaGravacao = ({ guardado, jaEstava }: { guardado: boolean; jaEstava: boolean }) => {
+  if (jaEstava) return 'Este aviso já estava salvo. Para corrigir, edite nos lançamentos.';
+  return guardado ? 'Sem conexão. Lançamento salvo no aparelho' : 'Lançamento salvo';
 };
 
 const FORMA_ROTULO: Record<FormaDoAviso, string> = { credit: 'Crédito', debit: 'Débito', pix: 'Pix', boleto: 'Boleto' };
@@ -145,13 +160,17 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
   const [recibo, setRecibo] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [revisao, setRevisao] = useState<{ item: ItemAConferir; forma: FormaDoAviso } | null>(null);
+  /* Já registrados: falta só sair da lista. Não oferecem Confirmar nem Editar. */
+  const [jaSalvos, setJaSalvos] = useState<Set<string>>(new Set());
   /* Trava síncrona: o estado só muda no próximo render, e toque duplo cabe nesse intervalo. */
   const emAndamento = useRef(false);
   const concluidos = useRef(new Set<string>());
 
   const recarregarItens = useCallback(async () => {
     const lista = await listarCaixa(dono);
+    const salvos = await itensJaGravados(dono);
     setItens(lista);
+    setJaSalvos(salvos);
     aoMudar(lista);
     return lista;
   }, [aoMudar, dono]);
@@ -193,14 +212,15 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
     if (emAndamento.current || concluidos.current.has(item.id)) return;
     emAndamento.current = true;
     setOcupado(item.id);
+    const salvo = jaSalvos.has(item.id);
     try {
-      await removerItemDaCaixa(dono, item.id);
+      await (salvo ? concluirLimpeza(dono, item.id) : removerItemDaCaixa(dono, item.id));
       concluidos.current.add(item.id);
-      setRecibo('Aviso descartado');
+      setRecibo(salvo ? 'Aviso tirado da lista' : 'Aviso descartado');
       await recarregarItens();
     } catch (e) {
       console.error('[avisos] descarte falhou', e instanceof Error ? e.name : 'erro');
-      setRecibo(`Não consegui descartar: ${mensagemErro(e)}`);
+      setRecibo(salvo ? 'Não consegui tirar da lista. Tente de novo.' : `Não consegui descartar: ${mensagemErro(e)}`);
     } finally {
       emAndamento.current = false;
       setOcupado(null);
@@ -222,7 +242,26 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
       return true;
     } catch (e) {
       console.error('[avisos] confirmação falhou', e instanceof Error ? e.name : 'erro');
-      Alert.alert('Não consegui salvar', mensagemErro(e));
+      if (e instanceof LimpezaPendente) {
+        marcarLancamentosAlterados();
+        setJaSalvos((antes) => new Set(antes).add(item.id));
+        setRevisao(null);
+        Alert.alert(
+          e.oQue === 'conta' ? 'Conta marcada como paga' : 'Lançamento salvo',
+          'Só não consegui tirar o aviso da lista. Ele não será lançado de novo.'
+        );
+      } else if (e instanceof ContaJaEmPagamento) {
+        setRevisao(null);
+        Alert.alert('Pagamento já iniciado', AVISO_PAGAMENTO_INICIADO);
+      } else if (e instanceof PagamentoIncerto) {
+        Alert.alert('Não consegui confirmar o pagamento', 'Ele pode ter chegado. Confira a conta antes de descartar este aviso.');
+      } else {
+        Alert.alert('Não consegui salvar', mensagemErro(e));
+      }
+      /* A lista em tela ficou para trás: quem decide a próxima oferta é o disco. */
+      await recarregarItens().catch((erroDaLista) => {
+        console.error('[avisos] lista não recarregou', erroDaLista instanceof Error ? erroDaLista.name : 'erro');
+      });
       return false;
     } finally {
       emAndamento.current = false;
@@ -245,16 +284,16 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
       cartao: cartaoDoItem(item, d.cartoes),
     });
     await executar(item, async () => {
-      const { guardado } = await gravarItem(dono, item, entrada);
+      const resultado = await gravarItem(dono, item, entrada);
       marcarLancamentosAlterados();
-      return guardado ? 'Sem conexão. Lançamento salvo no aparelho' : 'Lançamento salvo';
+      return reciboDaGravacao(resultado);
     });
   }
 
   /** Boleto: paga a conta casada ou vira saída. Nunca os dois. */
   function abrirBoleto(item: ItemAConferir, d: DadosDaLista) {
     if (item.contaEmPagamento) {
-      Alert.alert('Pagamento já iniciado', 'Confira a conta nos lançamentos antes de descartar este aviso.');
+      Alert.alert('Pagamento já iniciado', AVISO_PAGAMENTO_INICIADO);
       return;
     }
     if (d.semConferenciaDeContas) {
@@ -341,9 +380,9 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
       parcelas: v.installments,
     });
     const salvou = await executar(item, async () => {
-      const { guardado } = await gravarItem(dono, item, entrada);
+      const resultado = await gravarItem(dono, item, entrada);
       marcarLancamentosAlterados();
-      return guardado ? 'Sem conexão. Lançamento salvo no aparelho' : 'Lançamento salvo';
+      return reciboDaGravacao(resultado);
     });
     if (salvou) setRevisao(null);
   }
@@ -394,6 +433,7 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
               <CartaoDoAviso
                 key={item.id}
                 item={item}
+                jaSalvo={jaSalvos.has(item.id)}
                 dados={dados}
                 texto={textos[item.avisoIds[0]]}
                 entreContas={pareceEntreContas(item, nomeDoPerfil)}
@@ -437,8 +477,9 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
   </>;
 }
 
-function CartaoDoAviso({ item, dados, texto, entreContas, ocupado, aoConfirmar, aoEditar, aoDescartar }: {
+function CartaoDoAviso({ item, jaSalvo, dados, texto, entreContas, ocupado, aoConfirmar, aoEditar, aoDescartar }: {
   item: ItemAConferir;
+  jaSalvo: boolean;
   dados: DadosDaLista;
   texto?: string;
   entreContas: boolean;
@@ -448,6 +489,18 @@ function CartaoDoAviso({ item, dados, texto, entreContas, ocupado, aoConfirmar, 
   aoDescartar: () => void;
 }) {
   const app = nomeDoApp(item.pacote);
+  if (jaSalvo) {
+    return (
+      <View style={styles.cartao}>
+        <Text style={styles.selo}>Já salvo</Text>
+        <Text style={styles.corpo}>{item.descricao || 'Sem descrição'}</Text>
+        <Text style={styles.legenda}>{semViuva('Para corrigir o valor, edite nos lançamentos.')}</Text>
+        <View style={styles.botoes}>
+          <Botao rotulo="Tirar da lista" onPress={aoDescartar} desligado={ocupado} destaque />
+        </View>
+      </View>
+    );
+  }
   if (item.tipo === 'nao_entendi') {
     return (
       <View style={styles.cartao}>

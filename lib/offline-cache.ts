@@ -59,6 +59,13 @@ async function chaveJaNaFila(chave: string): Promise<boolean> {
   return (await getQueue()).some((i) => i.clientRequestId === chave);
 }
 
+/* Linha real que já voltou do banco com esta chave. Sem rede, é a prova de que o
+   envio anterior chegou, mesmo sem marca nenhuma no disco: a fila só poria uma
+   cópia otimista ao lado dela. */
+async function linhaGravadaNoCache(chave: string): Promise<Transaction | undefined> {
+  return (await getCachedTransactions())?.find((t) => t.client_request_id === chave);
+}
+
 const CACHE_KEY = 'grana:cache:transactions';
 
 async function conferirDonoAtual(dono: string | null): Promise<void> {
@@ -603,7 +610,10 @@ export async function salvarOuGuardarNoAparelho(
     resultado = { lancamento: await addTransaction({ ...input, client_request_id: chave }), guardado: false };
   } catch (erro) {
     if (!isLikelyNetworkError(erro)) throw erro;
-    resultado = { lancamento: await queuePendingTransaction(input, chave, !!chaveDaOrigem), guardado: true };
+    const gravada = chaveDaOrigem ? await linhaGravadaNoCache(chave) : undefined;
+    resultado = gravada
+      ? { lancamento: gravada, guardado: false }
+      : { lancamento: await queuePendingTransaction(input, chave, !!chaveDaOrigem), guardado: true };
   }
   lancamentoGravado();
   return resultado;
@@ -629,7 +639,10 @@ export async function salvarOuGuardarParceladaNoAparelho(
     resultado = { lancamentos: await enviarParcelaPendente({ ...input, client_request_id: chave }), guardado: false };
   } catch (erro) {
     if (!isLikelyNetworkError(erro)) throw erro;
-    resultado = { lancamentos: await queuePendingInstallmentPurchase(input, chave, !!chaveDaOrigem), guardado: true };
+    const gravada = chaveDaOrigem ? await linhaGravadaNoCache(chave) : undefined;
+    resultado = gravada
+      ? { lancamentos: [gravada], guardado: false }
+      : { lancamentos: await queuePendingInstallmentPurchase(input, chave, !!chaveDaOrigem), guardado: true };
   }
   lancamentoGravado();
   return resultado;

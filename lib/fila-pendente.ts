@@ -265,10 +265,14 @@ export async function juntarPendentes(
   try {
     const { minhas } = separarPorDono(await getQueue(), await idDoUsuarioLocal());
     const jaNaLista = new Set(lista.map((t) => t.id));
+    /* A linha real com a chave do pendente: o banco já tem, e o índice único garante
+       que o reenvio não grava de novo. Mostrar os dois contaria a compra duas vezes. */
+    const jaNoBanco = new Set(lista.map((t) => t.client_request_id).filter(Boolean));
     const pendentes = minhas
       .filter((item) => {
         const tipo = item.tipo ?? 'transacao';
-        return (tipo === 'transacao' || tipo === 'parcela') && !jaNaLista.has(item.localId) && (!filtro || filtro(item.input));
+        return (tipo === 'transacao' || tipo === 'parcela') && !jaNaLista.has(item.localId)
+          && !(item.clientRequestId && jaNoBanco.has(item.clientRequestId)) && (!filtro || filtro(item.input));
       })
       .flatMap((item) => ((item.tipo ?? 'transacao') === 'parcela' ? otimistasDaParcela(item) : [otimistaDoItem(item)]))
       .filter((t) => (!inicio || t.occurred_on >= inicio) && (!fim || t.occurred_on <= fim));

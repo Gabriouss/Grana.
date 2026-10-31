@@ -362,14 +362,15 @@ async function main() {
    o que está no disco, como depois de o Android matar o app. */
 async function retomadaSemDuplicar() {
   const DONO = 'dono-r';
-  const estado = { rede: true, falhas: new Set() };
+  const estado = { rede: true, falhas: new Set(), pular: new Map(), rpcs: [] };
   const disco = new Map();
   const banco = [];
   const parceladas = [];
   const AsyncStorage = {
     getItem: async (k) => (disco.has(k) ? disco.get(k) : null),
     setItem: async (k, v) => {
-      if (estado.falhas.has(k)) throw new Error('disco');
+      if (estado.pular.get(k) > 0) estado.pular.set(k, estado.pular.get(k) - 1);
+      else if (estado.falhas.has(k)) throw new Error('disco');
       disco.set(k, v);
     },
     removeItem: async (k) => { disco.delete(k); },
@@ -395,6 +396,7 @@ async function retomadaSemDuplicar() {
   const supabase = {
     from: () => consulta(),
     rpc: async (_nome, args) => {
+      estado.rpcs.push(_nome);
       if (!estado.rede) return semRede();
       if (!parceladas.includes(args.p_client_request_id)) parceladas.push(args.p_client_request_id);
       return { data: [], error: null };
@@ -434,7 +436,7 @@ async function retomadaSemDuplicar() {
       return exports;
     }
     const em = (f) => carregar(path.join(root, f));
-    return { gravar: em('lib/avisos-banco/gravar.ts'), caixa: em('lib/avisos-banco/caixa.ts'), oferta: em('lib/offline-cache.ts') };
+    return { gravar: em('lib/avisos-banco/gravar.ts'), caixa: em('lib/avisos-banco/caixa.ts'), oferta: em('lib/offline-cache.ts'), pendentes: em('lib/fila-pendente.ts') };
   }
 
   const CAIXA = `grana_avisos_caixa:${DONO}`;
@@ -445,7 +447,7 @@ async function retomadaSemDuplicar() {
   const simples = { ...base, amount: 40, payment_method: 'debit' };
   const parcelada = { ...base, amount: 300, payment_method: 'credit', card_id: 'c1', bank: 'nubank', installments: 3 };
   const preparar = () => {
-    disco.clear(); banco.length = 0; parceladas.length = 0; estado.falhas.clear(); estado.rede = true;
+    disco.clear(); banco.length = 0; parceladas.length = 0; estado.falhas.clear(); estado.pular.clear(); estado.rpcs.length = 0; estado.rede = true;
     disco.set(CAIXA, JSON.stringify({ itens: [item], vistos: {} }));
   };
   const fila = () => JSON.parse(disco.get(FILA) ?? '[]');
@@ -523,6 +525,45 @@ async function retomadaSemDuplicar() {
     assert.equal(fila().length, 0);
     assert.equal(await soma(p), 0);
     ok(`${nome} com rede e disco ruim: a memória do processo evita a cópia`);
+
+    /* A4 residual: gravou, nem marca nem retirada couberam no disco, o app morreu, e a
+       leitura normal já trouxe a linha real para o cache. Retomar sem rede não soma. */
+    const chave = 'aaaaaaaa-aaaa-5aaa-8aaa-aaaaaaaaaaaa';
+    const linhasReais = (nome === 'simples' ? [40] : [100, 100, 100]).map((amount, i) => ({
+      id: `real-${i}`, user_id: DONO, type: 'out', amount, occurred_on: '2026-10-20',
+      client_request_id: i === 0 ? chave : null,
+    }));
+    preparar();
+    p = novoProcesso();
+    estado.falhas.add(CAIXA);
+    estado.falhas.add(MARCAS);
+    await assert.rejects(p.gravar.gravarItem(DONO, item, entrada));
+    estado.falhas.clear();
+    p = novoProcesso();
+    await p.oferta.setCachedTransactions(linhasReais);
+    estado.rede = false;
+    assert.equal((await p.gravar.gravarItem(DONO, item, entrada)).guardado, false, `${nome}: já estava gravado`);
+    assert.equal(fila().length, 0, `${nome}: nada na fila`);
+    assert.ok(Math.abs(await soma(p) - total) < 0.001, `${nome}: o cache soma a compra uma vez`);
+    assert.equal(naCaixa(), 0);
+    ok(`${nome}: morreu sem marca e voltou sem rede, com a linha real no cache: nada de cópia`);
+
+    /* O mesmo, com a linha real ainda fora do cache: entra na fila, e a soma segue certa.
+       Quando a leitura trouxer a linha real, o pendente da mesma chave não aparece junto. */
+    preparar();
+    p = novoProcesso();
+    estado.falhas.add(CAIXA);
+    estado.falhas.add(MARCAS);
+    await assert.rejects(p.gravar.gravarItem(DONO, item, entrada));
+    estado.falhas.clear();
+    p = novoProcesso();
+    estado.rede = false;
+    assert.equal((await p.gravar.gravarItem(DONO, item, entrada)).guardado, true);
+    assert.equal(fila().length, 1);
+    assert.ok(Math.abs(await soma(p) - total) < 0.001);
+    const juntos = await p.pendentes.juntarPendentes(linhasReais);
+    assert.ok(Math.abs(juntos.reduce((t, l) => t + l.amount, 0) - total) < 0.001, `${nome}: real e pendente não somam`);
+    ok(`${nome}: morreu sem marca e sem a linha no cache: conta uma vez antes e depois da leitura`);
   }
 
   /* Sem a chave da origem, tudo segue como sempre: duas chamadas, dois lançamentos */
@@ -533,6 +574,68 @@ async function retomadaSemDuplicar() {
   await p.oferta.salvarOuGuardarNoAparelho(simples);
   assert.equal(fila().length, 2);
   ok('sem a chave da origem, cada salvar continua sendo um lançamento');
+  const semChaveNaLista = [{ id: 'outra', user_id: DONO, type: 'out', amount: 40, occurred_on: '2026-10-20' }];
+  assert.equal((await p.pendentes.juntarPendentes(semChaveNaLista)).length, 3);
+  ok('linha com o mesmo valor e sem a chave não esconde pendente nenhum');
+
+  /* A6 com módulos e fila reais: uma chamada de pagamento, zero saída avulsa */
+  const contaPaga = { id: 'conta-a6' };
+  const boletoItem = { ...item, forma: 'boleto' };
+  const pagamentos = () => estado.rpcs.filter((n) => n === 'pagar_conta').length;
+  const nomeDoErro = (nome) => (e) => e.name === nome;
+
+  preparar();
+  let a6 = novoProcesso();
+  estado.pular.set(CAIXA, 1);
+  estado.falhas.add(CAIXA);
+  await assert.rejects(a6.gravar.pagarContaDoItem(DONO, boletoItem, contaPaga), nomeDoErro('LimpezaPendente'));
+  estado.falhas.clear();
+  assert.equal(pagamentos(), 1);
+  assert.deepEqual([...await a6.gravar.itensJaGravados(DONO)], [boletoItem.id]);
+  const retomada = await a6.gravar.gravarItem(DONO, boletoItem, simples);
+  assert.equal(retomada.jaEstava, true);
+  assert.equal(banco.length, 0);
+  assert.equal(fila().length, 0);
+  assert.equal(naCaixa(), 0);
+  ok('A6: pagou, a retirada falhou, e lançar saída depois não grava nada');
+
+  /* Nem a marca coube, e o app morreu: quem segura é o "pagamento iniciado" na caixa */
+  preparar();
+  a6 = novoProcesso();
+  estado.pular.set(CAIXA, 1);
+  estado.falhas.add(CAIXA);
+  estado.falhas.add(MARCAS);
+  await assert.rejects(a6.gravar.pagarContaDoItem(DONO, boletoItem, contaPaga), nomeDoErro('LimpezaPendente'));
+  estado.falhas.clear();
+  a6 = novoProcesso();
+  await assert.rejects(a6.gravar.gravarItem(DONO, boletoItem, simples), nomeDoErro('ContaJaEmPagamento'));
+  await assert.rejects(a6.gravar.pagarContaDoItem(DONO, boletoItem, contaPaga), nomeDoErro('ContaJaEmPagamento'));
+  assert.equal(pagamentos(), 1);
+  assert.equal(banco.length, 0);
+  assert.equal(fila().length, 0);
+  assert.equal(naCaixa(), 1);
+  ok('A6: depois de morrer sem marca, nem saída avulsa nem segundo pagamento');
+
+  /* Pagar sem resposta: pode ter chegado. Não repete sozinho */
+  preparar();
+  a6 = novoProcesso();
+  estado.rede = false;
+  await assert.rejects(a6.gravar.pagarContaDoItem(DONO, boletoItem, contaPaga), nomeDoErro('PagamentoIncerto'));
+  estado.rede = true;
+  await assert.rejects(a6.gravar.pagarContaDoItem(DONO, boletoItem, contaPaga), nomeDoErro('ContaJaEmPagamento'));
+  await assert.rejects(a6.gravar.gravarItem(DONO, boletoItem, simples), nomeDoErro('ContaJaEmPagamento'));
+  assert.equal(pagamentos(), 1);
+  assert.equal(banco.length, 0);
+  ok('A6: pagamento sem resposta não repete nem vira saída');
+
+  /* Sucesso normal do boleto não deixa rastro */
+  preparar();
+  a6 = novoProcesso();
+  await a6.gravar.pagarContaDoItem(DONO, boletoItem, contaPaga);
+  assert.equal(pagamentos(), 1);
+  assert.equal(naCaixa(), 0);
+  assert.equal(disco.get(MARCAS), '{}');
+  ok('boleto sem falha: um pagamento, item fora da lista e sem marca sobrando');
 
   /* Sair da conta leva as marcas junto */
   disco.set(MARCAS, '{"x":true}');

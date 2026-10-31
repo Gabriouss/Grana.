@@ -55,6 +55,11 @@ export function removerItemDaCaixa(dono: string, id: string): Promise<void> {
   });
 }
 
+/** Lê do disco, não da lista em tela. Caixa ilegível rejeita, antes de qualquer dinheiro. */
+export function contaEmPagamentoDoItem(dono: string, id: string): Promise<string | undefined> {
+  return naVez(async () => (await ler(dono)).itens.find((i) => i.id === id)?.contaEmPagamento);
+}
+
 export function marcarContaEmPagamento(dono: string, id: string, contaId: string): Promise<void> {
   return naVez(async () => {
     const estado = await ler(dono);
@@ -80,6 +85,10 @@ async function lerMarcas(dono: string): Promise<Record<string, boolean>> {
 /** Foi para a fila (`true`), foi gravado (`false`) ou ainda não saiu (`undefined`). */
 export function marcaDeGravado(dono: string, id: string): Promise<boolean | undefined> {
   return naVez(async () => (await lerMarcas(dono))[id]);
+}
+
+export function todasAsMarcasDeGravado(dono: string): Promise<Record<string, boolean>> {
+  return naVez(() => lerMarcas(dono));
 }
 
 export function marcarComoGravado(dono: string, id: string, guardado: boolean): Promise<void> {

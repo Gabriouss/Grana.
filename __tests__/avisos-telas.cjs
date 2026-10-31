@@ -31,6 +31,8 @@ const react = {
 const jsx = (type, props) => ({ type, props: props || {} });
 const TransactionSheet = function TransactionSheet() {};
 let diario = [], erroDiario = false, erroGravacao = false, erroAjustes = false;
+/* Falha só a escrita da caixa escolhida: pula as primeiras e recusa as seguintes. */
+let falhaCaixa = { pular: 0, vezes: 0 };
 let chamadas = [], alertas = [], copiado = '', dadosLocais = {}, historico = [];
 const disco = new Map();
 const nativo = {
@@ -56,7 +58,13 @@ const stub = {
   'react-native': { View: 'View', Text: 'Text', TextInput: 'TextInput', Pressable: 'Pressable', ScrollView: 'ScrollView', ActivityIndicator: 'ActivityIndicator',
     StyleSheet: { create: (s) => s }, AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
   '@react-native-async-storage/async-storage': { getItem: async (k) => disco.get(k) ?? null,
-    setItem: async (k, v) => { disco.set(k, v); }, removeItem: async (k) => { disco.delete(k); } },
+    setItem: async (k, v) => {
+      if (k.startsWith('grana_avisos_caixa:')) {
+        if (falhaCaixa.pular > 0) falhaCaixa.pular--;
+        else if (falhaCaixa.vezes > 0) { falhaCaixa.vezes--; throw new Error('disco'); }
+      }
+      disco.set(k, v);
+    }, removeItem: async (k) => { disco.delete(k); } },
   '@/modules/grana-avisos': nativo,
   '@/lib/cache-de-tela': { lerTela: async (chave) => chave in dadosLocais ? { dados: dadosLocais[chave] } : null },
   '@/lib/data': Object.fromEntries(['seedDefaultCategories', 'fetchCategories', 'addCategory', 'updateCategory', 'deleteCategory']
@@ -91,7 +99,7 @@ function carregar(relativo) {
   assert.equal((resultado.diagnostics || []).filter((d) => d.category === ts.DiagnosticCategory.Error).length, 0, relativo);
   const exports = {};
   cache.set(arquivo, exports);
-  vm.runInNewContext(resultado.outputText, { exports, console: { error() {} },
+  vm.runInNewContext(resultado.outputText, { exports, console: { error() {}, warn() {} },
     setInterval: () => 1, clearInterval() {}, setTimeout, clearTimeout,
     require(id) {
       if ((arquivo.endsWith('AvisosAConferir.tsx') || arquivo.endsWith('AvisosBancoSecao.tsx')) && id === '@/lib/data') {
@@ -134,6 +142,8 @@ function botao(ctx, rotulo) {
   const e = elementos(ctx.tree).find((n) => n.props.onPress && texto(n) === rotulo);
   assert.ok(e, `Botão ${rotulo} visível`); return e.props.onPress;
 }
+/* Botao guarda o texto em `rotulo`, então `texto()` não o enxerga. */
+const rotulos = (no) => elementos(no).map((n) => n.props.rotulo).filter(Boolean);
 const carteira = { id: 'w', is_default: true, name: 'Principal' };
 let sequencia = 0;
 const aviso = (texto, titulo = 'Compra aprovada') => ({ id: (++sequencia).toString(16).padEnd(64, '0'),
@@ -142,7 +152,7 @@ const telas = carregar('components/AvisosAConferir.tsx');
 const perfil = carregar('components/AvisosBancoSecao.tsx');
 const caixa = carregar('lib/avisos-banco/caixa.ts');
 async function lista(avisoTeste, opcoes = {}) {
-  disco.clear(); chamadas = []; alertas = []; erroGravacao = false; erroDiario = false;
+  disco.clear(); chamadas = []; alertas = []; erroGravacao = false; erroDiario = false; falhaCaixa = { pular: 0, vezes: 0 };
   diario = Array.isArray(avisoTeste) ? avisoTeste : [avisoTeste]; historico = opcoes.historico ?? [];
   dadosLocais = { carteiras: [carteira], cartoes: [{ id: 'c', last_digits: '1234', wallet_id: 'w', bank: 'nubank' }],
     categorias: [], 'apelidos-categoria': [{ chave: 'mercado modelo', valor: 'Alimentação' }],
@@ -226,6 +236,85 @@ async function main() {
   assert.equal(chamadas.filter((c) => c[0] === 'pagar').length, 1);
   assert.equal(chamadas.filter((c) => c[0] === 'gravar').length, 0);
   ok('boleto casado pede revisão e confirmação paga a conta sem segunda saída');
+
+  /* A6: pagou a conta e só a retirada da lista falhou. Nunca vira também saída avulsa. */
+  ({ ctx, card } = await lista(aviso('Boleto pago no valor de R$ 150,00', 'Pagamento confirmado'), {
+    contas: [{ id: 'conta', amount: 150, description: 'Conta Modelo', status: 'due' }],
+  }));
+  card().props.aoConfirmar(); await ctx.settle();
+  const opcoesBoleto = alertas.at(-1)[2];
+  falhaCaixa = { pular: 1, vezes: 1 };
+  opcoesBoleto.find((b) => b.text === 'Sim, marcar como paga').onPress(); await ctx.settle();
+  assert.equal(chamadas.filter((c) => c[0] === 'pagar').length, 1);
+  assert.equal(alertas.at(-1)[0], 'Conta marcada como paga', 'recibo diz o que aconteceu');
+  assert.equal(card().props.jaSalvo, true);
+  assert.equal(chamadas.filter((c) => c[0] === 'alterados').length, 1, 'as telas ficam sabendo do pagamento');
+  assert.deepEqual(rotulos(telas.CartaoDoAviso(card().props)), ['Tirar da lista']);
+  /* A janela antiga do alerta ainda oferece as duas saídas: nenhuma mexe no dinheiro de novo */
+  opcoesBoleto.find((b) => b.text === 'Sim, marcar como paga').onPress(); await ctx.settle();
+  assert.equal(chamadas.filter((c) => c[0] === 'pagar').length, 1, 'não paga duas vezes');
+  ({ ctx, card } = await lista(aviso('Boleto pago no valor de R$ 151,00', 'Pagamento confirmado'), {
+    contas: [{ id: 'conta', amount: 151, description: 'Conta Modelo', status: 'due' }],
+  }));
+  card().props.aoConfirmar(); await ctx.settle();
+  const opcoesAntigas = alertas.at(-1)[2];
+  falhaCaixa = { pular: 1, vezes: 1 };
+  opcoesAntigas.find((b) => b.text === 'Sim, marcar como paga').onPress(); await ctx.settle();
+  opcoesAntigas.find((b) => b.text === 'Não, lançar saída').onPress(); await ctx.settle();
+  const sheetBoleto = elementos(ctx.tree).find((e) => e.type === TransactionSheet);
+  await sheetBoleto.props.onSalvar({ ...sheetBoleto.props.inicial, category: 'Casa', color: '#123456' }); await ctx.settle();
+  assert.deepEqual(chamadas.filter((c) => ['gravar', 'pagar'].includes(c[0])).map((c) => c[0]), ['pagar'], 'só o pagamento');
+  assert.equal((await caixa.listarCaixa('dono')).length, 0);
+  ok('A6: conta paga com falha na retirada não vira saída avulsa, e o recibo diz que pagou');
+
+  /* A6: o pagamento falhou sem resposta. Pode ter chegado, então nada de oferecer outra saída */
+  ({ ctx, card } = await lista(aviso('Boleto pago no valor de R$ 152,00', 'Pagamento confirmado'), {
+    contas: [{ id: 'conta', amount: 152, description: 'Conta Modelo', status: 'due' }],
+  }));
+  card().props.aoConfirmar(); await ctx.settle();
+  const pagarAntes = stub['../data'].payBill;
+  stub['../data'].payBill = async () => { chamadas.push(['pagar']); throw new Error('sem resposta'); };
+  alertas.at(-1)[2].find((b) => b.text === 'Sim, marcar como paga').onPress(); await ctx.settle();
+  stub['../data'].payBill = pagarAntes;
+  assert.equal(alertas.at(-1)[0], 'Não consegui confirmar o pagamento');
+  card().props.aoConfirmar(); await ctx.settle();
+  assert.equal(alertas.at(-1)[0], 'Pagamento já iniciado', 'a lista recarregou e sabe do pagamento');
+  ok('A6: pagamento incerto dá recibo próprio e a lista passa a saber dele');
+
+  /* A7: gravou e só a retirada falhou. O recibo não diz que falhou, e não há edição que se perca. */
+  ({ ctx, card } = await lista(aviso('Compra no crédito de R$ 89,90 em Mercado Modelo final 1234')));
+  falhaCaixa = { pular: 0, vezes: 1 };
+  card().props.aoConfirmar(); await ctx.settle();
+  assert.equal(chamadas.filter((c) => c[0] === 'gravar').length, 1);
+  assert.equal(alertas.at(-1)[0], 'Lançamento salvo');
+  assert.equal(chamadas.filter((c) => c[0] === 'alterados').length, 1);
+  assert.equal(card().props.jaSalvo, true);
+  assert.match(texto(telas.CartaoDoAviso(card().props)), /Já salvo/);
+  assert.deepEqual(rotulos(telas.CartaoDoAviso(card().props)), ['Tirar da lista']);
+  assert.deepEqual(rotulos(telas.CartaoDoAviso({ ...card().props, jaSalvo: false })), ['Descartar', 'Editar', 'Confirmar'], 'controle: sem a marca, as três ações');
+  elementos(telas.CartaoDoAviso(card().props)).find((n) => n.props.rotulo === 'Tirar da lista').props.onPress();
+  await ctx.settle();
+  assert.equal((await caixa.listarCaixa('dono')).length, 0);
+  assert.equal(chamadas.filter((c) => c[0] === 'gravar').length, 1);
+  assert.equal(disco.get('grana_avisos_gravados:dono'), '{}', 'a marca sai junto');
+  ok('A7: recibo certo, sem Confirmar nem Editar, e Tirar da lista não grava de novo');
+
+  /* A7: a mesma falha com a revisão aberta. Ela fecha, e a revisão antiga não finge que corrigiu. */
+  ({ ctx, card } = await lista(aviso('Compra no débito de R$ 22,00 em Loja Exemplo')));
+  card().props.aoConfirmar(); await ctx.settle();
+  const revisaoAberta = elementos(ctx.tree).find((e) => e.type === TransactionSheet);
+  const valoresRevisao = { ...revisaoAberta.props.inicial, category: 'Alimentação', color: '#123456' };
+  falhaCaixa = { pular: 0, vezes: 1 };
+  await revisaoAberta.props.onSalvar(valoresRevisao); await ctx.settle();
+  assert.equal(alertas.at(-1)[0], 'Lançamento salvo');
+  assert.ok(!elementos(ctx.tree).some((e) => e.type === TransactionSheet), 'a revisão fecha');
+  await revisaoAberta.props.onSalvar({ ...valoresRevisao, amount: '90,00' }); await ctx.settle();
+  const gravacoes = chamadas.filter((c) => c[0] === 'gravar');
+  assert.equal(gravacoes.length, 1);
+  assert.equal(gravacoes[0][1].amount, 22);
+  assert.match(texto(ctx.tree), /já estava salvo/);
+  assert.doesNotMatch(texto(ctx.tree), /Lançamento salvo/);
+  ok('A7: revisão antiga não grava e o recibo manda corrigir nos lançamentos');
 
   ({ ctx, card } = await lista([
     aviso('Compra no crédito de R$ 89,90 em Mercado Modelo final 1234'),
