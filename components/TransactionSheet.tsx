@@ -190,6 +190,7 @@ export default function TransactionSheet({
   function escolherData(iso: string) {
     setOccurredOn(iso);
     setDataEscolhida(true);
+    if (formError) setFormError(null);
   }
 
   function salvar() {
@@ -298,6 +299,7 @@ export default function TransactionSheet({
                   style={[styles.bankChip, walletId === wallet.id && { borderColor: wallet.color, backgroundColor: theme.paperSelected }]}
                   onPress={() => {
                     setWalletId(wallet.id);
+                    if (formError) setFormError(null);
                     if (ehCredito && cardId && !cartoes.some((card) => card.id === cardId && card.wallet_id === wallet.id)) setCardId(null);
                   }}
                   accessibilityRole="radio"
@@ -344,7 +346,7 @@ export default function TransactionSheet({
                   <AppPressable
                     key={c.id}
                     style={[styles.bankChip, cardId === c.id && { borderColor: c.color, backgroundColor: theme.paperSelected }]}
-                    onPress={() => setCardId(c.id)}
+                    onPress={() => { setCardId(c.id); if (formError) setFormError(null); }}
                     accessibilityRole="radio"
                     accessibilityState={{ selected: cardId === c.id }}
                     accessibilityLabel={`Cartão ${c.name}`}
@@ -525,6 +527,7 @@ export default function TransactionSheet({
         onSelectCategory={({ name, color }) => {
           setCategory(name);
           setCatColor(color);
+          if (formError) setFormError(null);
         }}
         onClose={() => setCatPickerOpen(false)}
       />
