@@ -91,6 +91,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — Colar
+
+O Colar recebeu limite de 180 dias para data sem ano no commit `1b4302a1`. Referências aos hashes foram atualizadas antes da publicação.
+
 ## 31/10 — QA funcional Vigil
 
 Vigil relata que o aplicativo abriu e navegou no emulador sem travamento observado ou registro de crash. O acesso ao serviço foi concedido, mas notificações de SMS de teste não chegaram ao diário, embora avisos de serviço do mesmo app tenham chegado; causa não identificada. Não se alcançou a etapa de confirmar ou descartar, nem se testaram banco real, modo avião ou reinício do emulador. O resultado não comprova o funcionamento com notificações bancárias reais.
@@ -107,7 +111,7 @@ A ordem 7 atribui ao Watchtower a revisão do delta de Colar e testes de voz, co
 
 ## 31/10 — Anvil: Colar e suítes de voz
 
-Anvil relata correção de datas de prazo interpretadas como pagamento no Colar (`5497979c`) e de dublês nas quatro suítes antes vermelhas (`ead44fb3`); fila em `f3bb3038`. As quatro passaram individualmente, mas `test:ci` integral não rodou. Testes de data, suítes relacionadas e TypeScript passaram segundo o relatório; não houve teste em aparelho, emulador ou comprovante real. Permanecem casos ambíguos de data e descrição e a revisão do Watchtower; sem push informado. O relato anterior de quatro suítes ainda falhando foi superado por esta correção.
+Anvil relata correção de datas de prazo interpretadas como pagamento no Colar (`858d2207`) e de dublês nas quatro suítes antes vermelhas (`c8eff6ae`); fila em `9c29054e`. As quatro passaram individualmente, mas `test:ci` integral não rodou. Testes de data, suítes relacionadas e TypeScript passaram segundo o relatório; não houve teste em aparelho, emulador ou comprovante real. Permanecem casos ambíguos de data e descrição e a revisão do Watchtower; sem push informado. O relato anterior de quatro suítes ainda falhando foi superado por esta correção.
 
 ## 31/10 — relatório Keel: A6, A4 residual e A7
 
