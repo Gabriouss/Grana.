@@ -91,6 +91,8 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
+
 ## 31/10 — publicação dos arquivos e cópia da skill
 
 A pedido de “Commita tudo”, Anvil publicou cinco commits: `08430cb8`, `400401de`, `28d65361`, `b87494d7` e `ff67c97f`; relatou árvore limpa, CI verde e Vercel concluída em `ff67c97f`. A pendência dos caminhos sem commit foi encerrada. O gancho `.codex/hooks.json` usa caminhos da M1 e não foi testado na M2; licenças de terceiros da skill ainda não foram verificadas na origem.
