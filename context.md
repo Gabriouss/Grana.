@@ -93,6 +93,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 31/10 — continuidade do teste real
+
+O autor perguntou sobre identificar automaticamente a forma do gasto. A resposta: depende do conteúdo do aviso ou de correspondência com cartão; continua exigido um toque antes de gravar. Correções de ícone e identificação de débito foram feitas apenas na linha local de teste, sem build nem validação em aparelho. A causa do uso do ícone foi confirmada no código; a aparência observada ainda é dedução. O orquestrador corrigiu sua suspeita anterior de escolha automática de cartão: a análise ampliada e a sonda indicam que houve escolha. Permanece hipótese de classificação incorreta quando um cartão com múltiplas funções é inferido como crédito; o item mostra a forma antes do toque.
+
 ## 31/10 — teste real de avisos
 
 O autor enviou vídeo de teste no celular, examinado por quadros amostrados e sem áudio. Avisos de dois aplicativos geraram itens sem duplicata, e a confirmação abriu revisão e gravou nos dois tipos testados. O autor relatou logotipo incorreto na notificação; causa ainda não confirmada e correção atribuída. Permanecem em análise a sugestão de cartão sem correspondência e o reconhecimento de um aviso de débito. Nenhum dado financeiro ou de terceiros é registrado aqui.
