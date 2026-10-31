@@ -91,6 +91,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — decisão de publicação
+
+O orquestrador determinou manter a main sem publicar até a prova das correções na web local. Vigil 3 não verificou o código atual; Vigil 4 recebeu a nova prova. A revisão Anvil e a CI verde não substituem essa verificação em tela, que também não comprovará o comportamento nativo.
+
 ## 31/10 — revisão Anvil e QA seguinte
 
 Anvil revisou o delta sem achado P1 ou P2 e corrigiu dois P3: proteção do teste de versão (`7f010b94`) e espaço no card (`6029a964`). Relata `test:ci` e TypeScript verdes e varredura sem achados. Não publicou: as correções ainda não tinham sido vistas em tela. Vigil recebeu nova ordem de QA na web local; resultado pendente, sem prova nativa.
