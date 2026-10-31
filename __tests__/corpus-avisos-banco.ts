@@ -107,6 +107,37 @@ ignorado('Compra internacional', 'Compra de R$ 110,00 (USD 20,00) em Loja Modelo
 ignorado('Bom dia', 'Confira as novidades do app', 'sem_valor');
 ignorado('Compra aprovada', 'Veja os detalhes no app', 'sem_valor');
 
+/* A1: toda forma de recusa, em palavras, é recusa */
+for (const fim of ['não foi aprovada', 'não foi autorizada', 'não foi concluída', 'não foi realizada', 'não foi efetuada', 'não pôde ser concluída', 'não foi processada']) {
+  ignorado('Compra no débito', `Compra de R$ 89,90 em Mercado Modelo ${fim}`, 'recusada');
+}
+ignorado('', 'Não foi possível concluir a compra de R$ 89,90', 'recusada');
+ignorado('', 'Compra de R$ 89,90 foi revertida', 'estorno');
+lancamento('', 'Compra aprovada de R$ 89,90 em Mercado Modelo', { direcao: 'out', forma: null, valor: 89.9, descricao: 'Mercado Modelo' });
+
+/* A2: fatura sem compra nunca lança, a qualquer distância e em outra linha */
+tipo('Pagamento realizado', 'Seu pagamento de R$ 500,00 referente ao fechamento da sua fatura foi realizado', 'fatura_paga');
+tipo('Pagamento confirmado', 'Pagamento de R$ 500,00 referente ao total da fatura do cartão', 'fatura_paga');
+tipo('Pagamento confirmado', 'Pagamento de R$ 500,00\nreferente à sua\nfatura do cartão de crédito deste mês de outubro', 'fatura_paga');
+ignorado('', 'R$ 500,00 da fatura foram compensados', 'fatura');
+lancamento('', 'Compra de R$ 50,00 no cartão final 1234 lançada na fatura', { direcao: 'out', forma: null, valor: 50, digitos: '1234' });
+/* Compra e pagamento de fatura no mesmo texto, sem dar para separar: nunca lança direto */
+tipo('Pagamento da fatura', 'Pagamento de R$ 500,00 referente às compras do mês fechadas no total da sua fatura atual', 'fatura_paga');
+tipo('', 'Compra de R$ 40,00 em Loja Modelo. Registramos o pagamento automático de uma conta e a sua fatura segue aberta', 'nao_entendi');
+
+/* A3: valor da parcela nunca vira total */
+lancamento('Compra aprovada', 'Compra parcelada em 3 vezes de R$ 100,00 em Loja Modelo', { direcao: 'out', forma: 'credit', valor: 300, parcelas: 3 });
+lancamento('Compra aprovada', 'Compra em 3 parcelas de R$ 100,00 em Loja Modelo', { direcao: 'out', forma: 'credit', valor: 300, parcelas: 3 });
+lancamento('Compra aprovada', 'Compra em 3 parcelas iguais de R$ 100,00 em Loja Modelo', { direcao: 'out', forma: 'credit', valor: 300, parcelas: 3, descricao: 'Loja Modelo' });
+lancamento('Compra aprovada', 'Compra parcelada em 3x de R$ 100,00', { direcao: 'out', forma: 'credit', valor: 300, parcelas: 3 });
+lancamento('Compra aprovada', 'Compra de R$ 300,00 em 3 vezes em Loja Modelo', { direcao: 'out', forma: 'credit', valor: 300, parcelas: 3, descricao: 'Loja Modelo' });
+lancamento('Compra aprovada', 'Compra de R$ 300,00 em 3 parcelas de R$ 100,00 em Loja Modelo', { direcao: 'out', forma: 'credit', valor: 300, parcelas: 3, descricao: 'Loja Modelo' });
+lancamento('Compra aprovada', 'Compra em 3 parcelas de R$ 100,00 no total de R$ 300,00', { direcao: 'out', forma: 'credit', valor: 300, parcelas: 3, descricao: null });
+/* Sem como saber o total: "Não entendi", nunca palpite */
+tipo('Compra aprovada', 'Compra de R$ 300,00 em 3 parcelas de R$ 110,00 em Loja Modelo', 'nao_entendi');
+tipo('Compra aprovada', 'Compra parcelada em 3 no valor de R$ 100,00', 'nao_entendi');
+tipo('Compra aprovada', 'Compra parcelada de R$ 300,00 em Loja Modelo', 'nao_entendi');
+
 /* Com R$ e sem verbo colado: vai para a pessoa, nunca vira lançamento */
 tipo('Atenção', 'Você tem R$ 50,00 esperando por você', 'nao_entendi');
 tipo('Compra', 'Veja o app. Seu resumo tem R$ 50,00', 'nao_entendi');

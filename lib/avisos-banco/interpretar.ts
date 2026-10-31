@@ -45,8 +45,8 @@ const VALOR = /r\$\s?(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{2}))?(?![\d,])/g;
 const FOLGA_MAXIMA = 50;
 
 const NEGATIVOS: [RegExp, MotivoIgnorado][] = [
-  [/\b(?:recusad|negad|nao autorizad|nao aprovad|nao concluid|nao realizad|nao efetuad|falhou|bloquead|cancelad)/, 'recusada'],
-  [/\b(?:estorn|reembols|devoluc|devolvid)/, 'estorno'],
+  [/\b(?:recusad|negad|nao\s+(?:foi\s+|pode\s+ser\s+)?(?:autorizad|aprovad|concluid|realizad|efetuad|processad|finalizad)|nao foi possivel|nao conseguimos|falhou|bloquead|cancelad)/, 'recusada'],
+  [/\b(?:estorn|reembols|devoluc|devolvid|revertid|revers[ao])/, 'estorno'],
   [/\b(?:agendad|agendament|programad)/, 'agendado'],
   [/\blimite\b/, 'limite'],
   [/\b(?:oferta|promoc|aproveite|ganhe|cashback|desconto|pre-?aprovad|emprestimo|consignado|cupom|convite|indique|sorteio)/, 'oferta'],
@@ -55,7 +55,12 @@ const NEGATIVOS: [RegExp, MotivoIgnorado][] = [
   [/\b(?:resgat|rendeu|rendimento|dividendo)/, 'resgate'],
 ];
 
-const FATURA_PAGA = /(?:pagamento|pagou|pago|paga|quit\w*)\b.{0,30}\bfatura\b|\bfatura\b.{0,30}\b(?:pagamento|paga|pago|quitad\w*)\b/;
+/* Sem janela de distância: banco escreve "pagamento de R$ 500,00 referente ao
+   fechamento da sua fatura", com o rótulo longe e até em outra linha. */
+const MENCAO_A_FATURA = /\bfatura\b/;
+const PAGOU = /\b(?:pagamento|pagou|pago|paga|quit\w*)\b/;
+/* "pagamento de" fica de fora de propósito: com fatura no texto, ele não é compra. */
+const COMPRA_DE_VERDADE = /\bcompras?\b|\bcomprou\b|\bgastou\b/;
 
 const BOLETO = /\bboleto\b.{0,30}\b(?:pago|paga|pagamento|quitado)\b|\b(?:pagou|pagamento|paguei|pago)\b.{0,30}\bboleto\b/;
 const ENTRADA = /\b(?:pix|transferencia|ted|doc)\s+recebid[oa]\b|\brecebeu\b|\brecebemos\b/;
@@ -118,7 +123,9 @@ function digitosDe(base: string): string | null {
 
 const CORTE_DA_CONTRAPARTE = /\s+(?:com|no|na|pelo|pela|usando|utilizando|para)\s+(?:o\s+|a\s+|seu\s+|sua\s+)*(?:cart|final\b|conta\b)|\s+final\b|\s+em\s+\d|\s+as\s+\d|\s+às\s+\d|[.!;\n]|,\s|\s+-\s/;
 const INICIO_DEPOIS = /^[\s,:-]*(?:(?:foi\s+)?(?:aprovad[ao]s?|realizad[ao]s?|efetuad[ao]s?|autorizad[ao]s?|confirmad[ao]s?|recebid[ao]s?|enviad[ao]s?)\s+)?(?:em|no|na|nos|nas|para|pra|de|do|da)\s+/;
-const NAO_E_NOME = /^(?:cart|credito|debito|valor|sua|seu|conta|pix\b)/;
+const NAO_E_NOME = /^(?:cart|credito|debito|valor|total|sua|seu|conta|pix\b)/;
+/* A parte do parcelamento sai antes de procurar a loja, com as posições intactas. */
+const TRECHO_DE_PARCELAS = /\b(?:em\s+)?\d{1,2}\s*(?:x|vezes|parcelas?)\b(?:\s+iguais)?(?:\s+de\s+r\$\s?[\d.,]*\d)?/g;
 
 function contraparteDe(original: string, base: string, valor: ValorAchado): string | null {
   const depois = base.slice(valor.fim);
@@ -147,14 +154,29 @@ function contraparteDe(original: string, base: string, valor: ValorAchado): stri
     : nome;
 }
 
-/** `3x de R$ 100,00` e `R$ 300,00 em 3x` dão o mesmo total. */
-function parcelamentoDe(base: string, valor: ValorAchado): { parcelas: number; total: number } | null {
+/**
+ * `3x de R$ 100,00`, `3 vezes de R$ 100,00` e `R$ 300,00 em 3x` dão o mesmo
+ * total. Sem como saber o total, responde 'incerto' e vira "Não entendi": o valor
+ * da parcela gravado como total divide a compra por três sem ninguém notar.
+ */
+function parcelamentoDe(base: string, valores: ValorAchado[], valor: ValorAchado): { parcelas: number; total: number } | 'incerto' | null {
   if (!/\bparcel|\d\s*x\b|\bvezes\b/.test(base)) return null;
   const parcelas = parseParcelas(base);
-  if (!parcelas) return null;
-  const antes = base.slice(0, valor.inicio);
-  const porParcela = new RegExp(`\\b${parcelas}\\s*x\\s*(?:de\\s*)?$`).test(antes);
-  return { parcelas, total: porParcela ? Math.round(valor.valor * parcelas * 100) / 100 : valor.valor };
+  if (!parcelas) return 'incerto';
+
+  const distintos = [...new Set(valores.map((v) => v.valor))].sort((a, b) => a - b);
+  if (distintos.length > 2) return 'incerto';
+  if (distintos.length === 2) {
+    const [parcela, total] = distintos;
+    return Math.abs(parcela * parcelas - total) <= 0.01 * parcelas ? { parcelas, total } : 'incerto';
+  }
+
+  const porParcela = new RegExp(`\\b${parcelas}\\s*(?:x|vezes|parcelas?)(?:\\s+iguais)?\\s*(?:de\\s*|no\\s+valor\\s+de\\s*)?$`);
+  if (porParcela.test(base.slice(0, valor.inicio))) {
+    return { parcelas, total: Math.round(valor.valor * parcelas * 100) / 100 };
+  }
+  const parcelasDepoisDoValor = /\b\S+\s+(?:vezes|parcelas?)\b|\b\d{1,2}\s*x\b|\bparcel\w*\s+em\s+\S+/;
+  return parcelasDepoisDoValor.test(base.slice(valor.fim)) ? { parcelas, total: valor.valor } : 'incerto';
 }
 
 export function interpretarAviso(aviso: AvisoParaInterpretar): AvisoEntendido {
@@ -177,10 +199,19 @@ export function interpretarAviso(aviso: AvisoParaInterpretar): AvisoEntendido {
     return { tipo: 'ignorar', motivo: base === completo ? 'saldo' : 'limite' };
   }
 
-  if (FATURA_PAGA.test(semSaldo)) return { tipo: 'fatura_paga', data };
+  /* Com fatura no texto, só compra, comprou ou gastou podem virar lançamento, e
+     nunca junto de um pagamento, porque aí não dá para separar os dois. */
+  if (MENCAO_A_FATURA.test(semSaldo)) {
+    const pagou = semSaldo.search(PAGOU);
+    const comprou = semSaldo.search(COMPRA_DE_VERDADE);
+    if (comprou < 0) {
+      if (pagou >= 0) return { tipo: 'fatura_paga', data };
+      return { tipo: 'ignorar', motivo: 'fatura' };
+    }
+    if (pagou >= 0) return pagou < comprou ? { tipo: 'fatura_paga', data } : { tipo: 'nao_entendi', data };
+  }
 
   const ehCompra = COMPRA.test(semSaldo);
-  if (/\bfatura\b/.test(semSaldo) && !ehCompra) return { tipo: 'ignorar', motivo: 'fatura' };
 
   for (const [padrao, motivo] of NEGATIVOS) {
     if (padrao.test(semSaldo)) return { tipo: 'ignorar', motivo };
@@ -206,14 +237,15 @@ export function interpretarAviso(aviso: AvisoParaInterpretar): AvisoEntendido {
     else if (/\bdebito\b|\bdebitad[oa]\b/.test(semSaldo)) forma = 'debit';
   }
 
-  const parcelamento = achado ? parcelamentoDe(semSaldo, achado) : null;
+  const parcelamento = achado ? parcelamentoDe(semSaldo, valores, achado) : null;
+  if (parcelamento === 'incerto') return { tipo: 'nao_entendi', data };
   if (parcelamento) forma = 'credit';
 
   /* Dois valores sem ser parcelamento: não dá para saber qual é o certo. */
   const distintos = new Set(valores.map((v) => v.valor));
   if (achado && !parcelamento && distintos.size > 1) achado = null;
 
-  let contraparte = achado ? contraparteDe(original, semSaldo, achado) : null;
+  let contraparte = achado ? contraparteDe(original, semSaldo.replace(TRECHO_DE_PARCELAS, apagar), achado) : null;
 
   /* Carteira costuma mandar só "R$ 30,00 com Visa ••1234", com a loja no título. */
   if (!achado && classeDoApp(aviso.pacote) === 'carteira' && distintos.size === 1

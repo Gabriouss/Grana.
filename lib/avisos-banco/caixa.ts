@@ -8,6 +8,7 @@ import { aplicarAvisos, CAIXA_VAZIA, type EstadoDaCaixa, type ItemAConferir } fr
  * Nada aqui grava dinheiro (trava T4). Quem grava é `gravar.ts`, depois do toque.
  */
 const chaveDoDono = (dono: string) => `grana_avisos_caixa:${dono}`;
+const chaveDasMarcas = (dono: string) => `grana_avisos_gravados:${dono}`;
 
 /* Uma mudança de cada vez: toque em Descartar durante a leitura do diário não
    pode ser desfeito pela gravação de quem começou antes. */
@@ -64,6 +65,39 @@ export function marcarContaEmPagamento(dono: string, id: string, contaId: string
   });
 }
 
+/* Marcas de "já gravado, falta só sair da lista", fora da chave da caixa: é
+   justamente a escrita da caixa que pode ter falhado. Guardam o id e se foi para
+   a fila, nada do aviso. Marca ilegível vale como nenhuma: a fila e o banco ainda
+   reconhecem a chave. */
+async function lerMarcas(dono: string): Promise<Record<string, boolean>> {
+  try {
+    return JSON.parse(await AsyncStorage.getItem(chaveDasMarcas(dono)) ?? '{}') as Record<string, boolean>;
+  } catch {
+    return {};
+  }
+}
+
+/** Foi para a fila (`true`), foi gravado (`false`) ou ainda não saiu (`undefined`). */
+export function marcaDeGravado(dono: string, id: string): Promise<boolean | undefined> {
+  return naVez(async () => (await lerMarcas(dono))[id]);
+}
+
+export function marcarComoGravado(dono: string, id: string, guardado: boolean): Promise<void> {
+  return naVez(async () => {
+    await AsyncStorage.setItem(chaveDasMarcas(dono), JSON.stringify({ ...(await lerMarcas(dono)), [id]: guardado }));
+  });
+}
+
+export function esquecerMarcaDeGravado(dono: string, id: string): Promise<void> {
+  return naVez(async () => {
+    const { [id]: _saiu, ...resto } = await lerMarcas(dono);
+    await AsyncStorage.setItem(chaveDasMarcas(dono), JSON.stringify(resto));
+  });
+}
+
 export function limparCaixa(dono: string): Promise<void> {
-  return naVez(() => AsyncStorage.removeItem(chaveDoDono(dono)));
+  return naVez(async () => {
+    await AsyncStorage.removeItem(chaveDoDono(dono));
+    await AsyncStorage.removeItem(chaveDasMarcas(dono));
+  });
 }

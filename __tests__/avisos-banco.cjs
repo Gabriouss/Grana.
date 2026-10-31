@@ -12,6 +12,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const Module = require('node:module');
+const vm = require('node:vm');
 const ts = require('typescript');
 
 const root = path.join(__dirname, '..');
@@ -344,7 +345,200 @@ async function main() {
   assert.match(secao, /Permitir configurações restritas/);
   ok('nenhum texto cita Play Protect ou ADB');
 
+  /* A5: a caixa guarda nome e valor derivados do aviso, então nada de backup do Android */
+  const expo = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8')).expo;
+  assert.equal(expo.android.allowBackup, false);
+  assert.equal(expo.version, '1.10.12');
+  assert.equal(expo.android.package, 'com.gabriouss.grana');
+  ok('app.json sem backup do Android, com a mesma versão e o mesmo pacote');
+
+  await retomadaSemDuplicar();
+
   console.log(`\navisos-banco: ${passou} ok`);
+}
+
+/* A4, com gravar, caixa, offline-cache, fila-pendente e data reais. Só rede, disco
+   e sessão são dublês. `novoProcesso` recarrega os módulos: o que sobrevive é só
+   o que está no disco, como depois de o Android matar o app. */
+async function retomadaSemDuplicar() {
+  const DONO = 'dono-r';
+  const estado = { rede: true, falhas: new Set() };
+  const disco = new Map();
+  const banco = [];
+  const parceladas = [];
+  const AsyncStorage = {
+    getItem: async (k) => (disco.has(k) ? disco.get(k) : null),
+    setItem: async (k, v) => {
+      if (estado.falhas.has(k)) throw new Error('disco');
+      disco.set(k, v);
+    },
+    removeItem: async (k) => { disco.delete(k); },
+    multiRemove: async (ks) => { ks.forEach((k) => disco.delete(k)); },
+    getAllKeys: async () => [...disco.keys()],
+  };
+  const semRede = () => ({ data: null, error: { message: 'TypeError: Network request failed', code: '' } });
+  function consulta() {
+    const q = { filtros: [], linha: null };
+    for (const m of ['select', 'order', 'range', 'setHeader', 'single']) q[m] = () => q;
+    q.eq = (c, v) => { q.filtros.push((t) => t[c] === v); return q; };
+    q.upsert = (linha) => { q.linha = linha; return q; };
+    q.then = (res, rej) => (async () => {
+      if (!estado.rede) return semRede();
+      if (!q.linha) return { data: banco.find((t) => q.filtros.every((f) => f(t))), error: null };
+      if (banco.some((t) => t.client_request_id === q.linha.client_request_id)) return { data: [], error: null };
+      const gravada = { id: `tx-${banco.length + 1}`, ...q.linha };
+      banco.push(gravada);
+      return { data: [gravada], error: null };
+    })().then(res, rej);
+    return q;
+  }
+  const supabase = {
+    from: () => consulta(),
+    rpc: async (_nome, args) => {
+      if (!estado.rede) return semRede();
+      if (!parceladas.includes(args.p_client_request_id)) parceladas.push(args.p_client_request_id);
+      return { data: [], error: null };
+    },
+  };
+  const dubles = {
+    '@react-native-async-storage/async-storage': { __esModule: true, default: AsyncStorage },
+    '@/modules/grana-avisos': { lerDiarioAvisos: async () => ({ itens: [], ilegiveis: 0 }) },
+    './supabase': { supabase },
+    './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => DONO, lerSessaoDoDisco: async () => ({ user: { id: DONO }, access_token: 'AUDIT-local' }) },
+    './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
+    './creditLimitAlert': { checarLimiteCartao: async () => {} },
+    './goals': { createGoal: async (input) => input },
+    './recorrencia': {},
+    './notifications': { getNotifications: () => null },
+  };
+  function novoProcesso() {
+    const cache = new Map();
+    function carregar(arquivo) {
+      if (cache.has(arquivo)) return cache.get(arquivo);
+      const exports = {};
+      cache.set(arquivo, exports);
+      vm.runInNewContext(ts.transpileModule(fs.readFileSync(arquivo, 'utf8'), {
+        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
+      }).outputText, {
+        exports, console: { ...console, error() {}, warn() {} }, JSON, Date, String, Object, Array, Error, TypeError, Promise, RegExp, Number, Math, Set, Map, Intl,
+        Uint8Array, crypto: globalThis.crypto, setTimeout: () => ({ unref() {} }), clearTimeout() {}, __DEV__: false,
+        require: (id) => {
+          if (id in dubles) return dubles[id];
+          if (id.startsWith('.')) {
+            const alvo = path.resolve(path.dirname(arquivo), `${id}.ts`);
+            if (fs.existsSync(alvo)) return carregar(alvo);
+          }
+          throw new Error(`import não simulado em ${path.relative(root, arquivo)}: ${id}`);
+        },
+      }, { filename: arquivo });
+      return exports;
+    }
+    const em = (f) => carregar(path.join(root, f));
+    return { gravar: em('lib/avisos-banco/gravar.ts'), caixa: em('lib/avisos-banco/caixa.ts'), oferta: em('lib/offline-cache.ts') };
+  }
+
+  const CAIXA = `grana_avisos_caixa:${DONO}`;
+  const MARCAS = `grana_avisos_gravados:${DONO}`;
+  const FILA = 'grana:queue:transactions-pendentes';
+  const item = { id: 'a'.repeat(64), avisoIds: ['a'.repeat(64)], pacote: NUBANK, classe: 'banco', quando: AGORA, expiraEm: AGORA + 1e12, tipo: 'lancamento', data: '2026-10-20', direcao: 'out', forma: 'debit', valor: 40 };
+  const base = { type: 'out', description: 'Mercado Modelo', category: 'Alimentação', color: '#000', occurred_on: '2026-10-20', recurring: false, wallet_id: 'w1' };
+  const simples = { ...base, amount: 40, payment_method: 'debit' };
+  const parcelada = { ...base, amount: 300, payment_method: 'credit', card_id: 'c1', bank: 'nubank', installments: 3 };
+  const preparar = () => {
+    disco.clear(); banco.length = 0; parceladas.length = 0; estado.falhas.clear(); estado.rede = true;
+    disco.set(CAIXA, JSON.stringify({ itens: [item], vistos: {} }));
+  };
+  const fila = () => JSON.parse(disco.get(FILA) ?? '[]');
+  const soma = async (p) => ((await p.oferta.getCachedTransactions()) ?? []).reduce((t, l) => t + l.amount, 0);
+  const naCaixa = () => JSON.parse(disco.get(CAIXA)).itens.length;
+
+  for (const [nome, entrada, total] of [['simples', simples, 40], ['parcelada', parcelada, 300]]) {
+    /* O caso do Watchtower: sem rede, vai à fila, e só a remoção da caixa falha */
+    preparar();
+    let p = novoProcesso();
+    estado.rede = false;
+    estado.falhas.add(CAIXA);
+    await assert.rejects(p.gravar.gravarItem(DONO, item, entrada));
+    assert.equal(fila().length, 1);
+    assert.equal(naCaixa(), 1);
+    estado.falhas.clear();
+    assert.equal((await p.gravar.gravarItem(DONO, item, entrada)).guardado, true);
+    assert.equal(fila().length, 1, `${nome}: um só na fila`);
+    assert.ok(Math.abs(await soma(p) - total) < 0.001, `${nome}: soma otimista`);
+    assert.equal(naCaixa(), 0);
+    ok(`${nome} sem rede: retomada no mesmo processo deixa 1 na fila e o valor certo`);
+
+    /* O mesmo, com o app morto entre as duas chamadas */
+    preparar();
+    p = novoProcesso();
+    estado.rede = false;
+    estado.falhas.add(CAIXA);
+    await assert.rejects(p.gravar.gravarItem(DONO, item, entrada));
+    estado.falhas.clear();
+    p = novoProcesso();
+    assert.equal((await p.gravar.gravarItem(DONO, item, entrada)).guardado, true);
+    assert.equal(fila().length, 1);
+    assert.ok(Math.abs(await soma(p) - total) < 0.001);
+    assert.equal(naCaixa(), 0);
+    ok(`${nome} sem rede: retomada depois de o app morrer também`);
+
+    /* Nem a marca coube no disco: quem segura é a própria fila */
+    preparar();
+    p = novoProcesso();
+    estado.rede = false;
+    estado.falhas.add(CAIXA);
+    estado.falhas.add(MARCAS);
+    await assert.rejects(p.gravar.gravarItem(DONO, item, entrada));
+    estado.falhas.clear();
+    p = novoProcesso();
+    await p.gravar.gravarItem(DONO, item, entrada);
+    assert.equal(fila().length, 1);
+    assert.ok(Math.abs(await soma(p) - total) < 0.001);
+    ok(`${nome} sem rede e sem marca: a fila não aceita a mesma chave duas vezes`);
+
+    /* Com rede a gravação funcionou e só a remoção falhou. A rede cai antes da retomada. */
+    preparar();
+    p = novoProcesso();
+    estado.falhas.add(CAIXA);
+    await assert.rejects(p.gravar.gravarItem(DONO, item, entrada));
+    estado.falhas.clear();
+    estado.rede = false;
+    p = novoProcesso();
+    assert.equal((await p.gravar.gravarItem(DONO, item, entrada)).guardado, false);
+    assert.equal(fila().length, 0, `${nome}: nada na fila`);
+    assert.equal(await soma(p), 0, `${nome}: nada otimista em cache`);
+    assert.equal(naCaixa(), 0);
+    assert.equal(disco.get(MARCAS), '{}');
+    ok(`${nome} com rede: gravou, a remoção falhou e a retomada não põe cópia no cache`);
+
+    /* A mesma coisa quando nem a marca coube no disco, no mesmo processo */
+    preparar();
+    p = novoProcesso();
+    estado.falhas.add(CAIXA);
+    estado.falhas.add(MARCAS);
+    await assert.rejects(p.gravar.gravarItem(DONO, item, entrada));
+    estado.falhas.clear();
+    estado.rede = false;
+    await p.gravar.gravarItem(DONO, item, entrada);
+    assert.equal(fila().length, 0);
+    assert.equal(await soma(p), 0);
+    ok(`${nome} com rede e disco ruim: a memória do processo evita a cópia`);
+  }
+
+  /* Sem a chave da origem, tudo segue como sempre: duas chamadas, dois lançamentos */
+  preparar();
+  const p = novoProcesso();
+  estado.rede = false;
+  await p.oferta.salvarOuGuardarNoAparelho(simples);
+  await p.oferta.salvarOuGuardarNoAparelho(simples);
+  assert.equal(fila().length, 2);
+  ok('sem a chave da origem, cada salvar continua sendo um lançamento');
+
+  /* Sair da conta leva as marcas junto */
+  disco.set(MARCAS, '{"x":true}');
+  await p.caixa.limparCaixa(DONO);
+  assert.equal(disco.has(MARCAS), false);
+  ok('limpar a caixa apaga as marcas');
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
