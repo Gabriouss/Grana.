@@ -91,6 +91,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — decisão sobre usuários atuais
+
+O autor determinou que, por enquanto, o trabalho de adaptação à loja não afete quem já usa o aplicativo; mudanças devem ocorrer aos poucos e quando ele decidir. Compass incorporou pesquisa complementar ao plano externo. O adendo para explicitar a decisão nas fases foi atribuído; sua conclusão ainda não está comprovada pelo marcador recebido. Nada do plano foi implementado por essa entrega.
+
 ## 31/10 — resultados Beacon, Forge, Prism e Compass
 
 Beacon relata correção de dublês nas três suítes de voz (`e6cd6ae6`) e diagnóstico filtrado no widget (`03d666dd`), com testes focais e TypeScript verdes. Forge relata distinção entre carregamento e falha no Livre (`d7197384`), sem alterar fórmula; a causa da persistência observada no QA segue não confirmada. Prism corrigiu mensagem antiga de validação (`4d8cc872`); causa do salto no Perfil sem confiabilidade suficiente. Testes focais passaram segundo os relatórios; falta revisão integrada e QA visual/aparelho. Compass entregou pesquisa complementar fora do repositório; ela não comprova operação em produção.
