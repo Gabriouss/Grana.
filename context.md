@@ -91,6 +91,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — CI concluída
+
+Beacon corrigiu o dublê que quebrava a trava de paridade no commit `29ba5f53`. Relata `test:ci` integral com exit 0 após a correção, além de testes focais verdes. A execução ocorreu na árvore compartilhada, sem congelamento de checkout; não substitui revisão integrada nem QA em aparelho. Sem push informado.
+
 ## 31/10 — adendo e verificação de CI
 
 Compass concluiu a incorporação da decisão de preservar usuários atuais ao plano externo; a compatibilidade ainda precisa ser demonstrada em testes. Uma execução integral de `test:ci` parou em dublê introduzido na frente Beacon; a correção e nova execução foram atribuídas ao responsável, sem resultado ainda.
