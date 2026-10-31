@@ -170,6 +170,58 @@ ok('descrição do Colar sem o resto da data: inteiro ou nada, parcela e valor i
   }
   ok('conectivo ou hora marcam a data, e a parcela ao lado fica');
 
+  /* P2 (ordem 4): prazo, agendamento e parcela não são data do pagamento,
+     mesmo com pontuação/conectivos antes do número ou hora depois dele. */
+  const rotuladas = [
+    'Vencimento: 05/11 às 23:59',
+    'Vencimento: dia 05/11',
+    'vence em 05/11 às 23:59',
+    'vence dia 05/11 às 23:59',
+    'Data de vencimento: 05/11 às 23:59',
+    'Parcela: em 03/12',
+    'Validade: 05/11 às 23:59',
+    'Válido até 05/11 às 23:59',
+    'Expira em 05/11 às 23:59',
+    'Agendado para 05/11 às 10:00',
+    'Previsão: 05/11 às 10:00',
+    'Próximo pagamento 05/11 às 10:00',
+    'Pagar até 05/11 às 23:59',
+  ];
+  for (const t of rotuladas) {
+    assert.deepEqual(lida(t), { data: null, recusada: false }, t);
+    assert.equal(limpo(t), t, 'rótulo ignorado fica inteiro: ' + t);
+    assert.doesNotMatch(desc(`Mercado no debito ${t} R$ 100,00`), /\//, 'descrição real do Colar sem barra solta: ' + t);
+  }
+  ok('prazo rotulado e parcela não viram data, não somem e não deixam barra na descrição');
+
+  for (const rotulo of ['Vencimento', 'Vence', 'Data de vencimento', 'Parcela', 'Parcelado',
+    'Validade', 'Válido', 'Expira', 'Agendado', 'Previsão', 'Próximo pagamento', 'Pagar']) {
+    for (const pontuacao of [' ', ': ', ' - ', ' — ', '. ', ' (']) {
+      for (const conectivo of ['', 'em ', 'dia ', 'no dia ', 'para ', 'até ', 'de ']) {
+        const t = `${rotulo}${pontuacao}${conectivo}05/11 às 23:59`;
+        assert.deepEqual(lida(t), { data: null, recusada: false }, t);
+        assert.equal(limpo(t), t, t);
+      }
+    }
+  }
+  ok('classe de rótulos: 504 combinações de pontuação/conectivo usam a mesma decisão');
+
+  const pagamento = 'Pago em 28/10 às 10:15';
+  for (const rotulada of rotuladas) {
+    for (const separador of ['\n', ' ', '; ', ' — ', ' | ', '. ']) {
+      for (const [t, resto] of [
+        [`${rotulada}${separador}${pagamento}`, `${rotulada}${separador}Pago`],
+        [`${pagamento}${separador}${rotulada}`, `Pago${separador}${rotulada}`],
+      ]) {
+        assert.deepEqual(lida(t), { data: '2026-10-28', recusada: false }, t);
+        assert.equal(limpo(t), resto, 'só a data do pagamento sai: ' + t);
+      }
+    }
+  }
+  assert.deepEqual(lida('Pagamento 28/10 às 10:15'), { data: '2026-10-28', recusada: false });
+  assert.equal(limpo('Pagamento 28/10 às 10:15'), 'Pagamento');
+  ok('pagamento prevalece antes/depois do rótulo, na mesma linha ou em outra');
+
   /* Futuro vira ano anterior; hoje continua no ano corrente. */
   assert.equal(lida('Pix em 30/10 R$ 1').data, '2026-10-30', 'hoje é do ano corrente');
   assert.equal(lida('Pix em 31/10 R$ 1').data, '2025-10-31', 'amanhã é do ano anterior');
