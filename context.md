@@ -91,6 +91,12 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — fechamento e pendências
+
+A revisão e prova web da retomada estão registradas abaixo. Permanecem sem verificação: correções no Android, conclusão da publicação Vercel e aviso bancário real; `330641ef` não teve segundo revisor. A decisão de aceitar o limite de datas é do orquestrador e pode ser revista pelo autor; oito asserções foram atualizadas na mudança. O histórico local foi saneado antes do push, sem force.
+
+Pendências: verificar o regime Gemini e identificar o responsável pelo serviço; decidir o destino da branch remota com trabalho exclusivo e dos caminhos locais não commitados; testar widget de voz com app fechado, online e offline; decidir o destino do Reel pendente; planejar janela do painel administrativo; testar avisos bancários reais e depois desligar a depuração sem fio. Na versão de teste, A6, A4 e A7 não estão incluídos; permanece risco de duplicação visual de parcela futura na linha de teste, sem revisão final. A comparação das falhas antigas de CI com a base remota não foi executada; a CI posterior passou.
+
 ## 31/10 — B3 corrigido e main publicada
 
 Anvil corrigiu a recuperação das fontes do Livre ao retornar à tela (`330641ef`), comprovou os cenários relatados na web e informa `test:ci` e TypeScript verdes. Publicou `330641ef` em `origin/main`, sem force; a varredura relatada não encontrou problemas. O commit não teve segundo revisor. Publicação na Vercel e comportamento nativo não foram verificados; sem build, migration ou deploy de funções.
