@@ -1,6 +1,6 @@
 import type { EscritaDaConta } from './escrita-da-conta';
 import { supabase } from './supabase';
-import { atualizarTelaGuardada, comCacheOffline, invalidarRespostasAtrasadas } from './cache-de-tela';
+import { atualizarTelaGuardada, comCacheOffline, invalidarRespostasAtrasadas, lerTela } from './cache-de-tela';
 import { idDoUsuarioLocal } from './sessao-offline';
 
 /* Até 26/09/2026 cartões e categorias passavam por uma `referenciaLocal`, um
@@ -1166,15 +1166,35 @@ export async function deleteUserAccount(): Promise<{ completo: boolean }> {
 const fetchTransactionsComCache = comCacheOffline('transacoes', buscar_fetchTransactions, (opts?) => String(opts?.sinceDays ?? 'tudo'));
 const fetchTransactionsDoPeriodoComCache = comCacheOffline('transacoes-periodo', buscar_fetchTransactionsDoPeriodo, (inicio, fim) => `${inicio}..${fim}`);
 
+/* Parcela pendente cuja série talvez já esteja no banco: primeiro o histórico no
+   disco, depois o banco. A consulta tem prazo próprio, porque só decide uma soma
+   de tela e roda depois de a leitura já ter esperado a rede. Sem resposta, a
+   série fica sem reconhecer e o pendente aparece. */
+const PRAZO_DA_SERIE_MS = 3_000;
+async function buscarSeriesPelaChave(chaves: string[]): Promise<{ id: string; client_request_id?: string | null }[]> {
+  const guardadas = (await lerTela<Transaction[]>('transacoes:tudo'))?.dados ?? [];
+  const achadas = guardadas.filter((t) => t.client_request_id && chaves.includes(t.client_request_id));
+  const faltam = chaves.filter((c) => !achadas.some((t) => t.client_request_id === c));
+  if (faltam.length === 0) return achadas;
+  let cortar: ReturnType<typeof setTimeout> | undefined;
+  const resposta = await Promise.race([
+    supabase.from('transactions').select('id, client_request_id').in('client_request_id', faltam),
+    new Promise<null>((resolve) => { cortar = setTimeout(() => resolve(null), PRAZO_DA_SERIE_MS); }),
+  ]);
+  clearTimeout(cortar);
+  if (resposta?.error) console.error('[data] consulta das séries pela chave falhou', resposta.error.code);
+  return [...achadas, ...(resposta?.data ?? [])];
+}
+
 /* Os pendentes da fila offline entram DEPOIS do cache (T13, 23/09/2026): o
    disco guarda só o que veio do banco, e sem rede é ele que volta como
    resposta. Ver `juntarPendentes`. As falas de voz guardadas entram do
    mesmo jeito (`juntarVozPendente`, decisão do autor de 24/09/2026). */
 export async function fetchTransactions(...args: Parameters<typeof buscar_fetchTransactions>): Promise<Transaction[]> {
-  return juntarVozPendente(await juntarPendentes(await fetchTransactionsComCache(...args)));
+  return juntarVozPendente(await juntarPendentes(await fetchTransactionsComCache(...args), undefined, undefined, undefined, buscarSeriesPelaChave));
 }
 export async function fetchTransactionsDoPeriodo(inicioISO: string, fimISO: string): Promise<Transaction[]> {
-  return juntarVozPendente(await juntarPendentes(await fetchTransactionsDoPeriodoComCache(inicioISO, fimISO), inicioISO, fimISO), inicioISO, fimISO);
+  return juntarVozPendente(await juntarPendentes(await fetchTransactionsDoPeriodoComCache(inicioISO, fimISO), inicioISO, fimISO, undefined, buscarSeriesPelaChave), inicioISO, fimISO);
 }
 export const fetchSaldosPorCarteira = comCacheOffline('saldos', buscar_fetchSaldosPorCarteira);
 /** Existe algum lançamento na conta, em qualquer mês? Consulta de existência
@@ -1217,7 +1237,7 @@ export async function fetchCreditTransactionsForMonth(year: number, month: numbe
   const inicio = `${year}-${String(month + 1).padStart(2, '0')}-01`;
   const fimDate = new Date(year, month + 1, 0);
   const fim = `${fimDate.getFullYear()}-${String(fimDate.getMonth() + 1).padStart(2, '0')}-${String(fimDate.getDate()).padStart(2, '0')}`;
-  return juntarPendentes(base, inicio, fim, (input) => input.payment_method === 'credit' || !!input.card_id);
+  return juntarPendentes(base, inicio, fim, (input) => input.payment_method === 'credit' || !!input.card_id, buscarSeriesPelaChave);
 }
 export const fetchBudgets = comCacheOffline('orcamentos', buscar_fetchBudgets);
 export const fetchCategories = comCacheOffline('categorias', buscar_fetchCategories);

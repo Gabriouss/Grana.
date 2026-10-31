@@ -56,6 +56,9 @@ export type PendingItem = {
    * sem chave recebe uma na primeira leitura.
    */
   clientRequestId?: string;
+  /** Parcela: id da primeira linha real desta chave, quando já se sabe que chegou ao
+      banco. Só a primeira parcela leva a chave; as outras apontam para ela. */
+  serieReal?: string;
   /** Meta: quando o envio foi tentado pela primeira vez. Gravado ANTES de enviar;
       com ele, o reenvio confere se a meta já existe em vez de criá-la de novo
       (a meta não tem chave de idempotência no banco). */
@@ -240,6 +243,42 @@ export function otimistasDaParcela(item: PendingItem): Transaction[] {
   }));
 }
 
+export type BuscarSeries = (chaves: string[]) => Promise<{ id: string; client_request_id?: string | null }[]>;
+
+/**
+ * Descobre, pela chave, a série real de cada parcela pendente que já chegou ao banco.
+ * Numa lista de mês futuro a linha com a chave não vem, e a parcela real só aponta
+ * para ela. Valor e data nunca decidem: compras iguais existem. O item fica na fila
+ * até o envio, porque o banco reconhece a chave. A marca vai para o disco para valer
+ * também sem rede, e falhar em gravá-la ou em consultar só deixa de reconhecer.
+ */
+async function aprenderSeries(minhas: PendingItem[], lista: Transaction[], buscarSeries?: BuscarSeries): Promise<Map<string, string>> {
+  const aprendidas = new Map<string, string>();
+  const semSerie = minhas.filter((i) => (i.tipo ?? 'transacao') === 'parcela' && i.clientRequestId && !i.serieReal);
+  if (semSerie.length === 0 || lista.length === 0) return aprendidas;
+  const porChave = new Map(lista.filter((t) => t.client_request_id).map((t) => [t.client_request_id, t.id]));
+  const ids = new Set(lista.map((t) => t.id));
+  const faltam = semSerie.map((i) => i.clientRequestId as string).filter((c) => !porChave.has(c));
+  if (buscarSeries && faltam.length > 0 && lista.some((t) => t.parent_id && !ids.has(t.parent_id))) {
+    try {
+      for (const linha of await buscarSeries(faltam)) porChave.set(linha.client_request_id, linha.id);
+    } catch (erro) {
+      console.error('[fila-pendente] não consegui conferir as séries pela chave', erro);
+    }
+  }
+  for (const item of semSerie) {
+    const id = porChave.get(item.clientRequestId);
+    if (id) aprendidas.set(item.localId, id);
+  }
+  if (aprendidas.size === 0) return aprendidas;
+  try {
+    await atualizarFila((fila) => fila.map((i) => (aprendidas.has(i.localId) ? { ...i, serieReal: aprendidas.get(i.localId) } : i)));
+  } catch (erro) {
+    console.error('[fila-pendente] não consegui guardar a série reconhecida', erro);
+  }
+  return aprendidas;
+}
+
 /**
  * Junta à lista os lançamentos desta conta que ainda esperam na fila.
  *
@@ -254,16 +293,21 @@ export function otimistasDaParcela(item: PendingItem): Transaction[] {
  * `filtro`, quando dado, decide por `PendingInput` — a Crédito usa para só
  * juntar pendente de cartão (`payment_method === 'credit'` ou `card_id`
  * presente), senão uma saída comum guardada sem rede apareceria na fatura.
+ * `buscarSeries`, quando dado, responde quais chaves já têm linha real. Sai de fora
+ * porque este módulo é folha e não fala com o banco.
  * Nunca lança: fila ilegível devolve a lista como veio.
  */
 export async function juntarPendentes(
   lista: Transaction[],
   inicio?: string,
   fim?: string,
-  filtro?: (input: PendingInput) => boolean
+  filtro?: (input: PendingInput) => boolean,
+  buscarSeries?: BuscarSeries
 ): Promise<Transaction[]> {
   try {
     const { minhas } = separarPorDono(await getQueue(), await idDoUsuarioLocal());
+    const aprendidas = await aprenderSeries(minhas, lista, buscarSeries);
+    const linhasDaLista = new Set(lista.flatMap((t) => (t.parent_id ? [t.id, t.parent_id] : [t.id])));
     const jaNaLista = new Set(lista.map((t) => t.id));
     /* A linha real com a chave do pendente: o banco já tem, e o índice único garante
        que o reenvio não grava de novo. Mostrar os dois contaria a compra duas vezes. */
@@ -272,7 +316,9 @@ export async function juntarPendentes(
       .filter((item) => {
         const tipo = item.tipo ?? 'transacao';
         return (tipo === 'transacao' || tipo === 'parcela') && !jaNaLista.has(item.localId)
-          && !(item.clientRequestId && jaNoBanco.has(item.clientRequestId)) && (!filtro || filtro(item.input));
+          && !(item.clientRequestId && jaNoBanco.has(item.clientRequestId))
+          && !linhasDaLista.has(item.serieReal ?? aprendidas.get(item.localId) ?? '')
+          && (!filtro || filtro(item.input));
       })
       .flatMap((item) => ((item.tipo ?? 'transacao') === 'parcela' ? otimistasDaParcela(item) : [otimistaDoItem(item)]))
       .filter((t) => (!inicio || t.occurred_on >= inicio) && (!fim || t.occurred_on <= fim));

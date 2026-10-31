@@ -362,7 +362,7 @@ async function main() {
    o que está no disco, como depois de o Android matar o app. */
 async function retomadaSemDuplicar() {
   const DONO = 'dono-r';
-  const estado = { rede: true, falhas: new Set(), pular: new Map(), rpcs: [] };
+  const estado = { rede: true, falhas: new Set(), pular: new Map(), rpcs: [], consultasPorChave: 0 };
   const disco = new Map();
   const banco = [];
   const parceladas = [];
@@ -382,9 +382,16 @@ async function retomadaSemDuplicar() {
     const q = { filtros: [], linha: null };
     for (const m of ['select', 'order', 'range', 'setHeader', 'single']) q[m] = () => q;
     q.eq = (c, v) => { q.filtros.push((t) => t[c] === v); return q; };
+    q.gte = (c, v) => { q.filtros.push((t) => t[c] >= v); return q; };
+    q.lte = (c, v) => { q.filtros.push((t) => t[c] <= v); return q; };
+    q.lt = (c, v) => { q.filtros.push((t) => t[c] < v); return q; };
+    q.in = (c, vs) => { estado.consultasPorChave++; q.filtros.push((t) => vs.includes(t[c])); q.lista = true; return q; };
+    q.or = () => { q.lista = true; return q; };
+    q.range = (de) => { q.lista = true; q.pagina = de; return q; };
     q.upsert = (linha) => { q.linha = linha; return q; };
     q.then = (res, rej) => (async () => {
       if (!estado.rede) return semRede();
+      if (q.lista) return { data: q.pagina ? [] : banco.filter((t) => q.filtros.every((f) => f(t))), error: null };
       if (!q.linha) return { data: banco.find((t) => q.filtros.every((f) => f(t))), error: null };
       if (banco.some((t) => t.client_request_id === q.linha.client_request_id)) return { data: [], error: null };
       const gravada = { id: `tx-${banco.length + 1}`, ...q.linha };
@@ -436,7 +443,7 @@ async function retomadaSemDuplicar() {
       return exports;
     }
     const em = (f) => carregar(path.join(root, f));
-    return { gravar: em('lib/avisos-banco/gravar.ts'), caixa: em('lib/avisos-banco/caixa.ts'), oferta: em('lib/offline-cache.ts'), pendentes: em('lib/fila-pendente.ts') };
+    return { gravar: em('lib/avisos-banco/gravar.ts'), caixa: em('lib/avisos-banco/caixa.ts'), oferta: em('lib/offline-cache.ts'), pendentes: em('lib/fila-pendente.ts'), dados: em('lib/data.ts') };
   }
 
   const CAIXA = `grana_avisos_caixa:${DONO}`;
@@ -577,6 +584,78 @@ async function retomadaSemDuplicar() {
   const semChaveNaLista = [{ id: 'outra', user_id: DONO, type: 'out', amount: 40, occurred_on: '2026-10-20' }];
   assert.equal((await p.pendentes.juntarPendentes(semChaveNaLista)).length, 3);
   ok('linha com o mesmo valor e sem a chave não esconde pendente nenhum');
+
+  /* A4 em parcela de mês futuro: só a primeira parcela leva a chave. A identidade
+     continua sendo a chave: a fila aprende o id real da série por ela. */
+  const CHAVE = 'aaaaaaaa-aaaa-5aaa-8aaa-aaaaaaaaaaaa';
+  const serieNoBanco = (prefixo, chave) => ['2026-10-20', '2026-11-20', '2026-12-20'].map((occurred_on, i) => ({
+    id: `${prefixo}-${i + 1}`, user_id: DONO, type: 'out', amount: 100, occurred_on, payment_method: 'credit', card_id: 'c1',
+    parent_id: i === 0 ? null : `${prefixo}-1`, installment_current: i + 1, installment_total: 3,
+    client_request_id: i === 0 ? chave : null, created_at: '2026-10-20T12:00:00Z', description: `Compra (${i + 1}/3)`,
+  }));
+  const somaDe = (linhas) => linhas.reduce((t, l) => t + l.amount, 0);
+  const pendenteDaParcela = async (proc) => {
+    estado.rede = false;
+    assert.equal((await proc.gravar.gravarItem(DONO, item, parcelada)).guardado, true);
+    assert.equal(fila().length, 1);
+    estado.rede = true;
+  };
+
+  preparar();
+  banco.push(...serieNoBanco('real', CHAVE));
+  let serie = novoProcesso();
+  await pendenteDaParcela(serie);
+  estado.consultasPorChave = 0;
+  const novembro = await serie.dados.fetchTransactionsDoPeriodo('2026-11-01', '2026-11-30');
+  assert.equal(novembro.map((l) => l.id).join(), 'real-2', 'só a parcela real');
+  assert.equal(somaDe(novembro), 100);
+  assert.equal(estado.consultasPorChave, 1);
+  assert.equal(fila().length, 1, 'quem tira da fila continua sendo o envio');
+  assert.equal(fila()[0].serieReal, 'real-1');
+  const fatura = await serie.dados.fetchCreditTransactionsForMonth(2026, 10);
+  assert.equal(somaDe(fatura), 100, 'a fatura de novembro também');
+  assert.equal(estado.consultasPorChave, 1, 'com a série conhecida, não consulta de novo');
+  ok('parcela de mês futuro: com rede conta R$100 em novembro, na lista e na fatura');
+
+  /* Depois de aprender, o mês guardado no disco também conta uma vez, sem rede e noutro processo */
+  serie = novoProcesso();
+  estado.rede = false;
+  assert.equal(somaDe(await serie.dados.fetchTransactionsDoPeriodo('2026-11-01', '2026-11-30')), 100);
+  assert.equal(estado.consultasPorChave, 1);
+  ok('parcela de mês futuro: sem rede, depois de o app morrer, o que aprendeu continua valendo');
+
+  /* Sem rede desde o começo, com a primeira parcela no histórico guardado */
+  preparar();
+  banco.push(...serieNoBanco('real', CHAVE));
+  serie = novoProcesso();
+  await serie.dados.fetchTransactions();
+  await serie.dados.fetchTransactionsDoPeriodo('2026-11-01', '2026-11-30');
+  await pendenteDaParcela(serie);
+  estado.rede = false;
+  assert.equal(somaDe(await serie.dados.fetchTransactionsDoPeriodo('2026-11-01', '2026-11-30')), 100);
+  assert.equal(fila()[0].serieReal, 'real-1');
+  ok('parcela de mês futuro: sem rede, reconhece pela primeira parcela do histórico guardado');
+
+  /* Outra série igual em valor, data e parent_id órfão: não esconde quem ainda não chegou ao banco */
+  preparar();
+  banco.push(...serieNoBanco('outra', 'bbbbbbbb-bbbb-5bbb-8bbb-bbbbbbbbbbbb'));
+  serie = novoProcesso();
+  await pendenteDaParcela(serie);
+  const legitimo = await serie.dados.fetchTransactionsDoPeriodo('2026-11-01', '2026-11-30');
+  assert.equal(somaDe(legitimo), 200, 'as duas compras existem');
+  assert.equal(fila()[0].serieReal, undefined);
+  ok('série parecida com outra chave não esconde o pendente legítimo');
+
+  /* A consulta falhou: mostra o pendente, com o log, em vez de sumir com a lista ou com a compra */
+  preparar();
+  banco.push(...serieNoBanco('outra', 'bbbbbbbb-bbbb-5bbb-8bbb-bbbbbbbbbbbb'));
+  serie = novoProcesso();
+  await serie.dados.fetchTransactionsDoPeriodo('2026-11-01', '2026-11-30');
+  await pendenteDaParcela(serie);
+  estado.rede = false;
+  const semConsulta = await serie.dados.fetchTransactionsDoPeriodo('2026-11-01', '2026-11-30');
+  assert.equal(somaDe(semConsulta), 200);
+  ok('sem rede e sem como reconhecer, a lista chega inteira e nada some');
 
   /* A6 com módulos e fila reais: uma chamada de pagamento, zero saída avulsa */
   const contaPaga = { id: 'conta-a6' };
