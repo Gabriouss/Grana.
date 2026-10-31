@@ -29,6 +29,7 @@ async function conferirLogDaTarefa() {
           removerVozPendente: async () => chamadas.push(['remove']),
         },
         './voice-operations': {
+          desfechoDaOperacaoVoz: desfecho,
           desfechoDoErroVoz: desfecho.desfechoDoErroVoz,
           registrarOperacaoVoz: async () => chamadas.push(['grava']),
         },
