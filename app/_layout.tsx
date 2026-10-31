@@ -31,6 +31,7 @@ import AvisoFlagModal from '@/components/AvisoFlagModal';
 import ConviteAppAndroid from '@/components/ConviteAppAndroid';
 import RespostaVozWidget from '@/components/RespostaVozWidget';
 import VozesSalvasLocalmente from '@/components/VozesSalvasLocalmente';
+import AvisosAConferir from '@/components/AvisosAConferir';
 import SincronizadorWidgetsHome from '@/components/SincronizadorWidgetsHome';
 import { carregarNotifPrefs, scheduleDailyHabitReminder } from '@/lib/notifications';
 import { observarTrocaDeTokenPush, sincronizarPushHabito } from '@/lib/push-notifications';
@@ -367,6 +368,13 @@ function RootNavigator() {
           revisão com a transcrição pronta. */}
       {session && <RespostaVozWidget />}
       {session && <VozesSalvasLocalmente key={session.user.id} />}
+      {session && (
+        <AvisosAConferir
+          key={`avisos-${session.user.id}`}
+          dono={session.user.id}
+          nomeDoPerfil={typeof session.user.user_metadata?.nome === 'string' ? session.user.user_metadata.nome : null}
+        />
+      )}
       {/* Snapshot mínimo e cifrado usado pelos widgets informativos Android. */}
       <SincronizadorWidgetsHome />
       <Stack screenOptions={{ headerShown: false }}>
