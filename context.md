@@ -91,6 +91,12 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — resultados recebidos de Anvil, Compass e Forge
+
+Anvil relata que a falha de `fila-endurecida.cjs` vinha de dublê ausente no teste; corrigiu o teste e informou 81 verificações aprovadas, além de testes relacionados e TypeScript. Não houve teste em aparelho nem execução integral de `test:ci`; outras quatro suítes ainda falham, com causas de confiança variável. A hipótese de bloqueio da rodada por falha permanente de recibo permanece sem comprovação em aparelho.
+
+Compass entregou pesquisa de requisitos oficiais da Play; aplicação ao Grana e aprovação permanecem por validar. Forge entregou inventário por leitura: acesso atual é global no cliente e no banco, e a integração Play exigiria evolução do controle de acesso e dos provedores. Não sondou produção nem testou o aplicativo. Os relatórios são insumos para plano fora do repositório, não implementação nem aprovação.
+
 ## Retomada de 31/10/2026 — registro recebido do orquestrador
 
 Às 09h05 a máquina foi religada e o Maestri reabriu os terminais. O orquestrador informou 1,8 GB livres antes de encerrar terminais parados e 3,9 GB depois; informou também a configuração do Ledger em Terra low. Às 09h10 registrou os limites: Claude 2% em cinco horas e 18% na semana; Gabriel Codex 100% e 27%; Codex PH 100% e 37%. Estes são dados relatados para aquele horário, não medições atuais.
