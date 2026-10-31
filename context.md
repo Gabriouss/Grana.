@@ -91,6 +91,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — QA funcional Vigil
+
+Vigil relata que o aplicativo abriu e navegou no emulador sem travamento observado ou registro de crash. O acesso ao serviço foi concedido, mas notificações de SMS de teste não chegaram ao diário, embora avisos de serviço do mesmo app tenham chegado; causa não identificada. Não se alcançou a etapa de confirmar ou descartar, nem se testaram banco real, modo avião ou reinício do emulador. O resultado não comprova o funcionamento com notificações bancárias reais.
+
 ## 31/10 — pareceres Watchtower 7 e 8
 
 Watchtower considerou a publicação da main não apta: reproduziu no parser real datas incorretas para operações futuras e perda de data com rótulo em outra linha; também encontrou conteúdo público no intervalo incompatível com a regra 15. Seis suítes específicas passaram; não houve push. O saneamento precisa considerar o histórico inteiro a publicar, não apenas o conteúdo atual.
