@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lerDiarioAvisos } from '@/modules/grana-avisos';
-import { aplicarAvisos, CAIXA_VAZIA, type EstadoDaCaixa, type FormasAprendidas, type ItemAConferir } from './decidir';
+import { aplicarAvisos, CAIXA_VAZIA, FINAL_VARIAVEL, type EstadoDaCaixa, type FormasAprendidas, type ItemAConferir } from './decidir';
 import type { FormaDoAviso } from './interpretar';
 
 /**
@@ -108,7 +108,7 @@ export function esquecerMarcaDeGravado(dono: string, id: string): Promise<void> 
 
 /* O que a pessoa já gravou para cada final de cartão: só os 4 dígitos e a forma, nada
    do aviso. Sem essa memória o app só volta a perguntar, então falha nunca derruba. */
-const FORMAS_VALIDAS: readonly string[] = ['credit', 'debit', 'pix'];
+const FORMAS_VALIDAS: readonly string[] = ['credit', 'debit', 'pix', FINAL_VARIAVEL];
 
 async function lerFormas(dono: string): Promise<FormasAprendidas> {
   try {
@@ -125,9 +125,13 @@ export function formasAprendidas(dono: string): Promise<FormasAprendidas> {
   return naVez(() => lerFormas(dono));
 }
 
+/** Gravado com duas formas, o final é de cartão múltiplo e nunca mais responde sozinho. */
 export function aprenderFormaDoCartao(dono: string, digitos: string, forma: FormaDoAviso): Promise<void> {
   return naVez(async () => {
-    await AsyncStorage.setItem(chaveDasFormas(dono), JSON.stringify({ ...(await lerFormas(dono)), [digitos]: forma }));
+    const formas = await lerFormas(dono);
+    const antes = formas[digitos];
+    const agora = antes && antes !== forma ? FINAL_VARIAVEL : forma;
+    await AsyncStorage.setItem(chaveDasFormas(dono), JSON.stringify({ ...formas, [digitos]: agora }));
   });
 }
 

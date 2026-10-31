@@ -156,8 +156,11 @@ export function cartaoDoItem(item: ItemAConferir, cartoes: CreditCard[]): Credit
   return achados.length === 1 ? achados[0] : null;
 }
 
+/** O final já foi gravado com duas formas: só o aviso ou a pessoa respondem. */
+export const FINAL_VARIAVEL = 'variavel';
+
 /** A forma que a pessoa já gravou para cada final de cartão. */
-export type FormasAprendidas = Record<string, FormaDoAviso>;
+export type FormasAprendidas = Record<string, FormaDoAviso | typeof FINAL_VARIAVEL>;
 
 /**
  * Forma efetiva. Depois do que o aviso diz, vale o que a pessoa já gravou para
@@ -165,9 +168,10 @@ export type FormasAprendidas = Record<string, FormaDoAviso>;
  */
 export function formaDoItem(item: ItemAConferir, cartoes: CreditCard[], aprendidas: FormasAprendidas = {}): FormaDoAviso | null {
   if (item.formaEmDisputa) return null;
-  return item.forma
-    ?? (item.digitos ? aprendidas[item.digitos] : null)
-    ?? (cartaoDoItem(item, cartoes) ? 'credit' : null);
+  if (item.forma) return item.forma;
+  const lembrada = item.digitos ? aprendidas[item.digitos] : undefined;
+  if (lembrada === FINAL_VARIAVEL) return null;
+  return lembrada ?? (cartaoDoItem(item, cartoes) ? 'credit' : null);
 }
 
 /**

@@ -554,6 +554,75 @@ async function main() {
   assert.equal(disco.has(CHAVE_FORMAS), false);
   ok('sem final, entrada de dinheiro e boleto não ensinam');
 
+  /* Cartão múltiplo: gravado com duas formas, o final para de responder */
+  const SEM_SINAL_1234 = 'Compra de R$ 40,00 em Mercado Modelo final 1234';
+  const SEM_SINAL_5678 = 'Compra de R$ 40,00 em Mercado Modelo final 5678';
+  ({ ctx, card } = await lista(aviso('Compra no débito de R$ 20,00 em Mercado Modelo final 1234')));
+  card().props.aoConfirmar(); await ctx.settle();
+  assert.equal(disco.get(CHAVE_FORMAS), '{"1234":"debit"}');
+  ({ ctx, card } = await lista(aviso('Compra no crédito de R$ 20,00 em Mercado Modelo final 1234'), { manterDisco: true }));
+  card().props.aoConfirmar(); await ctx.settle();
+  assert.equal(gravados()[0].payment_method, 'credit');
+  assert.equal(disco.get(CHAVE_FORMAS), '{"1234":"variavel"}', 'duas formas no mesmo final');
+
+  ({ ctx, card } = await lista(aviso(SEM_SINAL_1234), { manterDisco: true }));
+  assert.match(detalhe(card), /Forma não informada/, 'nem a memória nem o final cadastrado respondem');
+  card().props.aoConfirmar(); await ctx.settle();
+  assert.equal(alertas.at(-1)[0], 'Como foi pago?');
+  assert.equal(gravados().length, 0);
+  ok('final com duas formas e cartão cadastrado: aviso sem sinal pergunta e não grava');
+
+  alertas.at(-1)[2].find((b) => b.text === 'Crédito').onPress(); ctx.render();
+  assert.equal(folhaDe(ctx).props.inicial.card_id, 'c', 'respondido crédito, o cartão do final continua sugerido');
+  await folhaDe(ctx).props.onSalvar({ ...folhaDe(ctx).props.inicial, category: 'Alimentação', color: '#123456' }); await ctx.settle();
+  assert.equal(gravados()[0].payment_method, 'credit');
+  assert.equal(gravados()[0].card_id, 'c');
+  assert.equal(disco.get(CHAVE_FORMAS), '{"1234":"variavel"}', 'gravar de novo não desfaz a marca');
+  ok('a resposta grava certo e o final continua variável');
+
+  ({ ctx, card } = await lista(aviso('Compra no débito de R$ 20,00 em Mercado Modelo final 1234'), { manterDisco: true }));
+  assert.match(detalhe(card), /Débito/);
+  card().props.aoConfirmar(); await ctx.settle();
+  naoPerguntou();
+  assert.equal(gravados()[0].payment_method, 'debit');
+  assert.equal(gravados()[0].card_id, undefined);
+  ok('com a palavra escrita, o final variável não pergunta');
+
+  ({ ctx, card } = await lista(aviso(FINAL_NOVO)));
+  await responder(ctx, card, 'Débito');
+  ({ ctx, card } = await lista(aviso('Compra de R$ 30,00 em Mercado Modelo final 5678'), { manterDisco: true }));
+  assert.match(detalhe(card), /Débito/);
+  card().props.aoConfirmar(); await ctx.settle();
+  assert.equal(gravados()[0].payment_method, 'debit');
+  assert.equal(disco.get(CHAVE_FORMAS), '{"5678":"debit"}', 'a mesma forma de novo não marca');
+  ({ ctx, card } = await lista(aviso('Compra no crédito de R$ 30,00 em Mercado Modelo final 5678'), { manterDisco: true }));
+  card().props.aoConfirmar(); await ctx.settle();
+  await folhaDe(ctx).props.onSalvar({ ...folhaDe(ctx).props.inicial, category: 'Alimentação', color: '#123456', card_id: 'c' }); await ctx.settle();
+  assert.equal(disco.get(CHAVE_FORMAS), '{"5678":"variavel"}');
+  ({ ctx, card } = await lista(aviso(SEM_SINAL_5678), { manterDisco: true }));
+  assert.match(detalhe(card), /Forma não informada/);
+  card().props.aoConfirmar(); await ctx.settle();
+  assert.equal(alertas.at(-1)[0], 'Como foi pago?');
+  ok('final com duas formas e sem cartão cadastrado: aviso sem sinal pergunta');
+
+  ({ ctx, card } = await lista(aviso('Compra de R$ 40,00 em Mercado Modelo final 4321')));
+  disco.set(CHAVE_FORMAS, '{"4321":"pix","5678":"variavel"}');
+  ({ ctx, card } = await lista(aviso('Compra de R$ 41,00 em Mercado Modelo final 4321'), { manterDisco: true }));
+  assert.match(detalhe(card), /Pix/);
+  card().props.aoConfirmar(); await ctx.settle();
+  naoPerguntou();
+  assert.equal(gravados()[0].payment_method, 'pix');
+  assert.equal(disco.get(CHAVE_FORMAS), '{"4321":"pix","5678":"variavel"}');
+  ok('outro final não é afetado');
+
+  disco.set(CHAVE_FORMAS, '{"1234":"debit","5678":"credit"}');
+  ({ ctx, card } = await lista(aviso(SEM_SINAL_1234), { manterDisco: true }));
+  assert.match(detalhe(card), /Débito/);
+  card().props.aoConfirmar(); await ctx.settle();
+  assert.equal(gravados()[0].payment_method, 'debit');
+  assert.equal(disco.get(CHAVE_FORMAS), '{"1234":"debit","5678":"credit"}');
+  ok('memória no formato anterior continua valendo');
+
   /* Disco da memória falhando: a lista e a gravação seguem, com log */
   avisosDoConsole = [];
   falhaFormas = true;
