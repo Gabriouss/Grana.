@@ -72,7 +72,8 @@ const DEBITO = /\bdebito\b|\bdebitad[oa]\b|\bdebitamos\b/;
 const PIX = /\bpix\b/;
 /* Lidos no texto inteiro, porque limite e saldo saem antes de procurar o valor. */
 const SINAL_DE_CREDITO = /\blimite\s+(?:\S+\s+){0,2}?(?:disponivel|restante)\b/;
-const SINAL_DE_DEBITO = /\b(?:da|na)\s+sua\s+conta\b|\bconta\s+corrente\b|\bsaldo\s+(?:\S+\s+){0,2}?(?:disponivel|atual)\b/;
+/* "Da sua conta" só conta colado ao valor ou a um verbo de saída: solto, é frase de app. */
+const SINAL_DE_DEBITO = /r\$\s?[\d.,]*\d\s+da\s+sua\s+conta\b|\b(?:saiu|sairam|retirad[oa]s?|descontad[oa]s?)\s+(?:\S+\s+){0,2}?da\s+sua\s+conta\b|\bconta\s+corrente\b|\bsaldo\s+(?:\S+\s+){0,2}?(?:disponivel|atual)\b/;
 
 /**
  * `null` quando o texto não diz, e 'duvida' quando diz coisas que não combinam.

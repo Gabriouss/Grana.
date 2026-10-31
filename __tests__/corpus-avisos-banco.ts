@@ -185,7 +185,13 @@ lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo. Limite dispon
 lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo. Limite restante: R$ 900,00', compra('credit'));
 lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo. Limite de crédito disponível: R$ 900,00', compra('credit'));
 lancamento('Você pagou Loja Exemplo', 'Saíram R$ 10,00 da sua conta', compra('debit'));
-lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo na sua conta', { ...compra('debit'), descricao: 'Loja Exemplo' });
+lancamento('Compra aprovada', 'R$ 10,00 da sua conta em Loja Exemplo', compra('debit'));
+lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo. O valor saiu da sua conta', { ...compra('debit'), descricao: 'Loja Exemplo' });
+lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo. O valor foi retirado da sua conta', { ...compra('debit'), descricao: 'Loja Exemplo' });
+/* "Da sua conta" e "na sua conta" soltos não dizem a forma */
+lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo na sua conta', { ...compra(null), descricao: 'Loja Exemplo' });
+lancamento('Compra aprovada', 'Compra de R$ 10,00. Veja na sua conta', compra(null));
+lancamento('Compra aprovada', 'Compra de R$ 10,00. Confira os detalhes da sua conta', compra(null));
 lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo na conta corrente', { ...compra('debit'), descricao: 'Loja Exemplo' });
 lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo. Saldo disponível: R$ 90,00', compra('debit'));
 lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo. Saldo atual: R$ 90,00', compra('debit'));
