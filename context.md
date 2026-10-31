@@ -106,6 +106,25 @@ O histórico e a evidência da exposição permanecem na seção datada de 16/09
 
 ---
 
+## 30/10/2026 (M1, Ledger): registro de pendências
+
+- O autor pediu: “Pode resolver as pendências aí. Pode utilizar os dois times”. Ordens em `E:/Grana-temporarios/2026-10-30-pendencias/`.
+- Plano de leitura de avisos do banco aprovado e inicialmente pausado pelo autor em 30/10 (“pausa esse trabalho aí, vamos fazer ele depois”); depois retomado, com decisão atual de um app só. Plano em `C:/Users/user/.maestri-local/accounts/CDB6270A-1E24-49F6-9D3D-50FB376956DB/plans/leitura-de-notifica-es-de-fluttering-hearth.md`; análise em `E:/Grana-temporarios/2026-10-30-concorrente-notificacoes/analise-finbot.md`.
+- Segundo o Orquestrador, dez terminais Codex ficaram fora após atualização automática por volta das 11h: nove no shell, Codex PH parado no aviso da 0.165.0; instalada 0.166.0. Watchtower, Harbor e Ledger reabertos com contas, modelos e esforços da tabela do AGENTS; outros sete fechados por economia e memória baixa (1,2 GB livres de 15,4 GB).
+- Segundo o Orquestrador, `test:ci` interrompido pelo sistema por memória baixa após 21 de 152 etapas verdes; `tsc` não rodou nessa execução. Não reiniciada.
+- Segundo conferência do Orquestrador, release `v1.10.12` publicada no GitHub em 29/10 às 00h56 BRT com `grana.apk` de 176 MB; `app_release` anuncia 1.10.12, atualizado às 00h55 BRT. Quatro operações do widget em `voice_operations` aparecem como `committed` em 29/10; isso não identifica versão instalada nem falhas anteriores ao servidor. [ ] Autor testar no celular real com app fechado, gasto com nome de loja; [ ] repetir sem internet. Ledger não revalidou servidor nem aparelho.
+
+### Pendências — segundo registro de 30/10
+
+- Colar: Anvil corrigiu data sem ano com sinal em `a79296d3`; ambiguidade de parcela sem sinal continua sem data inferida. Data impossível é recusada. Em `20d5d073`, barra solta removida nas heurísticas compartilhadas; sem build ou deploy, versões instaladas e servidor mantêm código anterior. Testes focais atribuídos a Anvil; sem aparelho ou comprovante real.
+- Segundo Harbor, dois feedbacks de teste AUDIT foram excluídos individualmente após conferência e leitura posterior preservou o terceiro. `ff594ab9` corrigiu fixture e texto de `__tests__/admin-agendamento-ux-dom.cjs`, verde em 1440 e 390 px; continua fora de qualquer script de teste.
+- Monitor e e-mail de incidentes: Harbor comparou pacotes publicados e concluiu que a diferença de Stories não é alcançada por essas funções; não precisam ser publicadas por esse delta. Não executou as funções.
+- Painel: freeze H01-H02-v3 revisado, P2 do retorno fechado; pacote de 27 caminhos commitado em `e6d9c360`, fixture isolada em `9f94a8f8`. Publicação/ativação NÃO APTA: migração, readback, Edge e Node exigem sequência coordenada e H02 isolado ou produtores parados. Não houve migração real, deploy ou ativação. Runbook vigente em `E:/Grana-temporarios/2026-10-22-meta-confiabilidade/runbook-harbor-ajustes-sem-git.md`.
+- Reel Facebook “Conheça o Granabô”: Harbor encontrou preparo sem tentativa de publicar e nenhum Reel correspondente nas listagens consultadas; publicação não comprovada. Aguardar decisão do autor sobre reagendar só Facebook ou manter pendente.
+- Widget: Anvil atribuiu as 5 falhas de `corpus-widgets-home.ts` ao uso de `REPETIR` introduzido em `a9158ac6` enquanto o teste espera `ATENCAO`. A leitura indica recibo visível nos cinco, mas em dois a fala em curso é descartada; comportamento físico não verificado. Decisão sobre o critério e correção em investigação. `voz-paridade-nucleo-efeitos.cjs` falhou no reenvio; Anvil informou que já falhava antes da alteração, causa em investigação. `tsc` passou na árvore compartilhada segundo Anvil; CI integral não rodou.
+- Memória baixa: a pedido do autor foram encerrados Meridian, Lumen, Vigil, Flare, Quill, Lynx, Claude Code e Claude Code #2, removido o portal Pixel 8 e fechado o emulador. `ChatGPT.exe` é o app Codex (`OpenAI.Codex`), não encerrar; o portal mantém o emulador vivo e pode reabri-lo.
+- Versão de teste local da leitura de avisos em branch separada, sem merge e sem publicação; detalhes na nota da sessão do vault.
+
 <!-- ledger-widget-pos-release-20261028:start -->
 ## 28/10/2026 (M1, Ledger): incidente do widget após a release; correção autorizada
 
@@ -423,11 +442,11 @@ Diretriz temporária do autor: a conta Codex PH atingiu o limite; continuar some
 - Prism prepara snapshot do HEAD publicado e `npm ci`. **Build ainda NÃO disparada neste corte**; aguardar ID EAS, status e link para fecho único. Nenhum Git write ou repetição de preparo, suíte, gate ou QA por Ledger; preservar WIP e janela exclusiva Prism.
 
 
-### Build 1.10.12 enviada — EM EXECUÇÃO
+### Build 1.10.12 enviada — release publicada (atualização de 30/10)
 
 - Prism publicou a versão em `c4951f299bd0cd07459d61d19023939140f994ca` após preparo oficial único, nota aprovada e cota3/3. Snapshot externo de462 arquivos, sem env/dados locais, teve hashes verificados; `npm ci` e verificador do pacote exit0. Manifesto e recibos estão na rodada local; envio NoVcs não fornece gitCommitHash, associação com fonte é operacional pelo snapshot.
-- UMA chamada EAS exit0 criou em29/10 às00h46 BRT a build **`99f1dbc1-07db-4dd2-b7cb-f29629580f68`**, Android1.10.12/code26, preview INTERNAL, perfil APK. `build-view-01.json` mostra **IN_PROGRESS**: [acompanhar build](https://expo.dev/accounts/gabriouss/projects/grana-app/builds/99f1dbc1-07db-4dd2-b7cb-f29629580f68). Nota de envio idêntica à aprovada. **APK ainda não pronto; QA funcional no aparelho e físico pendentes.**
-- Fonte: `E:/Grana-temporarios/2026-10-29-release-widget-voz/relatorio-prism-release.md` e recibo de status. Prism segue consulta readonly até resultado; Ledger não repetiu gates, testes, preparo ou build. Primeira leitura do inventário antecipou processo e encontrou JSON vazio; helper do preparo imprimiu erro Unicode após exit0, sem repetir preparo. Nenhum valor de segredo ou mídia neste registro.
+- UMA chamada EAS exit0 criou em29/10 às00h46 BRT a build **`99f1dbc1-07db-4dd2-b7cb-f29629580f68`**, Android1.10.12/code26, preview INTERNAL, perfil APK. `build-view-01.json` mostrava **IN_PROGRESS** naquele momento: [acompanhar build](https://expo.dev/accounts/gabriouss/projects/grana-app/builds/99f1dbc1-07db-4dd2-b7cb-f29629580f68). Nota de envio idêntica à aprovada. **Atualização de 30/10, conforme Orquestrador:** release publicada em 29/10 às 00h56 BRT com APK de 176 MB; `app_release` anuncia 1.10.12 desde 00h55 BRT. Quatro operações do widget `committed` em 29/10 não identificam versão instalada nem falhas anteriores ao servidor. Testes em celular real, com app fechado e nome de loja, com e sem internet, dependem do autor.
+- Fonte: `E:/Grana-temporarios/2026-10-29-release-widget-voz/relatorio-prism-release.md` e recibo de status. Prism seguia consulta readonly até resultado naquele corte; Ledger não repetiu gates, testes, preparo ou build. Primeira leitura do inventário antecipou processo e encontrou JSON vazio; helper do preparo imprimiu erro Unicode após exit0, sem repetir preparo. Nenhum valor de segredo ou mídia neste registro.
 
 
 <!-- ledger-release-widget-20261029:end -->
