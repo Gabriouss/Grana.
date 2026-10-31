@@ -91,6 +91,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — Anvil: Colar e suítes de voz
+
+Anvil relata correção de datas de prazo interpretadas como pagamento no Colar (`5497979c`) e de dublês nas quatro suítes antes vermelhas (`ead44fb3`); fila em `f3bb3038`. As quatro passaram individualmente, mas `test:ci` integral não rodou. Testes de data, suítes relacionadas e TypeScript passaram segundo o relatório; não houve teste em aparelho, emulador ou comprovante real. Permanecem casos ambíguos de data e descrição e a revisão do Watchtower; sem push informado. O relato anterior de quatro suítes ainda falhando foi superado por esta correção.
+
 ## 31/10 — relatório Keel: A6, A4 residual e A7
 
 Keel relata correções em trabalho de teste para pagamento repetido, duplicação em cache offline e recibos após salvamento parcial, com testes de módulos reais, regressões de fila e voz e TypeScript aprovados. O relatório identifica limites ainda não testados em parcelas futuras e seletor de carteira, além de texto de recibo impreciso num caso. Não houve revisão independente do delta, teste em aparelho ou emulador, `test:ci` ou `test:parser`; as correções não estão no aplicativo instalado.
