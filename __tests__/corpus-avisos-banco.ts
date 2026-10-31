@@ -23,8 +23,14 @@ function falhou(rotulo: string, detalhe: unknown) {
 }
 
 type Esperado = { direcao: 'in' | 'out'; forma: string | null; valor: number; descricao?: string | null; parcelas?: number; digitos?: string };
+let lancamentos = 0;
+let semForma = 0;
 function lancamento(titulo: string, texto: string, e: Esperado, pacote = NUBANK) {
   const r = ler(titulo, texto, pacote);
+  if (r.tipo === 'lancamento') {
+    lancamentos++;
+    if (!r.forma) semForma++;
+  }
   const certo = r.tipo === 'lancamento' && r.direcao === e.direcao && r.forma === e.forma
     && Math.abs(r.valor - e.valor) < 0.001
     && (e.descricao === undefined || r.descricao === e.descricao)
@@ -146,6 +152,66 @@ tipo('', 'R$ 40,00 com Visa ••1234', 'nao_entendi');
 /* "R$ 50" no meio de outra palavra ou sem R$ */
 ignorado('Compra aprovada', 'Compra de 50,00 em Loja Modelo', 'sem_valor');
 
+/* Passo 1 da forma: palavra explícita */
+const compra = (forma: string | null, valor = 10) => ({ direcao: 'out' as const, forma, valor });
+lancamento('Você pagou Loja Exemplo', 'R$ 10,00 com Pix', compra('pix'));
+lancamento('', 'Você pagou R$ 10,00 com Pix', compra('pix'));
+lancamento('', 'Você pagou R$ 10,00 em Loja Exemplo com Pix', { ...compra('pix'), descricao: 'Loja Exemplo' });
+lancamento('Pagamento aprovado', 'Pagamento de R$ 10,00 via Pix', compra('pix'));
+lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo por Pix', { ...compra('pix'), descricao: 'Loja Exemplo' });
+lancamento('Compra aprovada', 'Compra de R$ 10,00 por QR Code Pix', compra('pix'));
+lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo no crédito', { ...compra('credit'), descricao: 'Loja Exemplo' });
+lancamento('Compra aprovada', 'Compra de R$ 10,00 no cartão de crédito', compra('credit'));
+lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo função crédito', { ...compra('credit'), descricao: 'Loja Exemplo' });
+lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo no débito', { ...compra('debit'), descricao: 'Loja Exemplo' });
+lancamento('Compra aprovada', 'Compra de R$ 10,00 no cartão de débito', compra('debit'));
+lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo função débito', { ...compra('debit'), descricao: 'Loja Exemplo' });
+lancamento('Você pagou Loja Exemplo', 'Debitamos R$ 10,00 da sua conta.', compra('debit'));
+lancamento('Boleto pago', 'Boleto pago de R$ 10,00 para Energia Modelo', compra('boleto'));
+/* Na carteira, o título é a loja: só o texto responde a forma */
+lancamento('Mercado Modelo', 'R$ 10,00 com cartão de crédito ••1234', { ...compra('credit'), digitos: '1234' }, WALLET);
+lancamento('Mercado Modelo', 'R$ 10,00 no débito ••1234', { ...compra('debit'), digitos: '1234' }, WALLET);
+lancamento('Crédito Modelo', 'R$ 10,00 com Visa ••1234', { ...compra(null), digitos: '1234' }, WALLET);
+
+/* Crédito e débito no mesmo aviso: nem o sinal indireto desempata */
+lancamento('Compra aprovada', 'Compra de R$ 10,00 no crédito ou no débito', compra(null));
+lancamento('Compra aprovada', 'Compra de R$ 10,00 no crédito ou no débito. Limite disponível: R$ 900,00', compra(null));
+lancamento('Compra aprovada', 'Compra de R$ 10,00 no crédito ou no débito. Saldo atual: R$ 900,00', compra(null));
+/* Pix no crédito existe e sai da fatura, não do caixa: quem responde é a pessoa */
+lancamento('Compra aprovada', 'Compra de R$ 10,00 com Pix no crédito', compra(null));
+
+/* Passo 2: sinal indireto, sem mudar o valor escolhido */
+lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo. Limite disponível: R$ 900,00', { ...compra('credit'), descricao: 'Loja Exemplo' });
+lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo. Limite restante: R$ 900,00', compra('credit'));
+lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo. Limite de crédito disponível: R$ 900,00', compra('credit'));
+lancamento('Você pagou Loja Exemplo', 'Saíram R$ 10,00 da sua conta', compra('debit'));
+lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo na sua conta', { ...compra('debit'), descricao: 'Loja Exemplo' });
+lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo na conta corrente', { ...compra('debit'), descricao: 'Loja Exemplo' });
+lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo. Saldo disponível: R$ 90,00', compra('debit'));
+lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo. Saldo atual: R$ 90,00', compra('debit'));
+/* Sinais contrários: sem forma */
+lancamento('Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo. Limite disponível: R$ 900,00. Saldo atual: R$ 90,00', compra(null));
+lancamento('Compra aprovada', 'Compra de R$ 300,00 em 3x em Loja Modelo. Saldo atual: R$ 900,00', { ...compra(null, 300), parcelas: 3 });
+lancamento('Compra aprovada', 'Compra no débito de R$ 300,00 em 3x em Loja Modelo', { ...compra(null, 300), parcelas: 3 });
+lancamento('Compra aprovada', 'Compra de R$ 300,00 em 3x com Pix em Loja Modelo', { ...compra(null, 300), parcelas: 3 });
+/* A palavra explícita vence o sinal indireto */
+lancamento('Compra aprovada', 'Compra no débito de R$ 10,00. Limite disponível: R$ 900,00', compra('debit'));
+lancamento('Compra aprovada', 'Compra no crédito de R$ 10,00. Saldo atual: R$ 90,00', compra('credit'));
+lancamento('Compra aprovada', 'Compra no crédito de R$ 300,00 em 3x. Saldo atual: R$ 90,00', { ...compra('credit', 300), parcelas: 3 });
+
+/* T5: nada disto vira gasto, e o valor do limite ou do saldo nunca vira o da compra */
+tipo('', 'Pagamento da fatura de R$ 500,00 via Pix', 'fatura_paga');
+tipo('', 'Debitamos R$ 500,00 da sua conta referente ao pagamento da fatura', 'fatura_paga');
+tipo('Fatura paga', 'Você pagou R$ 500,00 da sua conta corrente. Saldo atual: R$ 90,00. Referente à fatura', 'fatura_paga');
+ignorado('', 'Seu limite disponível aumentou para R$ 5.000,00', 'limite');
+ignorado('', 'Seu saldo disponível é R$ 1.000,00', 'saldo');
+ignorado('', 'Limite restante: R$ 900,00', 'limite');
+ignorado('Pix', 'Aproveite: pague com Pix e ganhe R$ 20,00', 'oferta');
+ignorado('', 'Ganhe R$ 5,00 de cashback no Pix', 'oferta');
+ignorado('', 'Empréstimo de R$ 1.000,00 na sua conta', 'oferta');
+tipo('', 'Debitamos R$ 10,00 da sua conta.', 'nao_entendi');
+tipo('', 'R$ 10,00 da sua conta corrente', 'nao_entendi');
+
 /* A data é a da hora local do aviso, mesmo perto da meia-noite */
 const r = interpretarAviso({ pacote: NUBANK, titulo: 'Compra', texto: 'Compra de R$ 10,00 em Loja Modelo', quando: QUANDO });
 if ('data' in r && r.data === '2026-10-30') passaram++;
@@ -157,5 +223,6 @@ for (const e of [ler('', 'Compra no crédito de R$ 10,00 em Loja Modelo'), ler('
   else falhou('resumo', e);
 }
 
+console.log(`corpus-avisos-banco: ${semForma} de ${lancamentos} lançamentos sem forma`);
 console.log(`corpus-avisos-banco: ${passaram} ok, ${falhas} falhas`);
 if (falhas) process.exit(1);

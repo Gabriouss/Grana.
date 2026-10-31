@@ -67,6 +67,36 @@ const ENTRADA = /\b(?:pix|transferencia|ted|doc)\s+recebid[oa]\b|\brecebeu\b|\br
 const SAIDA_PIX = /\bpix\s+(?:enviado|realizado|feito|efetuado|confirmado|concluido)\b|\b(?:enviou|fez|realizou)\s+(?:um\s+)?pix\b|\btransferencia\s+(?:enviada|realizada|efetuada|concluida|feita)\b|\btransferiu\b|\benviou\b|\bpagamento\s+(?:via|por|de|com)\s+pix\b|\bpix\s+(?:no\s+valor\s+)?de\b(?=[^.!?\n]*\bpara\b)/;
 const COMPRA = /\bcompras?\b|\bcomprou\b|\bgastou\b|\bvoce\s+pagou\b|\bpagamento\s+(?:aprovado|realizado|efetuado|confirmado|de)\b|\bdebitad[oa]\b/;
 
+const CREDITO = /\bcredito\b/;
+const DEBITO = /\bdebito\b|\bdebitad[oa]\b|\bdebitamos\b/;
+const PIX = /\bpix\b/;
+/* Lidos no texto inteiro, porque limite e saldo saem antes de procurar o valor. */
+const SINAL_DE_CREDITO = /\blimite\s+(?:\S+\s+){0,2}?(?:disponivel|restante)\b/;
+const SINAL_DE_DEBITO = /\b(?:da|na)\s+sua\s+conta\b|\bconta\s+corrente\b|\bsaldo\s+(?:\S+\s+){0,2}?(?:disponivel|atual)\b/;
+
+/**
+ * `null` quando o texto não diz, e 'duvida' quando diz coisas que não combinam.
+ * Crédito com Pix fica em dúvida porque Pix no crédito sai da fatura, não do caixa.
+ */
+function formaEscrita(texto: string): 'credit' | 'debit' | 'pix' | 'duvida' | null {
+  const credito = CREDITO.test(texto);
+  if (credito && (DEBITO.test(texto) || PIX.test(texto))) return 'duvida';
+  if (credito) return 'credit';
+  if (PIX.test(texto)) return 'pix';
+  return DEBITO.test(texto) ? 'debit' : null;
+}
+
+/** A palavra escrita vence o sinal indireto, e sinais contrários deixam para a pessoa. */
+function formaDaCompra(semSaldo: string, completo: string, parcelada: boolean): FormaDoAviso | null {
+  const escrita = formaEscrita(semSaldo);
+  if (escrita === 'duvida') return null;
+  if (escrita) return parcelada && escrita !== 'credit' ? null : escrita;
+  const credito = parcelada || SINAL_DE_CREDITO.test(completo);
+  const debito = SINAL_DE_DEBITO.test(completo);
+  if (credito === debito) return null;
+  return credito ? 'credit' : 'debit';
+}
+
 /** Mesmo tamanho do original: as posições do texto normalizado valem nos dois. */
 function normalizar(texto: string): string {
   return Array.from(texto.normalize('NFC').replace(ESPACOS, ' '))
@@ -121,7 +151,7 @@ function digitosDe(base: string): string | null {
   return m ? m[1] : null;
 }
 
-const CORTE_DA_CONTRAPARTE = /\s+(?:com|no|na|pelo|pela|usando|utilizando|para)\s+(?:o\s+|a\s+|seu\s+|sua\s+)*(?:cart|final\b|conta\b)|\s+final\b|\s+em\s+\d|\s+as\s+\d|\s+às\s+\d|[.!;\n]|,\s|\s+-\s/;
+const CORTE_DA_CONTRAPARTE = /\s+(?:com|no|na|pelo|pela|usando|utilizando|para|via|por)\s+(?:o\s+|a\s+|seu\s+|sua\s+)*(?:cart|final\b|conta\b|pix\b|qr\b|credito\b|debito\b)|\s+funcao\s+(?:credito|debito)\b|\s+final\b|\s+em\s+\d|\s+as\s+\d|\s+às\s+\d|[.!;\n]|,\s|\s+-\s/;
 const INICIO_DEPOIS = /^[\s,:-]*(?:(?:foi\s+)?(?:aprovad[ao]s?|realizad[ao]s?|efetuad[ao]s?|autorizad[ao]s?|confirmad[ao]s?|recebid[ao]s?|enviad[ao]s?)\s+)?(?:em|no|na|nos|nas|para|pra|de|do|da)\s+/;
 const NAO_E_NOME = /^(?:cart|credito|debito|valor|total|sua|seu|conta|pix\b)/;
 /* A parte do parcelamento sai antes de procurar a loja, com as posições intactas. */
@@ -220,6 +250,7 @@ export function interpretarAviso(aviso: AvisoParaInterpretar): AvisoEntendido {
   let direcao: TxType = 'out';
   let forma: FormaDoAviso | null = null;
   let achado: ValorAchado | null = null;
+  let ehCompraPorVerbo = false;
 
   if (BOLETO.test(semSaldo)) {
     achado = valorColado(semSaldo, BOLETO, valores);
@@ -232,14 +263,14 @@ export function interpretarAviso(aviso: AvisoParaInterpretar): AvisoEntendido {
     achado = valorColado(semSaldo, SAIDA_PIX, valores);
     forma = 'pix';
   } else if (ehCompra) {
+    ehCompraPorVerbo = true;
     achado = valorColado(semSaldo, COMPRA, valores);
-    if (/\bcredito\b/.test(semSaldo)) forma = 'credit';
-    else if (/\bdebito\b|\bdebitad[oa]\b|\bdebitamos\b/.test(semSaldo)) forma = 'debit';
   }
 
   const parcelamento = achado ? parcelamentoDe(semSaldo, valores, achado) : null;
   if (parcelamento === 'incerto') return { tipo: 'nao_entendi', data };
-  if (parcelamento) forma = 'credit';
+  if (ehCompraPorVerbo) forma = formaDaCompra(semSaldo, completo, !!parcelamento);
+  else if (parcelamento) forma = 'credit';
 
   /* Dois valores sem ser parcelamento: não dá para saber qual é o certo. */
   const distintos = new Set(valores.map((v) => v.valor));
@@ -252,6 +283,9 @@ export function interpretarAviso(aviso: AvisoParaInterpretar): AvisoEntendido {
     && /r\$\s?[\d.,]+\s+(?:com|with|via|no|na)\b/.test(semSaldo) && digitosDe(semSaldo)) {
     achado = valores[0];
     contraparte = aviso.titulo.trim() || null;
+    /* Aqui o título é a loja, e só o texto pode responder a forma. */
+    const escrita = formaEscrita(normalizar(aviso.texto));
+    forma = escrita === 'duvida' ? null : escrita;
   }
 
   if (!achado) return { tipo: 'nao_entendi', data };
