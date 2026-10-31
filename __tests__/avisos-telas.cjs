@@ -33,6 +33,7 @@ const TransactionSheet = function TransactionSheet() {};
 let diario = [], erroDiario = false, erroGravacao = false, erroAjustes = false;
 /* Falha só a escrita da caixa escolhida: pula as primeiras e recusa as seguintes. */
 let falhaCaixa = { pular: 0, vezes: 0 };
+let falhaFormas = false, avisosDoConsole = [];
 let chamadas = [], alertas = [], copiado = '', dadosLocais = {}, historico = [];
 const disco = new Map();
 const nativo = {
@@ -57,8 +58,12 @@ const stub = {
   'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'Fragment' },
   'react-native': { View: 'View', Text: 'Text', TextInput: 'TextInput', Pressable: 'Pressable', ScrollView: 'ScrollView', ActivityIndicator: 'ActivityIndicator',
     StyleSheet: { create: (s) => s }, AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
-  '@react-native-async-storage/async-storage': { getItem: async (k) => disco.get(k) ?? null,
+  '@react-native-async-storage/async-storage': { getItem: async (k) => {
+      if (falhaFormas && k.startsWith('grana_avisos_formas:')) throw new Error('disco');
+      return disco.get(k) ?? null;
+    },
     setItem: async (k, v) => {
+      if (falhaFormas && k.startsWith('grana_avisos_formas:')) throw new Error('disco');
       if (k.startsWith('grana_avisos_caixa:')) {
         if (falhaCaixa.pular > 0) falhaCaixa.pular--;
         else if (falhaCaixa.vezes > 0) { falhaCaixa.vezes--; throw new Error('disco'); }
@@ -99,7 +104,7 @@ function carregar(relativo) {
   assert.equal((resultado.diagnostics || []).filter((d) => d.category === ts.DiagnosticCategory.Error).length, 0, relativo);
   const exports = {};
   cache.set(arquivo, exports);
-  vm.runInNewContext(resultado.outputText, { exports, console: { error() {}, warn() {} },
+  vm.runInNewContext(resultado.outputText, { exports, console: { error() {}, warn: (...a) => avisosDoConsole.push(a) },
     setInterval: () => 1, clearInterval() {}, setTimeout, clearTimeout,
     require(id) {
       if ((arquivo.endsWith('AvisosAConferir.tsx') || arquivo.endsWith('AvisosBancoSecao.tsx')) && id === '@/lib/data') {
@@ -152,15 +157,17 @@ const telas = carregar('components/AvisosAConferir.tsx');
 const perfil = carregar('components/AvisosBancoSecao.tsx');
 const caixa = carregar('lib/avisos-banco/caixa.ts');
 async function lista(avisoTeste, opcoes = {}) {
-  disco.clear(); chamadas = []; alertas = []; erroGravacao = false; erroDiario = false; falhaCaixa = { pular: 0, vezes: 0 };
+  if (!opcoes.manterDisco) disco.clear();
+  chamadas = []; alertas = []; erroGravacao = false; erroDiario = false; falhaCaixa = { pular: 0, vezes: 0 };
   diario = Array.isArray(avisoTeste) ? avisoTeste : [avisoTeste]; historico = opcoes.historico ?? [];
   dadosLocais = { carteiras: [carteira], cartoes: [{ id: 'c', last_digits: '1234', wallet_id: 'w', bank: 'nubank' }],
     categorias: [], 'apelidos-categoria': [{ chave: 'mercado modelo', valor: 'Alimentação' }],
     'boletos:todos': opcoes.contas ?? [] };
-  await caixa.sincronizarCaixa('dono');
-  const ctx = montar(telas.ListaAConferir, { dono: 'dono', aoFechar() {}, aoMudar() {}, nomeDoPerfil: 'Pessoa Modelo' });
+  await caixa.sincronizarCaixa(opcoes.dono ?? 'dono');
+  const ctx = montar(telas.ListaAConferir, { dono: opcoes.dono ?? 'dono', aoFechar() {}, aoMudar() {}, nomeDoPerfil: 'Pessoa Modelo' });
   await ctx.settle();
-  const card = () => elementos(ctx.tree).find((e) => e.type === telas.CartaoDoAviso);
+  /* O aviso mais novo fica por último: com `manterDisco`, os anteriores seguem na lista. */
+  const card = () => elementos(ctx.tree).filter((e) => e.type === telas.CartaoDoAviso).at(-1);
   assert.ok(card(), 'aviso entrou na lista');
   return { ctx, card };
 }
@@ -401,6 +408,170 @@ async function main() {
   assert.deepEqual(chamadas.map((c) => c[0]), ['seedDefaultCategories', 'fetchCategories']);
   assert.match(texto(seletorNormal.tree), /Criar categoria/);
   ok('modo normal do seletor mantém a semeadura, consulta e criação existentes');
+  /* Forma identificada: o que a tela mostra e o que grava */
+  const gravados = () => chamadas.filter((c) => c[0] === 'gravar').map((c) => c[1]);
+  const CHAVE_FORMAS = 'grana_avisos_formas:dono';
+  const naoPerguntou = () => assert.equal(alertas.filter((a) => a[0] === 'Como foi pago?').length, 0);
+  const detalhe = (cartao) => texto(telas.CartaoDoAviso(cartao().props));
+  const folhaDe = (tela) => elementos(tela.tree).find((e) => e.type === TransactionSheet);
+  async function responder(tela, cartao, forma, extra = {}) {
+    cartao().props.aoConfirmar(); await tela.settle();
+    const pergunta = alertas.at(-1);
+    assert.equal(pergunta[0], 'Como foi pago?');
+    pergunta[2].find((b) => b.text === forma).onPress(); tela.render();
+    const folha = folhaDe(tela);
+    await folha.props.onSalvar({ ...folha.props.inicial, category: 'Alimentação', color: '#123456', ...extra });
+    await tela.settle();
+  }
+
+  for (const [textoDoAviso, titulo, rotulo, metodo] of [
+    ['R$ 30,00 com Pix', 'Você pagou Mercado Modelo', /Pix/, 'pix'],
+    ['Compra de R$ 30,00 em Mercado Modelo. Saldo atual: R$ 90,00', 'Compra aprovada', /Débito/, 'debit'],
+    ['Debitamos R$ 30,00 da sua conta.', 'Você pagou Mercado Modelo', /Débito/, 'debit'],
+  ]) {
+    ({ ctx, card } = await lista(aviso(textoDoAviso, titulo)));
+    assert.match(detalhe(card), rotulo, 'a forma aparece antes do toque');
+    assert.equal(gravados().length, 0, 'nada grava antes do toque (T4)');
+    card().props.aoConfirmar(); await ctx.settle();
+    naoPerguntou();
+    const folha = folhaDe(ctx);
+    if (folha) { await folha.props.onSalvar({ ...folha.props.inicial, category: 'Alimentação', color: '#123456' }); await ctx.settle(); }
+    assert.equal(gravados()[0].payment_method, metodo);
+    assert.equal(gravados()[0].amount, 30, 'o valor do saldo nunca vira o da compra');
+    assert.equal(gravados()[0].card_id, undefined);
+  }
+  ok('forma pela palavra e pelo sinal: aparece antes do toque, não pergunta e grava certo');
+
+  ({ ctx, card } = await lista(aviso('Compra de R$ 30,00 em Mercado Modelo. Limite disponível: R$ 900,00')));
+  assert.match(detalhe(card), /Crédito/);
+  card().props.aoConfirmar(); await ctx.settle();
+  naoPerguntou();
+  assert.equal(gravados().length, 0, 'crédito sem cartão abre a revisão');
+  assert.equal(folhaDe(ctx).props.modo, 'credito');
+  assert.equal(folhaDe(ctx).props.inicial.card_id, null);
+  ok('limite disponível responde crédito e continua pedindo o cartão');
+
+  /* Memória: cancelar não ensina */
+  const FINAL_NOVO = 'Compra de R$ 30,00 em Mercado Modelo final 5678';
+  ({ ctx, card } = await lista(aviso(FINAL_NOVO)));
+  assert.match(detalhe(card), /Forma não informada/);
+  card().props.aoConfirmar(); await ctx.settle();
+  assert.equal(alertas.at(-1)[0], 'Como foi pago?');
+  alertas.at(-1)[2].find((b) => b.text === 'Débito').onPress(); ctx.render();
+  folhaDe(ctx).props.onClose(); ctx.render();
+  assert.equal(folhaDe(ctx), undefined);
+  assert.equal(disco.has(CHAVE_FORMAS), false, 'tocar na pergunta e cancelar não ensina');
+  assert.equal(gravados().length, 0);
+  ok('cancelar a revisão não ensina');
+
+  /* Responde uma vez e o próximo aviso do mesmo final já chega com a forma */
+  await responder(ctx, card, 'Débito');
+  assert.equal(gravados()[0].payment_method, 'debit');
+  assert.equal(disco.get(CHAVE_FORMAS), '{"5678":"debit"}', 'só o final e a forma, sem texto do aviso (T2)');
+  ({ ctx, card } = await lista(aviso('Compra de R$ 40,00 em Mercado Modelo final 5678'), { manterDisco: true }));
+  assert.match(detalhe(card), /Débito/);
+  card().props.aoConfirmar(); await ctx.settle();
+  naoPerguntou();
+  assert.equal(gravados()[0].payment_method, 'debit');
+  assert.equal(gravados()[0].amount, 40);
+  assert.equal(gravados()[0].card_id, undefined);
+  ok('pergunta uma vez e, no aviso seguinte do mesmo final, não pergunta e grava débito');
+
+  ({ ctx, card } = await lista(aviso('Compra de R$ 40,00 em Mercado Modelo final 4321'), { manterDisco: true }));
+  assert.match(detalhe(card), /Forma não informada/);
+  card().props.aoConfirmar(); await ctx.settle();
+  assert.equal(alertas.at(-1)[0], 'Como foi pago?');
+  assert.equal(gravados().length, 0);
+  ok('outro final continua perguntando');
+
+  ({ ctx, card } = await lista(aviso('Compra de R$ 40,00 em Mercado Modelo final 5678'), { manterDisco: true, dono: 'outro' }));
+  assert.match(detalhe(card), /Forma não informada/);
+  assert.equal(disco.has('grana_avisos_formas:outro'), false);
+  ok('outro dono não herda');
+
+  await responder(ctx, card, 'Crédito', { card_id: 'c' });
+  assert.equal(gravados()[0].payment_method, 'credit');
+  assert.equal(disco.get('grana_avisos_formas:outro'), '{"5678":"credit"}');
+  assert.equal(disco.get(CHAVE_FORMAS), '{"5678":"debit"}', 'cada dono com a sua memória');
+  await caixa.limparCaixa('outro');
+  assert.equal(disco.has('grana_avisos_formas:outro'), false, 'sair da conta leva a memória');
+  assert.equal(disco.has(CHAVE_FORMAS), true);
+  ok('a resposta fica por dono, e sair da conta leva a memória');
+
+  /* A palavra vence a memória */
+  ({ ctx, card } = await lista(aviso('Compra no crédito de R$ 40,00 em Mercado Modelo final 5678'), { manterDisco: true }));
+  assert.match(detalhe(card), /Crédito/);
+  card().props.aoConfirmar(); await ctx.settle();
+  naoPerguntou();
+  assert.equal(folhaDe(ctx).props.modo, 'credito');
+  ok('palavra explícita vence a memória');
+
+  /* A memória vence o "final cadastrado é crédito". Antes de ensinar, o final responde crédito. */
+  ({ ctx, card } = await lista(aviso('Compra de R$ 40,00 em Mercado Modelo final 1234')));
+  card().props.aoConfirmar(); await ctx.settle();
+  assert.equal(gravados()[0].payment_method, 'credit');
+  assert.equal(gravados()[0].card_id, 'c');
+  ({ ctx, card } = await lista(aviso('Compra no débito de R$ 20,00 em Mercado Modelo final 1234')));
+  card().props.aoConfirmar(); await ctx.settle();
+  assert.equal(gravados()[0].payment_method, 'debit');
+  assert.equal(disco.get(CHAVE_FORMAS), '{"1234":"debit"}');
+  ({ ctx, card } = await lista(aviso('Compra de R$ 40,00 em Mercado Modelo final 1234'), { manterDisco: true }));
+  assert.match(detalhe(card), /Débito/);
+  card().props.aoConfirmar(); await ctx.settle();
+  assert.equal(gravados()[0].payment_method, 'debit');
+  assert.equal(gravados()[0].card_id, undefined, 'débito não vai para a fatura do cartão cadastrado');
+  ok('a memória vence o final cadastrado');
+
+  /* Crédito aprendido sem cartão identificado continua pedindo o cartão */
+  ({ ctx, card } = await lista(aviso(FINAL_NOVO)));
+  await responder(ctx, card, 'Crédito', { card_id: 'c' });
+  ({ ctx, card } = await lista(aviso('Compra de R$ 40,00 em Mercado Modelo final 5678'), { manterDisco: true }));
+  card().props.aoConfirmar(); await ctx.settle();
+  naoPerguntou();
+  assert.equal(gravados().length, 0);
+  assert.equal(folhaDe(ctx).props.modo, 'credito');
+  assert.equal(folhaDe(ctx).props.inicial.card_id, null);
+  ok('crédito aprendido sem cartão identificado abre a revisão para escolher o cartão');
+
+  /* Sem final, dinheiro entrando ou boleto não ensinam */
+  ({ ctx, card } = await lista(aviso('Compra de R$ 30,00 em Mercado Modelo')));
+  await responder(ctx, card, 'Pix');
+  assert.equal(gravados()[0].payment_method, 'pix');
+  assert.equal(disco.has(CHAVE_FORMAS), false);
+  ({ ctx, card } = await lista(aviso('Você recebeu um Pix de R$ 300,00 de Carlos Exemplo final 5678', 'Pix recebido')));
+  card().props.aoConfirmar(); await ctx.settle();
+  let folhaSemEnsinar = folhaDe(ctx);
+  await folhaSemEnsinar.props.onSalvar({ ...folhaSemEnsinar.props.inicial, category: 'Alimentação', color: '#123456' }); await ctx.settle();
+  assert.equal(gravados()[0].type, 'in');
+  assert.equal(disco.has(CHAVE_FORMAS), false);
+  ({ ctx, card } = await lista(aviso('Boleto pago de R$ 210,00 para Energia Modelo final 5678', 'Boleto pago')));
+  card().props.aoConfirmar(); await ctx.settle();
+  assert.equal(gravados().length, 0, 'boleto continua abrindo a revisão');
+  folhaSemEnsinar = folhaDe(ctx);
+  await folhaSemEnsinar.props.onSalvar({ ...folhaSemEnsinar.props.inicial, category: 'Moradia', color: '#123456' }); await ctx.settle();
+  assert.equal(gravados()[0].payment_method, 'debit');
+  assert.equal(disco.has(CHAVE_FORMAS), false);
+  ok('sem final, entrada de dinheiro e boleto não ensinam');
+
+  /* Disco da memória falhando: a lista e a gravação seguem, com log */
+  avisosDoConsole = [];
+  falhaFormas = true;
+  ({ ctx, card } = await lista(aviso(FINAL_NOVO)));
+  assert.match(detalhe(card), /Forma não informada/);
+  await responder(ctx, card, 'Débito');
+  assert.equal(gravados()[0].payment_method, 'debit');
+  assert.equal((await caixa.listarCaixa('dono')).length, 0, 'o item sai da lista');
+  assert.ok(avisosDoConsole.length >= 2, 'leitura e gravação deixam aviso no log');
+  assert.ok(avisosDoConsole.every((a) => !a.join(' ').includes('Mercado')), 'o log não leva texto do aviso');
+  falhaFormas = false;
+  disco.set(CHAVE_FORMAS, 'isto não é json');
+  ({ ctx, card } = await lista(aviso('Compra de R$ 40,00 em Mercado Modelo final 5678'), { manterDisco: true }));
+  assert.match(detalhe(card), /Forma não informada/);
+  disco.set(CHAVE_FORMAS, '{"5678":"qualquer","abc":"debit","1111":"pix"}');
+  ({ ctx, card } = await lista(aviso('Compra de R$ 40,00 em Mercado Modelo final 5678'), { manterDisco: true }));
+  assert.match(detalhe(card), /Forma não informada/);
+  ok('memória ilegível ou com falha no disco não derruba a lista nem a gravação');
+
   console.log(`\n${checagens} grupos de verificação passaram. Sem rede ou aparelho.`);
 }
 main().catch((e) => { console.error(e); process.exitCode = 1; });

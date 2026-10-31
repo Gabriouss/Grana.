@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lerDiarioAvisos } from '@/modules/grana-avisos';
-import { aplicarAvisos, CAIXA_VAZIA, type EstadoDaCaixa, type ItemAConferir } from './decidir';
+import { aplicarAvisos, CAIXA_VAZIA, type EstadoDaCaixa, type FormasAprendidas, type ItemAConferir } from './decidir';
+import type { FormaDoAviso } from './interpretar';
 
 /**
  * A lista "A conferir", por dono, só neste aparelho. Não chama rede e não guarda
@@ -9,6 +10,7 @@ import { aplicarAvisos, CAIXA_VAZIA, type EstadoDaCaixa, type ItemAConferir } fr
  */
 const chaveDoDono = (dono: string) => `grana_avisos_caixa:${dono}`;
 const chaveDasMarcas = (dono: string) => `grana_avisos_gravados:${dono}`;
+const chaveDasFormas = (dono: string) => `grana_avisos_formas:${dono}`;
 
 /* Uma mudança de cada vez: toque em Descartar durante a leitura do diário não
    pode ser desfeito pela gravação de quem começou antes. */
@@ -104,9 +106,35 @@ export function esquecerMarcaDeGravado(dono: string, id: string): Promise<void> 
   });
 }
 
+/* O que a pessoa já gravou para cada final de cartão: só os 4 dígitos e a forma, nada
+   do aviso. Sem essa memória o app só volta a perguntar, então falha nunca derruba. */
+const FORMAS_VALIDAS: readonly string[] = ['credit', 'debit', 'pix'];
+
+async function lerFormas(dono: string): Promise<FormasAprendidas> {
+  try {
+    const lidas: unknown = JSON.parse(await AsyncStorage.getItem(chaveDasFormas(dono)) ?? '{}');
+    return Object.fromEntries(Object.entries(lidas as Record<string, string>)
+      .filter(([digitos, forma]) => /^\d{4}$/.test(digitos) && FORMAS_VALIDAS.includes(forma))) as FormasAprendidas;
+  } catch (erro) {
+    console.warn('[avisos] não leu as formas aprendidas', erro instanceof Error ? erro.name : 'erro');
+    return {};
+  }
+}
+
+export function formasAprendidas(dono: string): Promise<FormasAprendidas> {
+  return naVez(() => lerFormas(dono));
+}
+
+export function aprenderFormaDoCartao(dono: string, digitos: string, forma: FormaDoAviso): Promise<void> {
+  return naVez(async () => {
+    await AsyncStorage.setItem(chaveDasFormas(dono), JSON.stringify({ ...(await lerFormas(dono)), [digitos]: forma }));
+  });
+}
+
 export function limparCaixa(dono: string): Promise<void> {
   return naVez(async () => {
     await AsyncStorage.removeItem(chaveDoDono(dono));
     await AsyncStorage.removeItem(chaveDasMarcas(dono));
+    await AsyncStorage.removeItem(chaveDasFormas(dono));
   });
 }

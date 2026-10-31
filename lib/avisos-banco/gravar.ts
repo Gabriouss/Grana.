@@ -3,6 +3,7 @@ import { todayISO } from '../format';
 import { salvarOuGuardarNoAparelho, salvarOuGuardarParceladaNoAparelho } from '../offline-cache';
 import type { Bill } from '../types';
 import {
+  aprenderFormaDoCartao,
   contaEmPagamentoDoItem,
   esquecerMarcaDeGravado,
   marcaDeGravado,
@@ -74,6 +75,15 @@ async function lembrarGravado(dono: string, id: string, guardado: boolean): Prom
   });
 }
 
+/* Aprende na gravação, nunca ao responder a pergunta. Boleto sai como débito na
+   entrada e dinheiro que entrou não diz nada sobre como a pessoa paga com o cartão. */
+async function aprenderForma(dono: string, item: ItemAConferir, entrada: EntradaDoAviso): Promise<void> {
+  if (!item.digitos || item.forma === 'boleto' || entrada.type !== 'out') return;
+  await aprenderFormaDoCartao(dono, item.digitos, entrada.payment_method).catch((erro) => {
+    console.warn('[avisos] não guardou a forma do cartão', erro instanceof Error ? erro.name : 'erro');
+  });
+}
+
 export async function gravarItem(
   dono: string,
   item: ItemAConferir,
@@ -88,6 +98,7 @@ export async function gravarItem(
       ? await salvarOuGuardarParceladaNoAparelho(entrada, chave)
       : await salvarOuGuardarNoAparelho(entrada, chave));
     await lembrarGravado(dono, item.id, guardado);
+    await aprenderForma(dono, item, entrada);
   }
   await tirarDaLista(dono, item.id, 'lancamento');
   return { guardado, jaEstava };

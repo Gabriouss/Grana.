@@ -156,10 +156,18 @@ export function cartaoDoItem(item: ItemAConferir, cartoes: CreditCard[]): Credit
   return achados.length === 1 ? achados[0] : null;
 }
 
-/** Forma efetiva: o final de um cartão conhecido responde "crédito". */
-export function formaDoItem(item: ItemAConferir, cartoes: CreditCard[]): FormaDoAviso | null {
+/** A forma que a pessoa já gravou para cada final de cartão. */
+export type FormasAprendidas = Record<string, FormaDoAviso>;
+
+/**
+ * Forma efetiva. Depois do que o aviso diz, vale o que a pessoa já gravou para
+ * aquele final e, por último, o final de um cartão conhecido responde "crédito".
+ */
+export function formaDoItem(item: ItemAConferir, cartoes: CreditCard[], aprendidas: FormasAprendidas = {}): FormaDoAviso | null {
   if (item.formaEmDisputa) return null;
-  return item.forma ?? (cartaoDoItem(item, cartoes) ? 'credit' : null);
+  return item.forma
+    ?? (item.digitos ? aprendidas[item.digitos] : null)
+    ?? (cartaoDoItem(item, cartoes) ? 'credit' : null);
 }
 
 /**

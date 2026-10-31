@@ -5,7 +5,7 @@ import AppPressable from './AppPressable';
 import PrivacyValue from './PrivacyValue';
 import TransactionSheet, { type ValoresLancamento } from './TransactionSheet';
 import { Alert } from '@/lib/alerta';
-import { listarCaixa, removerItemDaCaixa, sincronizarCaixa } from '@/lib/avisos-banco/caixa';
+import { formasAprendidas, listarCaixa, removerItemDaCaixa, sincronizarCaixa } from '@/lib/avisos-banco/caixa';
 import { nomeDoApp, PACOTES_INICIAIS } from '@/lib/avisos-banco/catalogo';
 import {
   cartaoDoItem,
@@ -16,6 +16,7 @@ import {
   montarEntrada,
   pareceEntreContas,
   pareceJaLancado,
+  type FormasAprendidas,
   type ItemAConferir,
 } from '@/lib/avisos-banco/decidir';
 import {
@@ -162,6 +163,7 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
   const [revisao, setRevisao] = useState<{ item: ItemAConferir; forma: FormaDoAviso } | null>(null);
   /* Já registrados: falta só sair da lista. Não oferecem Confirmar nem Editar. */
   const [jaSalvos, setJaSalvos] = useState<Set<string>>(new Set());
+  const [formas, setFormas] = useState<FormasAprendidas>({});
   /* Trava síncrona: o estado só muda no próximo render, e toque duplo cabe nesse intervalo. */
   const emAndamento = useRef(false);
   const concluidos = useRef(new Set<string>());
@@ -169,8 +171,10 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
   const recarregarItens = useCallback(async () => {
     const lista = await listarCaixa(dono);
     const salvos = await itensJaGravados(dono);
+    const lembradas = await formasAprendidas(dono);
     setItens(lista);
     setJaSalvos(salvos);
+    setFormas(lembradas);
     aoMudar(lista);
     return lista;
   }, [aoMudar, dono]);
@@ -332,14 +336,14 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
 
   function abrirRevisao(item: ItemAConferir, d: DadosDaLista) {
     if (item.contaEmPagamento) { abrirBoleto(item, d); return; }
-    const forma = formaDoItem(item, d.cartoes);
+    const forma = formaDoItem(item, d.cartoes, formas);
     if (forma === 'boleto') abrirBoleto(item, d);
     else if (!forma) perguntarForma(item);
     else setRevisao({ item, forma });
   }
 
   function confirmar(item: ItemAConferir, d: DadosDaLista) {
-    const forma = formaDoItem(item, d.cartoes);
+    const forma = formaDoItem(item, d.cartoes, formas);
     const categoria = categoriaDoItem(item, d.apelidos, d.extras);
     const umToque = confirmaEmUmToque(item, {
       forma,
@@ -435,6 +439,7 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
                 item={item}
                 jaSalvo={jaSalvos.has(item.id)}
                 dados={dados}
+                formas={formas}
                 texto={textos[item.avisoIds[0]]}
                 entreContas={pareceEntreContas(item, nomeDoPerfil)}
                 ocupado={ocupado !== null}
@@ -477,10 +482,11 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
   </>;
 }
 
-function CartaoDoAviso({ item, jaSalvo, dados, texto, entreContas, ocupado, aoConfirmar, aoEditar, aoDescartar }: {
+function CartaoDoAviso({ item, jaSalvo, dados, formas, texto, entreContas, ocupado, aoConfirmar, aoEditar, aoDescartar }: {
   item: ItemAConferir;
   jaSalvo: boolean;
   dados: DadosDaLista;
+  formas: FormasAprendidas;
   texto?: string;
   entreContas: boolean;
   ocupado: boolean;
@@ -514,7 +520,7 @@ function CartaoDoAviso({ item, jaSalvo, dados, texto, entreContas, ocupado, aoCo
       </View>
     );
   }
-  const forma = formaDoItem(item, dados.cartoes);
+  const forma = formaDoItem(item, dados.cartoes, formas);
   const cartao = cartaoDoItem(item, dados.cartoes);
   const jaLancado = pareceJaLancado(item, dados.lancamentos);
   const categoria = categoriaDoItem(item, dados.apelidos, dados.extras);
