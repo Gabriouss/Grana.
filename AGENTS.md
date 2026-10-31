@@ -778,6 +778,7 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     respondendo às seis perguntas da regra 12, e o maestro repassa ao Ledger.
     Quando o Ledger não estiver no canvas, o maestro delega o registro a outro
     agente, e não o escreve ele mesmo.
+    **30/10/2026, pedido do autor:** “Eu quero que o Codex, sempre que disponível documente o trabalho em tempo real”. Sempre que houver Codex disponível, ele documenta em tempo real; se Ledger não estiver no canvas ou estiver sem limite, outro Codex assume.
 
 20. **"Saldo atual" e "Livre para gastar" usam SÓ o mês vigente. Nunca saldo
     acumulado de meses anteriores, nunca `initial_balance`.** Decisão do autor
