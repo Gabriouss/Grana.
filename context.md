@@ -93,6 +93,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 31/10 — formas de pagamento em teste
+
+O autor pediu identificação automática das formas de pagamento; a confirmação por toque permanece e boleto continua em revisão. Keel relata ajustes e testes focais verdes na linha local de teste, sem aviso real, aparelho ou compilação nativa. Há situações ainda ambíguas que podem exigir revisão; uma suspeita induzida por sinais genéricos foi retirada. As mudanças financeiras aguardam revisão independente antes de publicação e não estão em build.
+
 ## 31/10 — continuidade do teste real
 
 O autor perguntou sobre identificar automaticamente a forma do gasto. A resposta: depende do conteúdo do aviso ou de correspondência com cartão; continua exigido um toque antes de gravar. Correções de ícone e identificação de débito foram feitas apenas na linha local de teste, sem build nem validação em aparelho. A causa do uso do ícone foi confirmada no código; a aparência observada ainda é dedução. O orquestrador corrigiu sua suspeita anterior de escolha automática de cartão: a análise ampliada e a sonda indicam que houve escolha. Permanece hipótese de classificação incorreta quando um cartão com múltiplas funções é inferido como crédito; o item mostra a forma antes do toque.
