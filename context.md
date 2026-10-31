@@ -91,6 +91,12 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — publicação dos arquivos e cópia da skill
+
+A pedido de “Commita tudo”, Anvil publicou cinco commits: `08430cb8`, `400401de`, `28d65361`, `b87494d7` e `ff67c97f`; relatou árvore limpa, CI verde e Vercel concluída em `ff67c97f`. A pendência dos caminhos sem commit foi encerrada. O gancho `.codex/hooks.json` usa caminhos da M1 e não foi testado na M2; licenças de terceiros da skill ainda não foram verificadas na origem.
+
+A cópia Codex de `motion-supremo` foi igualada à cópia Claude em `c57ca141`, com comparação de arquivos sem diferenças. O validador de skills rejeitou a descrição existente por exceder seu limite; ela foi preservada para manter as cópias iguais. Não houve teste de comportamento da skill.
+
 ## 31/10 — CI remoto corrigido
 
 Anvil identificou ausência do Playwright no runner desde `18fe4747` e corrigiu o workflow em `130f3eb1`; relata CI remoto verde nos jobs de testes e segredos, sem defeito de produto identificado. O orquestrador informou conclusão da Vercel nesse hash. A execução em UTC passou, mas comportamento na virada do dia e em outros fusos continua sem prova específica; build e nativo não foram testados.
