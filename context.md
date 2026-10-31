@@ -91,6 +91,14 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## Retomada de 31/10/2026 — registro recebido do orquestrador
+
+Às 09h05 a máquina foi religada e o Maestri reabriu os terminais. O orquestrador informou 1,8 GB livres antes de encerrar terminais parados e 3,9 GB depois; informou também a configuração do Ledger em Terra low. Às 09h10 registrou os limites: Claude 2% em cinco horas e 18% na semana; Gabriel Codex 100% e 27%; Codex PH 100% e 37%. Estes são dados relatados para aquele horário, não medições atuais.
+
+A distribuição relatada foi: Watchtower revisa Colar e publicação; Anvil investiga fila; Keel trata pendências de teste; Vigil faz QA no emulador; Compass, Forge e Beacon levantam insumos para o plano Play; o orquestrador escreve o plano. Atribuição não comprova conclusão.
+
+Às 00h12, segundo o relato, o autor decidiu testar pessoalmente a instalação por cabo USB no próprio celular; a restrição T6 para usuários finais permanece. Correção do corte das 00h45: a referência a “R$ 10, conferido contra a nota” era arredondamento do pedido do autor e não reproduzia o valor exato da nota de preço. A fonte de preço permanece a nota própria no vault.
+
 ---
 
 # Exposição histórica do .env ao EAS — situação atual
