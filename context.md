@@ -91,6 +91,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — atualização do plano
+
+O plano mantido fora do repositório incorporou o parecer de privacidade e obrigações legais; permanece proposta sujeita a validação e aprovação.
+
 ## 31/10 — Vigil 2 e Watchtower 9
 
 Vigil relata que avisos comuns de app auxiliar chegaram ao emulador e A conferir permitiu confirmar e descartar; não houve crash observado. A falha anterior com SMS foi atribuída ao filtro de conversas. Banco real e confirmação no servidor da sincronização offline não foram testados; houve alerta temporário de atualização após exclusões, sem reprodução deliberada.
