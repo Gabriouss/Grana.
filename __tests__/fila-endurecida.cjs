@@ -338,6 +338,8 @@ const limpar8 = async () => { while (agendados.length) { agendados.shift().fn();
   const vozDisco = new Map();
   const rpcs = [];
   const revisoes = [];
+  const confirmadas = [];
+  const reconciliadas = [];
   const vozEstado = { rede: false, recusa: null, falharRecibo: false };
   const vozAsync = {
     getItem: async (k) => (vozDisco.has(k) ? vozDisco.get(k) : null),
@@ -348,7 +350,14 @@ const limpar8 = async () => { while (agendados.length) { agendados.shift().fn();
   cache.clear();
   const voz = carregar('lib/voice-operations.ts', {
     '@react-native-async-storage/async-storage': { __esModule: true, default: vozAsync },
-    './voz-retomada': { agendarVoz: async () => true },
+    /* Fronteira do recibo. Desde 60507f47 a sincronização confirma cada fala pela
+       tarefa de voz, que carrega react-native. Sem este dublê o import lançava, e
+       o catch lia isso como falha temporária: parava a rodada depois de gravar a
+       primeira fala. O recibo real está em voz-sync-app-estado-widget.cjs. */
+    './widget-voz-task': { confirmarOperacaoVozSincronizada: async (requestId, _dono, dados, resultado, _controle, peloApp) => {
+      confirmadas.push([requestId, dados.description, resultado.status, peloApp]);
+    } },
+    './voz-retomada': { agendarVoz: async () => true, reconciliarVozConcluida: async (requestId) => { reconciliadas.push(requestId); } },
     './supabase': { supabase: { auth: { getSession: async () => ({ data: { session: { user: { id: estado.usuario }, access_token: 't' } } }) }, rpc: (_n, args) => ({ setHeader() { return this; }, abortSignal: async () => {
       rpcs.push(args.p_payload.description);
       if (!vozEstado.rede) return { error: { message: 'Network request failed' } };
@@ -375,8 +384,11 @@ const limpar8 = async () => { while (agendados.length) { agendados.shift().fn();
   vozEstado.recusa = { alvo: 'V 0', erro: { code: '22023', message: 'Operacao de voz invalida' } };
   rpcs.length = 0;
   const s2 = await voz.sincronizarOperacoesVoz();
-  igual(rpcs.length, 3, 'com rede, a recusa não trava os outros');
+  igual(rpcs, ['V 0', 'V 1', 'V 2'], 'com rede, a recusa não trava os outros');
   igual(s2.sincronizadas, 2, 'dois gravados');
+  igual(confirmadas, [['req-V-1', 'V 1', 'committed', true], ['req-V-2', 'V 2', 'committed', true]],
+    'só os gravados recebem recibo, pelo caminho do app');
+  igual(reconciliadas, ['req-V-1', 'req-V-2'], 'e o widget é reconciliado só para os gravados');
   igual(revisoes, [['Não consegui salvar', 'V 0 5']], 'o recusado vira revisão com recibo');
   igual(vozDisco.size, 0, 'e só sai da fila depois do recibo publicado');
 
