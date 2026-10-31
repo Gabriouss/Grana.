@@ -176,3 +176,21 @@ que não usar. As regras do projeto prevalecem sobre qualquer referência. Prime
 3. **Traço que se desenha e leque radial:** etapas encadeadas de 4 quadros; gráfico, anel de meta ou o G do logo.
 4. **Pop-in com ultrapassagem:** `back.out(1.7)` em 0,3 s, pico de 108%; recorte que salta da tela.
 5. **Queda escalonada com giro:** `stagger` 0,1 s, −8° → 0°, 0,35 s cada; cartões em cascata fora do celular.
+
+Segunda entrada (autor, 28/10/2026, depois de reprovar o R5 v1): `referencias/grana/reels-referencia-2026-10-28.md`,
+quatro Reels de criadores medidos (formato, cortes, legenda, loudness) e os 17 efeitos que eles demonstram (órbita,
+parede de posts, dentro do app, saindo da tela, zoom digital, mockup de celular, checklist, mural de manchete, corte
+no zoom, gráfico subindo, revelação, chroma key, recorte de papel, rabisco vivo, vertigem, capa de revista, letra de
+vidro). **Leia antes de montar qualquer Reels.** O que ele muda na ordem de trabalho:
+
+- O apresentador conduz o vídeo inteiro (rosto cheio, tela dividida ou com o app ao lado), não só a abertura e o fecho.
+- A janela importante do app aparece GRANDE e reta, recriada em HTML, com zoom no que acontece.
+- Uma ideia por vez, um elemento por palavra, devagar o bastante para ler; pouca coisa flutuando.
+- Fundo petróleo da marca, nunca quase preto; legenda de 1 a 3 palavras fora de qualquer objeto.
+
+E na conferência (seção 4), somar:
+
+- [ ] Celular reto, sem moldura em volta, sem fundo vazando pela tela.
+- [ ] Nenhuma troca de cor que não seja da marca (o "rebobinar" com `hue-rotate` deixou a tela roxa no R5 v1).
+- [ ] Toda tela mostrada tem dado: um "mês organizado" sem números na tela não convence.
+- [ ] Legenda nunca cruza objeto, celular ou rosto.

@@ -96,6 +96,27 @@ python3 "C:/Users/user/.local/share/editonny/scripts/editonny.py" scene --projec
 python3 "C:/Users/user/.local/share/editonny/engine/helpers/quality_gate.py" <video-final.mp4>
 ```
 
+### 1.5. Objetos 3D no Blender (MCP `blender`, instalado em 28/10/2026)
+
+Use para os objetos 3D dos Reels (celular, cofrinho, cartões em volume), quando a cena pedir profundidade real que o CSS 3D não entrega. Regra da 1.1 continua valendo: mockup é foto de aparelho vazio com print real colado, por homografia. O Blender só cria o objeto; o print entra na composição.
+
+- **Como funciona:** o servidor MCP `blender` (`uvx mcp-for-blender`, registrado no escopo `user` do Claude Code) conversa com o addon "MCP for Blender" dentro do Blender 5.2.3 (`C:\Program Files\Blender Foundation\Blender 5.2\blender.exe`). O addon está em `%APPDATA%\Blender Foundation\Blender\5.2\scripts\addons\blender_mcp.py`, habilitado e com início automático do servidor no `startup.blend`.
+- **Antes de usar:** abra o Blender uma vez para o servidor subir. Confira com `claude mcp list` (deve mostrar `blender ... ✔ Connected`).
+- **Entrega:** exporte o objeto em `.glb` (um por peça), coloque em `docs/marketing/…/apoio/motion/` ou na pasta da rodada, e importe na cena Three.js / HyperFrames. Nunca deixe o `.blend` no repositório.
+- **Não usa crédito.** Render e criação local. Ferramentas que chamam serviços pagos do Blender (ex.: geração Meshy ou Tripo no próprio MCP) gastam crédito e exigem o "sim" do autor antes (regra 24).
+- **Verificação:** o objeto precisa ser conferido contra a tabela 1.1 (proporção de aparelho, margem segura, cantos arredondados) antes de entrar em `para-aprovacao`.
+
+### 1.6. Área segura do Reels e telas do app em HTML (autor, 28/10/2026)
+
+- **Área segura 1080 x 1440, centrada (y 240 a 1680).** Legendas, Saiba mais, cursor, logotipo, assinatura, rosto do apresentador e o conteúdo útil da tela do app ficam dentro dela. Fora dela só enfeite que não faz falta se o Reels for exibido cortado em outro formato de anúncio (caos 3D, brilho, piso, varredura de luz, fundo do apresentador). O celular pode vazar, desde que não atrapalhe entender o que acontece. Entradas animadas também respeitam a área (o impacto de escala 2,3 da base passa da linha; no R5 ele ficou em 1,5). Conferir com uma varredura quadro a quadro dos elementos essenciais (modelo: `edicao-r5/serie/area.py`).
+- **Reels de referência (28/10/2026):** antes de montar qualquer Reels, leia
+  `referencias/grana/reels-referencia-2026-10-28.md` (quatro Reels de criadores medidos e os 17 efeitos que eles
+  demonstram). Em resumo: o apresentador conduz o vídeo inteiro; uma ideia por vez, um elemento por palavra;
+  janela do app grande e reta, com zoom; fundo petróleo da marca, nunca quase preto; legenda de 1 a 3 palavras fora
+  de qualquer objeto; pouco 3D, com conteúdo legível e longe da legenda; ritmo que deixa ler. A revisão do R5 v1 que
+  levou a isso está em `docs/marketing/ajustes.md`.
+- **Tela do Grana. no vídeo é recriada em HTML, fiel ao app, e animada ali** (campo a campo, valor contando, gráfico se desenhando). A gravação de 19/10 é a referência de medida, texto, valor e cor, e não vai mais tocando dentro do celular. Reaproveitar as peças do `base.js` da série v3 e comparar lado a lado com a gravação em tamanho real antes de renderizar (modelo: `edicao-r5/serie/telas6.js` e `tela-zoom.py`). Teclado do sistema e aviso do Expo Go não entram.
+
 ---
 
 ## 2. Motion de Interface (UI / Web / App React Native), Filosofia Emil Kowalski & Tokens do Grana.
