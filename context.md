@@ -91,6 +91,12 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — Vigil 2 e Watchtower 9
+
+Vigil relata que avisos comuns de app auxiliar chegaram ao emulador e A conferir permitiu confirmar e descartar; não houve crash observado. A falha anterior com SMS foi atribuída ao filtro de conversas. Banco real e confirmação no servidor da sincronização offline não foram testados; houve alerta temporário de atualização após exclusões, sem reprodução deliberada.
+
+Watchtower mantém a main não apta: reproduziu no parser real uma operação futura interpretada no ano anterior perto da virada, apesar do limite de 180 dias. Seis suítes passaram; sem push. O parecer também entregou análise de privacidade e obrigações legais para revisão; situação de serviços em produção não foi confirmada.
+
 ## 31/10 — Colar
 
 O Colar recebeu limite de 180 dias para data sem ano no commit `1b4302a1`. Referências aos hashes foram atualizadas antes da publicação.
