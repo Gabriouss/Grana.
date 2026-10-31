@@ -25,6 +25,25 @@ class FalaParaRevisar extends Error {
   }
 }
 
+/** Só formatos técnicos do JavaScript: message pode conter a fala, SQL,
+    URL ou dados devolvidos pelo servidor. Nunca registrar o erro inteiro. */
+function mensagemTecnicaDaFalha(erro: unknown): string {
+  // Erros vindos de outro contexto JS não passam por instanceof Error.
+  const falha = erro as { name?: unknown; message?: unknown } | null;
+  const mensagem = falha?.message;
+  if (typeof mensagem !== 'string') return 'mensagem omitida';
+  if (mensagem.length <= 180 && (
+    (falha?.name === 'TypeError' && /^(?:[A-Za-z_$][\w$]*\.)*[A-Za-z_$][\w$]* is not a function$/.test(mensagem)) ||
+    (falha?.name === 'ReferenceError' && /^[A-Za-z_$][\w$]* is not defined$/.test(mensagem))
+  )) return mensagem;
+  if (falha?.name === 'TypeError' && /^Cannot read properties of (undefined|null)(?: \(reading '[^']*'\))?$/.test(mensagem)) {
+    // O nome da propriedade pode vir dos dados da pessoa.
+    return mensagem.startsWith('Cannot read properties of undefined')
+      ? 'Cannot read properties of undefined' : 'Cannot read properties of null';
+  }
+  return 'mensagem omitida';
+}
+
 /** Como terminou uma execução: `guardada` quando a fala continua na fila. */
 export type DesfechoTarefa = { guardada: false; repetir?: true } | { guardada: true; motivo: MotivoFalaGuardada };
 
@@ -382,7 +401,7 @@ async function executarAteODesfecho(
       desfecho = { guardada: true, motivo: 'demorou' };
       return desfecho;
     }
-    console.warn('[voz:widget] tarefa interrompida', (erro as { code?: string })?.code ?? 'falha');
+    console.warn('[voz:widget] tarefa interrompida', (erro as { code?: string })?.code ?? 'falha', mensagemTecnicaDaFalha(erro));
     estadoFinal = 'atencao';
     if (erro instanceof FalaParaRevisar && requestId) {
       /* Sem lançar e sem apagar: a fala fica na fila, marcada, e o recibo
