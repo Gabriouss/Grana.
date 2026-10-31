@@ -222,6 +222,51 @@ ok('descrição do Colar sem o resto da data: inteiro ou nada, parcela e valor i
   assert.equal(limpo('Pagamento 28/10 às 10:15'), 'Pagamento');
   ok('pagamento prevalece antes/depois do rótulo, na mesma linha ou em outra');
 
+  /* Parecer 4: o rótulo pode conter qualquer qualificação do campo. O que
+     encerra esse contexto é outro campo, outra data ou o fim do trecho. */
+  const qualificadores = ['do boleto', 'da fatura', 'da parcela', 'do título', 'do documento', 'desta conta', 'original'];
+  let casosQualificados = 0;
+  for (const rotulo of ['Vencimento', 'Data de vencimento', 'Parcela', 'Validade', 'Agendado', 'Previsão']) {
+    for (const qualificador of qualificadores) {
+      const prazo = `${rotulo} ${qualificador}: 05/11 às 23:59`;
+      assert.deepEqual(lida(prazo), { data: null, recusada: false }, prazo);
+      assert.equal(limpo(prazo), prazo, 'prazo qualificado fica inteiro: ' + prazo);
+      casosQualificados++;
+      for (const separador of [' ', '\n', '; ', '. ', '! ', '? ']) {
+        for (const [t, resto] of [
+          [`${prazo}${separador}${pagamento}`, `${prazo}${separador}Pago`],
+          [`${pagamento}${separador}${prazo}`, `Pago${/^[!?]/.test(separador) ? ' ' : ''}${separador}${prazo}`],
+        ]) {
+          assert.deepEqual(lida(t), { data: '2026-10-28', recusada: false }, t);
+          assert.equal(limpo(t), resto, 'só sai o pagamento, nunca o prazo: ' + t);
+          casosQualificados++;
+        }
+      }
+    }
+  }
+  assert.equal(casosQualificados, 546);
+  ok('546 casos de prazo/parcela qualificados preservam o prazo e a data efetiva nas duas ordens');
+
+  for (const palavra of ['Pago', 'Paga', 'Pagamento', 'Efetuado', 'Realizado', 'Compra']) {
+    const t = `Vencimento original ${palavra} em 28/10 às 10:15`;
+    assert.deepEqual(lida(t), { data: '2026-10-28', recusada: false }, t);
+    assert.equal(limpo(t), `Vencimento original ${palavra}`, t);
+  }
+  for (const separador of ['\n', '; ', '. ', '! ', '? ']) {
+    const t = `Vencimento do boleto${separador}Mercado em 28/10 às 10:15`;
+    assert.deepEqual(lida(t), { data: '2026-10-28', recusada: false }, t);
+    assert.equal(limpo(t), `Vencimento do boleto${separador}Mercado`, t);
+  }
+  for (const t of ['Parcela do boleto 1/3 em 28/10 às 10:15',
+    'Vencimento do documento 05/11 em 28/10 às 10:15']) {
+    assert.deepEqual(lida(t), { data: '2026-10-28', recusada: false }, t);
+    assert.equal(limpo(t), t.replace(' em 28/10 às 10:15', ''), t);
+  }
+  const livre = 'Vencimento sob condição contratual ajustada: 05/11 às 23:59';
+  assert.deepEqual(lida(livre), { data: null, recusada: false }, livre);
+  assert.equal(limpo(livre), livre, 'qualificadores não são uma lista fechada');
+  ok('contexto qualificado termina em pagamento, outra data ou fim de trecho, sem lista de qualificadores');
+
   /* Futuro vira ano anterior; hoje continua no ano corrente. */
   assert.equal(lida('Pix em 30/10 R$ 1').data, '2026-10-30', 'hoje é do ano corrente');
   assert.equal(lida('Pix em 31/10 R$ 1').data, '2025-10-31', 'amanhã é do ano anterior');

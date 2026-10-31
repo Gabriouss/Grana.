@@ -374,13 +374,20 @@ const DATA_SEM_ANO = new RegExp(
   'iu',
 );
 
-const ROTULO_SEM_DATA_DE_PAGAMENTO = /\b(?:(?:parc|venc|valid|expir|agend|previs)\p{L}*|proximo\s+pagamento|pagar)(?:[\s\p{P}]|\b(?:em|no|dia|para|ate|de)\b)*$/iu;
+const ROTULO_SEM_DATA_DE_PAGAMENTO = /\b(?:(?:parc|venc|valid|expir|agend|previs)\p{L}*|proximo\s+pagamento|pagar)\b/giu;
+const LIGACAO_DO_ROTULO = /^(?:[\s\p{P}]|\b(?:em|no|dia|para|ate|de)\b)*$/iu;
+const FIM_DO_CONTEXTO_DO_ROTULO = /[\r\n;]|[.!?](?:\s|$)|\b(?:pago|paga|pagamento|efetuado|realizado|compra)\b|\b(?:\d{1,2}\/\d{1,2}|\d{4}-\d{1,2}-\d{1,2})\b/iu;
 
-/** O rótulo só alcança o número ligado a ele; "Pago em" encerra esse contexto. */
+/** Qualificações são livres; pagamento, outra data ou fim de trecho encerram o rótulo. */
 function datasSemAnoDoTexto(texto: string): RegExpExecArray[] {
   return [...texto.matchAll(new RegExp(DATA_SEM_ANO.source, 'giu'))].filter((m) => {
     const antes = texto.slice(0, m.index).normalize('NFD').replace(/\p{M}/gu, '');
-    return !ROTULO_SEM_DATA_DE_PAGAMENTO.test(antes);
+    const rotulo = [...antes.matchAll(ROTULO_SEM_DATA_DE_PAGAMENTO)].at(-1);
+    if (!rotulo) return true;
+    const entre = antes.slice(rotulo.index + rotulo[0].length);
+    // Pontuação sem conteúdo ainda liga o rótulo à data ("Vencimento. em 05/11").
+    if (LIGACAO_DO_ROTULO.test(entre)) return false;
+    return FIM_DO_CONTEXTO_DO_ROTULO.test(entre);
   });
 }
 
