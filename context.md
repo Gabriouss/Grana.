@@ -91,6 +91,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — revisão atribuída ao Watchtower
+
+A ordem 7 atribui ao Watchtower a revisão do delta de Colar e testes de voz, com decisão de publicação após conferências, e depois revisão separada das correções A6, A4 residual e A7 na linha de teste. A atribuição não comprova revisão, aprovação ou publicação; aguardar os pareceres e marcadores correspondentes.
+
 ## 31/10 — Anvil: Colar e suítes de voz
 
 Anvil relata correção de datas de prazo interpretadas como pagamento no Colar (`5497979c`) e de dublês nas quatro suítes antes vermelhas (`ead44fb3`); fila em `f3bb3038`. As quatro passaram individualmente, mas `test:ci` integral não rodou. Testes de data, suítes relacionadas e TypeScript passaram segundo o relatório; não houve teste em aparelho, emulador ou comprovante real. Permanecem casos ambíguos de data e descrição e a revisão do Watchtower; sem push informado. O relato anterior de quatro suítes ainda falhando foi superado por esta correção.
