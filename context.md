@@ -106,6 +106,40 @@ O histórico e a evidência da exposição permanecem na seção datada de 16/09
 
 ---
 
+## 31/10/2026, 00h45 (M1): Estado da sessão, estado dos agentes e ponto de continuidade
+
+> **Corte de encerramento antes de desligar a máquina a pedido do autor (00h42 BRT).** Como o computador foi desligado, os processos de espera (`entrega-sem-modelo.cjs` e `acordar-orquestrador.sh`) deixam de rodar em segundo plano e a retomada na próxima sessão deve partir diretamente do roteiro abaixo.
+
+### 1. Decisões e pedidos novos do autor no fim da sessão (00h03–00h12 de 31/10)
+- **Versão de teste (00h03):** a instalação pelo navegador no celular do autor foi bloqueada pelo sistema. Build nova não resolve, e a autorização de builds extras foi encerrada.
+- **Teste no aparelho do autor (00h12):** o autor decidiu testar por cabo no próprio celular, ao retomar. Isso nunca é orientação para usuário final.
+- **Prioridade 1 na retomada (00h05 e 00h10):** plano de publicação na loja de aplicativos, escrito fora do repositório, com nota em `06 - Produto` no vault.
+
+### 2. Estado exato de todos os agentes no momento do desligamento
+- **Orquestrador Supremo (Gabriel Claude, Opus 5.5 medium):** atingiu 100% da janela de 5h às 00h10 BRT (reset previsto às 02h30 BRT de 31/10; uso semanal em 16%–17%, maior folga da semana). Deixou as instruções consolidadas em `00-ACORDAR-orquestrador.md` e `00-PASSAGEM-para-gabriel-codex.md`.
+- **Codex (maestro Gabriel Codex, `gpt-6.1-sol` medium):** recebeu a passagem às 23h16 BRT, leu o inventário (`main` com commits locais não publicados, 1 worktree, 0 stash) e as notas de contexto, e parou às 23h17 BRT ao atingir o limite de 5h da conta Gabriel Codex (reset às 02h51 BRT de 31/10; ~37% restantes na semana às 22h45).
+- **Harbor (Codex PH):** concluiu o envio único da build de teste às 23h15 BRT e a conferência estática às 23h30 BRT, sem alteração no aviso de atualização nem no APK público. Conta Codex PH ficou com cerca de 1%–10% da janela de 5h (reset ~02h50 BRT; ~47% semanais às 22h45).
+- **Prism (Gabriel Codex):** concluiu na `main` o commit `3964c328` (`fix(colar): encerra contexto de prazo antes da data de pagamento`), tocando apenas `lib/nota-foto-parser.ts` e `__tests__/data-do-texto-colado.cjs`. Relatou (`relatorio-prism-colar.md`, `FIM-prism-colar.txt`) regressão vermelha antes e verde depois (23 grupos, incluindo 546 casos qualificados e 504 combinações anteriores), 7 suítes relacionadas verdes e `npx tsc --noEmit` verde (exit 0). Acionou o Watchtower para a revisão 6 e bateu o limite da conta Gabriel Codex às 23h17 BRT.
+- **Watchtower (Gabriel Codex):** entregou antes do limite o parecer sobre a versão de teste, com três riscos P2 em caminhos de falha parcial de disco. Iniciou a revisão 6 do commit `3964c328` na `main` e bateu o limite às 23h17 BRT, sem gerar o relatório.
+- **Sentinel (Gabriel Codex):** registrou o estado inicial em `relatorio-sentinel-teste.md`, recebeu a confirmação da build do Harbor e os avisos do Watchtower 5 para `PARA-O-AUTOR-instalar.md`, mas parou no limite de 5h às 23h17 BRT antes de abrir o emulador `Pixel_8`. `FIM-sentinel.txt` não foi criado.
+- **Beacon (Codex PH):** concluiu a compilação e os testes nativos da versão de teste. No emulador, a abertura do Chrome foi bloqueada por política da ferramenta. Encerrou Metro e emulador e ficou parado para preservar a conta.
+- **Keel (Gabriel Claude):** concluiu as correções da versão de teste e relatou que `__tests__/fila-endurecida.cjs` falha (`com rede, a recusa não trava os outros`, `2 !== 3`) desde `cbf58833`. Permanece parado.
+- **Ledger (Gabriel Codex):** atualizou `AGENTS.md` (`df9730d2`), `context.md` (`df6bc39a`, `3e56215e`), nota do vault e fichário até o corte de `3964c328`, e parou no limite de 5h às 23h18 BRT enquanto monitorava novos relatórios.
+- **Demais terminais no canvas (`Codex PH`, `Claude Code #2`, `Lumen`, `Flare`):** no shell bash, sem processo de agente ativo.
+
+### 3. Ponto exato de continuidade para a próxima sessão (em ordem de prioridade)
+1. **Escrever o plano de publicação na loja, fora do repositório (Prioridade 1).**
+2. **Concluir a revisão `relatorio-watchtower-6.md` do Colar (`3964c328`) e fazer push da `main`:**
+   - Retomar no **Watchtower** a revisão do commit `3964c328` contra o parecer 4 sobre `origin/main..HEAD` (sem rodar `tsc`), gerando `E:/Grana-temporarios/2026-10-30-pendencias/relatorio-watchtower-6.md` com veredito `APTO PARA PUSH` ou `NAO APTO`.
+   - Se `APTO PARA PUSH`: rodar `git fetch origin`, conferir `origin/main..HEAD` (apenas os commits desta rodada), varrer segredos no intervalo e publicar (`git push origin main`). Sem deploy de Edge Function nem migration (lembrar na próxima publicação que `assistente-financeiro` e `whatsapp-webhook` no repositório estão à frente da produção por `20d5d073`, regra 11).
+3. **Testar a versão de teste no emulador e, com o autor presente, no celular dele.**
+4. **Investigar a falha preexistente em `__tests__/fila-endurecida.cjs` (voz, regra 13):**
+   - Falha na asserção `com rede, a recusa não trava os outros` (`2 !== 3`), presente desde `cbf58833` (código da 1.10.12) e parte da `test:ci`. Delegar ao Keel (Opus 5.5 medium) respeitando a paridade app/widget da regra 13.
+5. **Tratar os três riscos da versão de teste, sem build nova, antes de qualquer publicação da função.**
+6. **Preservar árvore de trabalho e pendências que dependem do autor:**
+   - Em `E:\GranaPonto` (`main`), preservar intocados os arquivos não commitados de outras frentes (47 caminhos de marketing da semana 43/painel, remoções/adições de skills em `.agents/skills` e `.claude/skills`, `CLAUDE.md`, `.codex/`, `test-shot.png` e o trecho de 28/10 em `context.md`).
+   - Continuam aguardando decisão/teste do autor: teste do widget de voz no celular real com app fechado (com e sem internet); decisão sobre reagendar ou descartar o Reel do Facebook *"Conheça o Granabô"*; e janela coordenada para implantação do painel admin (migration, readback, Edge e Node).
+
 ## 30/10/2026 (M1, Ledger): registro de pendências
 
 - O autor pediu: “Pode resolver as pendências aí. Pode utilizar os dois times”. Ordens em `E:/Grana-temporarios/2026-10-30-pendencias/`.
@@ -548,6 +582,12 @@ Diretriz temporária do autor: a conta Codex PH atingiu o limite; continuar some
 - Rastreabilidade externa do envio único: commit publicado `d059cb982929404f9f6bfc62e3494c387f7ec432`; manifesto SHA256 `b57b7aba887da85219800b262573ddf7ab2bdf5b091faba8e40d9e2389b75d82`; identidade do pacote SHA256 `682d8ba8af6201af423190acbe9314e0c129444dc01c218b2cb71ce9975882df`. EAS não reporta gitCommitHash neste envio NoVcs; não inferir esse campo. Download teve HTTP200 com User-Agent de navegador; urllib padrão respondeu403 antes de criar arquivo, conforme dono operacional.
 - **Limites finais:** QA PARCIAL e parecer sem bloqueio novo preservados. V06 aprovado apenas no cenário observado; captura física com/sem gravação de tela, fala/ASR real e matriz15 integral continuam PENDENTES. FINISHED, hash e identidade do APK não equivalem a instalação ou aceite físico. UMA build autorizada já executada nesta release; NUNCA repetir preparo/disparo. `/fast` nativo OFF confirmado antes desta ordem, continuar standard e somente time Codex. `release_finish` exclusivo Git final; Ledger entrega patch limitado aos blocos27/28 sobre baseline HEAD byte exato, preservando topo e WIP anterior.
 
+### Complemento agrupado final — fast OFF comprovado e documentação congelada
+
+- Fonte `fast-off-20261028.md`: nove terminais Codex acessíveis conferidos sem fast (Compass, Forge, Prism, Sentinel, Harbor, Beacon, Ledger, Watchtower e Codex PH); comando nativo respondeu `Service tier set to default`, modelos/efforts preservados. Três configurações persistidas em default e fast_mode=false, com backups, conforme recibo operacional; nenhum segredo registrado. Runtime do maestro/API e de `Codex #2` NÃO verificável; padrão sem fast persistido não comprova esses runtimes. Nenhum Claude acionado nem topologia alterada. Ledger leu o relato, não repetiu operação/UI/gate.
+- Beacon retomou ordem antiga e publicou complemento factual externo/contexto às18h35; raiz já mandou parar. **Ledger continua DOCUMENTAÇÃO exclusiva.** Complemento histórico Beacon preservado, inclusive seus cortes anteriores de espera; os recibos finais Ledger acima superam a espera de V06/hash/build. Não reabrir rodada nem apagar WIP válido. `release_finish` relatou apply-check cached PASS no patch17KB `417d22aa…`; esse aceite não é automaticamente atribuído ao novo delta, que o substitui e segue para conferência de aplicação pelo dono Git.
+- **Estado final congelado:** APK SHA256 `f98b0a5b9f96e4f78d31b8f7876bf45a088566a46bc7427185bdf713811fd38b`,176300795bytes, aapt1.10.11/code25, apenas baixado/conferido e NÃO instalado no app real. Build `ae51b874-bfa6-4836-8d5b-2f23403a4d67` FINISHED10h43m12 BRT. QA PARCIAL/físico/fala/ASR/gravação de tela/matriz15 pendentes, conforme limites acima. Hash já recebido; **não está AGUARDA_HASH_APK**. Sessão/espelhos recebem esta passagem final agrupada; patch/recibo congelados para commit/push exclusivo `release_finish`. Sem outro verificador, suite, gate, dependência, preparo ou EAS.
+
 <!-- beacon-ph-widget-voz-20261028:end -->
 
 <!-- beacon-ph-widget-voz-20261027:start -->
@@ -836,8 +876,6 @@ Diretriz temporária do autor: a conta Codex PH atingiu o limite; continuar some
 - **Processos e recibo:** npx expo start foi solicitado separadamente pelo autor e iniciou Metro8081 (exp://192.168.1.106:8081, web localhost:8081, health200 na inicialização); não é build, nem disponibilidade reconfirmada no fechamento. Serviços QA8096/8097 são infraestrutura anterior, sem encerramento forçado. Recibo único e ponto de retomada: E:/Grana-temporarios/2026-10-26-qa-android-pre-build/coordenacao-compass.md. Espelhos/nota atualizados no fechamento documental.
 
 <!-- compass-qa-android-20261026:end -->
-
-
 
 <!-- compass-graficos-ph-20261025:start -->
 ## 25/10/2026 (M1, Compass PH): coordenação contingente e documentação transferidas
