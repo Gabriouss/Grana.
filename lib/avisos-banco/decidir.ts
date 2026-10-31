@@ -25,6 +25,8 @@ export type ItemAConferir = {
   data: string;
   direcao?: TxType;
   forma?: FormaDoAviso | null;
+  /** Os avisos da mesma compra discordaram: só a pessoa responde. */
+  formaEmDisputa?: boolean;
   valor?: number;
   parcelas?: number | null;
   contraparte?: string | null;
@@ -54,6 +56,11 @@ function melhorDescricao(a?: string | null, b?: string | null): string | null {
   if (!a) return b ?? null;
   if (!b) return a;
   return b.length > a.length ? b : a;
+}
+
+function formaDoPar(item: ItemAConferir, outra: FormaDoAviso | null): Pick<ItemAConferir, 'forma' | 'formaEmDisputa'> {
+  if (item.formaEmDisputa || (item.forma && outra && item.forma !== outra)) return { forma: null, formaEmDisputa: true };
+  return { forma: item.forma ?? outra };
 }
 
 function acrescentarAviso(estado: EstadoDaCaixa, aviso: AvisoDoDiarioParaCaixa): EstadoDaCaixa {
@@ -86,7 +93,7 @@ function acrescentarAviso(estado: EstadoDaCaixa, aviso: AvisoDoDiarioParaCaixa):
     const itens = estado.itens.map((i) => (i.id !== par.itemId ? i : {
       ...i,
       avisoIds: [...i.avisoIds, aviso.id],
-      forma: i.forma ?? entendido.forma,
+      ...formaDoPar(i, entendido.forma),
       digitos: i.digitos ?? entendido.digitos,
       descricao: melhorDescricao(i.descricao, entendido.descricao),
       contraparte: melhorDescricao(i.contraparte, entendido.contraparte),
@@ -151,6 +158,7 @@ export function cartaoDoItem(item: ItemAConferir, cartoes: CreditCard[]): Credit
 
 /** Forma efetiva: o final de um cartão conhecido responde "crédito". */
 export function formaDoItem(item: ItemAConferir, cartoes: CreditCard[]): FormaDoAviso | null {
+  if (item.formaEmDisputa) return null;
   return item.forma ?? (cartaoDoItem(item, cartoes) ? 'credit' : null);
 }
 

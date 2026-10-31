@@ -336,6 +336,33 @@ async function main() {
     assert.equal(sozinho.descricao, null);
     assert.equal(decidir.confirmaEmUmToque(sozinho, { ...contexto(sozinho), categoria: 'Alimentação' }), false);
     ok('sem o aviso da carteira, o item fica sem descrição e abre a revisão');
+
+    /* Passo 3: o outro aviso completa, e discordar deixa para a pessoa */
+    const semForma = (id, quando = AGORA) => aviso(id, 'Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo', { quando });
+    const noCredito = (id, quando = AGORA) => aviso(id, 'Loja Exemplo', 'R$ 10,00 com cartão de crédito ••1234', { pacote: WALLET, quando });
+    const comPix = (id, quando = AGORA) => aviso(id, 'Você pagou Loja Exemplo', 'R$ 10,00 com Pix', { quando });
+    const noDebito = (id, quando = AGORA) => aviso(id, 'Loja Exemplo', 'R$ 10,00 no débito ••5678', { pacote: WALLET, quando });
+    for (const [a, b] of [[semForma('par1'), noDebito('par2', AGORA + 1000)], [noDebito('par2'), semForma('par1', AGORA + 1000)]]) {
+      const itens = itensDe(a, b);
+      assert.equal(itens.length, 1);
+      assert.equal(decidir.formaDoItem(itens[0], []), 'debit');
+    }
+    ok('par de avisos: o que traz a forma completa o outro, nas duas ordens');
+
+    for (const [a, b] of [[comPix('par3'), noCredito('par4', AGORA + 1000)], [noCredito('par4'), comPix('par3', AGORA + 1000)]]) {
+      const itens = itensDe(a, b);
+      assert.equal(itens.length, 1, 'um item só');
+      assert.equal(itens[0].forma, null);
+      assert.equal(itens[0].digitos, '1234');
+      assert.equal(decidir.formaDoItem(itens[0], cartoes), null, 'nem o final cadastrado desempata');
+      assert.equal(decidir.formaDoItem(itens[0], cartoes, { 1234: 'debit' }), null, 'nem a memória desempata');
+      assert.equal(decidir.confirmaEmUmToque(itens[0], { forma: decidir.formaDoItem(itens[0], cartoes), categoria: 'Alimentação', carteiraId: 'w1', cartaoId: 'c1', jaLancado: false, entreContas: false }), false);
+    }
+    ok('par de avisos que discordam fica sem forma, nas duas ordens');
+
+    const [terceiro] = itensDe(comPix('par3'), noCredito('par4', AGORA + 1000), aviso('par5', 'Compra no débito', 'Compra de R$ 10,00 no débito', { pacote: 'com.google.android.apps.walletnfcrel', quando: AGORA + 2000 }));
+    assert.equal(decidir.formaDoItem(terceiro, cartoes), null);
+    ok('um terceiro aviso não desfaz a discordância');
   }
 
   const toque = { forma: 'credit', categoria: 'Alimentação', carteiraId: 'w1', cartaoId: 'c1', jaLancado: false, entreContas: false };
