@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Fatura e parcelas v3</title>
+<style>
+@font-face{font-family:NM;font-weight:300;src:url(assets/NeueMachina-Light.otf)}
+@font-face{font-family:NM;font-weight:400;src:url(assets/NeueMachina-Regular.otf)}
+:root{--paper:#052229;--raised:#0b2d35;--sel:#0c353e;--ink:#effffa;--soft:#a6d9ce;--faint:#7fa9a0;--accent:#1fa98d;--menta:#ADFBE3;--down:#00a6ca;--rule:rgba(174,255,227,.14);--rule2:rgba(174,255,227,.26)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#021319;font-family:NM;font-weight:300;color:var(--ink)}
+#stage{position:absolute;inset:0;overflow:hidden;background:linear-gradient(180deg,#021319 0%,#021721 60%,#03222b 100%)}
+#glow{position:absolute;left:-300px;top:1150px;width:1680px;height:1300px;background:radial-gradient(closest-side,#0B4A5A 0%,rgba(6,50,58,.55) 45%,rgba(2,23,33,0) 100%)}
+#glow2{position:absolute;left:140px;top:-200px;width:800px;height:800px;background:radial-gradient(closest-side,rgba(31,169,141,.16),rgba(31,169,141,0));}
+#floor{position:absolute;left:-1200px;top:1150px;width:3480px;height:2000px;transform-origin:50% 0;transform:rotateX(78deg);
+ background-image:linear-gradient(rgba(174,255,227,.07) 2px,transparent 2px),linear-gradient(90deg,rgba(174,255,227,.07) 2px,transparent 2px);background-size:120px 120px;
+ -webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.9),rgba(0,0,0,0) 70%)}
+#cam{position:absolute;inset:0;perspective:2200px;perspective-origin:540px 960px}
+#shake{position:absolute;inset:0;transform-style:preserve-3d}
+#world{position:absolute;inset:0;transform-style:preserve-3d}
+.abs{position:absolute}
+.p3{transform-style:preserve-3d}
+/* ---------- tipografia ---------- */
+.reg{font-weight:400}
+.w{display:inline-block;will-change:transform,opacity}
+.hl{position:relative;display:inline-block;color:#052229;padding:0 .14em}
+.hl .bx{position:absolute;left:0;right:0;top:.08em;bottom:-.02em;background:var(--menta);border-radius:.12em;transform-origin:0 50%;z-index:-1}
+.mint{color:var(--menta)}
+.grad{background:linear-gradient(120deg,#b0f7c9 0%,#ADFBE3 40%,#22a1c1 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+#hook{position:absolute;left:0;top:0;width:1080px;height:1920px;transform-style:preserve-3d}
+.hline{position:absolute;left:0;width:1080px;text-align:center;white-space:nowrap;letter-spacing:.01em}
+#cap{position:absolute;left:40px;top:110px;width:1000px;height:420px;transform-style:preserve-3d}
+.cg{position:absolute;left:0;top:0;width:1000px;height:420px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;transform-style:preserve-3d}
+.cg{perspective:1100px}
+.cl{transform-style:preserve-3d;white-space:nowrap;font-size:84px;line-height:104px;letter-spacing:.01em}
+.cl .w{margin:0 .12em;transform-origin:50% 80%}
+.cl .big{font-size:1.3em}
+/* ---------- cards de UI ---------- */
+.card{position:absolute;background:linear-gradient(180deg,#0e3640 0%,#0b2d35 100%);border:2px solid var(--rule2);border-radius:34px;box-shadow:0 40px 90px rgba(0,0,0,.45),0 0 0 1px rgba(174,255,227,.06) inset}
+.chip{display:inline-block;border:2px solid var(--rule2);border-radius:999px;padding:2px 16px;font-size:26px;color:var(--soft);margin-left:12px;vertical-align:middle}
+.val{color:var(--down);font-weight:400}
+/* ---------- celular ---------- */
+#phone{position:absolute;left:262px;top:657px;width:556px;height:1186px;transform-style:preserve-3d}
+.face{position:absolute;inset:0;border-radius:72px;backface-visibility:hidden;transform-style:preserve-3d}
+.bezel{position:absolute;inset:0;border-radius:72px;background:linear-gradient(150deg,#123a43,#04161b 40%,#020d10);box-shadow:0 0 0 2px rgba(174,255,227,.38) inset,0 0 0 5px rgba(2,12,15,1) inset}
+.edge{position:absolute;inset:0;border-radius:72px;background:linear-gradient(90deg,#0c2b32,#061a1f 50%,#0c2b32);box-shadow:0 0 0 2px rgba(174,255,227,.18) inset}
+.screenbg{position:absolute;left:18px;top:18px;width:520px;height:1150px;border-radius:56px;background:var(--paper);overflow:hidden}
+.scr{position:absolute;left:18px;top:18px;width:1080px;height:2388px;transform-origin:0 0;transform:scale(.48148);transform-style:preserve-3d;font-size:30px}
+.scr .L{position:absolute;transform-style:preserve-3d}
+.sheen{position:absolute;left:18px;top:18px;width:520px;height:1150px;border-radius:56px;background:linear-gradient(115deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,0) 32%,rgba(255,255,255,0) 70%,rgba(174,255,227,.06) 100%);pointer-events:none}
+.pill{position:absolute;border:2px solid var(--rule2);border-radius:999px;display:flex;align-items:center;justify-content:center;gap:12px;color:var(--soft);font-size:30px}
+.box{position:absolute;border:2px solid var(--rule2);border-radius:30px;background:rgba(11,45,53,.55)}
+.ccard{position:absolute;border-radius:30px;border:3px solid var(--accent);background:var(--paper)}
+.ccard.sel{border-color:#7fe6cf;background:var(--sel)}
+.dot{display:inline-block;width:16px;height:16px;border-radius:50%;background:var(--accent);margin-right:14px;vertical-align:middle}
+.row{position:absolute;left:0;width:1080px;height:120px;padding:0 35px}
+.row .n{position:absolute;left:35px;top:6px;font-size:34px;color:var(--ink)}
+.row .s{position:absolute;left:35px;top:54px;font-size:25px;color:var(--faint)}
+.row .v{position:absolute;right:35px;top:8px;font-size:33px;color:var(--down)}
+.pchip{display:inline-block;border-radius:12px;padding:0 6px;transform-origin:50% 60%}
+.bar{position:absolute;height:10px;border-radius:5px;background:rgba(174,255,227,.10)}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:var(--accent)}
+.lrow{position:absolute;line-height:40px;left:47px;width:916px;font-size:33px;color:var(--faint)}
+.lrow b{position:absolute;right:0;font-weight:300}
+/* ---------- fx ---------- */
+#flash{position:absolute;inset:0;background:radial-gradient(circle at 50% 45%,rgba(239,255,250,.95) 0%,rgba(173,251,227,.6) 45%,rgba(173,251,227,.3) 100%);opacity:0;mix-blend-mode:screen}
+#streak{position:absolute;left:-200px;top:950px;width:1480px;height:16px;border-radius:8px;background:linear-gradient(90deg,rgba(173,251,227,0),#ADFBE3 45%,#fff 50%,#ADFBE3 55%,rgba(173,251,227,0));box-shadow:0 0 60px 20px rgba(173,251,227,.45);opacity:0}
+#vig{position:absolute;inset:0;background:radial-gradient(closest-side at 50% 50%,rgba(0,0,0,0) 70%,rgba(1,10,13,.55) 100%);pointer-events:none}
+#btn{position:absolute;left:190px;top:880px;width:700px;height:180px;border-radius:90px;display:flex;align-items:center;justify-content:center;gap:28px;font-size:76px;font-weight:400;color:#052229;
+ background:linear-gradient(180deg,#d9fff2 0%,#ADFBE3 45%,#7fe6cf 100%);box-shadow:0 0 0 3px rgba(255,255,255,.5) inset,0 -10px 30px rgba(31,169,141,.35) inset,0 30px 80px rgba(173,251,227,.35),0 0 140px rgba(173,251,227,.35)}
+.ring{position:absolute;border:4px solid var(--menta);border-radius:999px;opacity:0}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute"><defs>
+ <filter id="mbx" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur id="mbxg" stdDeviation="0 0"/></filter>
+</defs></svg>
+<div id="stage">
+ <div id="glow"></div><div id="glow2"></div>
+ <div id="cam"><div id="shake"><div id="world">
+  <div id="floor"></div>
+
+  <!-- ===== S1 gancho ===== -->
+  <div id="hook">
+   <div id="hcard" class="card p3" style="left:120px;top:1180px;width:840px;height:300px">
+     <div class="abs" style="left:52px;top:46px;font-size:34px;color:var(--faint)">Total das faturas (todos os cartões)</div>
+     <div class="abs" style="left:52px;top:96px;font-size:44px;color:var(--soft)">Fatura de Outubro 2026</div>
+     <div class="abs reg" id="hval" style="left:46px;top:150px;font-size:118px;line-height:130px;color:var(--down)">R$ 722,85</div>
+   </div>
+   <div id="hA" class="p3 abs" style="left:0;top:0;width:1080px;height:1920px">
+    <div class="hline" id="hl1" style="top:330px;font-size:132px;line-height:150px"><span class="w" id="hw1">Sua</span> <span class="w hl reg" id="hw2"><span class="bx" id="hbx"></span>fatura</span></div>
+    <div class="hline" id="hl2" style="top:500px;font-size:104px;line-height:120px"><span class="w" id="hw3">sempre</span> <span class="w" id="hw4">vem</span></div>
+    <div class="hline reg" id="hl3" style="top:610px;font-size:300px;line-height:330px"><span class="w grad" id="hw5">maior</span></div>
+   </div>
+   <div id="hB" class="p3 abs" style="left:0;top:0;width:1080px;height:1920px">
+    <div class="hline" style="top:460px;font-size:110px;line-height:130px"><span class="w" id="hw6">do</span> <span class="w" id="hw7">que</span> <span class="w" id="hw8">você</span></div>
+    <div class="hline reg" style="top:610px;font-size:168px;line-height:190px"><span class="w mint" id="hw9">esperava</span><span class="w mint" id="hq">?</span></div>
+   </div>
+  </div>
+
+  <!-- ===== S2 nuvem de compras ===== -->
+  <div id="cloud" class="p3 abs" style="left:540px;top:1080px;width:0;height:0">
+   <!-- preenchido por JS -->
+  </div>
+
+  <!-- ===== S3/S4 celular ===== -->
+  <div id="phone">
+   <div class="edge" style="transform:translateZ(-6px)"></div><div class="edge" style="transform:translateZ(-12px)"></div>
+   <div class="edge" style="transform:translateZ(-18px)"></div><div class="edge" style="transform:translateZ(-24px)"></div>
+   <div class="edge" style="transform:translateZ(-30px)"></div>
+   <!-- frente: Crédito -->
+   <div class="face" id="front">
+    <div class="bezel"></div><div class="screenbg"></div>
+    <div class="scr" id="scrC"></div>
+    <div class="sheen"></div>
+   </div>
+   <!-- verso: Início -->
+   <div class="face" id="back" style="transform:translateZ(-36px) rotateY(180deg)">
+    <div class="bezel"></div><div class="screenbg"></div>
+    <div class="scr" id="scrH"></div>
+    <div class="sheen"></div>
+   </div>
+  </div>
+
+  <!-- selo de parcela -->
+  <div id="badge" class="card p3" style="left:535px;top:980px;width:440px;height:450px">
+   <div class="abs" style="left:40px;top:38px;font-size:28px;color:var(--faint)">Notebook de trabalho</div>
+   <div class="abs reg" style="left:34px;top:80px;font-size:250px;line-height:240px;color:var(--menta)">1<span style="color:var(--soft);font-size:150px;font-weight:300">/3</span></div>
+   <div class="abs" style="left:40px;top:372px;font-size:34px;color:var(--down)">− R$ 415,95</div>
+  </div>
+  <!-- bloco total que viaja -->
+  <div id="tchip" class="card p3" style="left:150px;top:600px;width:780px;height:190px">
+   <div class="abs" style="left:44px;top:34px;font-size:32px;color:var(--faint)">Total das faturas (todos os cartões)</div>
+   <div class="abs reg" style="left:40px;top:80px;font-size:80px;line-height:90px;color:var(--down)">R$ 722,85</div>
+  </div>
+  <!-- vencimento -->
+  <div id="venc" class="card p3" style="left:380px;top:1500px;width:540px;height:200px">
+   <svg class="abs" style="left:34px;top:46px" width="108" height="108" viewBox="0 0 108 108">
+    <circle cx="54" cy="54" r="48" fill="none" stroke="rgba(174,255,227,.15)" stroke-width="6"/>
+    <circle id="vring" cx="54" cy="54" r="48" fill="none" stroke="#ADFBE3" stroke-width="6" stroke-linecap="round" stroke-dasharray="302" stroke-dashoffset="302" transform="rotate(-90 54 54)"/>
+    <rect x="34" y="36" width="40" height="38" rx="7" fill="none" stroke="#ADFBE3" stroke-width="4"/><line x1="34" y1="48" x2="74" y2="48" stroke="#ADFBE3" stroke-width="4"/><line x1="44" y1="30" x2="44" y2="40" stroke="#ADFBE3" stroke-width="4"/><line x1="64" y1="30" x2="64" y2="40" stroke="#ADFBE3" stroke-width="4"/>
+   </svg>
+   <div class="abs" style="left:168px;top:48px;font-size:30px;color:var(--faint)">Vence em</div>
+   <div class="abs reg" style="left:168px;top:92px;font-size:44px">02 nov 2026</div>
+  </div>
+
+  <!-- ===== S5 CTA ===== -->
+  <div id="cta" class="p3 abs" style="left:0;top:0;width:1080px;height:1920px">
+   <div class="hline" id="ctaA" style="top:600px;font-size:120px;line-height:140px"><span class="w" id="cw1">Clica</span> <span class="w" id="cw2">em</span></div>
+   <div id="btn"><span>Saiba mais</span><svg width="70" height="70" viewBox="0 0 70 70"><path id="seta" d="M14 35h40M38 19l16 16-16 16" fill="none" stroke="#052229" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+   <div class="ring" id="rg1" style="left:190px;top:880px;width:700px;height:180px"></div>
+   <div class="ring" id="rg2" style="left:190px;top:880px;width:700px;height:180px"></div>
+   <svg id="cursor" class="abs" style="left:700px;top:1100px" width="90" height="110" viewBox="0 0 90 110"><path d="M8 6l70 52-32 6 18 36-14 6-18-36-24 22z" fill="#effffa" stroke="#052229" stroke-width="5" stroke-linejoin="round"/></svg>
+   <div class="hline" id="ctaB" style="top:640px;font-size:96px;line-height:120px"><span class="w" id="cw3">e</span> <span class="w" id="cw4">conhece</span> <span class="w" id="cw5">o</span></div>
+   <img id="logo" class="abs" src="assets/logotipo-gradiente.svg" style="left:190px;top:800px;width:700px">
+   <div class="hline" id="tag" style="top:1060px;font-size:50px;line-height:60px;color:var(--soft)">Seu assistente de finanças pessoais</div>
+  </div>
+ </div></div></div>
+ <div id="cap"></div>
+ <div id="streak"></div>
+ <div id="vig"></div>
+ <div id="flash"></div>
+</div>
+<script src="assets/gsap.min.js"></script>
+<script src="cena.js"></script>
+</body></html>
