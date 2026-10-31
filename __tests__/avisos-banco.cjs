@@ -279,6 +279,65 @@ async function main() {
   assert.equal(decidir.formaDoItem({ ...item, forma: null, digitos: null }, cartoes), null);
   ok('cartão só com os 4 dígitos batendo em um único');
 
+  /* "Debitamos" responde a forma, e a forma do aviso vence o final do cartão. */
+  {
+    const interpretar = carregar('lib/avisos-banco/interpretar.ts');
+    const doBanco = (id, loja, quando = AGORA) => aviso(id, `Você pagou ${loja}`, 'Debitamos R$ 10,00 da sua conta.', { quando });
+    const daCarteira = (id, loja, quando = AGORA) => aviso(id, loja, 'R$ 10,00 com Visa ••1234', { pacote: WALLET, quando });
+    const itensDe = (...avisos) => decidir.aplicarAvisos(decidir.CAIXA_VAZIA, avisos, AGORA + 5000).itens;
+
+    const lido = interpretar.interpretarAviso(doBanco('deb1', 'Loja Exemplo'));
+    assert.equal(lido.tipo, 'lancamento');
+    assert.equal(lido.forma, 'debit');
+    assert.equal(lido.valor, 10);
+    ok('"Você pagou" no título e "Debitamos" no texto dão lançamento em débito');
+
+    for (const ordem of [
+      [doBanco('deb2', 'Loja Exemplo'), daCarteira('deb3', 'Loja Exemplo', AGORA + 1000)],
+      [daCarteira('deb3', 'Loja Exemplo'), doBanco('deb2', 'Loja Exemplo', AGORA + 1000)],
+    ]) {
+      const itens = itensDe(...ordem);
+      assert.equal(itens.length, 1, 'um item só');
+      assert.equal(itens[0].avisoIds.length, 2);
+      assert.equal(itens[0].digitos, '1234');
+      assert.equal(decidir.cartaoDoItem(itens[0], cartoes).id, 'c1', 'o final bate com um cartão cadastrado');
+      assert.equal(decidir.formaDoItem(itens[0], cartoes), 'debit');
+    }
+    ok('com o final de um cartão cadastrado, nas duas ordens: um item, em débito');
+
+    assert.equal(interpretar.interpretarAviso(aviso('deb4', '', 'Debitamos R$ 10,00 da sua conta.')).tipo, 'nao_entendi');
+    ok('"Debitamos" solto continua sem virar lançamento');
+
+    const fatura = aviso('deb5', '', 'Debitamos R$ 10,00 da sua conta referente ao pagamento da fatura');
+    assert.equal(interpretar.interpretarAviso(fatura).tipo, 'fatura_paga');
+    assert.equal(itensDe(fatura).length, 0);
+    ok('"Debitamos" do pagamento da fatura continua sem virar gasto (T5)');
+
+    const apelidos = [{ chave: 'mercado modelo', valor: 'Alimentação' }];
+    const contexto = (i) => {
+      const forma = decidir.formaDoItem(i, cartoes);
+      return { forma, categoria: decidir.categoriaDoItem(i, apelidos)?.name ?? null, carteiraId: 'w1', cartaoId: decidir.cartaoDoItem(i, cartoes)?.id ?? null, jaLancado: false, entreContas: false };
+    };
+    const [comCategoria] = itensDe(doBanco('deb6', 'Mercado Modelo'), daCarteira('deb7', 'Mercado Modelo', AGORA + 1000));
+    assert.equal(contexto(comCategoria).categoria, 'Alimentação');
+    assert.equal(decidir.confirmaEmUmToque(comCategoria, contexto(comCategoria)), true);
+    const entrada = decidir.montarEntrada({ type: 'out', description: 'Mercado Modelo', amount: 10, category: 'Alimentação', color: '#123456',
+      occurred_on: '2026-10-20', forma: decidir.formaDoItem(comCategoria, cartoes), wallet_id: 'w1', cartao: decidir.cartaoDoItem(comCategoria, cartoes) });
+    assert.equal(entrada.payment_method, 'debit');
+    assert.equal(entrada.card_id ?? null, null, 'débito não vai para a fatura do cartão');
+    const [semCategoria] = itensDe(doBanco('deb8', 'Loja Exemplo'), daCarteira('deb9', 'Loja Exemplo', AGORA + 1000));
+    assert.equal(contexto(semCategoria).categoria, null);
+    assert.equal(decidir.confirmaEmUmToque(semCategoria, contexto(semCategoria)), false);
+    ok('um toque com categoria e carteira conhecidas, grava débito sem cartão; sem categoria, revisão');
+
+    /* O título não vira descrição: sozinho, o aviso abre a revisão mesmo em débito. */
+    const [sozinho] = itensDe(doBanco('deb10', 'Mercado Modelo'));
+    assert.equal(sozinho.forma, 'debit');
+    assert.equal(sozinho.descricao, null);
+    assert.equal(decidir.confirmaEmUmToque(sozinho, { ...contexto(sozinho), categoria: 'Alimentação' }), false);
+    ok('sem o aviso da carteira, o item fica sem descrição e abre a revisão');
+  }
+
   const toque = { forma: 'credit', categoria: 'Alimentação', carteiraId: 'w1', cartaoId: 'c1', jaLancado: false, entreContas: false };
   assert.equal(decidir.confirmaEmUmToque(item, toque), true);
   for (const [rotulo, i, c] of [

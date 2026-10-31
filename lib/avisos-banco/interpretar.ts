@@ -234,7 +234,7 @@ export function interpretarAviso(aviso: AvisoParaInterpretar): AvisoEntendido {
   } else if (ehCompra) {
     achado = valorColado(semSaldo, COMPRA, valores);
     if (/\bcredito\b/.test(semSaldo)) forma = 'credit';
-    else if (/\bdebito\b|\bdebitad[oa]\b/.test(semSaldo)) forma = 'debit';
+    else if (/\bdebito\b|\bdebitad[oa]\b|\bdebitamos\b/.test(semSaldo)) forma = 'debit';
   }
 
   const parcelamento = achado ? parcelamentoDe(semSaldo, valores, achado) : null;
