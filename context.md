@@ -91,6 +91,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — relatório Keel: A6, A4 residual e A7
+
+Keel relata correções em trabalho de teste para pagamento repetido, duplicação em cache offline e recibos após salvamento parcial, com testes de módulos reais, regressões de fila e voz e TypeScript aprovados. O relatório identifica limites ainda não testados em parcelas futuras e seletor de carteira, além de texto de recibo impreciso num caso. Não houve revisão independente do delta, teste em aparelho ou emulador, `test:ci` ou `test:parser`; as correções não estão no aplicativo instalado.
+
 ## 31/10 — resultados recebidos de Anvil, Compass e Forge
 
 Anvil relata que a falha de `fila-endurecida.cjs` vinha de dublê ausente no teste; corrigiu o teste e informou 81 verificações aprovadas, além de testes relacionados e TypeScript. Não houve teste em aparelho nem execução integral de `test:ci`; outras quatro suítes ainda falham, com causas de confiança variável. A hipótese de bloqueio da rodada por falha permanente de recibo permanece sem comprovação em aparelho.
