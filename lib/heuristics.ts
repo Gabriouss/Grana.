@@ -1167,9 +1167,13 @@ export function guessDescFromText(text: string, type: TxType): string {
      Harbor, 26/09/2026): "Almoço de 40 reais no restaurante" virava
      "Almoço de no restaurante". O "de" DEPOIS do valor ("200 reais de
      aluguel") não é tocado. */
+  /* Número com barra sai inteiro (ordem de 30/10/2026): tirar só os dígitos
+     deixava "TV 03/12" como "TV /". Barra ligada a letra ou escrita solta pela
+     pessoa ("Mercado / Padaria") não muda. */
   const semValor = texto
     .replace(/(?:\b(?:de|por)\s+)?r\$\s*[\d.,]+/gi, ' ')
     .replace(new RegExp(`(?:\\b(?:de|por)\\s+)?[\\d.,]+\\s*(?:${MOEDA})\\b`, 'gi'), ' ')
+    .replace(/(?:\b(?:de|por)\s+)?(?<![a-zà-ÿ\d/])\d[\d.,]*(?:\/\d[\d.,]*)+(?![a-zà-ÿ\d/])/gi, ' ')
     .replace(/(?:\b(?:de|por)\s+)?(?<![a-zà-ÿ\d])\d[\d.,]*(?![a-zà-ÿ\d])/gi, ' ');
   const sobra = limparSobra(semValor);
   /* "Você gastou R$ 32,50 no Mercado Modelo em Alimentação" (formato de

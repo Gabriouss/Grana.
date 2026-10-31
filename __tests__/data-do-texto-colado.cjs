@@ -233,12 +233,37 @@ ok('descrição do Colar sem o resto da data: inteiro ou nada, parcela e valor i
     const r = dataDaFala.dataInicialDaRevisao(t, { referencia: OUT, aproximada: false });
     assert.deepEqual([r.data, r.textoSemData], [data, texto], t);
   }
-  assert.equal(heuristicas.guessDescFromText('Mercado no debito em 08/10 R$ 829,00', 'out'), 'Mercado no debito em /',
-    'a heurística dividida com a voz não muda: quem limpa é o Colar');
   for (const a of ['lib/data-da-fala.ts', 'lib/heuristics.ts']) {
     assert.doesNotMatch(fs.readFileSync(path.join(root, a), 'utf8'), /nota-foto-parser/, a + ' não usa as funções do Colar');
   }
   ok('a voz não muda (regra 13): mesmo resultado do núcleo dela, sem depender do Colar');
+
+  /* Barra solta na descrição (ordem de 30/10/2026). Quem sai é o número com
+     barra inteiro, em guessDescFromText, e a barra escrita pela pessoa fica.
+     As duas entradas chegam à mesma descrição, cada uma pelo módulo real. */
+  const REF = { referencia: OUT, aproximada: false };
+  const colarDesc = (t) => desc(t);
+  const vozDesc = (t) => heuristicas.descricaoDoLancamento(dataDaFala.dataDaFala(t, REF).textoSemData, 'out');
+  for (const [t, esperado] of [
+    ['TV 03/12 R$ 100,00', 'TV'],
+    ['Loja 03/09 R$ 10', 'Loja'],
+    ['TV 2/3 R$ 100,00', 'TV'],
+    ['academia 24/7 R$ 80,00', 'Academia'],
+    ['comprei 3/12 parcelas 50 reais', 'Parcelas'],
+    ['Mercado / Padaria R$ 10', 'Mercado / Padaria'],
+  ]) {
+    assert.equal(colarDesc(t), esperado, `Colar: ${t}`);
+    assert.equal(vozDesc(t), esperado, `voz: ${t}`);
+  }
+  ok('sem barra solta, com a mesma descrição no Colar e na voz');
+
+  const cru = (t) => heuristicas.guessDescFromText(t, 'out');
+  assert.equal(cru('TV parcela 03/12 R$ 100,00'), 'TV parcela', 'só o número sai; a palavra parcela fica');
+  assert.equal(cru('Conta 03/09/2026 R$ 10,00'), 'Conta', 'data inteira também não deixa barra');
+  assert.equal(cru('Plano 100/mes'), 'Plano /mes', 'barra ligada a palavra continua como antes');
+  assert.equal(cru('TCP/IP R$ 10,00'), 'TCP/IP', 'barra entre letras fica');
+  assert.equal(heuristicas.guessAmountFromText('TV 03/12 R$ 100,00'), 100, 'o valor continua lido');
+  ok('barra escrita pela pessoa e o valor continuam iguais');
 }
 
 /* ── 5. A tela: grava na data lida, só no texto colado ──────────────────── */

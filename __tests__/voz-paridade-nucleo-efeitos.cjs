@@ -198,6 +198,8 @@ const CENARIOS = {
   claudioComCifrao: () => ({ local: 'Cláudio, R$ 26,58, crédito C6', servidor: new Error('nao deveria enviar') }),
   padariaPix: () => ({ local: 'padaria 21,64 no pix', servidor: new Error('nao deveria enviar') }),
   tresDigitos: () => ({ local: 'padaria 590 no pix', servidor: new Error('nao deveria enviar') }),
+  /* Numero com barra sem sinal de data (ordem de 30/10/2026). */
+  numeroComBarra: () => ({ local: 'padaria 03/09 R$ 21,64 no pix', servidor: new Error('nao deveria enviar') }),
 };
 
 (async () => {
@@ -238,6 +240,10 @@ const CENARIOS = {
     p = m.e.rpc.find((r) => r.nome === 'registrar_operacao_voz')?.args.p_payload;
     ok(p && p.amount === 21.64 && p.payment_method === 'pix' && p.description === 'Padaria' && !p.card_id,
       `${origem}: "padaria 21,64 no pix" grava 21,64 no pix como "Padaria"`);
+    m = await rodar(origem, CENARIOS.numeroComBarra);
+    p = m.e.rpc.find((r) => r.nome === 'registrar_operacao_voz')?.args.p_payload;
+    ok(p && p.amount === 21.64 && p.description === 'Padaria',
+      `${origem}: "padaria 03/09 R$ 21,64 no pix" grava "Padaria", sem barra solta`);
     /* Tres digitos nus tambem gravam direto (autor, 17/10/2026): 590 = 5,90. */
     m = await rodar(origem, CENARIOS.tresDigitos);
     p = m.e.rpc.find((r) => r.nome === 'registrar_operacao_voz')?.args.p_payload;
