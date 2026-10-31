@@ -91,6 +91,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
   maestro cobra isso antes de dar a sessão por encerrada. ("Tem que atualizar
   sempre em todo o final das sessões de trabalho.")
 
+## 31/10 — adendo e verificação de CI
+
+Compass concluiu a incorporação da decisão de preservar usuários atuais ao plano externo; a compatibilidade ainda precisa ser demonstrada em testes. Uma execução integral de `test:ci` parou em dublê introduzido na frente Beacon; a correção e nova execução foram atribuídas ao responsável, sem resultado ainda.
+
 ## 31/10 — decisão sobre usuários atuais
 
 O autor determinou que, por enquanto, o trabalho de adaptação à loja não afete quem já usa o aplicativo; mudanças devem ocorrer aos poucos e quando ele decidir. Compass incorporou pesquisa complementar ao plano externo. O adendo para explicitar a decisão nas fases foi atribuído; sua conclusão ainda não está comprovada pelo marcador recebido. Nada do plano foi implementado por essa entrega.
