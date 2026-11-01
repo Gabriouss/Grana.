@@ -14,6 +14,7 @@ import { colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   fetchBills,
+  fetchCardInvoicePayments,
   fetchDiasComRegistro,
   fetchDiasComRegistroRecentes,
   fetchCreditCards,
@@ -27,6 +28,8 @@ import { conquistasNovas, diasComRegistro, getGamificationState, type Badge, typ
 import { fetchGoals } from '@/lib/goals';
 import { formatBRL } from '@/lib/format';
 import { semViuva } from '@/lib/sem-viuva';
+import DesafiosPadraoGastos from '@/components/DesafiosPadraoGastos';
+import { calcularPadraoDeGastos, type PadraoDeGastos } from '@/lib/desafios-padrao-gastos';
 import DesafiosCalendario from '@/components/DesafiosCalendario';
 import { deslocarMes } from '@/lib/desafios-calendario';
 import HojeNoSeuMes from '@/components/HojeNoSeuMes';
@@ -58,6 +61,7 @@ export default function DesafiosScreen() {
   const [state, setState] = useState<GamificationState | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [acoes, setAcoes] = useState<{ bills: Bill[]; cards: CreditCard[]; tx: Transaction[] }>({ bills: [], cards: [], tx: [] });
+  const [padrao, setPadrao] = useState<PadraoDeGastos | null>(null);
   const [dias, setDias] = useState<ReadonlySet<string>>(new Set());
   const [detalhes, setDetalhes] = useState(false);
   const [filter, setFilter] = useState<FilterType>('all');
@@ -70,6 +74,7 @@ export default function DesafiosScreen() {
       const diasDemo = diasComRegistro(DEMO_TRANSACTIONS);
       const gState = getGamificationState(DEMO_TRANSACTIONS, DEMO_BILLS, DEMO_BUDGETS, undefined, undefined, { dias: diasDemo });
       setDias(diasDemo);
+      setPadrao(calcularPadraoDeGastos(DEMO_TRANSACTIONS, new Date().getFullYear(), new Date().getMonth()));
       setState(gState);
       setGoals(DEMO_GOALS);
       setAcoes({ bills: DEMO_BILLS, cards: DEMO_CREDIT_CARDS, tx: DEMO_TRANSACTIONS });
@@ -80,7 +85,7 @@ export default function DesafiosScreen() {
     }
 
     try {
-      const [tx, b, bg, historical, conquistadas, metas, cartoes, recentes, meses] = await Promise.all([
+      const [tx, b, bg, historical, conquistadas, metas, cartoes, recentes, meses, pagamentos] = await Promise.all([
         fetchTransactions({ sinceDays: 45 }),
         /* TODAS as contas, não só as pendentes: "Contas acompanhadas" mede as
            PAGAS sobre o total. Só com as pendentes o fator nunca via uma conta
@@ -97,6 +102,7 @@ export default function DesafiosScreen() {
           const m = deslocarMes(new Date().getFullYear(), new Date().getMonth(), delta);
           return fetchDiasComRegistro(m.ano, m.mes);
         })),
+        fetchCardInvoicePayments(),
       ]);
       const diasCarregados = new Set([...recentes, ...meses.flatMap(d => [...d])]);
       setDias(diasCarregados);
@@ -116,6 +122,9 @@ export default function DesafiosScreen() {
       setState(gState);
       setGoals(metas);
       setAcoes({ bills: b, cards: cartoes, tx });
+      const hoje = new Date();
+      const idsDePagamento = new Set(pagamentos.flatMap(p => [p.paid_transaction_id, ...(p.extra_transaction_ids ?? [])].filter((id): id is string => !!id)));
+      setPadrao(calcularPadraoDeGastos(tx, hoje.getFullYear(), hoje.getMonth(), hoje, { idsDePagamento }));
       setLoadError(null);
 
       /* O desbloqueio vira evento gravado, e ganha um momento.
@@ -333,6 +342,8 @@ export default function DesafiosScreen() {
           <Text style={styles.factorLabel}>{goals.filter(g => Number(g.current_amount) >= Number(g.target_amount)).length} metas conclu?das</Text>
           <PrivacyValue><Text style={styles.scoreTotalLabel}>{formatBRL(goals.reduce((s, g) => s + Number(g.current_amount), 0))} guardados</Text></PrivacyValue>
         </View>
+
+        <DesafiosPadraoGastos padrao={padrao} />
 
         <AppPressable accessibilityRole="button" accessibilityState={{ expanded: detalhes }} onPress={() => setDetalhes(v => !v)} style={styles.retryButton}>
           <Text style={styles.retryButtonText}>{semViuva(detalhes ? 'Ocultar detalhes' : 'Ver detalhes')}</Text>
