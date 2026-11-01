@@ -93,6 +93,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — autorização de build de teste pessoal
+
+Palavras do autor: "Quando terminar, prepara tudo e pode disparar a build so para mim, para instalar via depuracao wi-fi". Planejada uma build com perfil `development`, a partir de clone local, versão 1.10.12, sem `build:preparar`, sem push e sem avisar usuários. A semana já tem três preparos; o autor foi avisado de que a build de hoje passa do teto. **Ainda não disparada** nesta entrada; resultado e instalação ainda não existem para verificar.
+
 ## 01/11 — test:ci completo verde após correção de Keel
 
 Keel entregou o commit local `1a8d7749` e relata `test:ci` completo verde. A causa da falha anterior: `lib/data.ts` importava `gamification` e `desafios-calendario`, módulos que os dublês dos testes não simulavam. `diasComRegistro`, `limitesDoMes` e `deslocarMes` foram para `lib/format.ts`, com reexportações; nenhum teste ou asserção foi editado. Ledger não repetiu a suíte. Resultado corresponde ao estado relatado por Keel; mudanças posteriores requerem verificação própria. Sem publicação nesta entrada.
