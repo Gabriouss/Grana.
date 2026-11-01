@@ -678,9 +678,9 @@ export default function LancamentosScreen() {
   const categoryOptions = useMemo(
     () =>
       Array.from(
-        transactions.filter(t => isSameMonth(t.occurred_on, selectedYear, selectedMonth) && (filter === 'in' ? t.type === 'in' : t.type === 'out')).reduce((map, t) => (map.has(t.category) ? map : map.set(t.category, t.color)), new Map<string, string>())
+        (modoCategoria ? (consultaCategoria.resultado?.consumo.saidas.map(t => ({ category: t.category, color: t.color ?? theme.down })) ?? []) : filter === 'out' ? transactions.filter(t => isSameMonth(t.occurred_on, selectedYear, selectedMonth) && t.type === 'out') : monthTransactions).reduce((map, t) => (map.has(t.category) ? map : map.set(t.category, t.color)), new Map<string, string>())
       ).sort((a, b) => a[0].localeCompare(b[0], 'pt-BR')),
-    [transactions, selectedYear, selectedMonth, filter]
+    [transactions, selectedYear, selectedMonth, filter, modoCategoria, consultaCategoria.resultado, monthTransactions]
   );
 
   // Filtrado por tipo, categoria e busca textual (descrição ou categoria) — todos dentro do mês selecionado.
@@ -839,7 +839,7 @@ export default function LancamentosScreen() {
               return (
                 <AppPressable
                   key={name}
-                  onPress={() => { setCategoryFilter(active ? null : name); setModoCategoria(!active && filter !== 'in'); }}
+                  onPress={() => { setCategoryFilter(active ? null : name); setModoCategoria(!active && (filter === 'out' || (filter === 'tudo' && monthTransactions.some(t => t.type === 'out' && t.category === name)))); }}
                   hitSlop={{ top: 7, bottom: 7 }}
                   style={[styles.categoryChip, active && styles.categoryChipActive]}
                 >
