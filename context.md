@@ -93,6 +93,12 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — especificação de categorias em débito e crédito
+
+Compass entregou `E:\Grana-temporarios\2026-11-01-desafios-rolagem\spec-categorias-debito-credito.md`. Pela leitura de Compass, a queixa do autor procede no código local: `app/(app)/index.tsx:678,709,737,1403` exclui crédito antes da soma de categoria e teto; o Granabô devolve caixa e crédito separados. Não validado em aparelho nem produção; Ledger não conferiu independentemente o código. A especificação é proposta e contém decisões do Compass, não aprovação geral de implementação.
+
+**Decisão do orquestrador:** primeira entrega só no cliente, sem Edge nem deploy; Granabô fica para segunda etapa. Keel faz o núcleo `lib/gastos-categoria.ts`; telas vêm depois do Forge. Preservar a distinção de intervalos proposta para categorias e padrão de gastos. Nada publicado, nenhuma build no momento deste registro.
+
 ## 01/11 — lógica da fase 2 de Desafios entregue
 
 Keel entregou a lógica no commit local `48fc3f95`, sem publicação nem build; relatório em `E:\Grana-temporarios\2026-11-01-desafios-rolagem\relatorio-keel-logica.md`. Inclui calendário de dias com registro, padrão de gastos, medalha Mês completo e permanência de Mês Verde já conquistada. O relatório diz que os testes específicos, TypeScript e corpora citados passaram; a consulta real de `fetchDiasComRegistro` e o `test:ci` completo não foram verificados. Cache de mês fechado não é invalidado automaticamente ao excluir lançamento antigo; a tela precisa chamar `limparDiasComRegistro` quando adequado. Sem mudança de tela ou migration no commit de Keel.
