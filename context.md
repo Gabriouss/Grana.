@@ -93,6 +93,12 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — passagem do orquestrador e arrasto em andamento
+
+Autor pediu Anvil em Opus 5.5 low; aplicado. Conta Claude estava em 97% da janela, com retorno previsto às 15h40; Anvil e orquestrador podem parar até lá, com retomada automática agendada para 15h41 conforme passagem `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-PASSAGEM-orquestrador.md`. A passagem aponta também a necessidade de restaurar o esforço global Opus para medium ao fim e preservar Opus medium no Orquestrador Supremo.
+
+Itens 1 e 2 da janela foram commitados em `92610578` e `d4b95dca`; arrastar em `7e164e6d`, com seis ajustes da leitura do orquestrador em andamento e ainda sem prova em emulador. No inventário local já consta também `e04c23ae` sobre ajustes do arrasto; Ledger não verificou se encerra os seis itens. Faltam prova em emulador, testes posteriores e relatório de Anvil. Sem publicação nesta entrada.
+
 ## 01/11 — regra 28: escolha de modelo e esforço por tarefa
 
 Palavras do autor: "Modifique a regra 28. Você (Orquestrador supremo) deve sempre analisar a tarefa e identificar qual é o modelo e effort mais adequado para executar". Também disse: "Não quero saber o que tem na regra, quero saber se você verificou se esse é o modelo correto". Atualizados os trechos solicitados da regra 28 em `AGENTS.md` e as duas cópias de `economia-de-tokens/SKILL.md`: análise de dificuldade, risco, referência, contexto e limites antes de escolher, e conferência posterior pelo trabalho do agente. A tabela é ponto de partida; a inicialização Codex continua seguindo a tabela do início de `AGENTS.md`, com troca por tarefa só na sessão. Não houve troca nem reinício nesta entrada. Fonte: `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-regra-28.md`.
