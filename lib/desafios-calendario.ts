@@ -7,7 +7,11 @@
  *
  * Mês é sempre 0-indexado, como em `Date`.
  */
-import { isoLocal } from './format';
+import { deslocarMes, diasComRegistro, isoLocal, limitesDoMes } from './format';
+
+/* Helpers de data puros moram em `format.ts` (que `lib/data.ts` já importa e os testes
+   com dublê já simulam); reexportados aqui para quem importava daqui. */
+export { deslocarMes, diasComRegistro, limitesDoMes };
 
 /** Quantos meses para trás o calendário deixa navegar. */
 export const MESES_PARA_TRAS = 12;
@@ -43,20 +47,6 @@ export function diasNoMes(ano: number, mes: number): number {
 
 function isoDoDia(ano: number, mes: number, dia: number): string {
   return isoLocal(new Date(ano, mes, dia));
-}
-
-/** Início do mês local e início do seguinte, em ISO (UTC), para filtrar `created_at`. */
-export function limitesDoMes(ano: number, mes: number): { inicio: string; fim: string } {
-  return {
-    inicio: new Date(ano, mes, 1).toISOString(),
-    fim: new Date(ano, mes + 1, 1).toISOString(),
-  };
-}
-
-/** Mês anterior (`delta` -1) ou seguinte (+1), com a virada de ano. */
-export function deslocarMes(ano: number, mes: number, delta: number): { ano: number; mes: number } {
-  const d = new Date(ano, mes + delta, 1);
-  return { ano: d.getFullYear(), mes: d.getMonth() };
 }
 
 function indiceDoMes(ano: number, mes: number): number {

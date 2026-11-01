@@ -1,6 +1,10 @@
 import { apurarGastosCategoria, type ConsumoApurado } from './gastos-categoria';
 import { formatMoney, isCreditTx, isoLocal, isSameMonth, todayISO } from './format';
-import { algumMesCompleto } from './desafios-calendario';
+import { algumMesCompleto, diasComRegistro } from './desafios-calendario';
+
+/* A fonte única mora em desafios-calendario (sem dependências pesadas, para `lib/data.ts`
+   importar sem arrastar este módulo); reexportada aqui para quem já importava daqui. */
+export { diasComRegistro };
 import type { Bill, Budget, Transaction } from './types';
 import type { GamificationHistoricalSummary } from './data';
 
@@ -165,26 +169,6 @@ export function calculateStreakAndWeek(
   }
 
   return { streak: currentStreak, weekActivity };
-}
-
-/**
- * Fonte ÚNICA dos dias em que a pessoa registrou algo: o dia LOCAL de
- * `created_at` (o dia em que anotou, não o dia em que o dinheiro saiu); sem
- * `created_at`, o `occurred_on`. Sequência, "Constância no mês" e calendário
- * leem daqui, para a mesma palavra nunca dar dois números.
- *
- * Nunca `toISOString().slice(0, 10)`: das 21h à meia-noite, no Brasil, UTC já
- * é o dia seguinte.
- */
-export function diasComRegistro(
-  transacoes: ReadonlyArray<{ created_at?: string | null; occurred_on?: string | null }>
-): Set<string> {
-  const dias = new Set<string>();
-  for (const t of transacoes) {
-    const dia = t.created_at ? isoLocal(new Date(t.created_at)) : t.occurred_on;
-    if (dia) dias.add(dia);
-  }
-  return dias;
 }
 
 /**

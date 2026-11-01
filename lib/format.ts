@@ -257,3 +257,36 @@ export function formatDateLabel(iso: string): string {
   return `${String(d).padStart(2, '0')} ${months[m - 1]} ${y}`;
 }
 
+/** Início do mês local e início do seguinte, em ISO (UTC), para filtrar `created_at`. */
+export function limitesDoMes(ano: number, mes: number): { inicio: string; fim: string } {
+  return {
+    inicio: new Date(ano, mes, 1).toISOString(),
+    fim: new Date(ano, mes + 1, 1).toISOString(),
+  };
+}
+
+/** Mês anterior (`delta` -1) ou seguinte (+1), com a virada de ano. */
+export function deslocarMes(ano: number, mes: number, delta: number): { ano: number; mes: number } {
+  const d = new Date(ano, mes + delta, 1);
+  return { ano: d.getFullYear(), mes: d.getMonth() };
+}
+
+/**
+ * Fonte ÚNICA dos dias em que a pessoa registrou algo: o dia LOCAL de
+ * `created_at` (o dia em que anotou, não o dia em que o dinheiro saiu); sem
+ * `created_at`, o `occurred_on`. Sequência, "Constância no mês" e calendário
+ * leem daqui, para a mesma palavra nunca dar dois números.
+ *
+ * Nunca `toISOString().slice(0, 10)`: das 21h à meia-noite, no Brasil, UTC já
+ * é o dia seguinte.
+ */
+export function diasComRegistro(
+  transacoes: ReadonlyArray<{ created_at?: string | null; occurred_on?: string | null }>
+): Set<string> {
+  const dias = new Set<string>();
+  for (const t of transacoes) {
+    const dia = t.created_at ? isoLocal(new Date(t.created_at)) : t.occurred_on;
+    if (dia) dias.add(dia);
+  }
+  return dias;
+}

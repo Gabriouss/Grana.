@@ -11,9 +11,7 @@ import { idDoUsuarioLocal } from './sessao-offline';
    quem serve o disco sem rede, e avisa, é `comCacheOffline`. As escritas
    abaixo mantêm o disco em dia com `atualizarTelaGuardada`. */
 import { buscarTodasAsPaginas } from './paginacao';
-import { diasComRegistro } from './gamification';
-import { limitesDoMes, deslocarMes } from './desafios-calendario';
-import { isoLocal } from './format';
+import { deslocarMes, diasComRegistro, isoLocal, limitesDoMes } from './format';
 import { CATEGORIES } from './types';
 import { checarLimiteCartao } from './creditLimitAlert';
 import { MENSAGEM_CREDITO_SEM_CARTAO, edicaoTiraCartaoDoCredito, exigirCartaoNoCredito, recusarEntradaNoCartao } from './transaction-rules';
