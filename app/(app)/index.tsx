@@ -1366,7 +1366,7 @@ export default function InicioScreen() {
 
         <CategoriasContexto visao={visaoCategoria} onChange={mudarVisaoCategoria} resultado={categorias.resultado} erro={categorias.erro} carregar={categorias.carregar} />
         {!categorias.resultado ? null : pieData.length === 0 ? (
-          <Text style={styles.emptyText}>Nenhum gasto registrado ainda.</Text>
+          <Text style={styles.emptyText}>{semViuva(visaoCategoria === 'tudo' ? 'Nenhum gasto registrado ainda.' : 'Nenhum gasto nesta visão.')}</Text>
         ) : (
           <>
             <Animated.View
