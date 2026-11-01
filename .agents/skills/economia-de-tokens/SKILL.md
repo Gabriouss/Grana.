@@ -15,9 +15,11 @@ longos, recibos de recibos, orquestrador conferindo terminais em laço e agentes
    ela. O que não leva (contagem, conferência de conferência, relatório de estado) sai do plano ou vai para o fim.
 2. **Quantos agentes, no mínimo?** Um dono por entrega no caminho crítico. Revisor entra **uma vez, no fim, sobre o delta**,
    não a cada passo. Dois agentes nunca fazem ou revisam a mesma coisa. Os demais ficam parados, sem mensagem.
-3. **Qual modelo para cada um** (tabela abaixo), e configurar antes de mandar a tarefa (seção 3).
+3. **Qual modelo para cada um** (análise da seção 2), e configurar antes de mandar a tarefa (seção 3).
 
-## 2. Modelo e esforço pelo TIPO de atividade, não pelo cargo
+## 2. Modelo e esforço: analise cada tarefa
+
+Pedido do autor em 01/11/2026: o Orquestrador Supremo sempre analisa a tarefa e identifica o modelo e o esforço mais adequados. Pergunte: qual é a dificuldade real, quanto custa errar, existe referência pronta, quão grande é o contexto do agente e quanto resta de limite. Diga ao autor a escolha e o motivo em uma linha. A tabela é ponto de partida. Depois, confira a escolha pelo trabalho do agente (código, testes, erros), e troque se ele não der conta ou se o modelo sobrar.
 
 | Atividade | Codex | Codex |
 |---|---|---|
@@ -25,7 +27,7 @@ longos, recibos de recibos, orquestrador conferindo terminais em laço e agentes
 | Execução com especificação clara: corrigir código ou CSS, passada de design, documentação com julgamento, plano de produto | **Sonnet 5.5, medium** | Sol 6.1 medium |
 | Julgamento difícil: orquestrar vários agentes, auditoria final, segurança, causa raiz de bug que resistiu, dinheiro, fatura, voz, migration, Edge Function | **Opus 5.5, medium** | Luna 6 (o esforço que o autor fixou) |
 
-- `high` só depois que `medium` falhou no mesmo problema. Nada de Fable. O fast do Codex fica desligado (14/10).
+- `high` quando a análise justificar. Nada de Fable. O fast do Codex fica desligado (14/10).
 - O cargo dá o padrão (memória `modelos-permitidos-nos-agentes`), a atividade decide. O Vigil rodando gate pronto vai em
   Haiku; o Vigil julgando acabamento visual sobe para Sonnet. Terminado, volta ao padrão do cargo.
 - Pedido explícito do autor sobre o modelo de um terminal vale acima desta tabela.

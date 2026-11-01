@@ -67,19 +67,6 @@ const DEMO_TRANSACTIONS_RAW: Transaction[] = [
     created_at: new Date().toISOString(),
   },
   {
-    id: 'demo-9003',
-    user_id: 'demo',
-    type: 'in',
-    description: 'Empresa · folha salarial',
-    amount: 6200.0,
-    category: 'Salário',
-    color: '#4f9483',
-    occurred_on: esteMes(14),
-    recurring: false,
-    parent_id: null,
-    created_at: new Date().toISOString(),
-  },
-  {
     id: 'demo-9004',
     user_id: 'demo',
     type: 'out',
@@ -179,6 +166,23 @@ const DEMO_TRANSACTIONS_RAW: Transaction[] = [
     category: 'Outros',
     color: '#8b9198',
     occurred_on: esteMes(2),
+    recurring: false,
+    parent_id: null,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'demo-9003',
+    user_id: 'demo',
+    type: 'in',
+    description: 'Empresa · folha salarial',
+    amount: 6200.0,
+    category: 'Salário',
+    color: '#4f9483',
+    /* Dia 1: entrada futura do mês não entra no Saldo/Livre até a data (regra 20,
+       01/11/2026). O dia 1 conta em qualquer dia do mês, então o demo nunca
+       mostra saldo negativo por causa do salário. Fica por último para manter a
+       lista em ordem decrescente de data. */
+    occurred_on: esteMes(1),
     recurring: false,
     parent_id: null,
     created_at: new Date().toISOString(),

@@ -200,7 +200,17 @@ const em = (d, h = 12, m = 0) => new Date(2026, 8, d, h, m).getTime(); // setemb
   {
     const saldo = {};
     vm.runInNewContext(ts.transpileModule(ler('lib/safe-to-spend.ts'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText,
-      { exports: saldo, Date: RealDate, Math, Number, String, Object, Array, require: (id) => (id === './transaction-rules' ? carregar('lib/transaction-rules.ts') : {}) });
+      { exports: saldo, Date: RealDate, Math, Number, String, Object, Array, require: (id) => {
+        if (id === './transaction-rules') return carregar('lib/transaction-rules.ts');
+        /* Núcleo REAL do Livre (regra 20): calcularSaldoAtual usa o mesmo predicado de caixa. */
+        if (id.endsWith('livre-para-gastar')) {
+          const nucleo = {};
+          vm.runInNewContext(ts.transpileModule(ler('supabase/functions/_shared/livre-para-gastar.ts'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText,
+            { exports: nucleo, Date: RealDate, Math, Number, String, Object, Array, Map, Set, require: (d) => (d.includes('fatura-ciclo') ? carregar('supabase/functions/_shared/fatura-ciclo.ts') : {}) });
+          return nucleo;
+        }
+        return {};
+      } });
     const base = [{ id: 'e', type: 'in', amount: 1000, occurred_on: '2026-10-01', payment_method: 'pix', category: 'Salário' }];
     const hoje = new RealDate(2026, 9, 1, 12);
     const comAFala = [...base, { id: 'v', type: 'out', ...r5.gravacoes[0] }];

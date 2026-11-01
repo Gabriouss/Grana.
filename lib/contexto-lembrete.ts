@@ -28,7 +28,7 @@ export type ContextoLembrete = {
  * sequência (`created_at` no horário local; `occurred_on` só para linha sem
  * `created_at`). Data de atividade no futuro é ignorada.
  */
-export function contextoDoLembrete(transacoes: Transaction[], agora: Date = new Date()): ContextoLembrete {
+export function contextoDoLembrete(transacoes: Transaction[], agora: Date = new Date(), dias?: ReadonlySet<string>): ContextoLembrete {
   const hoje = isoLocal(agora);
   let ultima: string | null = null;
   for (const t of transacoes) {
@@ -36,9 +36,12 @@ export function contextoDoLembrete(transacoes: Transaction[], agora: Date = new 
     if (!dia || dia > hoje) continue;
     if (!ultima || dia > ultima) ultima = dia;
   }
+  if (dias) {
+    ultima = [...dias].filter(d => d <= hoje).sort().at(-1) ?? null;
+  }
   return {
     jaLancouHoje: ultima === hoje,
-    streak: calculateStreakAndWeek(transacoes, agora).streak,
+    streak: calculateStreakAndWeek(transacoes, agora, dias).streak,
     diasInativo: ultima ? diasEntre(ultima, hoje) : 99,
   };
 }

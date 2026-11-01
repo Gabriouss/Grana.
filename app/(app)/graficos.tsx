@@ -1,5 +1,8 @@
+import { useCategorias, useVisaoCategorias } from '@/lib/use-categorias';
+import { categoriasDaVisao } from '@/lib/categorias-cliente';
+import CategoriasContexto from '@/components/CategoriasContexto';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import SafeAreaView from '@/components/SafeAreaViewComFaixa';
 import { useTabBarInset } from '@/lib/tab-bar';
@@ -55,6 +58,7 @@ const MESES_ABREV = [
 ];
 
 export default function GraficosScreen() {
+  const router = useRouter();
   const { paddingConteudo } = useTabBarInset();
   const { activeWalletId, activeWalletName } = useWallet();
   /* O donut nasceu com 150px, medida boa para a largura de um celular. Num
@@ -137,10 +141,11 @@ export default function GraficosScreen() {
   }, [carregarDados]);
   useRecarregarAoChegarDadoNovo(() => { void carregarDados(true); });
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = () => {
     setRefreshing(true);
     carregarDados(true);
-  }, [carregarDados]);
+    void categorias.carregar();
+  };
 
   // Filtra transações pela carteira selecionada. Compra no crédito fica de
   // fora — só aparece na aba Crédito até a fatura ser paga (vira saída real).
@@ -238,35 +243,23 @@ export default function GraficosScreen() {
     });
   }, [filteredTransactions, tabModo, granularidade, periodoInicio, periodoFim]);
 
+  const datasCategorias = transactions.map(t => t.occurred_on).sort();
+  const inicioCategorias = granularidade === 'periodo' ? periodoInicio : datasCategorias[0] ?? `${hoje.slice(0, 7)}-01`;
+  const fimCategorias = granularidade === 'periodo' ? periodoFim : datasCategorias.at(-1) ?? hoje;
+  const categorias = useCategorias(inicioCategorias, fimCategorias, isDemoMode, DEMO_TRANSACTIONS);
+  const { visao, mudar } = useVisaoCategorias();
+  const fatiasConsumo = categorias.resultado ? categoriasDaVisao(categorias.resultado.consumo, visao).map(c => ({ ...c, color: c.color ?? theme.down })) : [];
+  const categoriasCaixa = useMemo(() => {
+    const mapa = new Map<string, { name: string; value: number; color: string }>();
+    for (const t of filteredTransactions.filter(t => t.type === 'in')) {
+      const c = mapa.get(t.category) ?? { name: t.category || 'Outros', value: 0, color: t.color };
+      c.value += Number(t.amount); mapa.set(t.category, c);
+    }
+    return prepararFatias([...mapa.values()]);
+  }, [filteredTransactions]);
+  const legendasCategorias = tabModo === 'renda' ? categoriasCaixa : fatiasConsumo;
   // Fatias do Donut Totalizador do Período
-  const pieSlices: PieSlice[] = useMemo(() => {
-    const targetType = tabModo === 'renda' ? 'in' : 'out';
-    const txsToUse =
-      tabModo === 'geral'
-        ? filteredTransactions
-        : filteredTransactions.filter((t) => t.type === targetType);
-
-    const catMap: Record<string, { amount: number; color: string }> = {};
-    txsToUse.forEach((t) => {
-      const cat = t.category || 'Outros';
-      const cor = t.color || theme.accent;
-      if (!catMap[cat]) catMap[cat] = { amount: 0, color: cor };
-      catMap[cat].amount += Number(t.amount || 0);
-    });
-
-    /* `prepararFatias` ordena, aplica a paleta validada por NOME de categoria
-       e dobra a cauda em "Outros", limitando o donut a seis fatias. A cor
-       gravada em `transactions.color` continua valendo em chip e etiqueta;
-       dentro do gráfico, onde as cores aparecem encostadas umas nas outras,
-       vale a paleta que passa nos testes de separação (ver lib/chart-colors.ts). */
-    return prepararFatias(
-      Object.entries(catMap).map(([name, info]) => ({
-        name,
-        color: info.color,
-        value: info.amount,
-      }))
-    );
-  }, [filteredTransactions, tabModo]);
+  const pieSlices: PieSlice[] = tabModo === 'renda' ? categoriasCaixa : prepararFatias(fatiasConsumo);
 
   const totalPeriodo = useMemo(() => {
     return pieSlices.reduce((acc, s) => acc + s.value, 0);
@@ -363,6 +356,8 @@ export default function GraficosScreen() {
           </View>
         )}
 
+        {tabModo !== 'renda' && <CategoriasContexto visao={visao} onChange={mudar} resultado={categorias.resultado} erro={categorias.erro} carregar={categorias.carregar} />}
+        <Text style={styles.summaryLabel}>Fluxo de caixa</Text>
         {/* Gráfico de linha — total por período, com a composição por
             categoria da coluna selecionada logo abaixo. */}
         <LineAreaChart
@@ -384,7 +379,7 @@ export default function GraficosScreen() {
               ? 'Total recebido no período'
               : 'Entradas + saídas no período'}
           </Text>
-          {transactions.length === 0 && (loading || erroCarga) ? (
+          {(tabModo === 'despesas' && !categorias.resultado) || (transactions.length === 0 && (loading || erroCarga)) ? (
             <Text style={[styles.summaryLabel, styles.summaryPendente]}>
               {loading ? 'Carregando…' : 'Indisponível agora'}
             </Text>
@@ -423,8 +418,8 @@ export default function GraficosScreen() {
                     nome nenhum. A porcentagem entra aqui porque só uma parte
                     das fatias ganha rótulo direto — sem ela, a identidade das
                     fatias pequenas dependeria só da cor. */}
-                {pieSlices.map((slice, i) => (
-                  <View key={i} style={styles.legendRow}>
+                {legendasCategorias.map((slice, i) => (
+                  <AppPressable key={i} style={styles.legendRow} disabled={tabModo === 'renda'} accessibilityRole="button" onPress={() => router.push({ pathname: '/(app)/lancamentos', params: { modo: 'categoria', categoria: slice.name, inicio: categorias.resultado?.inicio ?? inicioCategorias, fim: categorias.resultado?.fim ?? fimCategorias, forma: visao } })}>
                     <View style={[styles.legendDot, { backgroundColor: slice.color }]} />
                     <Text style={styles.legendName} numberOfLines={1}>
                       {slice.name}
@@ -435,7 +430,7 @@ export default function GraficosScreen() {
                     <PrivacyValue>
                       <Text style={styles.legendVal}>R$ {formatMoney(slice.value)}</Text>
                     </PrivacyValue>
-                  </View>
+                  </AppPressable>
                 ))}
               </View>
             </View>

@@ -1,3 +1,5 @@
+import { consultarCategorias } from '@/lib/categorias-cliente';
+import { apurarGastosCategoria } from '@/lib/gastos-categoria';
 import { useState } from 'react';
 import { mensagemErro } from '@/lib/erros';
 import { isLikelyNetworkError } from '@/lib/offline-cache';
@@ -66,7 +68,12 @@ export default function ExportPdfButton({
         }
       }
 
-      const { compartilhado, uri } = await gerarRelatorioPdf({ ano, mes, transactions, bills: contas, carteira, wrapped, periodo });
+      const inicioCategorias = periodo?.inicio ?? `${ano}-${String(mes + 1).padStart(2, '0')}-01`;
+      const fimCategorias = periodo?.fim ?? `${ano}-${String(mes + 1).padStart(2, '0')}-${new Date(ano, mes + 1, 0).getDate()}`;
+      const apuracao = isDemoMode ? null : await consultarCategorias(inicioCategorias, fimCategorias);
+      if (apuracao && !apuracao.resultado) throw new Error(apuracao.erro ?? 'Categorias indisponíveis.');
+      const consumoCategorias = apuracao?.resultado?.consumo ?? apurarGastosCategoria(transactions, { inicio: inicioCategorias, fim: fimCategorias });
+      const { compartilhado, uri } = await gerarRelatorioPdf({ ano, mes, transactions, bills: contas, carteira, wrapped, periodo, consumoCategorias });
       /* `uri` vazio é o caminho da web, onde o relatório abre numa janela
          própria e quem salva o PDF é a caixa de impressão do navegador — não
          existe arquivo local pra citar num alerta. */

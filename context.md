@@ -93,6 +93,217 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — passagem do orquestrador e arrasto em andamento
+
+Autor pediu Anvil em Opus 5.5 low; aplicado. Conta Claude estava em 97% da janela, com retorno previsto às 15h40; Anvil e orquestrador podem parar até lá, com retomada automática agendada para 15h41 conforme passagem `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-PASSAGEM-orquestrador.md`. A passagem aponta também a necessidade de restaurar o esforço global Opus para medium ao fim e preservar Opus medium no Orquestrador Supremo.
+
+Itens 1 e 2 da janela foram commitados em `92610578` e `d4b95dca`; arrastar em `7e164e6d`, com seis ajustes da leitura do orquestrador em andamento e ainda sem prova em emulador. No inventário local já consta também `e04c23ae` sobre ajustes do arrasto; Ledger não verificou se encerra os seis itens. Faltam prova em emulador, testes posteriores e relatório de Anvil. Sem publicação nesta entrada.
+
+## 01/11 — regra 28: escolha de modelo e esforço por tarefa
+
+Palavras do autor: "Modifique a regra 28. Você (Orquestrador supremo) deve sempre analisar a tarefa e identificar qual é o modelo e effort mais adequado para executar". Também disse: "Não quero saber o que tem na regra, quero saber se você verificou se esse é o modelo correto". Atualizados os trechos solicitados da regra 28 em `AGENTS.md` e as duas cópias de `economia-de-tokens/SKILL.md`: análise de dificuldade, risco, referência, contexto e limites antes de escolher, e conferência posterior pelo trabalho do agente. A tabela é ponto de partida; a inicialização Codex continua seguindo a tabela do início de `AGENTS.md`, com troca por tarefa só na sessão. Não houve troca nem reinício nesta entrada. Fonte: `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-regra-28.md`.
+
+## 01/11 — autorização de build de teste pessoal
+
+Palavras do autor: "Quando terminar, prepara tudo e pode disparar a build so para mim, para instalar via depuracao wi-fi". Planejada uma build com perfil `development`, a partir de clone local, versão 1.10.12, sem `build:preparar`, sem push e sem avisar usuários. A semana já tem três preparos; o autor foi avisado de que a build de hoje passa do teto. **Ainda não disparada** nesta entrada; resultado e instalação ainda não existem para verificar.
+
+## 01/11 — test:ci completo verde após correção de Keel
+
+Keel entregou o commit local `1a8d7749` e relata `test:ci` completo verde. A causa da falha anterior: `lib/data.ts` importava `gamification` e `desafios-calendario`, módulos que os dublês dos testes não simulavam. `diasComRegistro`, `limitesDoMes` e `deslocarMes` foram para `lib/format.ts`, com reexportações; nenhum teste ou asserção foi editado. Ledger não repetiu a suíte. Resultado corresponde ao estado relatado por Keel; mudanças posteriores requerem verificação própria. Sem publicação nesta entrada.
+
+## 01/11 — categorias entregues e rolagem medida
+
+Forge entregou categorias no cliente, sem publicação nem build, nos commits `ba69c6a4`, `21eba54f`, `7e7b9f80`, `87634a22`, `e28e57e5`, `b49171c6`, `510e7df6`, `1992cb74` e `46c3a956`. O relatório `E:\Grana-temporarios\2026-11-01-desafios-rolagem\relatorio-forge-categorias.md` descreve adaptação e telas, teto conjunto, filtros, retrospectiva e PDF, aviso único e preservação de receitas na lista normal. Forge relata testes focais e TypeScript verdes; QA visual, consultas reais, navegação, offline e PDF no aparelho ainda pendem. Granabô e servidor ficaram fora desta etapa.
+
+Anvil comprovou em emulador com Expo Go o gesto lento no texto: antes a lista não se movia, depois moveu; seta já movia. O cabeçalho ficou parado e o recuo lateral direito ainda não rolou. Relatório: `E:\Grana-temporarios\2026-11-01-desafios-rolagem\relatorio-anvil-rolagem-2.md`. Web 390, Escape e aparelho físico não foram vistos. Em tela baixa o botão era alcançável pela rolagem externa, mas a lista não transferia o gesto à camada externa. Anvil relata que `test:ci` parou em `boleto-pago-avisa-inicio.cjs` por import não simulado de gamification; outras falhas de testes com dublês foram relatadas. Àquela altura a suíte completa verde estava pendente; ver resultado posterior de Keel acima. Ledger não a executou.
+
+**Decisões do orquestrador para Anvil, em execução, cada uma em commit próprio:** remover `maxHeight: 380`, fixar cabeçalho e Concluir personalização e deixar só a lista rolar; ocupar a largura inteira do painel para aceitar gesto na borda direita; depois trocar as setas por arrasto. Ainda não validadas nesta entrada.
+
+Keel entregou `8547f0d4`, salário do demo no dia 1; segundo relato, `exemplo-landing.cjs` passou sem mudança de número. Permanecem QA visual de categorias e desafios, revisão final do delta e `test:ci` completo. Nada publicado nesta entrada.
+
+## 01/11 — decisões adicionais e entrada futura
+
+Fonte: `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-registro-5.md`. Relatos e estados de execução são do orquestrador; Ledger não verificou independentemente implantação ou testes.
+
+1. **Mudança de números ao puxar para atualizar: encerrada.** Palavras do autor: "os números mudaram depois de puxar para baixo e atualizar, porque eu tinha acabado de adicionar o livro para gastar na tela. Não investigue isso aí não, isso aí é besteira." A leitura do Keel (`criarOcorrenciasRecorrentes` sem `marcarLancamentosAlterados`, em `lib/data.ts:516-551`) fica como hipótese não confirmada e não será corrigida agora.
+2. **Keel, `77e9ca7f`, local:** entrada com data futura no mês só conta a partir da data, com o predicado único `entraNoCaixaDoMes`, usado por app, widgets e Granabô. App e widgets só mudam com build. O Granabô só muda quando `assistente-financeiro` for publicada; até lá, ele segue somando entrada futura. Nada publicado.
+3. **Decisões do orquestrador, em execução:**
+   - O salário do mês no demo vai para o dia 1 (`lib/demo-data.ts`), para `exemplo-landing.cjs` voltar a passar sem trocar número. Capturas não serão refeitas, porque os números delas continuam certos. Dono: Keel.
+   - No cartão "Fluxo financeiro", a palavra "saldo" vira "no mês", e o número não muda, pela regra 20. Dono: Forge.
+4. **Aviso "Selected model is at capacity" no Codex.** Palavras do autor: "Não investiga esse negócio de modelo sem capacidade não, fi. Só manda uma ordem que ele vai continuar fazendo." Procedimento: reenviar a ordem, sem investigar.
+5. **Permissões na M1.** O autor pediu menos pedidos de confirmação. O modo livre já estava ligado e os terminais estão em auto mode. A única confirmação com rastro nesta sessão foi uma edição de `MEMORY.md`, negada pelo autor. O classificador recusou a mudança em `.claude/settings.local.json` como auto-modificação, sem contorno. O autor decide se roda `liberar-pasta-memoria.cjs`, na pasta da rodada, que só libera a pasta de memória. Sem mudança no repositório.
+
+## 01/11 — decisão do autor sobre o Livre para gastar
+
+Palavras do autor: "Lançamento com data futura precisa descontar do livre para gastar, mas apenas lançamentos dentro do mesmo mês. Fatura de cartão de crédito precisa interferir no livre para gastar também." E: "Salário futuro no livre para gastar só entra após a data da entrada".
+
+**Leitura do orquestrador:** após a data significa a partir do próprio dia da data; Saldo atual acompanha a mesma base para a conta do cartão fechar. Regra 20 de `AGENTS.md` complementada com a decisão. Keel implementa; implementação, testes e paridade entre superfícies e servidor ainda não verificados nesta entrada. Nada publicado, sem build e sem deploy.
+
+## 01/11 — referência e acessibilidade da reordenação
+
+Palavras do autor: "Eu quero a mesma funcionalidade que a gente tem no Grana, versao web desktop, onde a gente consegue segurar e arrastar os blocos; so que isso vai acontecer dentro da janela de personalizacao, nao do lado de fora, como acontece hoje." Referência: `components/WidgetGrid.tsx`, incluindo alça, opacidade, borda tracejada e troca de duas posições.
+
+**Decisões do orquestrador:** `WidgetGrid` na web desktop continua como está. Na janela, sem setas, tocar em uma alça e depois em outra faz a mesma troca como alternativa de ponteiro único ao arrasto; o requisito dessa alternativa está registrado em `WidgetGrid.tsx:44-48`. Comportamento proposto, ainda sem verificação nesta entrada.
+
+Beacon removeu os emojis do bloco Livre no commit local `6e77a215`; tela não conferida. Nada publicado nesta entrada.
+
+## 01/11 — entrega da tela de Desafios e novos pedidos
+
+Forge entregou localmente a tela nos commits `5842180b`, `5365de48`, `46b2ecd5`, `c7a1ce97` e `5c307a50`, sobre a lógica de Keel; relatório `E:\Grana-temporarios\2026-11-01-desafios-rolagem\relatorio-forge-tela.md`. Relata testes focais e TypeScript aprovados, revisão de design system e remoção da escada de XP na tela, Início, resumo e PDF. QA visual e consulta Supabase real continuam sem verificação; também faltam aparelho, paginação, persistência, offline e `test:ci` completo. Ledger não executou os testes.
+
+**Divergência de servidor relatada por Forge:** `supabase/functions/assistente-financeiro/index.ts:1933-1961,1998` consulta 45 dias por `occurred_on` e calcula sequência, podendo divergir do calendário por dia de registro. Fica para a segunda etapa do servidor, junto às categorias do Granabô; nenhuma alteração ou deploy da função nesta entrada.
+
+Keel entregou o núcleo de categorias no commit local `c59686c9`; Forge segue nas telas de categorias, só cliente. Pedido do autor: remover emojis do bloco Livre, atribuído a Beacon; no inventário local já consta `6e77a215` com essa finalidade, ainda sem validação independente por Ledger. Outro pedido do autor: "troca essas setas usadas para organizar a ordem dos blocos para sliders de segurar e arrastar para a posicao desejada". Anvil executa depois da medição, com arrasto apenas pela alça e sem dependência nativa nova; ainda não verificado. Nada publicado, nenhuma build nesta entrada.
+
+## 01/11 — commits locais de rolagem de Anvil
+
+Anvil entregou `475879c5`: em `components/Sheet.tsx`, o painel deixa de ser `Pressable` ancestral da rolagem e o controle de fechar fica como irmão atrás. Em `ce805268`, adicionou `nestedScrollEnabled` à lista de `components/HomeCustomizerModal.tsx`. Os estilos da Sheet foram mantidos, segundo seu relatório `E:\Grana-temporarios\2026-11-01-desafios-rolagem\relatorio-anvil-rolagem-2.md`; `maxHeight` foi preservado porque a tela baixa não pôde ser medida.
+
+**Ainda não comprovado:** causa lida no código, sem medição de gesto antes/depois; emulador com pouca memória e captura bloqueada por `FLAG_SECURE` impediu a medição. Anvil relata teste de árvore e testes correlatos aprovados e `tsc` limpo; `test:ci` completo não rodou. Medição por log em andamento. Verificar arrasto lento e rápido em texto, direita e seta, primeiro/último cartão, tela baixa, toque fora e acessibilidade. Ledger não executou esses testes.
+
+Padrão semelhante foi apenas listado em `components/AccessibleModalPanel.tsx:22` e `components/FabButton.tsx:195`, não alterados; rolagem no primeiro não foi confirmada e o segundo não contém rolagem vertical. Anvil usou `git stash` por segundos contra a regra do projeto, restaurou e relata ter conferido o diff; inventário atual sem stash. Nada publicado nesta entrada.
+
+## 01/11 — design system em toda a rodada
+
+Palavras do autor: "tudo ou todas essas modificações aí, elas precisam seguir o nosso design system, beleza? Não invente, só invente o que não tiver no design system". A regra vale para todas as mudanças da rodada, inclusive as telas já commitadas. A ordem completa está em `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-design-system.md`: procurar componentes e padrões existentes primeiro, usar tokens e tom de voz, e declarar no relatório o que precisou criar e por que o existente não servia.
+
+Forge revisa por esse critério os commits de tela `5842180b`, `5365de48` e `46b2ecd5`, incluindo o calendário, sem alterar o pedido da spec. Anvil não muda fundo, raio, sombra, posição ou animação na correção estrutural de `Sheet.tsx`. A próxima ordem de telas de categorias deve levar a mesma regra. Revisão e conformidade ainda não verificadas por Ledger.
+
+## 01/11 — especificação de categorias em débito e crédito
+
+Compass entregou `E:\Grana-temporarios\2026-11-01-desafios-rolagem\spec-categorias-debito-credito.md`. Pela leitura de Compass, a queixa do autor procede no código local: `app/(app)/index.tsx:678,709,737,1403` exclui crédito antes da soma de categoria e teto; o Granabô devolve caixa e crédito separados. Não validado em aparelho nem produção; Ledger não conferiu independentemente o código. A especificação é proposta e contém decisões do Compass, não aprovação geral de implementação.
+
+**Decisão do orquestrador:** primeira entrega só no cliente, sem Edge nem deploy; Granabô fica para segunda etapa. Keel faz o núcleo `lib/gastos-categoria.ts`; telas vêm depois do Forge. Preservar a distinção de intervalos proposta para categorias e padrão de gastos. Nada publicado, nenhuma build no momento deste registro.
+
+## 01/11 — lógica da fase 2 de Desafios entregue
+
+Keel entregou a lógica no commit local `48fc3f95`, sem publicação nem build; relatório em `E:\Grana-temporarios\2026-11-01-desafios-rolagem\relatorio-keel-logica.md`. Inclui calendário de dias com registro, padrão de gastos, medalha Mês completo e permanência de Mês Verde já conquistada. O relatório diz que os testes específicos, TypeScript e corpora citados passaram; a consulta real de `fetchDiasComRegistro` e o `test:ci` completo não foram verificados. Cache de mês fechado não é invalidado automaticamente ao excluir lançamento antigo; a tela precisa chamar `limparDiasComRegistro` quando adequado. Sem mudança de tela ou migration no commit de Keel.
+
+Forge recebeu a tela, incluindo retirar a escada de XP também de Início e do resumo mensal. O orquestrador ajustou Forge para Sol medium somente nesta sessão, por execução com spec fechada, regra 28 e baixo limite semanal da conta PH. O relatório observa que o padrão inclui crédito, enquanto Gastos por categoria na Início usa só caixa; a investigação de categorias continua. Nada publicado, nenhuma build no momento deste registro. Ledger não executou independentemente os testes nem verificou a consulta.
+
+## 01/11 — terceira entrada: gesto, Livre e categorias
+
+Fonte: ordem do orquestrador `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-registro-3.md`. Relatos do vídeo e leituras de código não foram verificados independentemente por Ledger.
+
+### Rolagem: sintoma corrigido pelo autor
+
+Palavras do autor: "se eu tentar rolar pelo lado direito, ela não vai rolar [...] Só vai rolar se eu colocar o dedo ali em cima da setinha". Reexame da bolinha do toque no vídeo confirma, com uma exceção: um movimento rápido começando no texto moveu a lista uma vez. Corrige o registro anterior, que tratava a lista como presa de modo geral.
+
+Causa **provável**, lida no fonte do React Native 0.86.3 e sem experimento ainda: o painel da `Sheet` é um `Pressable` (`components/Sheet.tsx:65-73`) ancestral das rolagens. Toque em área comum faz dele o responder de JS, e `touch/JSResponderHandler.kt:55-64` faz essa view interceptar o gesto. Toque na seta tem como responder um descendente da lista, que continua livre. Movimento rápido vence a corrida antes de o comando do JS chegar. Se confirmada, a causa atinge as janelas feitas com `Sheet` (11 arquivos) e o mesmo padrão em `AccessibleModalPanel.tsx:25` e `FabButton.tsx:195`. Anvil prova no emulador antes de corrigir, e a correção vai na raiz, em `Sheet.tsx`.
+
+## Livre para gastar
+
+Palavras do autor: "Lançamento com data futura precisa descontar do livre para gastar, mas apenas lançamentos dentro do mesmo mês. Fatura de cartão de crédito precisa interferir no livre para gastar também."
+
+Leitura do orquestrador: no código atual, saídas futuras do mês já descontam (`livre-para-gastar.ts:27`) e o crédito não pago já reduz o Livre. O autor não respondeu sobre **entrada** futura do mês, como salário. Pergunta reenviada a ele. Cálculo não alterado.
+
+## Eventos de Desafios
+
+Decisão do orquestrador, já registrada: fase 2 sem eventos. Autor informado nesta mesma resposta.
+
+## Categorias no débito e no crédito (pedido novo)
+
+Palavras do autor: "se eu tenho um teto para gastar em transporte [...] eu posso atingir o teto de gasto do transporte e continuar gastando com o transporte no cartão de crédito. E aí o teto ele não estoura [...] verificar só gasto de categoria do débito, apenas gasto de categoria no crédito e os dois juntos."
+
+Compass levanta as superfícies e escreve a spec, sem código. A queixa ainda não foi confirmada no código pela coordenação. Keel foi avisado para não fixar a definição de gasto no cálculo atual de "Gastos por categoria", se ele excluir o crédito.
+
+Nenhuma correção foi verificada nesta entrada; reprodução no emulador, definição de entrada futura e confirmação da queixa de categorias permanecem pendentes.
+
+## 01/11 — parecer sobre eventos de Desafios
+
+Watchtower entregou parecer informativo **APTO COM AJUSTE**, em `E:\Grana-temporarios\2026-11-01-desafios-rolagem\parecer-watchtower-eventos.md`; não autoriza ativação imediata nem substitui validação de advogado. Para eventual coleta propõe atualizar a Política, documentar balanceamento de legítimo interesse e tratamento, justificar retenção proposta de 90 dias (não é prazo imposto pela lei), garantir oposição e exclusão efetivas, expurgo, acesso restrito e agregação sem reidentificação, além de validar com advogado. Destino, implementação, retenção e anonimização não foram verificados em produção.
+
+**Decisão do orquestrador:** fase 2 sai sem os eventos e usa os indicadores já existentes; autor informado. Nada implementado nesta entrada. A alternativa de coletar imediatamente foi descartada até que as condições e a validação sejam cumpridas.
+
+## 01/11 — segunda entrada: rolagem, desafios e cálculo
+
+Fonte: ordem do orquestrador `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-registro-2.md`. Os fatos e atribuições a seguir são relatados pelo orquestrador; Ledger não revisou o vídeo nem a sonda.
+
+### Rolagem de "Personalizar Início"
+
+**Correção posterior:** o relato generalizado abaixo foi refinado pelo autor e pelo reexame do vídeo; ver terceira entrada acima.
+
+Vídeo do aparelho real recebido e medido quadro a quadro pelo orquestrador, sem revisão independente pelo Ledger; os quadros foram apagados da pasta de rascunho. Fato: durante 6 s o dedo se move sobre a lista e ela anda 0 px, sem barra de rolagem; ela só anda em dois momentos curtos; o cabeçalho fica em 0 px em todos os quadros; a Início e os Desafios rolam normalmente no mesmo aparelho. Causa ainda é hipótese (rolagem vertical dentro de rolagem vertical, `components/Sheet.tsx:78` e `components/HomeCustomizerModal.tsx:82`, sem `nestedScrollEnabled`). Anvil reproduz no emulador antes de corrigir.
+
+## Desafios
+
+Plano v2 e spec da fase 2 entregues pelo Meridian, fora do repositório. Decisões do Meridian, reversíveis pelo autor: compra no crédito conta no dia da compra, com a fatura paga fora; "Mês Verde" só para quem já conquistou. Ajustes do orquestrador: bloco chamado "Padrão de gastos"; todas as carteiras; mesma definição de gasto de "Gastos por categoria". Lacuna da spec, a tratar na tela: "Nível" e elo também aparecem em `components/GoalsCarousel.tsx:187`, `components/MonthlyWrappedModal.tsx:130,148` e `app/(app)/index.tsx:1156-1163`. Keel implementa a lógica e os testes. Watchtower dá parecer sobre os eventos. A tela vem depois. Nada publicado, nenhuma build.
+
+Correção ao registro de hoje: o plano dizia que subir de nível não tem momento nenhum; `app/(app)/index.tsx:1156-1163` compara o nível antes e depois. O efeito na tela não foi conferido.
+
+## Push
+
+Beacon escreveu `sonda-push.mjs`, só leitura e não executada, porque a consulta à produção pelo agente foi barrada pela permissão automática. O orquestrador leu o script: só GET, imprime só contagens. Depende de o autor rodar. Entrega de push segue sem verificação.
+
+## Achado: Livre para gastar conta lançamento com data futura no mês
+
+Conferido no código e no vídeo pelo orquestrador; não revisto pelo Ledger. `calcularLivre` em `supabase/functions/_shared/livre-para-gastar.ts:27` e `transacoesDeCaixaDoMes` em `lib/safe-to-spend.ts:25` filtram só pelo mês, sem comparar com hoje. No dia 1º, as séries recorrentes geram as ocorrências do mês com datas à frente, e entradas que ainda não aconteceram passam a compor "Saldo atual" e "Livre para gastar". No vídeo, a mudança só apareceu depois de puxar para atualizar. Não alterado: pela regra 20, mudança nesse cálculo exige pedido explícito do autor. Pergunta levada ao autor na mesma data.
+
+## Terminais
+
+Encerrados para liberar memória para o emulador, sem conversa em andamento: Claude Code, Claude Code #2, Flare, Quill, Lumen. Prism continua fora, à espera do comando do autor.
+
+## 01/11 — decisões sobre o plano de desafios
+
+Transcrição da seção Decisões da ordem ao Meridian; a decisão e a leitura do orquestrador estão identificadas como na fonte.
+
+1. Vocabulário: "troca". Termos de jogo saem na fase 2.
+2. Duas escadas: "ok". Fica só a do hábito (Score); o XP vira "metas concluídas" e "total guardado". Decisão do orquestrador: mostrar o número do Score, sem a palavra "Faixa".
+3. Palavras do autor: "acho que aqui podemos adicionar um calendário nos desafios, exibindo a constância do usuário no uso do aplicativo". Leitura do orquestrador: a medalha "Mês Verde" sai e dá lugar a "Mês completo", e a tela ganha o calendário. Quem já conquistou "Mês Verde" não perde o que conquistou: proponha como isso aparece.
+4. Palavras do autor: "podemos criar um sistema de identificação para os períodos de maior gasto do usuário no mês (primeira quinzena, semana com mais gasto e dia com maior gasto) dessa forma, o usuário consegue visualizar seu padrão de consumo e ser conscientizado do que acontece no seu mês." O autor não se opôs ao resumo mensal por push: ele segue condicionado à prova de entrega e pode citar esse padrão.
+5. Medição: "ok". Dois eventos simples na fase 2, depois de passar pela conformidade legal.
+
+Meridian prepara plano v2 e especificação da fase 2; entrega ainda não verificada. Nada implementado nesta rodada. Fonte: `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-meridian-plano-v2.md`.
+
+## 01/11 — entrega do plano de desafios
+
+**Entrega de Meridian, 01/11:** `E:\Grana-temporarios\2026-11-01-desafios-rolagem\plano-desafios.md` propõe cartões de ação, reconhecimento contextual e resumo mensal por fases; é proposta sem aprovação nem implementação. Decisões inicialmente pendentes: ver atualização de 01/11 acima. Conferido no código: `lib/gamification.ts` mede hábitos e contas acompanhadas no Score e separa resultado financeiro como indicador; `lib/gamification-infinite.ts` e `app/(app)/desafios.tsx` usam Ionicons. A memória antiga que declarava ambas as direções inteiramente pendentes estava desatualizada. A medalha Mês Verde ainda premia superávit. Não foram verificados entrega de push, viabilidade completa nem comportamento no aparelho. A proposta de XP por lançamento ou conta foi desaconselhada no plano por incentivar manipulação; não houve mudança de produto.
+
+## 01/11 — modelos, desafios e rolagem
+
+
+**Pedido do autor:** verificar e ajustar modelo e esforço de todos os terminais antes de começar; plano para os desafios ficarem mais atrativos e mais presentes na vida do usuário; corrigir a rolagem da personalização da tela inicial, com vídeo a caminho. A subida na Play continua no plano e não começou nesta rodada.
+
+**Lido em 01/11, antes de qualquer troca:** Codex Sol medium; Compass Sol xhigh; Forge Sol medium; Harbor Sol medium; Beacon Sol medium; Ledger Sol medium; Sentinel Sol medium; Watchtower Sol medium; Codex PH Sol high; Prism caído no shell, porque a sessão salva não existe mais. Claude Code, Meridian, Anvil, Lumen, Vigil, Keel, Flare, Quill e Lynx em Sonnet 5.5 medium; Claude Code #2 em Opus 5.5 medium, na conta PH; Antigravity em Gemini 4 Argon medium.
+
+**Trocas feitas pelo orquestrador, só nesta sessão de cada terminal:**
+- Forge e Harbor: Sol medium para Sol xhigh, tabela de 28/10 do `AGENTS.md`.
+- Ledger: Sol medium para Terra low, mesma tabela.
+- Lynx: Sonnet para Opus 5.5 medium, decisão do autor de 09/10 sobre o auditor.
+- Quill: Sonnet para Haiku 5.5, decisão do autor de 09/10.
+- Padrão global da conta Claude restaurado em Sonnet 5.5 medium, conferido no `settings.json`.
+
+**Mantidos de propósito:**
+- Codex em Sol medium, embora a tabela de 28/10 diga ultra: o `CLAUDE.md` manda Sol medium no orquestrador Codex, e a conta Gabriel Codex tem 15% da semana. Conflito entre as duas regras, levado ao autor.
+- Vigil em Sonnet: a regra 28 pede Sonnet para julgar acabamento visual, e o QA da rolagem é isso.
+
+**Pendente:** Prism continua fora. `recruit --replace --account` reabriu com o mesmo `resume` quebrado, e a troca pelo preset foi barrada pelo classificador, então o autor precisa rodar o comando.
+
+**Capacidade:** limites das contas consultados; memória livre de 2,4 GB, possivelmente insuficiente para emulador. Não registrar valores de credenciais.
+
+**Distribuição:** Meridian faz o plano dos desafios. Anvil faz só o diagnóstico da rolagem até o vídeo chegar. Vídeo ainda não recebido nesta entrada.
+
+
+**Sintoma e causa:** rolagem precisa de diagnóstico; causa desconhecida. Prism falha por sessão salva inexistente.
+
+**Descartado e ocorrido:** replace reproduziu o resume quebrado; troca pelo preset foi barrada pelo classificador.
+
+**Não verificado:** vídeo não recebido; diagnóstico, correção e QA no aparelho pendentes. Informações de modelos são relatos do orquestrador. Nenhuma mudança no aplicativo nesta entrada.
+
+## 31/10 — fechamento da noite
+
+A versão de teste solicitada pelo autor foi instalada em seu celular às 21h31; a comparação relatada dos artefatos públicos antes e depois não mostrou mudança nem aviso aos usuários. O comportamento no aparelho ainda não foi verificado.
+
+Keel corrigiu relógios de dois testes em `f37fad60`: CI remoto verde na janela observada e 340 comandos verdes em UTC; a rodada local em Brasília parou por memória após 289, sem falha. Um dos testes falharia a partir da mudança de mês em qualquer fuso. A cobertura não prova o comportamento do aparelho na virada. Antes de nova versão de teste, incorporar essa correção à linha correspondente.
+
+**Pendência:** `alertaDeLimiteCartao` em `supabase/functions/assistente-financeiro/index.ts:1845` usa o mês do servidor; sonda de código mostrou resposta do mês seguinte das 21h à meia-noite de Brasília no último dia do mês, sem gravação. Próxima janela: 30/11 às 21h. Produção não foi conferida nesta rodada; corrigir e comparar a função publicada pela regra 11 antes da próxima publicação do assistente. Leituras de relógio em outro canal e no modo de teste foram apontadas como baixa gravidade, sem sonda funcional.
+
+O autor recebeu o passo a passo solicitado para a loja; nenhuma decisão nova sobre a adaptação foi relatada.
+
+## 31/10 — preparação da versão de teste
+
+Keel relata integração da linha de teste e testes de avisos, telas, TypeScript e CI integral verdes; o módulo nativo compilou. Não foram verificados o aplicativo completo, o ícone em execução, aparelho ou aviso real. A revisão independente foi adiada por decisão do orquestrador para este teste pessoal e continua necessária antes de alcançar usuários. O perfil de desenvolvimento é ignorado pelo webhook conforme leitura de código; a comparação externa anterior não mudou os artefatos públicos e deve ser repetida. Nenhuma build foi disparada nesta entrega; gravação sem confirmação e alteração do ícone do widget ficaram fora.
+
 ## 31/10 — formas de pagamento em teste
 
 O autor pediu identificação automática das formas de pagamento; a confirmação por toque permanece e boleto continua em revisão. Keel relata ajustes e testes focais verdes na linha local de teste, sem aviso real, aparelho ou compilação nativa. Há situações ainda ambíguas que podem exigir revisão; uma suspeita induzida por sinais genéricos foi retirada. As mudanças financeiras aguardam revisão independente antes de publicação e não estão em build.

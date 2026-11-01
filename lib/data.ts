@@ -11,12 +11,12 @@ import { idDoUsuarioLocal } from './sessao-offline';
    quem serve o disco sem rede, e avisa, é `comCacheOffline`. As escritas
    abaixo mantêm o disco em dia com `atualizarTelaGuardada`. */
 import { buscarTodasAsPaginas } from './paginacao';
-import { isoLocal } from './format';
+import { deslocarMes, diasComRegistro, isoLocal, limitesDoMes } from './format';
 import { CATEGORIES } from './types';
 import { checarLimiteCartao } from './creditLimitAlert';
 import { MENSAGEM_CREDITO_SEM_CARTAO, edicaoTiraCartaoDoCredito, exigirCartaoNoCredito, recusarEntradaNoCartao } from './transaction-rules';
-import { notificarDadosDosWidgetsAlterados } from './widgets-home-events';
-import { marcarLancamentosAlterados } from './lancamentos-alterados';
+import { notificarDadosDosWidgetsAlterados, observarDadosDosWidgets } from './widgets-home-events';
+import { marcarLancamentosAlterados, versaoDosLancamentos } from './lancamentos-alterados';
 import { entradasPendentesPorCarteira, juntarPendentes } from './fila-pendente';
 import { juntarVozPendente } from './voz-pendente-na-lista';
 import type { OcorrenciaFaltante } from './recorrencia';
@@ -1196,6 +1196,95 @@ export async function fetchTransactions(...args: Parameters<typeof buscar_fetchT
 export async function fetchTransactionsDoPeriodo(inicioISO: string, fimISO: string): Promise<Transaction[]> {
   return juntarVozPendente(await juntarPendentes(await fetchTransactionsDoPeriodoComCache(inicioISO, fimISO), inicioISO, fimISO, undefined, buscarSeriesPelaChave), inicioISO, fimISO);
 }
+/* ── Dias com registro (Desafios, fase 2) ────────────────────────────────────
+   Fonte única de sequência, "Constância no mês" e calendário: o dia LOCAL de
+   `created_at`. NÃO filtra por `occurred_on`: um lançamento de data antiga
+   registrado hoje conta como hoje. Traz só duas colunas, nunca a linha toda. */
+type LinhaDeRegistro = { created_at: string | null; occurred_on: string };
+
+async function buscar_linhasDeRegistro(inicioISO: string, fimISO: string): Promise<LinhaDeRegistro[]> {
+  return buscarTodasAsPaginas<LinhaDeRegistro>((de, ate) =>
+    supabase
+      .from('transactions')
+      .select('created_at, occurred_on')
+      .gte('created_at', inicioISO)
+      .lt('created_at', fimISO)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(de, ate)
+  );
+}
+const linhasDeRegistroComCache = comCacheOffline('dias-registro', buscar_linhasDeRegistro, (inicio, fim) => `${inicio}..${fim}`);
+
+/** Mês FECHADO não muda de dia com registro; fica na memória até `limparDiasComRegistro()`. */
+const diasDeMesFechado = new Map<string, Set<string>>();
+export function limparDiasComRegistro(): void {
+  diasDeMesFechado.clear();
+}
+// O sinal cobre gravação, edição, exclusão e voz; a versão cobre a fila offline.
+// A inscrição fica na primeira consulta para evitar ciclos de import.
+let observaDias = false;
+let versaoDias = -1;
+
+async function diasEntre(inicioISO: string, fimISO: string, prefixo?: string): Promise<{ doBanco: Set<string>; comPendentes: Set<string> }> {
+  const linhas = await linhasDeRegistroComCache(inicioISO, fimISO);
+  const doBanco = diasComRegistro(linhas);
+  /* Pendentes da fila offline entram como em `juntarPendentes`, mas pelo dia
+     em que foram anotados (`criadoEm`), não pelo `occurred_on`. */
+  const comPendentesLista = await juntarPendentes(linhas as unknown as Transaction[]);
+  const comPendentes = diasComRegistro(comPendentesLista);
+  if (prefixo) {
+    for (const d of [...comPendentes]) if (!d.startsWith(prefixo)) comPendentes.delete(d);
+  }
+  return { doBanco, comPendentes };
+}
+
+/** Dias (ISO local) do mês com algum registro. `mes` é 0-indexado. */
+export async function fetchDiasComRegistro(ano: number, mes: number): Promise<Set<string>> {
+  if (!observaDias) {
+    observarDadosDosWidgets(limparDiasComRegistro);
+    observaDias = true;
+  }
+  const versaoAtual = versaoDosLancamentos();
+  if (versaoDias !== versaoAtual) {
+    limparDiasComRegistro();
+    versaoDias = versaoAtual;
+  }
+  const chave = `${ano}-${mes}`;
+  const agora = new Date();
+  const fechado = ano * 12 + mes < agora.getFullYear() * 12 + agora.getMonth();
+  const prefixo = `${ano}-${String(mes + 1).padStart(2, '0')}-`;
+  const guardado = fechado ? diasDeMesFechado.get(chave) : undefined;
+  if (guardado) return new Set(guardado);
+  const { inicio, fim } = limitesDoMes(ano, mes);
+  const { doBanco, comPendentes } = await diasEntre(inicio, fim, prefixo);
+  for (const d of [...doBanco]) if (!d.startsWith(prefixo)) doBanco.delete(d);
+  /* Só o que veio do banco é guardado: o pendente pode mudar de dia quando sobe. */
+  if (fechado) diasDeMesFechado.set(chave, doBanco);
+  return comPendentes;
+}
+
+/** Dias com registro nos últimos `sinceDays` dias (inclui hoje), para a sequência e o Score. */
+export async function fetchDiasComRegistroRecentes(sinceDays = 45): Promise<Set<string>> {
+  const hoje = new Date();
+  const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - sinceDays);
+  const fim = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 1);
+  return (await diasEntre(inicio.toISOString(), fim.toISOString())).comPendentes;
+}
+
+/** Mesma janela para Desafios e lembretes: sequência, calendário e Mês completo. */
+export async function fetchDiasDeAtividade(): Promise<Set<string>> {
+  const agora = new Date();
+  const grupos = await Promise.all([
+    fetchDiasComRegistroRecentes(),
+    ...[0, -1, -2].map(delta => {
+      const m = deslocarMes(agora.getFullYear(), agora.getMonth(), delta);
+      return fetchDiasComRegistro(m.ano, m.mes);
+    }),
+  ]);
+  return new Set(grupos.flatMap(d => [...d]));
+}
+
 export const fetchSaldosPorCarteira = comCacheOffline('saldos', buscar_fetchSaldosPorCarteira);
 /** Existe algum lançamento na conta, em qualquer mês? Consulta de existência
     (1 linha, sem valor): só decide o texto da lista vazia, não entra em saldo. */

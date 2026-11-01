@@ -1,3 +1,11 @@
+import { consumirAvisoCategorias } from '@/lib/categorias-aviso';
+import { semViuva } from '@/lib/sem-viuva';
+import { useCategorias, useVisaoCategorias } from '@/lib/use-categorias';
+import { categoriasDaVisao } from '@/lib/categorias-cliente';
+import { formatBRL } from '@/lib/format';
+import CategoriasContexto from '@/components/CategoriasContexto';
+import CategoriaTeto from '@/components/CategoriaTeto';
+import { fetchDiasDeAtividade } from '@/lib/data';
 import { movimentarCofrinhoLocal, type OrigemCofrinho } from '@/lib/cofrinho-origem';
 import { boletoAtrasado, boletosDaSemana } from '../../lib/boletos-da-semana';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
@@ -34,7 +42,6 @@ import { addBill, deleteBudget, deleteInstallmentPurchase, deleteTransaction, en
 import { confirmarExclusaoDeLancamento, conferirContaPaga } from '@/lib/excluir-lancamento';
 import { carregarLayoutHome, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
 import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals, updateGoal } from '@/lib/goals';
-import { calcularLevelState } from '@/lib/gamification-infinite';
 import { calcularSafeToSpend, projetarComprometimentoFuturo, sugerirEvolucaoArquetipo } from '@/lib/projections';
 import { ARQUETIPOS, carregarDiagnostico, type DiagnosticoCarregado } from '@/lib/diagnostico';
 import { formatMoney, formatDateLabel, parseAmount, saudacaoDoDia, todayISO, formatMoneyInput } from '@/lib/format';
@@ -454,13 +461,13 @@ export default function InicioScreen() {
       // nenhum (ver carregarDadosLeves). Streak/jaLancouHoje podem ficar
       // minutos desatualizados entre uma ação e outra; é um lembrete de
       // notificação, não um valor financeiro.
-      carregarNotifPrefs().then((prefs) => {
+      carregarNotifPrefs().then(async (prefs) => {
         if (!prefs.lembreteDiarioAtivo) {
           cancelDailyHabitReminder().catch(() => {});
           return;
         }
-        scheduleDailyHabitReminder({ ...prefs.horario, ...contextoDoLembrete(tx), almocoAtivo: prefs.almocoAtivo }).catch(() => {});
-      });
+        await scheduleDailyHabitReminder({ ...prefs.horario, ...contextoDoLembrete(tx, new Date(), await fetchDiasDeAtividade()), almocoAtivo: prefs.almocoAtivo });
+      }).catch(erro => console.error('[inicio] lembrete de hábito falhou', erro));
 
       let cofrinhosConferidos = false;
       setFontesLivreDisponiveis(false);
@@ -567,7 +574,7 @@ export default function InicioScreen() {
      wrapped de dados fictícios não diz nada sobre o mês da pessoa. */
   useEffect(() => {
     if (loading || isDemoMode || onboardingOpen) return;
-    const w = gerarMonthlyWrapped(transactions, bills, budgets, lifetimeXp);
+    const w = gerarMonthlyWrapped(transactions, bills, budgets, lifetimeXp, new Date(), goals, new Set((invoicePayments ?? []).flatMap(p => [p.paid_transaction_id, ...(p.extra_transaction_ids ?? [])].filter((id): id is string => !!id))));
     if (w.vazio) return;
     let cancelado = false;
     wrappedJaVisto(w.chave).then((visto) => {
@@ -578,7 +585,7 @@ export default function InicioScreen() {
     return () => {
       cancelado = true;
     };
-  }, [loading, isDemoMode, onboardingOpen, transactions, bills, budgets, lifetimeXp]);
+  }, [loading, isDemoMode, onboardingOpen, transactions, bills, budgets, lifetimeXp, goals, invoicePayments]);
 
   /* Saldo por carteira depois de cada mudança nas transações.
    *
@@ -723,7 +730,7 @@ export default function InicioScreen() {
       ? { text: `+ R$ ${formatMoney(totalIn)}`, color: theme.up }
       : chartView === 'out'
       ? { text: `− R$ ${formatMoney(totalOut)}`, color: theme.down }
-      : { text: `saldo ${totalIn - totalOut >= 0 ? '+' : '−'} R$ ${formatMoney(Math.abs(totalIn - totalOut))}`, color: theme.inkFaint };
+      : { text: `no mês ${totalIn - totalOut >= 0 ? '+' : '−'} R$ ${formatMoney(Math.abs(totalIn - totalOut))}`, color: theme.inkFaint };
 
   /* `today` entra no memo em vez de ser recalculado a cada render: a tela
      recarrega `bills` a cada foco (useFocusEffect → load()), então a virada
@@ -735,16 +742,23 @@ export default function InicioScreen() {
   /* Gasto por categoria do mês. Alimenta DUAS seções — o donut e a barra de
      progresso de cada orçamento —, por isso é memo próprio em vez de ficar
      dentro do cálculo do donut. */
-  const byCategory = useMemo(() => {
-    const acc: Record<string, { amount: number; color: string }> = {};
-    monthTransactions
-      .filter((t) => t.type === 'out')
-      .forEach((t) => {
-        if (!acc[t.category]) acc[t.category] = { amount: 0, color: t.color };
-        acc[t.category].amount += Number(t.amount);
-      });
-    return acc;
-  }, [monthTransactions]);
+  const categoriaInicio = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+  const categoriaFim = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${new Date(selectedYear, selectedMonth + 1, 0).getDate()}`;
+  const categorias = useCategorias(categoriaInicio, categoriaFim, isDemoMode, DEMO_TRANSACTIONS);
+  const { visao: visaoCategoria, mudar: mudarVisaoCategoria } = useVisaoCategorias();
+  const fatiasCategorias = categorias.resultado ? categoriasDaVisao(categorias.resultado.consumo, visaoCategoria) : [];
+  const byCategory = Object.fromEntries(fatiasCategorias.map(c => [c.name, { amount: c.value, color: c.color ?? theme.down }]));
+  useEffect(() => {
+    if (!userId || isDemoMode || loading || onboardingOpen || !categorias.resultado) return;
+    let ativo = true;
+    void consumirAvisoCategorias(userId).then(mostrar => {
+      if (ativo && mostrar) triggerToast(semViuva('As categorias agora incluem compras no crédito. Seus tetos continuam iguais.'));
+    });
+    return () => { ativo = false; };
+  }, [userId, isDemoMode, loading, onboardingOpen, !!categorias.resultado]);
+  function abrirCategoria(category: string) {
+    router.push({ pathname: '/(app)/lancamentos', params: { modo: 'categoria', categoria: category, inicio: categorias.resultado?.inicio ?? categoriaInicio, fim: categorias.resultado?.fim ?? categoriaFim, forma: visaoCategoria } });
+  }
 
   /* Mesmo tratamento do donut de Gráficos: paleta validada por nome de
      categoria e cauda dobrada em "Outros", com teto de seis fatias. */
@@ -1154,17 +1168,12 @@ export default function InicioScreen() {
       triggerToast(delta >= 0 ? 'Guardado no cofrinho (exemplo)' : 'Resgatado do cofrinho (exemplo)');
       return;
     }
-    const nivelAntes = calcularLevelState(lifetimeXp).level;
     const atualizada = await depositToGoal(goal, delta, origem);
     setGoals((prev) => prev.map((g) => (g.id === goal.id ? atualizada : g)));
     triggerToast(delta >= 0 ? 'Guardado no cofrinho' : 'Resgatado do cofrinho');
     try {
       const xpAtualizado = (await fetchGamification()).lifetime_xp;
       setLifetimeXp(xpAtualizado);
-      const depois = calcularLevelState(xpAtualizado);
-      if (depois.level > nivelAntes) {
-        triggerToast(`Você chegou ao nível ${depois.level} · ${depois.elo.title}`);
-      }
     } catch (erro) {
       if (!isLikelyNetworkError(erro)) console.error('[inicio] atualização de XP após cofrinho falhou', erro);
     }
@@ -1352,11 +1361,11 @@ export default function InicioScreen() {
         <View style={styles.cardHeadRow}>
           <Text style={styles.cardLabel}>Gastos por categoria</Text>
           <PrivacyValue>
-            <Text style={[styles.flowValue, { color: theme.down }]}>{`− R$ ${formatMoney(totalOut)}`}</Text>
+            <Text style={[styles.flowValue, { color: theme.down }]}>{categorias.resultado ? formatBRL(fatiasCategorias.reduce((s, c) => s + c.value, 0)) : 'Indisponível agora'}</Text>
           </PrivacyValue>
         </View>
 
-        {pieData.length === 0 ? (
+        {!categorias.resultado ? <Text style={styles.emptyText}>Categorias indisponíveis agora.</Text> : pieData.length === 0 ? (
           <Text style={styles.emptyText}>Nenhum gasto registrado ainda.</Text>
         ) : (
           <>
@@ -1372,12 +1381,12 @@ export default function InicioScreen() {
               <PieChart data={pieData} />
             </Animated.View>
             <View style={styles.chipWrap}>
-              {pieData.map((seg) => (
-                <View key={seg.name} style={styles.legendChip}>
+              {fatiasCategorias.map((seg) => (
+                <AppPressable key={seg.name} style={styles.legendChip} onPress={() => abrirCategoria(seg.name)} accessibilityRole="button">
                   <View style={[styles.dot, { backgroundColor: seg.color }]} />
                   <Text style={styles.categoryName}>{seg.name}</Text>
                   <Text style={styles.categoryAmount}>{percentualDaFatia(seg.value, totalPie)}%</Text>
-                </View>
+                </AppPressable>
               ))}
             </View>
           </>
@@ -1400,40 +1409,9 @@ export default function InicioScreen() {
         {budgets.length === 0 ? (
           <Text style={styles.emptyText}>Nenhum orçamento definido. Toque em "+ Definir" ou escolha "Modelos".</Text>
         ) : (
-          budgets.map((b) => {
-            const spent = byCategory[b.category]?.amount ?? 0;
-            const pct = Math.min((spent / Number(b.amount)) * 100, 100);
-            const over = spent > Number(b.amount);
-            const spentFormatted = `R$ ${formatMoney(spent)}`;
-            const limitFormatted = `R$ ${formatMoney(Number(b.amount))}`;
-            return (
-              <AppPressable
-                key={b.category}
-                style={({ hovered }) => [styles.budgetRow, hovered && styles.budgetRowHover]}
-                onPress={() => openBudgetModal(b)}
-              >
-                <View style={styles.budgetTopLine}>
-                  <View style={styles.categoryLeft}>
-                    <View style={[styles.dot, { backgroundColor: b.color }]} />
-                    <Text style={styles.categoryName}>{b.category}</Text>
-                  </View>
-                  <View style={styles.budgetAmountRow}>
-                    <PrivacyValue>
-                      <Text style={[styles.categoryAmount, over && { color: theme.ink }]}>{spentFormatted}</Text>
-                    </PrivacyValue>
-                    <Text style={[styles.categoryAmount, over && { color: theme.ink }]}> de </Text>
-                    <PrivacyValue>
-                      <Text style={[styles.categoryAmount, over && { color: theme.ink }]}>{limitFormatted}</Text>
-                    </PrivacyValue>
-                    {over && <Text style={[styles.categoryAmount, { color: theme.ink }]}> · excedido</Text>}
-                  </View>
-                </View>
-                <View style={styles.budgetTrack}>
-                  <View style={[styles.budgetFill, { width: `${pct}%`, backgroundColor: over ? theme.danger : b.color }]} />
-                </View>
-              </AppPressable>
-            );
-          })
+          categorias.resultado ? budgets.map(b => (
+            <CategoriaTeto key={b.category} categoria={b.category} teto={Number(b.amount)} consumo={categorias.resultado?.consumo.porCategoria.find(c => c.category === b.category)} visao={visaoCategoria} abrir={() => abrirCategoria(b.category)} definir={() => openBudgetModal(b)} />
+          )) : <Text style={styles.emptyText}>Tetos indisponíveis agora.</Text>
         )}
       </View>
     ),
@@ -1698,7 +1676,7 @@ export default function InicioScreen() {
       <ScrollView
         style={styles.container}
         contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudoComFab }]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={theme.ink} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); void categorias.carregar(); }} tintColor={theme.ink} />}
       >
         <FaixaAssinatura />
 
@@ -1739,6 +1717,7 @@ export default function InicioScreen() {
         {/* Blocos personalizáveis da Home — ordem e visibilidade vêm de
             lib/home-layout.ts, editáveis pelo botão "Personalizar Início"
             no rodapé. Ver HOME_BLOCOS logo acima do return(). */}
+        <CategoriasContexto visao={visaoCategoria} onChange={mudarVisaoCategoria} resultado={categorias.resultado} erro={categorias.erro} carregar={categorias.carregar} />
         <WidgetGrid
           widgets={homeLayout
             .filter((b) => b.visible)

@@ -11,6 +11,26 @@ export type ContextoLivre = {
   payments?: Array<{ card_id: string; year: number; month: number; amount: number | string; paid_on?: string }>;
 };
 
+/**
+ * Entra no CAIXA do mês de `hojeISO`? Fonte única de "Saldo atual" e "Livre"
+ * (Início, widgets e Granabô; `lib/safe-to-spend.ts` importa daqui).
+ *
+ * Pedido expresso do autor em 01/11/2026 (regra 20): "Lançamento com data
+ * futura precisa descontar do livre para gastar, mas apenas lançamentos dentro
+ * do mesmo mês" e "Salário futuro no livre para gastar só entra após a data da
+ * entrada". Então, dentro do mês e fora do crédito: SAÍDA com data futura
+ * desconta desde já; ENTRADA só conta a partir do dia da data dela
+ * (`occurred_on <= hojeISO`, dia local da pessoa, o dia inteiro).
+ */
+export function entraNoCaixaDoMes(
+  t: { type: string; occurred_on: string; payment_method?: string | null; card_id?: string | null },
+  hojeISO: string,
+): boolean {
+  if (t.payment_method === 'credit' || !!t.card_id) return false;
+  if (typeof t.occurred_on !== 'string' || t.occurred_on.slice(0, 7) !== hojeISO.slice(0, 7)) return false;
+  return t.type !== 'in' || t.occurred_on <= hojeISO;
+}
+
 /** Regra 20, alteração expressa do autor em 17/10/2026.
  * Núcleo executável único: Início, widget e Granabô. Caixa é só do mês;
  * cofrinho antigo fica fora; reserva apenas do mês; crédito reserva a aberta
@@ -24,7 +44,7 @@ export function calcularLivre(
   const centavos = (v: number | string) => Math.round(Number(v) * 100);
   const mes = hojeISO.slice(0, 7);
   const [ano, mesNumero, dia] = hojeISO.split('-').map(Number);
-  const saldo = transacoes.filter(t => !credito(t) && t.occurred_on.slice(0, 7) === mes)
+  const saldo = transacoes.filter(t => entraNoCaixaDoMes(t, hojeISO))
     .reduce((s, t) => s + (t.type === 'in' ? 1 : -1) * centavos(t.amount), 0);
   const reservado = metas.reduce((s, g) => s + centavos(g.month_reserves?.[mes] ?? 0), 0);
   const cards = contexto.cards ?? [];

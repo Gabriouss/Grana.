@@ -45,6 +45,12 @@ function conferir(transactions, goals, ctx, esperado) {
   assert.equal(conferir([...base,tx('pago','out',750)],metas,{cards,payments:[{...parcial,amount:750}]},250).creditoNaoPago,0);
   conferir([...base,tx('passado','out',100,{card_id:'c',occurred_on:'2026-09-05'})],metas,contexto,150);
   conferir([...base,tx('futuro','out',900,{card_id:'c',occurred_on:'2026-11-10'})],metas,contexto,250);
+  /* 01/11/2026, pedido expresso do autor (regra 20): "Salário futuro no livre para
+     gastar só entra após a data da entrada". Entrada futura do mês não soma;
+     a de hoje soma o dia inteiro; saída futura do mês desconta desde já. */
+  conferir([...base,tx('salario-futuro','in',2000,{occurred_on:'2026-10-25'})],metas,contexto,250);
+  conferir([...base,tx('salario-hoje','in',2000,{occurred_on:'2026-10-17'})],metas,contexto,2250);
+  conferir([...base,tx('saida-futura','out',100,{occurred_on:'2026-10-25'})],metas,contexto,150);
   // Parcela com fechamento 31: data original decide, incluindo fevereiro curto.
   const parcelas = [tx('orig','out',200,{card_id:'c',occurred_on:'2026-01-30',installment_current:1,installment_total:12}),
     tx('p10','out',200,{card_id:'c',occurred_on:'2026-10-30',installment_current:10,installment_total:12,parent_id:'orig'})];

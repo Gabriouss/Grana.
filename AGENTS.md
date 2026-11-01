@@ -800,6 +800,7 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     - **Saldo é caixa do mês.** Entradas e saídas efetivamente registradas em
       débito/Pix no mês vigente compõem o saldo. Compra no crédito fica fora
       do caixa até o pagamento da fatura.
+      Decisão do autor em 01/11/2026: saída com data futura dentro do mês já desconta do Livre; entrada com data futura dentro do mês, como salário, só conta a partir do dia da data dela; lançamento de outro mês não conta.
     - **Dinheiro já guardado em cofrinho fica fora do mês.** Ao guardar, a
       origem deve distinguir "Já estava guardado" de "Do dinheiro deste mês".
       Dinheiro anterior não exige uma receita, não aparece como entrada ou
@@ -978,8 +979,7 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     reservado para não desalinhar as referências às regras seguintes.
 
 28. **Toda atividade começa pela skill `economia-de-tokens`
-    (`.claude/skills/economia-de-tokens/SKILL.md`), e os modelos dos agentes
-    são escolhidos pelo tipo de tarefa, configurados pelo próprio orquestrador.**
+    (`.claude/skills/economia-de-tokens/SKILL.md`), e o Orquestrador Supremo analisa cada tarefa e escolhe o modelo e o esforço mais adequados, configurando os terminais ele mesmo.**
     Regra dada pelo autor em 14/10/2026: "criar uma regra pra buscar sempre a
     melhor otimização de tokens [...] sempre rodar a skill quando for iniciar
     uma atividade, configurar automaticamente os modelos da forma correta para
@@ -992,11 +992,20 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     - **Antes de distribuir trabalho:** definir a entrega visível, o número
       mínimo de agentes (um dono por entrega, revisor uma vez no fim sobre o
       delta) e o modelo de cada um.
-    - **Modelo pela atividade:** mecânica em Haiku 5.5; execução com
-      especificação clara em Sonnet 5.5 medium; julgamento difícil (orquestração,
-      auditoria final, segurança, dinheiro, voz, migration) em Opus 5.5 medium.
-      `high` só depois que `medium` falhou. Pedido explícito do autor sobre um
-      terminal vale acima da tabela da skill.
+    - **Modelo e esforço pela análise da tarefa.** Decisão do autor em 01/11/2026:
+      "Você (Orquestrador supremo) deve sempre analisar a tarefa e identificar qual
+      é o modelo e effort mais adequado para executar". Antes de entregar cada
+      tarefa, o Orquestrador Supremo analisa o que ela exige: dificuldade real,
+      custo de um erro, referência pronta, contexto do agente e limite das contas.
+      Escolhe o modelo e o esforço e diz ao autor, em uma linha, a escolha e o
+      motivo. A tabela da skill é ponto de partida e não substitui a análise:
+      mecânica tende a Haiku 5.5, execução com especificação clara a Sonnet 5.5
+      medium, julgamento difícil a Opus 5.5 medium, e `high` entra quando a análise
+      justificar.
+    - **O trabalho do agente confere a escolha, não a regra.** Citar a tabela não
+      responde se o modelo está certo: quem responde é o código, os testes e os erros
+      dele nesta tarefa. Se o modelo não der conta, ou sobrar, o orquestrador troca
+      na hora. Pedido explícito do autor sobre um terminal vale acima de tudo isso.
     - **O "Orquestrador Supremo" roda SEMPRE em Opus 5.5 medium** (autor, 14/10/2026:
       "trave um lembrete de que Orquestrador supremo sempre estará em opus 5.5
       medium"). A tabela não o rebaixa, nem em tarefa mecânica. Como `/model` em
@@ -1010,6 +1019,7 @@ Regras permanentes para qualquer sessão que abrir este repositório:
       revisores inclusive, passa a Sol 6.1 medium; Luna 6 xhigh só em
       julgamento difícil (`bash .maestri/codex-modelos.sh --luna <Agente>`).
       Substitui a divisão Sol/Luna por cargo de 02/10/2026.
+      A análise tarefa a tarefa vale igual para o Codex, com troca só na sessão; a inicialização segue a tabela do início deste arquivo.
     - Convive com a regra 16 (revisão do
       Codex só quando vale a pena).
 
