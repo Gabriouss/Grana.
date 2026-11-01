@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from './AppPressable';
+import MonthSelector from './MonthSelector';
 import { fetchDiasComRegistro } from '@/lib/data';
-import { deslocarMes, montarCalendario, podeIrParaMesAnterior, podeIrParaProximoMes } from '@/lib/desafios-calendario';
-import { fonts, radius, spacing, theme, type, lh, touchTarget, card } from '@/lib/theme';
+import { montarCalendario, podeIrParaMesAnterior, podeIrParaProximoMes } from '@/lib/desafios-calendario';
+import { fonts, radius, spacing, theme, type, lh, touchTarget, card, menta } from '@/lib/theme';
 import { semViuva } from '@/lib/sem-viuva';
 import type { GamificationState } from '@/lib/gamification';
 
@@ -34,15 +35,15 @@ export default function DesafiosCalendario({ dias, weekActivity, streak, demo }:
     {atual && <View style={s.grupo}>
       <Text style={s.texto}>{semViuva(`Ritmo da semana: ${weekActivity.filter(d => d.active).length} dias com registro`)}</Text>
       <View style={s.linha}>{weekActivity.map((d, i) => <View key={i} style={s.coluna}>
-        <View style={[s.circulo, d.active && s.ativo, d.isToday && s.hoje]}><Text style={[s.numero, d.active && s.numeroAtivo]}>{d.dayName}</Text></View>
+        <View style={[s.circulo, d.active && s.ativo, d.isToday && s.hoje]}>
+          {d.active ? <Ionicons name="checkmark" size={12} color={theme.paper} /> : <View style={s.ponto} />}
+        </View>
+        <Text style={s.numero}>{d.dayName}</Text>
       </View>)}</View>
       <Text style={s.texto}>{semViuva(`${streak} ${streak === 1 ? 'dia seguido' : 'dias seguidos'} com registro`)}</Text>
     </View>}
-    <View style={s.navegacao}>
-      <AppPressable accessibilityRole="button" accessibilityLabel="Mês anterior" disabled={!podeIrParaMesAnterior(mes.ano, mes.mes, hoje)} onPress={() => setMes(deslocarMes(mes.ano, mes.mes, -1))} style={s.seta}><Ionicons name="chevron-back" size={20} color={podeIrParaMesAnterior(mes.ano, mes.mes, hoje) ? theme.ink : theme.inkFaint} /></AppPressable>
-      <Text style={[s.texto, { flex: 1, textAlign: 'center' }]}>{semViuva(nome)}</Text>
-      <AppPressable accessibilityRole="button" accessibilityLabel="Próximo mês" disabled={!podeIrParaProximoMes(mes.ano, mes.mes, hoje)} onPress={() => setMes(deslocarMes(mes.ano, mes.mes, 1))} style={s.seta}><Ionicons name="chevron-forward" size={20} color={podeIrParaProximoMes(mes.ano, mes.mes, hoje) ? theme.ink : theme.inkFaint} /></AppPressable>
-    </View>
+    <MonthSelector year={mes.ano} month={mes.mes} onChange={(ano, mes) => setMes({ ano, mes })}
+      anteriorDesabilitado={!podeIrParaMesAnterior(mes.ano, mes.mes, hoje)} proximoDesabilitado={!podeIrParaProximoMes(mes.ano, mes.mes, hoje)} />
     {erro ? <AppPressable accessibilityRole="button" onPress={() => setTentativa(t => t + 1)} style={s.navegacao}><Text accessibilityRole="alert" style={s.texto}>{semViuva('Não foi possível carregar o mês. Toque para tentar novamente.')}</Text></AppPressable>
       : !carregado ? <ActivityIndicator color={theme.ink} /> : <View style={s.grupo}>
         <Text style={s.texto}>{semViuva(calendario.resumo)}</Text>
@@ -57,9 +58,11 @@ const s = StyleSheet.create({
   card: { padding: card.padding, borderRadius: card.radius, borderWidth: card.borderWidth, borderColor: theme.rule, backgroundColor: theme.paperRaised, gap: spacing.md },
   titulo: { color: theme.ink, fontFamily: fonts.regular, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo') },
   texto: { color: theme.inkSoft, fontFamily: fonts.light, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo') },
-  grupo: { gap: spacing.sm }, linha: { flexDirection: 'row' }, coluna: { flex: 1, alignItems: 'center', minWidth: 0 },
-  circulo: { minWidth: 30, minHeight: 30, padding: 4, borderRadius: 30, backgroundColor: theme.paper, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'transparent' },
-  ativo: { backgroundColor: theme.accent2 }, hoje: { borderColor: theme.ink },
+  grupo: { gap: spacing.sm }, linha: { flexDirection: 'row' }, coluna: { flex: 1, alignItems: 'center', minWidth: 0, gap: spacing.icone },
+  // Mesmo círculo de 26px do Ritmo da semana; o mínimo permite crescer com a fonte.
+  circulo: { minWidth: 26, minHeight: 26, padding: spacing.xs, borderRadius: radius.pill, backgroundColor: menta(0.06), alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'transparent' },
+  ativo: { backgroundColor: theme.accent2, borderColor: theme.accent2 }, hoje: { borderColor: theme.accent2 },
+  ponto: { width: spacing.xs, height: spacing.xs, borderRadius: radius.pill, backgroundColor: theme.inkFaint },
   numero: { color: theme.inkSoft, fontFamily: fonts.regular, fontSize: type.micro, lineHeight: lh(type.micro, 'apoio') }, numeroAtivo: { color: theme.paper },
-  navegacao: { flexDirection: 'row', alignItems: 'center', minHeight: touchTarget }, seta: { minWidth: touchTarget, minHeight: touchTarget, alignItems: 'center', justifyContent: 'center' },
+  navegacao: { flexDirection: 'row', alignItems: 'center', minHeight: touchTarget },
 });

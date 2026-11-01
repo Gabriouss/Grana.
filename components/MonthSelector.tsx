@@ -17,9 +17,11 @@ type MonthSelectorProps = {
   currentMonth?: number;
   /** Troca a linguagem do controle sem alterar seu eixo numérico. */
   mode?: 'month' | 'invoice';
+  anteriorDesabilitado?: boolean;
+  proximoDesabilitado?: boolean;
 };
 
-export default function MonthSelector({ year, month, onChange, currentYear, currentMonth, mode = 'month' }: MonthSelectorProps) {
+export default function MonthSelector({ year, month, onChange, currentYear, currentMonth, mode = 'month', anteriorDesabilitado = false, proximoDesabilitado = false }: MonthSelectorProps) {
   const now = new Date();
   const anoAtual = currentYear ?? now.getFullYear();
   const mesAtual = currentMonth ?? now.getMonth();
@@ -57,8 +59,9 @@ export default function MonthSelector({ year, month, onChange, currentYear, curr
         onPress={handlePrev}
         hitSlop={12}
         accessibilityLabel={anteriorLabel}
+        disabled={anteriorDesabilitado}
       >
-        <Ionicons name="chevron-back" size={20} color={theme.ink} />
+        <Ionicons name="chevron-back" size={20} color={anteriorDesabilitado ? theme.inkFaint : theme.ink} />
       </AppPressable>
 
       <AppPressable
@@ -81,8 +84,9 @@ export default function MonthSelector({ year, month, onChange, currentYear, curr
         onPress={handleNext}
         hitSlop={12}
         accessibilityLabel={proximoLabel}
+        disabled={proximoDesabilitado}
       >
-        <Ionicons name="chevron-forward" size={20} color={theme.ink} />
+        <Ionicons name="chevron-forward" size={20} color={proximoDesabilitado ? theme.inkFaint : theme.ink} />
       </AppPressable>
     </View>
   );

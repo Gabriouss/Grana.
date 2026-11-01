@@ -58,7 +58,7 @@ const mocks = {
   'react-native': { Text: 'Text', View: 'View', ScrollView: 'ScrollView', RefreshControl: 'RefreshControl', StyleSheet: { create: x => x }, ActivityIndicator: 'ActivityIndicator' },
   'expo-router': { useRouter: () => ({ push: r => routes.push(r) }), useFocusEffect: () => {} },
   '@expo/vector-icons/Ionicons': { __esModule: true, default: 'Icon' },
-  '@/lib/theme': { theme, spacing: token, radius: token, fonts: { light: 'Light', regular: 'Regular' }, type: token, lh: x => x, screenRhythm: token, card: token },
+  '@/lib/theme': { theme, spacing: token, radius: token, fonts: { light: 'Light', regular: 'Regular' }, type: token, lh: x => x, screenRhythm: token, card: token, touchTarget: 48, menta: a => `rgba(174,255,227,${a})` },
   '@/lib/format': carregar('lib/format.ts'), '@/lib/sem-viuva': { semViuva },
   '@/lib/data': data, '@/lib/goals': { fetchGoals: async () => [] },
   '@/lib/feature-flags': { useFlags: () => ({ ligado: () => true, flag: () => null }) },
@@ -78,7 +78,7 @@ function load(file) {
       if (id.includes('AppPressable')) return { __esModule: true, default: 'AppPressable' };
       if (id.includes('PrivacyValue')) return { __esModule: true, default: 'PrivacyValue' };
       if (id.includes('FaixaOffline')) return { __esModule: true, default: 'FaixaOffline', useRecarregarAoChegarDadoNovo: () => {} };
-      if (/HojeNoSeuMes|DesafiosCalendario|DesafiosPadraoGastos/.test(id)) return load('components/' + id.split('/').at(-1) + '.tsx');
+      if (/HojeNoSeuMes|DesafiosCalendario|DesafiosPadraoGastos|MonthSelector/.test(id)) return load('components/' + id.split('/').at(-1) + '.tsx');
       if (id.startsWith('@/components/')) return { __esModule: true, default: id.split('/').at(-1) };
       if (id.startsWith('@/lib/')) return carregar('lib/' + id.split('/').at(-1) + '.ts');
       throw new Error('import não simulado: ' + id);
@@ -117,6 +117,12 @@ async function main() {
   all.find(n => n.props.accessibilityState?.expanded === false).props.onPress();
   index = 0; const expanded = Tela();
   ok(text(expanded).replaceAll('\u00a0', ' ').includes('Composição do Score'), 'toque expande os detalhes');
+  const Month = load('components/MonthSelector.tsx').default;
+  const selector = Month({ year: 2026, month: 10, onChange: () => {}, anteriorDesabilitado: true, proximoDesabilitado: true });
+  const arrows = nodes(selector).filter(n => n.type === 'AppPressable' && /Mês anterior|Próximo mês/.test(n.props.accessibilityLabel));
+  ok(arrows.length === 2 && arrows.every(n => n.props.disabled), 'seletor existente aceita os limites do calendário');
+  const normal = Month({ year: 2026, month: 10, onChange: () => {} });
+  ok(nodes(normal).filter(n => n.type === 'AppPressable').every(n => !n.props.disabled), 'outros consumidores continuam sem limite');
   const contexto = carregar('lib/contexto-lembrete.ts');
   const agora = new Date(2026, 10, 1, 12);
   const dias = new Set(['2026-10-30', '2026-10-31', '2026-11-01']);
