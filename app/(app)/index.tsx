@@ -1,3 +1,4 @@
+import { categoriaDaFatia } from '@/lib/chart-colors';
 import CategoriasContexto from '@/components/CategoriasContexto';
 import { consumirAvisoCategorias } from '@/lib/categorias-aviso';
 import { semViuva } from '@/lib/sem-viuva';
@@ -1380,13 +1381,19 @@ export default function InicioScreen() {
               <PieChart data={pieData} />
             </Animated.View>
             <View style={styles.chipWrap}>
-              {fatiasCategorias.map((seg) => (
-                <AppPressable key={seg.name} style={styles.legendChip} onPress={() => abrirCategoria(seg.name)} accessibilityRole="button">
+              {pieData.map((seg) => {
+                const categoria = categoriaDaFatia(seg, fatiasCategorias);
+                const conteudo = <>
                   <View style={[styles.dot, { backgroundColor: seg.color }]} />
                   <Text style={styles.categoryName}>{seg.name}</Text>
                   <Text style={styles.categoryAmount}>{percentualDaFatia(seg.value, totalPie)}%</Text>
-                </AppPressable>
-              ))}
+                </>;
+                return categoria ? (
+                  <AppPressable key={seg.name} style={styles.legendChip} onPress={() => abrirCategoria(categoria)} accessibilityRole="button">{conteudo}</AppPressable>
+                ) : (
+                  <View key={seg.name} style={styles.legendChip}>{conteudo}</View>
+                );
+              })}
             </View>
           </>
         )}
