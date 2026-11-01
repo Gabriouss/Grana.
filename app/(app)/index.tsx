@@ -1,3 +1,8 @@
+import { useCategorias, useVisaoCategorias } from '@/lib/use-categorias';
+import { categoriasDaVisao } from '@/lib/categorias-cliente';
+import { formatBRL } from '@/lib/format';
+import CategoriasContexto from '@/components/CategoriasContexto';
+import CategoriaTeto from '@/components/CategoriaTeto';
 import { fetchDiasDeAtividade } from '@/lib/data';
 import { movimentarCofrinhoLocal, type OrigemCofrinho } from '@/lib/cofrinho-origem';
 import { boletoAtrasado, boletosDaSemana } from '../../lib/boletos-da-semana';
@@ -734,16 +739,15 @@ export default function InicioScreen() {
   /* Gasto por categoria do mês. Alimenta DUAS seções — o donut e a barra de
      progresso de cada orçamento —, por isso é memo próprio em vez de ficar
      dentro do cálculo do donut. */
-  const byCategory = useMemo(() => {
-    const acc: Record<string, { amount: number; color: string }> = {};
-    monthTransactions
-      .filter((t) => t.type === 'out')
-      .forEach((t) => {
-        if (!acc[t.category]) acc[t.category] = { amount: 0, color: t.color };
-        acc[t.category].amount += Number(t.amount);
-      });
-    return acc;
-  }, [monthTransactions]);
+  const categoriaInicio = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+  const categoriaFim = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${new Date(selectedYear, selectedMonth + 1, 0).getDate()}`;
+  const categorias = useCategorias(categoriaInicio, categoriaFim, isDemoMode, DEMO_TRANSACTIONS);
+  const { visao: visaoCategoria, mudar: mudarVisaoCategoria } = useVisaoCategorias();
+  const fatiasCategorias = categorias.resultado ? categoriasDaVisao(categorias.resultado.consumo, visaoCategoria) : [];
+  const byCategory = Object.fromEntries(fatiasCategorias.map(c => [c.name, { amount: c.value, color: c.color ?? theme.down }]));
+  function abrirCategoria(category: string) {
+    router.push({ pathname: '/(app)/lancamentos', params: { modo: 'categoria', categoria: category, inicio: categorias.resultado?.inicio ?? categoriaInicio, fim: categorias.resultado?.fim ?? categoriaFim, forma: visaoCategoria } });
+  }
 
   /* Mesmo tratamento do donut de Gráficos: paleta validada por nome de
      categoria e cauda dobrada em "Outros", com teto de seis fatias. */
@@ -1346,11 +1350,11 @@ export default function InicioScreen() {
         <View style={styles.cardHeadRow}>
           <Text style={styles.cardLabel}>Gastos por categoria</Text>
           <PrivacyValue>
-            <Text style={[styles.flowValue, { color: theme.down }]}>{`− R$ ${formatMoney(totalOut)}`}</Text>
+            <Text style={[styles.flowValue, { color: theme.down }]}>{categorias.resultado ? formatBRL(fatiasCategorias.reduce((s, c) => s + c.value, 0)) : 'Indisponível agora'}</Text>
           </PrivacyValue>
         </View>
 
-        {pieData.length === 0 ? (
+        {!categorias.resultado ? <Text style={styles.emptyText}>Categorias indisponíveis agora.</Text> : pieData.length === 0 ? (
           <Text style={styles.emptyText}>Nenhum gasto registrado ainda.</Text>
         ) : (
           <>
@@ -1366,12 +1370,12 @@ export default function InicioScreen() {
               <PieChart data={pieData} />
             </Animated.View>
             <View style={styles.chipWrap}>
-              {pieData.map((seg) => (
-                <View key={seg.name} style={styles.legendChip}>
+              {fatiasCategorias.map((seg) => (
+                <AppPressable key={seg.name} style={styles.legendChip} onPress={() => abrirCategoria(seg.name)} accessibilityRole="button">
                   <View style={[styles.dot, { backgroundColor: seg.color }]} />
                   <Text style={styles.categoryName}>{seg.name}</Text>
                   <Text style={styles.categoryAmount}>{percentualDaFatia(seg.value, totalPie)}%</Text>
-                </View>
+                </AppPressable>
               ))}
             </View>
           </>
@@ -1394,40 +1398,9 @@ export default function InicioScreen() {
         {budgets.length === 0 ? (
           <Text style={styles.emptyText}>Nenhum orçamento definido. Toque em "+ Definir" ou escolha "Modelos".</Text>
         ) : (
-          budgets.map((b) => {
-            const spent = byCategory[b.category]?.amount ?? 0;
-            const pct = Math.min((spent / Number(b.amount)) * 100, 100);
-            const over = spent > Number(b.amount);
-            const spentFormatted = `R$ ${formatMoney(spent)}`;
-            const limitFormatted = `R$ ${formatMoney(Number(b.amount))}`;
-            return (
-              <AppPressable
-                key={b.category}
-                style={({ hovered }) => [styles.budgetRow, hovered && styles.budgetRowHover]}
-                onPress={() => openBudgetModal(b)}
-              >
-                <View style={styles.budgetTopLine}>
-                  <View style={styles.categoryLeft}>
-                    <View style={[styles.dot, { backgroundColor: b.color }]} />
-                    <Text style={styles.categoryName}>{b.category}</Text>
-                  </View>
-                  <View style={styles.budgetAmountRow}>
-                    <PrivacyValue>
-                      <Text style={[styles.categoryAmount, over && { color: theme.ink }]}>{spentFormatted}</Text>
-                    </PrivacyValue>
-                    <Text style={[styles.categoryAmount, over && { color: theme.ink }]}> de </Text>
-                    <PrivacyValue>
-                      <Text style={[styles.categoryAmount, over && { color: theme.ink }]}>{limitFormatted}</Text>
-                    </PrivacyValue>
-                    {over && <Text style={[styles.categoryAmount, { color: theme.ink }]}> · excedido</Text>}
-                  </View>
-                </View>
-                <View style={styles.budgetTrack}>
-                  <View style={[styles.budgetFill, { width: `${pct}%`, backgroundColor: over ? theme.danger : b.color }]} />
-                </View>
-              </AppPressable>
-            );
-          })
+          categorias.resultado ? budgets.map(b => (
+            <CategoriaTeto key={b.category} categoria={b.category} teto={Number(b.amount)} consumo={categorias.resultado?.consumo.porCategoria.find(c => c.category === b.category)} visao={visaoCategoria} abrir={() => abrirCategoria(b.category)} definir={() => openBudgetModal(b)} />
+          )) : <Text style={styles.emptyText}>Tetos indisponíveis agora.</Text>
         )}
       </View>
     ),
@@ -1690,7 +1663,7 @@ export default function InicioScreen() {
       <ScrollView
         style={styles.container}
         contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudoComFab }]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={theme.ink} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); void categorias.carregar(); }} tintColor={theme.ink} />}
       >
         <FaixaAssinatura />
 
@@ -1731,6 +1704,7 @@ export default function InicioScreen() {
         {/* Blocos personalizáveis da Home — ordem e visibilidade vêm de
             lib/home-layout.ts, editáveis pelo botão "Personalizar Início"
             no rodapé. Ver HOME_BLOCOS logo acima do return(). */}
+        <CategoriasContexto visao={visaoCategoria} onChange={mudarVisaoCategoria} resultado={categorias.resultado} erro={categorias.erro} carregar={categorias.carregar} />
         <WidgetGrid
           widgets={homeLayout
             .filter((b) => b.visible)
