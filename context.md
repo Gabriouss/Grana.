@@ -93,6 +93,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — regra 28: escolha de modelo e esforço por tarefa
+
+Palavras do autor: "Modifique a regra 28. Você (Orquestrador supremo) deve sempre analisar a tarefa e identificar qual é o modelo e effort mais adequado para executar". Também disse: "Não quero saber o que tem na regra, quero saber se você verificou se esse é o modelo correto". Atualizados os trechos solicitados da regra 28 em `AGENTS.md` e as duas cópias de `economia-de-tokens/SKILL.md`: análise de dificuldade, risco, referência, contexto e limites antes de escolher, e conferência posterior pelo trabalho do agente. A tabela é ponto de partida; a inicialização Codex continua seguindo a tabela do início de `AGENTS.md`, com troca por tarefa só na sessão. Não houve troca nem reinício nesta entrada. Fonte: `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-regra-28.md`.
+
 ## 01/11 — autorização de build de teste pessoal
 
 Palavras do autor: "Quando terminar, prepara tudo e pode disparar a build so para mim, para instalar via depuracao wi-fi". Planejada uma build com perfil `development`, a partir de clone local, versão 1.10.12, sem `build:preparar`, sem push e sem avisar usuários. A semana já tem três preparos; o autor foi avisado de que a build de hoje passa do teto. **Ainda não disparada** nesta entrada; resultado e instalação ainda não existem para verificar.
