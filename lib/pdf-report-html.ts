@@ -1,3 +1,5 @@
+import { isCreditTx } from './transaction-rules';
+import { apurarGastosCategoria, type ConsumoApurado } from './gastos-categoria';
 /* Montagem do HTML do relatório mensal — a parte pura.
  *
  * Separada de lib/pdf-report.ts porque aquele arquivo importa expo-print,
@@ -70,6 +72,7 @@ export type DadosRelatorio = {
    * comparar: a comparação mensal não faz sentido num intervalo livre.
    */
   periodo?: { inicio: string; fim: string };
+  consumoCategorias?: ConsumoApurado;
 };
 
 /**
@@ -122,13 +125,14 @@ function gerarInsights(dados: {
   saidasTx: Transaction[];
   doMes: Transaction[];
   categorias: [string, { total: number; cor: string }][];
+  consumoTotal: number;
   saidasMesAnterior: number | null;
   diasNoMes: number;
   boletosPagos: Bill[];
   /** 'mês' ou 'período', conforme o recorte do relatório. */
   ref: string;
 }): Insight[] {
-  const { entradas, saidas, saldo, saidasTx, doMes, categorias, saidasMesAnterior, diasNoMes, boletosPagos, ref } = dados;
+  const { entradas, saidas, saldo, saidasTx, doMes, categorias, consumoTotal, saidasMesAnterior, diasNoMes, boletosPagos, ref } = dados;
   const out: Insight[] = [];
   const pct = (parte: number, todo: number) => (todo > 0 ? (parte / todo) * 100 : 0);
 
@@ -170,15 +174,15 @@ function gerarInsights(dados: {
     for (const [, { total }] of categorias) {
       acumulado += total;
       quantas++;
-      if (acumulado / saidas >= 0.7) break;
+      if (acumulado / consumoTotal >= 0.7) break;
     }
     const [nomeLider, dadosLider] = categorias[0];
     out.push({
       titulo: `Onde o ${ref} se concentrou`,
       texto:
         quantas === 1
-          ? `${nomeLider} sozinha responde por ${pct(dadosLider.total, saidas).toFixed(0)}% das saídas, R$ ${formatMoney(dadosLider.total)}.`
-          : `${quantas} de ${categorias.length} categorias somam 70% das saídas. A maior é ${nomeLider}, com ${pct(dadosLider.total, saidas).toFixed(0)}% do total.`,
+          ? `${nomeLider} sozinha responde por ${pct(dadosLider.total, consumoTotal).toFixed(0)}% do consumo, R$ ${formatMoney(dadosLider.total)}.`
+          : `${quantas} de ${categorias.length} categorias somam 70% do consumo. A maior é ${nomeLider}, com ${pct(dadosLider.total, consumoTotal).toFixed(0)}% do total.`,
     });
   }
 
@@ -303,7 +307,7 @@ function blocoRetrospectiva(w: MonthlyWrapped | null | undefined): string {
 }
 
 export function montarHtml(
-  { ano, mes, transactions, bills, carteira, wrapped, periodo }: DadosRelatorio,
+  { ano, mes, transactions, bills, carteira, wrapped, periodo, consumoCategorias }: DadosRelatorio,
   fonte: CabecalhoDaFonte = { base: '', faces: '' }
 ): string {
   const ref = periodo ? 'período' : 'mês';
@@ -314,19 +318,16 @@ export function montarHtml(
   };
   const doMes = transactions.filter((t) => noRecorte(t.occurred_on));
 
-  const entradasTx = doMes.filter((t) => t.type === 'in');
-  const saidasTx = doMes.filter((t) => t.type === 'out');
+  const entradasTx = doMes.filter((t) => t.type === 'in' && !isCreditTx(t));
+  const saidasTx = doMes.filter((t) => t.type === 'out' && !isCreditTx(t));
   const entradas = entradasTx.reduce((s, t) => s + Number(t.amount), 0);
   const saidas = saidasTx.reduce((s, t) => s + Number(t.amount), 0);
   const saldo = entradas - saidas;
 
-  const porCategoria = new Map<string, { total: number; cor: string }>();
-  for (const t of saidasTx) {
-    const atual = porCategoria.get(t.category) ?? { total: 0, cor: t.color };
-    atual.total += Number(t.amount);
-    porCategoria.set(t.category, atual);
-  }
-  const categorias = [...porCategoria.entries()].sort((a, b) => b[1].total - a[1].total);
+  const inicioConsumo = periodo?.inicio ?? `${ano}-${String(mes + 1).padStart(2, '0')}-01`;
+  const fimConsumo = periodo?.fim ?? `${ano}-${String(mes + 1).padStart(2, '0')}-${new Date(ano, mes + 1, 0).getDate()}`;
+  const consumo = consumoCategorias ?? apurarGastosCategoria(transactions, { inicio: inicioConsumo, fim: fimConsumo });
+  const categorias: [string, { total: number; cor: string }][] = consumo.porCategoria.map(c => [c.category, { total: c.tudo / 100, cor: c.color ?? '' }]);
 
   const boletosPagos = bills.filter((b) => b.status === 'paid' && noRecorte(b.due_date));
 
@@ -356,6 +357,7 @@ export function montarHtml(
     saidasTx,
     doMes,
     categorias,
+    consumoTotal: consumo.total.tudo / 100,
     saidasMesAnterior,
     diasNoMes,
     boletosPagos,
@@ -379,7 +381,7 @@ export function montarHtml(
 
   const linhasCategorias = categorias
     .map(([nome, { total, cor }]) => {
-      const pct = saidas > 0 ? (total / saidas) * 100 : 0;
+      const pct = consumo.total.tudo > 0 ? (total / (consumo.total.tudo / 100)) * 100 : 0;
       return `
         <tr>
           <td class="cat-nome"><span class="ponto" style="background:${escaparHtml(cor)}"></span>${escaparHtml(nome)}</td>
@@ -554,7 +556,8 @@ ${fonte.faces}
 ${blocoInsights}
 ${blocoRetrospectiva(wrapped)}
 
-  <h2>Divisão das saídas por categoria</h2>
+  <h2>Consumo por categoria</h2>
+  <p>Todas as carteiras e cartões. Débito, Pix e crédito juntos. Pagamento de fatura fica fora.</p>
   <table>
     <thead><tr><th>Categoria</th><th>Participação</th><th class="num">%</th><th class="num">Valor</th></tr></thead>
     <tbody>${linhasCategorias || `<tr><td colspan="4" class="vazio">Nenhuma saída registrada neste ${ref}.</td></tr>`}</tbody>

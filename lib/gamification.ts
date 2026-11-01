@@ -1,3 +1,4 @@
+import { apurarGastosCategoria } from './gastos-categoria';
 import { formatMoney, isCreditTx, isoLocal, isSameMonth, todayISO } from './format';
 import { algumMesCompleto } from './desafios-calendario';
 import type { Bill, Budget, Transaction } from './types';
@@ -213,7 +214,8 @@ export function calculateScoreBreakdown(
   streak: number,
   agora: Date = new Date(),
   /** Mesma fonte da sequência e do calendário. Ver `diasComRegistro`. */
-  dias?: ReadonlySet<string>
+  dias?: ReadonlySet<string>,
+  idsPagamentos?: ReadonlySet<string>
 ): { score: number; factors: ScoreFactor[]; indicadores: Indicador[] } {
   const currentYear = agora.getFullYear();
   const currentMonth = agora.getMonth();
@@ -320,10 +322,10 @@ export function calculateScoreBreakdown(
   });
 
   if (budgets.length > 0) {
-    const outByCat: Record<string, number> = {};
-    caixaDoMes.filter((t) => t.type === "out").forEach((t) => {
-      outByCat[t.category] = (outByCat[t.category] || 0) + Number(t.amount);
-    });
+    const inicio = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01`;
+    const fim = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${diasNoMes}`;
+    const consumo = apurarGastosCategoria(monthTx, { inicio, fim, idsPagamentos });
+    const outByCat = Object.fromEntries(consumo.porCategoria.map(c => [c.category, c.tudo / 100]));
     const dentro = budgets.filter((b) => (outByCat[b.category] || 0) <= Number(b.amount)).length;
     indicadores.push({
       label: "Categorias dentro do teto",
@@ -561,11 +563,11 @@ export function getGamificationState(
   jaConquistadas: readonly string[] = [],
   /** `dias` (de `fetchDiasComRegistro`) faz sequência, Score, calendário e
    *  "Mês completo" lerem a mesma fonte. `agora` é só para teste. */
-  opcoes: { dias?: ReadonlySet<string>; agora?: Date } = {}
+  opcoes: { dias?: ReadonlySet<string>; agora?: Date; idsPagamentos?: ReadonlySet<string> } = {}
 ): GamificationState {
   const agora = opcoes.agora ?? new Date();
   const { streak, weekActivity } = calculateStreakAndWeek(transactions, agora, opcoes.dias);
-  const { score, factors, indicadores } = calculateScoreBreakdown(transactions, bills, budgets, streak, agora, opcoes.dias);
+  const { score, factors, indicadores } = calculateScoreBreakdown(transactions, bills, budgets, streak, agora, opcoes.dias, opcoes.idsPagamentos);
   const badges = aplicarPermanencia(
     evaluateBadges(transactions, bills, budgets, streak, historical, jaConquistadas, opcoes.dias, agora),
     jaConquistadas

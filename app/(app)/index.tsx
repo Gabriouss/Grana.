@@ -571,7 +571,7 @@ export default function InicioScreen() {
      wrapped de dados fictícios não diz nada sobre o mês da pessoa. */
   useEffect(() => {
     if (loading || isDemoMode || onboardingOpen) return;
-    const w = gerarMonthlyWrapped(transactions, bills, budgets, lifetimeXp, new Date(), goals);
+    const w = gerarMonthlyWrapped(transactions, bills, budgets, lifetimeXp, new Date(), goals, new Set((invoicePayments ?? []).flatMap(p => [p.paid_transaction_id, ...(p.extra_transaction_ids ?? [])].filter((id): id is string => !!id))));
     if (w.vazio) return;
     let cancelado = false;
     wrappedJaVisto(w.chave).then((visto) => {
@@ -582,7 +582,7 @@ export default function InicioScreen() {
     return () => {
       cancelado = true;
     };
-  }, [loading, isDemoMode, onboardingOpen, transactions, bills, budgets, lifetimeXp, goals]);
+  }, [loading, isDemoMode, onboardingOpen, transactions, bills, budgets, lifetimeXp, goals, invoicePayments]);
 
   /* Saldo por carteira depois de cada mudança nas transações.
    *

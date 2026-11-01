@@ -1,3 +1,4 @@
+import { apurarGastosCategoria } from './gastos-categoria';
 /**
  * Retrospectiva do Mês ("Wrapped") — Épico 4 do PLANO_DE_EVOLUCAO.md.
  *
@@ -112,7 +113,8 @@ export function gerarMonthlyWrapped(
   budgets: Budget[],
   lifetimeXp: number,
   hoje: Date = new Date(),
-  goals: Goal[] = []
+  goals: Goal[] = [],
+  idsPagamentos?: ReadonlySet<string>
 ): MonthlyWrapped {
   const { ano, mes } = mesFechadoAnterior(hoje);
 
@@ -135,12 +137,10 @@ export function gerarMonthlyWrapped(
     null
   );
 
-  const porCategoria = new Map<string, { total: number; cor: string }>();
-  for (const t of saidasTx) {
-    const atual = porCategoria.get(t.category) ?? { total: 0, cor: t.color };
-    atual.total += Number(t.amount);
-    porCategoria.set(t.category, atual);
-  }
+  const inicio = `${ano}-${String(mes + 1).padStart(2, '0')}-01`;
+  const fim = `${ano}-${String(mes + 1).padStart(2, '0')}-${new Date(ano, mes + 1, 0).getDate()}`;
+  const consumo = apurarGastosCategoria(transactions, { inicio, fim, idsPagamentos });
+  const porCategoria = new Map(consumo.porCategoria.map(c => [c.category, { total: c.tudo / 100, cor: c.color ?? '' }]));
 
   let categoriaCampea: CategoriaCampea | null = null;
   for (const [nome, { total, cor }] of porCategoria) {
@@ -151,7 +151,7 @@ export function gerarMonthlyWrapped(
       nome,
       cor,
       total,
-      fatiaDasSaidas: saidas > 0 ? total / saidas : 0,
+      fatiaDasSaidas: consumo.total.tudo > 0 ? total / (consumo.total.tudo / 100) : 0,
       orcamento,
       usoDoOrcamento: orcamento && orcamento > 0 ? total / orcamento : null,
     };

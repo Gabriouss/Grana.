@@ -99,9 +99,10 @@ export default function DesafiosScreen() {
         fetchCardInvoicePayments(),
       ]);
       setDias(diasCarregados);
+      const idsDePagamento = new Set(pagamentos.flatMap(p => [p.paid_transaction_id, ...(p.extra_transaction_ids ?? [])].filter((id): id is string => !!id)));
       let gState: GamificationState;
       if (historical) {
-        gState = getGamificationState(tx, b, bg, historical, conquistadas, { dias: diasCarregados });
+        gState = getGamificationState(tx, b, bg, historical, conquistadas, { dias: diasCarregados, idsPagamentos: idsDePagamento });
       } else {
         // Compatibilidade temporária com bancos ainda sem a função nova.
         let fallback = fallbackCache.current;
@@ -110,13 +111,12 @@ export default function DesafiosScreen() {
           fallback = { transactions: allTx, bills: allBills };
           fallbackCache.current = fallback;
         }
-        gState = getGamificationState(fallback.transactions, fallback.bills, bg, undefined, conquistadas, { dias: diasCarregados });
+        gState = getGamificationState(fallback.transactions, fallback.bills, bg, undefined, conquistadas, { dias: diasCarregados, idsPagamentos: idsDePagamento });
       }
       setState(gState);
       setGoals(metas);
       setAcoes({ bills: b, cards: cartoes, tx });
       const hoje = new Date();
-      const idsDePagamento = new Set(pagamentos.flatMap(p => [p.paid_transaction_id, ...(p.extra_transaction_ids ?? [])].filter((id): id is string => !!id)));
       setPadrao(calcularPadraoDeGastos(tx, hoje.getFullYear(), hoje.getMonth(), hoje, { idsDePagamento }));
       setLoadError(null);
 

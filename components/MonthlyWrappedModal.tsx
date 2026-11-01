@@ -119,8 +119,8 @@ function montarSlides(w: MonthlyWrapped): Slide[] {
       rotulo: 'Categoria campeã',
       titulo: c.nome,
       destaque: `R$ ${formatMoney(c.total)}`,
-      destaqueCor: c.cor,
-      apoio: `${Math.round(c.fatiaDasSaidas * 100)}% de todas as suas saídas do mês foram para esta categoria.${sobreOrcamento}`,
+      destaqueCor: c.cor || theme.down,
+      apoio: `${Math.round(c.fatiaDasSaidas * 100)}% do consumo do mês foi para esta categoria.${sobreOrcamento}`,
       icone: 'pie-chart-outline',
     });
   }
