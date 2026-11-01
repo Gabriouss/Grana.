@@ -93,6 +93,14 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — referência e acessibilidade da reordenação
+
+Palavras do autor: "Eu quero a mesma funcionalidade que a gente tem no Grana, versao web desktop, onde a gente consegue segurar e arrastar os blocos; so que isso vai acontecer dentro da janela de personalizacao, nao do lado de fora, como acontece hoje." Referência: `components/WidgetGrid.tsx`, incluindo alça, opacidade, borda tracejada e troca de duas posições.
+
+**Decisões do orquestrador:** `WidgetGrid` na web desktop continua como está. Na janela, sem setas, tocar em uma alça e depois em outra faz a mesma troca como alternativa de ponteiro único ao arrasto; o requisito dessa alternativa está registrado em `WidgetGrid.tsx:44-48`. Comportamento proposto, ainda sem verificação nesta entrada.
+
+Beacon removeu os emojis do bloco Livre no commit local `6e77a215`; tela não conferida. Nada publicado nesta entrada.
+
 ## 01/11 — entrega da tela de Desafios e novos pedidos
 
 Forge entregou localmente a tela nos commits `5842180b`, `5365de48`, `46b2ecd5`, `c7a1ce97` e `5c307a50`, sobre a lógica de Keel; relatório `E:\Grana-temporarios\2026-11-01-desafios-rolagem\relatorio-forge-tela.md`. Relata testes focais e TypeScript aprovados, revisão de design system e remoção da escada de XP na tela, Início, resumo e PDF. QA visual e consulta Supabase real continuam sem verificação; também faltam aparelho, paginação, persistência, offline e `test:ci` completo. Ledger não executou os testes.
