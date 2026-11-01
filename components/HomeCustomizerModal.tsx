@@ -30,6 +30,8 @@ const BORDA_AUTO_ROLAGEM = touchTarget;
 const VELOCIDADE_AUTO_ROLAGEM = 8;
 /* Deslocamento do dedo abaixo do qual soltar a alça conta como TOQUE. */
 const LIMIAR_DE_TOQUE = 8;
+/* Fresta entre os cartões, usada no estilo e no cálculo das posições. */
+const FRESTA_DOS_CARTOES = 8;
 
 export default function HomeCustomizerModal({
   visible,
@@ -57,7 +59,7 @@ export default function HomeCustomizerModal({
   const escolhidoRef = useRef<string | null>(null);
 
   const listaRef = useRef<ScrollView>(null);
-  const areas = useRef<Record<string, AreaDoBloco>>({});
+  const alturas = useRef<Record<string, number>>({});
   const rolagem = useRef({ y: 0, conteudo: 0, visivel: 0 });
   const gesto = useRef({ chave: '', dedoNaLista0: 0, dedoNaLista: 0, dy: 0, moveu: false, relogio: null as ReturnType<typeof setInterval> | null });
   const responders = useRef<Record<string, ReturnType<typeof PanResponder.create>>>({});
@@ -106,9 +108,22 @@ export default function HomeCustomizerModal({
     onChange(novoLayout);
   }
 
+  /* Só a altura vem da medição. Na web o `onLayout` não dispara quando o cartão
+     apenas muda de posição, e depois de uma troca o topo medido ficaria velho:
+     o topo sai da ordem atual. */
+  function areasAtuais(): AreaDoBloco[] {
+    let topo = 0;
+    return configRef.current.map((b) => {
+      const altura = alturas.current[b.key] ?? 0;
+      const area = { chave: b.key, topo, altura };
+      topo += altura + FRESTA_DOS_CARTOES;
+      return area;
+    });
+  }
+
   function alvoSobODedo(): string | null {
     const g = gesto.current;
-    const sob = blocoSobOsDedos(Object.values(areas.current), g.dedoNaLista, rolagem.current.y, rolagem.current.visivel);
+    const sob = blocoSobOsDedos(areasAtuais(), g.dedoNaLista, rolagem.current.y, rolagem.current.visivel);
     return sob && sob !== g.chave ? sob : null;
   }
 
@@ -162,7 +177,7 @@ export default function HomeCustomizerModal({
              dedo começa no meio dele, e daí em diante só o deslocamento `dy`
              importa. Ficar só com medidas da própria lista evita diferença
              de origem entre `pageY` e a janela do Modal no Android. */
-          const area = areas.current[chave];
+          const area = areasAtuais().find((a) => a.chave === chave);
           const inicio = area ? area.topo + area.altura / 2 - rolagem.current.y : 0;
           gesto.current = { ...gesto.current, chave, dedoNaLista0: inicio, dedoNaLista: inicio, dy: 0, moveu: false };
           setArrastando(chave);
@@ -189,8 +204,7 @@ export default function HomeCustomizerModal({
   }
 
   function aoMedirCartao(chave: string, e: LayoutChangeEvent) {
-    const { y, height } = e.nativeEvent.layout;
-    areas.current[chave] = { chave, topo: y, altura: height };
+    alturas.current[chave] = e.nativeEvent.layout.height;
   }
 
   return (
@@ -398,7 +412,7 @@ const styles = StyleSheet.create({
     marginHorizontal: -spacing.xl,
   },
   listContent: {
-    gap: 8,
+    gap: FRESTA_DOS_CARTOES,
     paddingHorizontal: spacing.xl,
   },
   card: {
