@@ -14,6 +14,8 @@ import { colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   fetchBills,
+  fetchDiasComRegistro,
+  fetchDiasComRegistroRecentes,
   fetchCreditCards,
   fetchBudgets,
   fetchConquistas,
@@ -21,10 +23,12 @@ import {
   fetchTransactions,
   registrarConquistas,
 } from '@/lib/data';
-import { conquistasNovas, getGamificationState, type Badge, type BadgeCategory, type GamificationState } from '@/lib/gamification';
+import { conquistasNovas, diasComRegistro, getGamificationState, type Badge, type BadgeCategory, type GamificationState } from '@/lib/gamification';
 import { fetchGoals } from '@/lib/goals';
 import { formatBRL } from '@/lib/format';
 import { semViuva } from '@/lib/sem-viuva';
+import DesafiosCalendario from '@/components/DesafiosCalendario';
+import { deslocarMes } from '@/lib/desafios-calendario';
 import HojeNoSeuMes from '@/components/HojeNoSeuMes';
 import { hapticTap } from '@/lib/haptics';
 import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type, lh } from '@/lib/theme';
@@ -54,6 +58,7 @@ export default function DesafiosScreen() {
   const [state, setState] = useState<GamificationState | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [acoes, setAcoes] = useState<{ bills: Bill[]; cards: CreditCard[]; tx: Transaction[] }>({ bills: [], cards: [], tx: [] });
+  const [dias, setDias] = useState<ReadonlySet<string>>(new Set());
   const [detalhes, setDetalhes] = useState(false);
   const [filter, setFilter] = useState<FilterType>('all');
   const [conquistaNova, setConquistaNova] = useState<Badge | null>(null);
@@ -62,7 +67,9 @@ export default function DesafiosScreen() {
 
   const loadData = useCallback(async () => {
     if (isDemoMode) {
-      const gState = getGamificationState(DEMO_TRANSACTIONS, DEMO_BILLS, DEMO_BUDGETS);
+      const diasDemo = diasComRegistro(DEMO_TRANSACTIONS);
+      const gState = getGamificationState(DEMO_TRANSACTIONS, DEMO_BILLS, DEMO_BUDGETS, undefined, undefined, { dias: diasDemo });
+      setDias(diasDemo);
       setState(gState);
       setGoals(DEMO_GOALS);
       setAcoes({ bills: DEMO_BILLS, cards: DEMO_CREDIT_CARDS, tx: DEMO_TRANSACTIONS });
@@ -73,7 +80,7 @@ export default function DesafiosScreen() {
     }
 
     try {
-      const [tx, b, bg, historical, conquistadas, metas, cartoes] = await Promise.all([
+      const [tx, b, bg, historical, conquistadas, metas, cartoes, recentes, meses] = await Promise.all([
         fetchTransactions({ sinceDays: 45 }),
         /* TODAS as contas, não só as pendentes: "Contas acompanhadas" mede as
            PAGAS sobre o total. Só com as pendentes o fator nunca via uma conta
@@ -85,10 +92,17 @@ export default function DesafiosScreen() {
         fetchConquistas(),
         fetchGoals(),
         fetchCreditCards(),
+        fetchDiasComRegistroRecentes(),
+        Promise.all([0, -1, -2].map(delta => {
+          const m = deslocarMes(new Date().getFullYear(), new Date().getMonth(), delta);
+          return fetchDiasComRegistro(m.ano, m.mes);
+        })),
       ]);
+      const diasCarregados = new Set([...recentes, ...meses.flatMap(d => [...d])]);
+      setDias(diasCarregados);
       let gState: GamificationState;
       if (historical) {
-        gState = getGamificationState(tx, b, bg, historical, conquistadas);
+        gState = getGamificationState(tx, b, bg, historical, conquistadas, { dias: diasCarregados });
       } else {
         // Compatibilidade temporária com bancos ainda sem a função nova.
         let fallback = fallbackCache.current;
@@ -97,7 +111,7 @@ export default function DesafiosScreen() {
           fallback = { transactions: allTx, bills: allBills };
           fallbackCache.current = fallback;
         }
-        gState = getGamificationState(fallback.transactions, fallback.bills, bg, undefined, conquistadas);
+        gState = getGamificationState(fallback.transactions, fallback.bills, bg, undefined, conquistadas, { dias: diasCarregados });
       }
       setState(gState);
       setGoals(metas);
@@ -230,7 +244,6 @@ export default function DesafiosScreen() {
     indicadores,
     totalBadgesCount,
   } = state;
-  const diasAtivosNaSemana = weekActivity.filter((day) => day.active).length;
 
 
   return (
@@ -313,47 +326,7 @@ export default function DesafiosScreen() {
           </View>
         </View>
 
-        {/* Ritmo Semanal */}
-        <View style={styles.card}>
-          <View style={styles.cardHeadRow}>
-            <View style={styles.titleWithIcon}>
-              <Ionicons name="flame-outline" size={17} color={theme.accent2} />
-              <Text style={styles.cardTitle}>Ritmo da semana</Text>
-            </View>
-            <Text style={styles.streakBadgeText}>
-              {diasAtivosNaSemana} {diasAtivosNaSemana === 1 ? 'dia ativo' : 'dias ativos'}
-            </Text>
-          </View>
-
-          <View style={styles.weekRow}>
-            {weekActivity.map((day, idx) => (
-              <View key={idx} style={styles.dayCol}>
-                <View
-                  style={[
-                    styles.dayCircle,
-                    day.active && styles.dayCircleActive,
-                    day.isToday && styles.dayCircleToday,
-                  ]}
-                >
-                  {day.active ? (
-                    <Ionicons name="checkmark" size={12} color={theme.paper} />
-                  ) : (
-                    <View style={[styles.dayDot, day.isToday && styles.dayDotToday]} />
-                  )}
-                </View>
-                <Text
-                  style={[
-                    styles.dayName,
-                    day.active && styles.dayNameActive,
-                    day.isToday && styles.dayNameToday,
-                  ]}
-                >
-                  {day.dayName}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
+        <DesafiosCalendario dias={dias} weekActivity={weekActivity} streak={streak} demo={isDemoMode} />
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{semViuva('Suas metas')}</Text>

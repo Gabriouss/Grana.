@@ -17,8 +17,8 @@ import { isoLocal } from './format';
 import { CATEGORIES } from './types';
 import { checarLimiteCartao } from './creditLimitAlert';
 import { MENSAGEM_CREDITO_SEM_CARTAO, edicaoTiraCartaoDoCredito, exigirCartaoNoCredito, recusarEntradaNoCartao } from './transaction-rules';
-import { notificarDadosDosWidgetsAlterados } from './widgets-home-events';
-import { marcarLancamentosAlterados } from './lancamentos-alterados';
+import { notificarDadosDosWidgetsAlterados, observarDadosDosWidgets } from './widgets-home-events';
+import { marcarLancamentosAlterados, versaoDosLancamentos } from './lancamentos-alterados';
 import { entradasPendentesPorCarteira, juntarPendentes } from './fila-pendente';
 import { juntarVozPendente } from './voz-pendente-na-lista';
 import type { OcorrenciaFaltante } from './recorrencia';
@@ -1203,6 +1203,10 @@ const diasDeMesFechado = new Map<string, Set<string>>();
 export function limparDiasComRegistro(): void {
   diasDeMesFechado.clear();
 }
+// O mesmo sinal cobre grava??o, edi??o, exclus?o, voz e sincroniza??o offline.
+// Inscri??o aqui evita importar data.ts nos m?dulos de persist?ncia.
+let observaDias = false;
+let versaoDias = -1;
 
 async function diasEntre(inicioISO: string, fimISO: string, prefixo?: string): Promise<{ doBanco: Set<string>; comPendentes: Set<string> }> {
   const linhas = await linhasDeRegistroComCache(inicioISO, fimISO);
@@ -1219,6 +1223,15 @@ async function diasEntre(inicioISO: string, fimISO: string, prefixo?: string): P
 
 /** Dias (ISO local) do mês com algum registro. `mes` é 0-indexado. */
 export async function fetchDiasComRegistro(ano: number, mes: number): Promise<Set<string>> {
+  if (!observaDias) {
+    observarDadosDosWidgets(limparDiasComRegistro);
+    observaDias = true;
+  }
+  const versaoAtual = versaoDosLancamentos();
+  if (versaoDias !== versaoAtual) {
+    limparDiasComRegistro();
+    versaoDias = versaoAtual;
+  }
   const chave = `${ano}-${mes}`;
   const agora = new Date();
   const fechado = ano * 12 + mes < agora.getFullYear() * 12 + agora.getMonth();

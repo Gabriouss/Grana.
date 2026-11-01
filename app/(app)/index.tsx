@@ -1,3 +1,4 @@
+import { fetchDiasComRegistroRecentes } from '@/lib/data';
 import { movimentarCofrinhoLocal, type OrigemCofrinho } from '@/lib/cofrinho-origem';
 import { boletoAtrasado, boletosDaSemana } from '../../lib/boletos-da-semana';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
@@ -453,13 +454,13 @@ export default function InicioScreen() {
       // nenhum (ver carregarDadosLeves). Streak/jaLancouHoje podem ficar
       // minutos desatualizados entre uma ação e outra; é um lembrete de
       // notificação, não um valor financeiro.
-      carregarNotifPrefs().then((prefs) => {
+      carregarNotifPrefs().then(async (prefs) => {
         if (!prefs.lembreteDiarioAtivo) {
           cancelDailyHabitReminder().catch(() => {});
           return;
         }
-        scheduleDailyHabitReminder({ ...prefs.horario, ...contextoDoLembrete(tx), almocoAtivo: prefs.almocoAtivo }).catch(() => {});
-      });
+        await scheduleDailyHabitReminder({ ...prefs.horario, ...contextoDoLembrete(tx, new Date(), await fetchDiasComRegistroRecentes()), almocoAtivo: prefs.almocoAtivo });
+      }).catch(erro => console.error('[inicio] lembrete de h?bito falhou', erro));
 
       let cofrinhosConferidos = false;
       setFontesLivreDisponiveis(false);
