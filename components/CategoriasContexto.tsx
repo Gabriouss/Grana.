@@ -20,7 +20,7 @@ export default function CategoriasContexto({ visao, onChange, resultado, erro, c
   </View>;
 }
 const s = StyleSheet.create({
-  grupo: { gap: spacing.md },
+  grupo: { gap: spacing.md, alignSelf: 'stretch' },
   legenda: { color: theme.inkFaint, fontFamily: fonts.light, fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio') },
   texto: { color: theme.inkSoft, fontFamily: fonts.light, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo') },
   acao: { minHeight: touchTarget, justifyContent: 'center' },
