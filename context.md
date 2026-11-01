@@ -93,9 +93,21 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — decisões sobre o plano de desafios
+
+Transcrição da seção Decisões da ordem ao Meridian; a decisão e a leitura do orquestrador estão identificadas como na fonte.
+
+1. Vocabulário: "troca". Termos de jogo saem na fase 2.
+2. Duas escadas: "ok". Fica só a do hábito (Score); o XP vira "metas concluídas" e "total guardado". Decisão do orquestrador: mostrar o número do Score, sem a palavra "Faixa".
+3. Palavras do autor: "acho que aqui podemos adicionar um calendário nos desafios, exibindo a constância do usuário no uso do aplicativo". Leitura do orquestrador: a medalha "Mês Verde" sai e dá lugar a "Mês completo", e a tela ganha o calendário. Quem já conquistou "Mês Verde" não perde o que conquistou: proponha como isso aparece.
+4. Palavras do autor: "podemos criar um sistema de identificação para os períodos de maior gasto do usuário no mês (primeira quinzena, semana com mais gasto e dia com maior gasto) dessa forma, o usuário consegue visualizar seu padrão de consumo e ser conscientizado do que acontece no seu mês." O autor não se opôs ao resumo mensal por push: ele segue condicionado à prova de entrega e pode citar esse padrão.
+5. Medição: "ok". Dois eventos simples na fase 2, depois de passar pela conformidade legal.
+
+Meridian prepara plano v2 e especificação da fase 2; entrega ainda não verificada. Nada implementado nesta rodada. Fonte: `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-meridian-plano-v2.md`.
+
 ## 01/11 — entrega do plano de desafios
 
-**Entrega de Meridian, 01/11:** `E:\Grana-temporarios\2026-11-01-desafios-rolagem\plano-desafios.md` propõe cartões de ação, reconhecimento contextual e resumo mensal por fases; é proposta sem aprovação nem implementação. Decisões pendentes: vocabulário, duas escadas Score/XP, medalha Mês Verde, push mensal e métricas. Conferido no código: `lib/gamification.ts` mede hábitos e contas acompanhadas no Score e separa resultado financeiro como indicador; `lib/gamification-infinite.ts` e `app/(app)/desafios.tsx` usam Ionicons. A memória antiga que declarava ambas as direções inteiramente pendentes estava desatualizada. A medalha Mês Verde ainda premia superávit. Não foram verificados entrega de push, viabilidade completa nem comportamento no aparelho. A proposta de XP por lançamento ou conta foi desaconselhada no plano por incentivar manipulação; não houve mudança de produto.
+**Entrega de Meridian, 01/11:** `E:\Grana-temporarios\2026-11-01-desafios-rolagem\plano-desafios.md` propõe cartões de ação, reconhecimento contextual e resumo mensal por fases; é proposta sem aprovação nem implementação. Decisões inicialmente pendentes: ver atualização de 01/11 acima. Conferido no código: `lib/gamification.ts` mede hábitos e contas acompanhadas no Score e separa resultado financeiro como indicador; `lib/gamification-infinite.ts` e `app/(app)/desafios.tsx` usam Ionicons. A memória antiga que declarava ambas as direções inteiramente pendentes estava desatualizada. A medalha Mês Verde ainda premia superávit. Não foram verificados entrega de push, viabilidade completa nem comportamento no aparelho. A proposta de XP por lançamento ou conta foi desaconselhada no plano por incentivar manipulação; não houve mudança de produto.
 
 ## 01/11 — modelos, desafios e rolagem
 
