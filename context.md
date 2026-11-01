@@ -93,6 +93,18 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — decisões adicionais e entrada futura
+
+Fonte: `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-registro-5.md`. Relatos e estados de execução são do orquestrador; Ledger não verificou independentemente implantação ou testes.
+
+1. **Mudança de números ao puxar para atualizar: encerrada.** Palavras do autor: "os números mudaram depois de puxar para baixo e atualizar, porque eu tinha acabado de adicionar o livro para gastar na tela. Não investigue isso aí não, isso aí é besteira." A leitura do Keel (`criarOcorrenciasRecorrentes` sem `marcarLancamentosAlterados`, em `lib/data.ts:516-551`) fica como hipótese não confirmada e não será corrigida agora.
+2. **Keel, `77e9ca7f`, local:** entrada com data futura no mês só conta a partir da data, com o predicado único `entraNoCaixaDoMes`, usado por app, widgets e Granabô. App e widgets só mudam com build. O Granabô só muda quando `assistente-financeiro` for publicada; até lá, ele segue somando entrada futura. Nada publicado.
+3. **Decisões do orquestrador, em execução:**
+   - O salário do mês no demo vai para o dia 1 (`lib/demo-data.ts`), para `exemplo-landing.cjs` voltar a passar sem trocar número. Capturas não serão refeitas, porque os números delas continuam certos. Dono: Keel.
+   - No cartão "Fluxo financeiro", a palavra "saldo" vira "no mês", e o número não muda, pela regra 20. Dono: Forge.
+4. **Aviso "Selected model is at capacity" no Codex.** Palavras do autor: "Não investiga esse negócio de modelo sem capacidade não, fi. Só manda uma ordem que ele vai continuar fazendo." Procedimento: reenviar a ordem, sem investigar.
+5. **Permissões na M1.** O autor pediu menos pedidos de confirmação. O modo livre já estava ligado e os terminais estão em auto mode. A única confirmação com rastro nesta sessão foi uma edição de `MEMORY.md`, negada pelo autor. O classificador recusou a mudança em `.claude/settings.local.json` como auto-modificação, sem contorno. O autor decide se roda `liberar-pasta-memoria.cjs`, na pasta da rodada, que só libera a pasta de memória. Sem mudança no repositório.
+
 ## 01/11 — decisão do autor sobre o Livre para gastar
 
 Palavras do autor: "Lançamento com data futura precisa descontar do livre para gastar, mas apenas lançamentos dentro do mesmo mês. Fatura de cartão de crédito precisa interferir no livre para gastar também." E: "Salário futuro no livre para gastar só entra após a data da entrada".

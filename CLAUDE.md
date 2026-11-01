@@ -27,4 +27,6 @@
 - Keep all GranaPonto project information local on this PC; never create Claude artifacts or send project content to the Claude site.
 - Remember that this project has two Codex accounts and one Claude account available.
 - Keep Play Store release work from affecting current users; make changes incrementally and adapt as we go.
+- Follow the project's design system for all UI changes; create new visual elements only when the design system lacks them.
+- Count future-dated salary toward the free-to-spend balance only after its entry date.
 <!-- end claude-reflect -->
