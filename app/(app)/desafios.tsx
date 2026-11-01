@@ -1,3 +1,4 @@
+import { apurarGastosCategoria } from '@/lib/gastos-categoria';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
@@ -68,9 +69,12 @@ export default function DesafiosScreen() {
   const fallbackCache = useRef<{ transactions: Transaction[]; bills: Bill[] } | null>(null);
 
   const loadData = useCallback(async () => {
+    const hojeDoConsumo = new Date();
+    const inicioConsumo = `${hojeDoConsumo.getFullYear()}-${String(hojeDoConsumo.getMonth() + 1).padStart(2, '0')}-01`;
+    const fimConsumo = `${inicioConsumo.slice(0, 8)}${new Date(hojeDoConsumo.getFullYear(), hojeDoConsumo.getMonth() + 1, 0).getDate()}`;
     if (isDemoMode) {
       const diasDemo = diasComRegistro(DEMO_TRANSACTIONS);
-      const gState = getGamificationState(DEMO_TRANSACTIONS, DEMO_BILLS, DEMO_BUDGETS, undefined, undefined, { dias: diasDemo });
+      const gState = getGamificationState(DEMO_TRANSACTIONS, DEMO_BILLS, DEMO_BUDGETS, undefined, undefined, { dias: diasDemo, consumoCategorias: apurarGastosCategoria(DEMO_TRANSACTIONS, { inicio: inicioConsumo, fim: fimConsumo }) });
       setDias(diasDemo);
       setPadrao(calcularPadraoDeGastos(DEMO_TRANSACTIONS, new Date().getFullYear(), new Date().getMonth()));
       setState(gState);
@@ -102,7 +106,7 @@ export default function DesafiosScreen() {
       const idsDePagamento = new Set(pagamentos.flatMap(p => [p.paid_transaction_id, ...(p.extra_transaction_ids ?? [])].filter((id): id is string => !!id)));
       let gState: GamificationState;
       if (historical) {
-        gState = getGamificationState(tx, b, bg, historical, conquistadas, { dias: diasCarregados, idsPagamentos: idsDePagamento });
+        gState = getGamificationState(tx, b, bg, historical, conquistadas, { dias: diasCarregados, consumoCategorias: apurarGastosCategoria(tx, { inicio: inicioConsumo, fim: fimConsumo, idsPagamentos: idsDePagamento }) });
       } else {
         // Compatibilidade temporária com bancos ainda sem a função nova.
         let fallback = fallbackCache.current;
@@ -111,7 +115,7 @@ export default function DesafiosScreen() {
           fallback = { transactions: allTx, bills: allBills };
           fallbackCache.current = fallback;
         }
-        gState = getGamificationState(fallback.transactions, fallback.bills, bg, undefined, conquistadas, { dias: diasCarregados, idsPagamentos: idsDePagamento });
+        gState = getGamificationState(fallback.transactions, fallback.bills, bg, undefined, conquistadas, { dias: diasCarregados, consumoCategorias: apurarGastosCategoria(tx, { inicio: inicioConsumo, fim: fimConsumo, idsPagamentos: idsDePagamento }) });
       }
       setState(gState);
       setGoals(metas);

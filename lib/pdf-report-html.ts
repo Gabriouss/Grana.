@@ -168,7 +168,7 @@ function gerarInsights(dados: {
 
   /* 3. Concentração: quantas categorias explicam a maior parte do mês. Uma
      lista de vinte categorias esconde que três respondem por quase tudo. */
-  if (saidas > 0 && categorias.length > 1) {
+  if (consumoTotal > 0 && categorias.length > 1) {
     let acumulado = 0;
     let quantas = 0;
     for (const [, { total }] of categorias) {
