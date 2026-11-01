@@ -93,6 +93,64 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — registros 7 a 9: build de teste e instalação
+
+Os fatos abaixo foram relatados pelo orquestrador; Ledger não verificou independentemente o aparelho, a produção ou os testes. Sem link do artefato.
+
+### Registro 7 — relato do orquestrador
+
+1. **Pedidos do autor, literais:** "Bota essa barra aí de conferência do lançamento lido na notificação na coloração menta, do nosso design system" e "Vai, resolve tudo aí pra gente disparar essa build".
+2. **Sintoma e causa:** a barra "1 gasto para conferir" não existe no `main`. Ela mora em `components/AvisosAConferir.tsx`, só na branch de teste da leitura de avisos, que é a versionCode 28 instalada no celular do autor em 31/10.
+3. **Rota nova da build:** sai da branch de teste, com o `main` fundido nela. O acesso às notificações não vai para o `main` nem para o APK do site, como decidido em 30/10. Ordem: `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-harbor-build-com-leitura.md`.
+4. **Desenho da barra, sem elemento novo:** fundo `theme.accent2` e texto `theme.paper`, como a faixa do `TrustMarquee`. O botão vira pílula invertida no desenho de `botaoBaixar` do `UpdateBanner`, com fundo `theme.paper` e texto `theme.accent2`. O contraste calculado é de cerca de 14:1.
+5. **Descartado:**
+   - Build só do `main`: tiraria a leitura e a barra do aparelho do autor.
+   - Pôr a barra no `main`: o componente não existe lá.
+   - Texto escuro sem pílula: "Conferir" deixaria de parecer botão.
+6. **Erro do orquestrador:** a primeira ordem de build saía do `main` e exigia o serviço de leitura ausente, e o autor foi avisado às 12h27 de que o serviço não entraria nessa build. Só apareceu quando o autor pediu a barra. Nada foi disparado com aquela ordem. A contagem da semana dita ao autor também estava curta: são 3 preparos e 2 builds de teste, então esta é a 6ª da semana de calendário e a 2ª de novembro no EAS.
+7. **Achado no arrastar, ainda hipótese por leitura de código:** ao fechar, o Modal desmonta a lista, mas `HomeCustomizerModal` segue montado na Início, e `rolagem.current.y` pode ficar velho. Pedido ao Anvil: reproduzir antes de corrigir. Também foi pedido deixar `cursor` e `touchAction` da alça só na web.
+8. **`package.json` modificado na árvore:** a causa foi o commit `7e164e6d`, montado a partir do HEAD com o trecho `reordenar-blocos`, enquanto a árvore ficou sem ele. Nenhum trabalho se perdeu. Pedido ao Anvil: restaurar antes do `test:ci`.
+9. **Modelo, regra 28:** Harbor em Sol medium só nesta sessão, porque a rota já foi provada e tem scripts prontos. Anvil segue em Opus low, por pedido do autor, e faz a passada de telas no mesmo terminal: o emulador e o login já estão abertos, e outro terminal Claude não cabe na memória.
+10. **Sem verificação:** a barra em menta não será vista rodando antes da build, porque depende do módulo nativo, que o Expo Go não tem. Quem vê primeiro é o autor, no aparelho.
+
+### Registro 8 — relato do orquestrador
+
+1. **Decisão do autor, literal:** "A branch de teste, ela vai ser o aplicativo que a gente vai colocar na Play Store. O aplicativo que a gente tem atualmente, que os usuários usam, ele não vai ser impactado pela branch de teste." E também: "É pra disparar a build com o leitor das notificações" e "Só pra mim".
+2. **Fusão:** o Harbor fundiu o `main` em `1bf72961` na branch de teste, no clone local (`79e45e9c`), em mão única. O autor reagiu: "não é para fundir a main com a branch de teste". O orquestrador parou, conferiu e perguntou. O autor escolheu manter a cópia nesta build.
+3. **Conferência feita naquela hora:** o `main` local não tem `components/AvisosAConferir.tsx`, `GranaAvisosListener` nem `modules/grana-avisos`. O `main` do GitHub continua em `2600f08a`, sem branch de teste no servidor. O clone não fez push. O `main` local tem 41 commits sem publicar, ou seja, nada de hoje foi publicado.
+4. **Erro do orquestrador:** fundir sem perguntar antes e relatar só "fundiu", sem dizer a direção em palavras simples.
+5. **Arrastar, Anvil (`relatorio-anvil-arrastar.md`):**
+   - Commits: `1bf72961` (reabrir a janela) e `f1f2a608` (posição depois de uma troca).
+   - O defeito de reabrir era hipótese por leitura de código, e a reprodução confirmou: antes da correção, o arrasto não tinha efeito.
+   - O segundo defeito apareceu na web: `onLayout` não dispara quando o cartão só muda de posição. Agora só a altura é medida, e o topo sai da ordem atual.
+   - `test:ci` completo verde na árvore de `f1f2a608`, e `tsc` limpo.
+6. **Sem verificação:**
+   - `f1f2a608` ainda não rodou no Android; vai na passada de telas, com a build compilando no servidor.
+   - TalkBack, seta do teclado e aparelho real.
+   - Em 274x487 dp com fonte 1.3 o arrasto reprova (lista com 137 px). O tamanho é irreal, e em 360x640 dp ficou bom. Decisão: não bloqueia esta build.
+7. **Risco em aberto:** a branch que vai virar o app da Play mora só em `E:\Grana-temporarios\2026-10-30-teste-avisos\repo`, nesta máquina, sem cópia no GitHub, porque o repositório é público.
+
+### Registro 9 — relato do orquestrador
+
+1. **Build:** perfil `development`, branch de teste em `a5d730b1` (`main` em `f1f2a608` mais a barra `8df92b47`), id `331e1e09-1384-466b-a660-ec4a16462c29`, versionCode 29, versão 1.10.12. EAS em 2 de 15, com 13 vagas. É a 6ª da semana de calendário, com liberação do autor. A versão anunciada, a release do GitHub e as execuções da publicação ficaram iguais antes e depois.
+2. **Instalação no celular do autor, por Wi-Fi, por cima:**
+   - Primeira tentativa, 16h45: `INSTALL_FAILED_VERIFICATION_FAILURE: Install not allowed`. O autor relatou ter visto um aviso com o botão "Instalar mesmo assim".
+   - Segunda, 16h48, autorizada por ele e com ele tocando no botão: sucesso, `lastUpdateTime` 16:48:41, de 28 para 29, com o leitor habilitado.
+   - Nenhum ajuste do aparelho foi mudado e o app não foi aberto.
+   - **Hipótese, não comprovada:** a recusa da primeira foi o aviso sem resposta a tempo.
+3. **Passada, Anvil, Expo Go no emulador, em `f1f2a608`:** quatro arrastos seguidos certos no Android. Início nas três visões, Gráficos, Lançamentos e Desafios abriram sem tela vermelha, sem travar e sem erro no log. Não é o APK.
+4. **Prints, conferidos pelo orquestrador:**
+   - "Ver detalhes" reaproveitava o estilo do botão de erro. Corrigido em `61a80518`, só no `main` local, **fora desta build**.
+   - Período em Gráficos (`01 mai 2026 a 19 dez 2026`): `app/(app)/graficos.tsx:246-248` usa o maior `occurred_on` de todas as transações, inclusive futuras e de crédito, e o eixo de Despesas usa só saídas de caixa. O Forge manteve assim e não consultou a linha de 19/12 no banco.
+   - Pílula "97% concluído" em duas linhas: decisão de 15/10 (`5487f07f`), comentada em `BadgeCard.tsx`, sem mudança.
+5. **Push travado, pedido literal do autor:** "a main do GitHub continua do jeito que tá. Beleza? Nada da main do GitHub vai ser modificado, nada."
+   - `remote.origin.pushurl` começa com `BLOQUEADO`, em `E:\GranaPonto` e no clone da branch. É configuração local, sem versionar. O `main` do GitHub segue em `2600f08a`, e isso vale acima da regra 3 até ele pedir.
+   - Para liberar: `git config --unset remote.origin.pushurl`.
+   - **Descartado:** gancho `pre-push`, porque `core.hooksPath=.githooks` o ignora, e trocar esse caminho desligaria o `pre-commit` e o `commit-msg`.
+6. **Modelos, regra 28:** Anvil em Opus 5.5 low, por pedido do autor; Forge em Sol medium; Harbor em Sol medium só na sessão; Ledger em Terra low. O padrão de esforço do Opus voltou a medium.
+7. **Sem verificação:** nenhum agente abriu o APK. A barra em menta, o arrastar no APK e o leitor nesta build dependem do uso do autor. Web com lista rolada ficou inconclusiva; TalkBack e seta do teclado não foram exercitados. Em 274x487 dp o arrasto reprova, por decisão não bloqueia, e em 360x640 dp ficou bom.
+8. **Risco em aberto:** a branch que vai virar o app da Play mora só em `E:\Grana-temporarios\2026-10-30-teste-avisos\repo`, sem cópia fora desta máquina.
+
 ## 01/11 — passagem do orquestrador e arrasto em andamento
 
 Autor pediu Anvil em Opus 5.5 low; aplicado. Conta Claude estava em 97% da janela, com retorno previsto às 15h40; Anvil e orquestrador podem parar até lá, com retomada automática agendada para 15h41 conforme passagem `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-PASSAGEM-orquestrador.md`. A passagem aponta também a necessidade de restaurar o esforço global Opus para medium ao fim e preservar Opus medium no Orquestrador Supremo.
