@@ -324,8 +324,8 @@ export default function DesafiosScreen() {
 
         <DesafiosPadraoGastos padrao={padrao} />
 
-        <AppPressable accessibilityRole="button" accessibilityState={{ expanded: detalhes }} onPress={() => setDetalhes(v => !v)} style={styles.retryButton}>
-          <Text style={styles.retryButtonText}>{semViuva(detalhes ? 'Ocultar detalhes' : 'Ver detalhes')}</Text>
+        <AppPressable accessibilityRole="button" accessibilityState={{ expanded: detalhes }} onPress={() => setDetalhes(v => !v)} style={styles.detailsButton}>
+          <Text style={styles.detailsButtonText}>{semViuva(detalhes ? 'Ocultar detalhes' : 'Ver detalhes')}</Text>
         </AppPressable>
         {detalhes && <>
         {/* Fatores do Score */}
@@ -478,6 +478,8 @@ const styles = StyleSheet.create({
   loadingText: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light, textAlign: 'center' },
   retryButton: { minHeight: touchTarget, justifyContent: 'center', marginTop: spacing.xs, borderRadius: radius.md, backgroundColor: theme.ink, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   retryButtonText: { color: theme.paper, fontSize: type.apoio, fontFamily: fonts.regular },
+  detailsButton: { minHeight: touchTarget, alignItems: 'center', justifyContent: 'center', borderWidth: cardTokens.borderWidth, borderColor: theme.rule, borderRadius: radius.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  detailsButtonText: { color: theme.inkSoft, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.light, textAlign: 'center' },
   scroll: { flex: 1 },
   content: { padding: screenRhythm.padding, gap: screenRhythm.gap },
   heroCard: {
