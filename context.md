@@ -93,6 +93,21 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — registro 10: retorno do autor sobre a Início
+
+Fonte: `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-registro-10.md`. Relato do orquestrador; Ledger não revisou o vídeo nem verificou as correções nesta entrada.
+
+1. **Pedido do autor, literal, com vídeo do próprio celular:** "Man, ficou muito feia essa tela inicial [...] O bloco de categorias ficou estranho, o seletor ali parece que ficou separado do bloco das categorias, essa barra aí que modificamos para a cor menta ficou muito feia também, reverte isso. Arruma esse bloco das categorias, deixa mais compactado, como estava antes estava muito bom, volta ao que estava antes, com a adição do débito e crédito juntos".
+2. **Causa do bloco solto:** `21eba54f` pôs `CategoriasContexto` acima da grade de blocos, longe do que ele controla, e trocou a linha de orçamento por `CategoriaTeto`, de quatro a cinco linhas por categoria.
+3. **Ordem:** `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-forge-categorias-compactas.md`.
+   - O seletor vai para dentro do cartão "Gastos por categoria", como no "Fluxo financeiro".
+   - A linha antiga do orçamento volta, com o gasto sempre em débito mais crédito.
+   - Gráficos e Lançamentos não mudam nesta rodada.
+4. **Barra em menta:** o autor reprovou no aparelho. O Harbor reverte `8df92b47` na branch de teste, e a barra volta ao fundo escuro.
+5. **Lição do orquestrador:** nenhum agente nem o orquestrador olhou o desenho antes da build. A conferência visual ficou para depois, e o orquestrador só viu os prints com a build já compilando. Quem primeiro avaliou a aparência foi o autor. Da próxima vez, tela nova passa por print antes de disparar.
+6. **Modelos, regra 28:** Forge em Sol medium, porque é restauração com referência exata; Anvil confere no emulador; Harbor reverte a barra.
+7. **Sem build:** a próxima depende de ordem literal do autor, e o `main` precisa ser fundido de novo na branch de teste.
+
 ## 01/11 — registros 7 a 9: build de teste e instalação
 
 Os fatos abaixo foram relatados pelo orquestrador; Ledger não verificou independentemente o aparelho, a produção ou os testes. Sem link do artefato.
