@@ -93,6 +93,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 31/10 — preparação da versão de teste
+
+Keel relata integração da linha de teste e testes de avisos, telas, TypeScript e CI integral verdes; o módulo nativo compilou. Não foram verificados o aplicativo completo, o ícone em execução, aparelho ou aviso real. A revisão independente foi adiada por decisão do orquestrador para este teste pessoal e continua necessária antes de alcançar usuários. O perfil de desenvolvimento é ignorado pelo webhook conforme leitura de código; a comparação externa anterior não mudou os artefatos públicos e deve ser repetida. Nenhuma build foi disparada nesta entrega; gravação sem confirmação e alteração do ícone do widget ficaram fora.
+
 ## 31/10 — formas de pagamento em teste
 
 O autor pediu identificação automática das formas de pagamento; a confirmação por toque permanece e boleto continua em revisão. Keel relata ajustes e testes focais verdes na linha local de teste, sem aviso real, aparelho ou compilação nativa. Há situações ainda ambíguas que podem exigir revisão; uma suspeita induzida por sinais genéricos foi retirada. As mudanças financeiras aguardam revisão independente antes de publicação e não estão em build.
