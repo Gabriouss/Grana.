@@ -93,6 +93,12 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — design system em toda a rodada
+
+Palavras do autor: "tudo ou todas essas modificações aí, elas precisam seguir o nosso design system, beleza? Não invente, só invente o que não tiver no design system". A regra vale para todas as mudanças da rodada, inclusive as telas já commitadas. A ordem completa está em `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-design-system.md`: procurar componentes e padrões existentes primeiro, usar tokens e tom de voz, e declarar no relatório o que precisou criar e por que o existente não servia.
+
+Forge revisa por esse critério os commits de tela `5842180b`, `5365de48` e `46b2ecd5`, incluindo o calendário, sem alterar o pedido da spec. Anvil não muda fundo, raio, sombra, posição ou animação na correção estrutural de `Sheet.tsx`. A próxima ordem de telas de categorias deve levar a mesma regra. Revisão e conformidade ainda não verificadas por Ledger.
+
 ## 01/11 — especificação de categorias em débito e crédito
 
 Compass entregou `E:\Grana-temporarios\2026-11-01-desafios-rolagem\spec-categorias-debito-credito.md`. Pela leitura de Compass, a queixa do autor procede no código local: `app/(app)/index.tsx:678,709,737,1403` exclui crédito antes da soma de categoria e teto; o Granabô devolve caixa e crédito separados. Não validado em aparelho nem produção; Ledger não conferiu independentemente o código. A especificação é proposta e contém decisões do Compass, não aprovação geral de implementação.
