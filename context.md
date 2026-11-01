@@ -93,6 +93,42 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — registro 11: gráficos, lançamentos e janelas
+
+Fonte: `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-registro-11.md`. Fatos, medições e verificações atribuídos aos agentes e ao orquestrador; Ledger não os repetiu.
+
+1. **Pedido do autor:** "Não tô em casa agora, então não tô conectado no mesmo wifi" e "Manda a glr trabalhar ai". Sem build e sem instalação até a volta.
+2. **`c257c055` (Forge):** Início compacta, com o seletor dentro de "Gastos por categoria" e a linha antiga do orçamento, com gasto sempre em débito mais crédito (`linhaDoTeto`, em `lib/gastos-categoria.ts`). `CategoriaTeto.tsx` apagado.
+3. **`637aa7b1` (Forge):** `CategoriasContexto` ficou compacto; em Gráficos foi para dentro do cartão do donut; a Início usa o mesmo componente. Com `tabModo !== 'renda'`, o cartão aparece sempre, para o seletor não sumir numa visão vazia. Lançamentos mostra o período por prop.
+4. **`8f5f54a9` (Anvil):** `components/AccessibleModalPanel.tsx` virou `View`. O `Pressable` de `onPress` vazio roubava o gesto da `ScrollView`, mesma classe de `475879c5`. Teste novo: `__tests__/painel-modal-rolagem.cjs`, no `test:ci`.
+   - Medido no Android, com arrasto lento: de 0 px para −313 e −306 px.
+   - Tocar dentro, tocar fora e Escape seguem iguais.
+   - `FabButton` sem mudança, porque o menu tem quatro itens fixos e nada rola.
+   - Descartado: pôr o fundo como irmão do painel, porque exigiria mexer nos dez chamadores.
+5. **Parecer do orquestrador sobre os prints:** Início boa e compacta nos prints 1, 2, 5 e 7b.
+6. **Três defeitos vistos nos prints 8 e 10, confirmados no código:**
+   - Seletor encolhido em Gráficos, porque `donutCard` centraliza os filhos, e "Débito e Pix" quebrava em duas linhas.
+   - Valor de "Gastos na categoria" quase preto em Lançamentos, porque `monthSummaryVal` estava sem cor.
+   - Fatia e legenda com números diferentes: regressão de hoje, de `7e7b9f80` em Gráficos e `21eba54f` na Início. A legenda passou a usar a lista inteira, e o gráfico usa `prepararFatias`, que agrupa as menores em "Outros". Havia também cor na legenda que não existia no gráfico.
+7. **Correções do Forge:**
+   - `f41f82d1`: `alignSelf: 'stretch'` em `CategoriasContexto`.
+   - `a667821f`: `theme.down` em `app/(app)/lancamentos.tsx:762`.
+   - `cd92a8b6`: legenda e chips voltam a espelhar as fatias. `categoriaDaFatia`, em `lib/chart-colors.ts`, decide se a linha abre a lista. "Outros" agrupado vira `View`, sem toque e sem anunciar botão, porque a lista de uma categoria só não bate com a soma. "Outros" real, sozinho, continua abrindo.
+   - Testes: `tsc` verde, `categorias-cliente` 44 e `exemplo-landing` 42 verdes. O orquestrador leu o diff, e a lógica procede.
+8. **Modelos, regra 28:** Forge em Sol medium, porque eram correções pequenas com causa localizada. Anvil passa a Sonnet 5.5 medium, porque só fotografa e confere números com roteiro pronto.
+9. **Lição do orquestrador:** a regressão de fatia e legenda foi vista no print, antes de nova build. É a conferência visual que faltou na rodada anterior.
+
+## Não verificado até aqui
+
+- Os três ajustes ainda não foram vistos no emulador. O Anvil fotografa em `prints-finais\`.
+- O botão "Ver detalhes" de `61a80518` ainda não foi visto em print.
+- TalkBack, VoiceOver e iOS; as outras oito janelas do painel, sem medição individual. Nada disso está no APK.
+- Sem correção, relatado ao autor: em 360x640 dp com fonte 1.3, rótulos do eixo do Fluxo financeiro cortados e cabeçalho da Início em duas linhas.
+
+## Estado
+
+Sem build, sem push e sem nova fusão. A trava de push continua. A próxima build depende de ordem literal do autor, na mesma rede, e de perguntar antes de fundir `main` na branch de teste.
+
 ## 01/11 — registro 10: retorno do autor sobre a Início
 
 Fonte: `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-registro-10.md`. Relato do orquestrador; Ledger não revisou o vídeo nem verificou as correções nesta entrada.
