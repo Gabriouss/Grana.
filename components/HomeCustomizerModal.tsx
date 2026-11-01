@@ -79,7 +79,7 @@ export default function HomeCustomizerModal({
           </ScrollView>
         </View>
 
-        <ScrollView style={styles.list} contentContainerStyle={{ gap: 8 }}>
+        <ScrollView style={styles.list} contentContainerStyle={{ gap: 8 }} nestedScrollEnabled>
           {config.map((bloco, index) => {
             const iconName = HOME_BLOCK_ICONS[bloco.key] || 'grid-outline';
             const desc = HOME_BLOCK_DESCRIPTIONS[bloco.key] || '';
