@@ -14,6 +14,7 @@ import { colunaConteudo, useBreakpoint } from '@/lib/breakpoints';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   fetchBills,
+  fetchCreditCards,
   fetchBudgets,
   fetchConquistas,
   fetchGamificationHistoricalSummary,
@@ -21,25 +22,25 @@ import {
   registrarConquistas,
 } from '@/lib/data';
 import { conquistasNovas, getGamificationState, type Badge, type BadgeCategory, type GamificationState } from '@/lib/gamification';
-import { fetchGamification } from '@/lib/goals';
-import { calcularLevelState, type LevelState } from '@/lib/gamification-infinite';
+import { fetchGoals } from '@/lib/goals';
+import { formatBRL } from '@/lib/format';
+import { semViuva } from '@/lib/sem-viuva';
+import HojeNoSeuMes from '@/components/HojeNoSeuMes';
 import { hapticTap } from '@/lib/haptics';
 import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type, lh } from '@/lib/theme';
 import { useDemo } from '@/lib/demo-context';
-import { DEMO_BILLS, DEMO_BUDGETS, DEMO_LIFETIME_XP, DEMO_TRANSACTIONS } from '@/lib/demo-data';
+import { DEMO_BILLS, DEMO_BUDGETS, DEMO_GOALS, DEMO_CREDIT_CARDS, DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import BadgeCard from '@/components/BadgeCard';
 import FaixaOffline, { useRecarregarAoChegarDadoNovo } from '@/components/FaixaOffline';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import AppPressable from '@/components/AppPressable';
 import ConquistaDesbloqueada from '@/components/ConquistaDesbloqueada';
 import ScreenHeader from '@/components/ScreenHeader';
-import WalletPickerModal from '@/components/WalletPickerModal';
-import WalletPill from '@/components/WalletPill';
 import HeaderAction from '@/components/HeaderAction';
 import PrivacyValue from '@/components/PrivacyValue';
 import { useFlags } from '@/lib/feature-flags';
 import { usePrivacy } from '@/lib/privacy-context';
-import type { Bill, Transaction } from '@/lib/types';
+import type { Bill, Transaction, Goal, CreditCard } from '@/lib/types';
 
 type FilterType = 'all' | 'unlocked' | 'locked';
 
@@ -51,9 +52,10 @@ export default function DesafiosScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [state, setState] = useState<GamificationState | null>(null);
-  const [level, setLevel] = useState<LevelState>(calcularLevelState(0));
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [acoes, setAcoes] = useState<{ bills: Bill[]; cards: CreditCard[]; tx: Transaction[] }>({ bills: [], cards: [], tx: [] });
+  const [detalhes, setDetalhes] = useState(false);
   const [filter, setFilter] = useState<FilterType>('all');
-  const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [conquistaNova, setConquistaNova] = useState<Badge | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const fallbackCache = useRef<{ transactions: Transaction[]; bills: Bill[] } | null>(null);
@@ -62,7 +64,8 @@ export default function DesafiosScreen() {
     if (isDemoMode) {
       const gState = getGamificationState(DEMO_TRANSACTIONS, DEMO_BILLS, DEMO_BUDGETS);
       setState(gState);
-      setLevel(calcularLevelState(DEMO_LIFETIME_XP));
+      setGoals(DEMO_GOALS);
+      setAcoes({ bills: DEMO_BILLS, cards: DEMO_CREDIT_CARDS, tx: DEMO_TRANSACTIONS });
       setLoadError(null);
       setLoading(false);
       setRefreshing(false);
@@ -70,7 +73,7 @@ export default function DesafiosScreen() {
     }
 
     try {
-      const [tx, b, bg, historical, conquistadas] = await Promise.all([
+      const [tx, b, bg, historical, conquistadas, metas, cartoes] = await Promise.all([
         fetchTransactions({ sinceDays: 45 }),
         /* TODAS as contas, não só as pendentes: "Contas acompanhadas" mede as
            PAGAS sobre o total. Só com as pendentes o fator nunca via uma conta
@@ -79,7 +82,9 @@ export default function DesafiosScreen() {
         fetchBills(),
         fetchBudgets(),
         fetchGamificationHistoricalSummary().catch(() => null),
-        fetchConquistas().catch(() => [] as string[]),
+        fetchConquistas(),
+        fetchGoals(),
+        fetchCreditCards(),
       ]);
       let gState: GamificationState;
       if (historical) {
@@ -95,6 +100,8 @@ export default function DesafiosScreen() {
         gState = getGamificationState(fallback.transactions, fallback.bills, bg, undefined, conquistadas);
       }
       setState(gState);
+      setGoals(metas);
+      setAcoes({ bills: b, cards: cartoes, tx });
       setLoadError(null);
 
       /* O desbloqueio vira evento gravado, e ganha um momento.
@@ -103,23 +110,15 @@ export default function DesafiosScreen() {
          entrega não reforça hábito nenhum. */
       const novas = conquistasNovas(gState.badges, conquistadas);
       if (novas.length > 0) {
-        registrarConquistas(novas.map((b) => b.id)).catch(() => {});
+        registrarConquistas(novas.map((b) => b.id)).catch((erro) => {
+          console.error('[desafios] registro de conquista falhou', erro);
+          setLoadError('N?o foi poss?vel guardar sua conquista. Tente atualizar novamente.');
+        });
         setConquistaNova(novas[0]);
       }
     } catch (erro) {
       console.error('[desafios] carga principal falhou', erro);
       setLoadError('Não foi possível atualizar seus desafios.');
-    }
-
-    // Separado do bloco acima de propósito: user_gamification é uma tabela
-    // mais nova que pode ainda não existir num banco que não rodou o SQL
-    // mais recente — se isso lançasse dentro do mesmo try, o catch pegaria
-    // o erro antes de `setState` rodar e a tela ficaria presa no spinner
-    // pra sempre (loading só sai do true quando `state` deixa de ser null).
-    try {
-      setLevel(calcularLevelState((await fetchGamification()).lifetime_xp));
-    } catch {
-      setLevel(calcularLevelState(0));
     }
 
     setLoading(false);
@@ -189,7 +188,7 @@ export default function DesafiosScreen() {
                 onPress={togglePrivacy}
                 accessibilityLabel={hidden ? 'Mostrar valores' : 'Ocultar valores'}
               />
-              <WalletPill onPress={() => setWalletModalOpen(true)} />
+
             </>
           }
         />
@@ -214,7 +213,7 @@ export default function DesafiosScreen() {
             )}
           </View>
         </View>
-        <WalletPickerModal visible={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
+
       </SafeAreaView>
     );
   }
@@ -246,13 +245,13 @@ export default function DesafiosScreen() {
               onPress={togglePrivacy}
               accessibilityLabel={hidden ? 'Mostrar valores' : 'Ocultar valores'}
             />
-            <WalletPill onPress={() => setWalletModalOpen(true)} />
+
           </>
         }
       />
       <FaixaOffline estilo={[colunaConteudo, { marginTop: spacing.sm }]} />
 
-      <WalletPickerModal visible={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
+
 
       <ScrollView
         style={styles.scroll}
@@ -314,35 +313,6 @@ export default function DesafiosScreen() {
           </View>
         </View>
 
-        {/* Level Up Infinito (XP vitalício, separado do Score 0-1000 acima) */}
-        <View style={styles.card}>
-          <View style={styles.cardHeadRow}>
-            <View style={styles.titleWithIcon}>
-              <Ionicons name={level.elo.icone as any} size={17} color={theme.accent2} />
-              <Text style={styles.cardTitle}>Progresso de metas</Text>
-            </View>
-            <Text style={styles.scoreTotalLabel}>{`${level.xp} XP`}</Text>
-          </View>
-
-          <View style={styles.progressLabels}>
-            <Text style={styles.progressLabel}>
-              Nível {level.level} · {level.elo.title}
-            </Text>
-            <Text style={styles.progressPct}>{Math.round(level.progressoLevel * 100)}%</Text>
-          </View>
-          <View style={styles.progressBarBg}>
-            <View style={[styles.progressBarFill, { width: `${Math.round(level.progressoLevel * 100)}%` }]} />
-          </View>
-          {level.nextElo && (
-            <Text style={styles.remainingText}>{`Rumo ao elo ${level.nextElo.title}`}</Text>
-          )}
-          <Text style={styles.remainingText}>
-            {`Faltam ${Math.max(level.xpParaProximoLevel - level.xpAtualNoLevel, 0)} XP para o nível ${level.level + 1}`}
-          </Text>
-          {/* Ponto final no lugar do travessão: regra de copy do projeto. */}
-          <Text style={styles.levelHint}>Este nível é separado da saúde financeira acima. O XP vem de criar cofrinhos, guardar dinheiro e bater metas. Ele nunca diminui.</Text>
-        </View>
-
         {/* Ritmo Semanal */}
         <View style={styles.card}>
           <View style={styles.cardHeadRow}>
@@ -385,6 +355,16 @@ export default function DesafiosScreen() {
           </View>
         </View>
 
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>{semViuva('Suas metas')}</Text>
+          <Text style={styles.factorLabel}>{goals.filter(g => Number(g.current_amount) >= Number(g.target_amount)).length} metas conclu?das</Text>
+          <PrivacyValue><Text style={styles.scoreTotalLabel}>{formatBRL(goals.reduce((s, g) => s + Number(g.current_amount), 0))} guardados</Text></PrivacyValue>
+        </View>
+
+        <AppPressable accessibilityRole="button" accessibilityState={{ expanded: detalhes }} onPress={() => setDetalhes(v => !v)} style={styles.retryButton}>
+          <Text style={styles.retryButtonText}>{semViuva(detalhes ? 'Ocultar detalhes' : 'Ver detalhes')}</Text>
+        </AppPressable>
+        {detalhes && <>
         {/* Fatores do Score */}
         <View style={styles.card}>
           <View style={styles.cardHeadRow}>
@@ -458,6 +438,8 @@ export default function DesafiosScreen() {
             </View>
           </View>
         )}
+
+        </>}
 
         {/* Mural de Conquistas */}
         <View style={styles.card}>
