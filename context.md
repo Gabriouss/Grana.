@@ -93,6 +93,12 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — lógica da fase 2 de Desafios entregue
+
+Keel entregou a lógica no commit local `48fc3f95`, sem publicação nem build; relatório em `E:\Grana-temporarios\2026-11-01-desafios-rolagem\relatorio-keel-logica.md`. Inclui calendário de dias com registro, padrão de gastos, medalha Mês completo e permanência de Mês Verde já conquistada. O relatório diz que os testes específicos, TypeScript e corpora citados passaram; a consulta real de `fetchDiasComRegistro` e o `test:ci` completo não foram verificados. Cache de mês fechado não é invalidado automaticamente ao excluir lançamento antigo; a tela precisa chamar `limparDiasComRegistro` quando adequado. Sem mudança de tela ou migration no commit de Keel.
+
+Forge recebeu a tela, incluindo retirar a escada de XP também de Início e do resumo mensal. O orquestrador ajustou Forge para Sol medium somente nesta sessão, por execução com spec fechada, regra 28 e baixo limite semanal da conta PH. O relatório observa que o padrão inclui crédito, enquanto Gastos por categoria na Início usa só caixa; a investigação de categorias continua. Nada publicado, nenhuma build no momento deste registro. Ledger não executou independentemente os testes nem verificou a consulta.
+
 ## 01/11 — terceira entrada: gesto, Livre e categorias
 
 Fonte: ordem do orquestrador `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-registro-3.md`. Relatos do vídeo e leituras de código não foram verificados independentemente por Ledger.
