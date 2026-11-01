@@ -93,6 +93,16 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — categorias entregues e rolagem medida
+
+Forge entregou categorias no cliente, sem publicação nem build, nos commits `ba69c6a4`, `21eba54f`, `7e7b9f80`, `87634a22`, `e28e57e5`, `b49171c6`, `510e7df6`, `1992cb74` e `46c3a956`. O relatório `E:\Grana-temporarios\2026-11-01-desafios-rolagem\relatorio-forge-categorias.md` descreve adaptação e telas, teto conjunto, filtros, retrospectiva e PDF, aviso único e preservação de receitas na lista normal. Forge relata testes focais e TypeScript verdes; QA visual, consultas reais, navegação, offline e PDF no aparelho ainda pendem. Granabô e servidor ficaram fora desta etapa.
+
+Anvil comprovou em emulador com Expo Go o gesto lento no texto: antes a lista não se movia, depois moveu; seta já movia. O cabeçalho ficou parado e o recuo lateral direito ainda não rolou. Relatório: `E:\Grana-temporarios\2026-11-01-desafios-rolagem\relatorio-anvil-rolagem-2.md`. Web 390, Escape e aparelho físico não foram vistos. Em tela baixa o botão era alcançável pela rolagem externa, mas a lista não transferia o gesto à camada externa. Anvil relata que `test:ci` parou em `boleto-pago-avisa-inicio.cjs` por import não simulado de gamification; outras falhas de testes com dublês foram relatadas. Suíte completa verde continua pendente; Ledger não a executou.
+
+**Decisões do orquestrador para Anvil, em execução, cada uma em commit próprio:** remover `maxHeight: 380`, fixar cabeçalho e Concluir personalização e deixar só a lista rolar; ocupar a largura inteira do painel para aceitar gesto na borda direita; depois trocar as setas por arrasto. Ainda não validadas nesta entrada.
+
+Keel entregou `8547f0d4`, salário do demo no dia 1; segundo relato, `exemplo-landing.cjs` passou sem mudança de número. Permanecem QA visual de categorias e desafios, revisão final do delta e `test:ci` completo. Nada publicado nesta entrada.
+
 ## 01/11 — decisões adicionais e entrada futura
 
 Fonte: `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-registro-5.md`. Relatos e estados de execução são do orquestrador; Ledger não verificou independentemente implantação ou testes.
