@@ -93,6 +93,16 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 31/10 — fechamento da noite
+
+A versão de teste solicitada pelo autor foi instalada em seu celular às 21h31; a comparação relatada dos artefatos públicos antes e depois não mostrou mudança nem aviso aos usuários. O comportamento no aparelho ainda não foi verificado.
+
+Keel corrigiu relógios de dois testes em `f37fad60`: CI remoto verde na janela observada e 340 comandos verdes em UTC; a rodada local em Brasília parou por memória após 289, sem falha. Um dos testes falharia a partir da mudança de mês em qualquer fuso. A cobertura não prova o comportamento do aparelho na virada. Antes de nova versão de teste, incorporar essa correção à linha correspondente.
+
+**Pendência:** `alertaDeLimiteCartao` em `supabase/functions/assistente-financeiro/index.ts:1845` usa o mês do servidor; sonda de código mostrou resposta do mês seguinte das 21h à meia-noite de Brasília no último dia do mês, sem gravação. Próxima janela: 30/11 às 21h. Produção não foi conferida nesta rodada; corrigir e comparar a função publicada pela regra 11 antes da próxima publicação do assistente. Leituras de relógio em outro canal e no modo de teste foram apontadas como baixa gravidade, sem sonda funcional.
+
+O autor recebeu o passo a passo solicitado para a loja; nenhuma decisão nova sobre a adaptação foi relatada.
+
 ## 31/10 — preparação da versão de teste
 
 Keel relata integração da linha de teste e testes de avisos, telas, TypeScript e CI integral verdes; o módulo nativo compilou. Não foram verificados o aplicativo completo, o ícone em execução, aparelho ou aviso real. A revisão independente foi adiada por decisão do orquestrador para este teste pessoal e continua necessária antes de alcançar usuários. O perfil de desenvolvimento é ignorado pelo webhook conforme leitura de código; a comparação externa anterior não mudou os artefatos públicos e deve ser repetida. Nenhuma build foi disparada nesta entrega; gravação sem confirmação e alteração do ícone do widget ficaram fora.
