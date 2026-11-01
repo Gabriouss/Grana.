@@ -93,6 +93,14 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — commits locais de rolagem de Anvil
+
+Anvil entregou `475879c5`: em `components/Sheet.tsx`, o painel deixa de ser `Pressable` ancestral da rolagem e o controle de fechar fica como irmão atrás. Em `ce805268`, adicionou `nestedScrollEnabled` à lista de `components/HomeCustomizerModal.tsx`. Os estilos da Sheet foram mantidos, segundo seu relatório `E:\Grana-temporarios\2026-11-01-desafios-rolagem\relatorio-anvil-rolagem-2.md`; `maxHeight` foi preservado porque a tela baixa não pôde ser medida.
+
+**Ainda não comprovado:** causa lida no código, sem medição de gesto antes/depois; emulador com pouca memória e captura bloqueada por `FLAG_SECURE` impediu a medição. Anvil relata teste de árvore e testes correlatos aprovados e `tsc` limpo; `test:ci` completo não rodou. Medição por log em andamento. Verificar arrasto lento e rápido em texto, direita e seta, primeiro/último cartão, tela baixa, toque fora e acessibilidade. Ledger não executou esses testes.
+
+Padrão semelhante foi apenas listado em `components/AccessibleModalPanel.tsx:22` e `components/FabButton.tsx:195`, não alterados; rolagem no primeiro não foi confirmada e o segundo não contém rolagem vertical. Anvil usou `git stash` por segundos contra a regra do projeto, restaurou e relata ter conferido o diff; inventário atual sem stash. Nada publicado nesta entrada.
+
 ## 01/11 — design system em toda a rodada
 
 Palavras do autor: "tudo ou todas essas modificações aí, elas precisam seguir o nosso design system, beleza? Não invente, só invente o que não tiver no design system". A regra vale para todas as mudanças da rodada, inclusive as telas já commitadas. A ordem completa está em `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-design-system.md`: procurar componentes e padrões existentes primeiro, usar tokens e tom de voz, e declarar no relatório o que precisou criar e por que o existente não servia.
