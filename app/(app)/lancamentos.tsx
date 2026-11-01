@@ -759,7 +759,7 @@ export default function LancamentosScreen() {
             número INVENTADO não — enquanto não há dado, mostra-se travessão. */}
         {modoCategoria ? <View style={styles.monthSummaryCard}>
           <Text style={styles.monthSummaryLabel}>Gastos na categoria</Text>
-          <PrivacyValue><Text style={styles.monthSummaryVal}>{consultaCategoria.resultado ? formatBRL(monthOut) : 'Indisponível agora'}</Text></PrivacyValue>
+          <PrivacyValue><Text style={[styles.monthSummaryVal, { color: theme.down }]}>{consultaCategoria.resultado ? formatBRL(monthOut) : 'Indisponível agora'}</Text></PrivacyValue>
         </View> : <>
         <View style={styles.monthSummaryCard}>
           <View style={styles.monthSummaryCol}>
