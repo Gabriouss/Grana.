@@ -93,6 +93,34 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — terceira entrada: gesto, Livre e categorias
+
+Fonte: ordem do orquestrador `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-registro-3.md`. Relatos do vídeo e leituras de código não foram verificados independentemente por Ledger.
+
+### Rolagem: sintoma corrigido pelo autor
+
+Palavras do autor: "se eu tentar rolar pelo lado direito, ela não vai rolar [...] Só vai rolar se eu colocar o dedo ali em cima da setinha". Reexame da bolinha do toque no vídeo confirma, com uma exceção: um movimento rápido começando no texto moveu a lista uma vez. Corrige o registro anterior, que tratava a lista como presa de modo geral.
+
+Causa **provável**, lida no fonte do React Native 0.86.3 e sem experimento ainda: o painel da `Sheet` é um `Pressable` (`components/Sheet.tsx:65-73`) ancestral das rolagens. Toque em área comum faz dele o responder de JS, e `touch/JSResponderHandler.kt:55-64` faz essa view interceptar o gesto. Toque na seta tem como responder um descendente da lista, que continua livre. Movimento rápido vence a corrida antes de o comando do JS chegar. Se confirmada, a causa atinge as janelas feitas com `Sheet` (11 arquivos) e o mesmo padrão em `AccessibleModalPanel.tsx:25` e `FabButton.tsx:195`. Anvil prova no emulador antes de corrigir, e a correção vai na raiz, em `Sheet.tsx`.
+
+## Livre para gastar
+
+Palavras do autor: "Lançamento com data futura precisa descontar do livre para gastar, mas apenas lançamentos dentro do mesmo mês. Fatura de cartão de crédito precisa interferir no livre para gastar também."
+
+Leitura do orquestrador: no código atual, saídas futuras do mês já descontam (`livre-para-gastar.ts:27`) e o crédito não pago já reduz o Livre. O autor não respondeu sobre **entrada** futura do mês, como salário. Pergunta reenviada a ele. Cálculo não alterado.
+
+## Eventos de Desafios
+
+Decisão do orquestrador, já registrada: fase 2 sem eventos. Autor informado nesta mesma resposta.
+
+## Categorias no débito e no crédito (pedido novo)
+
+Palavras do autor: "se eu tenho um teto para gastar em transporte [...] eu posso atingir o teto de gasto do transporte e continuar gastando com o transporte no cartão de crédito. E aí o teto ele não estoura [...] verificar só gasto de categoria do débito, apenas gasto de categoria no crédito e os dois juntos."
+
+Compass levanta as superfícies e escreve a spec, sem código. A queixa ainda não foi confirmada no código pela coordenação. Keel foi avisado para não fixar a definição de gasto no cálculo atual de "Gastos por categoria", se ele excluir o crédito.
+
+Nenhuma correção foi verificada nesta entrada; reprodução no emulador, definição de entrada futura e confirmação da queixa de categorias permanecem pendentes.
+
 ## 01/11 — parecer sobre eventos de Desafios
 
 Watchtower entregou parecer informativo **APTO COM AJUSTE**, em `E:\Grana-temporarios\2026-11-01-desafios-rolagem\parecer-watchtower-eventos.md`; não autoriza ativação imediata nem substitui validação de advogado. Para eventual coleta propõe atualizar a Política, documentar balanceamento de legítimo interesse e tratamento, justificar retenção proposta de 90 dias (não é prazo imposto pela lei), garantir oposição e exclusão efetivas, expurgo, acesso restrito e agregação sem reidentificação, além de validar com advogado. Destino, implementação, retenção e anonimização não foram verificados em produção.
@@ -104,6 +132,8 @@ Watchtower entregou parecer informativo **APTO COM AJUSTE**, em `E:\Grana-tempor
 Fonte: ordem do orquestrador `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-registro-2.md`. Os fatos e atribuições a seguir são relatados pelo orquestrador; Ledger não revisou o vídeo nem a sonda.
 
 ### Rolagem de "Personalizar Início"
+
+**Correção posterior:** o relato generalizado abaixo foi refinado pelo autor e pelo reexame do vídeo; ver terceira entrada acima.
 
 Vídeo do aparelho real recebido e medido quadro a quadro pelo orquestrador, sem revisão independente pelo Ledger; os quadros foram apagados da pasta de rascunho. Fato: durante 6 s o dedo se move sobre a lista e ela anda 0 px, sem barra de rolagem; ela só anda em dois momentos curtos; o cabeçalho fica em 0 px em todos os quadros; a Início e os Desafios rolam normalmente no mesmo aparelho. Causa ainda é hipótese (rolagem vertical dentro de rolagem vertical, `components/Sheet.tsx:78` e `components/HomeCustomizerModal.tsx:82`, sem `nestedScrollEnabled`). Anvil reproduz no emulador antes de corrigir.
 
