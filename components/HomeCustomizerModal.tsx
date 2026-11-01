@@ -79,7 +79,7 @@ export default function HomeCustomizerModal({
           </ScrollView>
         </View>
 
-        <ScrollView style={styles.list} contentContainerStyle={{ gap: 8 }} nestedScrollEnabled>
+        <ScrollView style={styles.list} contentContainerStyle={styles.listContent} nestedScrollEnabled>
           {config.map((bloco, index) => {
             const iconName = HOME_BLOCK_ICONS[bloco.key] || 'grid-outline';
             const desc = HOME_BLOCK_DESCRIPTIONS[bloco.key] || '';
@@ -213,8 +213,16 @@ const styles = StyleSheet.create({
   presetChipText: {
     color: theme.ink,
     fontSize: type.apoio, fontFamily: fonts.regular },
+  /* A lista vai de uma borda à outra do painel e o recuo do Sheet
+     (`spacing.xl`) vira padding do conteúdo dela: os cartões ficam onde
+     estavam, e a faixa lateral, que antes era recuo morto, também rola. */
   list: {
     flexShrink: 1,
+    marginHorizontal: -spacing.xl,
+  },
+  listContent: {
+    gap: 8,
+    paddingHorizontal: spacing.xl,
   },
   card: {
     flexDirection: 'row',
