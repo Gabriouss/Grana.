@@ -93,6 +93,14 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — entrega da tela de Desafios e novos pedidos
+
+Forge entregou localmente a tela nos commits `5842180b`, `5365de48`, `46b2ecd5`, `c7a1ce97` e `5c307a50`, sobre a lógica de Keel; relatório `E:\Grana-temporarios\2026-11-01-desafios-rolagem\relatorio-forge-tela.md`. Relata testes focais e TypeScript aprovados, revisão de design system e remoção da escada de XP na tela, Início, resumo e PDF. QA visual e consulta Supabase real continuam sem verificação; também faltam aparelho, paginação, persistência, offline e `test:ci` completo. Ledger não executou os testes.
+
+**Divergência de servidor relatada por Forge:** `supabase/functions/assistente-financeiro/index.ts:1933-1961,1998` consulta 45 dias por `occurred_on` e calcula sequência, podendo divergir do calendário por dia de registro. Fica para a segunda etapa do servidor, junto às categorias do Granabô; nenhuma alteração ou deploy da função nesta entrada.
+
+Keel entregou o núcleo de categorias no commit local `c59686c9`; Forge segue nas telas de categorias, só cliente. Pedido do autor: remover emojis do bloco Livre, atribuído a Beacon; no inventário local já consta `6e77a215` com essa finalidade, ainda sem validação independente por Ledger. Outro pedido do autor: "troca essas setas usadas para organizar a ordem dos blocos para sliders de segurar e arrastar para a posicao desejada". Anvil executa depois da medição, com arrasto apenas pela alça e sem dependência nativa nova; ainda não verificado. Nada publicado, nenhuma build nesta entrada.
+
 ## 01/11 — commits locais de rolagem de Anvil
 
 Anvil entregou `475879c5`: em `components/Sheet.tsx`, o painel deixa de ser `Pressable` ancestral da rolagem e o controle de fechar fica como irmão atrás. Em `ce805268`, adicionou `nestedScrollEnabled` à lista de `components/HomeCustomizerModal.tsx`. Os estilos da Sheet foram mantidos, segundo seu relatório `E:\Grana-temporarios\2026-11-01-desafios-rolagem\relatorio-anvil-rolagem-2.md`; `maxHeight` foi preservado porque a tela baixa não pôde ser medida.
