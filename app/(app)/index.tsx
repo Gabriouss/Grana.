@@ -1,3 +1,5 @@
+import { consumirAvisoCategorias } from '@/lib/categorias-aviso';
+import { semViuva } from '@/lib/sem-viuva';
 import { useCategorias, useVisaoCategorias } from '@/lib/use-categorias';
 import { categoriasDaVisao } from '@/lib/categorias-cliente';
 import { formatBRL } from '@/lib/format';
@@ -745,6 +747,14 @@ export default function InicioScreen() {
   const { visao: visaoCategoria, mudar: mudarVisaoCategoria } = useVisaoCategorias();
   const fatiasCategorias = categorias.resultado ? categoriasDaVisao(categorias.resultado.consumo, visaoCategoria) : [];
   const byCategory = Object.fromEntries(fatiasCategorias.map(c => [c.name, { amount: c.value, color: c.color ?? theme.down }]));
+  useEffect(() => {
+    if (!userId || isDemoMode || loading || onboardingOpen || !categorias.resultado) return;
+    let ativo = true;
+    void consumirAvisoCategorias(userId).then(mostrar => {
+      if (ativo && mostrar) triggerToast(semViuva('As categorias agora incluem compras no crédito. Seus tetos continuam iguais.'));
+    });
+    return () => { ativo = false; };
+  }, [userId, isDemoMode, loading, onboardingOpen, !!categorias.resultado]);
   function abrirCategoria(category: string) {
     router.push({ pathname: '/(app)/lancamentos', params: { modo: 'categoria', categoria: category, inicio: categorias.resultado?.inicio ?? categoriaInicio, fim: categorias.resultado?.fim ?? categoriaFim, forma: visaoCategoria } });
   }
