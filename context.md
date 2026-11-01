@@ -93,6 +93,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — entrega do plano de desafios
+
+**Entrega de Meridian, 01/11:** `E:\Grana-temporarios\2026-11-01-desafios-rolagem\plano-desafios.md` propõe cartões de ação, reconhecimento contextual e resumo mensal por fases; é proposta sem aprovação nem implementação. Decisões pendentes: vocabulário, duas escadas Score/XP, medalha Mês Verde, push mensal e métricas. Conferido no código: `lib/gamification.ts` mede hábitos e contas acompanhadas no Score e separa resultado financeiro como indicador; `lib/gamification-infinite.ts` e `app/(app)/desafios.tsx` usam Ionicons. A memória antiga que declarava ambas as direções inteiramente pendentes estava desatualizada. A medalha Mês Verde ainda premia superávit. Não foram verificados entrega de push, viabilidade completa nem comportamento no aparelho. A proposta de XP por lançamento ou conta foi desaconselhada no plano por incentivar manipulação; não houve mudança de produto.
+
 ## 01/11 — modelos, desafios e rolagem
 
 
@@ -113,7 +117,9 @@ Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052
 
 **Pendente:** Prism continua fora. `recruit --replace --account` reabriu com o mesmo `resume` quebrado, e a troca pelo preset foi barrada pelo classificador, então o autor precisa rodar o comando.
 
-**Capacidade:** limites das contas consultados; memória livre de 2,4 GB, possivelmente insuficiente para emulador. Não registrar valores de credenciais.\n\n**Distribuição:** Meridian faz o plano dos desafios. Anvil faz só o diagnóstico da rolagem até o vídeo chegar. Vídeo ainda não recebido nesta entrada.
+**Capacidade:** limites das contas consultados; memória livre de 2,4 GB, possivelmente insuficiente para emulador. Não registrar valores de credenciais.
+
+**Distribuição:** Meridian faz o plano dos desafios. Anvil faz só o diagnóstico da rolagem até o vídeo chegar. Vídeo ainda não recebido nesta entrada.
 
 
 **Sintoma e causa:** rolagem precisa de diagnóstico; causa desconhecida. Prism falha por sessão salva inexistente.
