@@ -131,7 +131,9 @@ export default function AvisosAConferir({ dono, nomeDoPerfil }: { dono: string; 
             accessibilityRole="button"
             onPress={() => { if (itens.length > 0) setAberta(true); else void carregar(); }}
           >
-            <Text style={styles.acao}>{itens.length > 0 ? 'Conferir' : 'Tentar de novo'}</Text>
+            <View style={styles.faixaPilula}>
+              <Text style={styles.faixaPilulaTexto}>{itens.length > 0 ? 'Conferir' : 'Tentar de novo'}</Text>
+            </View>
           </AppPressable>
         </View>
       </View>
@@ -563,10 +565,12 @@ function Botao({ rotulo, onPress, desligado, destaque }: { rotulo: string; onPre
 }
 
 const styles = StyleSheet.create({
-  faixa: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, backgroundColor: theme.paperRaised },
+  faixa: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, backgroundColor: theme.accent2 },
   faixaLinha: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  faixaTexto: { flex: 1, minWidth: 0, color: theme.ink, fontFamily: fonts.regular, fontSize: type.apoio, lineHeight: lh(type.apoio, 'apoio') },
+  faixaTexto: { flex: 1, minWidth: 0, color: theme.paper, fontFamily: fonts.regular, fontSize: type.apoio, lineHeight: lh(type.apoio, 'apoio') },
   faixaBotao: { minHeight: touchTarget, flexShrink: 0, justifyContent: 'center', paddingHorizontal: spacing.sm },
+  faixaPilula: { backgroundColor: theme.paper, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5 },
+  faixaPilulaTexto: { color: theme.accent2, fontSize: type.nota, fontFamily: fonts.regular },
   acao: { color: theme.accent2, fontFamily: fonts.regular, fontSize: type.apoio },
   tela: { flex: 1, backgroundColor: theme.paper, paddingHorizontal: spacing.lg },
   cabecalho: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
