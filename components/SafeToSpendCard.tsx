@@ -83,7 +83,7 @@ export default function SafeToSpendCard({
         <Text style={styles.hint}>
           {/* Ponto final em vez de travessão: a regra de copy do projeto o
               proíbe, e esta frase aparece no card mais visível da Início. */}
-          💡 Seu comportamento recente lembra o perfil {sugestaoArquetipo.emoji} {sugestaoArquetipo.nome}. Vale refazer o diagnóstico no Perfil.
+          Seu comportamento recente lembra o perfil {sugestaoArquetipo.nome}. Vale refazer o diagnóstico no Perfil.
         </Text>
       )}
     </View>

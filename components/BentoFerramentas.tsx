@@ -306,7 +306,7 @@ function VisualLivre({ ativo, instantaneo, largura }: PropsVisual) {
           transicao(instantaneo, 'opacity', 500, 120 + linhas.length * 130 + 200),
         ]}
       >
-        💡 Seu comportamento recente lembra o perfil 🧱 Construtor de Reserva. Vale refazer o diagnóstico no Perfil.
+        Seu comportamento recente lembra o perfil Construtor de Reserva. Vale refazer o diagnóstico no Perfil.
       </Text>
     </View>
   );
