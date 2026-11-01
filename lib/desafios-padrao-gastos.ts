@@ -19,9 +19,17 @@
  */
 import { formatBRL, isoLocal } from './format';
 import { diasNoMes } from './desafios-calendario';
-import type { Transaction } from './types';
+import {
+  CATEGORIA_PAGAMENTO_FATURA,
+  apurarGastosCategoria,
+  ehPagamentoDeFatura,
+  type LinhaDeGasto,
+  type PagamentosConhecidos,
+  type SaidaDeConsumo,
+} from './gastos-categoria';
 
-export const CATEGORIA_PAGAMENTO_FATURA = 'Cartão de crédito';
+export { CATEGORIA_PAGAMENTO_FATURA, ehPagamentoDeFatura };
+export type { PagamentosConhecidos, SaidaDeConsumo };
 
 /** Mínimos para o bloco existir. */
 export const MIN_SAIDAS = 8;
@@ -30,37 +38,7 @@ export const MIN_DIAS_VIVIDOS = 8;
 /** Diferença menor que isto entre médias = "parecidas". */
 export const LIMIAR_EMPATE = 0.05;
 
-type LinhaDeGasto = Pick<
-  Transaction,
-  'id' | 'type' | 'amount' | 'occurred_on' | 'category' | 'description' | 'payment_method' | 'card_id'> & Partial<Pick<Transaction, 'color'>
->;
-
-export type PagamentosConhecidos = {
-  /** Ids de lançamentos que o banco registra como pagamento de fatura
-   *  (`credit_card_invoices.paid_transaction_id` e `extra_transaction_ids`). */
-  idsDePagamento?: ReadonlySet<string>;
-};
-
-/**
- * É o pagamento de uma fatura? Três sinais, qualquer um basta:
- *  1. o id está em `credit_card_invoices` (o vínculo oficial);
- *  2. saída da categoria "Cartão de crédito" que NÃO é compra no crédito
- *     (é o que `pagar_fatura_cartao` grava, sem `card_id`);
- *  3. descrição "Pagamento da fatura ..." ou "Pagamento fatura ..." (builds
- *     antigas gravavam "Pagamento fatura — C6 (09/2026)"), mesmo sem categoria.
- * Compra de verdade no crédito traz `payment_method = 'credit'` ou `card_id` e
- * nunca é tratada como pagamento pelo sinal 2.
- */
-export function ehPagamentoDeFatura(t: LinhaDeGasto, conhecidos: PagamentosConhecidos = {}): boolean {
-  if (conhecidos.idsDePagamento?.has(t.id)) return true;
-  const ehCredito = t.payment_method === 'credit' || !!t.card_id;
-  if (!ehCredito && t.category === CATEGORIA_PAGAMENTO_FATURA) return true;
-  return !ehCredito && /^\s*pagamento\s+(da\s+)?fatura\b/i.test(t.description ?? '');
-}
-
-export type SaidaDeConsumo = { iso: string; centavos: number; category: string; color?: string };
-
-/** Saídas de consumo do mês, até hoje. */
+/** Saídas de consumo do mês, até hoje (a classificação mora em `gastos-categoria`). */
 export function saidasDeConsumo(
   transacoes: ReadonlyArray<LinhaDeGasto>,
   ano: number,
@@ -68,17 +46,14 @@ export function saidasDeConsumo(
   hoje: Date = new Date(),
   conhecidos: PagamentosConhecidos = {}
 ): SaidaDeConsumo[] {
-  const prefixo = `${ano}-${String(mes + 1).padStart(2, '0')}-`;
+  const inicio = isoLocal(new Date(ano, mes, 1));
+  const ultimo = isoLocal(new Date(ano, mes + 1, 0));
   const hojeISO = isoLocal(hoje);
-  const saidas: SaidaDeConsumo[] = [];
-  for (const t of transacoes) {
-    if (t.type !== 'out') continue;
-    if (!t.occurred_on || !t.occurred_on.startsWith(prefixo)) continue;
-    if (t.occurred_on > hojeISO) continue;
-    if (ehPagamentoDeFatura(t, conhecidos)) continue;
-    saidas.push({ iso: t.occurred_on, centavos: Math.round(Number(t.amount) * 100), category: t.category, color: t.color });
-  }
-  return saidas;
+  return apurarGastosCategoria(transacoes, {
+    inicio,
+    fim: hojeISO < ultimo ? hojeISO : ultimo,
+    idsPagamentos: conhecidos.idsDePagamento,
+  }).saidas;
 }
 
 /**
