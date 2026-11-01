@@ -824,7 +824,7 @@ export default function LancamentosScreen() {
           )}
         </View>
 
-        {modoCategoria && <CategoriasContexto visao={visao} onChange={mudarVisao} resultado={consultaCategoria.resultado} erro={consultaCategoria.erro} carregar={consultaCategoria.carregar} />}
+        {modoCategoria && <CategoriasContexto mostrarPeriodo visao={visao} onChange={mudarVisao} resultado={consultaCategoria.resultado} erro={consultaCategoria.erro} carregar={consultaCategoria.carregar} />}
         {categoryOptions.length > 0 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryChipsRow}>
             <AppPressable

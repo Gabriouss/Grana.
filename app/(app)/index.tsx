@@ -1,3 +1,4 @@
+import CategoriasContexto from '@/components/CategoriasContexto';
 import { consumirAvisoCategorias } from '@/lib/categorias-aviso';
 import { semViuva } from '@/lib/sem-viuva';
 import { useCategorias, useVisaoCategorias } from '@/lib/use-categorias';
@@ -1362,16 +1363,8 @@ export default function InicioScreen() {
           </PrivacyValue>
         </View>
 
-        <SegmentedTabs
-          options={[{ key: 'tudo', label: 'Tudo' }, { key: 'avista', label: 'Débito e Pix' }, { key: 'credito', label: 'Crédito' }]}
-          value={visaoCategoria}
-          onChange={mudarVisaoCategoria}
-        />
-        <Text style={styles.categoryScope}>{semViuva(`Todas as carteiras e cartões${categorias.resultado?.doCache || categorias.erro ? '. Último resultado disponível' : ''}`)}</Text>
-        {categorias.erro && <AppPressable accessibilityRole="button" onPress={categorias.carregar} style={styles.categoryRetry}>
-          <Text accessibilityRole="alert" style={styles.categoryRetryText}>{semViuva(`${categorias.erro} Toque para tentar novamente.`)}</Text>
-        </AppPressable>}
-        {!categorias.resultado ? (!categorias.erro && <Text style={styles.emptyText}>{semViuva('Carregando categorias…')}</Text>) : pieData.length === 0 ? (
+        <CategoriasContexto visao={visaoCategoria} onChange={mudarVisaoCategoria} resultado={categorias.resultado} erro={categorias.erro} carregar={categorias.carregar} />
+        {!categorias.resultado ? null : pieData.length === 0 ? (
           <Text style={styles.emptyText}>Nenhum gasto registrado ainda.</Text>
         ) : (
           <>
@@ -2208,9 +2201,6 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4 },
   categoryName: { color: theme.ink, fontSize: type.nota,
   lineHeight: lh(type.nota, 'apoio'), fontFamily: fonts.regular },
-  categoryScope: { color: theme.inkFaint, fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio'), fontFamily: fonts.light },
-  categoryRetry: { minHeight: touchTarget, justifyContent: 'center' },
-  categoryRetryText: { color: theme.inkSoft, fontFamily: fonts.light, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo') },
   categoryAmount: { color: theme.inkFaint, fontSize: type.nota,
   lineHeight: lh(type.nota, 'valor'), fontVariant: ['tabular-nums'], fontFamily: fonts.light },
   templateBudgetText: { color: theme.inkFaint, fontSize: type.nota,

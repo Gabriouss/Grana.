@@ -1,3 +1,4 @@
+import { semViuva } from '@/lib/sem-viuva';
 import { useCategorias, useVisaoCategorias } from '@/lib/use-categorias';
 import { categoriasDaVisao } from '@/lib/categorias-cliente';
 import CategoriasContexto from '@/components/CategoriasContexto';
@@ -356,7 +357,6 @@ export default function GraficosScreen() {
           </View>
         )}
 
-        {tabModo !== 'renda' && <CategoriasContexto visao={visao} onChange={mudar} resultado={categorias.resultado} erro={categorias.erro} carregar={categorias.carregar} />}
         <Text style={styles.summaryLabel}>Fluxo de caixa</Text>
         {/* Gráfico de linha — total por período, com a composição por
             categoria da coluna selecionada logo abaixo. */}
@@ -406,9 +406,11 @@ export default function GraficosScreen() {
         </View>
 
         {/* Distribuição por Categorias (Donut) */}
-        {pieSlices.length > 0 && (
+        {(tabModo !== 'renda' || pieSlices.length > 0) && (
           <View style={styles.donutCard}>
             <Text style={styles.donutTitle}>Composição por categorias</Text>
+            {tabModo !== 'renda' && <CategoriasContexto visao={visao} onChange={mudar} resultado={categorias.resultado} erro={categorias.erro} carregar={categorias.carregar} />}
+            {pieSlices.length > 0 ? (
             <View style={[styles.donutRow, ehCompacto && styles.donutRowCompacta, !ehCompacto && styles.donutRowLargo]}>
               <PieChart data={pieSlices} size={tamanhoDonut} />
               <View style={[styles.legendCol, ehCompacto && styles.legendColCompacta, !ehCompacto && styles.legendColLargo]}>
@@ -434,6 +436,7 @@ export default function GraficosScreen() {
                 ))}
               </View>
             </View>
+            ) : categorias.resultado && <Text style={styles.summaryLabel}>{semViuva('Nenhum gasto nesta visão.')}</Text>}
           </View>
         )}
 
