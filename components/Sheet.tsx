@@ -58,14 +58,24 @@ export default function Sheet({
   useModalAccessibility(painelRef, true, onClose);
 
   return (
-    <Pressable style={[styles.scrim, centered && styles.scrimCentered, scrimStyle]} onLayout={aoMedirFundo} onPress={onClose} accessible={false}>
-      {/* onPress vazio: por ser um Pressable aninhado, ele assume o toque
-          antes que chegue ao fundo, então tocar dentro do painel nunca fecha
-          a folha — só o fundo escurecido em volta dele fecha. */}
+    <View style={[styles.scrim, centered && styles.scrimCentered, scrimStyle]} onLayout={aoMedirFundo}>
+      {/* O Pressable de fechar é IRMÃO do painel, atrás dele, e não ancestral.
+          Como ancestral (com um `onPress` vazio no painel para segurar o
+          toque), qualquer toque em área comum do painel fazia o `Pressable`
+          virar o responder de JS, e no Android o nativo passa a interceptar o
+          gesto nessa view antes de ele chegar às `ScrollView`: a lista só
+          rolava se o dedo começasse em cima de algo tocável. Sendo irmão,
+          tocar dentro do painel não chega ao fundo e nada acima da rolagem
+          reivindica o toque. */}
       <Pressable
+        style={StyleSheet.absoluteFill}
+        onPress={onClose}
+        accessible={false}
+        importantForAccessibility="no"
+      />
+      <View
         ref={painelRef}
         style={[styles.sheet, centered && styles.sheetCentered, flutuanteStyle, sheetStyle, { maxHeight: flutuanteStyle.maxHeight }]}
-        onPress={() => {}}
         accessibilityViewIsModal
         importantForAccessibility="yes"
         role="dialog"
@@ -92,8 +102,8 @@ export default function Sheet({
         >
           {children}
         </ScrollView>
-      </Pressable>
-    </Pressable>
+      </View>
+    </View>
   );
 }
 

@@ -70,7 +70,7 @@ const sheet = carregar('components/Sheet.tsx', {
   react: { useRef: () => ({ current: null }) },
   'react/jsx-runtime': { jsx, jsxs: jsx },
   'react-native': { Platform: { OS: 'android' }, Pressable: 'Pressable',
-    ScrollView: 'ScrollView', StyleSheet: { create: x => x } },
+    ScrollView: 'ScrollView', View: 'View', StyleSheet: { create: x => x, absoluteFill: {} } },
   '@/lib/theme': { theme: {}, radius: { xl: 20 }, spacing: { md: 12, lg: 16, xl: 24 } },
   '@/lib/breakpoints': { useSheetFlutuante: () => ({ aoMedirFundo() {},
     scrimStyle: {}, sheetStyle: { maxHeight: 308, width: '100%' } }) },
@@ -78,7 +78,8 @@ const sheet = carregar('components/Sheet.tsx', {
   '@/lib/teclado': { useKeyboardHeight: () => 260 },
 });
 const tree = sheet.default({ centered: true, sheetStyle: { maxHeight: '90%', maxWidth: 520 }, children: 'conteudo' });
-const panel = tree.props.children;
+const [fundo, panel] = tree.props.children;
+assert.equal(fundo.type, 'Pressable'); // fecha, irmão do painel
 const style = Object.assign({}, ...panel.props.style.filter(Boolean));
 assert.equal(style.maxHeight, 308);
 assert.equal(style.maxWidth, 520);
