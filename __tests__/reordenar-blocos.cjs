@@ -23,18 +23,24 @@ assert.strictEqual(trocarPosicoes(lista, 'a', 'zzz'), lista, 'chave inexistente:
 assert.deepStrictEqual(trocarPosicoes(lista, 'e', 'a').map((i) => i.key), ['e', 'b', 'c', 'd', 'a']);
 
 // Cartão sob o dedo: alturas diferentes, frestas entre eles, lista rolada.
+// y é medido a partir do topo da parte visível da lista (altura 400 aqui).
 const areas = [
   { chave: 'a', topo: 0, altura: 100 },
   { chave: 'b', topo: 108, altura: 160 },
   { chave: 'c', topo: 276, altura: 100 },
 ];
-const topoDaLista = 500;
-assert.strictEqual(blocoSobOsDedos(areas, 550, topoDaLista, 0), 'a');
-assert.strictEqual(blocoSobOsDedos(areas, 500 + 104, topoDaLista, 0), null, 'fresta entre cartões');
-assert.strictEqual(blocoSobOsDedos(areas, 500 + 200, topoDaLista, 0), 'b');
+const visivel = 400;
+assert.strictEqual(blocoSobOsDedos(areas, 50, 0, visivel), 'a');
+assert.strictEqual(blocoSobOsDedos(areas, 104, 0, visivel), null, 'fresta entre cartões');
+assert.strictEqual(blocoSobOsDedos(areas, 200, 0, visivel), 'b');
 // Rolando 150 px, o mesmo ponto da tela cai em outro cartão.
-assert.strictEqual(blocoSobOsDedos(areas, 500 + 200, topoDaLista, 150), 'c');
-assert.strictEqual(blocoSobOsDedos(areas, 10, topoDaLista, 0), null, 'acima da lista');
+assert.strictEqual(blocoSobOsDedos(areas, 200, 150, visivel), 'c');
+// Dedo fora da parte visível (cabeçalho acima, "Concluir" abaixo): nunca troca
+// com um cartão escondido, mesmo que haja um cartão naquela posição do conteúdo.
+assert.strictEqual(blocoSobOsDedos(areas, -10, 150, visivel), null, 'acima da lista');
+assert.strictEqual(blocoSobOsDedos(areas, -1, 0, visivel), null);
+assert.strictEqual(blocoSobOsDedos(areas, visivel + 20, 0, 350), null, 'abaixo da lista, com cartão c escondido');
+assert.strictEqual(blocoSobOsDedos(areas, 330, 0, 300), null, 'fora da altura visível');
 
 // Rolagem automática: zero no meio, sobe/desce perto das bordas, mais forte quanto mais perto.
 const borda = 48, max = 14, alt = 800;

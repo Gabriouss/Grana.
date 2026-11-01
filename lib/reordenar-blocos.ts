@@ -29,20 +29,22 @@ export function trocarPosicoes<T extends { key: string }>(lista: T[], chaveA: st
 }
 
 /**
- * Qual cartão está sob o dedo. `yDaTela` é a posição vertical do dedo na
- * janela, `topoDaLista` a posição da borda de cima da lista na janela e
- * `rolagem` o quanto o conteúdo já rolou: como a lista rola durante o gesto,
- * a posição do cartão na tela é recalculada a partir destes três valores, e
- * nenhum cartão precisa ser medido de novo. Fora de qualquer cartão (nas
- * frestas entre eles), devolve `null`, e soltar ali não muda nada.
+ * Qual cartão está sob o dedo. `yNaLista` é a posição vertical do dedo
+ * medida a partir da borda de cima da parte VISÍVEL da lista, `rolagem` o
+ * quanto o conteúdo já rolou e `alturaVisivel` a altura dessa parte: como a
+ * lista rola durante o gesto, a posição do cartão é recalculada a partir
+ * destes valores, e nada é medido na tela. Dedo fora da parte visível (por
+ * cima do cabeçalho ou do botão "Concluir") ou nas frestas entre cartões
+ * devolve `null`, e soltar ali não muda nada.
  */
 export function blocoSobOsDedos(
   areas: AreaDoBloco[],
-  yDaTela: number,
-  topoDaLista: number,
-  rolagem: number
+  yNaLista: number,
+  rolagem: number,
+  alturaVisivel: number
 ): string | null {
-  const yNoConteudo = yDaTela - topoDaLista + rolagem;
+  if (yNaLista < 0 || yNaLista > alturaVisivel) return null;
+  const yNoConteudo = yNaLista + rolagem;
   for (const a of areas) {
     if (yNoConteudo >= a.topo && yNoConteudo <= a.topo + a.altura) return a.chave;
   }

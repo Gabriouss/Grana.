@@ -27,7 +27,7 @@ const PRESETS: { key: HomePreset; label: string; icon: keyof typeof Ionicons.gly
    o primeiro. Usa o alvo de toque do app como medida. */
 const BORDA_AUTO_ROLAGEM = touchTarget;
 /* Pixels por quadro na rolagem automática, no máximo (dedo encostado na borda). */
-const VELOCIDADE_AUTO_ROLAGEM = 14;
+const VELOCIDADE_AUTO_ROLAGEM = 8;
 /* Deslocamento do dedo abaixo do qual soltar a alça conta como TOQUE. */
 const LIMIAR_DE_TOQUE = 8;
 
@@ -58,15 +58,22 @@ export default function HomeCustomizerModal({
 
   const listaRef = useRef<ScrollView>(null);
   const areas = useRef<Record<string, AreaDoBloco>>({});
-  const janela = useRef({ topo: 0, altura: 0 });
   const rolagem = useRef({ y: 0, conteudo: 0, visivel: 0 });
-  const gesto = useRef({ chave: '', dedoY: 0, moveu: false, relogio: null as ReturnType<typeof setInterval> | null });
+  const gesto = useRef({ chave: '', dedoNaLista0: 0, dedoNaLista: 0, dy: 0, moveu: false, relogio: null as ReturnType<typeof setInterval> | null });
   const responders = useRef<Record<string, ReturnType<typeof PanResponder.create>>>({});
 
-  /* Fechar a janela cancela a escolha por toque. */
+  /* Fechar a janela no meio de um gesto cancela tudo: o relógio da rolagem
+     automática para e a lista não reabre presa em "arrastando". Fechar também
+     cancela a escolha por toque. */
   useEffect(() => {
-    if (!visible) definirEscolhido(null);
+    if (!visible) {
+      encerrarGesto();
+      definirEscolhido(null);
+    }
   }, [visible]);
+
+  /* Desmontar com o relógio rodando deixaria um intervalo órfão. */
+  useEffect(() => pararAutoRolagem, []);
 
   function definirEscolhido(chave: string | null) {
     escolhidoRef.current = chave;
@@ -99,7 +106,7 @@ export default function HomeCustomizerModal({
 
   function alvoSobODedo(): string | null {
     const g = gesto.current;
-    const sob = blocoSobOsDedos(Object.values(areas.current), g.dedoY, janela.current.topo, rolagem.current.y);
+    const sob = blocoSobOsDedos(Object.values(areas.current), g.dedoNaLista, rolagem.current.y, rolagem.current.visivel);
     return sob && sob !== g.chave ? sob : null;
   }
 
@@ -111,14 +118,12 @@ export default function HomeCustomizerModal({
   function iniciarAutoRolagem() {
     pararAutoRolagem();
     gesto.current.relogio = setInterval(() => {
-      const passo = passoDeRolagem(
-        gesto.current.dedoY,
-        janela.current.topo,
-        janela.current.altura,
-        BORDA_AUTO_ROLAGEM,
-        VELOCIDADE_AUTO_ROLAGEM
-      );
-      if (passo === 0) return;
+      const g = gesto.current;
+      // Só rola depois que o dedo se mexeu e na direção em que ele foi: segurar
+      // um cartão perto da borda, ou arrastá-lo para longe dela, não puxa a lista.
+      if (!g.moveu) return;
+      const passo = passoDeRolagem(g.dedoNaLista, 0, rolagem.current.visivel, BORDA_AUTO_ROLAGEM, VELOCIDADE_AUTO_ROLAGEM);
+      if (passo === 0 || (passo > 0 && g.dy <= 0) || (passo < 0 && g.dy >= 0)) return;
       const r = rolagem.current;
       const proximo = Math.max(0, Math.min(r.y + passo, Math.max(0, r.conteudo - r.visivel)));
       if (proximo === r.y) return;
@@ -150,18 +155,20 @@ export default function HomeCustomizerModal({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: () => true,
         onPanResponderTerminationRequest: () => false,
-        onPanResponderGrant: (_e, g) => {
-          gesto.current.chave = chave;
-          gesto.current.dedoY = g.y0;
-          gesto.current.moveu = false;
-          (listaRef.current as unknown as View | null)?.measureInWindow?.((_x: number, y: number, _w: number, altura: number) => {
-            janela.current = { topo: y, altura };
-          });
+        onPanResponderGrant: () => {
+          /* Nada é medido na tela: a alça fica centralizada no cartão, então o
+             dedo começa no meio dele, e daí em diante só o deslocamento `dy`
+             importa. Ficar só com medidas da própria lista evita diferença
+             de origem entre `pageY` e a janela do Modal no Android. */
+          const area = areas.current[chave];
+          const inicio = area ? area.topo + area.altura / 2 - rolagem.current.y : 0;
+          gesto.current = { ...gesto.current, chave, dedoNaLista0: inicio, dedoNaLista: inicio, dy: 0, moveu: false };
           setArrastando(chave);
           iniciarAutoRolagem();
         },
         onPanResponderMove: (_e, g) => {
-          gesto.current.dedoY = g.moveY;
+          gesto.current.dy = g.dy;
+          gesto.current.dedoNaLista = gesto.current.dedoNaLista0 + g.dy;
           if (Math.abs(g.dy) > LIMIAR_DE_TOQUE || Math.abs(g.dx) > LIMIAR_DE_TOQUE) gesto.current.moveu = true;
           if (gesto.current.moveu) setAlvo(alvoSobODedo());
         },
@@ -253,13 +260,20 @@ export default function HomeCustomizerModal({
                   {...responderDe(bloco.key).panHandlers}
                   accessible
                   focusable
-                  accessibilityRole="adjustable"
-                  accessibilityLabel={`Reordenar ${HOME_BLOCK_LABELS[bloco.key]}. Arraste, ou toque aqui e depois na alça de outro bloco.`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Reordenar ${HOME_BLOCK_LABELS[bloco.key]}`}
+                  accessibilityHint="Arraste para mover, ou toque aqui e depois na alça de outro bloco."
                   accessibilityActions={[
+                    { name: 'activate' },
                     { name: 'moveUp', label: `Mover ${HOME_BLOCK_LABELS[bloco.key]} para cima` },
                     { name: 'moveDown', label: `Mover ${HOME_BLOCK_LABELS[bloco.key]} para baixo` },
                   ]}
-                  onAccessibilityAction={(e) => mover(index, e.nativeEvent.actionName === 'moveUp' ? -1 : 1)}
+                  onAccessibilityAction={(e) => {
+                    const acao = e.nativeEvent.actionName;
+                    if (acao === 'activate') aoTocarNaAlca(bloco.key);
+                    else if (acao === 'moveUp') mover(index, -1);
+                    else if (acao === 'moveDown') mover(index, 1);
+                  }}
                   {...(Platform.OS === 'web'
                     ? ({
                         onKeyDown: (e: { key: string; preventDefault: () => void }) => {
