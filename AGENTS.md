@@ -800,6 +800,7 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     - **Saldo é caixa do mês.** Entradas e saídas efetivamente registradas em
       débito/Pix no mês vigente compõem o saldo. Compra no crédito fica fora
       do caixa até o pagamento da fatura.
+      Decisão do autor em 01/11/2026: saída com data futura dentro do mês já desconta do Livre; entrada com data futura dentro do mês, como salário, só conta a partir do dia da data dela; lançamento de outro mês não conta.
     - **Dinheiro já guardado em cofrinho fica fora do mês.** Ao guardar, a
       origem deve distinguir "Já estava guardado" de "Do dinheiro deste mês".
       Dinheiro anterior não exige uma receita, não aparece como entrada ou

@@ -93,6 +93,12 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — decisão do autor sobre o Livre para gastar
+
+Palavras do autor: "Lançamento com data futura precisa descontar do livre para gastar, mas apenas lançamentos dentro do mesmo mês. Fatura de cartão de crédito precisa interferir no livre para gastar também." E: "Salário futuro no livre para gastar só entra após a data da entrada".
+
+**Leitura do orquestrador:** após a data significa a partir do próprio dia da data; Saldo atual acompanha a mesma base para a conta do cartão fechar. Regra 20 de `AGENTS.md` complementada com a decisão. Keel implementa; implementação, testes e paridade entre superfícies e servidor ainda não verificados nesta entrada. Nada publicado, sem build e sem deploy.
+
 ## 01/11 — referência e acessibilidade da reordenação
 
 Palavras do autor: "Eu quero a mesma funcionalidade que a gente tem no Grana, versao web desktop, onde a gente consegue segurar e arrastar os blocos; so que isso vai acontecer dentro da janela de personalizacao, nao do lado de fora, como acontece hoje." Referência: `components/WidgetGrid.tsx`, incluindo alça, opacidade, borda tracejada e troca de duas posições.
