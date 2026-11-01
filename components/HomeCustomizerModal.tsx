@@ -69,6 +69,8 @@ export default function HomeCustomizerModal({
     if (!visible) {
       encerrarGesto();
       definirEscolhido(null);
+      // A lista desmonta com o Modal e reabre no topo; este componente segue montado.
+      rolagem.current.y = 0;
     }
   }, [visible]);
 
@@ -287,7 +289,7 @@ export default function HomeCustomizerModal({
                   style={[
                     styles.alca,
                     emUso && styles.alcaAtiva,
-                    { cursor: arrastando === bloco.key ? 'grabbing' : 'grab', touchAction: 'none' } as object,
+                    Platform.OS === 'web' ? ({ cursor: arrastando === bloco.key ? 'grabbing' : 'grab', touchAction: 'none' } as object) : null,
                   ]}
                 >
                   <Ionicons name="reorder-two-outline" size={22} color={emUso ? theme.paper : theme.inkFaint} />
