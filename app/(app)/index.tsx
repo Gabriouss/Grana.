@@ -729,7 +729,7 @@ export default function InicioScreen() {
       ? { text: `+ R$ ${formatMoney(totalIn)}`, color: theme.up }
       : chartView === 'out'
       ? { text: `− R$ ${formatMoney(totalOut)}`, color: theme.down }
-      : { text: `saldo ${totalIn - totalOut >= 0 ? '+' : '−'} R$ ${formatMoney(Math.abs(totalIn - totalOut))}`, color: theme.inkFaint };
+      : { text: `no mês ${totalIn - totalOut >= 0 ? '+' : '−'} R$ ${formatMoney(Math.abs(totalIn - totalOut))}`, color: theme.inkFaint };
 
   /* `today` entra no memo em vez de ser recalculado a cada render: a tela
      recarrega `bills` a cada foco (useFocusEffect → load()), então a virada
