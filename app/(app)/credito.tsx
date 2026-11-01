@@ -1,3 +1,5 @@
+import { isCreditTx } from '@/lib/transaction-rules';
+import { fetchTransactionsDoPeriodo } from '@/lib/data';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { randomUUID } from 'expo-crypto';
 import { desfechoDaOperacaoVoz, registrarOperacaoVoz } from '@/lib/voice-operations';
@@ -101,7 +103,7 @@ export default function CreditoScreen() {
   const { paddingConteudoComFab, total: tabBarTotal } = useTabBarInset();
   const { ehCompacto } = useBreakpoint();
   const router = useRouter();
-  const { novaCompra, texto, falaGuardada, referencia, aproximada } = useLocalSearchParams<{ novaCompra?: string; texto?: string; falaGuardada?: string; referencia?: string; aproximada?: string }>();
+  const { novaCompra, texto, falaGuardada, referencia, aproximada, editarCompra, compraData } = useLocalSearchParams<{ novaCompra?: string; texto?: string; falaGuardada?: string; referencia?: string; aproximada?: string; editarCompra?: string; compraData?: string }>();
   /* Fala da fila de áudios em revisão: o salvamento a tira da fila. */
   const falaGuardadaDaRevisao = useRef<string | undefined>(undefined);
   const { hidden, toggle: togglePrivacy } = usePrivacy();
@@ -566,6 +568,21 @@ export default function CreditoScreen() {
       abrirNovaCompra();
     }
     router.setParams({ novaCompra: undefined, texto: undefined, falaGuardada: undefined, referencia: undefined, aproximada: undefined });
+  });
+
+  useAberturaPorParametro(!!editarCompra && !loading, () => {
+    router.setParams({ editarCompra: undefined, compraData: undefined });
+    void (async () => {
+      try {
+        const local = transactions.find(t => t.id === editarCompra);
+        const tx = local ?? (compraData && /^\d{4}-\d{2}-\d{2}$/.test(compraData) ? (await fetchTransactionsDoPeriodo(compraData, compraData)).find(t => t.id === editarCompra) : undefined);
+        if (!tx || !isCreditTx(tx)) { Alert.alert('Compra indisponível', 'Atualize os lançamentos e tente novamente.'); return; }
+        abrirEdicaoCompra(tx);
+      } catch (e) {
+        console.error('[credito] abertura da compra por categoria falhou', e);
+        Alert.alert('Compra indisponível', 'Não foi possível abrir a compra. Tente novamente.');
+      }
+    })();
   });
 
   /* Esta tela renderiza um carrossel de cartões e uma FlatList de compras;

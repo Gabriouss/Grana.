@@ -1,3 +1,6 @@
+import { useCategorias, useVisaoCategorias } from '@/lib/use-categorias';
+import { linhasDaCategoria } from '@/lib/categorias-cliente';
+import CategoriasContexto from '@/components/CategoriasContexto';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useAberturaPorParametro } from '@/lib/abertura-por-parametro';
@@ -134,7 +137,7 @@ const LinhaLancamento = memo(function LinhaLancamento({
 
 export default function LancamentosScreen() {
   const router = useRouter();
-  const { novoLancamento, origem } = useLocalSearchParams<{ novoLancamento?: string; origem?: string }>();
+  const { novoLancamento, origem, modo, categoria, inicio, fim, forma } = useLocalSearchParams<{ novoLancamento?: string; origem?: string; modo?: string; categoria?: string; inicio?: string; fim?: string; forma?: string }>();
   const voltarAoInicioDepoisDeSalvar = useRef(false);
   const { paddingConteudoComFab } = useTabBarInset();
   const { ehCompacto } = useBreakpoint();
@@ -152,6 +155,9 @@ export default function LancamentosScreen() {
   }, [isDemoMode, transactions]);
   const [filter, setFilter] = useState<'tudo' | TxType>('tudo');
   const [search, setSearch] = useState('');
+  const [modoCategoria, setModoCategoria] = useState(false);
+  const [intervaloCategoria, setIntervaloCategoria] = useState<{ inicio: string; fim: string } | null>(null);
+  const { visao, mudar: mudarVisao } = useVisaoCategorias();
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
   // Cache offline: true quando a última tentativa de buscar caiu pra cache local.
@@ -209,6 +215,17 @@ export default function LancamentosScreen() {
   const pad = (n: number) => String(n).padStart(2, '0');
   const inicioDoMes = `${selectedYear}-${pad(selectedMonth + 1)}-01`;
   const fimDoMes = `${selectedYear}-${pad(selectedMonth + 1)}-${pad(new Date(selectedYear, selectedMonth + 1, 0).getDate())}`;
+  const consultaCategoria = useCategorias(intervaloCategoria?.inicio ?? inicioDoMes, intervaloCategoria?.fim ?? fimDoMes, isDemoMode, DEMO_TRANSACTIONS, modoCategoria);
+  useAberturaPorParametro(modo === 'categoria', () => {
+    setModoCategoria(true); setCategoryFilter(categoria ?? null); setFilter('out');
+    if (inicio && fim && /^\d{4}-\d{2}-\d{2}$/.test(inicio) && /^\d{4}-\d{2}-\d{2}$/.test(fim)) {
+      setIntervaloCategoria({ inicio, fim });
+      const [ano, mes] = inicio.split('-').map(Number); setSelectedYear(ano); setSelectedMonth(mes - 1);
+    }
+    if (forma === 'tudo' || forma === 'avista' || forma === 'credito') mudarVisao(forma);
+    router.setParams({ modo: undefined, categoria: undefined, inicio: undefined, fim: undefined, forma: undefined });
+  });
+
 
   /* O cache é a UNIÃO dos meses já baixados, não só o último. Sem isso,
      navegar para outro mês apagaria da memória offline o mês anterior. */
@@ -388,6 +405,11 @@ export default function LancamentosScreen() {
 
 
   function openEditModal(tx: Transaction) {
+    if (isCreditTx(tx)) {
+      setActionSheetOpen(false);
+      router.push({ pathname: '/(app)/credito', params: { editarCompra: tx.id, compraData: tx.occurred_on } });
+      return;
+    }
     setEditingTxId(tx.id);
     setType(tx.type);
     setDesc(tx.description);
@@ -625,8 +647,8 @@ export default function LancamentosScreen() {
 
   // Transações estritamente do mês selecionado
   const monthTransactions = useMemo(
-    () => walletTransactions.filter((t) => isSameMonth(t.occurred_on, selectedYear, selectedMonth)),
-    [selectedMonth, selectedYear, walletTransactions]
+    () => modoCategoria ? (consultaCategoria.resultado ? linhasDaCategoria(consultaCategoria.resultado, categoryFilter, visao) : []) : walletTransactions.filter((t) => isSameMonth(t.occurred_on, selectedYear, selectedMonth)),
+    [selectedMonth, selectedYear, walletTransactions, modoCategoria, consultaCategoria.resultado, categoryFilter, visao]
   );
 
   /* A19: o resumo acompanha a busca e a categoria visíveis, em vez de
@@ -634,10 +656,10 @@ export default function LancamentosScreen() {
   const transacoesDoResumo = useMemo(() => {
     const termo = search.trim().toLowerCase();
     return monthTransactions.filter((t) => {
-      if (categoryFilter && t.category !== categoryFilter) return false;
+      if (!modoCategoria && categoryFilter && t.category !== categoryFilter) return false;
       return !termo || t.description.toLowerCase().includes(termo) || t.category.toLowerCase().includes(termo);
     });
-  }, [categoryFilter, monthTransactions, search]);
+  }, [categoryFilter, monthTransactions, search, modoCategoria]);
 
   const { monthIn, monthOut } = useMemo(() => {
     let entrada = 0;
@@ -656,9 +678,9 @@ export default function LancamentosScreen() {
   const categoryOptions = useMemo(
     () =>
       Array.from(
-        monthTransactions.reduce((map, t) => (map.has(t.category) ? map : map.set(t.category, t.color)), new Map<string, string>())
+        transactions.filter(t => isSameMonth(t.occurred_on, selectedYear, selectedMonth) && (filter === 'in' ? t.type === 'in' : t.type === 'out')).reduce((map, t) => (map.has(t.category) ? map : map.set(t.category, t.color)), new Map<string, string>())
       ).sort((a, b) => a[0].localeCompare(b[0], 'pt-BR')),
-    [monthTransactions]
+    [transactions, selectedYear, selectedMonth, filter]
   );
 
   // Filtrado por tipo, categoria e busca textual (descrição ou categoria) — todos dentro do mês selecionado.
@@ -670,11 +692,11 @@ export default function LancamentosScreen() {
   const semFiltroDeTipo = useMemo(
     () =>
       monthTransactions.filter((t) => {
-        if (categoryFilter && t.category !== categoryFilter) return false;
+        if (!modoCategoria && categoryFilter && t.category !== categoryFilter) return false;
         if (searchQuery && !t.description.toLowerCase().includes(searchQuery) && !t.category.toLowerCase().includes(searchQuery)) return false;
         return true;
       }),
-    [categoryFilter, monthTransactions, searchQuery]
+    [categoryFilter, monthTransactions, searchQuery, modoCategoria]
   );
   const visible = useMemo(
     () => semFiltroDeTipo.filter((t) => filter === 'tudo' || t.type === filter),
@@ -722,7 +744,7 @@ export default function LancamentosScreen() {
           onChange={(y, m) => {
             setSelectedYear(y);
             setSelectedMonth(m);
-            setCategoryFilter(null);
+            setCategoryFilter(null); setIntervaloCategoria(null);
           }}
         />
 
@@ -735,6 +757,10 @@ export default function LancamentosScreen() {
             saldo zero para quem tem R$ 1.322,79, com a faixa de "mostrando
             dados salvos no aparelho" acesa por cima. Número velho é útil;
             número INVENTADO não — enquanto não há dado, mostra-se travessão. */}
+        {modoCategoria ? <View style={styles.monthSummaryCard}>
+          <Text style={styles.monthSummaryLabel}>Gastos na categoria</Text>
+          <PrivacyValue><Text style={styles.monthSummaryVal}>{consultaCategoria.resultado ? formatBRL(monthOut) : 'Indisponível agora'}</Text></PrivacyValue>
+        </View> : <>
         <View style={styles.monthSummaryCard}>
           <View style={styles.monthSummaryCol}>
             <Text style={styles.monthSummaryLabel}>Entradas</Text>
@@ -768,6 +794,7 @@ export default function LancamentosScreen() {
             </PrivacyValue>
           </View>
         </View>
+        </>}
 
         <SegmentedTabs
           options={[
@@ -776,7 +803,7 @@ export default function LancamentosScreen() {
             { key: 'out', label: 'Saídas' },
           ]}
           value={filter}
-          onChange={(f) => setFilter(f as 'tudo' | TxType)}
+          onChange={(f) => { setFilter(f as 'tudo' | TxType); if (f === 'in') setModoCategoria(false); else if (categoryFilter) setModoCategoria(true); }}
         />
 
         <View style={styles.searchRow}>
@@ -797,10 +824,11 @@ export default function LancamentosScreen() {
           )}
         </View>
 
+        {modoCategoria && <CategoriasContexto visao={visao} onChange={mudarVisao} resultado={consultaCategoria.resultado} erro={consultaCategoria.erro} carregar={consultaCategoria.carregar} />}
         {categoryOptions.length > 0 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryChipsRow}>
             <AppPressable
-              onPress={() => setCategoryFilter(null)}
+              onPress={() => { setCategoryFilter(null); setModoCategoria(false); setIntervaloCategoria(null); }}
               hitSlop={{ top: 7, bottom: 7 }}
               style={[styles.categoryChip, !categoryFilter && styles.categoryChipActive]}
             >
@@ -811,7 +839,7 @@ export default function LancamentosScreen() {
               return (
                 <AppPressable
                   key={name}
-                  onPress={() => setCategoryFilter(active ? null : name)}
+                  onPress={() => { setCategoryFilter(active ? null : name); setModoCategoria(!active && filter !== 'in'); }}
                   hitSlop={{ top: 7, bottom: 7 }}
                   style={[styles.categoryChip, active && styles.categoryChipActive]}
                 >

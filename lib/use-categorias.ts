@@ -7,7 +7,7 @@ import { apurarGastosCategoria, type Visao } from './gastos-categoria';
 import { useRecarregarAoChegarDadoNovo } from '@/components/FaixaOffline';
 import type { Transaction } from './types';
 
-export function useCategorias(inicio: string, fim: string, demo: boolean, linhasDemo: Transaction[]) {
+export function useCategorias(inicio: string, fim: string, demo: boolean, linhasDemo: Transaction[], ativo = true) {
   const { session } = useSession();
   const userId = demo ? 'demo' : session?.user.id;
   const [resultado, setResultado] = useState<CategoriasConsultadas | null>(null);
@@ -17,6 +17,7 @@ export function useCategorias(inicio: string, fim: string, demo: boolean, linhas
   const geracao = useRef(0);
   const carregar = useCallback(async () => {
     const atual = ++geracao.current;
+    if (!ativo) { setCarregando(false); return; }
     setCarregando(true);
     if (demo) {
       setResultado({ userId: 'demo', inicio, fim, atualizadoEm: new Date().toISOString(), linhas: linhasDemo, consumo: apurarGastosCategoria(linhasDemo, { inicio, fim }), doCache: false });
@@ -31,7 +32,7 @@ export function useCategorias(inicio: string, fim: string, demo: boolean, linhas
       console.error('[categorias] sessão indisponível', e);
       if (atual === geracao.current) setErro('Não foi possível consultar as categorias.');
     } finally { if (atual === geracao.current) setCarregando(false); }
-  }, [inicio, fim, demo, linhasDemo, userId]);
+  }, [inicio, fim, demo, linhasDemo, userId, ativo]);
   useFocusEffect(useCallback(() => { void carregar(); return () => { geracao.current++; }; }, [carregar]));
   useRecarregarAoChegarDadoNovo(() => { void carregar(); });
   return { resultado: resultado?.userId === userId ? resultado : null, erro, carregando, carregar };
