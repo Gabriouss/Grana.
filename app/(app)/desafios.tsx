@@ -15,8 +15,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   fetchBills,
   fetchCardInvoicePayments,
-  fetchDiasComRegistro,
-  fetchDiasComRegistroRecentes,
+  fetchDiasDeAtividade,
   fetchCreditCards,
   fetchBudgets,
   fetchConquistas,
@@ -31,10 +30,9 @@ import { semViuva } from '@/lib/sem-viuva';
 import DesafiosPadraoGastos from '@/components/DesafiosPadraoGastos';
 import { calcularPadraoDeGastos, type PadraoDeGastos } from '@/lib/desafios-padrao-gastos';
 import DesafiosCalendario from '@/components/DesafiosCalendario';
-import { deslocarMes } from '@/lib/desafios-calendario';
 import HojeNoSeuMes from '@/components/HojeNoSeuMes';
 import { hapticTap } from '@/lib/haptics';
-import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type, lh } from '@/lib/theme';
+import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type, lh, touchTarget } from '@/lib/theme';
 import { useDemo } from '@/lib/demo-context';
 import { DEMO_BILLS, DEMO_BUDGETS, DEMO_GOALS, DEMO_CREDIT_CARDS, DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import BadgeCard from '@/components/BadgeCard';
@@ -85,7 +83,7 @@ export default function DesafiosScreen() {
     }
 
     try {
-      const [tx, b, bg, historical, conquistadas, metas, cartoes, recentes, meses, pagamentos] = await Promise.all([
+      const [tx, b, bg, historical, conquistadas, metas, cartoes, diasCarregados, pagamentos] = await Promise.all([
         fetchTransactions({ sinceDays: 45 }),
         /* TODAS as contas, não só as pendentes: "Contas acompanhadas" mede as
            PAGAS sobre o total. Só com as pendentes o fator nunca via uma conta
@@ -97,14 +95,9 @@ export default function DesafiosScreen() {
         fetchConquistas(),
         fetchGoals(),
         fetchCreditCards(),
-        fetchDiasComRegistroRecentes(),
-        Promise.all([0, -1, -2].map(delta => {
-          const m = deslocarMes(new Date().getFullYear(), new Date().getMonth(), delta);
-          return fetchDiasComRegistro(m.ano, m.mes);
-        })),
+        fetchDiasDeAtividade(),
         fetchCardInvoicePayments(),
       ]);
-      const diasCarregados = new Set([...recentes, ...meses.flatMap(d => [...d])]);
       setDias(diasCarregados);
       let gState: GamificationState;
       if (historical) {
@@ -135,7 +128,7 @@ export default function DesafiosScreen() {
       if (novas.length > 0) {
         registrarConquistas(novas.map((b) => b.id)).catch((erro) => {
           console.error('[desafios] registro de conquista falhou', erro);
-          setLoadError('N?o foi poss?vel guardar sua conquista. Tente atualizar novamente.');
+          setLoadError('Não foi possível guardar sua conquista. Tente atualizar novamente.');
         });
         setConquistaNova(novas[0]);
       }
@@ -202,7 +195,7 @@ export default function DesafiosScreen() {
     return (
       <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
         <ScreenHeader
-          eyebrow="Saúde & consistência"
+          eyebrow="Todas as carteiras"
           title="Desafios"
           right={
             <>
@@ -241,12 +234,11 @@ export default function DesafiosScreen() {
     );
   }
 
+  const metasConcluidas = goals.filter(g => Number(g.current_amount) >= Number(g.target_amount)).length;
+  const totalGuardado = goals.reduce((s, g) => s + Number(g.current_amount), 0);
   const {
     streak,
     score,
-    mastery,
-    nextMastery,
-    masteryProgress,
     factors,
     weekActivity,
     unlockedBadgesCount,
@@ -258,7 +250,7 @@ export default function DesafiosScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <ScreenHeader
-        eyebrow="Saúde & consistência"
+        eyebrow="Todas as carteiras"
         title="Desafios"
         right={
           <>
@@ -294,44 +286,27 @@ export default function DesafiosScreen() {
             conquistar algo precisa ver isso primeiro, não o Score. */}
         {conquistaNova && (
           <ConquistaDesbloqueada
-            titulo={conquistaNova.title}
-            descricao={conquistaNova.description}
+            titulo={semViuva(conquistaNova.title)}
+            descricao={semViuva(conquistaNova.description)}
             onFechar={() => setConquistaNova(null)}
           />
         )}
 
-        {/* Card Principal de Score & Nível */}
+        {loadError && <Text accessibilityRole="alert" style={styles.factorDesc}>{semViuva(loadError)}</Text>}
+        <HojeNoSeuMes bills={acoes.bills} cards={acoes.cards} goals={ligado('cofrinhos') ? goals : []} tx={acoes.tx} />
         <View style={styles.heroCard}>
           <View style={styles.heroTop}>
             <View style={styles.scoreCircle}>
               <Text style={styles.scorePoints}>{score}</Text>
-              <Text style={styles.scorePointsLabel}>pontos</Text>
+              <Text style={styles.scorePointsLabel}>de 1000</Text>
             </View>
             <View style={styles.heroInfo}>
-              <View style={styles.levelBadge}>
-                <Text style={styles.levelBadgeText}>FAIXA {mastery.level}</Text>
-              </View>
-              <Text style={styles.masteryTitle}>{mastery.title}</Text>
-              <Text style={styles.masteryDesc}>{mastery.description}</Text>
+              <Text style={styles.masteryTitle}>{semViuva('Score de hábito')}</Text>
+              <Text style={styles.masteryDesc}>{semViuva('Seu ritmo de registro e acompanhamento no aplicativo.')}</Text>
             </View>
           </View>
-
-          {/* Barra de Progresso */}
-          <View style={styles.progressSection}>
-            <View style={styles.progressLabels}>
-              <Text style={styles.progressLabel}>
-                {nextMastery ? `Rumo a ${nextMastery.title}` : 'Nível Máximo Alcançado!'}
-              </Text>
-              <Text style={styles.progressPct}>{Math.round(masteryProgress * 100)}%</Text>
-            </View>
-            <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, { width: `${Math.round(masteryProgress * 100)}%` }]} />
-            </View>
-            {nextMastery && (
-              <Text style={styles.remainingText}>
-                Faltam {nextMastery.minScore - score} pontos para a Faixa {nextMastery.level}
-              </Text>
-            )}
+          <View accessible accessibilityRole="progressbar" accessibilityLabel="Score de hábito" accessibilityValue={{ min: 0, max: 1000, now: score }} style={styles.progressBarBg}>
+            <View style={[styles.progressBarFill, { width: `${score / 10}%` }]} />
           </View>
         </View>
 
@@ -339,8 +314,8 @@ export default function DesafiosScreen() {
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{semViuva('Suas metas')}</Text>
-          <Text style={styles.factorLabel}>{goals.filter(g => Number(g.current_amount) >= Number(g.target_amount)).length} metas conclu?das</Text>
-          <PrivacyValue><Text style={styles.scoreTotalLabel}>{formatBRL(goals.reduce((s, g) => s + Number(g.current_amount), 0))} guardados</Text></PrivacyValue>
+          <Text style={styles.factorLabel}>{semViuva(`${metasConcluidas} ${metasConcluidas === 1 ? 'meta concluída' : 'metas concluídas'}`)}</Text>
+          <PrivacyValue><Text style={styles.scoreTotalLabel}>{formatBRL(totalGuardado)} guardados</Text></PrivacyValue>
         </View>
 
         <DesafiosPadraoGastos padrao={padrao} />
@@ -354,7 +329,7 @@ export default function DesafiosScreen() {
           <View style={styles.cardHeadRow}>
             <View style={styles.titleWithIcon}>
               <Ionicons name="stats-chart-outline" size={17} color={theme.accent2} />
-              <Text style={styles.cardTitle}>Composição do seu score</Text>
+              <Text style={styles.cardTitle}>{semViuva('Composição do Score')}</Text>
             </View>
             <Text style={styles.scoreTotalLabel}>{score}/1000 pts</Text>
           </View>
@@ -363,7 +338,7 @@ export default function DesafiosScreen() {
             {factors.map((f, i) => (
               <View key={i} style={styles.factorItem}>
                 <View style={styles.factorTop}>
-                  <Text style={styles.factorLabel}>{f.label}</Text>
+                  <Text style={styles.factorLabel}>{semViuva(f.label)}</Text>
                   <Text style={styles.factorPoints}>{`${f.points}/${f.maxPoints} pts`}</Text>
                 </View>
                 <View style={styles.factorBarBg}>
@@ -378,7 +353,7 @@ export default function DesafiosScreen() {
                     ]}
                   />
                 </View>
-                <Text style={styles.factorDesc}>{f.description}</Text>
+                <Text style={styles.factorDesc}>{semViuva(f.description)}</Text>
               </View>
             ))}
           </View>
@@ -396,14 +371,14 @@ export default function DesafiosScreen() {
             <View style={styles.cardHeadRow}>
               <View style={styles.titleWithIcon}>
                 <Ionicons name="eye-outline" size={17} color={theme.accent2} />
-                <Text style={styles.cardTitle}>Retrato do mês</Text>
+                <Text style={styles.cardTitle}>{semViuva('Retrato do mês')}</Text>
               </View>
             </View>
             <View style={styles.factorsList}>
               {indicadores.map((ind, i) => (
                 <View key={i} style={styles.indicadorItem}>
                   <View style={styles.factorTop}>
-                    <Text style={styles.factorLabel}>{ind.label}</Text>
+                    <Text style={styles.factorLabel}>{semViuva(ind.label)}</Text>
                     <PrivacyValue>
                       <Text
                         style={[
@@ -416,7 +391,7 @@ export default function DesafiosScreen() {
                       </Text>
                     </PrivacyValue>
                   </View>
-                  <Text style={styles.factorDesc}>{ind.descricao}</Text>
+                  <Text style={styles.factorDesc}>{semViuva(ind.descricao)}</Text>
                 </View>
               ))}
             </View>
@@ -430,7 +405,7 @@ export default function DesafiosScreen() {
           <View style={styles.cardHeadRow}>
             <View style={styles.titleWithIcon}>
               <Ionicons name="ribbon-outline" size={17} color={theme.accent2} />
-              <Text style={styles.cardTitle}>Mural de conquistas</Text>
+              <Text style={styles.cardTitle}>{semViuva('Mural de conquistas')}</Text>
             </View>
             <Text style={styles.badgeRatioText}>{`${unlockedBadgesCount} de ${totalBadgesCount}`}</Text>
           </View>
@@ -459,7 +434,6 @@ export default function DesafiosScreen() {
           </View>
         </View>
 
-        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -498,7 +472,7 @@ const styles = StyleSheet.create({
   },
   loadingTitle: { color: theme.ink, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo'), fontFamily: fonts.regular, textAlign: 'center' },
   loadingText: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light, textAlign: 'center' },
-  retryButton: { marginTop: spacing.xs, borderRadius: radius.md, backgroundColor: theme.ink, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  retryButton: { minHeight: touchTarget, justifyContent: 'center', marginTop: spacing.xs, borderRadius: radius.md, backgroundColor: theme.ink, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   retryButtonText: { color: theme.paper, fontSize: type.apoio, fontFamily: fonts.regular },
   scroll: { flex: 1 },
   content: { padding: screenRhythm.padding, gap: screenRhythm.gap },
@@ -538,19 +512,6 @@ const styles = StyleSheet.create({
     color: theme.inkSoft,
   },
   heroInfo: { flex: 1, gap: spacing.fio },
-  levelBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(174,255,227,0.15)',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.fio,
-    borderRadius: radius.pill,
-  },
-  levelBadgeText: {
-    fontFamily: fonts.regular,
-    fontSize: type.micro,
-    lineHeight: lh(type.micro, 'apoio'),
-    color: theme.accent2,
-  },
   masteryTitle: {
     fontFamily: fonts.regular,
     fontSize: type.titulo,
@@ -567,34 +528,6 @@ const styles = StyleSheet.create({
        entrelinha seguir o corpo em cada plataforma. */
     lineHeight: lh(type.legenda, 'apoio'),
   },
-  progressSection: {
-    gap: spacing.xs,
-    paddingTop: spacing.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.rule,
-  },
-  /* Mesma causa do `cardHeadRow` acima: "Rumo a [título da faixa]" ou
-     "Nível X · [título do elo]" cresce com o nome da faixa/elo e colidia
-     com a porcentagem fixa ao lado quando não cabiam numa linha só. */
-  progressLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    rowGap: 4,
-  },
-  progressLabel: {
-    fontFamily: fonts.regular,
-    fontSize: type.legenda,
-    lineHeight: lh(type.legenda, 'apoio'),
-    color: theme.inkSoft,
-    flexShrink: 1,
-  },
-  progressPct: {
-    fontFamily: fonts.regular,
-    fontSize: type.legenda,
-    lineHeight: lh(type.legenda, 'apoio'),
-    color: theme.accent2,
-  },
   progressBarBg: {
     height: 6,
     backgroundColor: theme.superficieInativa,
@@ -605,19 +538,6 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: theme.accent2,
     borderRadius: radius.pill,
-  },
-  remainingText: {
-    fontFamily: fonts.regular,
-    fontSize: type.micro,
-    lineHeight: lh(type.micro, 'apoio'),
-    color: theme.inkFaint,
-  },
-  levelHint: {
-    fontFamily: fonts.regular,
-    fontSize: type.micro,
-    color: theme.inkFaint,
-    lineHeight: lh(type.micro, 'apoio'),
-    marginTop: spacing.fio,
   },
   card: {
     backgroundColor: theme.paperRaised,
@@ -655,16 +575,6 @@ const styles = StyleSheet.create({
     color: theme.ink,
     flexShrink: 1,
   },
-  streakBadgeText: {
-    fontFamily: fonts.regular,
-    fontSize: type.legenda,
-    lineHeight: lh(type.legenda, 'apoio'),
-    color: theme.accent2,
-    backgroundColor: 'rgba(174,255,227,0.1)',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.fio,
-    borderRadius: radius.pill,
-  },
   scoreTotalLabel: {
     fontFamily: fonts.regular,
     fontSize: type.nota,
@@ -676,51 +586,6 @@ const styles = StyleSheet.create({
     fontSize: type.legenda,
     lineHeight: lh(type.legenda, 'apoio'),
     color: theme.inkSoft,
-  },
-  weekRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  dayCol: { alignItems: 'center', gap: spacing.icone },
-  dayCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: 'rgba(174,255,227,0.06)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  dayCircleActive: {
-    backgroundColor: theme.accent2,
-    borderColor: theme.accent2,
-  },
-  dayCircleToday: {
-    borderColor: theme.accent2,
-  },
-  dayDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.inkFaint,
-    opacity: 0.5,
-  },
-  dayDotToday: {
-    backgroundColor: theme.accent2,
-    opacity: 1,
-  },
-  dayName: {
-    fontFamily: fonts.regular,
-    fontSize: type.micro,
-    lineHeight: lh(type.micro, 'apoio'),
-    color: theme.inkFaint,
-  },
-  dayNameActive: {
-    color: theme.accent2,
-  },
-  dayNameToday: {
-    color: theme.ink,
   },
   factorsList: { gap: spacing.md },
   factorItem: { gap: 3 },

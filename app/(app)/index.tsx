@@ -1,4 +1,4 @@
-import { fetchDiasComRegistroRecentes } from '@/lib/data';
+import { fetchDiasDeAtividade } from '@/lib/data';
 import { movimentarCofrinhoLocal, type OrigemCofrinho } from '@/lib/cofrinho-origem';
 import { boletoAtrasado, boletosDaSemana } from '../../lib/boletos-da-semana';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
@@ -34,7 +34,6 @@ import { addBill, deleteBudget, deleteInstallmentPurchase, deleteTransaction, en
 import { confirmarExclusaoDeLancamento, conferirContaPaga } from '@/lib/excluir-lancamento';
 import { carregarLayoutHome, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
 import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals, updateGoal } from '@/lib/goals';
-import { calcularLevelState } from '@/lib/gamification-infinite';
 import { calcularSafeToSpend, projetarComprometimentoFuturo, sugerirEvolucaoArquetipo } from '@/lib/projections';
 import { ARQUETIPOS, carregarDiagnostico, type DiagnosticoCarregado } from '@/lib/diagnostico';
 import { formatMoney, formatDateLabel, parseAmount, saudacaoDoDia, todayISO, formatMoneyInput } from '@/lib/format';
@@ -459,8 +458,8 @@ export default function InicioScreen() {
           cancelDailyHabitReminder().catch(() => {});
           return;
         }
-        await scheduleDailyHabitReminder({ ...prefs.horario, ...contextoDoLembrete(tx, new Date(), await fetchDiasComRegistroRecentes()), almocoAtivo: prefs.almocoAtivo });
-      }).catch(erro => console.error('[inicio] lembrete de h?bito falhou', erro));
+        await scheduleDailyHabitReminder({ ...prefs.horario, ...contextoDoLembrete(tx, new Date(), await fetchDiasDeAtividade()), almocoAtivo: prefs.almocoAtivo });
+      }).catch(erro => console.error('[inicio] lembrete de hábito falhou', erro));
 
       let cofrinhosConferidos = false;
       setFontesLivreDisponiveis(false);
@@ -567,7 +566,7 @@ export default function InicioScreen() {
      wrapped de dados fictícios não diz nada sobre o mês da pessoa. */
   useEffect(() => {
     if (loading || isDemoMode || onboardingOpen) return;
-    const w = gerarMonthlyWrapped(transactions, bills, budgets, lifetimeXp);
+    const w = gerarMonthlyWrapped(transactions, bills, budgets, lifetimeXp, new Date(), goals);
     if (w.vazio) return;
     let cancelado = false;
     wrappedJaVisto(w.chave).then((visto) => {
@@ -578,7 +577,7 @@ export default function InicioScreen() {
     return () => {
       cancelado = true;
     };
-  }, [loading, isDemoMode, onboardingOpen, transactions, bills, budgets, lifetimeXp]);
+  }, [loading, isDemoMode, onboardingOpen, transactions, bills, budgets, lifetimeXp, goals]);
 
   /* Saldo por carteira depois de cada mudança nas transações.
    *
@@ -1154,17 +1153,12 @@ export default function InicioScreen() {
       triggerToast(delta >= 0 ? 'Guardado no cofrinho (exemplo)' : 'Resgatado do cofrinho (exemplo)');
       return;
     }
-    const nivelAntes = calcularLevelState(lifetimeXp).level;
     const atualizada = await depositToGoal(goal, delta, origem);
     setGoals((prev) => prev.map((g) => (g.id === goal.id ? atualizada : g)));
     triggerToast(delta >= 0 ? 'Guardado no cofrinho' : 'Resgatado do cofrinho');
     try {
       const xpAtualizado = (await fetchGamification()).lifetime_xp;
       setLifetimeXp(xpAtualizado);
-      const depois = calcularLevelState(xpAtualizado);
-      if (depois.level > nivelAntes) {
-        triggerToast(`Você chegou ao nível ${depois.level} · ${depois.elo.title}`);
-      }
     } catch (erro) {
       if (!isLikelyNetworkError(erro)) console.error('[inicio] atualização de XP após cofrinho falhou', erro);
     }

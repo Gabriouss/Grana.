@@ -50,6 +50,7 @@ const wrapped: MonthlyWrapped = {
   boletosPagos: 0, valorBoletosPagos: 0,
   saidasMesAnterior: 1000, comprometidoFixo: 0,
   diasComRegistro: 4, diasNoMes: 31,
+  metasConcluidas: 2, totalGuardado: 350,
   level: { xp: 720, level: 5, elo: { key: 'construtor', title: 'Construtor', minLevel: 5, icone: 'construct-outline' }, nextElo: null, xpAtualNoLevel: 24, xpParaProximoLevel: 100, progressoLevel: 0.24 },
   vazio: false,
 } as MonthlyWrapped;
@@ -75,7 +76,7 @@ const base = { ano: 2026, mes: 6, transactions: transacoes, bills: contas, carte
   checar('e o quanto passou dele', html.includes('acima em'));
   checar('a comparação com o mês anterior aparece', html.includes('Comparado ao mês anterior'));
   checar('a variação é +64% (1.640 contra 1.000)', html.includes('+ 64%'), 'esperava "+ 64%" no documento');
-  checar('o nível alcançado aparece', html.includes('Nível 5') && html.includes('Construtor'));
+  checar('metas e total guardado substituem o nível', html.includes('2 metas concluídas') && html.includes('350,00') && !html.includes('Nível 5') && !html.includes('Construtor'));
 
   /* Nenhum emoji no papel. Desde a rodada de tom eles saíram também da tela,
      mas o documento é onde isso mais pesa: um ícone colorido do sistema

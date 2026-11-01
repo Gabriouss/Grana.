@@ -1,4 +1,4 @@
-import { fetchDiasComRegistroRecentes } from '@/lib/data';
+import { fetchDiasDeAtividade } from '@/lib/data';
 import { useEffect } from 'react';
 import { Stack, usePathname, useRouter, type ErrorBoundaryProps } from 'expo-router';
 import Head from 'expo-router/head';
@@ -249,7 +249,7 @@ function RootNavigator() {
       if (encerrado) return;
       await scheduleDailyHabitReminder({
         ...prefs.horario,
-        ...contextoDoLembrete(transacoes, new Date(), await fetchDiasComRegistroRecentes()),
+        ...contextoDoLembrete(transacoes, new Date(), await fetchDiasDeAtividade()),
         almocoAtivo: prefs.almocoAtivo,
       });
     };

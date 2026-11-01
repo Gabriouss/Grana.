@@ -1,4 +1,5 @@
 import React from 'react';
+import { semViuva } from '@/lib/sem-viuva';
 import { StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from './AppPressable';
@@ -43,11 +44,11 @@ export default function BadgeCard({ badge, onPress }: Props) {
       </View>
 
       <Text style={[styles.title, !unlocked && styles.titleLocked]}>
-        {title}
+        {semViuva(title)}
       </Text>
 
       <Text style={styles.description}>
-        {description}
+        {semViuva(description)}
       </Text>
 
       {!unlocked && (

@@ -7,7 +7,7 @@ import { ESPACO_ALCA } from './WidgetGrid';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, fonts, type, touchTarget, menta, hitSlopPara } from '@/lib/theme';
 import { formatMoney, formatDateLabel, parseAmount, todayISO, formatMoneyInput } from '@/lib/format';
-import { calcularLevelState } from '@/lib/gamification-infinite';
+import { semViuva } from '@/lib/sem-viuva';
 import { LIMITS } from '@/lib/limits';
 import { PALETTE_30 } from '@/lib/theme';
 import type { Goal } from '@/lib/types';
@@ -61,7 +61,7 @@ export default function GoalsCarousel({
 }) {
   const { ligado } = useFlags();
   const { hidden } = usePrivacy();
-  const level = calcularLevelState(lifetimeXp);
+  const concluidas = goals.filter(g => Number(g.current_amount) >= Number(g.target_amount)).length;
 
   const scrollRef = useRef<ScrollView>(null);
   const scrollX = useRef(0);
@@ -182,9 +182,9 @@ export default function GoalsCarousel({
         <Text style={styles.sectionLabel}>Cofrinhos & metas</Text>
         <View style={styles.levelActions}>
           <View style={styles.levelPill}>
-            <Ionicons name={level.elo.icone as any} size={13} color={theme.accent2} />
+            <Ionicons name="checkmark-circle-outline" size={13} color={theme.accent2} />
             <Text style={styles.levelPillText} numberOfLines={1}>
-              Nível {level.level} · {level.elo.title}
+              {semViuva(`${concluidas} ${concluidas === 1 ? 'meta concluída' : 'metas concluídas'}`)}
             </Text>
           </View>
           {/* No toque (nativo e touch na web) arrastar a fileira já funciona

@@ -482,12 +482,12 @@ export function evaluateBadges(
     {
       id: 'savings_5k',
       title: 'Cinco mil em receitas',
-      description: 'Acumulou mais de R$ 5.000,00 em receitas registradas.',
+      description: 'Acumulou mais de R$\u00a05.000,00 em receitas registradas.',
       icone: 'business-outline',
       category: 'saving',
       unlocked: incomeTotal >= 5000,
       progress: Math.min(1, incomeTotal / 5000),
-      progressLabel: 'R$ 5.000',
+      progressLabel: 'R$\u00a05.000',
     },
 
     // Agilidade & Domínio

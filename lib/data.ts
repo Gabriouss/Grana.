@@ -12,7 +12,7 @@ import { idDoUsuarioLocal } from './sessao-offline';
    abaixo mantêm o disco em dia com `atualizarTelaGuardada`. */
 import { buscarTodasAsPaginas } from './paginacao';
 import { diasComRegistro } from './gamification';
-import { limitesDoMes } from './desafios-calendario';
+import { limitesDoMes, deslocarMes } from './desafios-calendario';
 import { isoLocal } from './format';
 import { CATEGORIES } from './types';
 import { checarLimiteCartao } from './creditLimitAlert';
@@ -1203,8 +1203,8 @@ const diasDeMesFechado = new Map<string, Set<string>>();
 export function limparDiasComRegistro(): void {
   diasDeMesFechado.clear();
 }
-// O mesmo sinal cobre grava??o, edi??o, exclus?o, voz e sincroniza??o offline.
-// Inscri??o aqui evita importar data.ts nos m?dulos de persist?ncia.
+// O sinal cobre gravação, edição, exclusão e voz; a versão cobre a fila offline.
+// A inscrição fica na primeira consulta para evitar ciclos de import.
 let observaDias = false;
 let versaoDias = -1;
 
@@ -1252,6 +1252,19 @@ export async function fetchDiasComRegistroRecentes(sinceDays = 45): Promise<Set<
   const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - sinceDays);
   const fim = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 1);
   return (await diasEntre(inicio.toISOString(), fim.toISOString())).comPendentes;
+}
+
+/** Mesma janela para Desafios e lembretes: sequência, calendário e Mês completo. */
+export async function fetchDiasDeAtividade(): Promise<Set<string>> {
+  const agora = new Date();
+  const grupos = await Promise.all([
+    fetchDiasComRegistroRecentes(),
+    ...[0, -1, -2].map(delta => {
+      const m = deslocarMes(agora.getFullYear(), agora.getMonth(), delta);
+      return fetchDiasComRegistro(m.ano, m.mes);
+    }),
+  ]);
+  return new Set(grupos.flatMap(d => [...d]));
 }
 
 export const fetchSaldosPorCarteira = comCacheOffline('saldos', buscar_fetchSaldosPorCarteira);

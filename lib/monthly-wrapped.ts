@@ -7,7 +7,7 @@
  * quanto se gastou.
  */
 
-import type { Bill, Budget, Transaction } from './types';
+import type { Bill, Budget, Transaction, Goal } from './types';
 import { calcularLevelState, type LevelState } from './gamification-infinite';
 import { supabase } from './supabase';
 import { isCreditTx } from './transaction-rules';
@@ -61,6 +61,8 @@ export type MonthlyWrapped = {
   /** Dias que o mês retratado tem. */
   diasNoMes: number;
   level: LevelState;
+  metasConcluidas?: number;
+  totalGuardado?: number;
   /** true quando não houve movimentação nenhuma — a retrospectiva não deve ser exibida. */
   vazio: boolean;
 };
@@ -109,7 +111,8 @@ export function gerarMonthlyWrapped(
   bills: Bill[],
   budgets: Budget[],
   lifetimeXp: number,
-  hoje: Date = new Date()
+  hoje: Date = new Date(),
+  goals: Goal[] = []
 ): MonthlyWrapped {
   const { ano, mes } = mesFechadoAnterior(hoje);
 
@@ -195,6 +198,8 @@ export function gerarMonthlyWrapped(
     diasComRegistro: new Set(doMes.map((t) => t.occurred_on)).size,
     diasNoMes: new Date(ano, mes + 1, 0).getDate(),
     level: calcularLevelState(lifetimeXp),
+    metasConcluidas: goals.filter(g => Number(g.current_amount) >= Number(g.target_amount)).length,
+    totalGuardado: goals.reduce((s, g) => s + Number(g.current_amount), 0),
     vazio: doMes.length === 0,
   };
 }

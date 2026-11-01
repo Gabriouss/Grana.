@@ -4,7 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from './AppPressable';
 import { isoLocal } from '@/lib/format';
 import { semViuva } from '@/lib/sem-viuva';
-import { fonts, spacing, theme, radius } from '@/lib/theme';
+import { fonts, spacing, theme, radius, type, lh, touchTarget, card } from '@/lib/theme';
 import type { Bill, CreditCard, Goal, Transaction } from '@/lib/types';
 
 export default function HojeNoSeuMes({ bills, cards, goals, tx }: {
@@ -16,8 +16,13 @@ export default function HojeNoSeuMes({ bills, cards, goals, tx }: {
   const limite = isoLocal(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 7));
   const contas = bills.filter(b => b.status !== 'paid' && b.due_date >= iso && b.due_date <= limite);
   const fechamento = cards.find(c => {
-    const dia = Math.min(c.closing_day, new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate());
-    const data = isoLocal(new Date(hoje.getFullYear(), hoje.getMonth(), dia));
+    let mes = hoje.getMonth();
+    let dia = Math.min(c.closing_day, new Date(hoje.getFullYear(), mes + 1, 0).getDate());
+    if (dia < hoje.getDate()) {
+      mes += 1;
+      dia = Math.min(c.closing_day, new Date(hoje.getFullYear(), mes + 1, 0).getDate());
+    }
+    const data = isoLocal(new Date(hoje.getFullYear(), mes, dia));
     return data >= iso && data <= limite;
   });
   const meta = goals.find(g => g.deadline && g.deadline >= iso && g.deadline <= limite && Number(g.current_amount) < Number(g.target_amount));
@@ -38,7 +43,7 @@ export default function HojeNoSeuMes({ bills, cards, goals, tx }: {
 }
 const s = StyleSheet.create({
   bloco: { gap: spacing.sm },
-  titulo: { fontFamily: fonts.regular, color: theme.ink, fontSize: 18 },
-  acao: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 48, padding: spacing.md, borderRadius: radius.md, backgroundColor: theme.paperRaised },
-  texto: { flex: 1, color: theme.ink, fontFamily: fonts.light, fontSize: 15 },
+  titulo: { fontFamily: fonts.regular, color: theme.ink, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo') },
+  acao: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: touchTarget, padding: spacing.md, borderRadius: radius.md, backgroundColor: theme.paperRaised },
+  texto: { flex: 1, color: theme.ink, fontFamily: fonts.light, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo') },
 });

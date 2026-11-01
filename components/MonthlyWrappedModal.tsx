@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { theme, radius, spacing, type, fonts, lh, hitSlopPara } from '@/lib/theme';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, formatBRL } from '@/lib/format';
 import { hapticTap } from '@/lib/haptics';
 import type { MonthlyWrapped } from '@/lib/monthly-wrapped';
+import PrivacyValue from './PrivacyValue';
+import { semViuva } from '@/lib/sem-viuva';
 import AppPressable from './AppPressable';
 import AppModal, { InsetsDoModal } from './AppModal';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
@@ -44,10 +46,10 @@ function montarSlides(w: MonthlyWrapped): Slide[] {
     key: 'balanco',
     rotulo: w.label,
     titulo: superavit ? 'Você fechou o mês com sobra' : 'Você gastou mais do que entrou',
-    destaque: `${superavit ? '+' : '−'} R$ ${formatMoney(Math.abs(w.saldo))}`,
+    destaque: `${superavit ? '+' : '−'} R$ ${formatMoney(Math.abs(w.saldo))}`,
     destaqueCor: superavit ? theme.up : theme.down,
     apoio:
-      `Entraram R$ ${formatMoney(w.entradas)} e saíram R$ ${formatMoney(w.saidas)} em ${w.totalLancamentos} lançamentos.` +
+      `Entraram R$ ${formatMoney(w.entradas)} e saíram R$ ${formatMoney(w.saidas)} em ${w.totalLancamentos} lançamentos.` +
       (w.taxaPoupanca !== null && w.taxaPoupanca > 0
         ? ` Isso é ${Math.round(w.taxaPoupanca * 100)}% da sua renda guardada.`
         : ''),
@@ -66,7 +68,7 @@ function montarSlides(w: MonthlyWrapped): Slide[] {
       titulo: estavel ? 'Um mês parecido com o anterior' : variacao > 0 ? 'Um mês mais pesado' : 'Um mês mais leve',
       destaque: `${variacao > 0 ? '+' : '−'} ${Math.abs(variacao).toFixed(0)}%`,
       destaqueCor: variacao > 0 ? theme.down : theme.up,
-      apoio: `As saídas foram de R$ ${formatMoney(w.saidasMesAnterior)} para R$ ${formatMoney(w.saidas)}. ${
+      apoio: `As saídas foram de R$ ${formatMoney(w.saidasMesAnterior)} para R$ ${formatMoney(w.saidas)}. ${
         estavel ? 'Praticamente o mesmo ritmo dos dois meses.' : 'A diferença aparece na divisão por categoria, na tela de Gráficos.'
       }`,
       icone: variacao > 0 ? 'arrow-up-outline' : 'arrow-down-outline',
@@ -83,7 +85,7 @@ function montarSlides(w: MonthlyWrapped): Slide[] {
       titulo: 'Parte do mês já estava decidida',
       destaque: `${fatia}%`,
       destaqueCor: theme.accent2,
-      apoio: `R$ ${formatMoney(w.comprometidoFixo)} saíram de contas recorrentes e boletos. Os outros R$ ${formatMoney(
+      apoio: `R$ ${formatMoney(w.comprometidoFixo)} saíram de contas recorrentes e boletos. Os outros R$ ${formatMoney(
         w.saidas - w.comprometidoFixo
       )} foram decididos ao longo do mês.`,
       icone: 'repeat-outline',
@@ -95,7 +97,7 @@ function montarSlides(w: MonthlyWrapped): Slide[] {
       key: 'maior-despesa',
       rotulo: 'A maior de todas',
       titulo: w.maiorDespesa.description,
-      destaque: `R$ ${formatMoney(Number(w.maiorDespesa.amount))}`,
+      destaque: `R$ ${formatMoney(Number(w.maiorDespesa.amount))}`,
       destaqueCor: theme.accent2,
       apoio: `Sua maior despesa isolada do mês, na categoria ${w.maiorDespesa.category}. Sozinha, ela representou ${
         w.saidas > 0 ? Math.round((Number(w.maiorDespesa.amount) / w.saidas) * 100) : 0
@@ -116,7 +118,7 @@ function montarSlides(w: MonthlyWrapped): Slide[] {
       key: 'categoria',
       rotulo: 'Categoria campeã',
       titulo: c.nome,
-      destaque: `R$ ${formatMoney(c.total)}`,
+      destaque: `R$ ${formatMoney(c.total)}`,
       destaqueCor: c.cor,
       apoio: `${Math.round(c.fatiaDasSaidas * 100)}% de todas as suas saídas do mês foram para esta categoria.${sobreOrcamento}`,
       icone: 'pie-chart-outline',
@@ -124,16 +126,12 @@ function montarSlides(w: MonthlyWrapped): Slide[] {
   }
 
   slides.push({
-    key: 'level',
-    rotulo: 'Sua evolução',
-    titulo: w.level.elo.title,
-    destaque: `Nível ${w.level.level}`,
+    key: 'metas',
+    rotulo: 'Suas metas',
+    titulo: `${w.metasConcluidas ?? 0} metas concluídas`,
+    destaque: formatBRL(w.totalGuardado ?? 0),
     destaqueCor: theme.accent2,
-    apoio:
-      `${w.level.xp} XP acumulados até aqui.` +
-      (w.level.nextElo
-        ? ` Faltam ${Math.max(0, w.level.xpParaProximoLevel - w.level.xpAtualNoLevel)} XP para o próximo nível, rumo a ${w.level.nextElo.title}.`
-        : ' Você chegou ao topo dos elos. Segue firme.'),
+    apoio: 'Total guardado nos cofrinhos até agora.',
     icone: 'trophy-outline',
   });
 
@@ -141,11 +139,11 @@ function montarSlides(w: MonthlyWrapped): Slide[] {
     key: 'final',
     rotulo: 'Resumo de ' + w.label,
     titulo: superavit ? 'Mês fechado com sobra' : 'Mês fechado com aperto',
-    destaque: `${superavit ? '+' : '−'} R$ ${formatMoney(Math.abs(w.saldo))}`,
+    destaque: `${superavit ? '+' : '−'} R$ ${formatMoney(Math.abs(w.saldo))}`,
     destaqueCor: superavit ? theme.up : theme.down,
     apoio: `${w.totalLancamentos} lançamentos em ${w.diasComRegistro} de ${w.diasNoMes} dias · ${w.boletosPagos} ${
       w.boletosPagos === 1 ? 'boleto quitado' : 'boletos quitados'
-    } (R$ ${formatMoney(w.valorBoletosPagos)}) · Nível ${w.level.level}, ${w.level.elo.title}.`,
+    } (R$ ${formatMoney(w.valorBoletosPagos)}) · ${w.metasConcluidas ?? 0} metas concluídas, ${formatBRL(w.totalGuardado ?? 0)} guardados até agora.`,
     icone: 'sparkles-outline',
   });
 
@@ -229,9 +227,9 @@ export default function MonthlyWrappedModal({
           <View style={[styles.iconeCirculo, { borderColor: slide.destaqueCor }]}>
             <Ionicons name={slide.icone} size={30} color={slide.destaqueCor} />
           </View>
-          <Text style={styles.titulo}>{slide.titulo}</Text>
-          <Text style={[styles.destaque, { color: slide.destaqueCor }]}>{slide.destaque}</Text>
-          <Text style={styles.apoio}>{slide.apoio}</Text>
+          <Text style={styles.titulo}>{semViuva(slide.titulo)}</Text>
+          <PrivacyValue><Text style={[styles.destaque, { color: slide.destaqueCor }]}>{semViuva(slide.destaque)}</Text></PrivacyValue>
+          <PrivacyValue><Text style={styles.apoio}>{semViuva(slide.apoio)}</Text></PrivacyValue>
         </Animated.View>
 
         {/* Zonas de toque: metade esquerda volta, metade direita avança.

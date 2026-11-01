@@ -4,7 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from './AppPressable';
 import { fetchDiasComRegistro } from '@/lib/data';
 import { deslocarMes, montarCalendario, podeIrParaMesAnterior, podeIrParaProximoMes } from '@/lib/desafios-calendario';
-import { fonts, radius, spacing, theme } from '@/lib/theme';
+import { fonts, radius, spacing, theme, type, lh, touchTarget, card } from '@/lib/theme';
 import { semViuva } from '@/lib/sem-viuva';
 import type { GamificationState } from '@/lib/gamification';
 
@@ -54,12 +54,12 @@ export default function DesafiosCalendario({ dias, weekActivity, streak, demo }:
   </View>;
 }
 const s = StyleSheet.create({
-  card: { padding: spacing.md, borderRadius: radius.lg, backgroundColor: theme.paperRaised, gap: spacing.md },
-  titulo: { color: theme.ink, fontFamily: fonts.regular, fontSize: 18 },
-  texto: { color: theme.inkSoft, fontFamily: fonts.light, fontSize: 14 },
+  card: { padding: card.padding, borderRadius: card.radius, borderWidth: card.borderWidth, borderColor: theme.rule, backgroundColor: theme.paperRaised, gap: spacing.md },
+  titulo: { color: theme.ink, fontFamily: fonts.regular, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo') },
+  texto: { color: theme.inkSoft, fontFamily: fonts.light, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo') },
   grupo: { gap: spacing.sm }, linha: { flexDirection: 'row' }, coluna: { flex: 1, alignItems: 'center', minWidth: 0 },
   circulo: { minWidth: 30, minHeight: 30, padding: 4, borderRadius: 30, backgroundColor: theme.paper, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'transparent' },
   ativo: { backgroundColor: theme.accent2 }, hoje: { borderColor: theme.ink },
-  numero: { color: theme.inkSoft, fontFamily: fonts.regular, fontSize: 12 }, numeroAtivo: { color: theme.paper },
-  navegacao: { flexDirection: 'row', alignItems: 'center', minHeight: 44 }, seta: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  numero: { color: theme.inkSoft, fontFamily: fonts.regular, fontSize: type.micro, lineHeight: lh(type.micro, 'apoio') }, numeroAtivo: { color: theme.paper },
+  navegacao: { flexDirection: 'row', alignItems: 'center', minHeight: touchTarget }, seta: { minWidth: touchTarget, minHeight: touchTarget, alignItems: 'center', justifyContent: 'center' },
 });

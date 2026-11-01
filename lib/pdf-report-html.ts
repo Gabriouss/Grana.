@@ -9,7 +9,7 @@
  * O cabeçalho de fonte entra por parâmetro pelo mesmo motivo: descobrir as
  * @font-face da marca exige `document`, que só existe na web.
  */
-import { formatMoney, MONTH_NAMES } from './format';
+import { formatMoney, formatBRL, MONTH_NAMES } from './format';
 import type { Bill, Transaction } from './types';
 import type { MonthlyWrapped } from './monthly-wrapped';
 
@@ -283,9 +283,9 @@ function blocoRetrospectiva(w: MonthlyWrapped | null | undefined): string {
   }
 
   linhas.push({
-    rotulo: 'Evolução',
-    valor: `Nível ${w.level.level}`,
-    nota: `${w.level.elo.title} · ${w.level.xp} XP acumulados`,
+    rotulo: 'Suas metas',
+    valor: `${w.metasConcluidas ?? 0} metas concluídas`,
+    nota: `${formatBRL(w.totalGuardado ?? 0)} guardados até agora`,
   });
 
   return `

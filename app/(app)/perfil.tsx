@@ -1,4 +1,4 @@
-import { fetchDiasComRegistroRecentes } from '@/lib/data';
+import { fetchDiasDeAtividade } from '@/lib/data';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { mensagemErro } from '@/lib/erros';
 import { ActivityIndicator, AppState, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -313,7 +313,7 @@ export default function PerfilScreen() {
           : 'fallback-local';
         if (resultado === 'fallback-local' && novasPrefs.lembreteDiarioAtivo) {
           const transacoes = await fetchTransactions({ sinceDays: 35 });
-          await scheduleDailyHabitReminder({ ...novasPrefs.horario, ...contextoDoLembrete(transacoes, new Date(), await fetchDiasComRegistroRecentes()), almocoAtivo: novasPrefs.almocoAtivo });
+          await scheduleDailyHabitReminder({ ...novasPrefs.horario, ...contextoDoLembrete(transacoes, new Date(), await fetchDiasDeAtividade()), almocoAtivo: novasPrefs.almocoAtivo });
         }
       } catch {
         Alert.alert(
