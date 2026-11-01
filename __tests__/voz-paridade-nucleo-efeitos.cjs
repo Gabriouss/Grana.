@@ -54,6 +54,15 @@ const FONTES = {
   'lib/widget-voz-pendentes.ts': process.env.PENDENTES_FONTE,
 };
 
+/* Relógio dos módulos fixo em 15/10/2026, correndo no ritmo real por causa dos prazos
+   da voz. A fala "03/09" só grava direto com setembro na janela da data (mês atual e
+   anterior): com a data real, o cenário quebrava em qualquer fuso a partir de novembro. */
+const DESLOCAMENTO = Date.UTC(2026, 9, 15, 15) - Date.now();
+class RelogioDoTeste extends Date {
+  constructor(...args) { if (args.length) super(...args); else super(Date.now() + DESLOCAMENTO); }
+  static now() { return super.now() + DESLOCAMENTO; }
+}
+
 let aprovadas = 0;
 const ok = (c, nome) => { assert.ok(c, nome); aprovadas++; console.log('  ok  ' + nome); };
 const igual = (a, b, nome) => { assert.deepEqual(a, b, nome); aprovadas++; console.log('  ok  ' + nome); };
@@ -138,7 +147,7 @@ function montar() {
     vm.runInNewContext(ts.transpileModule(fs.readFileSync(fonte, 'utf8'), {
       compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
     }).outputText, {
-      exports, console: { ...console, warn() {}, error() {} }, JSON, Date, String, Object, Array, Error, TypeError, Promise, RegExp, Number, Math, Set, Map, Intl, Uint8Array,
+      exports, console: { ...console, warn() {}, error() {} }, JSON, Date: RelogioDoTeste, String, Object, Array, Error, TypeError, Promise, RegExp, Number, Math, Set, Map, Intl, Uint8Array,
       FormData: class { append() {} }, AbortController, clearTimeout,
       /* O aviso de dado novo agrupa por 250 ms; so o cache-de-tela ganha o prazo encurtado (os prazos de 15 s da voz ficam reais). */
       setTimeout: arquivo === 'lib/cache-de-tela.ts' ? (f, ms) => setTimeout(f, ms >= 1000 ? 20 : 0) : setTimeout, __DEV__: false,

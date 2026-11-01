@@ -43,9 +43,15 @@ ok(ehCompraNoCredito({ payment_method: null, card_id: 'c6' }), 'card_id com paym
 /* ── Handler real ──────────────────────────────────────────────────────── */
 let handler, completions = [], prompts = [];
 const userId = 'usuario-a';
-const hoje = new Date();
-const dia = [hoje.getFullYear(), hoje.getMonth() + 1, hoje.getDate()]
-  .map((p, i) => (i === 0 ? String(p) : String(p).padStart(2, '0'))).join('-');
+/* Relógio fixo na virada: 31/10 às 21h30 em Brasília, já 01/11 em UTC, o fuso do
+   servidor e do CI. O mês vigente é o de Brasília, e o teste não depende da hora. */
+const DateReal = Date;
+const AGORA = DateReal.UTC(2026, 10, 1, 0, 30);
+global.Date = class extends DateReal {
+  constructor(...args) { if (args.length) super(...args); else super(AGORA); }
+  static now() { return AGORA; }
+};
+const dia = '2026-10-31';
 const TX = [
   { amount: 100, category: 'Alimentação', type: 'out', payment_method: 'pix', card_id: null },
   { amount: 41.41, category: 'Alimentação', type: 'out', payment_method: 'debit', card_id: null },
