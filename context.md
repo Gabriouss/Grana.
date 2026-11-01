@@ -93,6 +93,12 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — parecer sobre eventos de Desafios
+
+Watchtower entregou parecer informativo **APTO COM AJUSTE**, em `E:\Grana-temporarios\2026-11-01-desafios-rolagem\parecer-watchtower-eventos.md`; não autoriza ativação imediata nem substitui validação de advogado. Para eventual coleta propõe atualizar a Política, documentar balanceamento de legítimo interesse e tratamento, justificar retenção proposta de 90 dias (não é prazo imposto pela lei), garantir oposição e exclusão efetivas, expurgo, acesso restrito e agregação sem reidentificação, além de validar com advogado. Destino, implementação, retenção e anonimização não foram verificados em produção.
+
+**Decisão do orquestrador:** fase 2 sai sem os eventos e usa os indicadores já existentes; autor informado. Nada implementado nesta entrada. A alternativa de coletar imediatamente foi descartada até que as condições e a validação sejam cumpridas.
+
 ## 01/11 — segunda entrada: rolagem, desafios e cálculo
 
 Fonte: ordem do orquestrador `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-registro-2.md`. Os fatos e atribuições a seguir são relatados pelo orquestrador; Ledger não revisou o vídeo nem a sonda.
