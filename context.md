@@ -93,6 +93,32 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — segunda entrada: rolagem, desafios e cálculo
+
+Fonte: ordem do orquestrador `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-registro-2.md`. Os fatos e atribuições a seguir são relatados pelo orquestrador; Ledger não revisou o vídeo nem a sonda.
+
+### Rolagem de "Personalizar Início"
+
+Vídeo do aparelho real recebido e medido quadro a quadro pelo orquestrador, sem revisão independente pelo Ledger; os quadros foram apagados da pasta de rascunho. Fato: durante 6 s o dedo se move sobre a lista e ela anda 0 px, sem barra de rolagem; ela só anda em dois momentos curtos; o cabeçalho fica em 0 px em todos os quadros; a Início e os Desafios rolam normalmente no mesmo aparelho. Causa ainda é hipótese (rolagem vertical dentro de rolagem vertical, `components/Sheet.tsx:78` e `components/HomeCustomizerModal.tsx:82`, sem `nestedScrollEnabled`). Anvil reproduz no emulador antes de corrigir.
+
+## Desafios
+
+Plano v2 e spec da fase 2 entregues pelo Meridian, fora do repositório. Decisões do Meridian, reversíveis pelo autor: compra no crédito conta no dia da compra, com a fatura paga fora; "Mês Verde" só para quem já conquistou. Ajustes do orquestrador: bloco chamado "Padrão de gastos"; todas as carteiras; mesma definição de gasto de "Gastos por categoria". Lacuna da spec, a tratar na tela: "Nível" e elo também aparecem em `components/GoalsCarousel.tsx:187`, `components/MonthlyWrappedModal.tsx:130,148` e `app/(app)/index.tsx:1156-1163`. Keel implementa a lógica e os testes. Watchtower dá parecer sobre os eventos. A tela vem depois. Nada publicado, nenhuma build.
+
+Correção ao registro de hoje: o plano dizia que subir de nível não tem momento nenhum; `app/(app)/index.tsx:1156-1163` compara o nível antes e depois. O efeito na tela não foi conferido.
+
+## Push
+
+Beacon escreveu `sonda-push.mjs`, só leitura e não executada, porque a consulta à produção pelo agente foi barrada pela permissão automática. O orquestrador leu o script: só GET, imprime só contagens. Depende de o autor rodar. Entrega de push segue sem verificação.
+
+## Achado: Livre para gastar conta lançamento com data futura no mês
+
+Conferido no código e no vídeo pelo orquestrador; não revisto pelo Ledger. `calcularLivre` em `supabase/functions/_shared/livre-para-gastar.ts:27` e `transacoesDeCaixaDoMes` em `lib/safe-to-spend.ts:25` filtram só pelo mês, sem comparar com hoje. No dia 1º, as séries recorrentes geram as ocorrências do mês com datas à frente, e entradas que ainda não aconteceram passam a compor "Saldo atual" e "Livre para gastar". No vídeo, a mudança só apareceu depois de puxar para atualizar. Não alterado: pela regra 20, mudança nesse cálculo exige pedido explícito do autor. Pergunta levada ao autor na mesma data.
+
+## Terminais
+
+Encerrados para liberar memória para o emulador, sem conversa em andamento: Claude Code, Claude Code #2, Flare, Quill, Lumen. Prism continua fora, à espera do comando do autor.
+
 ## 01/11 — decisões sobre o plano de desafios
 
 Transcrição da seção Decisões da ordem ao Meridian; a decisão e a leitura do orquestrador estão identificadas como na fonte.
