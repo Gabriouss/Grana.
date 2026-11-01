@@ -1,5 +1,4 @@
-import { calcularLivre, type ContextoLivre } from '../supabase/functions/_shared/livre-para-gastar';
-import { isCreditTx } from './transaction-rules';
+import { calcularLivre, entraNoCaixaDoMes, type ContextoLivre } from '../supabase/functions/_shared/livre-para-gastar';
 import type { Goal, Transaction } from './types';
 
 export type SafeToSpend = {
@@ -18,12 +17,16 @@ function chaveDoMes(hoje: Date): string {
   return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
 }
 
-/** Lançamentos de CAIXA (sem crédito) com data dentro do mês de `hoje`. */
+function isoDeHoje(hoje: Date): string {
+  return `${chaveDoMes(hoje)}-${String(hoje.getDate()).padStart(2, '0')}`;
+}
+
+/** Lançamentos de CAIXA do mês de `hoje`: sem crédito; entrada só a partir da
+ *  sua data, saída futura do mesmo mês já conta (regra 20, 01/11/2026). Mesmo
+ *  predicado do Livre (`entraNoCaixaDoMes`). */
 export function transacoesDeCaixaDoMes(transactions: Transaction[], hoje: Date = new Date()): Transaction[] {
-  const mes = chaveDoMes(hoje);
-  return transactions.filter(
-    (t) => !isCreditTx(t) && typeof t.occurred_on === 'string' && t.occurred_on.slice(0, 7) === mes
-  );
+  const hojeISO = isoDeHoje(hoje);
+  return transactions.filter((t) => entraNoCaixaDoMes(t, hojeISO));
 }
 
 /** Entradas menos saídas de caixa do mês vigente. */
@@ -44,6 +47,5 @@ export function rotuloDiasRestantes(dias: number): string {
 export function calcularSafeToSpend(
   transactions: Transaction[], goals: Goal[], hoje: Date = new Date(), contexto: ContextoLivre = {},
 ): SafeToSpend {
-  const hojeISO = `${chaveDoMes(hoje)}-${String(hoje.getDate()).padStart(2, '0')}`;
-  return calcularLivre(transactions, goals, hojeISO, contexto);
+  return calcularLivre(transactions, goals, isoDeHoje(hoje), contexto);
 }

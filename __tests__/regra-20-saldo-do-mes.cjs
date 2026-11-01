@@ -214,6 +214,46 @@ const contas = [
   trava(centavos(calcularSafeToSpend(pago, [], hoje).livreTotal) === 0, 'boleto pago não saiu do caixa');
   ok('boleto pendente ou atrasado não muda o Livre; pago, pesa pela saída de caixa');
 
+  /* 7. ENTRADA FUTURA (pedido expresso do autor, 01/11/2026, regra 20):
+     "Lançamento com data futura precisa descontar do livre para gastar, mas
+     apenas lançamentos dentro do mesmo mês. Fatura de cartão de crédito
+     precisa interferir no livre para gastar também." e
+     "Salário futuro no livre para gastar só entra após a data da entrada".
+     Saída futura do mesmo mês desconta desde já; entrada só a partir do dia
+     da data dela. Mesmo predicado no app, nos widgets e no Granabô. */
+  {
+    const nucleo = carregar('supabase/functions/_shared/livre-para-gastar.ts');
+    const exemplo = [
+      tx({ type: 'in', amount: 1000, occurred_on: '2026-11-01' }),
+      tx({ type: 'in', amount: 2500, occurred_on: '2026-11-15' }),
+      tx({ type: 'out', amount: 300, occurred_on: '2026-11-20' }),
+      tx({ type: 'out', amount: 100, occurred_on: '2026-12-01' }),
+    ];
+    const em = (dia, hora = 12, min = 0) => new Date(2026, 10, dia, hora, min);
+    const saldo = (d) => centavos(calcularSafeToSpend(exemplo, [], d).saldoAtual);
+    trava(saldo(em(1)) === 70000, `01/11: base 700, veio ${saldo(em(1)) / 100}`);
+    trava(saldo(em(14)) === 70000, 'véspera (14/11): a entrada de 15/11 ainda não conta');
+    trava(saldo(em(15)) === 320000, `dia da data (15/11): 3.200, veio ${saldo(em(15)) / 100}`);
+    trava(saldo(em(16)) === 320000, 'depois da data a entrada segue contando');
+    trava(saldo(em(15, 21, 50)) === 320000, 'dia da data às 21h50 (UTC já é 16/11): a entrada de hoje conta o dia inteiro');
+    trava(saldo(em(14, 21, 50)) === 70000, 'véspera às 21h50: continua sem a entrada');
+    trava(centavos(calcularSafeToSpend(exemplo, [], em(1)).livreTotal) === 70000, 'o Livre acompanha o Saldo atual (base 700)');
+    trava(centavos(calcularSaldoAtual(exemplo, em(1))) === 70000 && centavos(calcularSaldoAtual(exemplo, em(15))) === 320000, 'calcularSaldoAtual usa o mesmo predicado');
+    /* Núcleo do Granabô (data em Brasília) igual ao do app. */
+    for (const [iso, d] of [['2026-11-01', em(1)], ['2026-11-14', em(14)], ['2026-11-15', em(15)]]) {
+      trava(centavos(nucleo.calcularLivre(exemplo, [], iso).saldoAtual) === saldo(d), `Granabô x app em ${iso}`);
+    }
+    /* Virada do mês: a entrada de 01/12 não conta em 30/11 e conta em 01/12. */
+    const virada = [tx({ type: 'in', amount: 800, occurred_on: '2026-12-01' }), tx({ type: 'in', amount: 100, occurred_on: '2026-11-30' })];
+    trava(centavos(calcularSafeToSpend(virada, [], new Date(2026, 10, 30, 23, 50)).saldoAtual) === 10000, '30/11 às 23h50: só a entrada de novembro');
+    trava(centavos(calcularSafeToSpend(virada, [], new Date(2026, 11, 1, 0, 10)).saldoAtual) === 80000, '01/12 às 00h10: só a entrada de dezembro; a de novembro saiu do mês');
+    /* Crédito, fatura, boleto e cofrinho seguem como antes. */
+    const comCredito = [...exemplo, tx({ type: 'out', amount: 200, occurred_on: '2026-11-03', payment_method: 'credit', card_id: 'c-1' })];
+    trava(centavos(calcularSafeToSpend(comCredito, [], em(1)).saldoAtual) === 70000, 'compra no crédito segue fora do caixa');
+    trava(centavos(calcularSafeToSpend(comCredito, [], em(1), { cards: [{ id: 'c-1', closing_day: 28 }], payments: [] }).creditoNaoPago) === 20000, 'crédito não pago segue reduzindo o Livre');
+    ok('entrada futura só conta a partir da data; saída futura do mês desconta; fuso 21h50 e virada do mês');
+  }
+
   console.log(`\n${aprovadas} checagens da trava da regra 20 passaram — 0 falhas`);
 })().catch((e) => {
   console.error(e);
