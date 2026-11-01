@@ -93,6 +93,35 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — modelos, desafios e rolagem
+
+
+**Pedido do autor:** verificar e ajustar modelo e esforço de todos os terminais antes de começar; plano para os desafios ficarem mais atrativos e mais presentes na vida do usuário; corrigir a rolagem da personalização da tela inicial, com vídeo a caminho. A subida na Play continua no plano e não começou nesta rodada.
+
+**Lido em 01/11, antes de qualquer troca:** Codex Sol medium; Compass Sol xhigh; Forge Sol medium; Harbor Sol medium; Beacon Sol medium; Ledger Sol medium; Sentinel Sol medium; Watchtower Sol medium; Codex PH Sol high; Prism caído no shell, porque a sessão salva não existe mais. Claude Code, Meridian, Anvil, Lumen, Vigil, Keel, Flare, Quill e Lynx em Sonnet 5.5 medium; Claude Code #2 em Opus 5.5 medium, na conta PH; Antigravity em Gemini 4 Argon medium.
+
+**Trocas feitas pelo orquestrador, só nesta sessão de cada terminal:**
+- Forge e Harbor: Sol medium para Sol xhigh, tabela de 28/10 do `AGENTS.md`.
+- Ledger: Sol medium para Terra low, mesma tabela.
+- Lynx: Sonnet para Opus 5.5 medium, decisão do autor de 09/10 sobre o auditor.
+- Quill: Sonnet para Haiku 5.5, decisão do autor de 09/10.
+- Padrão global da conta Claude restaurado em Sonnet 5.5 medium, conferido no `settings.json`.
+
+**Mantidos de propósito:**
+- Codex em Sol medium, embora a tabela de 28/10 diga ultra: o `CLAUDE.md` manda Sol medium no orquestrador Codex, e a conta Gabriel Codex tem 15% da semana. Conflito entre as duas regras, levado ao autor.
+- Vigil em Sonnet: a regra 28 pede Sonnet para julgar acabamento visual, e o QA da rolagem é isso.
+
+**Pendente:** Prism continua fora. `recruit --replace --account` reabriu com o mesmo `resume` quebrado, e a troca pelo preset foi barrada pelo classificador, então o autor precisa rodar o comando.
+
+**Capacidade:** limites das contas consultados; memória livre de 2,4 GB, possivelmente insuficiente para emulador. Não registrar valores de credenciais.\n\n**Distribuição:** Meridian faz o plano dos desafios. Anvil faz só o diagnóstico da rolagem até o vídeo chegar. Vídeo ainda não recebido nesta entrada.
+
+
+**Sintoma e causa:** rolagem precisa de diagnóstico; causa desconhecida. Prism falha por sessão salva inexistente.
+
+**Descartado e ocorrido:** replace reproduziu o resume quebrado; troca pelo preset foi barrada pelo classificador.
+
+**Não verificado:** vídeo não recebido; diagnóstico, correção e QA no aparelho pendentes. Informações de modelos são relatos do orquestrador. Nenhuma mudança no aplicativo nesta entrada.
+
 ## 31/10 — fechamento da noite
 
 A versão de teste solicitada pelo autor foi instalada em seu celular às 21h31; a comparação relatada dos artefatos públicos antes e depois não mostrou mudança nem aviso aos usuários. O comportamento no aparelho ainda não foi verificado.
