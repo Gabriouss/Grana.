@@ -2,9 +2,7 @@ import { consumirAvisoCategorias } from '@/lib/categorias-aviso';
 import { semViuva } from '@/lib/sem-viuva';
 import { useCategorias, useVisaoCategorias } from '@/lib/use-categorias';
 import { categoriasDaVisao } from '@/lib/categorias-cliente';
-import { formatBRL } from '@/lib/format';
-import CategoriasContexto from '@/components/CategoriasContexto';
-import CategoriaTeto from '@/components/CategoriaTeto';
+import { linhaDoTeto } from '@/lib/gastos-categoria';
 import { fetchDiasDeAtividade } from '@/lib/data';
 import { movimentarCofrinhoLocal, type OrigemCofrinho } from '@/lib/cofrinho-origem';
 import { boletoAtrasado, boletosDaSemana } from '../../lib/boletos-da-semana';
@@ -1360,11 +1358,20 @@ export default function InicioScreen() {
         <View style={styles.cardHeadRow}>
           <Text style={styles.cardLabel}>Gastos por categoria</Text>
           <PrivacyValue>
-            <Text style={[styles.flowValue, { color: theme.down }]}>{categorias.resultado ? formatBRL(fatiasCategorias.reduce((s, c) => s + c.value, 0)) : 'Indisponível agora'}</Text>
+            <Text style={[styles.flowValue, { color: theme.down }]}>{categorias.resultado ? `− R$ ${formatMoney(fatiasCategorias.reduce((s, c) => s + c.value, 0))}` : 'Indisponível agora'}</Text>
           </PrivacyValue>
         </View>
 
-        {!categorias.resultado ? <Text style={styles.emptyText}>Categorias indisponíveis agora.</Text> : pieData.length === 0 ? (
+        <SegmentedTabs
+          options={[{ key: 'tudo', label: 'Tudo' }, { key: 'avista', label: 'Débito e Pix' }, { key: 'credito', label: 'Crédito' }]}
+          value={visaoCategoria}
+          onChange={mudarVisaoCategoria}
+        />
+        <Text style={styles.categoryScope}>{semViuva(`Todas as carteiras e cartões${categorias.resultado?.doCache || categorias.erro ? '. Último resultado disponível' : ''}`)}</Text>
+        {categorias.erro && <AppPressable accessibilityRole="button" onPress={categorias.carregar} style={styles.categoryRetry}>
+          <Text accessibilityRole="alert" style={styles.categoryRetryText}>{semViuva(`${categorias.erro} Toque para tentar novamente.`)}</Text>
+        </AppPressable>}
+        {!categorias.resultado ? (!categorias.erro && <Text style={styles.emptyText}>{semViuva('Carregando categorias…')}</Text>) : pieData.length === 0 ? (
           <Text style={styles.emptyText}>Nenhum gasto registrado ainda.</Text>
         ) : (
           <>
@@ -1408,9 +1415,40 @@ export default function InicioScreen() {
         {budgets.length === 0 ? (
           <Text style={styles.emptyText}>Nenhum orçamento definido. Toque em "+ Definir" ou escolha "Modelos".</Text>
         ) : (
-          categorias.resultado ? budgets.map(b => (
-            <CategoriaTeto key={b.category} categoria={b.category} teto={Number(b.amount)} consumo={categorias.resultado?.consumo.porCategoria.find(c => c.category === b.category)} visao={visaoCategoria} abrir={() => abrirCategoria(b.category)} definir={() => openBudgetModal(b)} />
-          )) : <Text style={styles.emptyText}>Tetos indisponíveis agora.</Text>
+          categorias.resultado ? budgets.map((b) => {
+            const { gasto: spent, percentual: pct, excedido: over } = linhaDoTeto(
+              categorias.resultado?.consumo.porCategoria.find(c => c.category === b.category), Number(b.amount)
+            );
+            const spentFormatted = `R$ ${formatMoney(spent)}`;
+            const limitFormatted = `R$ ${formatMoney(Number(b.amount))}`;
+            return (
+              <AppPressable
+                key={b.category}
+                style={({ hovered }) => [styles.budgetRow, hovered && styles.budgetRowHover]}
+                onPress={() => openBudgetModal(b)}
+              >
+                <View style={styles.budgetTopLine}>
+                  <View style={styles.categoryLeft}>
+                    <View style={[styles.dot, { backgroundColor: b.color }]} />
+                    <Text style={styles.categoryName}>{b.category}</Text>
+                  </View>
+                  <View style={styles.budgetAmountRow}>
+                    <PrivacyValue>
+                      <Text style={[styles.categoryAmount, over && { color: theme.ink }]}>{spentFormatted}</Text>
+                    </PrivacyValue>
+                    <Text style={[styles.categoryAmount, over && { color: theme.ink }]}> de </Text>
+                    <PrivacyValue>
+                      <Text style={[styles.categoryAmount, over && { color: theme.ink }]}>{limitFormatted}</Text>
+                    </PrivacyValue>
+                    {over && <Text style={[styles.categoryAmount, { color: theme.ink }]}> · excedido</Text>}
+                  </View>
+                </View>
+                <View style={styles.budgetTrack}>
+                  <View style={[styles.budgetFill, { width: `${pct}%`, backgroundColor: over ? theme.danger : b.color }]} />
+                </View>
+              </AppPressable>
+            );
+          }) : <Text style={styles.emptyText}>Tetos indisponíveis agora.</Text>
         )}
       </View>
     ),
@@ -1714,7 +1752,6 @@ export default function InicioScreen() {
         {/* Blocos personalizáveis da Home — ordem e visibilidade vêm de
             lib/home-layout.ts, editáveis pelo botão "Personalizar Início"
             no rodapé. Ver HOME_BLOCOS logo acima do return(). */}
-        <CategoriasContexto visao={visaoCategoria} onChange={mudarVisaoCategoria} resultado={categorias.resultado} erro={categorias.erro} carregar={categorias.carregar} />
         <WidgetGrid
           widgets={homeLayout
             .filter((b) => b.visible)
@@ -2171,6 +2208,9 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4 },
   categoryName: { color: theme.ink, fontSize: type.nota,
   lineHeight: lh(type.nota, 'apoio'), fontFamily: fonts.regular },
+  categoryScope: { color: theme.inkFaint, fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio'), fontFamily: fonts.light },
+  categoryRetry: { minHeight: touchTarget, justifyContent: 'center' },
+  categoryRetryText: { color: theme.inkSoft, fontFamily: fonts.light, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo') },
   categoryAmount: { color: theme.inkFaint, fontSize: type.nota,
   lineHeight: lh(type.nota, 'valor'), fontVariant: ['tabular-nums'], fontFamily: fonts.light },
   templateBudgetText: { color: theme.inkFaint, fontSize: type.nota,

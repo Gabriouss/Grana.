@@ -29,18 +29,6 @@ const api = load('lib/categorias-cliente.ts', {
   './gastos-categoria': core,
   './creditLimitAlert': { checarLimiteCartao: () => { notificacoes++; } },
 });
-const format = carregar('lib/format.ts');
-const jsx = (type, props) => ({ type, props: props ?? {} });
-const tokens = new Proxy({}, { get: () => 14 });
-const theme = { paper: 'paper', ink: 'ink', inkSoft: 'inkSoft', down: 'cyan', accent2: 'mint' };
-const Teto = load('components/CategoriaTeto.tsx', {
-  'react/jsx-runtime': { jsx, jsxs: jsx }, 'react-native': { Text: 'Text', View: 'View', StyleSheet: { create: x => x } },
-  './AppPressable': { __esModule: true, default: 'AppPressable' }, './PrivacyValue': { __esModule: true, default: 'PrivacyValue' },
-  '@/lib/gastos-categoria': core, '@/lib/format': format, '@/lib/sem-viuva': carregar('lib/sem-viuva.ts'),
-  '@/lib/theme': { theme, fonts: { regular: 'Regular', light: 'Light' }, spacing: tokens, radius: tokens, type: tokens, lh: x => x, touchTarget: 48 },
-}).default;
-const text = n => Array.isArray(n) ? n.map(text).join('') : n && typeof n === 'object' ? text(n.props?.children) : typeof n === 'string' || typeof n === 'number' ? String(n) : '';
-const nodes = n => Array.isArray(n) ? n.flatMap(nodes) : n && typeof n === 'object' ? [n, ...nodes(n.props?.children)] : [];
 async function main() {
   const r = await api.consultarCategorias('2026-11-01', '2026-11-30');
   check(r.resultado.consumo.total.tudo === 13000, '130 em Tudo, pagamento da fatura fora');
@@ -48,15 +36,19 @@ async function main() {
     const lista = api.linhasDaCategoria(r.resultado, 'Transporte', visao);
     check(lista.reduce((s, t) => s + t.amount, 0) === esperado, `lista bate com ${esperado} em ${visao}`);
     check(api.categoriasDaVisao(r.resultado.consumo, visao)[0].value === esperado, `donut ${visao}`);
-    const tree = Teto({ categoria: 'Transporte', teto: 100, consumo: r.resultado.consumo.porCategoria[0], visao, abrir: () => {}, definir: () => {} });
-    const out = text(tree).replaceAll('\u00a0', ' ');
-    check(out.includes('130,00 de R$ 100,00'), `teto sempre em Tudo na visão ${visao}`);
-    check(out.includes('R$ 30,00 acima do teto'), `excesso continua nas três visões: ${visao}`);
-    if (visao !== 'tudo') check(out.includes(`Nesta visão: R$ ${esperado},00`), 'parcela da visão identificada');
-    check(nodes(tree).filter(n => n.type === 'PrivacyValue').length >= 2, 'valores com privacidade');
-    const press = nodes(tree).filter(n => n.type === 'AppPressable');
-    check(press.length === 2 && press.every(n => !nodes(n.props.children).some(c => c.type === 'AppPressable')), 'ações sem clique aninhado');
+    const teto = core.linhaDoTeto(r.resultado.consumo.porCategoria[0], 100);
+    check(teto.gasto === 130, `teto soma débito e crédito na visão ${visao}`);
+    check(teto.percentual === 100, `barra limitada a 100 na visão ${visao}`);
+    check(teto.excedido === true, `130 excede teto de 100 na visão ${visao}`);
+    check(core.acimaDoTeto(r.resultado.consumo.porCategoria[0].tudo, 100) === 3000, 'excesso exato de 30 reais');
   }
+  const exato = core.linhaDoTeto({ tudo: 10000 }, 100);
+  check(exato.gasto === 100 && exato.percentual === 100 && !exato.excedido, 'exatamente no teto não excede');
+  const centavo = core.linhaDoTeto({ tudo: 10001 }, 100);
+  check(centavo.gasto === 100.01 && centavo.percentual === 100 && centavo.excedido, 'um centavo acima excede');
+  check(core.acimaDoTeto(10001, 100) === 1, 'excesso de um centavo exato');
+  const abaixo = core.linhaDoTeto({ tudo: 8000 }, 100);
+  check(abaixo.gasto === 80 && abaixo.percentual === 80 && !abaixo.excedido, 'abaixo do teto preserva valor e proporção');
   linhas = [...linhas, linhas[0], tx('parcial', 10)];
   const repetido = await api.consultarCategorias('2026-11-01', '2026-11-30', r.resultado);
   check(repetido.resultado.consumo.total.tudo === 13000, 'duplicata conciliada e pagamento parcial fora');
