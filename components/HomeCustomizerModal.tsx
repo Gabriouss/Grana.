@@ -52,7 +52,7 @@ export default function HomeCustomizerModal({
 
   return (
     <AppModal visible={visible} transparent onRequestClose={onClose}>
-      <Sheet onClose={onClose}>
+      <Sheet onClose={onClose} conteudoFixo>
         <View style={styles.header}>
           <View style={styles.headerText}>
             <Text style={styles.title} accessibilityRole="header">Personalizar Início</Text>
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     color: theme.ink,
     fontSize: type.apoio, fontFamily: fonts.regular },
   list: {
-    maxHeight: 380,
+    flexShrink: 1,
   },
   card: {
     flexDirection: 'row',

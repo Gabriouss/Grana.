@@ -42,6 +42,7 @@ export default function Sheet({
   onClose,
   centered = false,
   keyboardShouldPersistTaps = 'handled',
+  conteudoFixo = false,
 }: {
   children: ReactNode;
   /** Estilo do container interno do conteúdo (o padrão já aplica o espaçamento entre campos). */
@@ -52,6 +53,11 @@ export default function Sheet({
   onClose: () => void;
   centered?: boolean;
   keyboardShouldPersistTaps?: 'handled' | 'always';
+  /** Padrão `false`: o conteúdo todo rola dentro do painel, como sempre foi.
+      Com `true` o painel não rola: o conteúdo ocupa a altura que couber e quem
+      precisa rolar leva a PRÓPRIA rolagem dentro dele (uma lista), deixando o
+      que está antes e depois dela fixo. Só a "Personalizar Início" usa. */
+  conteudoFixo?: boolean;
 }) {
   const { aoMedirFundo, scrimStyle, sheetStyle: flutuanteStyle } = useSheetFlutuante();
   const painelRef = useRef<View>(null);
@@ -85,23 +91,29 @@ export default function Sheet({
             borda de baixo, e desde 12/09/2026 toda janela do app flutua no
             centro, em qualquer largura: a alcinha passaria a prometer um gesto
             que não existe. */}
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[
-            styles.content,
-            /* Nenhuma conta de teclado aqui, e nenhum `insets.bottom`.
-               A janela inteira já é dimensionada e posicionada acima do teclado
-               por `useSheetFlutuante`, então crescer o conteúdo pela altura
-               dele seria compensar duas vezes: o painel ficava mais alto
-               justamente quando a tela disponível encolheu. */
-            { paddingBottom: spacing.lg },
-            contentStyle,
-          ]}
-          keyboardShouldPersistTaps={keyboardShouldPersistTaps}
-          showsVerticalScrollIndicator={false}
-        >
-          {children}
-        </ScrollView>
+        {conteudoFixo ? (
+          <View style={[styles.scroll, styles.content, { paddingBottom: spacing.lg }, contentStyle]}>
+            {children}
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={[
+              styles.content,
+              /* Nenhuma conta de teclado aqui, e nenhum `insets.bottom`.
+                 A janela inteira já é dimensionada e posicionada acima do teclado
+                 por `useSheetFlutuante`, então crescer o conteúdo pela altura
+                 dele seria compensar duas vezes: o painel ficava mais alto
+                 justamente quando a tela disponível encolheu. */
+              { paddingBottom: spacing.lg },
+              contentStyle,
+            ]}
+            keyboardShouldPersistTaps={keyboardShouldPersistTaps}
+            showsVerticalScrollIndicator={false}
+          >
+            {children}
+          </ScrollView>
+        )}
       </View>
     </View>
   );

@@ -53,3 +53,12 @@ assert.strictEqual(fechou, 1, 'tocar no fundo fecha');
 const painel = kids(raiz).find((c) => c.type === 'View' && c.props.role === 'dialog');
 assert.ok(painel && painel.props.accessibilityViewIsModal, 'painel segue como diálogo modal');
 console.log('OK Sheet: nenhum Pressable acima da rolagem; fundo que fecha é irmão do painel.');
+
+// conteudoFixo (Personalizar Início): o painel não rola, a lista dentro dele sim.
+// O padrão segue sendo o painel que rola, para as outras janelas.
+assert.ok(achar(raiz, 'ScrollView').length === 1, 'padrão: o painel rola (uma ScrollView)');
+const fixo = saida.default({ onClose() {}, children: el('ScrollView', {}), conteudoFixo: true });
+const rolagens = achar(fixo, 'ScrollView');
+assert.strictEqual(rolagens.length, 1, 'conteudoFixo: só a rolagem do filho, nenhuma do painel');
+assert.ok(rolagens[0].every((a) => a.type !== 'Pressable'), 'conteudoFixo: nenhum Pressable acima da rolagem');
+console.log('OK Sheet: padrão rola o painel; conteudoFixo deixa só a lista rolar.');
