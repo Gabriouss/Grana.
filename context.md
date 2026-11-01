@@ -93,6 +93,14 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — registro 12: conferência dos prints
+
+Anvil conferiu seis itens em Expo Go (`cd92a8b6`), sem erro no log: fatias e legendas coincidem, Outros agrupado não navega, linha comum abre Lançamentos e Outros real abre na Início. Relata `tsc` e `test:ci` verdes em `b1756ce0`; emulador e Metro fechados. O orquestrador aprovou visualmente Início, Gráficos, Lançamentos e Desafios nos prints, incluindo Ver detalhes; autor ainda não viu no aparelho.
+
+Forge corrigiu em `6b9920b3` o texto de lista vazia nas visões Débito e Pix e Crédito; relata `tsc` e 44 testes de categorias verdes. O texto ainda não foi visto em print. Valores zerados no cabeçalho mantidos por serem anteriores e fora do pedido. Simulação de merge-tree em `b1756ce0` não apontou conflito; nada fundido e branch de teste segue em `390a8010`.
+
+Não verificados: Outros agrupado na Início em emulador (coberto por teste do módulo real e visto em Gráficos), TalkBack, VoiceOver, iOS e APK. Sem build ou push; próxima build depende de pedido literal do autor e consulta antes da fusão. Fonte: `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-registro-12.md`; Ledger não repetiu as medições.
+
 ## 01/11 — registro 11: gráficos, lançamentos e janelas
 
 Fonte: `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-registro-11.md`. Fatos, medições e verificações atribuídos aos agentes e ao orquestrador; Ledger não os repetiu.
@@ -120,8 +128,8 @@ Fonte: `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-registr
 
 ## Não verificado até aqui
 
-- Os três ajustes ainda não foram vistos no emulador. O Anvil fotografa em `prints-finais\`.
-- O botão "Ver detalhes" de `61a80518` ainda não foi visto em print.
+- Os três ajustes foram vistos depois no emulador; ver registro 12 acima.
+- O botão "Ver detalhes" de `61a80518` foi visto depois em print; ver registro 12 acima.
 - TalkBack, VoiceOver e iOS; as outras oito janelas do painel, sem medição individual. Nada disso está no APK.
 - Sem correção, relatado ao autor: em 360x640 dp com fonte 1.3, rótulos do eixo do Fluxo financeiro cortados e cabeçalho da Início em duas linhas.
 
