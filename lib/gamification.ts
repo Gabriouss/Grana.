@@ -1,4 +1,5 @@
 import { formatMoney, isCreditTx, isoLocal, isSameMonth, todayISO } from './format';
+import { algumMesCompleto } from './desafios-calendario';
 import type { Bill, Budget, Transaction } from './types';
 import type { GamificationHistoricalSummary } from './data';
 
@@ -105,16 +106,15 @@ export function calculateStreakAndWeek(
   transactions: Transaction[],
   /** Injetável só para teste: é o que permite fixar um horário e provar que a
    *  sequência não muda de valor às 21h. */
-  agora: Date = new Date()
+  agora: Date = new Date(),
+  /** Dias com registro vindos de `fetchDiasComRegistro` (por `created_at`).
+   *  Sem eles, sai das próprias transações, como sempre. */
+  dias?: ReadonlySet<string>
 ): {
   streak: number;
   weekActivity: WeekDayActivity[];
 } {
-  const datesWithTx = new Set(
-    transactions
-      .map((t) => (t.created_at ? isoLocal(new Date(t.created_at)) : t.occurred_on))
-      .filter(Boolean)
-  );
+  const datesWithTx = dias ?? diasComRegistro(transactions);
   const now = agora;
 
   // 1. Sequência consecutiva (Streak)
@@ -167,6 +167,26 @@ export function calculateStreakAndWeek(
 }
 
 /**
+ * Fonte ÚNICA dos dias em que a pessoa registrou algo: o dia LOCAL de
+ * `created_at` (o dia em que anotou, não o dia em que o dinheiro saiu); sem
+ * `created_at`, o `occurred_on`. Sequência, "Constância no mês" e calendário
+ * leem daqui, para a mesma palavra nunca dar dois números.
+ *
+ * Nunca `toISOString().slice(0, 10)`: das 21h à meia-noite, no Brasil, UTC já
+ * é o dia seguinte.
+ */
+export function diasComRegistro(
+  transacoes: ReadonlyArray<{ created_at?: string | null; occurred_on?: string | null }>
+): Set<string> {
+  const dias = new Set<string>();
+  for (const t of transacoes) {
+    const dia = t.created_at ? isoLocal(new Date(t.created_at)) : t.occurred_on;
+    if (dia) dias.add(dia);
+  }
+  return dias;
+}
+
+/**
  * O Score Grana (0 a 1000) e os quatro fatores.
  *
  * ── O que ele mede, e por que mudou ───────────────────────────────────────
@@ -191,7 +211,9 @@ export function calculateScoreBreakdown(
   bills: Bill[],
   budgets: Budget[],
   streak: number,
-  agora: Date = new Date()
+  agora: Date = new Date(),
+  /** Mesma fonte da sequência e do calendário. Ver `diasComRegistro`. */
+  dias?: ReadonlySet<string>
 ): { score: number; factors: ScoreFactor[]; indicadores: Indicador[] } {
   const currentYear = agora.getFullYear();
   const currentMonth = agora.getMonth();
@@ -207,11 +229,8 @@ export function calculateScoreBreakdown(
   /* Dias em que houve REGISTRO, pela mesma régua da sequência: o dia em que a
      pessoa anotou, não o dia em que o dinheiro saiu. */
   const prefixoDoMes = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`;
-  const diasComRegistro = new Set(
-    transactions
-      .map((t) => (t.created_at ? isoLocal(new Date(t.created_at)) : t.occurred_on))
-      .filter((d) => d.startsWith(prefixoDoMes))
-  ).size;
+  const diasDoMesComRegistro = [...(dias ?? diasComRegistro(transactions))]
+    .filter((d) => d.startsWith(prefixoDoMes)).length;
 
   // Fator 1: sequência viva (até 300 pts), 20 por dia, teto só aos 15 dias.
   const consistencyPts = Math.min(300, streak * 20);
@@ -227,13 +246,13 @@ export function calculateScoreBreakdown(
   };
 
   // Fator 2: constância no mês (até 300 pts) — dos dias já vividos, quantos tiveram registro.
-  const fatiaDeDias = Math.min(1, diasComRegistro / diasDecorridos);
+  const fatiaDeDias = Math.min(1, diasDoMesComRegistro / diasDecorridos);
   const constanciaPts = Math.round(fatiaDeDias * 300);
   const factorConstancia: ScoreFactor = {
     label: "Constância no mês",
     points: constanciaPts,
     maxPoints: 300,
-    description: `${diasComRegistro} de ${diasDecorridos} ${diasDecorridos === 1 ? "dia" : "dias"} do mês com algum registro.`,
+    description: `${diasDoMesComRegistro} de ${diasDecorridos} ${diasDecorridos === 1 ? "dia" : "dias"} do mês com algum registro.`,
     status: fatiaDeDias >= 0.6 ? "positive" : fatiaDeDias >= 0.3 ? "neutral" : "attention",
   };
 
@@ -345,7 +364,10 @@ export function evaluateBadges(
   streak: number,
   historical?: GamificationHistoricalSummary,
   /** Ids já gravados em `user_achievements`. Ver `aplicarPermanencia`. */
-  jaConquistadas?: readonly string[]
+  jaConquistadas?: readonly string[],
+  /** Dias com registro (mesma fonte da sequência). Sem eles, saem das transações. */
+  dias?: ReadonlySet<string>,
+  agora: Date = new Date()
 ): Badge[] {
   const totalTxCount = historical?.transaction_count ?? transactions.length;
   const inTxCount = historical?.income_count ?? transactions.filter((t) => t.type === 'in').length;
@@ -356,11 +378,10 @@ export function evaluateBadges(
     ?? new Set(transactions.filter((t) => t.type === 'out').map((t) => t.category)).size;
   const hasBudgets = budgets.length >= 3;
 
-  const now = new Date();
-  const currentMonthTx = transactions.filter((t) => isSameMonth(t.occurred_on, now.getFullYear(), now.getMonth()));
-  const currentMonthIn = currentMonthTx.filter((t) => t.type === 'in').reduce((s, t) => s + Number(t.amount), 0);
-  const currentMonthOut = currentMonthTx.filter((t) => t.type === 'out').reduce((s, t) => s + Number(t.amount), 0);
-  const hasPositiveMonth = currentMonthIn > currentMonthOut && currentMonthIn > 0;
+  /* "Mês Verde" (`superavit_month`) saiu do catálogo: só aparece para quem já
+     o conquistou, com o texto de versão anterior. Quem não o tem nunca o vê. */
+  const temMesVerdeAntigo = !!jaConquistadas?.includes('superavit_month');
+  const mesCompletoAgora = algumMesCompleto(dias ?? diasComRegistro(transactions), agora);
 
   return [
     // Consistência
@@ -386,7 +407,7 @@ export function evaluateBadges(
     },
     {
       id: 'streak_7',
-      title: 'Semana Blindada',
+      title: 'Sete dias seguidos',
       description: 'Alcançou uma sequência de 7 dias de consistência.',
       icone: 'flash-outline',
       category: 'consistency',
@@ -396,7 +417,7 @@ export function evaluateBadges(
     },
     {
       id: 'streak_30',
-      title: 'Hábito Inquebrável',
+      title: 'Trinta dias seguidos',
       description: 'Registrou por 30 dias seguidos, sem quebrar a sequência.',
       icone: 'ribbon-outline',
       category: 'consistency',
@@ -406,7 +427,7 @@ export function evaluateBadges(
     },
     {
       id: 'centurion',
-      title: 'Centurião Financeiro',
+      title: 'Cem lançamentos',
       description: 'Acumulou 100 lançamentos registrados no histórico.',
       icone: 'library-outline',
       category: 'consistency',
@@ -418,7 +439,7 @@ export function evaluateBadges(
     // Orçamento & Disciplina
     {
       id: 'budget_planner',
-      title: 'Arquiteto de Gastos',
+      title: 'Três limites definidos',
       description: 'Definiu limites de orçamento para pelo menos 3 categorias.',
       icone: 'grid-outline',
       category: 'budget',
@@ -428,7 +449,7 @@ export function evaluateBadges(
     },
     {
       id: 'bill_payer',
-      title: 'Pontualidade Britânica',
+      title: 'Cinco contas pagas',
       description: 'Pagou e deu baixa em pelo menos 5 contas ou boletos.',
       icone: 'time-outline',
       category: 'budget',
@@ -438,7 +459,7 @@ export function evaluateBadges(
     },
     {
       id: 'master_bills',
-      title: 'Guardião dos Vencimentos',
+      title: 'Vinte contas pagas',
       description: 'Pagou 20 contas com sucesso no aplicativo.',
       icone: 'shield-checkmark-outline',
       category: 'budget',
@@ -449,18 +470,18 @@ export function evaluateBadges(
 
     // Economia & Superávit
     {
-      id: 'superavit_month',
-      title: 'Mês Verde',
-      description: 'Fechou o mês com superávit (receitas maiores que saídas).',
-      icone: 'trending-up-outline',
-      category: 'saving',
-      unlocked: hasPositiveMonth,
-      progress: hasPositiveMonth ? 1 : 0,
-      progressLabel: hasPositiveMonth ? 'Concluído' : 'Em andamento',
+      id: 'full_month',
+      title: 'Mês completo',
+      description: 'Registrou algo em todos os dias de um mês.',
+      icone: 'calendar-outline',
+      category: 'consistency',
+      unlocked: mesCompletoAgora,
+      progress: mesCompletoAgora ? 1 : 0,
+      progressLabel: mesCompletoAgora ? 'Concluído' : 'Em andamento',
     },
     {
       id: 'savings_5k',
-      title: 'Primeira Fortaleza',
+      title: 'Cinco mil em receitas',
       description: 'Acumulou mais de R$ 5.000,00 em receitas registradas.',
       icone: 'business-outline',
       category: 'saving',
@@ -482,7 +503,7 @@ export function evaluateBadges(
     },
     {
       id: 'category_explorer',
-      title: 'Mapeador 360°',
+      title: 'Cinco categorias',
       description: 'Registrou despesas em pelo menos 5 categorias diferentes.',
       icone: 'compass-outline',
       category: 'speed',
@@ -490,6 +511,18 @@ export function evaluateBadges(
       progress: Math.min(1, expenseCategoryCount / 5),
       progressLabel: `${Math.min(5, expenseCategoryCount)}/5 categorias`,
     },
+    ...(temMesVerdeAntigo
+      ? [{
+          id: 'superavit_month',
+          title: 'Mês Verde',
+          description: 'Conquista de uma versão anterior.',
+          icone: 'trending-up-outline',
+          category: 'saving' as BadgeCategory,
+          unlocked: true,
+          progress: 1,
+          progressLabel: 'Concluído',
+        }]
+      : []),
   ];
 }
 
@@ -525,12 +558,16 @@ export function getGamificationState(
   bills: Bill[],
   budgets: Budget[],
   historical?: GamificationHistoricalSummary,
-  jaConquistadas: readonly string[] = []
+  jaConquistadas: readonly string[] = [],
+  /** `dias` (de `fetchDiasComRegistro`) faz sequência, Score, calendário e
+   *  "Mês completo" lerem a mesma fonte. `agora` é só para teste. */
+  opcoes: { dias?: ReadonlySet<string>; agora?: Date } = {}
 ): GamificationState {
-  const { streak, weekActivity } = calculateStreakAndWeek(transactions);
-  const { score, factors, indicadores } = calculateScoreBreakdown(transactions, bills, budgets, streak);
+  const agora = opcoes.agora ?? new Date();
+  const { streak, weekActivity } = calculateStreakAndWeek(transactions, agora, opcoes.dias);
+  const { score, factors, indicadores } = calculateScoreBreakdown(transactions, bills, budgets, streak, agora, opcoes.dias);
   const badges = aplicarPermanencia(
-    evaluateBadges(transactions, bills, budgets, streak, historical, jaConquistadas),
+    evaluateBadges(transactions, bills, budgets, streak, historical, jaConquistadas, opcoes.dias, agora),
     jaConquistadas
   );
 
