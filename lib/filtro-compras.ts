@@ -19,3 +19,14 @@ export function filtrarCompras<T extends CompraPesquisavel>(compras: ReadonlyArr
   const efetiva = categoria && compras.some(t => t.category === categoria) ? categoria : null;
   return compras.filter(t => (!efetiva || t.category === efetiva) && casaComBusca(t, consulta));
 }
+
+/**
+ * "Compras filtradas" só entra quando soma algo que a tela ainda não diz: com
+ * filtro ativo e resultado, e com um cartão selecionado (o cabeçalho dele mostra
+ * a fatura inteira) ou dois ou mais cartões na lista. Com um cartão só na visão
+ * Total, o cabeçalho do cartão já traz o mesmo número.
+ */
+export function mostrarComprasFiltradas({ filtroAtivo, comprasVisiveis, cartaoSelecionado, cartoesNaLista }:
+  { filtroAtivo: boolean; comprasVisiveis: number; cartaoSelecionado: boolean; cartoesNaLista: number }): boolean {
+  return filtroAtivo && comprasVisiveis > 0 && (cartaoSelecionado || cartoesNaLista >= 2);
+}

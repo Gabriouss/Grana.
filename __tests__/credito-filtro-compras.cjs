@@ -37,6 +37,13 @@ const secoes = faturas.agruparLancamentosPorCartao(visiveis, cartoes);
 check(secoes.length === 1 && secoes[0].cartao.id === 'cartao-a' && secoes[0].subtotal === 100, 'cartão sem compra visível some e subtotal usa lista visível');
 check(JSON.stringify(compras) === antes && visiveis[0] === compras[0], 'filtro e agrupamento não alteram a lista original nem suas linhas');
 
+const mostra = (o) => filtro.mostrarComprasFiltradas({ filtroAtivo: true, comprasVisiveis: 1, cartaoSelecionado: false, cartoesNaLista: 1, ...o });
+check(!mostra({}), 'Total com um cartão só: o cabeçalho do cartão já mostra o número');
+check(mostra({ cartoesNaLista: 2 }), 'Total com dois cartões na lista mostra o subtotal');
+check(mostra({ cartaoSelecionado: true }), 'cartão selecionado mostra, pois o cabeçalho traz a fatura inteira');
+check(!mostra({ cartaoSelecionado: true, comprasVisiveis: 0 }) && !mostra({ cartoesNaLista: 2, comprasVisiveis: 0 }), 'sem resultado não mostra R$ 0,00');
+check(!mostra({ filtroAtivo: false, cartaoSelecionado: true, cartoesNaLista: 3 }), 'sem filtro não mostra');
+
 // Contrato da tela real: busca filtra apenas seções, nunca total/pagamento.
 const file = 'app/(app)/credito.tsx';
 const source = fs.readFileSync(path.join(root, file), 'utf8');

@@ -3,12 +3,12 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from './AppPressable';
 import { fonts, radius, spacing, theme, type, hitSlopPara } from '@/lib/theme';
 
-export default function CampoBusca({ value, onChangeText }: { value: string; onChangeText: (texto: string) => void }) {
+export default function CampoBusca({ value, onChangeText, onFocus, onBlur }: { value: string; onChangeText: (texto: string) => void; onFocus?: () => void; onBlur?: () => void }) {
   return <View style={styles.searchRow}>
     <Ionicons name="search-outline" size={16} color={theme.inkFaint} />
     <TextInput accessibilityLabel="Buscar lançamentos" style={styles.searchInput}
       placeholder="Buscar por descrição ou categoria" placeholderTextColor={theme.inkFaint}
-      value={value} onChangeText={onChangeText} returnKeyType="search" />
+      value={value} onChangeText={onChangeText} onFocus={onFocus} onBlur={onBlur} returnKeyType="search" />
     {value.length > 0 && <AppPressable onPress={() => onChangeText('')} hitSlop={hitSlopPara(16)} accessibilityLabel="Limpar busca">
       <Ionicons name="close-circle" size={16} color={theme.inkFaint} />
     </AppPressable>}
