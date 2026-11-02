@@ -1,13 +1,14 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, type ScrollViewProps } from 'react-native';
 import AppPressable from './AppPressable';
 import { fonts, radius, spacing, theme, type, lh } from '@/lib/theme';
 
-export default function ChipsCategoria({ opcoes, selecionada, onSelect, onTodas }: {
+export default function ChipsCategoria({ opcoes, selecionada, onSelect, onTodas, keyboardShouldPersistTaps }: {
   opcoes: ReadonlyArray<readonly [string, string]>; selecionada: string | null;
   onSelect: (categoria: string | null) => void; onTodas?: () => void;
+  keyboardShouldPersistTaps?: ScrollViewProps['keyboardShouldPersistTaps'];
 }) {
   if (!opcoes.length) return null;
-  return <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryChipsRow}>
+  return <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryChipsRow} keyboardShouldPersistTaps={keyboardShouldPersistTaps}>
     <AppPressable onPress={onTodas ?? (() => onSelect(null))} hitSlop={{ top: 7, bottom: 7 }} style={[styles.categoryChip, !selecionada && styles.categoryChipActive]}>
       <Text style={[styles.categoryChipText, !selecionada && styles.categoryChipTextActive]}>Todas</Text>
     </AppPressable>
