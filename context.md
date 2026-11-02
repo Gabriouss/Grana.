@@ -93,6 +93,14 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01/11 — registro 13: segunda build pessoal instalada
+
+Autor voltou para casa, autorizou expressamente fundir e disparar hoje e depois pediu instalação. Harbor fundiu apenas `main` `53b7c1bd` para a branch de teste, gerando `3cf8c22f`; sem mudança no main local ou remoto. Na árvore fundida relatou `tsc`, `test:avisos`, `avisos-telas` e `test:ci` verdes. Build pessoal `530692b4-4226-493d-870b-ee3b79d270a0`, development 1.10.12, versionCode 30, sem `build:preparar`: sétima da semana, acima do teto, com autorização e ciência do autor. Produção e publicação permaneceram iguais segundo conferência do orquestrador.
+
+Após falha de conexão numa porta antiga, o autor religou a depuração; instalação por cima teve sucesso na única tentativa, leitor habilitado. Agente não abriu o app nem leu a tela. Inclui Início compacta, orçamento conjunto, barra escura e ajustes visuais relatados na ordem. O autor ainda não confirmou o resultado no aparelho; texto vazio `6b9920b3` sem print, TalkBack, VoiceOver e iOS sem verificação. A queixa anterior sobre o bloco de teto foi conferida no código fundido e o autor respondeu depois: "Beleza, tá certo".
+
+Sem push, deploy, migration ou dispatch. Nova build depende de ordem literal e nova fusão de consulta prévia. Fonte: `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-registro-13.md`; Ledger não verificou aparelho ou produção independentemente.
+
 ## 01/11 — registro 12: conferência dos prints
 
 Anvil conferiu seis itens em Expo Go (`cd92a8b6`), sem erro no log: fatias e legendas coincidem, Outros agrupado não navega, linha comum abre Lançamentos e Outros real abre na Início. Relata `tsc` e `test:ci` verdes em `b1756ce0`; emulador e Metro fechados. O orquestrador aprovou visualmente Início, Gráficos, Lançamentos e Desafios nos prints, incluindo Ver detalhes; autor ainda não viu no aparelho.
