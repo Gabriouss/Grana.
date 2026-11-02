@@ -63,6 +63,7 @@ const mocks = {
   '@/lib/data': data, '@/lib/goals': { fetchGoals: async () => [] },
   '@/lib/feature-flags': { useFlags: () => ({ ligado: () => true, flag: () => null }) },
   '@/lib/privacy-context': { usePrivacy: () => ({ hidden: false, toggle: () => {} }) },
+  '@/lib/use-categorias': { useCategorias: () => ({ resultado: null, erro: null, carregando: false, carregar: async () => {} }) }, '@/lib/categorias-cliente': { gastosDoDia: () => ({ linhas: [], centavos: 0 }) },
   '@/lib/demo-context': { useDemo: () => ({ isDemoMode: false }) }, '@/lib/demo-data': {},
   '@/lib/tab-bar': { useTabBarInset: () => ({ paddingConteudo: 80 }) },
   '@/lib/breakpoints': { colunaConteudo: {}, useBreakpoint: () => ({}) }, '@/lib/haptics': { hapticTap: () => {} },

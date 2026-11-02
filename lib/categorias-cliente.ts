@@ -38,3 +38,9 @@ export function linhasDaCategoria(r: CategoriasConsultadas, categoria: string | 
 export function categoriasDaVisao(consumo: ConsumoApurado, visao: Visao) {
   return consumo.porCategoria.map(c => ({ name: c.category, color: c.color, value: valorDaVisao(c, visao) / 100 })).filter(c => c.value > 0);
 }
+
+/** Gastos de um dia: as mesmas linhas e o mesmo total do consumo apurado, sem conta nova. */
+export function gastosDoDia(r: CategoriasConsultadas, iso: string): { linhas: Transaction[]; centavos: number } {
+  const linhas = linhasDaCategoria(r, null, 'tudo').filter(t => t.occurred_on === iso);
+  return { linhas, centavos: r.consumo.porDia.find(d => d.iso === iso)?.tudo ?? 0 };
+}

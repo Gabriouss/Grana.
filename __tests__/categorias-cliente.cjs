@@ -70,6 +70,25 @@ async function main() {
   linhas = [...linhas, linhas[0], tx('parcial', 10)];
   const repetido = await api.consultarCategorias('2026-11-01', '2026-11-30', r.resultado);
   check(repetido.resultado.consumo.total.tudo === 13000, 'duplicata conciliada e pagamento parcial fora');
+  const noDia = (id, amount, iso, extra = {}) => ({ ...tx(id, amount, extra.pm ?? 'debit'), occurred_on: iso, ...extra });
+  linhas = [noDia('so-debito', 30, '2026-11-10'), noDia('so-credito', 45.5, '2026-11-11', { pm: 'credit' }),
+    noDia('d-debito', 12.25, '2026-11-12'), noDia('d-credito', 20, '2026-11-12', { pm: 'credit' }), noDia('d-pix', 7.75, '2026-11-12', { pm: 'pix' }),
+    noDia('fatura-dia', 99, '2026-11-13', { category: 'Cartão de crédito', description: 'Pagamento da fatura' }), noDia('entrada', 500, '2026-11-13', { type: 'in' }),
+    noDia('futuro', 15, '2026-11-28')];
+  const dia = (await api.consultarCategorias('2026-11-01', '2026-11-30')).resultado;
+  const soma = l => Math.round(l.reduce((t, x) => t + x.amount, 0) * 100);
+  let gd = api.gastosDoDia(dia, '2026-11-10');
+  check(gd.linhas.length === 1 && gd.centavos === 3000 && gd.linhas[0].payment_method === 'debit', 'dia só com débito');
+  gd = api.gastosDoDia(dia, '2026-11-11');
+  check(gd.linhas.length === 1 && gd.centavos === 4550 && gd.linhas[0].card_id, 'dia só com crédito, no dia da compra');
+  gd = api.gastosDoDia(dia, '2026-11-12');
+  check(gd.linhas.length === 3 && gd.centavos === 4000 && soma(gd.linhas) === gd.centavos, 'dia com débito, Pix e crédito: total bate com a soma das linhas');
+  gd = api.gastosDoDia(dia, '2026-11-13');
+  check(gd.linhas.length === 0 && gd.centavos === 0, 'pagamento de fatura e entrada ficam fora');
+  gd = api.gastosDoDia(dia, '2026-11-20');
+  check(gd.linhas.length === 0 && gd.centavos === 0, 'dia sem gasto');
+  gd = api.gastosDoDia(dia, '2026-11-28');
+  check(gd.linhas.length === 1 && gd.centavos === 1500, 'dia futuro com lançamento aparece');
   falha = true;
   const antigo = await api.consultarCategorias('2026-12-01', '2026-12-31', r.resultado);
   check(antigo.resultado === r.resultado && antigo.erro && antigo.resultado.inicio === '2026-11-01', 'falha preserva o último intervalo identificado, sem zero');
