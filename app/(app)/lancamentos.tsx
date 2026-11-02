@@ -1,3 +1,5 @@
+import CampoBusca from '@/components/CampoBusca';
+import ChipsCategoria from '@/components/ChipsCategoria';
 import { useCategorias, useVisaoCategorias } from '@/lib/use-categorias';
 import { linhasDaCategoria } from '@/lib/categorias-cliente';
 import CategoriasContexto from '@/components/CategoriasContexto';
@@ -806,50 +808,12 @@ export default function LancamentosScreen() {
           onChange={(f) => { setFilter(f as 'tudo' | TxType); if (f === 'in') setModoCategoria(false); else if (categoryFilter) setModoCategoria(true); }}
         />
 
-        <View style={styles.searchRow}>
-          <Ionicons name="search-outline" size={16} color={theme.inkFaint} />
-          <TextInput
-            accessibilityLabel="Buscar lançamentos"
-            style={styles.searchInput}
-            placeholder="Buscar por descrição ou categoria"
-            placeholderTextColor={theme.inkFaint}
-            value={search}
-            onChangeText={setSearch}
-            returnKeyType="search"
-          />
-          {search.length > 0 && (
-            <AppPressable onPress={() => setSearch('')} hitSlop={hitSlopPara(16)} accessibilityLabel="Limpar busca">
-              <Ionicons name="close-circle" size={16} color={theme.inkFaint} />
-            </AppPressable>
-          )}
-        </View>
+        <CampoBusca value={search} onChangeText={setSearch} />
 
         {modoCategoria && <CategoriasContexto mostrarPeriodo visao={visao} onChange={mudarVisao} resultado={consultaCategoria.resultado} erro={consultaCategoria.erro} carregar={consultaCategoria.carregar} />}
-        {categoryOptions.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryChipsRow}>
-            <AppPressable
-              onPress={() => { setCategoryFilter(null); setModoCategoria(false); setIntervaloCategoria(null); }}
-              hitSlop={{ top: 7, bottom: 7 }}
-              style={[styles.categoryChip, !categoryFilter && styles.categoryChipActive]}
-            >
-              <Text style={[styles.categoryChipText, !categoryFilter && styles.categoryChipTextActive]}>Todas</Text>
-            </AppPressable>
-            {categoryOptions.map(([name, color]) => {
-              const active = categoryFilter === name;
-              return (
-                <AppPressable
-                  key={name}
-                  onPress={() => { setCategoryFilter(active ? null : name); setModoCategoria(!active && (filter === 'out' || (filter === 'tudo' && monthTransactions.some(t => t.type === 'out' && t.category === name)))); }}
-                  hitSlop={{ top: 7, bottom: 7 }}
-                  style={[styles.categoryChip, active && styles.categoryChipActive]}
-                >
-                  <View style={[styles.categoryChipDot, { backgroundColor: color }]} />
-                  <Text style={[styles.categoryChipText, active && styles.categoryChipTextActive]}>{name}</Text>
-                </AppPressable>
-              );
-            })}
-          </ScrollView>
-        )}
+        <ChipsCategoria opcoes={categoryOptions} selecionada={categoryFilter}
+          onTodas={() => { setCategoryFilter(null); setModoCategoria(false); setIntervaloCategoria(null); }}
+          onSelect={categoria => { setCategoryFilter(categoria); setModoCategoria(categoria !== null && (filter === 'out' || (filter === 'tudo' && monthTransactions.some(t => t.type === 'out' && t.category === categoria)))); }} />
       </View>
 
       {loading ? (
@@ -1047,33 +1011,6 @@ const styles = StyleSheet.create({
   },
   offlineBannerText: { color: theme.inkFaint, fontSize: type.legenda,
   lineHeight: lh(type.legenda, 'apoio'), flexShrink: 1, fontFamily: fonts.light },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: theme.paperRaised,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: theme.rule,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-  },
-  searchInput: { flex: 1, color: theme.ink, fontSize: type.apoio, fontFamily: fonts.regular },
-  categoryChipsRow: { gap: spacing.icone },
-  categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.icone,
-    paddingHorizontal: 10,
-    paddingVertical: spacing.icone,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: theme.rule,
-  },
-  categoryChipActive: { borderColor: theme.ink, backgroundColor: theme.paperRaised },
-  categoryChipDot: { width: 7, height: 7, borderRadius: 3.5 },
-  categoryChipText: { color: theme.inkFaint, fontSize: type.nota,
-  lineHeight: lh(type.nota, 'apoio'), fontFamily: fonts.light },
-  categoryChipTextActive: { color: theme.ink},
+
 });
 
