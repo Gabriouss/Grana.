@@ -1,6 +1,6 @@
 ---
 name: motion-supremo
-description: "Motion supremo. Skill unificada de Motion Design, anima??o de UI, v?deo program?tico, 3D e interatividade do Grana., para Claude e Codex. Re?ne as regras, medidas e receitas de v?deo e UI do Grana. (regras 9, 23, 24, 26 e 29, lib/motion.ts, ajustes.md, guia de estilo de v?deo, receitas Granab? v3 e R3 v4/v5, Editonny/HyperFrames) e as refer?ncias de Emil Kowalski, 12 Princ?pios da Disney, GSAP oficial, Framer Motion, Remotion, Three.js/R3F/shaders/WebGPU, Lottie/Skottie, Wiggle e Rive. Use sempre que o autor disser 'Motion supremo' ou 'meu editor de v?deo', ou pedir qualquer anima??o de UI, scroll, microintera??o, transi??o, auditoria de motion, v?deo viral, Reels, cena em JavaScript/GSAP/HTML5, Remotion, Lottie, Rive, logo animado ou 3D/Three.js."
+description: "Motion supremo. Skill unificada de Motion Design, animação de UI, vídeo programático, 3D e interatividade do Grana., para Claude e Codex. Reúne as regras, medidas e receitas de vídeo e UI do Grana. (regras 9, 23, 24, 26 e 29, lib/motion.ts, ajustes.md, guia de estilo de vídeo, receitas Granabô v3 e R3 v4/v5, Editonny/HyperFrames) e as referências de Emil Kowalski, 12 Princípios da Disney, GSAP oficial, Framer Motion, Remotion, Three.js/R3F/shaders/WebGPU, Lottie/Skottie, Wiggle e Rive. Use sempre que o autor disser 'Motion supremo' ou 'meu editor de vídeo', ou pedir qualquer animação de UI, scroll, microinteração, transição, auditoria de motion, vídeo viral, Reels, cena em JavaScript/GSAP/HTML5, Remotion, Lottie, Rive, logo animado ou 3D/Three.js."
 ---
 
 # Motion Supremo — Enciclopédia e Motor Unificado de Motion & Vídeo do Grana.
@@ -84,6 +84,10 @@ window.renderAt = function(t) {
 ### 1.3.1. Presets dos Reels v3 (aprovados pelo autor em 25/10/2026)
 
 Antes de editar qualquer Reels em código, leia `referencias/grana/presets-reels-v3.md`. Ele traz o pipeline de 60 fps com motion blur, o celular realista com lateral 3D, as telas do app em HTML com dados reais, os estilos de legenda (`slam`, `flip`, `rise`, `vira`, `freio`, `estica`), o tema claro medido do criativo do autor e as assinaturas (elevador, órbita, freada, chicote, túnel, placa de aeroporto e mural em blocos). O código pronto está em `referencias/grana/presets-reels-v3/serie/` e `.../fatura/`. Regra da série: mesma identidade, mas cada vídeo com sua própria combinação de assinatura, legenda, botão e tema. Quando esse preset contrariar a tabela 1.1 (celular fotográfico, 30 fps, logotipo em gradiente no tema claro), vale o preset, por decisão do autor na rodada de 25/10/2026.
+
+### 1.3.2. Receita aprovada do R5 v6 (autor, 28/10/2026): é assim que se segue
+
+Para Reels de funcionalidade, o padrão é o R5 v6 "Esse é um mês organizado" (`E:/Grana-temporarios/2026-10-23-reels-ganchos/edicao-r5/serie/v11.js`, telas em `telas6.js`), detalhado em `docs/marketing/ajustes.md`, seção "Receita do R5 v6". Em resumo: toda tela do Grana. é recriada em HTML lendo o código ATUAL do componente (nunca gravação dentro do celular); cards e botões saltam do celular com o resto escurecido, uma função por vez e com a ação real; o ritmo é dinâmico, mas cada função fica na tela até ser entendida ("os vídeos anteriores eram bastante dopaminérgicos [...] como era tudo muito rápido, as coisas acabaram ficando um pouco confusas"). Pausa de narração só em silêncio entre frases.
 
 ### 1.4. Comandos do Motor Local Editonny (`C:\Users\user\.local\share\editonny`)
 
