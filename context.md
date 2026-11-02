@@ -93,6 +93,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 02/11 — motion-supremo unificada nas três cópias
+
+Autor: "eu quero a motion supremo atualizada". A cópia global (`~/.claude/skills/motion-supremo`) e a do projeto tinham divergido nos dois sentidos. A do projeto tinha as seções 1.5 (Blender) e 1.6 (área segura do Reels), o `meu-editor-de-video.md` novo e o `reels-referencia-2026-10-28.md`, mas a descrição saiu com acentos trocados por `?` no `4a052cdf`. Já a global tinha a seção 1.3.2 (receita aprovada do R5 v6, de 28/10), que nunca entrou no projeto. A fusão partiu da cópia do projeto, recebeu a 1.3.2 antes da 1.4 e teve os acentos da descrição restaurados, sem mudar o texto nem o tamanho (773 caracteres, abaixo do limite do Codex). `.claude/skills/`, `.agents/skills/` e a global ficaram idênticas (`diff -rq`). O backup da global antiga está em `E:\Grana-temporarios\backup-motion-supremo-global-2026-11-02`. Não verificado: o validador de skills do Codex, que não foi rodado de novo. O guia de instalação de skills em outro Claude está em `E:\Grana-temporarios\instalar-skills-em-outro-claude.md`, fora do git.
+
 ## 01–02/11 — registro 14: busca no Crédito e gastos por dia
 
 Autor pediu busca e categorias no Crédito, confirmação de débito mais crédito no teto e abertura dos gastos ao tocar nos dias do calendário. Segundo conferência relatada, `linhaDoTeto` usa `consumo.tudo` no mês civil, incluindo crédito pela data da compra e excluindo pagamento de fatura; seletor no gráfico permanece por servir ao autor. A versão pública anterior somava apenas caixa da carteira selecionada.
