@@ -100,6 +100,22 @@ export function prepararFatias(fatias: PieSlice[], max: number = MAX_FATIAS): Pi
   return [...visiveis, { name: 'Outros', color: NEUTRO, value: somaResto }];
 }
 
+/** Categoria que a legenda pode abrir; um agrupamento de categorias não tem destino único. */
+export function categoriaDaFatia(
+  fatia: Pick<PieSlice, 'name'>,
+  originais: ReadonlyArray<Pick<PieSlice, 'name' | 'value'>>,
+  max: number = MAX_FATIAS
+): string | null {
+  const ordenadas = originais.filter(f => f.value > 0).sort((a, b) => b.value - a.value);
+  if (fatia.name !== 'Outros' || ordenadas.length <= max) {
+    return ordenadas.some(f => f.name === fatia.name) ? fatia.name : null;
+  }
+  const visiveis = ordenadas.slice(0, max - 1);
+  const componentes = new Set(ordenadas.slice(max - 1).map(f => f.name));
+  if (visiveis.some(f => f.name === 'Outros')) componentes.add('Outros');
+  return componentes.size === 1 && componentes.has('Outros') ? 'Outros' : null;
+}
+
 /**
  * A porcentagem que a legenda escreve ao lado de uma fatia.
  *

@@ -165,3 +165,14 @@ export function valorDaVisao(t: TotaisEmCentavos, visao: Visao): number {
 export function acimaDoTeto(consumoTudo: number, tetoEmReais: number): number {
   return Math.max(0, consumoTudo - emCentavos(tetoEmReais));
 }
+
+/** Linha compacta do orçamento: sempre usa Tudo, independente da visão do donut. */
+export function linhaDoTeto(consumo: Pick<TotaisEmCentavos, 'tudo'> | undefined, teto: number) {
+  const centavos = consumo?.tudo ?? 0;
+  const limite = emCentavos(teto);
+  return {
+    gasto: centavos / 100,
+    percentual: limite > 0 ? Math.min(centavos / limite * 100, 100) : centavos > 0 ? 100 : 0,
+    excedido: acimaDoTeto(centavos, teto) > 0,
+  };
+}

@@ -29,18 +29,6 @@ const api = load('lib/categorias-cliente.ts', {
   './gastos-categoria': core,
   './creditLimitAlert': { checarLimiteCartao: () => { notificacoes++; } },
 });
-const format = carregar('lib/format.ts');
-const jsx = (type, props) => ({ type, props: props ?? {} });
-const tokens = new Proxy({}, { get: () => 14 });
-const theme = { paper: 'paper', ink: 'ink', inkSoft: 'inkSoft', down: 'cyan', accent2: 'mint' };
-const Teto = load('components/CategoriaTeto.tsx', {
-  'react/jsx-runtime': { jsx, jsxs: jsx }, 'react-native': { Text: 'Text', View: 'View', StyleSheet: { create: x => x } },
-  './AppPressable': { __esModule: true, default: 'AppPressable' }, './PrivacyValue': { __esModule: true, default: 'PrivacyValue' },
-  '@/lib/gastos-categoria': core, '@/lib/format': format, '@/lib/sem-viuva': carregar('lib/sem-viuva.ts'),
-  '@/lib/theme': { theme, fonts: { regular: 'Regular', light: 'Light' }, spacing: tokens, radius: tokens, type: tokens, lh: x => x, touchTarget: 48 },
-}).default;
-const text = n => Array.isArray(n) ? n.map(text).join('') : n && typeof n === 'object' ? text(n.props?.children) : typeof n === 'string' || typeof n === 'number' ? String(n) : '';
-const nodes = n => Array.isArray(n) ? n.flatMap(nodes) : n && typeof n === 'object' ? [n, ...nodes(n.props?.children)] : [];
 async function main() {
   const r = await api.consultarCategorias('2026-11-01', '2026-11-30');
   check(r.resultado.consumo.total.tudo === 13000, '130 em Tudo, pagamento da fatura fora');
@@ -48,15 +36,37 @@ async function main() {
     const lista = api.linhasDaCategoria(r.resultado, 'Transporte', visao);
     check(lista.reduce((s, t) => s + t.amount, 0) === esperado, `lista bate com ${esperado} em ${visao}`);
     check(api.categoriasDaVisao(r.resultado.consumo, visao)[0].value === esperado, `donut ${visao}`);
-    const tree = Teto({ categoria: 'Transporte', teto: 100, consumo: r.resultado.consumo.porCategoria[0], visao, abrir: () => {}, definir: () => {} });
-    const out = text(tree).replaceAll('\u00a0', ' ');
-    check(out.includes('130,00 de R$ 100,00'), `teto sempre em Tudo na visão ${visao}`);
-    check(out.includes('R$ 30,00 acima do teto'), `excesso continua nas três visões: ${visao}`);
-    if (visao !== 'tudo') check(out.includes(`Nesta visão: R$ ${esperado},00`), 'parcela da visão identificada');
-    check(nodes(tree).filter(n => n.type === 'PrivacyValue').length >= 2, 'valores com privacidade');
-    const press = nodes(tree).filter(n => n.type === 'AppPressable');
-    check(press.length === 2 && press.every(n => !nodes(n.props.children).some(c => c.type === 'AppPressable')), 'ações sem clique aninhado');
+    const teto = core.linhaDoTeto(r.resultado.consumo.porCategoria[0], 100);
+    check(teto.gasto === 130, `teto soma débito e crédito na visão ${visao}`);
+    check(teto.percentual === 100, `barra limitada a 100 na visão ${visao}`);
+    check(teto.excedido === true, `130 excede teto de 100 na visão ${visao}`);
+    check(core.acimaDoTeto(r.resultado.consumo.porCategoria[0].tudo, 100) === 3000, 'excesso exato de 30 reais');
   }
+  const exato = core.linhaDoTeto({ tudo: 10000 }, 100);
+  check(exato.gasto === 100 && exato.percentual === 100 && !exato.excedido, 'exatamente no teto não excede');
+  const centavo = core.linhaDoTeto({ tudo: 10001 }, 100);
+  check(centavo.gasto === 100.01 && centavo.percentual === 100 && centavo.excedido, 'um centavo acima excede');
+  check(core.acimaDoTeto(10001, 100) === 1, 'excesso de um centavo exato');
+  const abaixo = core.linhaDoTeto({ tudo: 8000 }, 100);
+  check(abaixo.gasto === 80 && abaixo.percentual === 80 && !abaixo.excedido, 'abaixo do teto preserva valor e proporção');
+  const charts = carregar('lib/chart-colors.ts', { '@/lib/types': carregar('lib/types.ts') });
+  const fatia = (name, value) => ({ name, value, color: 'cor original' });
+  const originais = [fatia('Transporte', 70), fatia('Moradia', 50), fatia('Alimentação', 30), fatia('Lazer', 18), fatia('Outros', 22), fatia('Assinaturas', 6), fatia('Saúde', 4)];
+  const fatias = charts.prepararFatias(originais);
+  const outros = fatias.find(f => f.name === 'Outros');
+  const total = fatias.reduce((s, f) => s + f.value, 0);
+  check(total === 200 && outros.value === 32, 'Outros inclui os 22 reais originais e 10 agrupados, sem perder dinheiro');
+  check(charts.percentualDaFatia(outros.value, total) === 16, 'fatia e legenda usam 16%, não os 11% da categoria original');
+  check(outros.color === charts.corDaCategoria('Outros'), 'legenda usa a cor da fatia agrupada');
+  check(charts.categoriaDaFatia(outros, originais) === null, 'Outros original mais outras categorias não abre lista parcial');
+  check(charts.categoriaDaFatia(fatias.find(f => f.name === 'Transporte'), originais) === 'Transporte', 'fatia individual mantém a navegação');
+  const semAgrupamento = [fatia('Transporte', 80), fatia('Outros', 20)];
+  check(charts.categoriaDaFatia(charts.prepararFatias(semAgrupamento)[1], semAgrupamento) === 'Outros', 'Outros real, sozinho, continua tocável');
+  const semOutrosReal = originais.filter(f => f.name !== 'Outros').concat(fatia('Educação', 2));
+  check(charts.categoriaDaFatia(charts.prepararFatias(semOutrosReal).find(f => f.name === 'Outros'), semOutrosReal) === null, 'agrupamento sem categoria Outros real também não tem destino único');
+  const semZeros = [...semAgrupamento, ...Array.from({ length: 6 }, (_, i) => fatia(`Vazia ${i}`, 0))];
+  check(charts.categoriaDaFatia(charts.prepararFatias(semZeros)[1], semZeros) === 'Outros', 'valores zero não criam falso agrupamento');
+  check(originais.find(f => f.name === 'Outros').value === 22, 'classificação e preparação não alteram a entrada');
   linhas = [...linhas, linhas[0], tx('parcial', 10)];
   const repetido = await api.consultarCategorias('2026-11-01', '2026-11-30', r.resultado);
   check(repetido.resultado.consumo.total.tudo === 13000, 'duplicata conciliada e pagamento parcial fora');

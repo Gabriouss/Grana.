@@ -1,3 +1,5 @@
+import { categoriaDaFatia } from '@/lib/chart-colors';
+import { semViuva } from '@/lib/sem-viuva';
 import { useCategorias, useVisaoCategorias } from '@/lib/use-categorias';
 import { categoriasDaVisao } from '@/lib/categorias-cliente';
 import CategoriasContexto from '@/components/CategoriasContexto';
@@ -257,7 +259,6 @@ export default function GraficosScreen() {
     }
     return prepararFatias([...mapa.values()]);
   }, [filteredTransactions]);
-  const legendasCategorias = tabModo === 'renda' ? categoriasCaixa : fatiasConsumo;
   // Fatias do Donut Totalizador do Período
   const pieSlices: PieSlice[] = tabModo === 'renda' ? categoriasCaixa : prepararFatias(fatiasConsumo);
 
@@ -356,7 +357,6 @@ export default function GraficosScreen() {
           </View>
         )}
 
-        {tabModo !== 'renda' && <CategoriasContexto visao={visao} onChange={mudar} resultado={categorias.resultado} erro={categorias.erro} carregar={categorias.carregar} />}
         <Text style={styles.summaryLabel}>Fluxo de caixa</Text>
         {/* Gráfico de linha — total por período, com a composição por
             categoria da coluna selecionada logo abaixo. */}
@@ -406,9 +406,11 @@ export default function GraficosScreen() {
         </View>
 
         {/* Distribuição por Categorias (Donut) */}
-        {pieSlices.length > 0 && (
+        {(tabModo !== 'renda' || pieSlices.length > 0) && (
           <View style={styles.donutCard}>
             <Text style={styles.donutTitle}>Composição por categorias</Text>
+            {tabModo !== 'renda' && <CategoriasContexto visao={visao} onChange={mudar} resultado={categorias.resultado} erro={categorias.erro} carregar={categorias.carregar} />}
+            {pieSlices.length > 0 ? (
             <View style={[styles.donutRow, ehCompacto && styles.donutRowCompacta, !ehCompacto && styles.donutRowLargo]}>
               <PieChart data={pieSlices} size={tamanhoDonut} />
               <View style={[styles.legendCol, ehCompacto && styles.legendColCompacta, !ehCompacto && styles.legendColLargo]}>
@@ -418,22 +420,23 @@ export default function GraficosScreen() {
                     nome nenhum. A porcentagem entra aqui porque só uma parte
                     das fatias ganha rótulo direto — sem ela, a identidade das
                     fatias pequenas dependeria só da cor. */}
-                {legendasCategorias.map((slice, i) => (
-                  <AppPressable key={i} style={styles.legendRow} disabled={tabModo === 'renda'} accessibilityRole="button" onPress={() => router.push({ pathname: '/(app)/lancamentos', params: { modo: 'categoria', categoria: slice.name, inicio: categorias.resultado?.inicio ?? inicioCategorias, fim: categorias.resultado?.fim ?? fimCategorias, forma: visao } })}>
+                {pieSlices.map((slice, i) => {
+                  const categoria = tabModo !== 'renda' ? categoriaDaFatia(slice, fatiasConsumo) : null;
+                  const conteudo = <>
                     <View style={[styles.legendDot, { backgroundColor: slice.color }]} />
-                    <Text style={styles.legendName} numberOfLines={1}>
-                      {slice.name}
-                    </Text>
-                    <Text style={styles.legendPct} numberOfLines={1}>
-                      {percentualDaFatia(slice.value, totalPeriodo)}%
-                    </Text>
-                    <PrivacyValue>
-                      <Text style={styles.legendVal}>R$ {formatMoney(slice.value)}</Text>
-                    </PrivacyValue>
-                  </AppPressable>
-                ))}
+                    <Text style={styles.legendName} numberOfLines={1}>{slice.name}</Text>
+                    <Text style={styles.legendPct} numberOfLines={1}>{percentualDaFatia(slice.value, totalPeriodo)}%</Text>
+                    <PrivacyValue><Text style={styles.legendVal}>R$ {formatMoney(slice.value)}</Text></PrivacyValue>
+                  </>;
+                  return categoria ? (
+                    <AppPressable key={i} style={styles.legendRow} accessibilityRole="button" onPress={() => router.push({ pathname: '/(app)/lancamentos', params: { modo: 'categoria', categoria, inicio: categorias.resultado?.inicio ?? inicioCategorias, fim: categorias.resultado?.fim ?? fimCategorias, forma: visao } })}>{conteudo}</AppPressable>
+                  ) : (
+                    <View key={i} style={styles.legendRow}>{conteudo}</View>
+                  );
+                })}
               </View>
             </View>
+            ) : categorias.resultado && <Text style={styles.summaryLabel}>{semViuva('Nenhum gasto nesta visão.')}</Text>}
           </View>
         )}
 

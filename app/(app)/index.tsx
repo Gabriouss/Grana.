@@ -1,10 +1,10 @@
+import { categoriaDaFatia } from '@/lib/chart-colors';
+import CategoriasContexto from '@/components/CategoriasContexto';
 import { consumirAvisoCategorias } from '@/lib/categorias-aviso';
 import { semViuva } from '@/lib/sem-viuva';
 import { useCategorias, useVisaoCategorias } from '@/lib/use-categorias';
 import { categoriasDaVisao } from '@/lib/categorias-cliente';
-import { formatBRL } from '@/lib/format';
-import CategoriasContexto from '@/components/CategoriasContexto';
-import CategoriaTeto from '@/components/CategoriaTeto';
+import { linhaDoTeto } from '@/lib/gastos-categoria';
 import { fetchDiasDeAtividade } from '@/lib/data';
 import { movimentarCofrinhoLocal, type OrigemCofrinho } from '@/lib/cofrinho-origem';
 import { boletoAtrasado, boletosDaSemana } from '../../lib/boletos-da-semana';
@@ -1361,12 +1361,13 @@ export default function InicioScreen() {
         <View style={styles.cardHeadRow}>
           <Text style={styles.cardLabel}>Gastos por categoria</Text>
           <PrivacyValue>
-            <Text style={[styles.flowValue, { color: theme.down }]}>{categorias.resultado ? formatBRL(fatiasCategorias.reduce((s, c) => s + c.value, 0)) : 'Indisponível agora'}</Text>
+            <Text style={[styles.flowValue, { color: theme.down }]}>{categorias.resultado ? `− R$ ${formatMoney(fatiasCategorias.reduce((s, c) => s + c.value, 0))}` : 'Indisponível agora'}</Text>
           </PrivacyValue>
         </View>
 
-        {!categorias.resultado ? <Text style={styles.emptyText}>Categorias indisponíveis agora.</Text> : pieData.length === 0 ? (
-          <Text style={styles.emptyText}>Nenhum gasto registrado ainda.</Text>
+        <CategoriasContexto visao={visaoCategoria} onChange={mudarVisaoCategoria} resultado={categorias.resultado} erro={categorias.erro} carregar={categorias.carregar} />
+        {!categorias.resultado ? null : pieData.length === 0 ? (
+          <Text style={styles.emptyText}>{semViuva(visaoCategoria === 'tudo' ? 'Nenhum gasto registrado ainda.' : 'Nenhum gasto nesta visão.')}</Text>
         ) : (
           <>
             <Animated.View
@@ -1381,13 +1382,19 @@ export default function InicioScreen() {
               <PieChart data={pieData} />
             </Animated.View>
             <View style={styles.chipWrap}>
-              {fatiasCategorias.map((seg) => (
-                <AppPressable key={seg.name} style={styles.legendChip} onPress={() => abrirCategoria(seg.name)} accessibilityRole="button">
+              {pieData.map((seg) => {
+                const categoria = categoriaDaFatia(seg, fatiasCategorias);
+                const conteudo = <>
                   <View style={[styles.dot, { backgroundColor: seg.color }]} />
                   <Text style={styles.categoryName}>{seg.name}</Text>
                   <Text style={styles.categoryAmount}>{percentualDaFatia(seg.value, totalPie)}%</Text>
-                </AppPressable>
-              ))}
+                </>;
+                return categoria ? (
+                  <AppPressable key={seg.name} style={styles.legendChip} onPress={() => abrirCategoria(categoria)} accessibilityRole="button">{conteudo}</AppPressable>
+                ) : (
+                  <View key={seg.name} style={styles.legendChip}>{conteudo}</View>
+                );
+              })}
             </View>
           </>
         )}
@@ -1409,9 +1416,40 @@ export default function InicioScreen() {
         {budgets.length === 0 ? (
           <Text style={styles.emptyText}>Nenhum orçamento definido. Toque em "+ Definir" ou escolha "Modelos".</Text>
         ) : (
-          categorias.resultado ? budgets.map(b => (
-            <CategoriaTeto key={b.category} categoria={b.category} teto={Number(b.amount)} consumo={categorias.resultado?.consumo.porCategoria.find(c => c.category === b.category)} visao={visaoCategoria} abrir={() => abrirCategoria(b.category)} definir={() => openBudgetModal(b)} />
-          )) : <Text style={styles.emptyText}>Tetos indisponíveis agora.</Text>
+          categorias.resultado ? budgets.map((b) => {
+            const { gasto: spent, percentual: pct, excedido: over } = linhaDoTeto(
+              categorias.resultado?.consumo.porCategoria.find(c => c.category === b.category), Number(b.amount)
+            );
+            const spentFormatted = `R$ ${formatMoney(spent)}`;
+            const limitFormatted = `R$ ${formatMoney(Number(b.amount))}`;
+            return (
+              <AppPressable
+                key={b.category}
+                style={({ hovered }) => [styles.budgetRow, hovered && styles.budgetRowHover]}
+                onPress={() => openBudgetModal(b)}
+              >
+                <View style={styles.budgetTopLine}>
+                  <View style={styles.categoryLeft}>
+                    <View style={[styles.dot, { backgroundColor: b.color }]} />
+                    <Text style={styles.categoryName}>{b.category}</Text>
+                  </View>
+                  <View style={styles.budgetAmountRow}>
+                    <PrivacyValue>
+                      <Text style={[styles.categoryAmount, over && { color: theme.ink }]}>{spentFormatted}</Text>
+                    </PrivacyValue>
+                    <Text style={[styles.categoryAmount, over && { color: theme.ink }]}> de </Text>
+                    <PrivacyValue>
+                      <Text style={[styles.categoryAmount, over && { color: theme.ink }]}>{limitFormatted}</Text>
+                    </PrivacyValue>
+                    {over && <Text style={[styles.categoryAmount, { color: theme.ink }]}> · excedido</Text>}
+                  </View>
+                </View>
+                <View style={styles.budgetTrack}>
+                  <View style={[styles.budgetFill, { width: `${pct}%`, backgroundColor: over ? theme.danger : b.color }]} />
+                </View>
+              </AppPressable>
+            );
+          }) : <Text style={styles.emptyText}>Tetos indisponíveis agora.</Text>
         )}
       </View>
     ),
@@ -1717,7 +1755,6 @@ export default function InicioScreen() {
         {/* Blocos personalizáveis da Home — ordem e visibilidade vêm de
             lib/home-layout.ts, editáveis pelo botão "Personalizar Início"
             no rodapé. Ver HOME_BLOCOS logo acima do return(). */}
-        <CategoriasContexto visao={visaoCategoria} onChange={mudarVisaoCategoria} resultado={categorias.resultado} erro={categorias.erro} carregar={categorias.carregar} />
         <WidgetGrid
           widgets={homeLayout
             .filter((b) => b.visible)
