@@ -51,6 +51,9 @@ ok(diasComRegistro([tx({ created_at: null, occurred_on: '2026-10-05' })]).has('2
   ok(constancia.description.startsWith('5 de 12'), 'Score "Constância no mês" também diz 5 de 12');
   ok(weekActivity.filter((w) => w.active).length === 1 && weekActivity[0].dateISO === '2026-10-12' && weekActivity[0].active, 'ritmo da semana (segunda 12/10) lê o mesmo dia');
   ok(c.resumo === '5 de 12 dias com registro', 'resumo do cabeçalho');
+  const dia1 = cal.montarCalendario(new Set(['2026-11-01']), 2026, 10, new Date(2026, 10, 1, 12));
+  ok(dia1.diasVividos === 1 && dia1.resumo === '1 de 1 dia com registro', 'dia 1 do mês: singular, "1 de 1 dia com registro"');
+  ok(cal.montarCalendario(new Set(), 2026, 10, new Date(2026, 10, 1, 12)).resumo === '0 de 1 dia com registro', 'dia 1 sem registro: "0 de 1 dia"');
   ok(calculateStreakAndWeek([], agora, dias).streak === 5, 'sequência lê o conjunto de dias passado');
   const s2 = calculateScoreBreakdown([], [], [], 5, agora, dias).factors.find((f) => f.label === 'Constância no mês');
   ok(s2.description.startsWith('5 de 12'), 'Score lê o conjunto de dias passado');

@@ -42,13 +42,14 @@ export default function DesafiosCalendario({ dias, weekActivity, streak, demo, a
     }).catch(e => { console.error('[desafios] calendário falhou', e); if (ativo) setErro(true); });
     return () => { ativo = false; };
   }, [mes.ano, mes.mes, atual, demo, dias, tentativa]);
+  const ativosNaSemana = weekActivity.filter(d => d.active).length;
   const carregado = atual || demo || historico !== null;
   const calendario = montarCalendario(atual || demo ? dias : historico ?? new Set(), mes.ano, mes.mes, hoje);
   const nome = new Date(mes.ano, mes.mes, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   return <View style={s.card}>
     <Text style={s.titulo}>{semViuva('Constância')}</Text>
     {atual && <View style={s.grupo}>
-      <Text style={s.texto}>{semViuva(`Ritmo da semana: ${weekActivity.filter(d => d.active).length} dias com registro`)}</Text>
+      <Text style={s.texto}>{semViuva(`Ritmo da semana: ${ativosNaSemana} ${ativosNaSemana === 1 ? 'dia' : 'dias'} com registro`)}</Text>
       <View style={s.linha}>{weekActivity.map((d, i) => <View key={i} style={s.coluna}>
         <View style={[s.circulo, d.active && s.ativo, d.isToday && s.hoje]}>
           {d.active ? <Ionicons name="checkmark" size={12} color={theme.paper} /> : <View style={s.ponto} />}
