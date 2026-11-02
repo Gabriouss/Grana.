@@ -1,3 +1,7 @@
+import CampoBusca from '@/components/CampoBusca';
+import ChipsCategoria from '@/components/ChipsCategoria';
+import { filtrarCompras, opcoesDeCategoria } from '@/lib/filtro-compras';
+import { semViuva } from '@/lib/sem-viuva';
 import { isCreditTx } from '@/lib/transaction-rules';
 import { fetchTransactionsDoPeriodo } from '@/lib/data';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -219,6 +223,14 @@ export default function CreditoScreen() {
      excluía direto, sem passar por menu nenhum. */
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+  const [buscaCompra, setBuscaCompra] = useState('');
+  const [categoriaCompra, setCategoriaCompra] = useState<string | null>(null);
+  const abrirAcoesCompra = useCallback((tx: Transaction) => {
+    setSelectedTx(tx); setActionSheetOpen(true);
+  }, []);
+  const renderCompra = useCallback(({ item }: { item: Transaction }) => (
+    <CreditTransactionRow tx={item} onAbrirAcoes={abrirAcoesCompra} />
+  ), [abrirAcoesCompra]);
   const [txSaving, setTxSaving] = useState(false);
 
 
@@ -606,18 +618,24 @@ export default function CreditoScreen() {
     [walletTransactions, walletCards, selectedCardId, viewYear, viewMonth, datasDasCompras]
   );
 
+  const categoriasCompras = useMemo(() => opcoesDeCategoria(creditTransactions), [creditTransactions]);
+  const categoriaEfetiva = categoriasCompras.some(([nome]) => nome === categoriaCompra) ? categoriaCompra : null;
+  const comprasVisiveis = useMemo(() => filtrarCompras(creditTransactions, buscaCompra, categoriaEfetiva), [creditTransactions, buscaCompra, categoriaEfetiva]);
+  const filtroCompraAtivo = !!buscaCompra.trim() || categoriaEfetiva !== null;
+  const subtotalFiltrado = useMemo(() => somaDaFatura(comprasVisiveis), [comprasVisiveis]);
+
   const secoesDeLancamentos = useMemo(() => {
-    if (selectedCardId === 'all') return agruparLancamentosPorCartao(creditTransactions, walletCards);
-    if (!selectedCard || creditTransactions.length === 0) return [];
+    if (selectedCardId === 'all') return agruparLancamentosPorCartao(comprasVisiveis, walletCards);
+    if (!selectedCard || comprasVisiveis.length === 0) return [];
     return [{
       chave: selectedCard.id,
       titulo: selectedCard.name,
       cor: selectedCard.color,
       cartao: selectedCard,
-      data: creditTransactions,
-      subtotal: somaDaFatura(creditTransactions),
+      data: comprasVisiveis,
+      subtotal: somaDaFatura(comprasVisiveis),
     }];
-  }, [selectedCardId, selectedCard, creditTransactions, walletCards]);
+  }, [selectedCardId, selectedCard, comprasVisiveis, walletCards]);
 
   const totalInvoice = useMemo(
     () => somaDaFatura(creditTransactions),
@@ -1324,15 +1342,8 @@ export default function CreditoScreen() {
         maxToRenderPerBatch={12}
         windowSize={7}
         removeClippedSubviews={Platform.OS === 'android'}
-        renderItem={({ item }) => (
-          <CreditTransactionRow
-            tx={item}
-            onLongPress={() => {
-              setSelectedTx(item);
-              setActionSheetOpen(true);
-            }}
-          />
-        )}
+        keyboardShouldPersistTaps="handled"
+        renderItem={renderCompra}
         renderSectionHeader={({ section }) => selectedCardId === 'all' ? (
           <View style={styles.cardSectionHeader}>
             <View style={styles.cardSectionIdentity}>
@@ -1666,6 +1677,15 @@ export default function CreditoScreen() {
             ? 'Compras por cartão · use as opções para editar ou excluir'
             : 'Compras da fatura · use as opções para editar ou excluir'}
         </Text>
+        {creditTransactions.length > 0 && <View style={{ gap: spacing.sm }}>
+          <CampoBusca value={buscaCompra} onChangeText={setBuscaCompra} />
+          <ChipsCategoria opcoes={categoriasCompras} selecionada={categoriaEfetiva} onSelect={setCategoriaCompra} keyboardShouldPersistTaps="handled" />
+          {filtroCompraAtivo && <View style={styles.filteredSummaryCard}>
+            <Text style={styles.filteredSummaryLabel}>{semViuva('Compras filtradas')}</Text>
+            <PrivacyValue><Text style={[styles.filteredSummaryVal, { color: theme.down }]}>{formatBRL(subtotalFiltrado)}</Text></PrivacyValue>
+          </View>}
+          {comprasVisiveis.length === 0 && <Text style={styles.emptyText}>{semViuva('Nenhuma compra nesta busca.')}</Text>}
+        </View>}
         {creditTransactions.length === 0 ? (
           <Text style={styles.emptyText}>Nenhuma compra no crédito nesta fatura.</Text>
         ) : null}
@@ -1969,18 +1989,19 @@ export default function CreditoScreen() {
 
 const CreditTransactionRow = memo(function CreditTransactionRow({
   tx,
-  onLongPress,
+  onAbrirAcoes,
 }: {
   tx: Transaction;
   /** Abre a folha de ações do lançamento. Ligada ao toque simples E ao longo:
    *  o gesto longo sozinho não é exposto a leitor de tela nem ao teclado. */
-  onLongPress: () => void;
+  onAbrirAcoes: (tx: Transaction) => void;
 }) {
+  const abrir = () => onAbrirAcoes(tx);
   return (
     <AppPressable
       style={({ hovered }) => [styles.txRow, hovered && { backgroundColor: theme.hover }]}
-      onPress={onLongPress}
-      onLongPress={onLongPress}
+      onPress={abrir}
+      onLongPress={abrir}
     >
       <View style={styles.txInfo}>
         <View style={styles.txDescricaoLinha}>
@@ -2006,6 +2027,21 @@ const CreditTransactionRow = memo(function CreditTransactionRow({
 });
 
 const styles = StyleSheet.create({
+  filteredSummaryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: theme.paperRaised,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: theme.rule,
+  },
+  filteredSummaryLabel: { color: theme.inkFaint, fontSize: type.legenda,
+  lineHeight: lh(type.legenda, 'apoio'), marginBottom: spacing.fio, letterSpacing: 0.5, fontFamily: fonts.light },
+  filteredSummaryVal: { fontSize: type.nota,
+  lineHeight: lh(type.nota, 'apoio'), fontVariant: ['tabular-nums'], fontFamily: fonts.regular },
   screen: { flex: 1, backgroundColor: theme.paper },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.paper },
   addCardBtn: {
