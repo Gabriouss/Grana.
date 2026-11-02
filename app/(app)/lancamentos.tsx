@@ -1,3 +1,4 @@
+import { casaComBusca } from '@/lib/filtro-compras';
 import CampoBusca from '@/components/CampoBusca';
 import ChipsCategoria from '@/components/ChipsCategoria';
 import { useCategorias, useVisaoCategorias } from '@/lib/use-categorias';
@@ -656,10 +657,9 @@ export default function LancamentosScreen() {
   /* A19: o resumo acompanha a busca e a categoria visíveis, em vez de
      continuar somando o mês inteiro quando a lista está vazia. */
   const transacoesDoResumo = useMemo(() => {
-    const termo = search.trim().toLowerCase();
     return monthTransactions.filter((t) => {
       if (!modoCategoria && categoryFilter && t.category !== categoryFilter) return false;
-      return !termo || t.description.toLowerCase().includes(termo) || t.category.toLowerCase().includes(termo);
+      return casaComBusca(t, search);
     });
   }, [categoryFilter, monthTransactions, search, modoCategoria]);
 
@@ -695,7 +695,7 @@ export default function LancamentosScreen() {
     () =>
       monthTransactions.filter((t) => {
         if (!modoCategoria && categoryFilter && t.category !== categoryFilter) return false;
-        if (searchQuery && !t.description.toLowerCase().includes(searchQuery) && !t.category.toLowerCase().includes(searchQuery)) return false;
+        if (!casaComBusca(t, searchQuery)) return false;
         return true;
       }),
     [categoryFilter, monthTransactions, searchQuery, modoCategoria]
