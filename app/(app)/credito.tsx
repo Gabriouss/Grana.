@@ -1,6 +1,7 @@
 import CampoBusca from '@/components/CampoBusca';
 import ChipsCategoria from '@/components/ChipsCategoria';
-import { filtrarCompras, opcoesDeCategoria } from '@/lib/filtro-compras';
+import { filtrarCompras, mostrarComprasFiltradas, opcoesDeCategoria } from '@/lib/filtro-compras';
+import { useKeyboardHeight } from '@/lib/teclado';
 import { semViuva } from '@/lib/sem-viuva';
 import { isCreditTx } from '@/lib/transaction-rules';
 import { fetchTransactionsDoPeriodo } from '@/lib/data';
@@ -105,6 +106,11 @@ import FadeIn from '@/components/FadeIn';
 export default function CreditoScreen() {
   const operacaoVoz = useRef<string | null>(null);
   const { paddingConteudoComFab, total: tabBarTotal } = useTabBarInset();
+  const alturaTeclado = useKeyboardHeight();
+  const tecladoAberto = Platform.OS !== 'web' && alturaTeclado > 0;
+  const listaRef = useRef<SectionList<Transaction, any>>(null);
+  const campoBuscaY = useRef(0);
+  const campoFocado = useRef(false);
   const { ehCompacto } = useBreakpoint();
   const router = useRouter();
   const { novaCompra, texto, falaGuardada, referencia, aproximada, editarCompra, compraData } = useLocalSearchParams<{ novaCompra?: string; texto?: string; falaGuardada?: string; referencia?: string; aproximada?: string; editarCompra?: string; compraData?: string }>();
@@ -623,6 +629,17 @@ export default function CreditoScreen() {
   const comprasVisiveis = useMemo(() => filtrarCompras(creditTransactions, buscaCompra, categoriaEfetiva), [creditTransactions, buscaCompra, categoriaEfetiva]);
   const filtroCompraAtivo = !!buscaCompra.trim() || categoriaEfetiva !== null;
   const subtotalFiltrado = useMemo(() => somaDaFatura(comprasVisiveis), [comprasVisiveis]);
+  /* Busca sem ver o resultado não serve: ao abrir o teclado, a lista rola até o
+     campo ficar perto do topo. Só na abertura, nunca a cada letra. O Y vem do
+     onLayout do bloco de busca, que é o primeiro filho do cabeçalho, então a
+     posição no conteúdo é o respiro do topo mais ele. */
+  const rolarAteCampoBusca = useCallback(() => {
+    const y = Math.max(0, screenRhythm.padding + campoBuscaY.current - spacing.md);
+    setTimeout(() => listaRef.current?.getScrollResponder()?.scrollTo({ y, animated: true }), 120);
+  }, []);
+  useEffect(() => {
+    if (alturaTeclado > 0 && campoFocado.current) rolarAteCampoBusca();
+  }, [alturaTeclado, rolarAteCampoBusca]);
 
   const secoesDeLancamentos = useMemo(() => {
     if (selectedCardId === 'all') return agruparLancamentosPorCartao(comprasVisiveis, walletCards);
@@ -1335,6 +1352,7 @@ export default function CreditoScreen() {
       )}
 
       <SectionList
+        ref={listaRef}
         style={styles.scroll}
         sections={secoesDeLancamentos}
         keyExtractor={(tx) => tx.id}
@@ -1363,7 +1381,7 @@ export default function CreditoScreen() {
           </View>
         ) : null}
         stickySectionHeadersEnabled={false}
-        contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudoComFab }]}
+        contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudoComFab + (tecladoAberto ? alturaTeclado : 0) }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -1673,14 +1691,14 @@ export default function CreditoScreen() {
 
         {/* Lista de Compras no Crédito */}
         <Text style={styles.sectionLabel}>
-          {selectedCardId === 'all'
+          {semViuva(selectedCardId === 'all'
             ? 'Compras por cartão · use as opções para editar ou excluir'
-            : 'Compras da fatura · use as opções para editar ou excluir'}
+            : 'Compras da fatura · use as opções para editar ou excluir')}
         </Text>
-        {creditTransactions.length > 0 && <View style={{ gap: spacing.sm }}>
-          <CampoBusca value={buscaCompra} onChangeText={setBuscaCompra} />
+        {creditTransactions.length > 0 && <View style={{ gap: spacing.sm }} onLayout={(e) => { campoBuscaY.current = e.nativeEvent.layout.y; }}>
+          <CampoBusca value={buscaCompra} onChangeText={setBuscaCompra} onFocus={() => { campoFocado.current = true; if (tecladoAberto) rolarAteCampoBusca(); }} onBlur={() => { campoFocado.current = false; }} />
           <ChipsCategoria opcoes={categoriasCompras} selecionada={categoriaEfetiva} onSelect={setCategoriaCompra} keyboardShouldPersistTaps="handled" />
-          {filtroCompraAtivo && <View style={styles.filteredSummaryCard}>
+          {mostrarComprasFiltradas({ filtroAtivo: filtroCompraAtivo, comprasVisiveis: comprasVisiveis.length, cartaoSelecionado: selectedCardId !== 'all', cartoesNaLista: secoesDeLancamentos.length }) && <View style={styles.filteredSummaryCard}>
             <Text style={styles.filteredSummaryLabel}>{semViuva('Compras filtradas')}</Text>
             <PrivacyValue><Text style={[styles.filteredSummaryVal, { color: theme.down }]}>{formatBRL(subtotalFiltrado)}</Text></PrivacyValue>
           </View>}
@@ -1707,7 +1725,7 @@ export default function CreditoScreen() {
           não divide espaço com texto nenhum, então nenhuma escala de fonte ou
           resolução consegue espremê-lo. É a mesma posição, o mesmo tamanho e o
           mesmo alvo de toque de `contas.tsx`. */}
-      <AppPressable
+      {!tecladoAberto && <AppPressable
         style={({ hovered }) => [styles.fab, { bottom: tabBarTotal + spacing.md }, hovered && styles.fabHover]}
         onPress={() => {
           hapticTap();
@@ -1716,7 +1734,7 @@ export default function CreditoScreen() {
         accessibilityLabel="Lançar compra no crédito"
       >
         <Ionicons name="add" size={24} color={theme.paper} />
-      </AppPressable>
+      </AppPressable>}
 
       {/* Modal: Novo/Editar Cartão de Crédito */}
       <AppModal visible={newCardOpen} transparent onRequestClose={() => setNewCardOpen(false)}>
