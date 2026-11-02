@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from './AppPressable';
@@ -15,9 +15,12 @@ import { fonts, radius, spacing, theme, type, lh, touchTarget, card, menta } fro
 import { semViuva } from '@/lib/sem-viuva';
 import type { GamificationState } from '@/lib/gamification';
 
-export default function DesafiosCalendario({ dias, weekActivity, streak, demo }: {
+export default function DesafiosCalendario({ dias, weekActivity, streak, demo, aoPainelMudar }: {
   dias: ReadonlySet<string>; weekActivity: GamificationState['weekActivity']; streak: number; demo: boolean;
+  /** Avisa quando o painel do dia aparece ou muda de altura, para a tela rolar até ele. */
+  aoPainelMudar?: (painel: View) => void;
 }) {
+  const painelRef = useRef<View>(null);
   const hoje = new Date();
   const [mes, setMes] = useState({ ano: hoje.getFullYear(), mes: hoje.getMonth() });
   const [historico, setHistorico] = useState<ReadonlySet<string> | null>(null);
@@ -63,9 +66,9 @@ export default function DesafiosCalendario({ dias, weekActivity, streak, demo }:
         <View>{calendario.semanas.map((semana, i) => <View key={i} style={s.linha}>{semana.map((d, j) => d ? <AppPressable key={j} accessibilityRole="button"
           accessibilityLabel={`${d.dia} de ${nome}${d.registro ? ', com registro' : ''}${d.hoje ? ', hoje' : ''}. Ver gastos do dia`}
           accessibilityState={{ selected: diaEscolhido === d.iso }} onPress={() => setDiaEscolhido(atual => atual === d.iso ? null : d.iso)} style={s.celula}>
-          <View style={[s.circulo, d.registro && s.ativo, d.hoje && s.hoje, diaEscolhido === d.iso && s.escolhido]}><Text style={[s.numero, d.registro && s.numeroAtivo]}>{d.dia}</Text></View>
+          <View style={[s.anel, diaEscolhido === d.iso && s.anelEscolhido]}><View style={[s.circulo, d.registro && s.ativo, d.hoje && s.hoje]}><Text style={[s.numero, d.registro && s.numeroAtivo]}>{d.dia}</Text></View></View>
         </AppPressable> : <View key={j} style={s.celula} />)}</View>)}</View>
-        {diaEscolhido && <View accessibilityLiveRegion="polite" style={s.grupo}>
+        {diaEscolhido && <View ref={painelRef} collapsable={false} onLayout={() => { if (painelRef.current) aoPainelMudar?.(painelRef.current); }} accessibilityLiveRegion="polite" style={s.grupo}>
           <View style={s.cabecalho}>
             <Text style={s.titulo}>{semViuva(`${Number(diaEscolhido.slice(8))} de ${new Date(mes.ano, mes.mes, 1).toLocaleDateString('pt-BR', { month: 'long' })}`)}</Text>
             {gastos && gastos.centavos > 0 && <PrivacyValue><Text style={s.total}>{`− R$ ${formatMoney(gastos.centavos / 100)}`}</Text></PrivacyValue>}
@@ -73,7 +76,7 @@ export default function DesafiosCalendario({ dias, weekActivity, streak, demo }:
           {gastos ? <>
             {consulta.erro && <AppPressable accessibilityRole="button" onPress={() => void consulta.carregar()} style={s.navegacao}><Text accessibilityRole="alert" style={s.texto}>{semViuva('Não foi possível carregar os gastos. Toque para tentar novamente.')}</Text></AppPressable>}
             {gastos.linhas.length === 0 ? <Text style={s.texto}>{semViuva('Nenhum gasto neste dia.')}</Text>
-              : gastos.linhas.map(t => <View key={t.id} style={s.gasto}>
+              : gastos.linhas.map((t, i) => <View key={t.id} style={[s.gasto, i < gastos.linhas.length - 1 && s.gastoDivisor]}>
                 <View style={s.gastoInfo}>
                   <Text style={s.gastoDescricao}>{t.description}</Text>
                   <Text style={s.gastoDetalhe}>{`${t.category} · ${isCreditTx(t) ? 'Crédito' : 'Débito e Pix'}`}</Text>
@@ -97,11 +100,14 @@ const s = StyleSheet.create({
   ponto: { width: spacing.xs, height: spacing.xs, borderRadius: radius.pill, backgroundColor: theme.inkFaint },
   numero: { color: theme.inkSoft, fontFamily: fonts.regular, fontSize: type.micro, lineHeight: lh(type.micro, 'apoio') }, numeroAtivo: { color: theme.paper },
   celula: { flex: 1, minWidth: 0, minHeight: touchTarget, alignItems: 'center', justifyContent: 'center' },
-  escolhido: { borderColor: theme.ink },
+  // Anel fora do círculo, com um vão sobre o fundo do cartão; sempre reservado para a grade não pular.
+  anel: { padding: 2, borderRadius: radius.pill, borderWidth: 1.5, borderColor: 'transparent' },
+  anelEscolhido: { borderColor: theme.ink },
   cabecalho: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   total: { color: theme.down, fontFamily: fonts.regular, fontSize: type.apoio, lineHeight: lh(type.apoio, 'valor'), flexShrink: 0 },
   // Mesmo desenho da linha de CreditTransactionRow (credito.tsx), sem data nem opções.
-  gasto: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: theme.rule },
+  gasto: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: 10 },
+  gastoDivisor: { borderBottomWidth: 1, borderBottomColor: theme.rule },
   gastoInfo: { flex: 1, minWidth: 0, gap: spacing.fio },
   gastoDescricao: { color: theme.ink, fontFamily: fonts.regular, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo') },
   gastoDetalhe: { color: theme.inkFaint, fontFamily: fonts.regular, fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio') },
