@@ -108,7 +108,7 @@ async function main() {
   ok(nodes(p).some(n => n.type === 'PrivacyValue' && text(n).includes('123,45')), 'valor estruturado protegido por PrivacyValue');
   const Tela = load('app/(app)/desafios.tsx').default;
   index = 0; callbacks = []; Tela();
-  await callbacks[0]();
+  await callbacks.find(f => f.constructor.name === 'AsyncFunction')();
   ok(states[0][5].dias.has('2026-11-01'), 'tela passa dias carregados para a lógica real');
   index = 0; callbacks = []; const screen = Tela();
   const all = nodes(screen);

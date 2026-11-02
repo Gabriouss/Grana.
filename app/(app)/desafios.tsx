@@ -52,7 +52,23 @@ type FilterType = 'all' | 'unlocked' | 'locked';
 
 export default function DesafiosScreen() {
   const { ligado, flag } = useFlags();
-  const { paddingConteudo } = useTabBarInset();
+  const { paddingConteudo, total: alturaDaBarra } = useTabBarInset();
+  const rolagemRef = useRef<ScrollView>(null);
+  const rolagemY = useRef(0);
+  /* O painel do dia abre abaixo da grade, que pode ficar atrás da barra de abas:
+     sem isso o toque pareceria não fazer nada. Rola só o necessário; já visível,
+     não rola; mais alto que a área, para com o topo logo abaixo do cabeçalho. */
+  const garantirPainelVisivel = useCallback((painel: View) => {
+    rolagemRef.current?.getNativeScrollRef()?.measureInWindow((_x: number, topoJanela: number, _l: number, alturaArea: number) => painel.measureInWindow((_px: number, y: number, _pl: number, altura: number) => {
+      const topo = topoJanela;
+      const fundo = topoJanela + alturaArea - alturaDaBarra;
+      let delta = 0;
+      if (altura > fundo - topo) delta = y - topo;
+      else if (y + altura > fundo) delta = y + altura - fundo + spacing.md + cardTokens.padding;
+      else if (y < topo) delta = y - topo;
+      if (Math.abs(delta) > 1) rolagemRef.current?.scrollTo({ y: Math.max(0, rolagemY.current + delta), animated: true });
+    }));
+  }, [alturaDaBarra]);
   const { isDemoMode } = useDemo();
   const { hidden, toggle: togglePrivacy } = usePrivacy();
   const [loading, setLoading] = useState(true);
@@ -272,6 +288,9 @@ export default function DesafiosScreen() {
 
 
       <ScrollView
+        ref={rolagemRef}
+        onScroll={(e) => { rolagemY.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={16}
         style={styles.scroll}
         contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudo }]}
         showsVerticalScrollIndicator={false}
@@ -314,7 +333,7 @@ export default function DesafiosScreen() {
           </View>
         </View>
 
-        <DesafiosCalendario dias={dias} weekActivity={weekActivity} streak={streak} demo={isDemoMode} />
+        <DesafiosCalendario dias={dias} weekActivity={weekActivity} streak={streak} demo={isDemoMode} aoPainelMudar={garantirPainelVisivel} />
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{semViuva('Suas metas')}</Text>
