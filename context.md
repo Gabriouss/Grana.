@@ -93,6 +93,16 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 01–02/11 — registro 14: busca no Crédito e gastos por dia
+
+Autor pediu busca e categorias no Crédito, confirmação de débito mais crédito no teto e abertura dos gastos ao tocar nos dias do calendário. Segundo conferência relatada, `linhaDoTeto` usa `consumo.tudo` no mês civil, incluindo crédito pela data da compra e excluindo pagamento de fatura; seletor no gráfico permanece por servir ao autor. A versão pública anterior somava apenas caixa da carteira selecionada.
+
+Forge entregou busca e filtros nos commits `6d283b49`, `ae9d1a71`, `e73f6501`; Anvil ajustou em `57f31ecf`. Fatura, limite, total e pagamento seguem pela lista inteira; filtro atua na lista e subtotais. Anvil entregou gastos por dia em `65ae40ac`, ajustes de rolagem e seleção em `c3e000cd` e singular em `9c3bbb1c`. Marca do calendário usa dia de registro, lista usa data de ocorrência, podendo divergir; autor informado. O anel de seleção foi criado e declarado como elemento novo; lista embutida foi preferida à navegação para Lançamentos.
+
+Orquestrador relata prints e verificações em Expo Go Android, sem erro de log, com totais preservados; `tsc` e `test:ci` verdes em `c3e000cd`, `tsc` e testes tocados em `9c3bbb1c`. As duas rodadas apagaram dados de teste criados. Prints anteriores revelaram sobreposição de teclado, resumo repetido, painel fora da área e singular incorreto, corrigidos nos commits citados. Não verificados após ajustes: APK e aparelho, fonte grande, leitores de tela, iOS, web, painel de dia muito longo e valores ocultos. Ledger não repetiu as provas.
+
+Sem build, push ou fusão. Celular permanece na versionCode 30 sem essas mudanças. Nova build requer ordem literal e fusão requer consulta prévia. Fonte: `E:\Grana-temporarios\2026-11-01-desafios-rolagem\00-ORDEM-ledger-registro-14.md`.
+
 ## 01/11 — registro 13: segunda build pessoal instalada
 
 Autor voltou para casa, autorizou expressamente fundir e disparar hoje e depois pediu instalação. Harbor fundiu apenas `main` `53b7c1bd` para a branch de teste, gerando `3cf8c22f`; sem mudança no main local ou remoto. Na árvore fundida relatou `tsc`, `test:avisos`, `avisos-telas` e `test:ci` verdes. Build pessoal `530692b4-4226-493d-870b-ee3b79d270a0`, development 1.10.12, versionCode 30, sem `build:preparar`: sétima da semana, acima do teto, com autorização e ciência do autor. Produção e publicação permaneceram iguais segundo conferência do orquestrador.
