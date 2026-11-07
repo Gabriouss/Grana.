@@ -794,6 +794,15 @@ Regras permanentes para qualquer sessão que abrir este repositório:
       piso zero, calculada como entradas menos saídas em débito/Pix daquele
       mês, com a mesma regra de cofrinho. Não recorre a meses mais antigos e
       não usa `initial_balance`; mês anterior sem dados resulta em zero.
+      Adendo de 07/11 na ordem: para todos os usuários, excluir da sobra
+      lançamentos importados por OFX/CSV ou qualquer importação em lote;
+      considerar só lançamentos feitos no Grana, com piso zero e sobra zero se
+      o mês anterior não tiver lançamentos elegíveis. O autor relatou que
+      histórico importado incompleto inflaria o cálculo e pediu solução para
+      todos; a exclusão foi decidida pelo orquestrador e está sujeita a veto
+      do autor. Antes de implementar, conferir se a origem de todas as
+      importações, inclusive antigas, é confiável no banco. Se não for, parar
+      e relatar opções ao orquestrador, sem migration nem heurística inventada.
     - Todas as entradas do mês vigente contam desde o dia 1, inclusive as de
       data futura. Saídas do mês vigente, inclusive futuras, descontam.
     - Compra no crédito e fatura não paga não reduzem o Livre. O pagamento da

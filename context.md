@@ -125,6 +125,8 @@ Autor: "deixar tudo pronto pra gente colocar o aplicativo na Play Store". Decis�
 
 **Regra 20 — pedido de 07/11:** autor pediu contar a sobra do mês anterior no Livre, salário futuro desde o dia 1 e fatura só ao pagar. Keel (Opus 5.5 medium) implementa no `main`; `AGENTS.md` registra a decisão e cita `ordem-keel-livre.md`. Implementação, testes e publicação ainda não confirmados; saldo atual e seletor de carteira ficam fora desta tarefa.
 
+**Adendo da regra 20:** autor alertou para importações incompletas e pediu solução para todos os usuários. A ordem de Keel limita a sobra ao mês imediatamente anterior, piso zero, excluindo importados e usando zero sem lançamentos elegíveis. A exclusão foi decidida pelo orquestrador e está sujeita a veto do autor; Keel deve antes confirmar identificação confiável de importações antigas e atuais, ou parar e relatar opções sem migration nem heurística. Não verificado por Ledger.
+
 **Em aberto.** Os relatórios `relatorio-*.md` e os `FIM-*.md` da pasta da rodada entram aqui à medida que surgirem, cada um em registro curto, separando testado de relatado.
 
 ## 02/11 — motion-supremo unificada nas três cópias
