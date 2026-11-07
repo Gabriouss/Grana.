@@ -20,13 +20,14 @@ import { initialWindowMetrics } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from '@/components/AppPressable';
+import DenunciarRespostaModal from '@/components/DenunciarRespostaModal';
 import Granabo3D, { type EstadoGranabo3D } from '@/components/Granabo3D';
 import { useKeyboardHeight } from '@/components/Sheet';
 import { UI_OUT, useReducedMotion } from '@/lib/motion';
 import { mensagemErro as traduzirErro } from '@/lib/erros';
 import { geometriaDaConversa, type RetanguloNaJanela } from '@/lib/breakpoints';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
-import { theme, spacing, radius, fonts, type, lh, screenRhythm, sombras, menta } from '@/lib/theme';
+import { theme, spacing, radius, fonts, type, lh, touchTarget, screenRhythm, sombras, menta } from '@/lib/theme';
 import {
   fetchMensagens,
   enviarPergunta,
@@ -230,6 +231,7 @@ export default function Granachat({
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [carregando, setCarregando] = useState(true);
+  const [denunciando, setDenunciando] = useState<{ id: string; texto: string } | null>(null);
   const painelRef = useRef<View | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const manterScrollNoFimRef = useRef(true);
@@ -570,6 +572,16 @@ export default function Granachat({
             {item.texto}
           </Text>
         </View>
+        {!isUser && !item.erro && (
+          <AppPressable
+            onPress={() => setDenunciando({ id: item.id, texto: item.texto })}
+            style={styles.denunciar}
+            accessibilityRole="button"
+            accessibilityLabel="Denunciar esta resposta"
+          >
+            <Ionicons name="flag-outline" size={16} color={theme.inkFaint} />
+          </AppPressable>
+        )}
       </View>
     );
   }, [celebrandoResposta, idUltimaAssistente]);
@@ -705,6 +717,7 @@ export default function Granachat({
             <Ionicons name="close" size={20} color={theme.inkSoft} />
           </AppPressable>
         </View>
+        <DenunciarRespostaModal mensagem={denunciando} onClose={() => setDenunciando(null)} />
 
         <View style={styles.corpo}>
         <FlatList
@@ -936,6 +949,13 @@ const styles = StyleSheet.create({
   },
   bolhaWrapAssistente: {
     justifyContent: 'flex-start',
+  },
+  denunciar: {
+    width: touchTarget,
+    height: touchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: -spacing.xs,
   },
   avatarBot: {
     width: 32,
