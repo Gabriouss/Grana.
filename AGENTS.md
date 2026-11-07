@@ -790,19 +790,17 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     Keel é o responsável pela implementação no `main`; esta regra registra a
     decisão, não comprova que a implementação já foi concluída ou publicada.
 
-    - **Livre para gastar:** soma a sobra do mês imediatamente anterior, com
-      piso zero, calculada como entradas menos saídas em débito/Pix daquele
-      mês, com a mesma regra de cofrinho. Não recorre a meses mais antigos e
-      não usa `initial_balance`; mês anterior sem dados resulta em zero.
-      Adendo de 07/11 na ordem: para todos os usuários, excluir da sobra
-      lançamentos importados por OFX/CSV ou qualquer importação em lote;
-      considerar só lançamentos feitos no Grana, com piso zero e sobra zero se
-      o mês anterior não tiver lançamentos elegíveis. O autor relatou que
-      histórico importado incompleto inflaria o cálculo e pediu solução para
-      todos; a exclusão foi decidida pelo orquestrador e está sujeita a veto
-      do autor. Antes de implementar, conferir se a origem de todas as
-      importações, inclusive antigas, é confiável no banco. Se não for, parar
-      e relatar opções ao orquestrador, sem migration nem heurística inventada.
+    - **Sobra somente por confirmação:** o adendo 2 da ordem substitui a
+      proposta anterior de excluir importados. Na virada do mês, a Início
+      pergunta quanto sobrou na conta, sugerindo o caixa calculado do mês
+      anterior com piso zero; a pessoa confirma, corrige ou informa zero.
+      Até confirmar, a sobra é zero para todos. “Agora não” mantém zero e a
+      pergunta volta depois. Falha ao salvar precisa de recibo visível.
+    - O valor confirmado conta somente no Livre do mês corrente; não vira
+      receita, não aparece em lançamentos, não muda o seletor de carteira e
+      não acumula para o mês seguinte, quando a pergunta é feita novamente.
+      A persistência prevista é no servidor por usuário e mês, com RLS e
+      compatibilidade com o cliente antigo; migration nova não aplicada.
     - Todas as entradas do mês vigente contam desde o dia 1, inclusive as de
       data futura. Saídas do mês vigente, inclusive futuras, descontam.
     - Compra no crédito e fatura não paga não reduzem o Livre. O pagamento da
@@ -810,7 +808,7 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     - Aportes líquidos do dinheiro deste mês ainda guardados em cofrinho
       reduzem o Livre; dinheiro anterior guardado continua fora. Resgate de
       dinheiro anterior não vira receita.
-    - Fórmula: Livre = max(0, sobra do mês anterior + entradas do mês − saídas
+    - Fórmula: Livre = max(0, sobra confirmada para o mês + entradas do mês − saídas
       do mês − aportes líquidos deste mês ainda guardados) ÷ dias restantes,
       incluindo hoje.
     - Início, widgets e Granabô seguem a mesma regra e o mesmo núcleo de
