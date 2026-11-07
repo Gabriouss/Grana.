@@ -170,6 +170,34 @@ function escolherDownloadPublicado(
   };
 }
 
+/* Quem pode virar `app_release`: LISTA DE PERMITIDOS, não de bloqueados.
+
+   O aviso de atualização (`lib/atualizacao.ts`) manda todo usuário do APK do
+   site baixar o `apk_url` publicado. Só `preview` e `production` geram esse
+   APK (`eas.json`, regra 8: `distribution: internal`, `buildType: apk`).
+   Até 07/11/2026 a função só recusava `development`, então um perfil novo
+   (`play`, que gera AAB para a Play Store) viraria release e todo mundo
+   receberia um aviso cujo arquivo não instala. Perfil novo, ausente ou com
+   outra grafia fica de fora até alguém o incluir aqui de propósito.
+
+   O artefato também precisa ser `.apk` no caminho da URL: mesmo um perfil
+   permitido que um dia passe a gerar `.aab` não pode anunciar o que não
+   instala. Os links do EAS terminam em `.apk`/`.aab`
+   (`https://expo.dev/artifacts/eas/<id>.apk`). */
+const PERFIS_DO_APK_DO_SITE = new Set(['preview', 'production']);
+
+function perfilPublicaApk(perfil: string): boolean {
+  return PERFIS_DO_APK_DO_SITE.has(perfil);
+}
+
+function artefatoEhApk(url: string): boolean {
+  try {
+    return new URL(url).pathname.toLowerCase().endsWith('.apk');
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
   if (!EAS_WEBHOOK_SECRET || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
@@ -204,10 +232,11 @@ Deno.serve(async (req: Request) => {
   const relevante =
     payload.status === 'finished'
     && payload.platform === 'android'
-    && payload.metadata?.buildProfile !== 'development'
+    && perfilPublicaApk(payload.metadata?.buildProfile ?? '')
     && !!version
     && !!apkUrl
-    && /^https:\/\/expo\.dev\//.test(apkUrl);
+    && /^https:\/\/expo\.dev\//.test(apkUrl)
+    && artefatoEhApk(apkUrl);
   if (!relevante) return new Response('ignored', { status: 200 });
 
   const payloadHash = await sha256Hex(rawBody);

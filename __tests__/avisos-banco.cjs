@@ -542,8 +542,11 @@ async function main() {
   assert.equal(eas.development.autoIncrement, true);
   assert.equal(eas.development.android.buildType, 'apk');
   assert.deepEqual(eas.development.env, eas.preview.env);
-  assert.match(fs.readFileSync(path.join(root, 'supabase/functions/eas-build-webhook/index.ts'), 'utf8'), /buildProfile !== 'development'/);
-  ok('perfil development gera APK e o webhook o ignora');
+  /* 07/11/2026: lista de permitidos (preview/production) em vez de recusar só
+     development; o comportamento é testado no módulo real em eas-webhook-perfis.cjs. */
+  const webhook = fs.readFileSync(path.join(root, 'supabase/functions/eas-build-webhook/index.ts'), 'utf8');
+  assert.match(webhook, /PERFIS_DO_APK_DO_SITE = new Set\(\['preview', 'production'\]\)/);
+  ok('perfil development gera APK e o webhook o ignora (só preview/production publicam)');
 
   /* Textos sem pedir para contornar a proteção do Android (T6) */
   const secao = fs.readFileSync(path.join(root, 'components/AvisosBancoSecao.tsx'), 'utf8');
