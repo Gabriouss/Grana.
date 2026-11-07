@@ -42,7 +42,9 @@ import { confirmarExclusaoDeLancamento, conferirContaPaga } from '@/lib/excluir-
 import { carregarLayoutHome, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
 import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals, updateGoal } from '@/lib/goals';
 import { calcularSafeToSpend, projetarComprometimentoFuturo, sugerirEvolucaoArquetipo } from '@/lib/projections';
-import { buscarSobraDoMes, sobraParaOLivre, type EstadoSobra } from '@/lib/sobra-do-mes';
+import { buscarSobraDoMes, confirmarSobraDoMes, sobraParaOLivre, type EstadoSobra } from '@/lib/sobra-do-mes';
+import { sugerirSobraDoMesAnterior } from '@/lib/safe-to-spend';
+import { notificarDadosDosWidgetsAlterados } from '@/lib/widgets-home-events';
 import { ARQUETIPOS, carregarDiagnostico, type DiagnosticoCarregado } from '@/lib/diagnostico';
 import { formatMoney, formatDateLabel, parseAmount, saudacaoDoDia, todayISO, formatMoneyInput } from '@/lib/format';
 import { hapticDelete } from '@/lib/haptics';
@@ -101,6 +103,7 @@ import SegmentedTabs from '@/components/SegmentedTabs';
 import MonthSelector from '@/components/MonthSelector';
 import GoalsCarousel from '@/components/GoalsCarousel';
 import SafeToSpendCard from '@/components/SafeToSpendCard';
+import PerguntaSobraDoMes from '@/components/PerguntaSobraDoMes';
 import FutureTimelineChart from '@/components/FutureTimelineChart';
 import CreditSummaryCard from '@/components/CreditSummaryCard';
 import { lancamentosDaCarteira } from '@/lib/creditoFaturas';
@@ -146,6 +149,8 @@ export default function InicioScreen() {
   /* Sobra do mês anterior confirmada pela pessoa (Adendo 2 do autor, 07/11/2026).
      `null` = ainda não conferida: o Livre usa zero e não pergunta nada. */
   const [sobraDoMes, setSobraDoMes] = useState<EstadoSobra | null>(null);
+  /* "Agora não": só nesta abertura da Início; a pergunta volta na próxima. */
+  const [sobraAdiada, setSobraAdiada] = useState(false);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [lifetimeXp, setLifetimeXp] = useState(0);
   const [diagnostico, setDiagnostico] = useState<DiagnosticoCarregado | null>(null);
@@ -1253,13 +1258,31 @@ export default function InicioScreen() {
      bloco que vai realmente aparecer. */
   const HOME_BLOCOS: Record<HomeBlockConfig['key'], () => React.ReactNode> = {
     saldo: () => (
-      <View
-        ref={(n) => {
-          tourRefs.current.saldo = n;
-        }}
-        collapsable={false}
-      >
-        <SafeToSpendCard carregando={carregandoFontesLivre} indisponivel={!fontesLivreDisponiveis} data={safeToSpend} sugestaoArquetipo={arquetipoSugerido} />
+      <View style={{ gap: spacing.sm }}>
+        {/* Sobra do mês passado (autor, 07/11/2026): só na visão de todas as
+            carteiras, só enquanto não confirmada, e nunca com a tabela ainda
+            ausente no servidor (estado `desligada`). */}
+        {!isDemoMode && activeWalletId === 'total' && sobraDoMes?.estado === 'pendente' && !sobraAdiada && !carregandoFontesLivre && (
+          <PerguntaSobraDoMes
+            sugestao={sugerirSobraDoMesAnterior(transactions, goals, todayISO())}
+            onAgoraNao={() => setSobraAdiada(true)}
+            onConfirmar={async (valor) => {
+              const mes = sobraDoMes.mes;
+              await confirmarSobraDoMes(mes, valor);
+              setSobraDoMes({ estado: 'confirmada', mes, valor });
+              notificarDadosDosWidgetsAlterados();
+              triggerToast('Sobra do mês passado confirmada');
+            }}
+          />
+        )}
+        <View
+          ref={(n) => {
+            tourRefs.current.saldo = n;
+          }}
+          collapsable={false}
+        >
+          <SafeToSpendCard carregando={carregandoFontesLivre} indisponivel={!fontesLivreDisponiveis} data={safeToSpend} sugestaoArquetipo={arquetipoSugerido} />
+        </View>
       </View>
     ),
     cofrinhos: () => (
