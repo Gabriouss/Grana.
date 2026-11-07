@@ -121,6 +121,8 @@ Autor: "deixar tudo pronto pra gente colocar o aplicativo na Play Store". Decis�
 
 **Compass e Watchtower:** Compass entregou `passo-a-passo-fase0.md`, sem commit; relata consulta a fontes oficiais, sem cadastro nem envio. Watchtower entregou inventário de dados e lacunas de privacidade, na base anterior ao cherry-pick, e relata HTTP 200 na URL de exclusão após redirecionamento; não validou conteúdo renderizado, exclusão real, binário ou produção. Ambas as conclusões precisam ser revalidadas na versão Play final. Ledger leu os relatórios, sem repetir as provas.
 
+**P1 — Início vazia:** autor relatou com print que a Início no celular, build pessoal versionCode 30 da branch de teste, aparece sem blocos e com a faixa “Atualização pendente”. Causa e alcance no APK dos usuários atuais ainda desconhecidos. Investigação atribuída ao Claude Code (Opus 5.5 medium), conforme `E:\Grana-temporarios\2026-11-07-play-fase1\ordem-bug-inicio-vazia.md`; relatório e reprodução ainda pendentes. Ledger leu a ordem, não verificou o aparelho.
+
 **Em aberto.** Os relatórios `relatorio-*.md` e os `FIM-*.md` da pasta da rodada entram aqui à medida que surgirem, cada um em registro curto, separando testado de relatado.
 
 ## 02/11 — motion-supremo unificada nas três cópias
