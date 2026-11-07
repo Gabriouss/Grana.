@@ -161,6 +161,8 @@ Lumen relata denúncia em `1a1f9cfa`/`ead42e2b`, com UI incorporada ao commit de
 
 **Implantação pendente:** migrations da sobra e denúncia têm o mesmo timestamp `20261107120000`; revisar controle de versões antes da implantação. Grants reais e RLS em Postgres real não foram testados. Sem aplicar nem renomear agora. Sem push, build, deploy, migration aplicada ou restart.
 
+**Prism — correções entregues:** UI-01 privacidade do recibo no clone `39ea54dc`, UI-02 denúncia assíncrona no clone `4210f04a`, UI-03/WT-R4 na sobra no main `36337ab7` e cherry-pick `-x` no clone `7f785494`; WT-R3 duplica UI-03. Codex informa ter conferido existência dos commits. Prism relata testes focais de módulos reais e `tsc` verdes nas duas árvores; Codex e Ledger não repetiram, e não houve homologação visual ou em aparelho. Forge recebeu liberação explícita e iniciou F1/F2 + WT-R1/R2/R5, segundo terminal confirmado por Codex. Watchtower foi acionado para revisão independente da sobra e depois dos reparos Forge; Harbor aguarda ambos e parecer antes do portão. Rodada não concluída; sem push, build, deploy, migration aplicada ou restart.
+
 **Em aberto.** Os relatórios `relatorio-*.md` e os `FIM-*.md` da pasta da rodada entram aqui à medida que surgirem, cada um em registro curto, separando testado de relatado.
 
 ## 02/11 — motion-supremo unificada nas três cópias
