@@ -1,27 +1,36 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
-import { theme, radius, spacing, card as cardTokens, fonts, type, lh } from '@/lib/theme';
+import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
+import { useHaJanelaAberta } from '@/lib/janelas-abertas';
 import { formatMoney, formatMoneyInput, parseAmount } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
+import AppModal from './AppModal';
 import AppPressable from './AppPressable';
+import Sheet from './Sheet';
 
 /**
  * Pergunta da virada do mês (Adendo 2 do autor, 07/11/2026, regra 20): "Quanto
  * sobrou na sua conta do mês passado?". O app não sabe o saldo do banco, então
  * só o valor que a pessoa confirmar entra no Livre deste mês; até lá, zero.
  *
- * Feito só com o que o design system já tem: moldura do card do Livre
- * (`SafeToSpendCard`), campo de valor e botão principal de Crédito
- * (`amountRow`, `saveBtn`) e o texto de apoio do card. Nada novo.
+ * Janela flutuante (autor, 07/11/2026: "a gente não vai adicionar blocos na
+ * tela do Grana"): `AppModal` + `Sheet` centralizada, como as demais janelas,
+ * com o campo de valor e o botão principal de Crédito (`amountRow`, `saveBtn`).
+ * Nada novo no design system. Abre só quando a Início está em foco e nenhuma
+ * outra janela está aberta (registro de `AppModal`), e nunca por cima de outra.
+ * Tocar fora e o Voltar NÃO fecham: as saídas são "Agora não" e "Confirmar".
  *
  * "Agora não" mantém zero e a Início pergunta de novo no dia seguinte.
  * Falha ao salvar deixa recibo na tela (regra 9), nunca volta em silêncio.
  */
 export default function PerguntaSobraDoMes({
+  pode,
   sugestao,
   onConfirmar,
   onAgoraNao,
 }: {
+  /** Início em foco e sobra pendente. Fora disso a janela não abre. */
+  pode: boolean;
   sugestao: number;
   onConfirmar: (valor: number) => Promise<void>;
   onAgoraNao: () => void;
@@ -29,6 +38,14 @@ export default function PerguntaSobraDoMes({
   const [valor, setValor] = useState(() => formatMoney(sugestao));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  /* Trava: depois de abrir, a janela fica aberta mesmo com ela mesma contando
+     no registro. Só nasce com nenhuma outra aberta, e some se a Início sair de foco. */
+  const outraAberta = useHaJanelaAberta();
+  const [aberta, setAberta] = useState(false);
+  useEffect(() => {
+    if (!pode) { if (aberta) setAberta(false); return; }
+    if (!aberta && !outraAberta) setAberta(true);
+  }, [pode, outraAberta, aberta]);
 
   async function confirmar() {
     const numero = valor.trim() ? parseAmount(valor) : 0;
@@ -49,7 +66,8 @@ export default function PerguntaSobraDoMes({
   }
 
   return (
-    <View style={styles.card}>
+    <AppModal visible={aberta && pode} transparent onRequestClose={() => {}}>
+      <Sheet centered onClose={() => {}}>
       <Text style={styles.titulo}>Quanto sobrou na sua conta do mês passado?</Text>
       <Text style={styles.apoio}>
         Confira no app do seu banco. Só o valor que você confirmar entra no Livre para gastar deste mês.
@@ -87,19 +105,12 @@ export default function PerguntaSobraDoMes({
           {salvando ? <ActivityIndicator color={theme.paper} /> : <Text style={styles.saveBtnText}>Confirmar</Text>}
         </AppPressable>
       </View>
-    </View>
+      </Sheet>
+    </AppModal>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: theme.paperRaised,
-    borderRadius: cardTokens.radius,
-    borderWidth: cardTokens.borderWidth,
-    borderColor: theme.rule,
-    padding: cardTokens.padding,
-    gap: spacing.sm,
-  },
   titulo: { color: theme.ink, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo'), fontFamily: fonts.regular },
   apoio: { color: theme.inkFaint, fontSize: type.nota, lineHeight: lh(type.nota, 'corpo'), fontFamily: fonts.light },
   amountRow: {
