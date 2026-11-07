@@ -20,7 +20,7 @@ create table if not exists public.sobra_do_mes (
 );
 
 alter table public.sobra_do_mes enable row level security;
-revoke all on public.sobra_do_mes from public, anon;
+revoke all on public.sobra_do_mes from public, anon, authenticated;
 grant select, insert, update on public.sobra_do_mes to authenticated;
 grant select, insert, update, delete on public.sobra_do_mes to service_role;
 
