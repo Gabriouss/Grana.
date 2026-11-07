@@ -9,7 +9,7 @@ import { fetchDiasDeAtividade } from '@/lib/data';
 import { movimentarCofrinhoLocal, type OrigemCofrinho } from '@/lib/cofrinho-origem';
 import { boletoAtrasado, boletosDaSemana } from '../../lib/boletos-da-semana';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   Animated,
@@ -242,6 +242,7 @@ export default function InicioScreen() {
   // local), então não repete depois que a pessoa já respondeu ou fechou uma
   // vez, em NENHUM aparelho/navegador da mesma conta.
   const userId = session?.user.id;
+  const inicioEmFoco = useIsFocused();
   const { hoje: hojeDaSobra, sobraDoMes, sobraAdiada, carregando: carregandoSobra, erro: erroSobra,
     adiar: adiarSobra, confirmar: confirmarSobra, recarregar: recarregarSobra } = useSobraDoMes(userId, !isDemoMode);
   useEffect(() => {
@@ -1240,30 +1241,13 @@ export default function InicioScreen() {
      bloco que vai realmente aparecer. */
   const HOME_BLOCOS: Record<HomeBlockConfig['key'], () => React.ReactNode> = {
     saldo: () => (
-      <View style={{ gap: spacing.sm }}>
-        {/* Sobra do mês passado (autor, 07/11/2026): só na visão de todas as
-            carteiras, só enquanto não confirmada, e nunca com a tabela ainda
-            ausente no servidor (estado `desligada`). */}
-        {!isDemoMode && activeWalletId === 'total' && sobraDoMes?.estado === 'pendente' && sobraAdiada === false && !carregandoFontesLivre && (
-          <PerguntaSobraDoMes
-            key={`${userId}:${sobraDoMes.mes}`}
-            sugestao={sugerirSobraDoMesAnterior(transactions, goals, todayISO())}
-            onAgoraNao={adiarSobra}
-            onConfirmar={async (valor) => {
-              await confirmarSobra(valor);
-              notificarDadosDosWidgetsAlterados();
-              triggerToast('Sobra do mês passado confirmada');
-            }}
-          />
-        )}
-        <View
-          ref={(n) => {
-            tourRefs.current.saldo = n;
-          }}
-          collapsable={false}
-        >
-          <SafeToSpendCard carregando={carregandoFontesLivre || carregandoSobra} indisponivel={!fontesLivreDisponiveis || erroSobra} data={safeToSpend} sugestaoArquetipo={arquetipoSugerido} />
-        </View>
+      <View
+        ref={(n) => {
+          tourRefs.current.saldo = n;
+        }}
+        collapsable={false}
+      >
+        <SafeToSpendCard carregando={carregandoFontesLivre || carregandoSobra} indisponivel={!fontesLivreDisponiveis || erroSobra} data={safeToSpend} sugestaoArquetipo={arquetipoSugerido} />
       </View>
     ),
     cofrinhos: () => (
@@ -1825,6 +1809,23 @@ export default function InicioScreen() {
       />
 
       {/* Sheet de lançamento — mesmo componente das telas de Lançamentos e Crédito. */}
+      {/* Sobra do mês passado (autor, 07/11/2026): janela flutuante, nunca bloco
+          na Início. Só na visão de todas as carteiras, só enquanto não
+          confirmada, e nunca com a tabela ainda ausente no servidor (estado
+          `desligada`). Abre com a Início em foco e sem outra janela aberta. */}
+      {!isDemoMode && sobraDoMes?.estado === 'pendente' && (
+        <PerguntaSobraDoMes
+          key={`${userId}:${sobraDoMes.mes}`}
+          pode={activeWalletId === 'total' && sobraAdiada === false && !carregandoFontesLivre && inicioEmFoco}
+          sugestao={sugerirSobraDoMesAnterior(transactions, goals, todayISO())}
+          onAgoraNao={adiarSobra}
+          onConfirmar={async (valor) => {
+            await confirmarSobra(valor);
+            notificarDadosDosWidgetsAlterados();
+            triggerToast('Sobra do mês passado confirmada');
+          }}
+        />
+      )}
       <TransactionSheet
         visible={txSheetOpen}
         onClose={() => setTxSheetOpen(false)}
