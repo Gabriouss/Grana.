@@ -7,6 +7,10 @@ type Meta = { current_amount: number | string; month_reserves?: Record<string, n
 export type ContextoLivre = {
   cards?: Array<{ id: string; closing_day: number }>;
   payments?: Array<{ card_id: string; year: number; month: number; amount: number | string; paid_on?: string }>;
+  /** Sobra do mês anterior CONFIRMADA pela pessoa para o mês de `hojeISO`
+   *  (tabela `sobra_do_mes`). Ausente = zero: nunca se libera valor que a
+   *  pessoa não confirmou (autor, 07/11/2026). */
+  sobraConfirmada?: number | string | null;
 };
 
 /**
@@ -58,14 +62,16 @@ export function entraNoLivreDoMes(
  *   fatura desconta quando é paga, porque `pagar_fatura_cartao` grava o
  *   pagamento como saída de caixa sem `card_id`, e só ali (conta uma vez);
  * - cofrinho: só o guardado do dinheiro deste mês reduz; o anterior fica fora.
- * Livre = max(0, entradas do mês − saídas do mês − guardado do mês) ÷ dias
- * restantes (incluindo hoje). Sem `initial_balance` e sem meses anteriores.
+ * Livre = max(0, sobra confirmada + entradas do mês − saídas do mês −
+ * guardado do mês) ÷ dias restantes (incluindo hoje). Sem `initial_balance`.
+ * Mês anterior só entra pela sobra que a PESSOA confirmou (Adendo 2 do autor,
+ * 07/11/2026); sem confirmação, zero.
  *
- * `contexto` (cartões e pagamentos) ficou sem uso no cálculo desde 07/11;
- * continua aceito para não quebrar quem chama.
+ * Cartões e pagamentos do `contexto` ficaram sem uso no cálculo desde 07/11;
+ * continuam aceitos para não quebrar quem chama.
  */
 export function calcularLivre(
-  transacoes: Tx[], metas: Meta[], hojeISO: string, _contexto: ContextoLivre = {},
+  transacoes: Tx[], metas: Meta[], hojeISO: string, contexto: ContextoLivre = {},
 ) {
   const centavos = (v: number | string) => Math.round(Number(v) * 100);
   const mes = hojeISO.slice(0, 7);
@@ -76,11 +82,33 @@ export function calcularLivre(
     .filter(t => t.type === 'in' && entraNoLivreDoMes(t, hojeISO) && !entraNoCaixaDoMes(t, hojeISO))
     .reduce((s, t) => s + centavos(t.amount), 0);
   const reservado = metas.reduce((s, g) => s + centavos(g.month_reserves?.[mes] ?? 0), 0);
-  const caixaDoLivre = saldo + entradasPrevistas;
+  const sobra = Math.max(0, centavos(contexto.sobraConfirmada ?? 0) || 0);
+  const caixaDoLivre = sobra + saldo + entradasPrevistas;
   const diasRestantes = Math.max(1, new Date(Date.UTC(ano, mesNumero, 0)).getUTCDate() - dia + 1);
   const livreTotal = Math.max(0, caixaDoLivre - reservado) / 100;
   return {
-    saldoAtual: saldo / 100, entradasPrevistas: entradasPrevistas / 100, reservadoEmMetas: reservado / 100,
+    saldoAtual: saldo / 100, sobraConfirmada: sobra / 100, entradasPrevistas: entradasPrevistas / 100, reservadoEmMetas: reservado / 100,
     semSaldo: caixaDoLivre <= 0, diasRestantes, livreTotal, livrePorDia: livreTotal / diasRestantes,
   };
+}
+
+/** Mês anterior ao de `hojeISO`, em "AAAA-MM". */
+export function mesAnterior(hojeISO: string): string {
+  const [ano, mes] = hojeISO.split('-').map(Number);
+  return mes === 1 ? `${ano - 1}-12` : `${ano}-${String(mes - 1).padStart(2, '0')}`;
+}
+
+/** Valor que PREENCHE a pergunta "Quanto sobrou na sua conta do mês passado?"
+ *  (Adendo 2 do autor, 07/11/2026). É só sugestão: não entra no Livre até a
+ *  pessoa confirmar. Caixa do mês imediatamente anterior (entradas menos
+ *  saídas fora do crédito, o mês inteiro) menos o guardado do dinheiro daquele
+ *  mês, com piso zero. Sem recursão para meses mais antigos. */
+export function sugerirSobraDoMesAnterior(transacoes: Tx[], metas: Meta[], hojeISO: string): number {
+  const centavos = (v: number | string) => Math.round(Number(v) * 100);
+  const anterior = mesAnterior(hojeISO);
+  const caixa = transacoes
+    .filter(t => t.payment_method !== 'credit' && !t.card_id && typeof t.occurred_on === 'string' && t.occurred_on.slice(0, 7) === anterior)
+    .reduce((s, t) => s + (t.type === 'in' ? 1 : -1) * centavos(t.amount), 0);
+  const guardado = metas.reduce((s, g) => s + centavos(g.month_reserves?.[anterior] ?? 0), 0);
+  return Math.max(0, caixa - guardado) / 100;
 }

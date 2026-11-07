@@ -1722,16 +1722,29 @@ async function executarFerramenta(
 
       if (cardsResult.error) throw cardsResult.error;
       if (paymentsResult.error) throw paymentsResult.error;
-      const r = calcularLivreParaGastar(txResult.data ?? [], goalsResult.data ?? [], hojeISO, { cards: cardsResult.data ?? [], payments: paymentsResult.data ?? [] });
+      /* Sobra do mês anterior: só a CONFIRMADA pela pessoa (Adendo 2 do autor,
+         07/11/2026). Sem linha, zero. Tabela ainda não aplicada (PGRST205/42P01)
+         também é zero, com log; qualquer outro erro derruba a resposta, como as
+         demais fontes, para não afirmar um Livre sem uma parte dele. */
+      const sobraResult = await supabase.from('sobra_do_mes').select('valor')
+        .eq('user_id', userId).eq('mes', hojeISO.slice(0, 7)).maybeSingle();
+      let sobraConfirmada = 0;
+      if (sobraResult.error) {
+        if (sobraResult.error.code === 'PGRST205' || sobraResult.error.code === '42P01') {
+          console.warn('[assistente] tabela sobra_do_mes ainda não existe; sobra fica zero');
+        } else throw sobraResult.error;
+      } else if (sobraResult.data) sobraConfirmada = Number(sobraResult.data.valor) || 0;
+      const r = calcularLivreParaGastar(txResult.data ?? [], goalsResult.data ?? [], hojeISO, { cards: cardsResult.data ?? [], payments: paymentsResult.data ?? [], sobraConfirmada });
       const rotuloMes = `${dataBR(inicioMes)} a ${dataBR(fimMes)}`;
       return (
         `Livre para gastar no mês vigente (${rotuloMes}): R$ ${formatarBRL(r.livreTotal)}\n` +
         `Isso dá R$ ${formatarBRL(r.livrePorDia)} por dia (${rotuloDiasRestantes(r.diasRestantes)}).\n` +
+        (r.sobraConfirmada > 0 ? `Sobra do mês passado que você confirmou: R$ ${formatarBRL(r.sobraConfirmada)}. ` : '') +
         `Detalhes: saldo do mês R$ ${formatarBRL(r.saldoAtual)} (entradas menos saídas de caixa deste mês até hoje), ` +
         `entradas previstas ainda neste mês R$ ${formatarBRL(r.entradasPrevistas)} (já contam no Livre), ` +
         `guardado do mês em metas R$ ${formatarBRL(r.reservadoEmMetas)}. ` +
         'Compras no crédito só descontam quando a fatura é paga, e boletos quando são pagos. ' +
-        'O saldo não inclui meses anteriores.'
+        'O saldo não inclui meses anteriores; do mês passado, só entra a sobra que você confirmar na Início.'
       );
     }
 

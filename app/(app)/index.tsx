@@ -42,6 +42,7 @@ import { confirmarExclusaoDeLancamento, conferirContaPaga } from '@/lib/excluir-
 import { carregarLayoutHome, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
 import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals, updateGoal } from '@/lib/goals';
 import { calcularSafeToSpend, projetarComprometimentoFuturo, sugerirEvolucaoArquetipo } from '@/lib/projections';
+import { buscarSobraDoMes, sobraParaOLivre, type EstadoSobra } from '@/lib/sobra-do-mes';
 import { ARQUETIPOS, carregarDiagnostico, type DiagnosticoCarregado } from '@/lib/diagnostico';
 import { formatMoney, formatDateLabel, parseAmount, saudacaoDoDia, todayISO, formatMoneyInput } from '@/lib/format';
 import { hapticDelete } from '@/lib/haptics';
@@ -142,6 +143,9 @@ export default function InicioScreen() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [fontesLivreDisponiveis, setFontesLivreDisponiveis] = useState(false);
   const [carregandoFontesLivre, setCarregandoFontesLivre] = useState(true);
+  /* Sobra do mês anterior confirmada pela pessoa (Adendo 2 do autor, 07/11/2026).
+     `null` = ainda não conferida: o Livre usa zero e não pergunta nada. */
+  const [sobraDoMes, setSobraDoMes] = useState<EstadoSobra | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [lifetimeXp, setLifetimeXp] = useState(0);
   const [diagnostico, setDiagnostico] = useState<DiagnosticoCarregado | null>(null);
@@ -408,6 +412,7 @@ export default function InicioScreen() {
       setGoals(DEMO_GOALS);
       setLifetimeXp(DEMO_LIFETIME_XP);
       setInvoicePayments([]);
+      setSobraDoMes(null);
       setFontesLivreDisponiveis(true);
       setCarregandoFontesLivre(false);
       setCreditCards(DEMO_CREDIT_CARDS);
@@ -495,6 +500,22 @@ export default function InicioScreen() {
         repetirFontesNoFoco.current = true;
         setInvoicePayments(null);
         console.error('[inicio] fetchCardInvoicePayments falhou', erro);
+      }
+      if (!vigente()) return;
+      /* Sobra confirmada: sem saber se a pessoa confirmou, o Livre não afirma
+         número (indisponível), pela mesma regra dos pagamentos. Tabela ainda
+         não aplicada no servidor vira `desligada` dentro de buscarSobraDoMes. */
+      try {
+        const agora = new Date();
+        const sobra = await buscarSobraDoMes(`${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`);
+        if (!vigente()) return;
+        setSobraDoMes(sobra);
+      } catch (erro) {
+        if (!vigente()) return;
+        repetirFontesNoFoco.current = true;
+        setSobraDoMes(null);
+        setFontesLivreDisponiveis(false);
+        console.error('[inicio] buscarSobraDoMes falhou', erro);
       }
       if (!vigente()) return;
       setCarregandoFontesLivre(false);
@@ -691,8 +712,8 @@ export default function InicioScreen() {
      inicial e sem boleto pendente (regra 20 do AGENTS.md). O recorte do mês é
      feito dentro de `calcularSafeToSpend`, a mesma função dos widgets. */
   const safeToSpend = useMemo(
-    () => calcularSafeToSpend(lancamentosDaCarteira(transactions, creditCards, activeWalletId), walletGoals, new Date(), { cards: creditCards, payments: invoicePayments ?? [] }),
-    [transactions, creditCards, activeWalletId, walletGoals, invoicePayments]
+    () => calcularSafeToSpend(lancamentosDaCarteira(transactions, creditCards, activeWalletId), walletGoals, new Date(), { cards: creditCards, payments: invoicePayments ?? [], sobraConfirmada: activeWalletId === 'total' ? sobraParaOLivre(sobraDoMes) : 0 }),
+    [transactions, creditCards, activeWalletId, walletGoals, invoicePayments, sobraDoMes]
   );
   // O núcleo resolve séries e ciclos com o histórico completo antes de filtrar a carteira.
   const comprometimentoFuturo = useMemo(

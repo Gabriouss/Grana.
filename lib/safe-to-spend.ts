@@ -3,6 +3,8 @@ import type { Goal, Transaction } from './types';
 
 export type SafeToSpend = {
   saldoAtual: number;
+  /** Sobra do mês anterior confirmada pela pessoa (zero sem confirmação). */
+  sobraConfirmada: number;
   /** Entradas de caixa do mês com data depois de hoje (07/11/2026). */
   entradasPrevistas: number;
   reservadoEmMetas: number;
@@ -54,3 +56,4 @@ export function calcularSafeToSpend(
 ): SafeToSpend {
   return calcularLivre(transactions, goals, isoDeHoje(hoje), contexto);
 }
+export { mesAnterior, sugerirSobraDoMesAnterior } from '../supabase/functions/_shared/livre-para-gastar';

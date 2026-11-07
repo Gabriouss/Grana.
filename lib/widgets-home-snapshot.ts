@@ -150,13 +150,15 @@ export function montarSnapshotWidgets(input: {
   privacyHidden: boolean;
   cards?: CreditCard[];
   payments?: CreditCardInvoicePayment[];
+  /** Sobra do mês anterior confirmada pela pessoa (zero sem confirmação). */
+  sobraConfirmada?: number;
   hoje?: Date;
   updatedAt?: string;
 }): SnapshotWidgetsV1 {
   const hoje = input.hoje ?? new Date();
   /* Mesma conta da Início (regra 20): só o caixa do mês vigente, sem saldo
      inicial. O widget é sempre a visão "Total". */
-  const livre = calcularSafeToSpend(input.transactions, input.goals, hoje, { cards: input.cards, payments: input.payments });
+  const livre = calcularSafeToSpend(input.transactions, input.goals, hoje, { cards: input.cards, payments: input.payments, sobraConfirmada: input.sobraConfirmada });
   const compromissos = selecionarCompromissosDoMes(input.bills, hoje);
 
   return {
