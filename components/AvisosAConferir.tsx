@@ -209,7 +209,11 @@ function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = 
   nomeDoPerfil?: string | null;
   recibos?: ReciboDeEstorno[];
   aoDispensarRecibo?: (id: string) => void;
-  /** Só para a falha de leitura das referências locais: sem isto a pessoa ficaria presa sem ação possível. */
+  /**
+   * Adia a conferência: a janela fecha sem descartar nem confirmar nada e volta
+   * quando o app voltar a abrir. Serve ao "Revisar depois" (decisão do autor,
+   * 07/11/2026) e à falha de leitura das referências locais.
+   */
   aoAdiar: () => void;
   aoMudar: (itens: ItemAConferir[]) => void;
 }) {
@@ -518,6 +522,18 @@ function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = 
             />
           ))}
         </View>
+        {/* Discreto, abaixo da lista: adia sem resolver nada. Tocar fora e o Voltar continuam sem fechar. */}
+        {!falha && (
+          <AppPressable
+            style={styles.revisarDepois}
+            accessibilityRole="button"
+            accessibilityHint="Fecha sem descartar nem salvar. A janela volta quando você abrir o app de novo."
+            disabled={ocupado !== null}
+            onPress={aoAdiar}
+          >
+            <Text style={styles.acao}>Revisar depois</Text>
+          </AppPressable>
+        )}
       </Sheet>
     </AppModal>
     {revisao && dados && (
@@ -688,6 +704,7 @@ const styles = StyleSheet.create({
   reciboTexto: { flex: 1, minWidth: 0, color: theme.inkFaint, fontFamily: fonts.light, fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio') },
   reciboBotao: { minHeight: touchTarget, minWidth: touchTarget, flexShrink: 0, alignItems: 'center', justifyContent: 'center' },
   acao: { color: theme.accent2, fontFamily: fonts.regular, fontSize: type.apoio },
+  revisarDepois: { minHeight: touchTarget, alignSelf: 'center', justifyContent: 'center', paddingHorizontal: spacing.md, marginTop: spacing.sm },
   carregando: { marginTop: spacing.lg },
   lista: { gap: spacing.md },
   cartao: { backgroundColor: theme.paperRaised, borderRadius: radius.lg, borderWidth: 1, borderColor: theme.rule, padding: spacing.md, gap: spacing.xs },

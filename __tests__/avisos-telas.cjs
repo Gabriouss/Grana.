@@ -807,6 +807,46 @@ async function main() {
     ok('com item pendente, o recibo aparece dentro da janela');
   }
 
+  /* "Revisar depois" (decisão do autor, 07/11/2026): adia sem gravar nem descartar, e a janela volta ao abrir o app. */
+  {
+    const appState = stub['react-native'].AppState;
+    const adicionarOriginal = appState.addEventListener;
+    const ouvintes = [];
+    appState.addEventListener = (evento, fn) => { ouvintes.push(fn); return { remove() {} }; };
+    try {
+      preparar([aviso('Compra no débito de R$ 41,00 em Mercado Modelo')]);
+      await caixa.sincronizarCaixa('dono');
+      let adiou = 0;
+      const sozinha = montar(telas.ListaAConferir, { dono: 'dono', aoAdiar: () => { adiou++; }, aoMudar() {} }); await sozinha.settle();
+      const revisar = elementos(sozinha.tree).find((e) => e.props.onPress && texto(e) === 'Revisar depois');
+      assert.ok(revisar, 'Revisar depois visível');
+      assert.equal(revisar.type, './AppPressable', 'componente do design system');
+      assert.match(revisar.props.accessibilityHint, /volta/);
+      revisar.props.onPress();
+      assert.equal(adiou, 1);
+
+      janela = montar(telas.default, { dono: 'dono' }); await janela.settle(); await janela.settle();
+      assert.equal(listaAberta(janela), true);
+      elementos(janela.tree).find((e) => e.type === telas.ListaAConferir).props.aoAdiar();
+      await janela.settle(); await janela.settle();
+      assert.equal(listaAberta(janela), false, 'adiada, a janela fecha');
+      assert.equal((await caixa.listarCaixa('dono')).length, 1, 'nada descartado');
+      assert.equal(chamadas.filter((c) => c[0] === 'gravar' || c[0] === 'apagar').length, 0, 'nada gravado');
+      /* Os 15 s de releitura não reabrem enquanto adiada. */
+      await janela.settle(); await janela.settle();
+      assert.equal(listaAberta(janela), false);
+      /* O app volta ao primeiro plano: a janela volta. */
+      ouvintes.at(-1)('active'); await janela.settle(); await janela.settle();
+      assert.equal(listaAberta(janela), true, 'volta ao abrir o app de novo');
+      /* App aberto do zero também mostra. */
+      const nova = montar(telas.default, { dono: 'dono' }); await nova.settle(); await nova.settle();
+      assert.equal(listaAberta(nova), true);
+      ok('Revisar depois adia sem gravar nem descartar, e a janela volta quando o app abre de novo');
+    } finally {
+      appState.addEventListener = adicionarOriginal;
+    }
+  }
+
   console.log(`\n${checagens} grupos de verificação passaram. Sem rede ou aparelho.`);
 }
 main().catch((e) => { console.error(e); process.exitCode = 1; });
