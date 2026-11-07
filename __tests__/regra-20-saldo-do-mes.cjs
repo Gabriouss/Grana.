@@ -303,7 +303,12 @@ const contas = [
     const novembroVazio = calcularSafeToSpend(outubro, [], em(7));
     trava(novembroVazio.livreTotal === 0 && novembroVazio.sobraConfirmada === 0 && novembroVazio.semSaldo, 'sem confirmação a sobra é zero, mesmo com outubro positivo');
     const confirmada = calcularSafeToSpend(outubro, [], em(7), { sobraConfirmada: 800 });
-    trava(centavos(confirmada.livreTotal) === 80000 && confirmada.semSaldo === false && centavos(confirmada.saldoAtual) === 0, 'sobra confirmada (800) entra só no Livre; Saldo atual segue zero');
+    /* Rodada 2 do autor (07/11/2026), pergunta C: "Somar só a sobra confirmada"
+       também no Saldo atual. Entrada futura do mês continua fora dele. */
+    trava(centavos(confirmada.livreTotal) === 80000 && confirmada.semSaldo === false && centavos(confirmada.saldoAtual) === 80000, 'sobra confirmada (800) entra no Livre e no Saldo atual');
+    const comSalarioFuturo = calcularSafeToSpend([...outubro, tx({ type: 'in', amount: 3000, occurred_on: '2026-11-20' })], [], em(7), { sobraConfirmada: 800 });
+    trava(centavos(comSalarioFuturo.saldoAtual) === 80000 && centavos(comSalarioFuturo.livreTotal) === 380000, 'salário de 20/11 fica fora do Saldo atual até o dia, mas já conta no Livre');
+    trava(centavos(calcularSafeToSpend(outubro, [], em(7), {}).saldoAtual) === 0, 'sem confirmação o Saldo atual não ganha sobra');
     trava(calcularSafeToSpend(outubro, [], em(7), { sobraConfirmada: -50 }).livreTotal === 0, 'sobra negativa não entra');
     const confW = montarSnapshotWidgets({ userId: 'u', transactions: outubro, bills: [], goals: [], privacyHidden: false, hoje: em(7), sobraConfirmada: 800 });
     trava(centavos(confW.safeToSpend.livreTotal) === 80000, 'widget usa a mesma sobra confirmada');

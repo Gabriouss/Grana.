@@ -62,6 +62,8 @@ export function entraNoLivreDoMes(
  *   fatura desconta quando é paga, porque `pagar_fatura_cartao` grava o
  *   pagamento como saída de caixa sem `card_id`, e só ali (conta uma vez);
  * - cofrinho: só o guardado do dinheiro deste mês reduz; o anterior fica fora.
+ * Saldo atual = sobra confirmada + entradas do mês até hoje − saídas do mês
+ * (rodada 2 do autor, 07/11/2026).
  * Livre = max(0, sobra confirmada + entradas do mês − saídas do mês −
  * guardado do mês) ÷ dias restantes (incluindo hoje). Sem `initial_balance`.
  * Mês anterior só entra pela sobra que a PESSOA confirmou (Adendo 2 do autor,
@@ -87,7 +89,9 @@ export function calcularLivre(
   const diasRestantes = Math.max(1, new Date(Date.UTC(ano, mesNumero, 0)).getUTCDate() - dia + 1);
   const livreTotal = Math.max(0, caixaDoLivre - reservado) / 100;
   return {
-    saldoAtual: saldo / 100, sobraConfirmada: sobra / 100, entradasPrevistas: entradasPrevistas / 100, reservadoEmMetas: reservado / 100,
+    /* Rodada 2 do autor (07/11/2026): "Somar só a sobra confirmada" no Saldo
+       atual. Entradas futuras continuam fora dele até o dia delas. */
+    saldoAtual: (saldo + sobra) / 100, sobraConfirmada: sobra / 100, entradasPrevistas: entradasPrevistas / 100, reservadoEmMetas: reservado / 100,
     semSaldo: caixaDoLivre <= 0, diasRestantes, livreTotal, livrePorDia: livreTotal / diasRestantes,
   };
 }

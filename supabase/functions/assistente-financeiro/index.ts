@@ -1739,8 +1739,8 @@ async function executarFerramenta(
       return (
         `Livre para gastar no mês vigente (${rotuloMes}): R$ ${formatarBRL(r.livreTotal)}\n` +
         `Isso dá R$ ${formatarBRL(r.livrePorDia)} por dia (${rotuloDiasRestantes(r.diasRestantes)}).\n` +
-        (r.sobraConfirmada > 0 ? `Sobra do mês passado que você confirmou: R$ ${formatarBRL(r.sobraConfirmada)}. ` : '') +
-        `Detalhes: saldo do mês R$ ${formatarBRL(r.saldoAtual)} (entradas menos saídas de caixa deste mês até hoje), ` +
+        (r.sobraConfirmada > 0 ? `Sobra do mês passado que você confirmou: R$ ${formatarBRL(r.sobraConfirmada)} (já está no saldo do mês). ` : '') +
+        `Detalhes: saldo do mês R$ ${formatarBRL(r.saldoAtual)} (sobra confirmada mais entradas menos saídas de caixa deste mês até hoje), ` +
         `entradas previstas ainda neste mês R$ ${formatarBRL(r.entradasPrevistas)} (já contam no Livre), ` +
         `guardado do mês em metas R$ ${formatarBRL(r.reservadoEmMetas)}. ` +
         'Compras no crédito só descontam quando a fatura é paga, e boletos quando são pagos. ' +
