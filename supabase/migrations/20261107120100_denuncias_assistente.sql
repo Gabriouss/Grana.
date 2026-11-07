@@ -20,6 +20,9 @@ revoke all on public.assistant_reports from public, anon, authenticated;
 grant select, insert on public.assistant_reports to authenticated;
 grant select, insert, update, delete on public.assistant_reports to service_role;
 
+drop policy if exists "usuario insere propria denuncia" on public.assistant_reports;
+drop policy if exists "usuario le proprias denuncias" on public.assistant_reports;
+
 create policy "usuario insere propria denuncia"
   on public.assistant_reports
   for insert to authenticated
