@@ -167,6 +167,8 @@ Lumen relata denúncia em `1a1f9cfa`/`ead42e2b`, com UI incorporada ao commit de
 
 **Correção de comunicação sobre CI da sobra:** Forge adicionou chamada direta de `sobra-ciclo-de-vida.cjs` no clone em `d76855f3` e relatou ausência no main. Codex relata ter conferido as duas árvores: `pergunta-sobra-do-mes.cjs:114` já executa o ciclo de vida via `await require`, e `test:ci` chama pergunta em ambas; portanto o main já tem cobertura transitiva e o adendo não acrescenta cobertura. Apesar do complemento anteriormente enviado, houve comunicação incorreta sobre essa ligação. Codex pediu a Forge remover somente a chamada direta redundante em novo commit, preservar F2, corrigir relatório e avisar Harbor/Watchtower/Codex, sem repetir focais nem reescrever histórico. Correção ainda pendente neste registro; Ledger não repetiu a conferência.
 
+**Watchtower libera portão:** `relatorio-watchtower-validacao.md` conclui WT-R1/R2/R3/R4/R5 corrigidos nos caminhos e casos verificados, sem novo bloqueador comprovado. Sondas e focais independentes são de Watchtower; Codex leu o parecer, mas não os repetiu, nem Ledger. Não homologa aparelho, produção ou migrations. Codex relata clone limpo `0f1394a6`, reversão nova de `d76855f3`, `package.json` idêntico a `5760248e` e cobertura transitiva do ciclo preservada sem duplicação. Harbor iniciou portão sequencial: main tsc/CI → clone tsc/CI/avisos, com logs e hashes, sem repetir etapas verdes. Nenhum resultado global confirmado; `FIM-harbor-2.md` só após conclusão.
+
 **Em aberto.** Os relatórios `relatorio-*.md` e os `FIM-*.md` da pasta da rodada entram aqui à medida que surgirem, cada um em registro curto, separando testado de relatado.
 
 ## 02/11 — motion-supremo unificada nas três cópias
