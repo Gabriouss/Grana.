@@ -185,6 +185,10 @@ Lumen relata denúncia em `1a1f9cfa`/`ead42e2b`, com UI incorporada ao commit de
 
 **Alcance:** Lynx alerta que o main local também lê `sobra_do_mes`; a pergunta pode aparecer para quem receber esse código quando for publicado, inclusive web ou APK futuro. O conteúdo da web publicada hoje não foi verificado. Aplicação das tabelas não publica o cliente nem a Edge Function. Prazo de retenção da denúncia e limitação de volume seguem propostas para decisão, não ajustes executados.
 
+**Preparação da build pessoal:** Anvil relata preflight da branch de teste `707ade87`: árvore limpa, versão 1.10.12, sem `.env` na raiz, perfis conferidos; webhook de produção com `updated_at` `2026-10-16T13:49:09Z`, ignorando development. Foto anterior em `build/antes-da-build-teste-3.json`; prints web locais 0 a 5 em `build/prints`, conferidos pelo orquestrador. Anvil relata `tsc` e testes focais verdes; Ledger não repetiu. Cota relatada: seria a primeira build da semana 02–08/11 e a quarta de 15 do mês. Autor respondeu “Ainda não” ao disparo: nada disparado, preparação aguarda ordem explícita.
+
+**Achados anteriores à rodada, só na web:** “Colar comprovante” e “Importar extrato” aparecem cortados com reticências em 390/360 px; saudação quebra em duas linhas em 360 px. Não atribuídos à build ou ao aparelho. A linha de entradas previstas não apareceu nos prints porque a conta de teste não tinha entrada futura; janela de avisos e estorno não foram vistos na web.
+
 **Em aberto.** Os relatórios `relatorio-*.md` e os `FIM-*.md` da pasta da rodada entram aqui à medida que surgirem, cada um em registro curto, separando testado de relatado.
 
 ## 02/11 — motion-supremo unificada nas três cópias
