@@ -160,7 +160,7 @@ async function testarFormularioReal() {
   await mod.denunciarResposta({ id: UUID, texto: 'x' }, 'outro');
 
   // 7. Motivos da tela == motivos aceitos pelo check da migration.
-  const sql = fs.readFileSync(path.join(root, 'supabase/migrations/20261107120000_denuncias_assistente.sql'), 'utf8');
+  const sql = fs.readFileSync(path.join(root, 'supabase/migrations/20261107120100_denuncias_assistente.sql'), 'utf8');
   for (const m of mod.MOTIVOS_DENUNCIA) assert.ok(sql.includes(`'${m.valor}'`), m.valor);
   assert.match(sql, /enable row level security/);
   assert.match(sql, /for insert to authenticated[\s\S]*auth\.uid\(\) = user_id/);
