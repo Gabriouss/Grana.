@@ -1701,7 +1701,7 @@ export default function InicioScreen() {
       />
       <FaixaOffline estilo={[colunaConteudo, { marginTop: spacing.sm }]} />
       {!isDemoMode && session?.user.id && <AvisosAConferir key={session.user.id} dono={session.user.id}
-        nomeDoPerfil={nomeExibicao} />}
+        nomeDoPerfil={nomeExibicao} bloqueado={tourOpen} />}
       <LancamentosEmRevisao
         estilo={[colunaConteudo, { marginTop: spacing.sm }]}
         aberta={revisaoAberta}

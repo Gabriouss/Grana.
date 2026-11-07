@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, ScrollView, StyleSheet, Text, View } from 'react-native';
-import AppModal, { InsetsDoModal } from './AppModal';
+import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-native';
+import AppModal from './AppModal';
 import AppPressable from './AppPressable';
+import Sheet from './Sheet';
 import PrivacyValue from './PrivacyValue';
 import TransactionSheet, { type ValoresLancamento } from './TransactionSheet';
 import { Alert } from '@/lib/alerta';
@@ -36,6 +37,7 @@ import { mensagemErro } from '@/lib/erros';
 import { formatDateLabel, formatMoney, formatMoneyInput, parseAmount } from '@/lib/format';
 import { categoriaEscolhida, PERGUNTA_CATEGORIA } from '@/lib/heuristics';
 import { marcarLancamentosAlterados } from '@/lib/lancamentos-alterados';
+import { useHaJanelaAberta } from '@/lib/janelas-abertas';
 import { semViuva } from '@/lib/sem-viuva';
 import { fonts, lh, radius, spacing, theme, touchTarget, type } from '@/lib/theme';
 import type { Bill, CreditCard, Transaction, Wallet } from '@/lib/types';
@@ -73,7 +75,8 @@ const reciboDaGravacao = ({ guardado, jaEstava }: { guardado: boolean; jaEstava:
 
 const FORMA_ROTULO: Record<FormaDoAviso, string> = { credit: 'Crédito', debit: 'Débito', pix: 'Pix', boleto: 'Boleto' };
 
-function textoDaFaixa(itens: ItemAConferir[]): string {
+/** Texto lido pelo leitor de tela quando a janela abre e a cada item resolvido. */
+export function textoDaContagem(itens: ItemAConferir[]): string {
   const gastos = itens.every((i) => i.tipo === 'lancamento' && i.direcao === 'out');
   if (itens.length === 1) return gastos ? '1 gasto para conferir' : '1 aviso para conferir';
   return `${itens.length} ${gastos ? 'gastos' : 'avisos'} para conferir`;
@@ -84,20 +87,36 @@ function carteiraPadrao(item: ItemAConferir, dados: DadosDaLista, forma: FormaDo
   return cartao?.wallet_id ?? dados.carteiras.find((w) => w.is_default)?.id ?? dados.carteiras[0]?.id ?? '';
 }
 
-export default function AvisosAConferir({ dono, nomeDoPerfil }: { dono: string; nomeDoPerfil?: string | null }) {
+/**
+ * Janela de conferência dos avisos do banco. Abre sozinha no centro da tela
+ * sempre que há aviso pendente e nenhuma outra janela, folha ou tutorial está
+ * aberta, e só fecha quando todos forem confirmados ou descartados (07/11/2026,
+ * pedido do autor: a barra "N gastos para conferir" saiu da Início).
+ *
+ * Uma vez aberta, fica até o último item: abrir outra janela por cima não a
+ * derruba, e a revisão de um item é a folha de lançamento por cima dela.
+ */
+export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false }: {
+  dono: string;
+  nomeDoPerfil?: string | null;
+  /** Algo que o contador de janelas não vê (ex.: o tutorial) está em primeiro plano. */
+  bloqueado?: boolean;
+}) {
   const [itens, setItens] = useState<ItemAConferir[]>([]);
-  const [erro, setErro] = useState<string | null>(null);
   const [aberta, setAberta] = useState(false);
+  /** Leitura das referências falhou e a pessoa escolheu "Agora não": volta quando o app voltar ao primeiro plano. */
+  const [adiada, setAdiada] = useState(false);
+  const outraJanela = useHaJanelaAberta();
 
   const carregar = useCallback(async () => {
     if (!avisosDisponivel) return;
     try {
       const { itens: lidos, ilegiveis } = await sincronizarCaixa(dono);
       setItens(lidos);
-      setErro(ilegiveis > 0 ? `${ilegiveis} avisos não puderam ser lidos` : null);
+      if (ilegiveis > 0) avisarFalhaDeLeitura(`${ilegiveis} avisos não puderam ser lidos`);
     } catch (e) {
       console.error('[avisos] não leu o diário', e instanceof Error ? e.name : 'erro');
-      setErro('Não consegui ler os avisos do banco');
+      avisarFalhaDeLeitura('Não consegui ler os avisos do banco', () => void carregar());
     }
   }, [dono]);
 
@@ -108,49 +127,51 @@ export default function AvisosAConferir({ dono, nomeDoPerfil }: { dono: string; 
       garantirListaInicialAvisos(PACOTES_INICIAIS);
     } catch (e) {
       console.error('[avisos] início do leitor falhou', e instanceof Error ? e.name : 'erro');
-      setErro('Não consegui iniciar o leitor de avisos');
+      avisarFalhaDeLeitura('Não consegui iniciar o leitor de avisos');
       return;
     }
     void carregar();
-    const evento = AppState.addEventListener('change', (estado) => { if (estado === 'active') void carregar(); });
+    const evento = AppState.addEventListener('change', (estado) => {
+      if (estado === 'active') { setAdiada(false); void carregar(); }
+    });
     const intervalo = setInterval(() => { if (AppState.currentState === 'active') void carregar(); }, 15000);
     return () => { evento.remove(); clearInterval(intervalo); };
   }, [carregar, dono]);
 
-  const faixaVisivel = avisosDisponivel && (itens.length > 0 || !!erro);
+  /* Abre quando há pendência e o caminho está livre; fecha quando acabou. */
+  useEffect(() => {
+    if (!avisosDisponivel) return;
+    if (itens.length === 0) { if (aberta) setAberta(false); return; }
+    if (!aberta && !adiada && !outraJanela && !bloqueado) setAberta(true);
+  }, [itens.length, aberta, adiada, outraJanela, bloqueado]);
 
-  return <>
-    {faixaVisivel && (
-      <View style={styles.faixa}>
-        <View style={styles.faixaLinha}>
-          <Text style={styles.faixaTexto} numberOfLines={1} adjustsFontSizeToFit accessibilityLiveRegion="polite">
-            {itens.length > 0 ? textoDaFaixa(itens) : erro}
-          </Text>
-          <AppPressable
-            style={styles.faixaBotao}
-            accessibilityRole="button"
-            onPress={() => { if (itens.length > 0) setAberta(true); else void carregar(); }}
-          >
-            <Text style={styles.acao}>{itens.length > 0 ? 'Conferir' : 'Tentar de novo'}</Text>
-          </AppPressable>
-        </View>
-      </View>
-    )}
-    {aberta && (
-      <ListaAConferir
-        dono={dono}
-        nomeDoPerfil={nomeDoPerfil}
-        aoFechar={() => { setAberta(false); void carregar(); }}
-        aoMudar={setItens}
-      />
-    )}
-  </>;
+  if (!avisosDisponivel || !aberta || itens.length === 0) return null;
+  return (
+    <ListaAConferir
+      dono={dono}
+      nomeDoPerfil={nomeDoPerfil}
+      aoAdiar={() => { setAberta(false); setAdiada(true); }}
+      aoMudar={setItens}
+    />
+  );
 }
 
-function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
+/** Falha de leitura sem barra: um aviso único por mensagem, para não repetir a cada 15 s. */
+const falhasJaAvisadas = new Set<string>();
+function avisarFalhaDeLeitura(mensagem: string, tentarDeNovo?: () => void) {
+  if (falhasJaAvisadas.has(mensagem)) return;
+  falhasJaAvisadas.add(mensagem);
+  Alert.alert('Avisos do banco', mensagem, [
+    { text: 'Fechar', style: 'cancel', onPress: () => { falhasJaAvisadas.delete(mensagem); } },
+    ...(tentarDeNovo ? [{ text: 'Tentar de novo', onPress: () => { falhasJaAvisadas.delete(mensagem); tentarDeNovo(); } }] : []),
+  ]);
+}
+
+function ListaAConferir({ dono, nomeDoPerfil, aoAdiar, aoMudar }: {
   dono: string;
   nomeDoPerfil?: string | null;
-  aoFechar: () => void;
+  /** Só para a falha de leitura das referências locais: sem isto a pessoa ficaria presa sem ação possível. */
+  aoAdiar: () => void;
   aoMudar: (itens: ItemAConferir[]) => void;
 }) {
   const { isDemoMode } = useDemo();
@@ -408,49 +429,44 @@ function ListaAConferir({ dono, nomeDoPerfil, aoFechar, aoMudar }: {
     };
   }
 
-  const vazio = !falha && dados && itens.length === 0;
-
   return <>
-    <AppModal visible={!revisao} onRequestClose={aoFechar}>
-      <InsetsDoModal>{(insets) => (
-        <View style={[styles.tela, { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom }]}>
-          <View style={styles.cabecalho}>
-            <Text style={styles.titulo} accessibilityRole="header">A conferir</Text>
-            <AppPressable style={styles.faixaBotao} accessibilityRole="button" onPress={aoFechar}>
-              <Text style={styles.acao}>Fechar</Text>
-            </AppPressable>
-          </View>
-          {recibo && <Text style={styles.recibo} accessibilityLiveRegion="polite">{recibo}</Text>}
-          {falha && (
-            <View style={styles.cartao}>
-              <Text style={styles.corpo}>{falha}</Text>
-              <AppPressable style={styles.faixaBotao} accessibilityRole="button" onPress={() => void carregarTudo()}>
-                <Text style={styles.acao}>Tentar de novo</Text>
-              </AppPressable>
-            </View>
-          )}
-          {!dados && !falha && <ActivityIndicator color={theme.ink} style={styles.carregando} />}
-          {vazio && <Text style={styles.corpo}>Nada para conferir agora.</Text>}
-          {dados && !dados.carteiras.length && <Text style={styles.corpo}>{semViuva('Abra a Início para carregar suas carteiras antes de confirmar.')}</Text>}
-          <ScrollView contentContainerStyle={styles.lista}>
-            {dados && itens.map((item) => (
-              <CartaoDoAviso
-                key={item.id}
-                item={item}
-                jaSalvo={jaSalvos.has(item.id)}
-                dados={dados}
-                formas={formas}
-                texto={textos[item.avisoIds[0]]}
-                entreContas={pareceEntreContas(item, nomeDoPerfil)}
-                ocupado={ocupado !== null}
-                aoConfirmar={() => confirmar(item, dados)}
-                aoEditar={() => abrirRevisao(item, dados)}
-                aoDescartar={() => void descartar(item)}
-              />
-            ))}
-          </ScrollView>
+    {/* Bloqueante: tocar fora e o Voltar do Android não fazem nada. Só fecha quando o último item é resolvido. */}
+    <AppModal visible={!revisao} transparent semRegistro onRequestClose={() => {}}>
+      <Sheet centered onClose={() => {}}>
+        <View style={styles.cabecalho}>
+          <Text style={styles.titulo} accessibilityRole="header">A conferir</Text>
         </View>
-      )}</InsetsDoModal>
+        <Text style={styles.legenda} accessibilityLiveRegion="polite">{textoDaContagem(itens)}</Text>
+        {recibo && <Text style={styles.recibo} accessibilityLiveRegion="polite">{recibo}</Text>}
+        {falha && (
+          <View style={styles.cartao}>
+            <Text style={styles.corpo}>{falha}</Text>
+            <View style={styles.botoes}>
+              <Botao rotulo="Agora não" onPress={aoAdiar} desligado={false} />
+              <Botao rotulo="Tentar de novo" onPress={() => void carregarTudo()} desligado={false} destaque />
+            </View>
+          </View>
+        )}
+        {!dados && !falha && <ActivityIndicator color={theme.ink} style={styles.carregando} />}
+        {dados && !dados.carteiras.length && <Text style={styles.corpo}>{semViuva('Abra a Início para carregar suas carteiras antes de confirmar.')}</Text>}
+        <View style={styles.lista}>
+          {dados && itens.map((item) => (
+            <CartaoDoAviso
+              key={item.id}
+              item={item}
+              jaSalvo={jaSalvos.has(item.id)}
+              dados={dados}
+              formas={formas}
+              texto={textos[item.avisoIds[0]]}
+              entreContas={pareceEntreContas(item, nomeDoPerfil)}
+              ocupado={ocupado !== null}
+              aoConfirmar={() => confirmar(item, dados)}
+              aoEditar={() => abrirRevisao(item, dados)}
+              aoDescartar={() => void descartar(item)}
+            />
+          ))}
+        </View>
+      </Sheet>
     </AppModal>
     {revisao && dados && (
       <TransactionSheet
@@ -563,17 +579,11 @@ function Botao({ rotulo, onPress, desligado, destaque }: { rotulo: string; onPre
 }
 
 const styles = StyleSheet.create({
-  faixa: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, backgroundColor: theme.paperRaised },
-  faixaLinha: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  faixaTexto: { flex: 1, minWidth: 0, color: theme.ink, fontFamily: fonts.regular, fontSize: type.apoio, lineHeight: lh(type.apoio, 'apoio') },
-  faixaBotao: { minHeight: touchTarget, flexShrink: 0, justifyContent: 'center', paddingHorizontal: spacing.sm },
-  acao: { color: theme.accent2, fontFamily: fonts.regular, fontSize: type.apoio },
-  tela: { flex: 1, backgroundColor: theme.paper, paddingHorizontal: spacing.lg },
   cabecalho: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
   titulo: { color: theme.ink, fontFamily: fonts.regular, fontSize: type.titulo },
   recibo: { color: theme.accent2, fontFamily: fonts.regular, fontSize: type.apoio, marginBottom: spacing.sm },
   carregando: { marginTop: spacing.lg },
-  lista: { gap: spacing.md, paddingBottom: spacing.lg },
+  lista: { gap: spacing.md },
   cartao: { backgroundColor: theme.paperRaised, borderRadius: radius.lg, borderWidth: 1, borderColor: theme.rule, padding: spacing.md, gap: spacing.xs },
   selo: { color: theme.accent2, fontFamily: fonts.regular, fontSize: type.legenda },
   valor: { color: theme.ink, fontFamily: fonts.regular, fontSize: type.titulo },

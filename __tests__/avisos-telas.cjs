@@ -340,6 +340,73 @@ async function main() {
   assert.equal(elementos(faixa.tree).filter((e) => e.type === 'View').length, 0);
   ok('zero itens não renderiza a faixa');
 
+  /* 07/11/2026: a barra saiu da Início. Janela bloqueante no centro, aberta pelo contador de janelas. */
+  const janelas = carregar('lib/janelas-abertas.ts');
+  const preparar = (itens) => {
+    disco.clear(); chamadas = []; alertas = []; erroGravacao = false; erroDiario = false;
+    diario = itens;
+    dadosLocais = { carteiras: [carteira], cartoes: [], categorias: [], 'apelidos-categoria': [{ chave: 'mercado modelo', valor: 'Alimentação' }],
+      'boletos:todos': [] };
+  };
+  const listaAberta = (c) => elementos(c.tree).some((e) => e.type === telas.ListaAConferir);
+
+  preparar([aviso('Compra no débito de R$ 35,00 em Mercado Modelo')]);
+  let janela = montar(telas.default, { dono: 'dono' }); await janela.settle(); await janela.settle();
+  assert.equal(listaAberta(janela), true);
+  assert.equal(elementos(janela.tree).some((e) => e.props.rotulo === 'Fechar' || texto(e) === 'Fechar'), false, 'não há botão Fechar');
+  assert.doesNotMatch(texto(janela.tree), /para conferir/, 'sem barra de contagem na Início');
+  ok('com aviso pendente e nenhuma outra janela, a janela abre sozinha (sem barra)');
+
+  /* Bloqueante: o Voltar do Android e o toque fora não fecham nada. */
+  ({ ctx } = await lista(aviso('Compra no débito de R$ 36,00 em Mercado Modelo')));
+  const modalAvisos = elementos(ctx.tree).find((e) => e.type === './AppModal');
+  const sheetAvisos = elementos(ctx.tree).find((e) => e.type === './Sheet');
+  assert.ok(modalAvisos && sheetAvisos);
+  assert.equal(modalAvisos.props.semRegistro, true, 'não se conta como outra janela');
+  assert.equal(modalAvisos.props.transparent, true);
+  const antes = (await caixa.listarCaixa('dono')).length;
+  modalAvisos.props.onRequestClose(); sheetAvisos.props.onClose(); await ctx.settle();
+  assert.equal((await caixa.listarCaixa('dono')).length, antes, 'Voltar e toque fora não resolvem nem apagam item');
+  assert.equal(modalAvisos.props.visible, true, 'continua visível');
+  assert.equal(elementos(ctx.tree).some((e) => e.props.rotulo === 'Fechar'), false);
+  assert.equal(chamadas.filter((c) => c[0] === 'gravar').length, 0);
+  ok('Voltar do Android e toque fora não fecham a janela nem gravam ou descartam');
+
+  /* Não abre por cima de outra janela; abre quando ela fecha; e não some se outra abrir depois. */
+  preparar([aviso('Compra no débito de R$ 37,00 em Mercado Modelo')]);
+  const liberarOutra = janelas.registrarJanelaAberta();
+  janela = montar(telas.default, { dono: 'dono' }); await janela.settle(); await janela.settle();
+  assert.equal(listaAberta(janela), false, 'outra janela aberta: espera');
+  liberarOutra(); await janela.settle(); await janela.settle();
+  assert.equal(listaAberta(janela), true, 'abre quando a outra fecha');
+  const liberarDepois = janelas.registrarJanelaAberta(); await janela.settle();
+  assert.equal(listaAberta(janela), true, 'já aberta, outra janela não a derruba');
+  liberarDepois();
+  preparar([aviso('Compra no débito de R$ 38,00 em Mercado Modelo')]);
+  janela = montar(telas.default, { dono: 'dono', bloqueado: true }); await janela.settle(); await janela.settle();
+  assert.equal(listaAberta(janela), false, 'tutorial em primeiro plano: espera');
+  ok('não abre por cima de outra janela nem do tutorial, abre ao liberar e não é derrubada depois');
+
+  /* Fecha sozinha ao resolver o último item. */
+  const filho = elementos(janela.tree).find((e) => e.type === telas.ListaAConferir);
+  preparar([aviso('Compra no débito de R$ 39,00 em Mercado Modelo')]);
+  janela = montar(telas.default, { dono: 'dono' }); await janela.settle(); await janela.settle();
+  const propsDaLista = elementos(janela.tree).find((e) => e.type === telas.ListaAConferir).props;
+  assert.equal(typeof propsDaLista.aoMudar, 'function');
+  propsDaLista.aoMudar([]); await janela.settle(); await janela.settle();
+  assert.equal(listaAberta(janela), false, 'sem item pendente a janela fecha');
+  assert.equal(filho, undefined);
+  ok('fecha sozinha quando o último item é resolvido');
+
+  /* Falha de leitura sem barra: recibo por alerta, uma vez só. */
+  preparar([]); erroDiario = true;
+  janela = montar(telas.default, { dono: 'dono' }); await janela.settle();
+  const alertasDeLeitura = alertas.filter((a) => a[0] === 'Avisos do banco');
+  assert.equal(alertasDeLeitura.length, 1);
+  assert.match(alertasDeLeitura[0][1], /Não consegui ler/);
+  erroDiario = false;
+  ok('falha ao ler o diário deixa recibo (alerta) em vez de barra');
+
   const p = montar(perfil.default, {}); await p.settle();
   assert.match(texto(p.tree), /Android entrega todas/);
   assert.match(texto(p.tree), /Acesso desligado/);
