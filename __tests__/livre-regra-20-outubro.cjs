@@ -86,6 +86,7 @@ function conferir(transactions, goals, ctx, esperado) {
      sobraParaOLivre do modulo real; so a busca no banco e dublada. */
   let sobra={estado:'pendente',mes:'2026-10'};let falharSobra=false;
   const sobraReal=load('lib/sobra-do-mes.ts',{'./supabase':{supabase:{}},'./sessao-offline':{idDoUsuarioLocal:async()=>'u'}});
+  const DateReal=Date; global.Date=class extends DateReal { constructor(...a) { super(...(a.length?a:[hoje])); } };
   const sync=load('lib/widgets-home-sync.ts',{
     './data':{fetchTransactions:async()=>base,fetchBills:async()=>[],fetchCreditCards:async()=>cards,
       fetchCardInvoicePayments:async()=>{if(falharPagamentos)throw Error('offline esperado');return[]}},
@@ -97,7 +98,7 @@ function conferir(transactions, goals, ctx, esperado) {
   });
   assert.equal(await sync.sincronizarWidgetsHome('u',false),true);
   assert.equal(snapshots[0].safeToSpend.livreTotal,1000);
-  sobra={estado:'confirmada',mes:'2026-10',valor:500};
+  sobra={estado:'confirmada',mes:'2026-10',userId:'u',valor:500};
   assert.equal(await sync.sincronizarWidgetsHome('u',false),true);
   assert.equal(snapshots[1].safeToSpend.livreTotal,1500,'sobra confirmada chega ao widget');
   sobra={estado:'desligada',mes:'2026-10'};
@@ -110,6 +111,7 @@ function conferir(transactions, goals, ctx, esperado) {
   falharPagamentos=true;
   assert.equal(await sync.sincronizarWidgetsHome('u',false),false);
   assert.equal(snapshots.length,1,'fonte incompleta nao vira snapshot falso');
+  global.Date=DateReal;
   // Postgres embutido: aplica a migration real, sem rede/credencial.
   const {PGlite}=await import('@electric-sql/pglite'); const db=new PGlite();
   try {

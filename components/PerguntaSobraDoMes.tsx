@@ -14,7 +14,7 @@ import AppPressable from './AppPressable';
  * (`SafeToSpendCard`), campo de valor e botão principal de Crédito
  * (`amountRow`, `saveBtn`) e o texto de apoio do card. Nada novo.
  *
- * "Agora não" mantém zero e a Início pergunta de novo na próxima abertura.
+ * "Agora não" mantém zero e a Início pergunta de novo no dia seguinte.
  * Falha ao salvar deixa recibo na tela (regra 9), nunca volta em silêncio.
  */
 export default function PerguntaSobraDoMes({

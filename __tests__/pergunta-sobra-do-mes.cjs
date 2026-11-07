@@ -89,7 +89,7 @@ function montar(props) {
   /* Início: condições de exibição e o que a confirmação faz, no código real. */
   const inicio = fs.readFileSync(path.join(root, 'app/(app)/index.tsx'), 'utf8');
   ok(/!isDemoMode && activeWalletId === 'total' && sobraDoMes\?\.estado === 'pendente' && sobraAdiada === false && !carregandoFontesLivre && \(/.test(inicio), 'Início só pergunta na visão total, pendente, fora do exemplo e depois de ler o adiamento');
-  ok(/setSobraAdiada\(true\);\s*if \(userId\) void adiarSobraAteAmanha\(userId, todayISO\(\)\);/.test(inicio), '"Agora não" guarda o dia');
+  ok(/onAgoraNao=\{adiarSobra\}/.test(inicio), '"Agora não" usa o ciclo de vida compartilhado');
 
   /* Rodada 2 do autor (07/11/2026): "Agora não" vale até o dia seguinte.
      Módulo REAL lib/sobra-adiada.ts com AsyncStorage simulado. */
@@ -110,6 +110,7 @@ function montar(props) {
   ok((await adiada.sobraAdiadaHoje('u', '2026-11-07')) === false, 'falha de leitura: pergunta (sem inventar adiamento)');
   await adiada.adiarSobraAteAmanha('u', '2026-11-07');
   console.error = erroOriginal;
-  ok(/await confirmarSobraDoMes\(mes, valor\);\s*setSobraDoMes\(\{ estado: 'confirmada', mes, valor \}\);\s*notificarDadosDosWidgetsAlterados\(\);/.test(inicio), 'confirmar grava, atualiza o Livre e avisa os widgets');
+  ok(/await confirmarSobra\(valor\);\s*notificarDadosDosWidgetsAlterados\(\);/.test(inicio), 'confirmação validada avisa os widgets');
+  await require('./sobra-ciclo-de-vida.cjs')();
   console.log(`pergunta-sobra-do-mes: ${n} checagens no componente real`);
 })().catch((e) => { console.error(e); process.exit(1); });

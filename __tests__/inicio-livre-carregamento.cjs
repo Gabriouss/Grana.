@@ -71,7 +71,7 @@ function scenario(failCore = { on: false }) {
   }
   const load = compile(`exports.load = ${callback.getText(ast)};`, 'load.tsx', env).load;
   function render() {
-    const scope = { ...states, SafeToSpendCard, safeToSpend: data, arquetipoSugerido: null,
+    const scope = { ...states, SafeToSpendCard, safeToSpend: data, arquetipoSugerido: null, carregandoSobra: false, erroSobra: false,
       View: 'View', Text: 'Text', styles: {}, comprometimentoFuturo: [{ total: 10 }],
       FutureTimelineChart: () => jsx('Text', { children: 'PROJECAO 10' }), spacing: token };
     const cardTree = compile(`exports.tree = ${card.getText(ast)};`, 'card-use.tsx', scope).tree;
@@ -128,7 +128,7 @@ async function main() {
     assert.match(s.render().card, /Livre indisponível/);
     assert.equal(s.states.transactions[0].id, 'novo', 'falha opcional preserva lancamentos');
     assert.equal(s.states.error, null, 'falha opcional nao derruba tela');
-    assert.deepEqual(s.calls, ['transactions', 'bills', 'budgets', 'cards', 'goals', 'payments', 'sobra']);
+    assert.deepEqual(s.calls, ['transactions', 'bills', 'budgets', 'cards', 'goals', 'payments']);
     assert.equal(/Não consegui confirmar os pagamentos/.test(s.render().timeline), fail === 'payments');
     console.log('ok: falha real de ' + fail + ' visivel sem derrubar lista');
   }
