@@ -102,6 +102,10 @@ const appModalMod = carregar('components/AppModal.tsx', {
   },
   '@/lib/motion': { useReducedMotion: () => false },
   '@/lib/breakpoints': { useSheetFlutuante: () => ({ janela: 'do modal' }) },
+  // 04a1ddfc: o AppModal registra a janela aberta num efeito. O teste chama o
+  // componente como função, sem renderizador, então o efeito não roda aqui.
+  react: { useEffect: () => {} },
+  '@/lib/janelas-abertas': { registrarJanelaAberta: () => () => {} },
 });
 const modalTree = appModalMod.default({ visible: true, transparent: true, children: 'conteudo' });
 assert.equal(modalTree.type, 'Modal');
