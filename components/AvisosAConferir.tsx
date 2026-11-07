@@ -6,7 +6,7 @@ import Sheet from './Sheet';
 import PrivacyValue from './PrivacyValue';
 import TransactionSheet, { type ValoresLancamento } from './TransactionSheet';
 import { Alert } from '@/lib/alerta';
-import { formasAprendidas, listarCaixa, removerItemDaCaixa, sincronizarCaixa } from '@/lib/avisos-banco/caixa';
+import { dispensarRecibo, formasAprendidas, listarCaixa, removerItemDaCaixa, sincronizarCaixa } from '@/lib/avisos-banco/caixa';
 import { nomeDoApp, PACOTES_INICIAIS } from '@/lib/avisos-banco/catalogo';
 import {
   cartaoDoItem,
@@ -15,10 +15,12 @@ import {
   descricaoDoItem,
   formaDoItem,
   montarEntrada,
+  ofertaDoEstorno,
   pareceEntreContas,
   pareceJaLancado,
   type FormasAprendidas,
   type ItemAConferir,
+  type ReciboDeEstorno,
 } from '@/lib/avisos-banco/decidir';
 import {
   concluirLimpeza,
@@ -28,6 +30,7 @@ import {
   LimpezaPendente,
   pagarContaDoItem,
   PagamentoIncerto,
+  removerLancamentoDoEstorno,
 } from '@/lib/avisos-banco/gravar';
 import type { FormaDoAviso } from '@/lib/avisos-banco/interpretar';
 import { lerTela } from '@/lib/cache-de-tela';
@@ -36,6 +39,7 @@ import { useDemo } from '@/lib/demo-context';
 import { mensagemErro } from '@/lib/erros';
 import { formatDateLabel, formatMoney, formatMoneyInput, parseAmount } from '@/lib/format';
 import { categoriaEscolhida, PERGUNTA_CATEGORIA } from '@/lib/heuristics';
+import { confirmarExclusaoDeLancamento } from '@/lib/excluir-lancamento';
 import { marcarLancamentosAlterados } from '@/lib/lancamentos-alterados';
 import { useHaJanelaAberta } from '@/lib/janelas-abertas';
 import { semViuva } from '@/lib/sem-viuva';
@@ -82,6 +86,29 @@ export function textoDaContagem(itens: ItemAConferir[]): string {
   return `${itens.length} ${gastos ? 'gastos' : 'avisos'} para conferir`;
 }
 
+/** Recibo do descarte automático por estorno (07/11/2026). */
+export function textoDoRecibo(r: ReciboDeEstorno): string {
+  const loja = r.contraparte ? ` em ${r.contraparte}` : '';
+  return `Compra de R$${formatMoney(r.valor)}${loja} foi estornada. Tirei as duas da lista.`;
+}
+
+/** Recibos do estorno, sem roubar o foco: o leitor de tela anuncia, e "Ok" tira da lista. */
+function RecibosDeEstorno({ recibos, aoDispensar, naInicio = false }: { recibos: ReciboDeEstorno[]; aoDispensar: (id: string) => void; naInicio?: boolean }) {
+  if (!recibos.length) return null;
+  return (
+    <View style={[styles.recibos, naInicio && styles.recibosNaInicio]}>
+      {recibos.map((r) => (
+        <View key={r.id} style={styles.reciboLinha}>
+          <Text style={styles.reciboTexto} accessibilityLiveRegion="polite">{semViuva(textoDoRecibo(r))}</Text>
+          <AppPressable style={styles.reciboBotao} accessibilityRole="button" accessibilityLabel="Ok, tirar este recibo" onPress={() => aoDispensar(r.id)}>
+            <Text style={styles.acao}>Ok</Text>
+          </AppPressable>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function carteiraPadrao(item: ItemAConferir, dados: DadosDaLista, forma: FormaDoAviso | null): string {
   const cartao = forma === 'credit' ? cartaoDoItem(item, dados.cartoes) : null;
   return cartao?.wallet_id ?? dados.carteiras.find((w) => w.is_default)?.id ?? dados.carteiras[0]?.id ?? '';
@@ -103,6 +130,7 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
   bloqueado?: boolean;
 }) {
   const [itens, setItens] = useState<ItemAConferir[]>([]);
+  const [recibos, setRecibos] = useState<ReciboDeEstorno[]>([]);
   const [aberta, setAberta] = useState(false);
   /** Leitura das referências falhou e a pessoa escolheu "Agora não": volta quando o app voltar ao primeiro plano. */
   const [adiada, setAdiada] = useState(false);
@@ -111,8 +139,9 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
   const carregar = useCallback(async () => {
     if (!avisosDisponivel) return;
     try {
-      const { itens: lidos, ilegiveis } = await sincronizarCaixa(dono);
+      const { itens: lidos, ilegiveis, recibos: lidosRecibos } = await sincronizarCaixa(dono);
       setItens(lidos);
+      setRecibos(lidosRecibos);
       if (ilegiveis > 0) avisarFalhaDeLeitura(`${ilegiveis} avisos não puderam ser lidos`);
     } catch (e) {
       console.error('[avisos] não leu o diário', e instanceof Error ? e.name : 'erro');
@@ -145,11 +174,19 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
     if (!aberta && !adiada && !outraJanela && !bloqueado) setAberta(true);
   }, [itens.length, aberta, adiada, outraJanela, bloqueado]);
 
-  if (!avisosDisponivel || !aberta || itens.length === 0) return null;
+  const dispensar = (id: string) => {
+    setRecibos((antes) => antes.filter((r) => r.id !== id));
+    dispensarRecibo(dono, id).catch((e) => console.warn('[avisos] recibo não saiu da lista', e instanceof Error ? e.name : 'erro'));
+  };
+  if (!avisosDisponivel) return null;
+  /* Sem pendência, o recibo fica discreto na Início: não abre a janela bloqueante só por ele. */
+  if (!aberta || itens.length === 0) return <RecibosDeEstorno recibos={recibos} aoDispensar={dispensar} naInicio />;
   return (
     <ListaAConferir
       dono={dono}
       nomeDoPerfil={nomeDoPerfil}
+      recibos={recibos}
+      aoDispensarRecibo={dispensar}
       aoAdiar={() => { setAberta(false); setAdiada(true); }}
       aoMudar={setItens}
     />
@@ -167,9 +204,11 @@ function avisarFalhaDeLeitura(mensagem: string, tentarDeNovo?: () => void) {
   ]);
 }
 
-function ListaAConferir({ dono, nomeDoPerfil, aoAdiar, aoMudar }: {
+function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = () => {}, aoAdiar, aoMudar }: {
   dono: string;
   nomeDoPerfil?: string | null;
+  recibos?: ReciboDeEstorno[];
+  aoDispensarRecibo?: (id: string) => void;
   /** Só para a falha de leitura das referências locais: sem isto a pessoa ficaria presa sem ação possível. */
   aoAdiar: () => void;
   aoMudar: (itens: ItemAConferir[]) => void;
@@ -292,6 +331,17 @@ function ListaAConferir({ dono, nomeDoPerfil, aoAdiar, aoMudar }: {
       emAndamento.current = false;
       setOcupado(null);
     }
+  }
+
+  /** Só com o toque: a mesma pergunta de exclusão das outras telas, depois apaga e tira o estorno da lista. */
+  function removerDoEstorno(item: ItemAConferir, lancamento: Transaction) {
+    confirmarExclusaoDeLancamento(lancamento, {
+      apagarEste: () => void executar(item, async () => {
+        await removerLancamentoDoEstorno(dono, item, lancamento.id);
+        marcarLancamentosAlterados();
+        return 'Lançamento removido';
+      }),
+    });
   }
 
   async function gravarComToque(item: ItemAConferir, d: DadosDaLista, forma: FormaDoAviso) {
@@ -438,6 +488,7 @@ function ListaAConferir({ dono, nomeDoPerfil, aoAdiar, aoMudar }: {
         </View>
         <Text style={styles.legenda} accessibilityLiveRegion="polite">{textoDaContagem(itens)}</Text>
         {recibo && <Text style={styles.recibo} accessibilityLiveRegion="polite">{recibo}</Text>}
+        <RecibosDeEstorno recibos={recibos} aoDispensar={aoDispensarRecibo} />
         {falha && (
           <View style={styles.cartao}>
             <Text style={styles.corpo}>{falha}</Text>
@@ -463,6 +514,7 @@ function ListaAConferir({ dono, nomeDoPerfil, aoAdiar, aoMudar }: {
               aoConfirmar={() => confirmar(item, dados)}
               aoEditar={() => abrirRevisao(item, dados)}
               aoDescartar={() => void descartar(item)}
+              aoRemoverLancamento={(t) => removerDoEstorno(item, t)}
             />
           ))}
         </View>
@@ -498,7 +550,50 @@ function ListaAConferir({ dono, nomeDoPerfil, aoAdiar, aoMudar }: {
   </>;
 }
 
-function CartaoDoAviso({ item, jaSalvo, dados, formas, texto, entreContas, ocupado, aoConfirmar, aoEditar, aoDescartar }: {
+/** Frase do estorno quando não há um lançamento certo para desfazer. Só "Entendi", que tira da lista. */
+const EXPLICACAO_DO_ESTORNO = {
+  varios: 'Achei mais de um lançamento igual. Se precisar, apague o certo em Lançamentos.',
+  nenhum: 'Não achei um lançamento igual para desfazer. Nada foi gravado.',
+  sem_valor: 'Não consegui ler o valor deste estorno. Nada foi gravado.',
+  sem_historico: 'Histórico indisponível neste aparelho. Confira em Lançamentos se precisa apagar algo.',
+} as const;
+
+function CartaoDoEstorno({ item, dados, ocupado, aoDescartar, aoRemoverLancamento }: {
+  item: ItemAConferir;
+  dados: DadosDaLista;
+  ocupado: boolean;
+  aoDescartar: () => void;
+  aoRemoverLancamento: (t: Transaction) => void;
+}) {
+  const oferta = ofertaDoEstorno(item, dados.semConferenciaDeDuplicata ? null : dados.lancamentos, dados.cartoes);
+  const loja = item.contraparte ? ` em ${item.contraparte}` : '';
+  const titulo = item.valor !== undefined ? `Estorno de R$${formatMoney(item.valor)}${loja}` : `Estorno${loja}`;
+  return (
+    <View style={styles.cartao}>
+      <Text style={styles.selo}>Dinheiro que voltou</Text>
+      <PrivacyValue><Text style={styles.corpo}>{titulo}</Text></PrivacyValue>
+      <Text style={styles.legenda}>{nomeDoApp(item.pacote)} · {formatDateLabel(item.data)}</Text>
+      {oferta.tipo === 'remover' ? (
+        <>
+          <PrivacyValue><Text style={styles.corpo}>{semViuva(`Este estorno parece desfazer o lançamento de ${formatDateLabel(oferta.lancamento.occurred_on)}, R$${formatMoney(Number(oferta.lancamento.amount))}, ${oferta.lancamento.description || 'sem descrição'}.`)}</Text></PrivacyValue>
+          <View style={styles.botoes}>
+            <Botao rotulo="Manter lançamento" onPress={aoDescartar} desligado={ocupado} />
+            <Botao rotulo="Remover lançamento" onPress={() => aoRemoverLancamento(oferta.lancamento)} desligado={ocupado} destaque />
+          </View>
+        </>
+      ) : (
+        <>
+          <Text style={styles.corpo}>{semViuva(EXPLICACAO_DO_ESTORNO[oferta.tipo])}</Text>
+          <View style={styles.botoes}>
+            <Botao rotulo="Entendi" onPress={aoDescartar} desligado={ocupado} destaque />
+          </View>
+        </>
+      )}
+    </View>
+  );
+}
+
+function CartaoDoAviso({ item, jaSalvo, dados, formas, texto, entreContas, ocupado, aoConfirmar, aoEditar, aoDescartar, aoRemoverLancamento }: {
   item: ItemAConferir;
   jaSalvo: boolean;
   dados: DadosDaLista;
@@ -509,8 +604,13 @@ function CartaoDoAviso({ item, jaSalvo, dados, formas, texto, entreContas, ocupa
   aoConfirmar: () => void;
   aoEditar: () => void;
   aoDescartar: () => void;
+  aoRemoverLancamento: (t: Transaction) => void;
 }) {
   const app = nomeDoApp(item.pacote);
+  /* Estorno nunca oferece Confirmar nem Editar: nada disso funciona para ele. */
+  if (item.tipo === 'estorno') {
+    return <CartaoDoEstorno item={item} dados={dados} ocupado={ocupado} aoDescartar={aoDescartar} aoRemoverLancamento={aoRemoverLancamento} />;
+  }
   if (jaSalvo) {
     return (
       <View style={styles.cartao}>
@@ -582,6 +682,12 @@ const styles = StyleSheet.create({
   cabecalho: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
   titulo: { color: theme.ink, fontFamily: fonts.regular, fontSize: type.titulo },
   recibo: { color: theme.accent2, fontFamily: fonts.regular, fontSize: type.apoio, marginBottom: spacing.sm },
+  recibos: { gap: spacing.xs, marginBottom: spacing.sm },
+  recibosNaInicio: { paddingHorizontal: spacing.lg, marginTop: spacing.sm, marginBottom: 0 },
+  reciboLinha: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  reciboTexto: { flex: 1, minWidth: 0, color: theme.inkFaint, fontFamily: fonts.light, fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio') },
+  reciboBotao: { minHeight: touchTarget, minWidth: touchTarget, flexShrink: 0, alignItems: 'center', justifyContent: 'center' },
+  acao: { color: theme.accent2, fontFamily: fonts.regular, fontSize: type.apoio },
   carregando: { marginTop: spacing.lg },
   lista: { gap: spacing.md },
   cartao: { backgroundColor: theme.paperRaised, borderRadius: radius.lg, borderWidth: 1, borderColor: theme.rule, padding: spacing.md, gap: spacing.xs },

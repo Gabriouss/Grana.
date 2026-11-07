@@ -78,7 +78,10 @@ const stub = {
   '../offline-cache': { salvarOuGuardarNoAparelho: salvar, salvarOuGuardarParceladaNoAparelho: async (...args) => {
     chamadas.push(['parcelada']); return salvar(...args);
   } },
-  '../data': { payBill: async (conta, data) => { chamadas.push(['pagar', conta.id, data]); } },
+  '../data': { payBill: async (conta, data) => { chamadas.push(['pagar', conta.id, data]); },
+    deleteTransaction: async (id) => { chamadas.push(['apagar', id]); } },
+  /* A pergunta de exclusão real (lib/excluir-lancamento.ts) usa './alerta': cai no mesmo registro. */
+  './alerta': { Alert: { alert: (...args) => alertas.push(args) } },
   '@/lib/demo-context': { useDemo: () => ({ isDemoMode: false }) },
   '@/lib/erros': { mensagemErro: (e) => e.message },
   '@/lib/alerta': { Alert: { alert: (...args) => alertas.push(args) } },
@@ -96,7 +99,7 @@ function carregar(relativo) {
   if (cache.has(arquivo)) return cache.get(arquivo);
   let fonte = fs.readFileSync(arquivo, 'utf8');
   // Expõe só ao harness os componentes privados, sem alterar seus handlers.
-  if (arquivo.endsWith('AvisosAConferir.tsx')) fonte += '\nexport { ListaAConferir, CartaoDoAviso };';
+  if (arquivo.endsWith('AvisosAConferir.tsx')) fonte += '\nexport { ListaAConferir, CartaoDoAviso, CartaoDoEstorno, RecibosDeEstorno };';
   if (arquivo.endsWith('AvisosBancoSecao.tsx')) fonte += '\nexport { DiarioDoTeste };';
   const resultado = ts.transpileModule(fonte, { reportDiagnostics: true, compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true,
@@ -159,7 +162,7 @@ const caixa = carregar('lib/avisos-banco/caixa.ts');
 async function lista(avisoTeste, opcoes = {}) {
   if (!opcoes.manterDisco) disco.clear();
   chamadas = []; alertas = []; erroGravacao = false; erroDiario = false; falhaCaixa = { pular: 0, vezes: 0 };
-  diario = Array.isArray(avisoTeste) ? avisoTeste : [avisoTeste]; historico = opcoes.historico ?? [];
+  diario = Array.isArray(avisoTeste) ? avisoTeste : [avisoTeste]; historico = 'historico' in opcoes ? opcoes.historico : [];
   dadosLocais = { carteiras: [carteira], cartoes: [{ id: 'c', last_digits: '1234', wallet_id: 'w', bank: 'nubank' }],
     categorias: [], 'apelidos-categoria': [{ chave: 'mercado modelo', valor: 'Alimentação' }],
     'boletos:todos': opcoes.contas ?? [] };
@@ -718,6 +721,91 @@ async function main() {
   ({ ctx, card } = await lista(aviso('Compra de R$ 40,00 em Mercado Modelo final 5678'), { manterDisco: true }));
   assert.match(detalhe(card), /Forma não informada/);
   ok('memória ilegível ou com falha no disco não derruba a lista nem a gravação');
+
+  /* Rodada 2 (07/11/2026): cartão próprio do estorno e recibo do descarte automático. */
+  {
+    const hoje = new Date(); const pad = (n) => String(n).padStart(2, '0');
+    const dia = `${hoje.getFullYear()}-${pad(hoje.getMonth() + 1)}-${pad(hoje.getDate())}`;
+    const lancamento = { id: 't1', type: 'out', amount: 25, occurred_on: dia, description: 'Loja Modelo', card_id: null, installment_total: 1 };
+    const estorno = () => aviso('Estorno de R$ 25,00 em Loja Modelo', 'Estorno');
+    const cartaoDoEstorno = (card) => {
+      const el = telas.CartaoDoAviso(card().props);
+      assert.equal(el.type, telas.CartaoDoEstorno, 'estorno usa o cartão próprio');
+      return { el, arvore: telas.CartaoDoEstorno(el.props) };
+    };
+
+    let r = await lista(estorno(), { historico: [lancamento] });
+    let { arvore } = cartaoDoEstorno(r.card);
+    assert.deepEqual(rotulos(arvore), ['Manter lançamento', 'Remover lançamento']);
+    assert.match(texto(arvore), /Estorno de R\$/);
+    assert.match(texto(arvore), /parece desfazer o lançamento de .*Loja.Modelo/);
+    ok('estorno com um lançamento candidato: cartão próprio com Manter e Remover, sem Confirmar nem Editar');
+
+    /* Remover: a pergunta de exclusão real, e só o "Excluir" apaga. */
+    r.card().props.aoRemoverLancamento(lancamento);
+    assert.equal(chamadas.filter((c) => c[0] === 'apagar').length, 0, 'nada apagado antes da resposta');
+    const pergunta = alertas.at(-1);
+    assert.equal(pergunta[0], 'Excluir lançamento');
+    pergunta[2].find((b) => b.text === 'Excluir').onPress();
+    await r.ctx.settle();
+    assert.deepEqual(chamadas.filter((c) => c[0] === 'apagar'), [['apagar', 't1']]);
+    assert.equal(chamadas.filter((c) => c[0] === 'gravar').length, 0, 'estorno nunca grava');
+    assert.equal((await caixa.listarCaixa('dono')).length, 0, 'o estorno sai da lista');
+    ok('Remover lançamento pergunta, apaga só o lançamento escolhido e tira o estorno');
+
+    /* Manter: tira da lista sem apagar nada. */
+    r = await lista(estorno(), { historico: [lancamento] });
+    r.card().props.aoDescartar(); await r.ctx.settle();
+    assert.equal(chamadas.filter((c) => c[0] === 'apagar' || c[0] === 'gravar').length, 0);
+    assert.equal((await caixa.listarCaixa('dono')).length, 0);
+    ok('Manter lançamento tira o estorno da lista sem apagar nem gravar');
+
+    /* Sem candidato, dois candidatos ou sem histórico: só "Entendi", nunca botão que dá erro. */
+    for (const [historicoTeste, frase] of [
+      [[], /Não achei um lançamento igual/],
+      [[lancamento, { ...lancamento, id: 't2' }], /mais de um lançamento igual/],
+      [null, /Histórico indisponível/],
+    ]) {
+      r = await lista(estorno(), { historico: historicoTeste });
+      ({ arvore } = cartaoDoEstorno(r.card));
+      assert.deepEqual(rotulos(arvore), ['Entendi']);
+      assert.match(texto(arvore), frase);
+    }
+    r.card().props.aoDescartar(); await r.ctx.settle();
+    assert.equal(chamadas.filter((c) => c[0] === 'apagar' || c[0] === 'gravar').length, 0);
+    ok('sem candidato, com dois ou sem histórico: explica em uma frase e só oferece Entendi');
+
+    /* Recibo: na janela e, sem pendência, discreto na Início, sem abrir a janela. */
+    preparar([
+      aviso('Compra de R$ 25,00 aprovada em Loja Modelo no cartão final 4321'),
+      { ...aviso('Estorno de R$ 25,00 em Loja Modelo no cartão final 4321', 'Estorno'), quando: Date.now() + 60000 },
+    ]);
+    janela = montar(telas.default, { dono: 'dono' }); await janela.settle(); await janela.settle();
+    assert.equal(listaAberta(janela), false, 'o recibo sozinho não abre a janela bloqueante');
+    const reciboNaInicio = elementos(janela.tree).find((e) => e.type === telas.RecibosDeEstorno);
+    assert.ok(reciboNaInicio && reciboNaInicio.props.recibos.length === 1);
+    const arvoreRecibo = telas.RecibosDeEstorno(reciboNaInicio.props);
+    assert.match(texto(arvoreRecibo), /Compra de R\$.*Loja Modelo foi estornada\. Tirei as duas da.lista\./);
+    assert.ok(elementos(arvoreRecibo).some((e) => e.props.accessibilityLiveRegion === 'polite' && /estornada/.test(texto(e))), 'leitor de tela anuncia');
+    assert.equal(elementos(arvoreRecibo).some((e) => e.props.autoFocus || e.props.accessibilityViewIsModal), false, 'sem roubar o foco');
+    reciboNaInicio.props.aoDispensar(reciboNaInicio.props.recibos[0].id);
+    await janela.settle(); await janela.settle();
+    assert.equal(elementos(janela.tree).find((e) => e.type === telas.RecibosDeEstorno).props.recibos.length, 0);
+    assert.equal((await caixa.recibosDaCaixa('dono')).length, 0, 'Ok tira o recibo do disco');
+    ok('recibo do descarte automático aparece discreto na Início, é anunciado e sai com Ok');
+
+    preparar([
+      aviso('Compra de R$ 25,00 aprovada em Loja Modelo no cartão final 4321'),
+      { ...aviso('Estorno de R$ 25,00 em Loja Modelo no cartão final 4321', 'Estorno'), quando: Date.now() + 60000 },
+      { ...aviso('Compra no débito de R$ 35,00 em Mercado Modelo'), quando: Date.now() + 120000 },
+    ]);
+    janela = montar(telas.default, { dono: 'dono' }); await janela.settle(); await janela.settle();
+    const propsLista = elementos(janela.tree).find((e) => e.type === telas.ListaAConferir).props;
+    assert.equal(propsLista.recibos.length, 1, 'com pendência, o recibo vai para a janela');
+    const dentro = montar(telas.ListaAConferir, { ...propsLista, aoMudar() {} }); await dentro.settle();
+    assert.ok(elementos(dentro.tree).some((e) => e.type === telas.RecibosDeEstorno && e.props.recibos.length === 1));
+    ok('com item pendente, o recibo aparece dentro da janela');
+  }
 
   console.log(`\n${checagens} grupos de verificação passaram. Sem rede ou aparelho.`);
 }
