@@ -5,7 +5,6 @@ export type SafeToSpend = {
   saldoAtual: number;
   /** Entradas de caixa do mês com data depois de hoje (07/11/2026). */
   entradasPrevistas: number;
-  creditoNaoPago: number;
   reservadoEmMetas: number;
   /** Entradas do mês (inclusive previstas) menos saídas do mês, sem nada positivo. */
   semSaldo: boolean;

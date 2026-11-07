@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { theme, radius, spacing, card as cardTokens, fonts, type, lh } from '@/lib/theme';
-import { formatBRLSaldo, formatBRLSubtraido, formatMoney } from '@/lib/format';
+import { formatBRL, formatBRLSaldo, formatBRLSubtraido, formatMoney } from '@/lib/format';
 import { rotuloDiasRestantes } from '@/lib/safe-to-spend';
 import type { SafeToSpend } from '@/lib/projections';
 import type { Arquetipo } from '@/lib/diagnostico';
@@ -23,7 +23,7 @@ export default function SafeToSpendCard({
   indisponivel?: boolean;
   carregando?: boolean;
 }) {
-  const { livrePorDia, livreTotal, saldoAtual, reservadoEmMetas, creditoNaoPago, diasRestantes, semSaldo } = data;
+  const { livrePorDia, livreTotal, saldoAtual, entradasPrevistas, reservadoEmMetas, diasRestantes, semSaldo } = data;
 
   return (
     <View style={styles.card}>
@@ -59,16 +59,23 @@ export default function SafeToSpendCard({
           <Text style={styles.rowKey}>Saldo atual</Text>
           <PrivacyValue><Text style={styles.rowVal}>{formatBRLSaldo(saldoAtual)}</Text></PrivacyValue>
         </View>
+        {/* Entradas com data ainda neste mês já contam no Livre (autor,
+            07/11/2026), e o Saldo atual só as soma no dia delas. A linha
+            aparece só quando existe, para a conta visível fechar. */}
+        {entradasPrevistas > 0 && (
+          <View style={styles.row}>
+            <Text style={styles.rowKey}>Entradas previstas no mês</Text>
+            <PrivacyValue><Text style={styles.rowVal}>{formatBRL(entradasPrevistas, '+')}</Text></PrivacyValue>
+          </View>
+        )}
         {/* Sem "Contas a vencer este mês" (autor, 25/09/2026, regra 20): boleto
             pendente ou atrasado não desconta do Livre. Ele pesa quando é pago,
-            porque o pagamento vira saída de caixa no Pix/débito. */}
+            porque o pagamento vira saída de caixa no Pix/débito. Sem "Crédito
+            ainda não pago" (autor, 07/11/2026): a fatura pesa quando é paga,
+            pelo mesmo motivo. */}
         <View style={styles.row}>
           <Text style={styles.rowKey}>Guardado do mês em cofrinhos</Text>
           <PrivacyValue><Text style={styles.rowVal}>{formatBRLSubtraido(reservadoEmMetas)}</Text></PrivacyValue>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.rowKey}>Crédito ainda não pago</Text>
-          <PrivacyValue><Text style={styles.rowVal}>{formatBRLSubtraido(creditoNaoPago)}</Text></PrivacyValue>
         </View>
         <View style={styles.row}>
           <Text style={styles.rowKey}>{`Livre no total · ${rotuloDiasRestantes(diasRestantes)}`}</Text>

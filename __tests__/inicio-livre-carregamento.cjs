@@ -37,7 +37,7 @@ const SafeToSpendCard = compile(fs.readFileSync(path.join(root, 'components/Safe
   '@/lib/safe-to-spend': { rotuloDiasRestantes: n => `${n} dias` },
   './PrivacyValue': { default: ({ children }) => jsx('PrivacyValue', { children }) },
 }).default;
-const data = { livrePorDia: 10, livreTotal: 100, saldoAtual: 200, reservadoEmMetas: 50, creditoNaoPago: 50, diasRestantes: 10 };
+const data = { livrePorDia: 10, livreTotal: 150, saldoAtual: 200, entradasPrevistas: 0, reservadoEmMetas: 50, semSaldo: false, diasRestantes: 10 };
 function visible(node) {
   if (node == null || node === false) return '';
   if (typeof node !== 'object') return String(node);

@@ -7,15 +7,13 @@
 const PARTIDA_CENTAVOS = {
   saldo: 581500,
   cofrinhos: 0,
-  /** 07/11/2026: credito nao pago nao reduz mais o Livre. */
-  creditoNaoPago: 0,
   diasRestantes: 26,
 } as const;
 
 /** Contas pendentes do mês fictício: só a conversa do Granabô cita. */
 const CONTAS_DO_MES_CENTAVOS = 181135;
 
-const livreCentavos = PARTIDA_CENTAVOS.saldo - PARTIDA_CENTAVOS.cofrinhos - PARTIDA_CENTAVOS.creditoNaoPago;
+const livreCentavos = PARTIDA_CENTAVOS.saldo - PARTIDA_CENTAVOS.cofrinhos;
 
 /* O por dia é ARREDONDADO ao centavo, igual ao que o app mostra
    (5.815,00 ÷ 26 = 223,6538…). A exigência do V01 era que a subtração que a
@@ -25,7 +23,6 @@ const porDiaCentavos = Math.round(livreCentavos / PARTIDA_CENTAVOS.diasRestantes
 export const EXEMPLO_LIVRE = {
   saldo: PARTIDA_CENTAVOS.saldo / 100,
   cofrinhos: PARTIDA_CENTAVOS.cofrinhos / 100,
-  creditoNaoPago: PARTIDA_CENTAVOS.creditoNaoPago / 100,
   diasRestantes: PARTIDA_CENTAVOS.diasRestantes,
   /** R$ 5.815,00: saldo menos o guardado do mes (zero neste exemplo). */
   livreNoTotal: livreCentavos / 100,

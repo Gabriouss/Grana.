@@ -40,7 +40,6 @@ export default function CardLivreParaGastar({ compacto }: { compacto?: boolean }
       <View style={styles.breakdown}>
         <Linha chave="Saldo atual" valor={moeda(EXEMPLO.saldo)} />
         <Linha chave="Reservado em cofrinhos" valor={`− ${moeda(EXEMPLO.cofrinhos)}`} />
-        <Linha chave="Crédito ainda não pago" valor={`− ${moeda(EXEMPLO.creditoNaoPago)}`} />
         <Linha chave={`Livre no total · ${EXEMPLO.diasRestantes} dias restantes`} valor={moeda(livre)} forte />
       </View>
     </View>

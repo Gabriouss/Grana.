@@ -85,7 +85,8 @@ const { EXEMPLO_LIVRE, EXEMPLO_CONVERSA, emReais } = exemplo;
   conferir(centavos(semFiltro.saldoAtual), centavos(r.saldoAtual), 'o app recorta o mês sozinho (regra 20)');
   conferir(centavos(r.saldoAtual), centavos(EXEMPLO_LIVRE.saldo), 'saldo atual');
   conferir(centavos(r.reservadoEmMetas), centavos(EXEMPLO_LIVRE.cofrinhos), 'reservado em cofrinhos');
-  conferir(centavos(r.creditoNaoPago), centavos(EXEMPLO_LIVRE.creditoNaoPago), 'credito aberto reservado');
+  // 07/11/2026: credito ainda nao pago nao reduz o Livre, e a linha saiu dos cards.
+  conferir('creditoNaoPago' in r || 'creditoNaoPago' in EXEMPLO_LIVRE, false, 'credito aberto fora do Livre');
   conferir(r.diasRestantes, EXEMPLO_LIVRE.diasRestantes, 'dias restantes');
   conferir(centavos(r.livreTotal), centavos(EXEMPLO_LIVRE.livreNoTotal), 'livre no total');
   conferir(centavos(r.livrePorDia), centavos(EXEMPLO_LIVRE.porDia), 'livre por dia, arredondado como o app');
