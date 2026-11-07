@@ -23,8 +23,7 @@ export default function SafeToSpendCard({
   indisponivel?: boolean;
   carregando?: boolean;
 }) {
-  const { livrePorDia, livreTotal, saldoAtual, reservadoEmMetas, creditoNaoPago, diasRestantes } = data;
-  const semSaldo = saldoAtual <= 0;
+  const { livrePorDia, livreTotal, saldoAtual, reservadoEmMetas, creditoNaoPago, diasRestantes, semSaldo } = data;
 
   return (
     <View style={styles.card}>

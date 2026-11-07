@@ -150,10 +150,11 @@ const snapshot = montarSnapshotWidgets({
 });
 conferir('contrato versionado', snapshot.version === 1);
 conferir('preserva modo privacidade', snapshot.privacyHidden === true);
-/* Pedido 17/10/2026: 1000 - 100 caixa - 100 aporte do mes - 500 credito = 300.
-   Boleto pendente continua fora. */
-conferir('credito reserva Livre sem alterar caixa', snapshot.safeToSpend.livreTotal === 300, snapshot.safeToSpend);
-conferir('boleto pendente não desconta do livre (regra 20)', snapshot.safeToSpend.livreTotal === 300);
+/* Pedido 07/11/2026 ("Fatura só desconta ao pagar"), que substitui o de
+   17/10: 1000 - 100 caixa - 100 aporte do mes = 800; os 500 no credito so
+   pesam quando a fatura for paga. Boleto pendente continua fora. */
+conferir('credito nao pago nao reduz o Livre (07/11)', snapshot.safeToSpend.livreTotal === 800, snapshot.safeToSpend);
+conferir('boleto pendente não desconta do livre (regra 20)', snapshot.safeToSpend.livreTotal === 800);
 conferir('data determinística', snapshot.updatedAt === '2026-09-04T15:00:00.000Z');
 
 /* ── Regra 20 (24/09/2026): só o mês vigente, sem saldo inicial ─────────

@@ -3,15 +3,20 @@ import type { Goal, Transaction } from './types';
 
 export type SafeToSpend = {
   saldoAtual: number;
+  /** Entradas de caixa do mês com data depois de hoje (07/11/2026). */
+  entradasPrevistas: number;
   creditoNaoPago: number;
   reservadoEmMetas: number;
+  /** Entradas do mês (inclusive previstas) menos saídas do mês, sem nada positivo. */
+  semSaldo: boolean;
   diasRestantes: number;
   livreTotal: number;
   livrePorDia: number;
 };
 
-/* Regra 20: pedido expresso de 17/10/2026; reserva do mes e credito nao pago
-   abatem Livre. Cofrinho anterior, initial_balance e boleto pendente ficam fora. */
+/* Regra 20: pedido expresso de 07/11/2026; entradas do mes contam desde o dia 1,
+   guardado do mes abate, credito so desconta quando a fatura e paga. Cofrinho
+   anterior, initial_balance e boleto pendente ficam fora. */
 
 function chaveDoMes(hoje: Date): string {
   return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
@@ -21,9 +26,10 @@ function isoDeHoje(hoje: Date): string {
   return `${chaveDoMes(hoje)}-${String(hoje.getDate()).padStart(2, '0')}`;
 }
 
-/** Lançamentos de CAIXA do mês de `hoje`: sem crédito; entrada só a partir da
- *  sua data, saída futura do mesmo mês já conta (regra 20, 01/11/2026). Mesmo
- *  predicado do Livre (`entraNoCaixaDoMes`). */
+/** Lançamentos de CAIXA do mês de `hoje`, os do "Saldo atual": sem crédito;
+ *  entrada só a partir da sua data, saída futura do mesmo mês já conta (regra
+ *  20, 01/11/2026). Mesmo predicado do núcleo (`entraNoCaixaDoMes`). O Livre
+ *  conta também as entradas futuras do mês (07/11/2026). */
 export function transacoesDeCaixaDoMes(transactions: Transaction[], hoje: Date = new Date()): Transaction[] {
   const hojeISO = isoDeHoje(hoje);
   return transactions.filter((t) => entraNoCaixaDoMes(t, hojeISO));
