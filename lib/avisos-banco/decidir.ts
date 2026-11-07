@@ -43,7 +43,26 @@ export type ItemAConferir = {
   digitos?: string | null;
   /** Conta aberta cujo pagamento já foi pedido: impede pagar e lançar. */
   contaEmPagamento?: string;
+  /**
+   * A janela já mostrou este item com a marca "Vence hoje". Só depois disso a
+   * validade pode tirá-lo da lista: nada some sem a pessoa ver (07/11/2026).
+   */
+  vencimentoVisto?: boolean;
 };
+
+/** Último dia da validade (ou já passou dela): a janela mostra "Vence hoje". */
+export function venceHoje(item: Pick<ItemAConferir, 'expiraEm' | 'tipo'>, agora: number): boolean {
+  return item.tipo !== 'estorno' && agora >= item.expiraEm - DIA_MS;
+}
+
+/** Item vencido só sai se a pessoa já o viu marcado; senão fica até ser visto. */
+const aindaValeOuNaoFoiVisto = (i: ItemAConferir, agora: number) => i.expiraEm > agora || (i.tipo !== 'estorno' && !i.vencimentoVisto);
+
+/** Marca como visto o vencimento dos itens que a janela mostrou no último dia. */
+export function marcarVencimentoVisto(estado: EstadoDaCaixa, agora: number): EstadoDaCaixa {
+  if (!estado.itens.some((i) => venceHoje(i, agora) && !i.vencimentoVisto)) return estado;
+  return { ...estado, itens: estado.itens.map((i) => (venceHoje(i, agora) && !i.vencimentoVisto ? { ...i, vencimentoVisto: true } : i)) };
+}
 
 /** O que sobra de um aviso já processado. Sem título nem texto. */
 export type AvisoVisto = {
@@ -348,7 +367,7 @@ export function aplicarAvisos(
   const proximo = novos.reduce((e, a) => acrescentarAviso(e, a, jaGravados), estado);
   const recibos = (proximo.recibos ?? []).filter((r) => r.expiraEm > agora);
   return {
-    itens: semRecusasAntigas(proximo.itens, avisos, jaGravados).filter((i) => i.expiraEm > agora),
+    itens: semRecusasAntigas(proximo.itens, avisos, jaGravados).filter((i) => aindaValeOuNaoFoiVisto(i, agora)),
     vistos: Object.fromEntries(Object.entries(proximo.vistos).filter(([, v]) => v.quando + VALIDADE_DO_VISTO_MS > agora)),
     ...(recibos.length ? { recibos } : {}),
   };

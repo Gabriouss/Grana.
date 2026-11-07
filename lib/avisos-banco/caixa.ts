@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lerDiarioAvisos } from '@/modules/grana-avisos';
-import { aplicarAvisos, CAIXA_VAZIA, FINAL_VARIAVEL, type EstadoDaCaixa, type FormasAprendidas, type ItemAConferir, type ReciboDeEstorno } from './decidir';
+import { aplicarAvisos, CAIXA_VAZIA, marcarVencimentoVisto, FINAL_VARIAVEL, type EstadoDaCaixa, type FormasAprendidas, type ItemAConferir, type ReciboDeEstorno } from './decidir';
 import type { FormaDoAviso } from './interpretar';
 
 /**
@@ -61,6 +61,15 @@ export function dispensarRecibo(dono: string, id: string): Promise<void> {
     const recibos = (estado.recibos ?? []).filter((r) => r.id !== id);
     const { recibos: _antigos, ...resto } = estado;
     await gravar(dono, recibos.length ? { ...resto, recibos } : resto);
+  });
+}
+
+/** A janela mostrou os itens do último dia: só agora a validade pode tirá-los. */
+export function registrarVencimentoVisto(dono: string, agora: number = Date.now()): Promise<void> {
+  return naVez(async () => {
+    const estado = await ler(dono);
+    const marcado = marcarVencimentoVisto(estado, agora);
+    if (marcado !== estado) await gravar(dono, marcado);
   });
 }
 

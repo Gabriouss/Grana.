@@ -439,6 +439,54 @@ const ESTORNO_UBER = (extra) => aviso('Estorno', 'Estorno de R$ 12.34 em DL *Ube
     ok('WT-R5: só oferece confirmado com banco confiável compatível, inclusive cartão; conflito/ausência não oferecem');
   }
 
+  /* Nada some sem a pessoa ver (07/11/2026): vencido só sai depois de visto com "Vence hoje". */
+  {
+    const compra = COMPRA_UBER({ quando: AGORA });
+    await sync('dono-venc', compra);
+    const item0 = (await caixa.listarCaixa('dono-venc'))[0];
+    assert.equal(decidir.venceHoje(item0, AGORA + 28 * DIA), false, 'antes do último dia não marca');
+    assert.equal(decidir.venceHoje(item0, AGORA + 29 * DIA + MIN), true, 'no último dia marca');
+    /* Ninguém abriu o app no último dia: passou da validade e o item continua. */
+    diario.itens = [];
+    let r = await caixa.sincronizarCaixa('dono-venc', AGORA + 40 * DIA);
+    assert.equal(r.itens.length, 1, 'vencido e nunca visto marcado continua');
+    assert.equal(decidir.venceHoje(r.itens[0], AGORA + 40 * DIA), true, 'e aparece marcado');
+    /* A janela o mostra marcado; depois disso a validade o tira. */
+    await caixa.registrarVencimentoVisto('dono-venc', AGORA + 40 * DIA);
+    r = await caixa.sincronizarCaixa('dono-venc', AGORA + 40 * DIA + MIN);
+    assert.equal(r.itens.length, 0, 'visto marcado sai depois do prazo');
+    /* Visto no último dia, ainda dentro do prazo: segue até vencer de fato. */
+    await sync('dono-venc2', COMPRA_UBER({ quando: AGORA }));
+    diario.itens = [];
+    await caixa.registrarVencimentoVisto('dono-venc2', AGORA + 29 * DIA + MIN);
+    r = await caixa.sincronizarCaixa('dono-venc2', AGORA + 29 * DIA + 2 * MIN);
+    assert.equal(r.itens.length, 1, 'visto mas ainda no prazo continua');
+    r = await caixa.sincronizarCaixa('dono-venc2', AGORA + 30 * DIA + MIN);
+    assert.equal(r.itens.length, 0);
+    /* Marcar antes do último dia não vale. */
+    await sync('dono-venc3', COMPRA_UBER({ quando: AGORA }));
+    diario.itens = [];
+    await caixa.registrarVencimentoVisto('dono-venc3', AGORA + 10 * DIA);
+    r = await caixa.sincronizarCaixa('dono-venc3', AGORA + 31 * DIA);
+    assert.equal(r.itens.length, 1, 'visto cedo demais não conta');
+    /* "Não entendi" (7 dias) e estorno (nunca marca). */
+    const base = { id: 'x', avisoIds: ['a'], pacote: C6, classe: 'banco', quando: AGORA, data: '2026-11-07' };
+    const nao = { ...base, tipo: 'nao_entendi', expiraEm: AGORA + 7 * DIA };
+    assert.equal(decidir.venceHoje(nao, AGORA + 6 * DIA + MIN), true);
+    assert.equal(decidir.venceHoje(nao, AGORA + 5 * DIA), false);
+    let e = decidir.aplicarAvisos({ itens: [nao], vistos: {} }, [], AGORA + 8 * DIA);
+    assert.equal(e.itens.length, 1, 'não entendi vencido sem ser visto continua');
+    e = decidir.aplicarAvisos(decidir.marcarVencimentoVisto({ itens: [nao], vistos: {} }, AGORA + 8 * DIA), [], AGORA + 8 * DIA);
+    assert.equal(e.itens.length, 0, 'não entendi visto marcado sai');
+    const est = { ...base, tipo: 'estorno', expiraEm: AGORA + 30 * DIA };
+    assert.equal(decidir.venceHoje(est, AGORA + 40 * DIA), false, 'estorno não recebe a marca');
+    assert.equal(decidir.aplicarAvisos({ itens: [est], vistos: {} }, [], AGORA + 40 * DIA).itens.length, 0, 'estorno vence como sempre');
+    /* Recibos continuam com a validade de hoje. */
+    const recibo = { id: 'r', quando: AGORA, expiraEm: AGORA + 7 * DIA, valor: 1, contraparte: null, dataDaCompra: '2026-11-07', dataDoEstorno: '2026-11-07' };
+    assert.equal(decidir.aplicarAvisos({ itens: [], vistos: {}, recibos: [recibo] }, [], AGORA + 8 * DIA).recibos, undefined);
+    ok('vencimento: item vencido só sai depois de visto com "Vence hoje"; estorno e recibo seguem a validade de sempre');
+  }
+
   /* O listener nativo não publica "Novo aviso para conferir" para recusa, com o
      MESMO padrão do app: os dois textos têm de ser idênticos. */
   {
