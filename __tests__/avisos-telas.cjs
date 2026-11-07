@@ -10,6 +10,8 @@ let checagens = 0;
 const ok = (texto) => { checagens++; console.log(`ok ${checagens}: ${texto}`); };
 const efeitoIgual = (a, b) => a && b && a.length === b.length && a.every((v, i) => v === b[i]);
 const react = {
+  isValidElement: (n) => !!n && typeof n === 'object' && 'props' in n,
+  cloneElement: (n, props) => ({ ...n, props: { ...n.props, ...props } }),
   useState(inicial) {
     const dono = corrente, i = dono.cursor++;
     if (!(i in dono.slots)) dono.slots[i] = typeof inicial === 'function' ? inicial() : inicial;
@@ -35,6 +37,7 @@ let diario = [], erroDiario = false, erroGravacao = false, erroAjustes = false;
 let falhaCaixa = { pular: 0, vezes: 0 };
 let falhaFormas = false, avisosDoConsole = [];
 let chamadas = [], alertas = [], copiado = '', dadosLocais = {}, historico = [];
+let privacidadeOculta = false;
 const disco = new Map();
 const nativo = {
   avisosDisponivel: true,
@@ -55,8 +58,10 @@ const salvar = async (entrada, chave) => {
 };
 const stub = {
   react,
+  '@/lib/privacy-context': { usePrivacy: () => ({ hidden: privacidadeOculta }) },
+  'expo-blur': { BlurView: 'BlurView' },
   'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'Fragment' },
-  'react-native': { View: 'View', Text: 'Text', TextInput: 'TextInput', Pressable: 'Pressable', ScrollView: 'ScrollView', ActivityIndicator: 'ActivityIndicator',
+  'react-native': { Platform: { OS: 'android' }, View: 'View', Text: 'Text', TextInput: 'TextInput', Pressable: 'Pressable', ScrollView: 'ScrollView', ActivityIndicator: 'ActivityIndicator',
     StyleSheet: { create: (s) => s }, AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
   '@react-native-async-storage/async-storage': { getItem: async (k) => {
       if (falhaFormas && k.startsWith('grana_avisos_formas:')) throw new Error('disco');
@@ -115,6 +120,7 @@ function carregar(relativo) {
       }
       if (id in stub) return stub[id];
       if (id === './TransactionSheet') return { default: TransactionSheet, __esModule: true };
+      if (id === './PrivacyValue') return carregar('components/PrivacyValue.tsx');
       if (id.startsWith('@/components/')) return { default: './' + id.split('/').at(-1), useKeyboardHeight: () => 0, __esModule: true };
       if (id.startsWith('./') && arquivo.includes(`${path.sep}components${path.sep}`)) {
         return { default: id, InsetsDoModal: 'InsetsDoModal', JanelaFlutuante: 'JanelaFlutuante', useKeyboardHeight: () => 0, __esModule: true };
@@ -788,6 +794,26 @@ async function main() {
     assert.match(texto(arvoreRecibo), /Compra de R\$.*Loja Modelo foi estornada\. Tirei as duas da.lista\./);
     assert.ok(elementos(arvoreRecibo).some((e) => e.props.accessibilityLiveRegion === 'polite' && /estornada/.test(texto(e))), 'leitor de tela anuncia');
     assert.equal(elementos(arvoreRecibo).some((e) => e.props.autoFocus || e.props.accessibilityViewIsModal), false, 'sem roubar o foco');
+    // Expande o PrivacyValue REAL: o texto e o anúncio reais não sobrevivem ao modo oculto.
+    const PrivacyValue = carregar('components/PrivacyValue.tsx').default;
+    function expandir(no) {
+      if (Array.isArray(no)) return no.map(expandir);
+      if (!no || typeof no !== 'object') return no;
+      if (no.type === PrivacyValue) return expandir(PrivacyValue(no.props));
+      return { ...no, props: { ...no.props, children: expandir(no.props?.children) } };
+    }
+    for (const naInicio of [true, false]) {
+      const arvore = telas.RecibosDeEstorno({ ...reciboNaInicio.props, naInicio });
+      privacidadeOculta = true;
+      const oculto = expandir(arvore);
+      assert.doesNotMatch(texto(oculto), /25,00|Loja Modelo/);
+      assert.ok(elementos(oculto).some(n => n.props.accessibilityLabel === 'Valor oculto'));
+      assert.equal(elementos(oculto).some(n => n.props.accessibilityLiveRegion && /25,00|Loja Modelo/.test(texto(n))), false);
+      privacidadeOculta = false;
+      const visivel = expandir(arvore);
+      assert.match(texto(visivel), /25,00.*Loja Modelo/);
+      assert.ok(elementos(visivel).some(n => n.props.accessibilityLiveRegion === 'polite' && /25,00/.test(texto(n))));
+    }
     reciboNaInicio.props.aoDispensar(reciboNaInicio.props.recibos[0].id);
     await janela.settle(); await janela.settle();
     assert.equal(elementos(janela.tree).find((e) => e.type === telas.RecibosDeEstorno).props.recibos.length, 0);

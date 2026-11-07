@@ -99,7 +99,9 @@ function RecibosDeEstorno({ recibos, aoDispensar, naInicio = false }: { recibos:
     <View style={[styles.recibos, naInicio && styles.recibosNaInicio]}>
       {recibos.map((r) => (
         <View key={r.id} style={styles.reciboLinha}>
-          <Text style={styles.reciboTexto} accessibilityLiveRegion="polite">{semViuva(textoDoRecibo(r))}</Text>
+          <PrivacyValue style={styles.reciboConteudo}>
+            <Text style={styles.reciboTexto} accessibilityLiveRegion="polite">{semViuva(textoDoRecibo(r))}</Text>
+          </PrivacyValue>
           <AppPressable style={styles.reciboBotao} accessibilityRole="button" accessibilityLabel="Ok, tirar este recibo" onPress={() => aoDispensar(r.id)}>
             <Text style={styles.acao}>Ok</Text>
           </AppPressable>
@@ -701,7 +703,8 @@ const styles = StyleSheet.create({
   recibos: { gap: spacing.xs, marginBottom: spacing.sm },
   recibosNaInicio: { paddingHorizontal: spacing.lg, marginTop: spacing.sm, marginBottom: 0 },
   reciboLinha: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  reciboTexto: { flex: 1, minWidth: 0, color: theme.inkFaint, fontFamily: fonts.light, fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio') },
+  reciboConteudo: { flex: 1, minWidth: 0 },
+  reciboTexto: { color: theme.inkFaint, fontFamily: fonts.light, fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio') },
   reciboBotao: { minHeight: touchTarget, minWidth: touchTarget, flexShrink: 0, alignItems: 'center', justifyContent: 'center' },
   acao: { color: theme.accent2, fontFamily: fonts.regular, fontSize: type.apoio },
   revisarDepois: { minHeight: touchTarget, alignSelf: 'center', justifyContent: 'center', paddingHorizontal: spacing.md, marginTop: spacing.sm },
