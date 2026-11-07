@@ -135,6 +135,8 @@ Autor: "deixar tudo pronto pra gente colocar o aplicativo na Play Store". Decis�
 
 **Autorização para o achado de sessão:** autor respondeu “pode corrigir no main também”. Claude Code (Sonnet 5.5 medium) executará `ordem-claude-code-getsession.md` após terminar a janela de avisos: commit próprio no main e cherry-pick `-x` para a branch de teste, sem merge ou push. A ordem exige testes nas duas árvores e coordenação com Keel; correção e testes ainda não confirmados.
 
+**Distribuição adicional:** autor pediu mais carga na conta Gabriel Codex; todos em Sol 6.1 medium. Sentinel confere 16 KB e targetSdk nos APKs existentes (`ordem-sentinel-16kb.md`); Watchtower prepara respostas de Segurança de dados, rascunho da política e pareceres sobre janela bloqueante e descarte por estorno (`ordem-watchtower-2.md`); Prism prepara ficha da Play sem preço e sem leitura de avisos (`ordem-prism-ficha.md`). São entregas de leitura e texto, sem commit, build ou envio; resultados ainda não confirmados.
+
 **Em aberto.** Os relatórios `relatorio-*.md` e os `FIM-*.md` da pasta da rodada entram aqui à medida que surgirem, cada um em registro curto, separando testado de relatado.
 
 ## 02/11 — motion-supremo unificada nas três cópias
