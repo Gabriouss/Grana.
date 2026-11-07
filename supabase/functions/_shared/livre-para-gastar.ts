@@ -81,8 +81,6 @@ export function calcularLivre(
   const livreTotal = Math.max(0, caixaDoLivre - reservado) / 100;
   return {
     saldoAtual: saldo / 100, entradasPrevistas: entradasPrevistas / 100, reservadoEmMetas: reservado / 100,
-    // Crédito não reduz mais o Livre (07/11/2026). Zero só até o card deixar de exibir a linha.
-    creditoNaoPago: 0,
     semSaldo: caixaDoLivre <= 0, diasRestantes, livreTotal, livrePorDia: livreTotal / diasRestantes,
   };
 }

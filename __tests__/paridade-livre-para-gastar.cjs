@@ -24,7 +24,7 @@ const app = carregar(path.join(root, 'lib/safe-to-spend.ts'));
 const servidor = carregar(path.join(root, 'supabase/functions/_shared/caixa.ts'));
 
 let passou = 0;
-const CAMPOS = ['saldoAtual', 'entradasPrevistas', 'creditoNaoPago', 'reservadoEmMetas', 'diasRestantes', 'livreTotal', 'livrePorDia'];
+const CAMPOS = ['saldoAtual', 'entradasPrevistas', 'semSaldo', 'reservadoEmMetas', 'diasRestantes', 'livreTotal', 'livrePorDia'];
 function comparar(transacoes, metas, hojeISO, rotulo) {
   const [a, m, d] = hojeISO.split('-').map(Number);
   const doApp = app.calcularSafeToSpend(transacoes, metas, new Date(a, m - 1, d, 12));

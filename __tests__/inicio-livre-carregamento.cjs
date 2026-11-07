@@ -37,7 +37,7 @@ const SafeToSpendCard = compile(fs.readFileSync(path.join(root, 'components/Safe
   '@/lib/safe-to-spend': { rotuloDiasRestantes: n => `${n} dias` },
   './PrivacyValue': { default: ({ children }) => jsx('PrivacyValue', { children }) },
 }).default;
-const data = { livrePorDia: 10, livreTotal: 100, saldoAtual: 200, reservadoEmMetas: 50, creditoNaoPago: 50, diasRestantes: 10 };
+const data = { livrePorDia: 10, livreTotal: 150, saldoAtual: 200, entradasPrevistas: 0, reservadoEmMetas: 50, semSaldo: false, diasRestantes: 10 };
 function visible(node) {
   if (node == null || node === false) return '';
   if (typeof node !== 'object') return String(node);
@@ -80,7 +80,7 @@ function scenario(failCore = { on: false }) {
   const leves = [];
   const focar = compile(`exports.focar = ${foco.getText(ast)};`, 'foco.tsx', { ...env, load, carregarDadosLeves: async () => { leves.push(1); },
     ultimoModoCarregadoRef: { current: false }, carregarPerfil: async () => null, carregarDiagnostico: async () => null, setDiagnostico() {},
-    carregarLayoutHome: async () => null, setHomeLayout() {}, pieAnim: { setValue() {} }, reduzirMovimento: true }).focar;
+    carregarLayoutHomeEmEtapas: async () => {}, setHomeLayout() {}, pieAnim: { setValue() {} }, reduzirMovimento: true }).focar;
   const cargas = () => calls.filter(c => c === 'transactions').length;
   return { load, states, calls, get goals() { return goals; }, get payments() { return payments; }, render, env, focar, leves, cargas,
     renovar() { goals = deferred(); payments = deferred(); } };
