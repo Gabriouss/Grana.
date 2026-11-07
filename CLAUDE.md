@@ -29,4 +29,10 @@
 - Keep Play Store release work from affecting current users; make changes incrementally and adapt as we go.
 - Follow the project's design system for all UI changes; create new visual elements only when the design system lacks them.
 - Count future-dated salary toward the free-to-spend balance only after its entry date.
+- Install the APK via Harbor only after production and APK builds are green; before that, report the APK as checked and waiting for the device.
+- Do not merge main into the test branch; it becomes the next Play Store release and must not affect the current production app.
+- Never merge the test branch into main; keep main as the user-facing branch and never let test-only changes reach it.
+- As the supreme orchestrator, always analyze each task first and identify the most suitable model and effort level to execute it.
+- Remember that the Play Store app lives on a separate branch from main; main is the branch current users run.
+- Never add new blocks to Grana screens for notices, confirmations or questions; show them as floating windows, like the bank-notice confirmation window (author, 07/11/2026).
 <!-- end claude-reflect -->
