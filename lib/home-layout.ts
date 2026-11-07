@@ -1,4 +1,6 @@
+import type { User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import { lerSessaoDoDisco, PRAZO_DONO_PADRAO_MS, sessaoDoCliente, sessaoEstaTravada } from './sessao-offline';
 
 /**
  * Personalização Modular da Tela Inicial — item 2 do "Plano Mestre de
@@ -105,14 +107,8 @@ export function layoutPadrao(): HomeBlockConfig[] {
  * app nunca esconde silenciosamente uma seção nova nem quebra ao ler uma
  * configuração salva por uma versão antiga.
  */
-export async function carregarLayoutHome(): Promise<HomeBlockConfig[]> {
-  // A sessão persistida é legível sem rede. `getUser()` sempre consultava o
-  // servidor e fazia a organização da Home voltar ao padrão no modo offline.
-  const { data, error } = await supabase.auth.getSession();
-  const user = data.session?.user;
-  if (error || !user) return layoutPadrao();
-
-  const salvo = user.user_metadata?.[CHAVE_METADATA] as HomeBlockConfig[] | undefined;
+export function layoutDoUsuario(user: Pick<User, 'user_metadata'> | null | undefined): HomeBlockConfig[] {
+  const salvo = user?.user_metadata?.[CHAVE_METADATA] as HomeBlockConfig[] | undefined;
   if (!salvo || !Array.isArray(salvo)) return layoutPadrao();
 
   const chavesSalvas = new Set(salvo.map((b) => b.key));
@@ -121,6 +117,59 @@ export async function carregarLayoutHome(): Promise<HomeBlockConfig[]> {
     if (!chavesSalvas.has(key)) resultado.push({ key, visible: true });
   });
   return resultado.length > 0 ? resultado : layoutPadrao();
+}
+
+/**
+ * O layout como está gravado no aparelho, sem falar com o servidor.
+ *
+ * A personalização mora em `user_metadata`, que o auth-js grava junto da
+ * sessão no disco. Ler dali responde na hora, com ou sem rede e com o token
+ * vencido, e é o que deixa a Início desenhar os blocos já na primeira pintura.
+ */
+export async function carregarLayoutHomeLocal(): Promise<HomeBlockConfig[]> {
+  return layoutDoUsuario((await lerSessaoDoDisco())?.user);
+}
+
+/**
+ * O layout da conta, com prazo.
+ *
+ * Até 07/11/2026 isto chamava `supabase.auth.getSession()` cru. Com o token
+ * vencido e a rede ruim ele renova antes de responder e fica preso de 25 a 40
+ * segundos (ver `lib/sessao-offline.ts`), e a Início ficava sem nenhum bloco
+ * esse tempo todo, porque a lista nascia vazia e só esta função a preenchia.
+ * Agora usa o mesmo caminho com prazo do resto do app e cai para o disco.
+ */
+export async function carregarLayoutHome(): Promise<HomeBlockConfig[]> {
+  let user: User | null = null;
+  /* Renovação já presa: perguntar de novo só esperaria o prazo outra vez. */
+  if (!sessaoEstaTravada()) {
+    try {
+      const { data, error } = await sessaoDoCliente(PRAZO_DONO_PADRAO_MS);
+      if (!error) user = data.session?.user ?? null;
+    } catch {
+      // Estourou o prazo ou a rede falhou: o disco responde logo abaixo.
+    }
+  }
+  if (!user) user = (await lerSessaoDoDisco())?.user ?? null;
+  return layoutDoUsuario(user);
+}
+
+/**
+ * Aplica o layout em duas etapas: primeiro o do aparelho (imediato), depois o
+ * do servidor quando chegar. Uma falha numa etapa deixa na tela o que já está
+ * lá, com log — nunca esvazia a Início.
+ */
+export async function carregarLayoutHomeEmEtapas(aplicar: (layout: HomeBlockConfig[]) => void): Promise<void> {
+  try {
+    aplicar(await carregarLayoutHomeLocal());
+  } catch (erro) {
+    console.warn('[home-layout] layout do aparelho não foi lido', (erro as { name?: string })?.name ?? 'erro');
+  }
+  try {
+    aplicar(await carregarLayoutHome());
+  } catch (erro) {
+    console.warn('[home-layout] layout da conta não chegou, mantendo o da tela', (erro as { name?: string })?.name ?? 'erro');
+  }
 }
 
 export async function salvarLayoutHome(config: HomeBlockConfig[]): Promise<void> {

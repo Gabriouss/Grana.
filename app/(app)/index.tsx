@@ -39,7 +39,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { enfileirarPendente, isLikelyNetworkError, novoIdLocal, salvarOuGuardarNoAparelho } from '@/lib/offline-cache';
 import { addBill, deleteBudget, deleteInstallmentPurchase, deleteTransaction, encerrarSerieAPartirDe, fetchBills, fetchBudgets, fetchCardInvoicePayments, fetchCreditCards, fetchTransactions, updateTransaction, upsertBudget } from '@/lib/data';
 import { confirmarExclusaoDeLancamento, conferirContaPaga } from '@/lib/excluir-lancamento';
-import { carregarLayoutHome, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
+import { carregarLayoutHomeEmEtapas, layoutPadrao, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
 import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals, updateGoal } from '@/lib/goals';
 import { calcularSafeToSpend, projetarComprometimentoFuturo, sugerirEvolucaoArquetipo } from '@/lib/projections';
 import { buscarSobraDoMes, confirmarSobraDoMes, sobraParaOLivre, type EstadoSobra } from '@/lib/sobra-do-mes';
@@ -156,7 +156,8 @@ export default function InicioScreen() {
   const [diagnostico, setDiagnostico] = useState<DiagnosticoCarregado | null>(null);
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
-  const [homeLayout, setHomeLayout] = useState<HomeBlockConfig[]>([]);
+  /* Nunca vazio: lista vazia desenha uma Início sem nenhum bloco enquanto a sessão renova. */
+  const [homeLayout, setHomeLayout] = useState<HomeBlockConfig[]>(layoutPadrao);
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nomeExibicao, setNomeExibicao] = useState(() => {
@@ -667,7 +668,7 @@ export default function InicioScreen() {
         setNomeExibicao(nomeDeExibicao(p));
       });
       carregarDiagnostico().then(setDiagnostico);
-      carregarLayoutHome().then(setHomeLayout);
+      void carregarLayoutHomeEmEtapas(setHomeLayout);
       pieAnim.setValue(0);
       if (reduzirMovimento) {
         pieAnim.setValue(1);
@@ -2099,7 +2100,7 @@ export default function InicioScreen() {
         onFinished={() => {
           triggerToast('Diagnóstico concluído');
           load();
-          carregarLayoutHome().then(setHomeLayout);
+          void carregarLayoutHomeEmEtapas(setHomeLayout);
           markOnboardingSeen();
         }}
       />
