@@ -179,6 +179,8 @@ Lumen relata denúncia em `1a1f9cfa`/`ead42e2b`, com UI incorporada ao commit de
 
 **Portão parcial, relato da coordenação:** vigia encerrado pelo sistema por falta de memória. Main `tsc` e `test:ci` exit 0; clone `tsc` exit 0; clone `test:ci` em andamento. Ledger não repetiu as provas. Não há resultado global ou `FIM` confirmado.
 
+**Harbor 2 — portão local aprovado:** `FIM-harbor-2.md` relata cinco comandos sequenciais exit 0: main `tsc` e `test:ci`; clone `tsc`, `test:ci` e `test:avisos`. Main testada `a704ee06`, observada no fechamento `532a9d58` com delta somente `context.md`; clone limpo `0f1394a6`. Logs relatados comprovam execução de `janelas-abertas`, `modais-regressao`, 53 grupos de `avisos-telas` e ciclo da sobra transitivamente; avisos: 71 grupos banco, 30 estorno e 193 verificações do corpus. Harbor preservou `CLAUDE.md` por hash, sem repetir checks; mapa, bundles, logs e exits no FIM. Ledger leu o recibo, não repetiu testes. Resultado local não homologa aparelho, visual, AAB, migrations ou produção; sem push, build, deploy, migration aplicada ou restart nesta etapa.
+
 **Em aberto.** Os relatórios `relatorio-*.md` e os `FIM-*.md` da pasta da rodada entram aqui à medida que surgirem, cada um em registro curto, separando testado de relatado.
 
 ## 02/11 — motion-supremo unificada nas três cópias
