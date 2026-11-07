@@ -13,6 +13,7 @@ import { calcularAvisoAssinatura, textoBloqueioAssinatura } from '@/lib/aviso-as
 import { obterResumoDadosGuardados, type ResumoDadosGuardados } from '@/lib/resumo-dados-guardados';
 import { fonts, radius, spacing, theme } from '@/lib/theme';
 import { useFlags } from '@/lib/feature-flags';
+import { ehCanalPlay } from '@/lib/canal';
 
 /* Nomes sem provedor no meio, porque o provedor mudou uma vez e pode mudar de
    novo. A queda para os nomes da Kiwify saiu em 22/10/2026: a variável nova
@@ -40,6 +41,7 @@ const economiaAnual = reais(PRECO_MENSAL * 12 - PRECO_ANUAL);
 
 export default function AssinarScreen() {
   const { ligado } = useFlags();
+  const canalPlay = ehCanalPlay();
   const { estado, sincronizacao, recarregar } = useEntitlement();
   const { signOut, session } = useSession();
 
@@ -142,7 +144,15 @@ export default function AssinarScreen() {
             de assinatura deixaria a pessoa sem entender o que fazer ali. O
             rótulo passa a dizer o motivo — dinheiro entra por este caminho, e
             mandar alguém para um checkout instável é pior que fazê-lo esperar. */}
-        {cobrancaPendente ? (
+        {canalPlay ? (
+          /* Canal Play: sem checkout externo e sem preço até a assinatura pela
+             Google Play entrar (Fase 3). Só informa, no mesmo cartão. */
+          <View style={styles.billingHelp} accessibilityLiveRegion="polite">
+            <Text style={styles.billingHelpText}>
+              A assinatura pela Google Play chega em breve. Enquanto isso, você pode sair, pedir seus dados ou excluir a conta logo abaixo.
+            </Text>
+          </View>
+        ) : cobrancaPendente ? (
           destinoGerenciamento ? (
             <Pressable
               accessibilityRole="button"
@@ -234,7 +244,7 @@ export default function AssinarScreen() {
             {avisoEmail}
           </View>
         )}
-        <Pressable
+        {canalPlay ? null : <Pressable
           accessibilityRole="button"
           onPress={verificar}
           disabled={verificando}
@@ -245,7 +255,7 @@ export default function AssinarScreen() {
           ) : (
             <Text style={styles.secondaryText}>Já paguei, verificar acesso</Text>
           )}
-        </Pressable>
+        </Pressable>}
       </View>
 
       {/* As saídas da conta, fora do cartão de venda e em peso menor: o botão
