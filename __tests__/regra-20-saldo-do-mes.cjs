@@ -143,11 +143,11 @@ const contas = [
      pode é o boleto entrar na conta do Livre. */
   trava(!/bills|status === 'due'/.test(fontes['lib/safe-to-spend.ts'].replace(/\/\*[\s\S]*?\*\//g, '')),
     'lib/safe-to-spend.ts volta a descontar boleto pendente');
-  trava(/calcularSafeToSpend\(input\.transactions, input\.goals, hoje, \{ cards: input\.cards, payments: input\.payments \}\)/.test(fontes['lib/widgets-home-snapshot.ts']),
+  trava(/calcularSafeToSpend\(input\.transactions, input\.goals, hoje, \{ cards: input\.cards, payments: input\.payments, sobraConfirmada: input\.sobraConfirmada \}\)/.test(fontes['lib/widgets-home-snapshot.ts']),
     'o widget passa boletos (ou outra coisa) para calcularSafeToSpend');
   const inicio = fs.readFileSync(path.join(root, 'app/(app)/index.tsx'), 'utf8');
   trava(
-    /calcularSafeToSpend\(lancamentosDaCarteira\(transactions, creditCards, activeWalletId\), walletGoals, new Date\(\), \{ cards: creditCards, payments: invoicePayments \?\? \[\] \}\)/.test(inicio),
+    /calcularSafeToSpend\(lancamentosDaCarteira\(transactions, creditCards, activeWalletId\), walletGoals, new Date\(\), \{ cards: creditCards, payments: invoicePayments \?\? \[\], sobraConfirmada: activeWalletId === 'total' \? sobraParaOLivre\(sobraDoMes\) : 0 \}\)/.test(inicio),
     'a Início passa outra coisa para calcularSafeToSpend (contas ou saldo inicial?)'
   );
   trava(!/saldoInicialEmEscopo/.test(inicio), 'a Início voltou a somar o saldo inicial das carteiras');
@@ -284,6 +284,31 @@ const contas = [
     const semNada = calcularSafeToSpend([tx({ type: 'out', amount: 50, occurred_on: '2026-11-02' })], [], em(7));
     trava(semNada.semSaldo === true && semNada.livreTotal === 0, 'só saída no mês: Sem saldo e Livre zero');
     ok('saldo: entrada futura só a partir da data; Livre: entrada do mês desde o dia 1; crédito só ao pagar; fuso 21h50 e virada do mês');
+
+    /* SOBRA DO MÊS ANTERIOR (Adendo 2 do autor, 07/11/2026): "vai dizer que eu
+       tô com saldo liberado, mas eu tô com absolutamente R$0 na conta". Só o
+       valor que a PESSOA confirmou entra; sem confirmação, zero. A sugestão
+       que preenche a pergunta é o caixa de outubro, piso zero, sem recursão. */
+    const outubro = [
+      tx({ type: 'in', amount: 4000, occurred_on: '2026-10-05' }),
+      tx({ type: 'out', amount: 2500, occurred_on: '2026-10-20' }),
+      tx({ type: 'out', amount: 900, occurred_on: '2026-10-21', card_id: 'c-1' }),
+      tx({ type: 'in', amount: 99999, occurred_on: '2026-09-05' }),
+    ];
+    const metasOut = [{ current_amount: 300, month_reserves: { '2026-10': 300 } }];
+    trava(nucleo.sugerirSobraDoMesAnterior(outubro, metasOut, '2026-11-07') === 1200, 'sugestão: caixa de outubro (4.000 − 2.500) − guardado de outubro (300) = 1.200, sem setembro e sem crédito');
+    trava(nucleo.sugerirSobraDoMesAnterior([tx({ type: 'out', amount: 50, occurred_on: '2026-10-02' })], [], '2026-11-07') === 0, 'sugestão negativa vira zero');
+    trava(nucleo.sugerirSobraDoMesAnterior([], [], '2026-11-07') === 0, 'mês anterior sem dados: zero');
+    trava(nucleo.mesAnterior('2027-01-03') === '2026-12', 'mês anterior de janeiro é dezembro do ano anterior');
+    const novembroVazio = calcularSafeToSpend(outubro, [], em(7));
+    trava(novembroVazio.livreTotal === 0 && novembroVazio.sobraConfirmada === 0 && novembroVazio.semSaldo, 'sem confirmação a sobra é zero, mesmo com outubro positivo');
+    const confirmada = calcularSafeToSpend(outubro, [], em(7), { sobraConfirmada: 800 });
+    trava(centavos(confirmada.livreTotal) === 80000 && confirmada.semSaldo === false && centavos(confirmada.saldoAtual) === 0, 'sobra confirmada (800) entra só no Livre; Saldo atual segue zero');
+    trava(calcularSafeToSpend(outubro, [], em(7), { sobraConfirmada: -50 }).livreTotal === 0, 'sobra negativa não entra');
+    const confW = montarSnapshotWidgets({ userId: 'u', transactions: outubro, bills: [], goals: [], privacyHidden: false, hoje: em(7), sobraConfirmada: 800 });
+    trava(centavos(confW.safeToSpend.livreTotal) === 80000, 'widget usa a mesma sobra confirmada');
+    trava(centavos(nucleo.calcularLivre(outubro, [], '2026-11-07', { sobraConfirmada: 800 }).livreTotal) === 80000, 'Granabô usa a mesma sobra confirmada');
+    ok('sobra: só a confirmada entra no Livre; sugestão = caixa do mês anterior, piso zero');
   }
 
   console.log(`\n${aprovadas} checagens da trava da regra 20 passaram — 0 falhas`);

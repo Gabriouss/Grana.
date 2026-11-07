@@ -39,6 +39,8 @@ let BILLS = [];
 let GOALS = [];
 let CARDS = [];
 let PAYMENTS = [];
+let SOBRA = [];
+let SOBRA_ERRO = null;
 const tabelasLidas = [];
 class Query {
   constructor(table) { this.table = table; this.filters = []; }
@@ -52,8 +54,9 @@ class Query {
   insert() { return Promise.resolve({ error: null }); }
   then(resolve, reject) {
     tabelasLidas.push(this.table);
+    if (this.table === 'sobra_do_mes' && SOBRA_ERRO) return Promise.resolve({ data: null, error: SOBRA_ERRO }).then(resolve, reject);
     let rows = this.table === 'transactions' ? TX : this.table === 'bills' ? BILLS : this.table === 'goals' ? GOALS
-      : this.table === 'credit_cards' ? CARDS : this.table === 'credit_card_invoices' ? PAYMENTS : this.table === 'budgets' ? [] : this.table === 'categories' ? [] : [];
+      : this.table === 'credit_cards' ? CARDS : this.table === 'credit_card_invoices' ? PAYMENTS : this.table === 'budgets' ? [] : this.table === 'categories' ? [] : this.table === 'sobra_do_mes' ? SOBRA : [];
     rows = rows.map((r) => ({ user_id: userId, ...r })).filter((r) => this.filters.every((f) => f(r)));
     if (this.slice) rows = rows.slice(this.slice[0], this.slice[1]+1);
     return Promise.resolve({ data: this.single ? rows[0] ?? null : rows, error: null }).then(resolve, reject);
@@ -206,6 +209,22 @@ const caixa = (type, amount, occurred_on, extra = {}) => ({ type, amount, occurr
   TX=Array.from({length:1001},(_,i)=>caixa('in',1,'2026-10-10',{id:String(i)}));
   GOALS=[];CARDS=[];PAYMENTS=[];
   casa(await perguntar(tool('livreParaGastar')),/: R\$ 1\.001,00\n/,'handler pagina alem de 1000 lancamentos');
+
+  /* Adendo 2 do autor (07/11/2026): só a sobra CONFIRMADA entra. */
+  TX=[caixa('in',100,'2026-10-10')];
+  SOBRA=[]; SOBRA_ERRO=null;
+  casa(await perguntar(tool('livreParaGastar')),/: R\$ 100,00\n/,'sobra sem confirmacao e zero');
+  SOBRA=[{mes:'2026-09',valor:900}];
+  casa(await perguntar(tool('livreParaGastar')),/: R\$ 100,00\n/,'sobra de outro mes nao entra');
+  SOBRA=[{mes:'2026-10',valor:900}];
+  casa(await perguntar(tool('livreParaGastar')),/: R\$ 1\.000,00\n[\s\S]*Sobra do mês passado que você confirmou: R\$ 900,00/,'sobra confirmada do mes entra e aparece no texto');
+  SOBRA_ERRO={code:'PGRST205',message:'tabela ausente'};
+  casa(await perguntar(tool('livreParaGastar')),/: R\$ 100,00\n/,'tabela ainda nao aplicada: sobra zero, sem derrubar o Granabo');
+  SOBRA_ERRO={code:'08006',message:'conexao caiu'};
+  let derrubou = false;
+  try { const resp = await perguntar(tool('livreParaGastar')); derrubou = !/: R\$ 100,00\n/.test(resp); } catch { derrubou = true; }
+  ok(derrubou, 'outro erro da sobra nao vira Livre sem a sobra');
+  SOBRA_ERRO=null; SOBRA=[];
 
   global.Date = DataReal;
   console.log(`granabo-livre-mes-vigente: ${passou} checagens OK`);

@@ -61,10 +61,11 @@ function scenario(failCore = { on: false }) {
     fetchGoals: () => { calls.push('goals'); return goals.promise; },
     fetchCardInvoicePayments: () => { calls.push('payments'); return payments.promise; },
     fetchGamification: async () => ({ lifetime_xp: 0 }),
+    buscarSobraDoMes: async () => { calls.push('sobra'); return { estado: 'pendente', mes: '2026-11' }; },
     carregarNotifPrefs: async () => ({ lembreteDiarioAtivo: false }), cancelDailyHabitReminder: async () => {},
     ehTabelaNovaAusente: () => false, isLikelyNetworkError: () => false, mensagemErro: () => 'falha principal',
   };
-  for (const key of ['Transactions', 'Bills', 'Budgets', 'CreditCards', 'Error', 'Goals', 'LifetimeXp', 'Loading', 'Refreshing', 'InvoicePayments', 'FontesLivreDisponiveis', 'CarregandoFontesLivre']) {
+  for (const key of ['Transactions', 'Bills', 'Budgets', 'CreditCards', 'Error', 'Goals', 'LifetimeXp', 'Loading', 'Refreshing', 'InvoicePayments', 'FontesLivreDisponiveis', 'CarregandoFontesLivre', 'SobraDoMes']) {
     const state = key[0].toLowerCase() + key.slice(1);
     env['set' + key] = value => { states[state] = value; };
   }
@@ -127,7 +128,7 @@ async function main() {
     assert.match(s.render().card, /Livre indisponível/);
     assert.equal(s.states.transactions[0].id, 'novo', 'falha opcional preserva lancamentos');
     assert.equal(s.states.error, null, 'falha opcional nao derruba tela');
-    assert.deepEqual(s.calls, ['transactions', 'bills', 'budgets', 'cards', 'goals', 'payments']);
+    assert.deepEqual(s.calls, ['transactions', 'bills', 'budgets', 'cards', 'goals', 'payments', 'sobra']);
     assert.equal(/Não consegui confirmar os pagamentos/.test(s.render().timeline), fail === 'payments');
     console.log('ok: falha real de ' + fail + ' visivel sem derrubar lista');
   }

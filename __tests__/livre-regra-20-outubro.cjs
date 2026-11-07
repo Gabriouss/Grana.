@@ -82,16 +82,31 @@ function conferir(transactions, goals, ctx, esperado) {
   assert.deepEqual(calls,[['deposit_to_goal',{p_goal_id:'g',p_delta:2000,p_origin:'anterior'}],'cache','widget']);
   // Sincronizador REAL: busca pagamentos/cartoes e envia o mesmo 1000 ao nativo.
   const snapshots=[];let falharPagamentos=false;
+  /* Sobra confirmada (Adendo 2, 07/11/2026): o sincronizador real usa
+     sobraParaOLivre do modulo real; so a busca no banco e dublada. */
+  let sobra={estado:'pendente',mes:'2026-10'};let falharSobra=false;
+  const sobraReal=load('lib/sobra-do-mes.ts',{'./supabase':{supabase:{}},'./sessao-offline':{idDoUsuarioLocal:async()=>'u'}});
   const sync=load('lib/widgets-home-sync.ts',{
     './data':{fetchTransactions:async()=>base,fetchBills:async()=>[],fetchCreditCards:async()=>cards,
       fetchCardInvoicePayments:async()=>{if(falharPagamentos)throw Error('offline esperado');return[]}},
     './goals':{fetchGoals:async()=>metas},
+    './sobra-do-mes':{...sobraReal,buscarSobraDoMes:async()=>{if(falharSobra)throw Error('offline esperado');return sobra}},
     './widgets-home-snapshot':{...widget,montarSnapshotWidgets:input=>widget.montarSnapshotWidgets({...input,hoje})},
     '@/modules/grana-voice-widget':{widgetDisponivel:true,atualizarSnapshot:s=>snapshots.push(s),
       definirPrivacidade:()=>{},garantirUsuario:()=>{},limparSnapshot:()=>{}},
   });
   assert.equal(await sync.sincronizarWidgetsHome('u',false),true);
   assert.equal(snapshots[0].safeToSpend.livreTotal,1000);
+  sobra={estado:'confirmada',mes:'2026-10',valor:500};
+  assert.equal(await sync.sincronizarWidgetsHome('u',false),true);
+  assert.equal(snapshots[1].safeToSpend.livreTotal,1500,'sobra confirmada chega ao widget');
+  sobra={estado:'desligada',mes:'2026-10'};
+  assert.equal(await sync.sincronizarWidgetsHome('u',false),true);
+  assert.equal(snapshots[2].safeToSpend.livreTotal,1000,'tabela ausente: sobra zero');
+  falharSobra=true;
+  assert.equal(await sync.sincronizarWidgetsHome('u',false),false);
+  assert.equal(snapshots.length,3,'sobra nao conferida nao vira snapshot falso');
+  falharSobra=false;snapshots.length=1;
   falharPagamentos=true;
   assert.equal(await sync.sincronizarWidgetsHome('u',false),false);
   assert.equal(snapshots.length,1,'fonte incompleta nao vira snapshot falso');
