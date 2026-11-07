@@ -795,8 +795,9 @@ Regras permanentes para qualquer sessão que abrir este repositório:
       pergunta quanto sobrou na conta, sugerindo o caixa calculado do mês
       anterior com piso zero; a pessoa confirma, corrige ou informa zero.
       Até confirmar, a sobra é zero para todos. “Agora não” mantém zero e a
-      pergunta volta depois. Falha ao salvar precisa de recibo visível.
-    - O valor confirmado conta somente no Livre do mês corrente; não vira
+      pergunta volta no dia seguinte, não no mesmo dia. Falha ao salvar precisa
+      de recibo visível.
+    - O valor confirmado conta no Livre e no Saldo atual do mês corrente; não vira
       receita, não aparece em lançamentos, não muda o seletor de carteira e
       não acumula para o mês seguinte, quando a pergunta é feita novamente.
       A persistência prevista é no servidor por usuário e mês, com RLS e
@@ -814,11 +815,12 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     - Início, widgets e Granabô seguem a mesma regra e o mesmo núcleo de
       cálculo, sem políticas por superfície. O Granabô no servidor exige
       alteração própria e publicação autorizada; app e widget exigem build.
-    - **Saldo atual e seletor de carteira não mudam nesta tarefa.** O saldo
-      continua com a regra de caixa do mês; o seletor mostra o total de entradas
-      da carteira em todo o período, sem chamá-lo de saldo. `initial_balance`
-      não volta ao cálculo de saldo. O motivo para evitar histórico acumulado
-      permanece: importações incompletas já inflaram o número.
+    - **Saldo atual soma somente a sobra confirmada ao caixa do mês.** Salário
+      e demais entradas futuras só contam no Saldo atual a partir da data delas.
+      O seletor de carteira não muda: mostra o total de entradas daquela carteira
+      em todo o período, sem chamá-lo de saldo. `initial_balance` não volta ao
+      cálculo de saldo; importações incompletas já inflaram o histórico acumulado.
+      Decisão do autor na Rodada 2 de `ordem-keel-livre.md`, em 07/11.
     - Qualquer mudança futura nesse cálculo exige pedido explícito do autor.
       O teste de trava pode ser atualizado para codificar a ordem de 07/11,
       sem afrouxar as demais asserções; paridade entre Início, widget e
