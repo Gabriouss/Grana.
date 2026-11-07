@@ -153,6 +153,8 @@ Lumen relata denúncia em `1a1f9cfa`/`ead42e2b`, com UI incorporada ao commit de
 
 **Revisão Forge:** `relatorio-forge-retomada.md` identifica F1 (P2): Granachat não participa do contador de janelas e a conferência pode abrir sobre a conversa; F2 (P2): `janelas-abertas.cjs` e `avisos-telas.cjs` não constam dos scripts de testes do HEAD revisado. Codex confirmou ambos por leitura; Forge relata cinco testes focais e prova dos módulos reais AppModal + registro verdes, que Codex e Ledger não repetiram. Forge recebeu os reparos no clone após Prism liberar UI-01/02/03. Sequência coordenada: Harbor integra → Prism corrige UI-01/02/03 → Forge corrige F1/F2 → Harbor executa o portão final. Nenhum desses reparos concluído neste registro; sem push, build, deploy ou migration aplicada.
 
+**Harbor 2 — integração parcial:** `relatorio-harbor-2.md` relata bundles verificados e cherry-picks `4eb0b859` → `5026be9a` e `7cfe303b` → `1d901237`. `64b8124d` parou em conflito apenas na linha `test:ci`. Codex relata ter lido o relatório e `diff --cc`, confirmado adições independentes e autorizado preservar campos e comandos do clone, acrescentar `sobra-do-mes.cjs`, manter `test:avisos`, validar JSON e comandos e continuar; conflitos equivalentes de adições de CI seguem o mesmo critério. Integração ainda não concluída, reparos UI/Forge não concluídos e portão global não comprovado. Sequência mantida: Harbor integra → Prism → Forge → Harbor portão final. Ledger leu o relatório e não repetiu verificações.
+
 **Em aberto.** Os relatórios `relatorio-*.md` e os `FIM-*.md` da pasta da rodada entram aqui à medida que surgirem, cada um em registro curto, separando testado de relatado.
 
 ## 02/11 — motion-supremo unificada nas três cópias
