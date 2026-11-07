@@ -115,6 +115,12 @@ Autor: "deixar tudo pronto pra gente colocar o aplicativo na Play Store". Decis�
 
 **Testado.** Nada da rodada foi executado ainda neste registro. Conferido lendo os arquivos: as ordens, as regras da rodada e o estado do `main` contra `origin/main`.
 
+**Confirmação do autor:** o app da Play segue numa branch separada do `main` usado pelos usuários atuais.
+
+**Registros recebidos:** Quill concluiu a entrada inicial nas três superfícies e o commit `141c07d5`, sem push; relata conferência do fetch e do commit. Lumen relata proposta de denúncia do Granabô, sem código nem commit, aguardando `FIM-harbor.md`; relata leitura do código e nenhum teste. Ledger leu os relatórios, sem repetir as verificações.
+
+**Compass e Watchtower:** Compass entregou `passo-a-passo-fase0.md`, sem commit; relata consulta a fontes oficiais, sem cadastro nem envio. Watchtower entregou inventário de dados e lacunas de privacidade, na base anterior ao cherry-pick, e relata HTTP 200 na URL de exclusão após redirecionamento; não validou conteúdo renderizado, exclusão real, binário ou produção. Ambas as conclusões precisam ser revalidadas na versão Play final. Ledger leu os relatórios, sem repetir as provas.
+
 **Em aberto.** Os relatórios `relatorio-*.md` e os `FIM-*.md` da pasta da rodada entram aqui à medida que surgirem, cada um em registro curto, separando testado de relatado.
 
 ## 02/11 — motion-supremo unificada nas três cópias
