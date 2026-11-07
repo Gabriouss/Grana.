@@ -27,7 +27,10 @@ const react = {
   useCallback(fn, deps) { return react.useMemo(() => fn, deps); },
   useEffect(fn, deps) {
     const dono = corrente, i = dono.cursor++;
-    if (!efeitoIgual(dono.slots[i], deps)) { dono.slots[i] = deps; dono.efeitos.push(fn); }
+    if (!efeitoIgual(dono.slots[i], deps)) {
+      dono.slots[i] = deps;
+      dono.efeitos.push(() => { dono.limpezas[i]?.(); dono.limpezas[i] = fn(); });
+    }
   },
 };
 const jsx = (type, props) => ({ type, props: props || {} });
@@ -39,6 +42,13 @@ let falhaFormas = false, avisosDoConsole = [];
 let chamadas = [], alertas = [], copiado = '', dadosLocais = {}, historico = [];
 let privacidadeOculta = false;
 const disco = new Map();
+const intervalos = new Set();
+const animacoes = [];
+class ValorAnimado {
+  constructor(valor) { this.valor = valor; }
+  setValue(valor) { this.valor = valor; }
+  interpolate() { return this; }
+}
 const nativo = {
   avisosDisponivel: true,
   estadoAvisos: () => ({ acesso: false, ultimoSinal: 0, desconectadoEm: 0, ultimaFalha: null }),
@@ -62,7 +72,17 @@ const stub = {
   'expo-blur': { BlurView: 'BlurView' },
   'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'Fragment' },
   'react-native': { Platform: { OS: 'android' }, View: 'View', Text: 'Text', TextInput: 'TextInput', Pressable: 'Pressable', ScrollView: 'ScrollView', ActivityIndicator: 'ActivityIndicator',
-    StyleSheet: { create: (s) => s }, AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
+    StyleSheet: { create: (s) => s }, AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) },
+    FlatList: 'FlatList', Keyboard: { dismiss() {} }, BackHandler: { addEventListener: () => ({ remove() {} }) },
+    useWindowDimensions: () => ({ width: 390, height: 800, fontScale: 1 }),
+    Easing: { bezier: () => () => {} },
+    Animated: { Value: ValorAnimado, View: 'AnimatedView', multiply: (v) => v,
+      timing: (valor, config) => ({ start: (fim) => animacoes.push({ valor, config, fim }) }) } },
+  'react-native-safe-area-context': { initialWindowMetrics: { insets: { top: 24, bottom: 24 } } },
+  '@/lib/modal-accessibility': { useModalAccessibility() {} },
+  '@/lib/breakpoints': { geometriaDaConversa: () => ({ top: 24, left: 16, largura: 358, altura: 650 }) },
+  '@/lib/assistente': { fetchMensagens: async () => [], dentroDoPrazo: () => true,
+    enviarPergunta: () => { throw new Error('envio inesperado'); } },
   '@react-native-async-storage/async-storage': { getItem: async (k) => {
       if (falhaFormas && k.startsWith('grana_avisos_formas:')) throw new Error('disco');
       return disco.get(k) ?? null;
@@ -92,8 +112,9 @@ const stub = {
   '@/lib/alerta': { Alert: { alert: (...args) => alertas.push(args) } },
   '@/lib/lancamentos-alterados': { marcarLancamentosAlterados: () => chamadas.push(['alterados']) },
   '@/lib/theme': { fonts: { light: 'Light', regular: 'Regular' }, type: { apoio: 14, titulo: 20, legenda: 12 },
-    theme: {}, spacing: {}, radius: {}, PALETTE_30: ['#123456'], lh: (n) => n * 1.4, hitSlopPara: () => 12, touchTarget: 48 },
-  '@/lib/motion': { useReducedMotion: () => true },
+    theme: {}, spacing: {}, radius: {}, screenRhythm: {}, sombras: {}, menta: () => '#123456',
+    PALETTE_30: ['#123456'], lh: (n) => n * 1.4, hitSlopPara: () => 12, touchTarget: 48 },
+  '@/lib/motion': { useReducedMotion: () => true, UI_OUT: [0, 0, 1, 1] },
   '@expo/vector-icons/Ionicons': { default: 'Ionicons', __esModule: true },
   'expo-clipboard': { setStringAsync: async (s) => { copiado = s; } },
 };
@@ -113,7 +134,7 @@ function carregar(relativo) {
   const exports = {};
   cache.set(arquivo, exports);
   vm.runInNewContext(resultado.outputText, { exports, console: { error() {}, warn: (...a) => avisosDoConsole.push(a) },
-    setInterval: () => 1, clearInterval() {}, setTimeout, clearTimeout,
+    setInterval: (fn) => { intervalos.add(fn); return fn; }, clearInterval: (fn) => intervalos.delete(fn), setTimeout, clearTimeout,
     require(id) {
       if ((arquivo.endsWith('AvisosAConferir.tsx') || arquivo.endsWith('AvisosBancoSecao.tsx')) && id === '@/lib/data') {
         throw new Error(`T2: import de rede na tela: ${id}`);
@@ -134,9 +155,10 @@ function carregar(relativo) {
   return exports;
 }
 function montar(fn, props) {
-  const ctx = { slots: [], cursor: 0, efeitos: [], tree: null };
+  const ctx = { slots: [], cursor: 0, efeitos: [], limpezas: [], tree: null };
   ctx.render = () => { ctx.cursor = 0; corrente = ctx; ctx.tree = fn(props); for (const efeito of ctx.efeitos.splice(0)) efeito(); return ctx.tree; };
   ctx.settle = async () => { for (let i = 0; i < 5; i++) await new Promise((r) => setImmediate(r)); ctx.render(); };
+  ctx.unmount = () => { for (const limpar of ctx.limpezas) limpar?.(); ctx.limpezas = []; };
   ctx.render();
   return ctx;
 }
@@ -358,6 +380,40 @@ async function main() {
       'boletos:todos': [] };
   };
   const listaAberta = (c) => elementos(c.tree).some((e) => e.type === telas.ListaAConferir);
+
+  /* Granachat, contador e conferência REAIS; a animação nativa fica pendente no dublê. */
+  {
+    preparar([]);
+    const chatProps = { visivel: false, onFechar() {} };
+    const chat = montar(carregar('components/Granachat.tsx').default, chatProps);
+    assert.equal(janelas.quantasJanelasAbertas(), 0, 'chat fechado não se conta');
+    chatProps.visivel = true; chat.render(); await chat.settle();
+    assert.equal(janelas.quantasJanelasAbertas(), 1);
+    const conferencia = montar(telas.default, { dono: 'dono-chat' }); await conferencia.settle();
+    const lerNovos = [...intervalos].at(-1);
+    diario = [aviso('Compra no débito de R$ 35,00 em Mercado Modelo')];
+    await lerNovos(); await conferencia.settle(); await conferencia.settle();
+    assert.equal(listaAberta(conferencia), false, 'aviso novo espera a conversa');
+    chatProps.visivel = false; chat.render();
+    const saida = animacoes.at(-1);
+    assert.equal(saida.config.toValue, 0);
+    await conferencia.settle();
+    assert.equal(janelas.quantasJanelasAbertas(), 1, 'a animação de saída ainda ocupa a janela');
+    assert.equal(listaAberta(conferencia), false);
+    saida.fim({ finished: false }); await chat.settle();
+    chatProps.visivel = true; chat.render(); await chat.settle();
+    assert.equal(janelas.quantasJanelasAbertas(), 1, 'reabrir saída interrompida não duplica registro');
+    chatProps.visivel = false; chat.render(); animacoes.at(-1).fim({ finished: true }); await chat.settle();
+    assert.equal(janelas.quantasJanelasAbertas(), 0);
+    await conferencia.settle(); await conferencia.settle();
+    assert.equal(listaAberta(conferencia), true, 'só abre após terminar a saída');
+    assert.equal(chamadas.length, 0, 'espera e liberação não gravam nem apagam dinheiro');
+    chatProps.visivel = true; chat.render(); await chat.settle();
+    assert.equal(janelas.quantasJanelasAbertas(), 1);
+    chat.unmount(); chat.unmount(); conferencia.unmount();
+    assert.equal(janelas.quantasJanelasAbertas(), 0, 'desmontagem libera uma vez');
+    ok('aviso novo espera Granachat, inclusive saída/reabertura, e abre após liberação sem escrita financeira');
+  }
 
   preparar([aviso('Compra no débito de R$ 35,00 em Mercado Modelo')]);
   let janela = montar(telas.default, { dono: 'dono' }); await janela.settle(); await janela.settle();

@@ -27,6 +27,7 @@ import { UI_OUT, useReducedMotion } from '@/lib/motion';
 import { mensagemErro as traduzirErro } from '@/lib/erros';
 import { geometriaDaConversa, type RetanguloNaJanela } from '@/lib/breakpoints';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
+import { registrarJanelaAberta } from '@/lib/janelas-abertas';
 import { theme, spacing, radius, fonts, type, lh, touchTarget, screenRhythm, sombras, menta } from '@/lib/theme';
 import {
   fetchMensagens,
@@ -164,6 +165,8 @@ export default function Granachat({
      em vez de arrastado. Curva UI_OUT nas duas pontas — `ease-in` atrasaria
      justamente o instante que a pessoa está olhando. */
   const [montado, setMontado] = useState(visivel);
+  // A conversa ocupa a janela até a animação de saída terminar.
+  useEffect(() => (montado ? registrarJanelaAberta() : undefined), [montado]);
   const progresso = useRef(new Animated.Value(visivel ? 1 : 0)).current;
 
   useEffect(() => {
