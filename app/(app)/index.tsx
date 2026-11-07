@@ -42,9 +42,9 @@ import { confirmarExclusaoDeLancamento, conferirContaPaga } from '@/lib/excluir-
 import { carregarLayoutHomeEmEtapas, layoutPadrao, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
 import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals, updateGoal } from '@/lib/goals';
 import { calcularSafeToSpend, projetarComprometimentoFuturo, sugerirEvolucaoArquetipo } from '@/lib/projections';
-import { buscarSobraDoMes, confirmarSobraDoMes, sobraParaOLivre, type EstadoSobra } from '@/lib/sobra-do-mes';
+import { sobraParaOLivre } from '@/lib/sobra-do-mes';
+import { useSobraDoMes } from '@/lib/use-sobra-do-mes';
 import { sugerirSobraDoMesAnterior } from '@/lib/safe-to-spend';
-import { adiarSobraAteAmanha, sobraAdiadaHoje } from '@/lib/sobra-adiada';
 import { notificarDadosDosWidgetsAlterados } from '@/lib/widgets-home-events';
 import { ARQUETIPOS, carregarDiagnostico, type DiagnosticoCarregado } from '@/lib/diagnostico';
 import { formatMoney, formatDateLabel, parseAmount, saudacaoDoDia, todayISO, formatMoneyInput } from '@/lib/format';
@@ -147,12 +147,6 @@ export default function InicioScreen() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [fontesLivreDisponiveis, setFontesLivreDisponiveis] = useState(false);
   const [carregandoFontesLivre, setCarregandoFontesLivre] = useState(true);
-  /* Sobra do mês anterior confirmada pela pessoa (Adendo 2 do autor, 07/11/2026).
-     `null` = ainda não conferida: o Livre usa zero e não pergunta nada. */
-  const [sobraDoMes, setSobraDoMes] = useState<EstadoSobra | null>(null);
-  /* "Agora não" vale até o dia seguinte (autor, 07/11/2026, rodada 2), guardado
-     no aparelho. `null` = ainda não lido: a pergunta espera a leitura. */
-  const [sobraAdiada, setSobraAdiada] = useState<boolean | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [lifetimeXp, setLifetimeXp] = useState(0);
   const [diagnostico, setDiagnostico] = useState<DiagnosticoCarregado | null>(null);
@@ -248,13 +242,8 @@ export default function InicioScreen() {
   // local), então não repete depois que a pessoa já respondeu ou fechou uma
   // vez, em NENHUM aparelho/navegador da mesma conta.
   const userId = session?.user.id;
-  /* Lê o "Agora não" do dia quando a sobra está pendente (rodada 2, 07/11). */
-  useEffect(() => {
-    if (!userId || sobraDoMes?.estado !== 'pendente') return;
-    let ativo = true;
-    sobraAdiadaHoje(userId, todayISO()).then((adiada) => { if (ativo) setSobraAdiada(adiada); });
-    return () => { ativo = false; };
-  }, [userId, sobraDoMes?.estado]);
+  const { hoje: hojeDaSobra, sobraDoMes, sobraAdiada, carregando: carregandoSobra, erro: erroSobra,
+    adiar: adiarSobra, confirmar: confirmarSobra, recarregar: recarregarSobra } = useSobraDoMes(userId, !isDemoMode);
   useEffect(() => {
     if (!userId) {
       onboardingDismissedForUser.current = null;
@@ -427,7 +416,6 @@ export default function InicioScreen() {
       setGoals(DEMO_GOALS);
       setLifetimeXp(DEMO_LIFETIME_XP);
       setInvoicePayments([]);
-      setSobraDoMes(null);
       setFontesLivreDisponiveis(true);
       setCarregandoFontesLivre(false);
       setCreditCards(DEMO_CREDIT_CARDS);
@@ -515,22 +503,6 @@ export default function InicioScreen() {
         repetirFontesNoFoco.current = true;
         setInvoicePayments(null);
         console.error('[inicio] fetchCardInvoicePayments falhou', erro);
-      }
-      if (!vigente()) return;
-      /* Sobra confirmada: sem saber se a pessoa confirmou, o Livre não afirma
-         número (indisponível), pela mesma regra dos pagamentos. Tabela ainda
-         não aplicada no servidor vira `desligada` dentro de buscarSobraDoMes. */
-      try {
-        const agora = new Date();
-        const sobra = await buscarSobraDoMes(`${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`);
-        if (!vigente()) return;
-        setSobraDoMes(sobra);
-      } catch (erro) {
-        if (!vigente()) return;
-        repetirFontesNoFoco.current = true;
-        setSobraDoMes(null);
-        setFontesLivreDisponiveis(false);
-        console.error('[inicio] buscarSobraDoMes falhou', erro);
       }
       if (!vigente()) return;
       setCarregandoFontesLivre(false);
@@ -727,8 +699,8 @@ export default function InicioScreen() {
      inicial e sem boleto pendente (regra 20 do AGENTS.md). O recorte do mês é
      feito dentro de `calcularSafeToSpend`, a mesma função dos widgets. */
   const safeToSpend = useMemo(
-    () => calcularSafeToSpend(lancamentosDaCarteira(transactions, creditCards, activeWalletId), walletGoals, new Date(), { cards: creditCards, payments: invoicePayments ?? [], sobraConfirmada: activeWalletId === 'total' ? sobraParaOLivre(sobraDoMes) : 0 }),
-    [transactions, creditCards, activeWalletId, walletGoals, invoicePayments, sobraDoMes]
+    () => calcularSafeToSpend(lancamentosDaCarteira(transactions, creditCards, activeWalletId), walletGoals, new Date(`${hojeDaSobra}T12:00:00`), { cards: creditCards, payments: invoicePayments ?? [], sobraConfirmada: activeWalletId === 'total' ? sobraParaOLivre(sobraDoMes, userId, hojeDaSobra.slice(0, 7)) : 0 }),
+    [transactions, creditCards, activeWalletId, walletGoals, invoicePayments, sobraDoMes, userId, hojeDaSobra]
   );
   // O núcleo resolve séries e ciclos com o histórico completo antes de filtrar a carteira.
   const comprometimentoFuturo = useMemo(
@@ -1274,15 +1246,11 @@ export default function InicioScreen() {
             ausente no servidor (estado `desligada`). */}
         {!isDemoMode && activeWalletId === 'total' && sobraDoMes?.estado === 'pendente' && sobraAdiada === false && !carregandoFontesLivre && (
           <PerguntaSobraDoMes
+            key={`${userId}:${sobraDoMes.mes}`}
             sugestao={sugerirSobraDoMesAnterior(transactions, goals, todayISO())}
-            onAgoraNao={() => {
-              setSobraAdiada(true);
-              if (userId) void adiarSobraAteAmanha(userId, todayISO());
-            }}
+            onAgoraNao={adiarSobra}
             onConfirmar={async (valor) => {
-              const mes = sobraDoMes.mes;
-              await confirmarSobraDoMes(mes, valor);
-              setSobraDoMes({ estado: 'confirmada', mes, valor });
+              await confirmarSobra(valor);
               notificarDadosDosWidgetsAlterados();
               triggerToast('Sobra do mês passado confirmada');
             }}
@@ -1294,7 +1262,7 @@ export default function InicioScreen() {
           }}
           collapsable={false}
         >
-          <SafeToSpendCard carregando={carregandoFontesLivre} indisponivel={!fontesLivreDisponiveis} data={safeToSpend} sugestaoArquetipo={arquetipoSugerido} />
+          <SafeToSpendCard carregando={carregandoFontesLivre || carregandoSobra} indisponivel={!fontesLivreDisponiveis || erroSobra} data={safeToSpend} sugestaoArquetipo={arquetipoSugerido} />
         </View>
       </View>
     ),
@@ -1768,7 +1736,7 @@ export default function InicioScreen() {
       <ScrollView
         style={styles.container}
         contentContainerStyle={[styles.content, colunaConteudo, { paddingBottom: paddingConteudoComFab }]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); void categorias.carregar(); }} tintColor={theme.ink} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); recarregarSobra(); void categorias.carregar(); }} tintColor={theme.ink} />}
       >
         <FaixaAssinatura />
 

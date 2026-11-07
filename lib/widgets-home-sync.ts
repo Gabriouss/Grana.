@@ -1,7 +1,7 @@
 import { fetchBills, fetchTransactions, fetchCreditCards, fetchCardInvoicePayments } from './data';
 import { fetchGoals } from './goals';
 import { montarSnapshotWidgets } from './widgets-home-snapshot';
-import { buscarSobraDoMes, sobraParaOLivre } from './sobra-do-mes';
+import { buscarSobraDoMes, mesLocalDaSobra, sobraParaOLivre } from './sobra-do-mes';
 import {
   atualizarSnapshot,
   definirPrivacidade,
@@ -43,14 +43,15 @@ export function sincronizarWidgetsHome(userId: string, privacyHidden: boolean): 
   const mes = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
   /* Sobra confirmada (07/11/2026): falha de rede segura o snapshot como as
      outras fontes; tabela ainda inexistente vira zero dentro de buscarSobraDoMes. */
-  return Promise.all([fetchTransactions(), fetchBills(), fetchGoals(), fetchCreditCards(), fetchCardInvoicePayments(), buscarSobraDoMes(mes)])
+  return Promise.all([fetchTransactions(), fetchBills(), fetchGoals(), fetchCreditCards(), fetchCardInvoicePayments(), buscarSobraDoMes(mes, userId)])
     .then(([transactions, bills, goals, cards, payments, sobra]) => {
       if (
         geracaoDestaBusca !== geracao ||
         usuarioAtual !== userId ||
-        numeroDestaBusca !== numeroDaBusca
+        numeroDestaBusca !== numeroDaBusca || mes !== mesLocalDaSobra()
       ) return false;
-      atualizarSnapshot(montarSnapshotWidgets({ userId, transactions, bills, goals, cards, payments, sobraConfirmada: sobraParaOLivre(sobra), privacyHidden }));
+      const hoje = new Date();
+      atualizarSnapshot(montarSnapshotWidgets({ userId, transactions, bills, goals, cards, payments, sobraConfirmada: sobraParaOLivre(sobra, userId, mesLocalDaSobra(hoje)), privacyHidden, hoje }));
       return true;
     })
     .catch((erro) => {

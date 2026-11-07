@@ -15,10 +15,14 @@ import { idDoUsuarioLocal } from './sessao-offline';
  *   sobra zero e NENHUMA pergunta, porque gravar falharia sempre. Fica no log.
  * Qualquer outro erro sobe para quem chamou, que mostra recibo.
  */
-export type EstadoSobra =
+export type EstadoSobra = { userId: string } & (
   | { estado: 'confirmada'; mes: string; valor: number }
   | { estado: 'pendente'; mes: string }
-  | { estado: 'desligada'; mes: string };
+  | { estado: 'desligada'; mes: string });
+
+export function mesLocalDaSobra(agora: Date = new Date()): string {
+  return `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
+}
 
 const TABELA_AUSENTE = new Set(['PGRST205', '42P01']);
 
@@ -26,28 +30,30 @@ export function tabelaDaSobraAusente(erro: { code?: string } | null | undefined)
   return !!erro?.code && TABELA_AUSENTE.has(erro.code);
 }
 
-export async function buscarSobraDoMes(mes: string): Promise<EstadoSobra> {
-  const { data, error } = await supabase.from('sobra_do_mes').select('valor').eq('mes', mes).maybeSingle();
+export async function buscarSobraDoMes(mes: string, userId: string): Promise<EstadoSobra> {
+  if (!userId || await idDoUsuarioLocal() !== userId) throw new Error('A conta mudou. Atualize a Início.');
+  const { data, error } = await supabase.from('sobra_do_mes').select('valor').eq('mes', mes).eq('user_id', userId).maybeSingle();
   if (error) {
     if (tabelaDaSobraAusente(error)) {
       console.warn('[sobra-do-mes] tabela sobra_do_mes ainda não existe no servidor; sobra fica zero');
-      return { estado: 'desligada', mes };
+      return { estado: 'desligada', mes, userId };
     }
     throw error;
   }
-  if (!data) return { estado: 'pendente', mes };
-  return { estado: 'confirmada', mes, valor: Number(data.valor) };
+  if (!data) return { estado: 'pendente', mes, userId };
+  return { estado: 'confirmada', mes, userId, valor: Number(data.valor) };
 }
 
 /** Valor que entra no cálculo: só o confirmado. */
-export function sobraParaOLivre(estado: EstadoSobra | null): number {
-  return estado?.estado === 'confirmada' ? estado.valor : 0;
+export function sobraParaOLivre(estado: EstadoSobra | null, userId: string | null | undefined, mes: string): number {
+  return userId && estado?.userId === userId && estado.mes === mes && estado.estado === 'confirmada'
+    && Number.isFinite(estado.valor) && estado.valor >= 0 ? estado.valor : 0;
 }
 
-export async function confirmarSobraDoMes(mes: string, valor: number): Promise<void> {
+export async function confirmarSobraDoMes(mes: string, valor: number, userId: string): Promise<void> {
   if (!Number.isFinite(valor) || valor < 0) throw new Error('Valor de sobra inválido');
-  const userId = await idDoUsuarioLocal();
-  if (!userId) throw new Error('Sessão indisponível para confirmar a sobra');
+  if (!userId || await idDoUsuarioLocal() !== userId) throw new Error('A conta mudou. Atualize a Início.');
+  if (mes !== mesLocalDaSobra()) throw new Error('O mês mudou. Confira a sobra do mês atual.');
   const { error } = await supabase
     .from('sobra_do_mes')
     .upsert({ user_id: userId, mes, valor: Math.round(valor * 100) / 100 }, { onConflict: 'user_id,mes' });

@@ -147,7 +147,7 @@ const contas = [
     'o widget passa boletos (ou outra coisa) para calcularSafeToSpend');
   const inicio = fs.readFileSync(path.join(root, 'app/(app)/index.tsx'), 'utf8');
   trava(
-    /calcularSafeToSpend\(lancamentosDaCarteira\(transactions, creditCards, activeWalletId\), walletGoals, new Date\(\), \{ cards: creditCards, payments: invoicePayments \?\? \[\], sobraConfirmada: activeWalletId === 'total' \? sobraParaOLivre\(sobraDoMes\) : 0 \}\)/.test(inicio),
+    /calcularSafeToSpend\(lancamentosDaCarteira\(transactions, creditCards, activeWalletId\), walletGoals, new Date\(`\$\{hojeDaSobra\}T12:00:00`\), \{ cards: creditCards, payments: invoicePayments \?\? \[\], sobraConfirmada: activeWalletId === 'total' \? sobraParaOLivre\(sobraDoMes, userId, hojeDaSobra\.slice\(0, 7\)\) : 0 \}\)/.test(inicio),
     'a Início passa outra coisa para calcularSafeToSpend (contas ou saldo inicial?)'
   );
   trava(!/saldoInicialEmEscopo/.test(inicio), 'a Início voltou a somar o saldo inicial das carteiras');

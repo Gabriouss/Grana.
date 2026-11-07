@@ -24,12 +24,15 @@ const supabase = {
     return q;
   },
 };
+const DateReal = Date;
+class DataFixa extends DateReal { constructor(...a) { super(...(a.length ? a : ['2026-11-07T12:00:00-03:00'])); } }
 const m = new Module(path.join(root, 'lib/sobra-do-mes.ts'), module);
 m.require = (id) => {
   if (id === './supabase') return { supabase };
   if (id === './sessao-offline') return { idDoUsuarioLocal: async () => usuario };
   throw Error('Import inesperado: ' + id);
 };
+global.Date = DataFixa;
 m._compile(ts.transpileModule(fs.readFileSync(m.id, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, m.id);
 const s = m.exports;
 let n = 0; const ok = (c, r) => { assert.ok(c, r); n++; };
@@ -37,46 +40,53 @@ const avisos = []; const avisoReal = console.warn; console.warn = (...a) => avis
 
 (async () => {
   resposta = { data: null, error: null };
-  const pend = await s.buscarSobraDoMes('2026-11');
-  ok(pend.estado === 'pendente' && s.sobraParaOLivre(pend) === 0, 'sem linha: pendente e zero');
-  ok(JSON.stringify(chamadas.slice(0, 2)) === JSON.stringify([['select', 'sobra_do_mes', 'valor'], ['eq', 'mes', '2026-11']]), 'lê só o mês pedido');
+  const pend = await s.buscarSobraDoMes('2026-11', 'u-1');
+  ok(pend.estado === 'pendente' && s.sobraParaOLivre(pend, 'u-1', '2026-11') === 0, 'sem linha: pendente e zero');
+  ok(JSON.stringify(chamadas.slice(0, 3)) === JSON.stringify([['select', 'sobra_do_mes', 'valor'], ['eq', 'mes', '2026-11'], ['eq', 'user_id', 'u-1']]), 'lê só o mês pedido');
 
   resposta = { data: { valor: '812.40' }, error: null };
-  const conf = await s.buscarSobraDoMes('2026-11');
-  ok(conf.estado === 'confirmada' && s.sobraParaOLivre(conf) === 812.4, 'confirmada entra com o valor');
+  const conf = await s.buscarSobraDoMes('2026-11', 'u-1');
+  ok(conf.estado === 'confirmada' && s.sobraParaOLivre(conf, 'u-1', '2026-11') === 812.4, 'confirmada entra com o valor');
+
+  ok(s.sobraParaOLivre(conf, 'u-1', '2026-12') === 0, 'sobra de novembro não entra em dezembro');
+  ok(s.sobraParaOLivre(conf, 'u-2', '2026-11') === 0, 'sobra nunca troca de dono');
+  chamadas.length = 0;
+  await assert.rejects(() => s.confirmarSobraDoMes('2026-10', 10, 'u-1'), /mês mudou/); n++;
+  await assert.rejects(() => s.confirmarSobraDoMes('2026-11', 10, 'u-2'), /conta mudou/); n++;
+  ok(chamadas.length === 0, 'formulário vencido ou outra conta não escreve');
 
   for (const code of ['PGRST205', '42P01']) {
     resposta = { data: null, error: { code } };
-    const desl = await s.buscarSobraDoMes('2026-11');
-    ok(desl.estado === 'desligada' && s.sobraParaOLivre(desl) === 0, `tabela ausente (${code}): desligada e zero`);
+    const desl = await s.buscarSobraDoMes('2026-11', 'u-1');
+    ok(desl.estado === 'desligada' && s.sobraParaOLivre(desl, 'u-1', '2026-11') === 0, `tabela ausente (${code}): desligada e zero`);
   }
   ok(avisos.length === 2, 'tabela ausente deixa log, não silêncio');
 
   resposta = { data: null, error: { code: '08006', message: 'rede' } };
-  await assert.rejects(() => s.buscarSobraDoMes('2026-11')); n++;
-  ok(s.sobraParaOLivre(null) === 0, 'não conferida: zero');
+  await assert.rejects(() => s.buscarSobraDoMes('2026-11', 'u-1')); n++;
+  ok(s.sobraParaOLivre(null, 'u-1', '2026-11') === 0, 'não conferida: zero');
 
   chamadas.length = 0; resposta = { data: null, error: null };
-  await s.confirmarSobraDoMes('2026-11', 812.404);
+  await s.confirmarSobraDoMes('2026-11', 812.404, 'u-1');
   ok(JSON.stringify(chamadas) === JSON.stringify([['upsert', 'sobra_do_mes', { user_id: 'u-1', mes: '2026-11', valor: 812.4 }, { onConflict: 'user_id,mes' }]]), 'confirmar grava uma linha, ao centavo, por usuário e mês');
   chamadas.length = 0;
-  await s.confirmarSobraDoMes('2026-11', 0);
+  await s.confirmarSobraDoMes('2026-11', 0, 'u-1');
   ok(chamadas[0][2].valor === 0, 'R$ 0 é confirmação válida');
 
   chamadas.length = 0;
-  await assert.rejects(() => s.confirmarSobraDoMes('2026-11', -1)); n++;
-  await assert.rejects(() => s.confirmarSobraDoMes('2026-11', NaN)); n++;
+  await assert.rejects(() => s.confirmarSobraDoMes('2026-11', -1, 'u-1')); n++;
+  await assert.rejects(() => s.confirmarSobraDoMes('2026-11', NaN, 'u-1')); n++;
   usuario = null;
-  await assert.rejects(() => s.confirmarSobraDoMes('2026-11', 10)); n++;
+  await assert.rejects(() => s.confirmarSobraDoMes('2026-11', 10, 'u-1')); n++;
   ok(chamadas.length === 0, 'valor inválido ou sem sessão não grava');
   usuario = 'u-1';
   resposta = { data: null, error: { code: '42501' } };
-  await assert.rejects(() => s.confirmarSobraDoMes('2026-11', 10)); n++;
+  await assert.rejects(() => s.confirmarSobraDoMes('2026-11', 10, 'u-1')); n++;
 
   const migration = fs.readFileSync(path.join(root, 'supabase/migrations/20261107120000_sobra_do_mes_confirmada.sql'), 'utf8');
   ok(/enable row level security/.test(migration) && /primary key \(user_id, mes\)/.test(migration), 'migration com RLS e uma linha por usuário e mês');
   ok(/valor >= 0/.test(migration) && !/grant[^;]*delete[^;]*to authenticated/.test(migration), 'sem valor negativo e sem delete pelo cliente');
 
-  console.warn = avisoReal;
+  console.warn = avisoReal; global.Date = DateReal;
   console.log(`sobra-do-mes: ${n} checagens no módulo real`);
-})().catch((e) => { console.warn = avisoReal; console.error(e); process.exit(1); });
+})().catch((e) => { console.warn = avisoReal; global.Date = DateReal; console.error(e); process.exit(1); });
