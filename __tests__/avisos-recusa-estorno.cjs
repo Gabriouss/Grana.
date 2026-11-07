@@ -306,6 +306,55 @@ const ESTORNO_UBER = (extra) => aviso('Estorno', 'Estorno de R$ 12.34 em DL *Ube
     ok('caixa sem o campo de recibos continua valendo');
   }
 
+  /* Rodada 2 (achado do Watchtower): correspondência forte. */
+  {
+    const m = decidir.mesmoComerciante;
+    assert.equal(m('Uber', 'UberEats'), false);
+    assert.equal(m('Uber', 'Uber Eats'), false);
+    assert.equal(m('Loja Modelo', 'Loja Modelo Centro'), false, 'resto que não é localização não casa');
+    assert.equal(m('DL *UberRides', 'DL *UberRides Sao Paulo BRA'), true);
+    assert.equal(m('Padaria Modelo', 'PADARIA MODELO SP'), true);
+    assert.equal(m('Mercado Modelo', 'Mercado Modelo Campinas SP BRA'), true);
+    assert.equal(m('Mercado Modelo', 'Mercado-Modelo'), true);
+    assert.equal(m('Uber', 'Uber BRA'), false, 'nome curto demais só casa igual');
+    ok('loja: igual, ou nome de 6+ letras seguido só de cidade, estado ou país');
+
+    let r = await sync('dono-ubereats',
+      aviso('Compra aprovada', 'Compra de R$ 25,00 aprovada em Uber no cartão final 4321'),
+      aviso('Estorno', 'Estorno de R$ 25,00 em UberEats no cartão final 4321', { quando: AGORA + 60 * MIN }));
+    assert.deepEqual(r.itens.map((i) => i.tipo), ['lancamento', 'estorno']);
+    assert.equal(r.recibos.length, 0);
+    ok('compra "Uber" e estorno "UberEats" do mesmo valor não se anulam');
+
+    r = await sync('dono-bancos',
+      aviso('Compra aprovada', 'Compra de R$ 45,90 aprovada em Loja Modelo no cartão final 4321', { pacote: NUBANK }),
+      aviso('Estorno', 'Estorno de R$ 45,90 em Loja Modelo no cartão final 4321', { pacote: C6, quando: AGORA + 60 * MIN }));
+    assert.deepEqual(r.itens.map((i) => i.tipo), ['lancamento', 'estorno']);
+    ok('compra de um banco e estorno de outro não se anulam');
+
+    r = await sync('dono-mesmo-banco', COMPRA_UBER({ quando: AGORA }), ESTORNO_UBER({ quando: AGORA + 30 * MIN }));
+    assert.equal(r.itens.length, 0);
+    assert.equal(r.recibos.length, 1);
+    ok('"DL *UberRides" e "DL *UberRides Sao Paulo BRA" no mesmo banco continuam se anulando');
+
+    /* Compra avisada pelo banco e pela carteira: o estorno do banco ainda casa. */
+    r = await sync('dono-par-carteira',
+      aviso('Compra aprovada', 'Compra no crédito de R$ 40,00 em Padaria Modelo, final 1234', { pacote: NUBANK }),
+      aviso('Padaria', 'R$ 40,00 com Visa ••1234', { pacote: WALLET, quando: AGORA + 2 * MIN }),
+      aviso('Estorno', 'Estorno de R$ 40,00 em Padaria Modelo, final 1234', { pacote: NUBANK, quando: AGORA + 60 * MIN }));
+    assert.equal(r.itens.length, 0);
+    ok('compra com par da carteira casa com o estorno do mesmo banco');
+
+    const est = { id: 'e', avisoIds: ['e'], pacote: C6, classe: 'banco', quando: AGORA, expiraEm: AGORA + DIA, tipo: 'estorno', data: '2026-11-07', valor: 25, contraparte: 'Loja Modelo', descricao: 'Loja Modelo', digitos: null };
+    const t = (id, extra = {}) => ({ id, type: 'out', amount: 25, occurred_on: '2026-11-06', description: 'Loja Modelo', card_id: null, ...extra });
+    assert.deepEqual(decidir.ofertaDoEstorno(est, [t('a')]), { tipo: 'remover', lancamento: t('a') });
+    assert.deepEqual(decidir.ofertaDoEstorno(est, [t('a'), t('b')]), { tipo: 'varios' });
+    assert.deepEqual(decidir.ofertaDoEstorno(est, [t('a', { description: 'Loja Modelo Centro' })]), { tipo: 'nenhum' });
+    assert.deepEqual(decidir.ofertaDoEstorno(est, null), { tipo: 'sem_historico' });
+    assert.deepEqual(decidir.ofertaDoEstorno({ ...est, valor: undefined }, [t('a')]), { tipo: 'sem_valor' });
+    ok('oferta do cartão: remover só com exatamente um lançamento forte');
+  }
+
   /* O listener nativo não publica "Novo aviso para conferir" para recusa, com o
      MESMO padrão do app: os dois textos têm de ser idênticos. */
   {

@@ -92,31 +92,66 @@ function melhorDescricao(a?: string | null, b?: string | null): string | null {
   return b.length > a.length ? b : a;
 }
 
-/**
- * Loja equivalente depois de normalizar: sem `DL *`, sem asterisco, sem acento,
- * sem caixa e sem espaço. Um nome começando pelo outro também vale ("DL
- * *UberRides" e "DL *UberRides Sao Paulo BRA"). Nome curto demais não decide.
- */
-export function chaveDoComerciante(nome: string): string {
-  return semCaixa(nome).replace(/^\s*dl\b\s*\*?/, '').replace(/[^a-z0-9]+/g, '');
+/** Palavras da loja depois de normalizar: sem `DL *`, sem asterisco, sem acento e sem caixa. */
+function palavrasDoComerciante(nome: string): string[] {
+  return semCaixa(nome).replace(/^\s*dl\b\s*\*?/, '').split(/[^a-z0-9]+/).filter(Boolean);
 }
 
+export function chaveDoComerciante(nome: string): string {
+  return palavrasDoComerciante(nome).join('');
+}
+
+/* O que o banco cola depois do nome da loja: país, estado e cidade. Só estes contam. */
+const PAISES = new Set(['bra', 'br', 'brasil', 'brazil']);
+const UFS = new Set(['ac', 'al', 'ap', 'am', 'ba', 'ce', 'df', 'es', 'go', 'ma', 'mt', 'ms', 'mg', 'pa', 'pb', 'pr', 'pe', 'pi', 'rj', 'rn', 'rs', 'ro', 'rr', 'sc', 'sp', 'se', 'to']);
+const CIDADES = new Set([
+  'sao paulo', 'rio de janeiro', 'belo horizonte', 'brasilia', 'salvador', 'fortaleza', 'curitiba', 'manaus', 'recife',
+  'porto alegre', 'belem', 'goiania', 'guarulhos', 'campinas', 'sao luis', 'maceio', 'natal', 'teresina', 'joao pessoa',
+  'florianopolis', 'vitoria', 'cuiaba', 'campo grande', 'aracaju', 'osasco', 'santo andre', 'sao bernardo do campo',
+  'niteroi', 'santos', 'ribeirao preto', 'sorocaba', 'uberlandia', 'contagem', 'londrina', 'joinville', 'barueri',
+]);
+
+/** O resto do nome mais longo é só localização: cidade conhecida, estado ou país. */
+function pareceLocalizacao(resto: string[]): boolean {
+  const semSufixo = [...resto];
+  while (semSufixo.length && (PAISES.has(semSufixo[semSufixo.length - 1]) || UFS.has(semSufixo[semSufixo.length - 1]))) semSufixo.pop();
+  return semSufixo.length === 0 || CIDADES.has(semSufixo.join(' '));
+}
+
+/**
+ * Loja equivalente, no sentido forte (achado do Watchtower, 07/11/2026): nome
+ * igual depois de normalizar, ou o mais curto (6+ letras) seguido só de
+ * localização ("DL *UberRides" e "DL *UberRides Sao Paulo BRA"). "Uber" e
+ * "UberEats" não casam. Na dúvida, não casa, e a pessoa decide.
+ */
 export function mesmoComerciante(a?: string | null, b?: string | null): boolean {
   if (!a || !b) return false;
-  const x = chaveDoComerciante(a);
-  const y = chaveDoComerciante(b);
-  if (x.length < 3 || y.length < 3) return false;
-  return x === y || x.startsWith(y) || y.startsWith(x);
+  const x = palavrasDoComerciante(a);
+  const y = palavrasDoComerciante(b);
+  if (!x.length || !y.length) return false;
+  if (x.join('') === y.join('')) return x.join('').length >= 3;
+  const [curto, longo] = x.length <= y.length ? [x, y] : [y, x];
+  if (curto.join('').length < 6 || curto.length >= longo.length) return false;
+  if (!curto.every((p, i) => longo[i] === p)) return false;
+  return pareceLocalizacao(longo.slice(curto.length));
 }
 
 const centavos = (valor: number) => Math.round(valor * 100);
 
 type EstornoLido = { valor: number | null; contraparte: string | null; digitos: string | null; data: string };
 
-/** Compra pendente que este estorno anula: mesmo valor em centavos, mesmo final quando os dois trazem, mesma loja, até 7 dias antes. */
-function compraPendenteDoEstorno(item: ItemAConferir, estorno: EstornoLido, quando: number, jaGravados: ReadonlySet<string>): boolean {
+/**
+ * Compra pendente que este estorno anula: mesmo app de banco, mesmo valor em
+ * centavos, mesmo final quando os dois trazem, mesma loja (forte), até 7 dias antes.
+ */
+function compraPendenteDoEstorno(
+  item: ItemAConferir, estorno: EstornoLido, aviso: { pacote: string; quando: number }, vistos: Record<string, AvisoVisto>, jaGravados: ReadonlySet<string>,
+): boolean {
   if (item.tipo !== 'lancamento' || item.direcao !== 'out' || item.valor === undefined || estorno.valor === null) return false;
   if (jaGravados.has(item.id) || item.contaEmPagamento) return false;
+  const pacotes = new Set([item.pacote, ...item.avisoIds.map((id) => vistos[id]?.pacote).filter(Boolean)]);
+  if (!pacotes.has(aviso.pacote)) return false;
+  const quando = aviso.quando;
   if (centavos(item.valor) !== centavos(estorno.valor)) return false;
   if (item.quando > quando || quando - item.quando > JANELA_DO_ESTORNO_MS) return false;
   if (item.digitos && estorno.digitos && item.digitos !== estorno.digitos) return false;
@@ -149,7 +184,7 @@ function acrescentarEstorno(
     && ((v.pacote === aviso.pacote && v.chave === aviso.chave) || Math.abs(v.quando - aviso.quando) <= JANELA_DE_DUPLICATA_MS));
   if (repetido) return comVisto({ estorno: true, valor, itemId: repetido.itemId });
 
-  const candidatas = estado.itens.filter((i) => compraPendenteDoEstorno(i, estorno, aviso.quando, jaGravados));
+  const candidatas = estado.itens.filter((i) => compraPendenteDoEstorno(i, estorno, aviso, estado.vistos, jaGravados));
   if (candidatas.length === 1 && valor !== undefined) {
     const compra = candidatas[0];
     const recibo: ReciboDeEstorno = {
@@ -287,6 +322,28 @@ type LancamentoParaEstorno = {
  * lançamento é de um cartão conhecido, o mesmo final. A tela só oferece remover
  * com exatamente um; quem remove é o toque da pessoa.
  */
+/**
+ * O que o cartão do estorno oferece. Só `remover` tem botão que apaga; o resto
+ * explica e deixa só tirar da lista. Sem histórico no aparelho, não dá para
+ * afirmar nada: `sem_historico`.
+ */
+export type OfertaDoEstorno<T> =
+  | { tipo: 'remover'; lancamento: T }
+  | { tipo: 'varios' }
+  | { tipo: 'nenhum' }
+  | { tipo: 'sem_valor' }
+  | { tipo: 'sem_historico' };
+
+export function ofertaDoEstorno<T extends LancamentoParaEstorno>(
+  item: ItemAConferir, lancamentos: T[] | null, cartoes: CreditCard[] = [],
+): OfertaDoEstorno<T> {
+  if (item.valor === undefined) return { tipo: 'sem_valor' };
+  if (lancamentos === null) return { tipo: 'sem_historico' };
+  const achados = lancamentosDoEstorno(item, lancamentos, cartoes);
+  if (achados.length === 1) return { tipo: 'remover', lancamento: achados[0] };
+  return achados.length ? { tipo: 'varios' } : { tipo: 'nenhum' };
+}
+
 export function lancamentosDoEstorno<T extends LancamentoParaEstorno>(item: ItemAConferir, lancamentos: T[], cartoes: CreditCard[] = []): T[] {
   if (item.tipo !== 'estorno' || item.valor === undefined) return [];
   const valor = item.valor;
