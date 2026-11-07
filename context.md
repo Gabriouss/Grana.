@@ -149,6 +149,8 @@ Meridian relata recusa/estorno `f988e888`/`5d950676` e Rodada 2 `9783b298`/`cff7
 
 Lumen relata denúncia em `1a1f9cfa`/`ead42e2b`, com UI incorporada ao commit de Anvil `efe208a2` por índice compartilhado; testes focais e `tsc` verdes, migration não aplicada e interface não vista em aparelho. Keel relata trava do webhook `69d804b2`, testes focais e `deno check` verdes, sem deploy; URL real da próxima build e portão completo não verificados. Ledger leu os relatórios, sem repetir provas; os registros anteriores de trabalho pendente são históricos, substituídos por esta atualização.
 
+**Revisão Prism e confirmação do Codex:** `relatorio-prism-retomada.md` aponta UI-01: recibo de estorno expõe valor sem `PrivacyValue`; UI-02: conclusão assíncrona de denúncia anterior contamina reabertura; UI-03: adiamento da sobra não revalida o dia com a Início montada. Codex relata ter conferido pessoalmente os três caminhos no código e confirmado os achados por leitura estática; sem runtime ou aparelho. Prism foi designado corrigir os três com regressão após liberação de Harbor: UI-01/UI-02 só no clone Play; UI-03 no main e cherry-pick `-x` para Play. Harbor termina backup e integração, libera as árvores e aguarda os reparos antes do portão pesado final. Nada corrigido ainda. Sem push, build, deploy ou migration aplicada. Ledger leu o relatório e não repetiu a conferência.
+
 **Em aberto.** Os relatórios `relatorio-*.md` e os `FIM-*.md` da pasta da rodada entram aqui à medida que surgirem, cada um em registro curto, separando testado de relatado.
 
 ## 02/11 — motion-supremo unificada nas três cópias
