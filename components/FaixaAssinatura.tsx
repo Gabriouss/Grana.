@@ -7,6 +7,7 @@ import { useEntitlement } from '@/lib/entitlement-context';
 import { useSession } from '@/lib/auth-context';
 import { useFlags } from '@/lib/feature-flags';
 import { calcularAvisoAssinatura, formatarDataAssinatura } from '@/lib/aviso-assinatura';
+import { ehCanalPlay } from '@/lib/canal';
 import { linkRenovacaoAssinatura } from '@/lib/checkout-assinatura';
 import { fonts, radius, spacing, theme } from '@/lib/theme';
 
@@ -25,7 +26,8 @@ export default function FaixaAssinatura({ estilo }: { estilo?: StyleProp<ViewSty
     const timer = setTimeout(() => atualizarRelogio(v => v + 1), Math.max(1000, Math.min(amanha.getTime(), aviso.dataLimite.getTime()) - agora + 1000));
     return () => clearTimeout(timer);
   }, [agora, estado?.allowed, estado?.status, estado?.access_until, estado?.grace_until]);
-  if (!session || !aviso.mostrarFaixa) return null;
+  // Canal Play: renovação externa (Cakto) não existe.
+  if (ehCanalPlay() || !session || !aviso.mostrarFaixa) return null;
   const pendente = estado?.status === 'past_due';
   const link = linkRenovacaoAssinatura(session.user.email ?? null, pendente);
   const indisponivel = !pendente && !ligado('assinatura_checkout');

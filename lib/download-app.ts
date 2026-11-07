@@ -1,3 +1,5 @@
+import { ehCanalPlay } from './canal';
+
 /**
  * Fonte única do endereço de distribuição direta do APK.
  *
@@ -7,6 +9,7 @@
  * URL que pode expirar.
  */
 export function obterUrlDownloadAndroid(): string | null {
+  if (ehCanalPlay()) return null;
   const valor = process.env.EXPO_PUBLIC_ANDROID_DOWNLOAD_URL?.trim();
   return valor && /^https:\/\//i.test(valor) ? valor : null;
 }

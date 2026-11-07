@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
+import { ehCanalPlay } from '@/lib/canal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppPressable from '@/components/AppPressable';
 import { colunaFormulario } from '@/lib/breakpoints';
@@ -9,6 +10,12 @@ import { obterUrlDownloadAndroid } from '@/lib/download-app';
 import { fonts, lh, radius, spacing, theme, type } from '@/lib/theme';
 
 export default function BaixarApp() {
+  // Canal Play: a página de download do APK não existe (hooks abaixo ficam em BaixarAppApk).
+  if (ehCanalPlay()) return <Redirect href="/" />;
+  return <BaixarAppApk />;
+}
+
+function BaixarAppApk() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [erro, setErro] = useState<string | null>(null);

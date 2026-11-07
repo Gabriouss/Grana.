@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 import { compararVersoes } from './versao';
 import { obterUrlDownloadAndroid } from './download-app';
+import { ehCanalPlay } from './canal';
 
 /**
  * Aviso de atualização do APK.
@@ -53,6 +54,8 @@ async function buscarAppRelease(): Promise<LinhaAppRelease | null> {
  * que impeça o uso do app enquanto a checagem não responde.
  */
 export async function verificarAtualizacao(): Promise<InfoAtualizacao | null> {
+  // App da Play só se atualiza pela loja; anunciar APK aqui não instalaria nada.
+  if (ehCanalPlay()) return null;
   const data = await buscarAppRelease();
   if (!data) return null;
   if (compararVersoes(data.version, versaoAtual()) <= 0) return null;
