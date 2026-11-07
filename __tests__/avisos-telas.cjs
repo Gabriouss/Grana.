@@ -125,7 +125,7 @@ function carregar(relativo) {
   if (cache.has(arquivo)) return cache.get(arquivo);
   let fonte = fs.readFileSync(arquivo, 'utf8');
   // Expõe só ao harness os componentes privados, sem alterar seus handlers.
-  if (arquivo.endsWith('AvisosAConferir.tsx')) fonte += '\nexport { ListaAConferir, CartaoDoAviso, CartaoDoEstorno, RecibosDeEstorno };';
+  if (arquivo.endsWith('AvisosAConferir.tsx')) fonte += '\nexport { ListaAConferir, CartaoDoAviso, CartaoDoEstorno, RecibosDeEstorno, ReciboEmJanela };';
   if (arquivo.endsWith('AvisosBancoSecao.tsx')) fonte += '\nexport { DiarioDoTeste };';
   const resultado = ts.transpileModule(fonte, { reportDiagnostics: true, compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true,
@@ -846,19 +846,25 @@ async function main() {
     assert.equal(chamadas.filter((c) => c[0] === 'apagar' || c[0] === 'gravar').length, 0);
     ok('sem candidato, com dois ou sem histórico: explica em uma frase e só oferece Entendi');
 
-    /* Recibo: na janela e, sem pendência, discreto na Início, sem abrir a janela. */
+    /* Recibo: na janela de conferência e, sem pendência, em janela flutuante pequena (regra do autor, 07/11/2026: nada de bloco na Início). */
     preparar([
       aviso('Compra de R$ 25,00 aprovada em Loja Modelo no cartão final 4321'),
       { ...aviso('Estorno de R$ 25,00 em Loja Modelo no cartão final 4321', 'Estorno'), quando: Date.now() + 60000 },
     ]);
     janela = montar(telas.default, { dono: 'dono' }); await janela.settle(); await janela.settle();
-    assert.equal(listaAberta(janela), false, 'o recibo sozinho não abre a janela bloqueante');
-    const reciboNaInicio = elementos(janela.tree).find((e) => e.type === telas.RecibosDeEstorno);
-    assert.ok(reciboNaInicio && reciboNaInicio.props.recibos.length === 1);
-    const arvoreRecibo = telas.RecibosDeEstorno(reciboNaInicio.props);
-    assert.match(texto(arvoreRecibo), /Compra de R\$.*Loja Modelo foi estornada\. Tirei as duas da.lista\./);
-    assert.ok(elementos(arvoreRecibo).some((e) => e.props.accessibilityLiveRegion === 'polite' && /estornada/.test(texto(e))), 'leitor de tela anuncia');
-    assert.equal(elementos(arvoreRecibo).some((e) => e.props.autoFocus || e.props.accessibilityViewIsModal), false, 'sem roubar o foco');
+    assert.equal(listaAberta(janela), false, 'o recibo sozinho não abre a janela de conferência');
+    assert.equal(elementos(janela.tree).some((e) => e.type === telas.RecibosDeEstorno), false, 'nenhum bloco de recibo na Início');
+    const reciboJanela = elementos(janela.tree).find((e) => e.type === telas.ReciboEmJanela);
+    assert.ok(reciboJanela && reciboJanela.props.recibos.length === 1, 'o recibo vira janela');
+    const jr = montar(telas.ReciboEmJanela, reciboJanela.props); await jr.settle();
+    const modalRecibo = elementos(jr.tree).find((e) => e.type === './AppModal');
+    assert.ok(modalRecibo && modalRecibo.props.visible === true && modalRecibo.props.transparent, 'abre como janela');
+    assert.ok(elementos(jr.tree).some((e) => e.type === './Sheet' && e.props.centered), 'Sheet centralizada');
+    modalRecibo.props.onRequestClose(); elementos(jr.tree).find((e) => e.type === './Sheet').props.onClose();
+    await jr.settle();
+    assert.equal(elementos(jr.tree).find((e) => e.type === './AppModal').props.visible, true, 'Voltar e tocar fora não fecham');
+    assert.match(texto(jr.tree), /Compra de R\$.*Loja Modelo foi estornada\. Tirei as duas da.lista\./);
+    assert.ok(elementos(jr.tree).some((e) => e.props.accessibilityLiveRegion === 'polite' && /estornada/.test(texto(e))), 'leitor de tela anuncia');
     // Expande o PrivacyValue REAL: o texto e o anúncio reais não sobrevivem ao modo oculto.
     const PrivacyValue = carregar('components/PrivacyValue.tsx').default;
     function expandir(no) {
@@ -867,23 +873,25 @@ async function main() {
       if (no.type === PrivacyValue) return expandir(PrivacyValue(no.props));
       return { ...no, props: { ...no.props, children: expandir(no.props?.children) } };
     }
-    for (const naInicio of [true, false]) {
-      const arvore = telas.RecibosDeEstorno({ ...reciboNaInicio.props, naInicio });
-      privacidadeOculta = true;
-      const oculto = expandir(arvore);
-      assert.doesNotMatch(texto(oculto), /25,00|Loja Modelo/);
-      assert.ok(elementos(oculto).some(n => n.props.accessibilityLabel === 'Valor oculto'));
-      assert.equal(elementos(oculto).some(n => n.props.accessibilityLiveRegion && /25,00|Loja Modelo/.test(texto(n))), false);
-      privacidadeOculta = false;
-      const visivel = expandir(arvore);
-      assert.match(texto(visivel), /25,00.*Loja Modelo/);
-      assert.ok(elementos(visivel).some(n => n.props.accessibilityLiveRegion === 'polite' && /25,00/.test(texto(n))));
-    }
-    reciboNaInicio.props.aoDispensar(reciboNaInicio.props.recibos[0].id);
+    privacidadeOculta = true;
+    const oculto = expandir(jr.tree);
+    assert.doesNotMatch(texto(oculto), /25,00|Loja Modelo/);
+    assert.ok(elementos(oculto).some(n => n.props.accessibilityLabel === 'Valor oculto'));
+    assert.equal(elementos(oculto).some(n => n.props.accessibilityLiveRegion && /25,00|Loja Modelo/.test(texto(n))), false);
+    privacidadeOculta = false;
+    assert.match(texto(expandir(jr.tree)), /25,00.*Loja Modelo/);
+    // Nunca por cima de outra janela: espera ela fechar.
+    const liberar = janelas.registrarJanelaAberta();
+    const bloqueada = montar(telas.ReciboEmJanela, reciboJanela.props); await bloqueada.settle();
+    assert.equal(elementos(bloqueada.tree).find((e) => e.type === './AppModal').props.visible, false, 'com outra janela aberta, o recibo espera');
+    liberar(); await bloqueada.settle(); await bloqueada.settle();
+    assert.equal(elementos(bloqueada.tree).find((e) => e.type === './AppModal').props.visible, true, 'a outra fechou: o recibo abre');
+    // Entendi dispensa o recibo.
+    elementos(jr.tree).find((n) => n.props.rotulo === 'Entendi' && n.props.onPress).props.onPress();
     await janela.settle(); await janela.settle();
-    assert.equal(elementos(janela.tree).find((e) => e.type === telas.RecibosDeEstorno).props.recibos.length, 0);
-    assert.equal((await caixa.recibosDaCaixa('dono')).length, 0, 'Ok tira o recibo do disco');
-    ok('recibo do descarte automático aparece discreto na Início, é anunciado e sai com Ok');
+    assert.equal(elementos(janela.tree).find((e) => e.type === telas.ReciboEmJanela)?.props.recibos.length ?? 0, 0);
+    assert.equal((await caixa.recibosDaCaixa('dono')).length, 0, 'Entendi tira o recibo do disco');
+    ok('recibo do descarte automático abre em janela, é anunciado, espera outra janela e sai com Entendi');
 
     preparar([
       aviso('Compra de R$ 25,00 aprovada em Loja Modelo no cartão final 4321'),

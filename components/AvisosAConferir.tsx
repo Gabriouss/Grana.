@@ -95,10 +95,10 @@ export function textoDoRecibo(r: ReciboDeEstorno): string {
 }
 
 /** Recibos do estorno, sem roubar o foco: o leitor de tela anuncia, e "Ok" tira da lista. */
-function RecibosDeEstorno({ recibos, aoDispensar, naInicio = false }: { recibos: ReciboDeEstorno[]; aoDispensar: (id: string) => void; naInicio?: boolean }) {
+function RecibosDeEstorno({ recibos, aoDispensar }: { recibos: ReciboDeEstorno[]; aoDispensar: (id: string) => void }) {
   if (!recibos.length) return null;
   return (
-    <View style={[styles.recibos, naInicio && styles.recibosNaInicio]}>
+    <View style={styles.recibos}>
       {recibos.map((r) => (
         <View key={r.id} style={styles.reciboLinha}>
           <PrivacyValue style={styles.reciboConteudo}>
@@ -110,6 +110,38 @@ function RecibosDeEstorno({ recibos, aoDispensar, naInicio = false }: { recibos:
         </View>
       ))}
     </View>
+  );
+}
+
+/**
+ * Recibo do estorno sem pendência (regra do autor, 07/11/2026: aviso vira
+ * janela, nunca bloco na Início). Janela pequena e centralizada, com "Entendi"
+ * que tira o recibo da lista. Nunca abre por cima de outra janela: nasce só
+ * com nenhuma outra aberta e, depois de aberta, não se fecha sozinha.
+ */
+function ReciboEmJanela({ recibos, aoDispensar, bloqueado = false }: { recibos: ReciboDeEstorno[]; aoDispensar: (id: string) => void; bloqueado?: boolean }) {
+  const outraJanela = useHaJanelaAberta();
+  const [aberta, setAberta] = useState(false);
+  useEffect(() => {
+    if (recibos.length === 0) { if (aberta) setAberta(false); return; }
+    if (!aberta && !outraJanela && !bloqueado) setAberta(true);
+  }, [recibos.length, aberta, outraJanela, bloqueado]);
+  const atual = recibos[0];
+  if (!atual) return null;
+  return (
+    <AppModal visible={aberta} transparent onRequestClose={() => {}}>
+      <Sheet centered onClose={() => {}}>
+        <View style={styles.cabecalho}>
+          <Text style={styles.titulo} accessibilityRole="header">Estorno</Text>
+        </View>
+        <PrivacyValue>
+          <Text style={styles.reciboJanela} accessibilityLiveRegion="polite">{semViuva(textoDoRecibo(atual))}</Text>
+        </PrivacyValue>
+        <View style={styles.botoes}>
+          <Botao rotulo="Entendi" destaque onPress={() => aoDispensar(atual.id)} />
+        </View>
+      </Sheet>
+    </AppModal>
   );
 }
 
@@ -198,8 +230,8 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
     dispensarRecibo(dono, id).catch((e) => console.warn('[avisos] recibo não saiu da lista', e instanceof Error ? e.name : 'erro'));
   };
   if (!avisosDisponivel) return null;
-  /* Sem pendência, o recibo fica discreto na Início: não abre a janela bloqueante só por ele. */
-  if (!aberta || itens.length === 0) return <RecibosDeEstorno recibos={recibos} aoDispensar={dispensar} naInicio />;
+  /* Sem pendência, o recibo abre numa janela pequena com "Entendi"; nunca bloco na Início. */
+  if (!aberta || itens.length === 0) return <ReciboEmJanela recibos={recibos} aoDispensar={dispensar} bloqueado={bloqueado} />;
   return (
     <ListaAConferir
       dono={dono}
@@ -726,9 +758,9 @@ const styles = StyleSheet.create({
   titulo: { color: theme.ink, fontFamily: fonts.regular, fontSize: type.titulo },
   recibo: { color: theme.accent2, fontFamily: fonts.regular, fontSize: type.apoio, marginBottom: spacing.sm },
   recibos: { gap: spacing.xs, marginBottom: spacing.sm },
-  recibosNaInicio: { paddingHorizontal: spacing.lg, marginTop: spacing.sm, marginBottom: 0 },
   reciboLinha: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   reciboConteudo: { flex: 1, minWidth: 0 },
+  reciboJanela: { color: theme.ink, fontFamily: fonts.regular, fontSize: type.apoio, lineHeight: lh(type.apoio, 'corpo') },
   reciboTexto: { color: theme.inkFaint, fontFamily: fonts.light, fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio') },
   reciboBotao: { minHeight: touchTarget, minWidth: touchTarget, flexShrink: 0, alignItems: 'center', justifyContent: 'center' },
   acao: { color: theme.accent2, fontFamily: fonts.regular, fontSize: type.apoio },
