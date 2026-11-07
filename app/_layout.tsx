@@ -27,6 +27,7 @@ import { FaixaTopoProvider } from '@/lib/faixa-topo';
 import { AppLockProvider } from '@/lib/app-lock-context';
 import { ScreenCaptureProvider } from '@/lib/screen-capture-context';
 import UpdateBanner from '@/components/UpdateBanner';
+import { ehCanalPlay } from '@/lib/canal';
 import NovidadesModal from '@/components/NovidadesModal';
 import AvisoFlagModal from '@/components/AvisoFlagModal';
 import ConviteAppAndroid from '@/components/ConviteAppAndroid';
@@ -352,7 +353,7 @@ function RootNavigator() {
     <View style={{ flex: 1 }}>
       {/* Só na área logada: avisar de atualização antes do login seria
           atrito sem propósito pra quem ainda nem entrou no app. */}
-      {session && <UpdateBanner />}
+      {session && !ehCanalPlay() && <UpdateBanner />}
       {session && <NovidadesModal />}
       {/* Depois do NovidadesModal na árvore, mas os dois são independentes:
           quando as duas condições valem, quem estiver por cima ganha a vez e o
