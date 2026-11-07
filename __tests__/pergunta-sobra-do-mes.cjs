@@ -88,7 +88,28 @@ function montar(props) {
 
   /* Início: condições de exibição e o que a confirmação faz, no código real. */
   const inicio = fs.readFileSync(path.join(root, 'app/(app)/index.tsx'), 'utf8');
-  ok(/!isDemoMode && activeWalletId === 'total' && sobraDoMes\?\.estado === 'pendente' && !sobraAdiada && !carregandoFontesLivre && \(/.test(inicio), 'Início só pergunta na visão total, pendente, fora do exemplo');
+  ok(/!isDemoMode && activeWalletId === 'total' && sobraDoMes\?\.estado === 'pendente' && sobraAdiada === false && !carregandoFontesLivre && \(/.test(inicio), 'Início só pergunta na visão total, pendente, fora do exemplo e depois de ler o adiamento');
+  ok(/setSobraAdiada\(true\);\s*if \(userId\) void adiarSobraAteAmanha\(userId, todayISO\(\)\);/.test(inicio), '"Agora não" guarda o dia');
+
+  /* Rodada 2 do autor (07/11/2026): "Agora não" vale até o dia seguinte.
+     Módulo REAL lib/sobra-adiada.ts com AsyncStorage simulado. */
+  const disco = new Map(); let quebrado = false;
+  const adiada = moduloReal('lib/sobra-adiada.ts', (id) => {
+    if (id === '@react-native-async-storage/async-storage') return { __esModule: true, default: {
+      getItem: async (k) => { if (quebrado) throw Error('disco'); return disco.has(k) ? disco.get(k) : null; },
+      setItem: async (k, v) => { if (quebrado) throw Error('disco'); disco.set(k, v); },
+    } };
+    throw Error('Import inesperado: ' + id);
+  }).exports;
+  ok((await adiada.sobraAdiadaHoje('u', '2026-11-07')) === false, 'sem adiamento: pergunta');
+  await adiada.adiarSobraAteAmanha('u', '2026-11-07');
+  ok((await adiada.sobraAdiadaHoje('u', '2026-11-07')) === true, 'mesmo dia: não pergunta de novo');
+  ok((await adiada.sobraAdiadaHoje('u', '2026-11-08')) === false, 'dia seguinte: pergunta de novo');
+  ok((await adiada.sobraAdiadaHoje('outra', '2026-11-07')) === false, 'adiamento é por usuário');
+  quebrado = true; console.error = () => {};
+  ok((await adiada.sobraAdiadaHoje('u', '2026-11-07')) === false, 'falha de leitura: pergunta (sem inventar adiamento)');
+  await adiada.adiarSobraAteAmanha('u', '2026-11-07');
+  console.error = erroOriginal;
   ok(/await confirmarSobraDoMes\(mes, valor\);\s*setSobraDoMes\(\{ estado: 'confirmada', mes, valor \}\);\s*notificarDadosDosWidgetsAlterados\(\);/.test(inicio), 'confirmar grava, atualiza o Livre e avisa os widgets');
   console.log(`pergunta-sobra-do-mes: ${n} checagens no componente real`);
 })().catch((e) => { console.error(e); process.exit(1); });
