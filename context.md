@@ -93,6 +93,30 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 07/11 — preparação da Play, Fases 1 e 5
+
+Autor: "deixar tudo pronto pra gente colocar o aplicativo na Play Store". Decisões desta rodada: a Fase 0 (CNPJ, D-U-N-S, Play Console) ainda não começou, e os agentes adiantam só o que não depende da conta. Os 10 commits do `main` que faltam na branch de teste (`53b7c1bd..30ca3db3`) entram por cherry-pick, sem fundir o `main`. Backup local em outro disco (git bundle em `C:\Grana-backup\`). Nada vai para o GitHub.
+
+**Onde se trabalha.** Código da Play só no clone `E:\Grana-temporarios\2026-10-30-teste-avisos\repo`, branch `teste/leitura-avisos`. `E:\GranaPonto` (main) só é lido. Proibido nesta rodada: push, `eas build`, deploy de Edge Function, migration aplicada, secret, branch nova, worktree e stash. Nenhuma etapa escreve no clone antes de `FIM-harbor.md` existir na pasta da rodada.
+
+**Distribuição** (ordens em `E:\Grana-temporarios\2026-11-07-play-fase1\`):
+
+- Harbor (Sol 6.1 medium): bundles de backup e cherry-pick dos 10 commits, com testes no clone.
+- Anvil (Sonnet 5.5 medium): perfil `play` no `eas.json` e módulo de canal, com os pontos da tabela 3.4 escondidos no canal play.
+- Keel (Opus 5.5 medium): trava do `eas-build-webhook` para publicar `app_release` só nos perfis preview e production. Sem deploy (regra 11).
+- Lumen (Sonnet 5.5 medium): denúncia de resposta do Granabô, com migration nova não aplicada.
+- Compass (Sol 6.1 medium): passo a passo da Fase 0 para o autor, sem commit.
+- Watchtower (Sol 6.1 medium): inventário de Segurança de dados e lacunas da política de privacidade, sem commit.
+- Quill (Haiku 5.5): este registro e a documentação da rodada.
+
+**Estado dos agentes, relatado pela ordem do orquestrador.** O orquestrador disparou sem querer a atualização do Codex ao mandar `/status`: o Enter caiu na tela de atualizar. A atualização terminou, e os Codex voltaram em sessão nova, em Sol medium. Ledger, Codex PH e Prism ficaram no shell aguardando religar. Ledger está fora da rodada, por isso o Quill documenta. Limites relatados: Claude quase livre, Gabriel Codex 30% da semana, Codex PH 44%.
+
+**Riscos.** A branch da Play existe só neste disco, e o bundle de Harbor ainda não foi gerado quando este registro foi escrito. A `main` está 63 commits à frente de `origin/main` e sem push, por ordem do autor. Conferido nesta sessão com `git fetch origin`: 0 commits atrás, 63 à frente.
+
+**Testado.** Nada da rodada foi executado ainda neste registro. Conferido lendo os arquivos: as ordens, as regras da rodada e o estado do `main` contra `origin/main`.
+
+**Em aberto.** Os relatórios `relatorio-*.md` e os `FIM-*.md` da pasta da rodada entram aqui à medida que surgirem, cada um em registro curto, separando testado de relatado.
+
 ## 02/11 — motion-supremo unificada nas três cópias
 
 Autor: "eu quero a motion supremo atualizada". A cópia global (`~/.claude/skills/motion-supremo`) e a do projeto tinham divergido nos dois sentidos. A do projeto tinha as seções 1.5 (Blender) e 1.6 (área segura do Reels), o `meu-editor-de-video.md` novo e o `reels-referencia-2026-10-28.md`, mas a descrição saiu com acentos trocados por `?` no `4a052cdf`. Já a global tinha a seção 1.3.2 (receita aprovada do R5 v6, de 28/10), que nunca entrou no projeto. A fusão partiu da cópia do projeto, recebeu a 1.3.2 antes da 1.4 e teve os acentos da descrição restaurados, sem mudar o texto nem o tamanho (773 caracteres, abaixo do limite do Codex). `.claude/skills/`, `.agents/skills/` e a global ficaram idênticas (`diff -rq`). O backup da global antiga está em `E:\Grana-temporarios\backup-motion-supremo-global-2026-11-02`. Não verificado: o validador de skills do Codex, que não foi rodado de novo. O guia de instalação de skills em outro Claude está em `E:\Grana-temporarios\instalar-skills-em-outro-claude.md`, fora do git.
