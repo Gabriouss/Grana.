@@ -181,3 +181,46 @@ export async function enviarPergunta(
     ferramenta: body.ferramenta ?? null,
   };
 }
+
+/* ── Denunciar resposta ───────────────────────────────────────────────────── */
+
+export type MotivoDenuncia = 'incorreta' | 'improprio' | 'dado_indevido' | 'outro';
+
+export const MOTIVOS_DENUNCIA: { valor: MotivoDenuncia; rotulo: string }[] = [
+  { valor: 'incorreta', rotulo: 'Incorreta ou enganosa' },
+  { valor: 'improprio', rotulo: 'Ofensiva ou imprópria' },
+  { valor: 'dado_indevido', rotulo: 'Mostrou um dado que não devia' },
+  { valor: 'outro', rotulo: 'Outro motivo' },
+];
+
+export const LIMITE_COMENTARIO_DENUNCIA = 300;
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Registra a denúncia de uma resposta do Granabô (política da Play para IA).
+ * Grava só id da mensagem (quando for do banco), motivo, comentário e o texto
+ * da resposta. LANÇA `denuncia_nao_enviada` se falhar: a tela mostra o recibo e
+ * deixa tentar de novo, nunca engole o erro.
+ */
+export async function denunciarResposta(
+  mensagem: { id: string; texto: string },
+  motivo: MotivoDenuncia,
+  comentario: string = '',
+): Promise<void> {
+  const comentarioLimpo = comentario.trim().slice(0, LIMITE_COMENTARIO_DENUNCIA);
+  const texto = mensagem.texto.trim();
+  if (!texto) throw new Error('denuncia_sem_texto');
+  // Teste da landing: sem servidor, nada a gravar.
+  if (MODO_TESTE) return;
+  const { error } = await supabase.from('assistant_reports').insert({
+    mensagem_id: UUID.test(mensagem.id) ? mensagem.id : null,
+    motivo,
+    comentario: comentarioLimpo || null,
+    texto_resposta: texto.slice(0, 8000),
+  });
+  if (error) {
+    console.error('[assistente] erro ao enviar denúncia:', { codigo: error.code, mensagem: error.message });
+    throw Object.assign(new Error('denuncia_nao_enviada'), { cause: error });
+  }
+}
