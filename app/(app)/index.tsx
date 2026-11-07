@@ -44,6 +44,7 @@ import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals, u
 import { calcularSafeToSpend, projetarComprometimentoFuturo, sugerirEvolucaoArquetipo } from '@/lib/projections';
 import { buscarSobraDoMes, confirmarSobraDoMes, sobraParaOLivre, type EstadoSobra } from '@/lib/sobra-do-mes';
 import { sugerirSobraDoMesAnterior } from '@/lib/safe-to-spend';
+import { adiarSobraAteAmanha, sobraAdiadaHoje } from '@/lib/sobra-adiada';
 import { notificarDadosDosWidgetsAlterados } from '@/lib/widgets-home-events';
 import { ARQUETIPOS, carregarDiagnostico, type DiagnosticoCarregado } from '@/lib/diagnostico';
 import { formatMoney, formatDateLabel, parseAmount, saudacaoDoDia, todayISO, formatMoneyInput } from '@/lib/format';
@@ -149,8 +150,9 @@ export default function InicioScreen() {
   /* Sobra do mês anterior confirmada pela pessoa (Adendo 2 do autor, 07/11/2026).
      `null` = ainda não conferida: o Livre usa zero e não pergunta nada. */
   const [sobraDoMes, setSobraDoMes] = useState<EstadoSobra | null>(null);
-  /* "Agora não": só nesta abertura da Início; a pergunta volta na próxima. */
-  const [sobraAdiada, setSobraAdiada] = useState(false);
+  /* "Agora não" vale até o dia seguinte (autor, 07/11/2026, rodada 2), guardado
+     no aparelho. `null` = ainda não lido: a pergunta espera a leitura. */
+  const [sobraAdiada, setSobraAdiada] = useState<boolean | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [lifetimeXp, setLifetimeXp] = useState(0);
   const [diagnostico, setDiagnostico] = useState<DiagnosticoCarregado | null>(null);
@@ -246,6 +248,13 @@ export default function InicioScreen() {
   // local), então não repete depois que a pessoa já respondeu ou fechou uma
   // vez, em NENHUM aparelho/navegador da mesma conta.
   const userId = session?.user.id;
+  /* Lê o "Agora não" do dia quando a sobra está pendente (rodada 2, 07/11). */
+  useEffect(() => {
+    if (!userId || sobraDoMes?.estado !== 'pendente') return;
+    let ativo = true;
+    sobraAdiadaHoje(userId, todayISO()).then((adiada) => { if (ativo) setSobraAdiada(adiada); });
+    return () => { ativo = false; };
+  }, [userId, sobraDoMes?.estado]);
   useEffect(() => {
     if (!userId) {
       onboardingDismissedForUser.current = null;
@@ -1263,10 +1272,13 @@ export default function InicioScreen() {
         {/* Sobra do mês passado (autor, 07/11/2026): só na visão de todas as
             carteiras, só enquanto não confirmada, e nunca com a tabela ainda
             ausente no servidor (estado `desligada`). */}
-        {!isDemoMode && activeWalletId === 'total' && sobraDoMes?.estado === 'pendente' && !sobraAdiada && !carregandoFontesLivre && (
+        {!isDemoMode && activeWalletId === 'total' && sobraDoMes?.estado === 'pendente' && sobraAdiada === false && !carregandoFontesLivre && (
           <PerguntaSobraDoMes
             sugestao={sugerirSobraDoMesAnterior(transactions, goals, todayISO())}
-            onAgoraNao={() => setSobraAdiada(true)}
+            onAgoraNao={() => {
+              setSobraAdiada(true);
+              if (userId) void adiarSobraAteAmanha(userId, todayISO());
+            }}
             onConfirmar={async (valor) => {
               const mes = sobraDoMes.mes;
               await confirmarSobraDoMes(mes, valor);
