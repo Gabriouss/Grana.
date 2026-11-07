@@ -13,6 +13,10 @@ const VALIDADE_DO_ITEM_MS = 30 * DIA_MS;
 /** O texto do "Não entendi" mora no diário, que guarda 7 dias. */
 const VALIDADE_DO_NAO_ENTENDI_MS = 7 * DIA_MS;
 const VALIDADE_DO_VISTO_MS = 8 * DIA_MS;
+/** Estorno só descarta compra avisada até 7 dias antes dele (pedido do autor, 07/11/2026). */
+export const JANELA_DO_ESTORNO_MS = 7 * DIA_MS;
+/** O recibo do descarte automático fica disponível por 7 dias. */
+const VALIDADE_DO_RECIBO_MS = 7 * DIA_MS;
 
 export type ItemAConferir = {
   id: string;
@@ -21,7 +25,12 @@ export type ItemAConferir = {
   classe: ClasseDoApp;
   quando: number;
   expiraEm: number;
-  tipo: 'lancamento' | 'nao_entendi';
+  /**
+   * `estorno`: dinheiro que voltou e não achou compra pendente para descartar
+   * sozinho. Nunca grava saída (`gravarItem` recusa); a tela pergunta se a pessoa
+   * quer remover o lançamento correspondente, e só remove com o toque dela.
+   */
+  tipo: 'lancamento' | 'nao_entendi' | 'estorno';
   data: string;
   direcao?: TxType;
   forma?: FormaDoAviso | null;
@@ -44,9 +53,26 @@ export type AvisoVisto = {
   classe: ClasseDoApp;
   valor?: number;
   itemId?: string;
+  /** Aviso de estorno: o mesmo estorno avisado de novo não abre outro item. */
+  estorno?: boolean;
 };
 
-export type EstadoDaCaixa = { itens: ItemAConferir[]; vistos: Record<string, AvisoVisto> };
+/**
+ * Recibo do descarte automático: compra pendente e estorno que se anularam.
+ * Sem título nem texto do aviso, só o que a tela precisa para dizer o que saiu.
+ */
+export type ReciboDeEstorno = {
+  id: string;
+  quando: number;
+  expiraEm: number;
+  valor: number;
+  contraparte: string | null;
+  dataDaCompra: string;
+  dataDoEstorno: string;
+};
+
+/** `recibos` é opcional: caixa gravada antes de 07/11/2026 não tem o campo. */
+export type EstadoDaCaixa = { itens: ItemAConferir[]; vistos: Record<string, AvisoVisto>; recibos?: ReciboDeEstorno[] };
 
 export const CAIXA_VAZIA: EstadoDaCaixa = { itens: [], vistos: {} };
 
@@ -66,21 +92,107 @@ function melhorDescricao(a?: string | null, b?: string | null): string | null {
   return b.length > a.length ? b : a;
 }
 
+/**
+ * Loja equivalente depois de normalizar: sem `DL *`, sem asterisco, sem acento,
+ * sem caixa e sem espaço. Um nome começando pelo outro também vale ("DL
+ * *UberRides" e "DL *UberRides Sao Paulo BRA"). Nome curto demais não decide.
+ */
+export function chaveDoComerciante(nome: string): string {
+  return semCaixa(nome).replace(/^\s*dl\b\s*\*?/, '').replace(/[^a-z0-9]+/g, '');
+}
+
+export function mesmoComerciante(a?: string | null, b?: string | null): boolean {
+  if (!a || !b) return false;
+  const x = chaveDoComerciante(a);
+  const y = chaveDoComerciante(b);
+  if (x.length < 3 || y.length < 3) return false;
+  return x === y || x.startsWith(y) || y.startsWith(x);
+}
+
+const centavos = (valor: number) => Math.round(valor * 100);
+
+type EstornoLido = { valor: number | null; contraparte: string | null; digitos: string | null; data: string };
+
+/** Compra pendente que este estorno anula: mesmo valor em centavos, mesmo final quando os dois trazem, mesma loja, até 7 dias antes. */
+function compraPendenteDoEstorno(item: ItemAConferir, estorno: EstornoLido, quando: number, jaGravados: ReadonlySet<string>): boolean {
+  if (item.tipo !== 'lancamento' || item.direcao !== 'out' || item.valor === undefined || estorno.valor === null) return false;
+  if (jaGravados.has(item.id) || item.contaEmPagamento) return false;
+  if (centavos(item.valor) !== centavos(estorno.valor)) return false;
+  if (item.quando > quando || quando - item.quando > JANELA_DO_ESTORNO_MS) return false;
+  if (item.digitos && estorno.digitos && item.digitos !== estorno.digitos) return false;
+  return mesmoComerciante(item.contraparte ?? item.descricao, estorno.contraparte);
+}
+
 function formaDoPar(item: ItemAConferir, outra: FormaDoAviso | null): Pick<ItemAConferir, 'forma' | 'formaEmDisputa'> {
   if (item.formaEmDisputa || (item.forma && outra && item.forma !== outra)) return { forma: null, formaEmDisputa: true };
   return { forma: item.forma ?? outra };
 }
 
-function acrescentarAviso(estado: EstadoDaCaixa, aviso: AvisoDoDiarioParaCaixa): EstadoDaCaixa {
+type ComVisto = (extra?: Partial<AvisoVisto>, itens?: ItemAConferir[], recibos?: ReciboDeEstorno[]) => EstadoDaCaixa;
+
+/**
+ * Estorno nunca vira saída. Uma única compra pendente correspondente: as duas
+ * saem da lista e fica um recibo. Já confirmada, mais de uma candidata, valor
+ * diferente (estorno parcial) ou nenhuma: vira item de estorno, e nada é
+ * descartado sozinho.
+ */
+function acrescentarEstorno(
+  estado: EstadoDaCaixa,
+  aviso: AvisoDoDiarioParaCaixa,
+  estorno: EstornoLido,
+  comVisto: ComVisto,
+  jaGravados: ReadonlySet<string>,
+): EstadoDaCaixa {
+  const valor = estorno.valor ?? undefined;
+  /* O mesmo estorno avisado de novo (banco e carteira, ou texto atualizado). */
+  const repetido = valor === undefined ? undefined : Object.values(estado.vistos).find((v) => v.estorno && v.valor === valor
+    && ((v.pacote === aviso.pacote && v.chave === aviso.chave) || Math.abs(v.quando - aviso.quando) <= JANELA_DE_DUPLICATA_MS));
+  if (repetido) return comVisto({ estorno: true, valor, itemId: repetido.itemId });
+
+  const candidatas = estado.itens.filter((i) => compraPendenteDoEstorno(i, estorno, aviso.quando, jaGravados));
+  if (candidatas.length === 1 && valor !== undefined) {
+    const compra = candidatas[0];
+    const recibo: ReciboDeEstorno = {
+      id: aviso.id,
+      quando: aviso.quando,
+      expiraEm: aviso.quando + VALIDADE_DO_RECIBO_MS,
+      valor,
+      contraparte: compra.descricao ?? compra.contraparte ?? estorno.contraparte,
+      dataDaCompra: compra.data,
+      dataDoEstorno: estorno.data,
+    };
+    return comVisto({ estorno: true, valor }, estado.itens.filter((i) => i.id !== compra.id), [...(estado.recibos ?? []), recibo]);
+  }
+
+  const item: ItemAConferir = {
+    id: aviso.id,
+    avisoIds: [aviso.id],
+    pacote: aviso.pacote,
+    classe: classeDoApp(aviso.pacote),
+    quando: aviso.quando,
+    expiraEm: aviso.quando + VALIDADE_DO_ITEM_MS,
+    tipo: 'estorno',
+    data: estorno.data,
+    valor,
+    contraparte: estorno.contraparte,
+    descricao: estorno.contraparte,
+    digitos: estorno.digitos,
+  };
+  return comVisto({ estorno: true, valor, itemId: item.id }, [...estado.itens, item]);
+}
+
+function acrescentarAviso(estado: EstadoDaCaixa, aviso: AvisoDoDiarioParaCaixa, jaGravados: ReadonlySet<string>): EstadoDaCaixa {
   const classe = classeDoApp(aviso.pacote);
   const visto: AvisoVisto = { quando: aviso.quando, pacote: aviso.pacote, chave: aviso.chave, classe };
   const entendido = interpretarAviso(aviso);
-  const comVisto = (extra: Partial<AvisoVisto> = {}, itens = estado.itens): EstadoDaCaixa => ({
+  const comVisto: ComVisto = (extra = {}, itens = estado.itens, recibos = estado.recibos) => ({
     itens,
     vistos: { ...estado.vistos, [aviso.id]: { ...visto, ...extra } },
+    ...(recibos ? { recibos } : {}),
   });
 
   if (entendido.tipo === 'ignorar' || entendido.tipo === 'fatura_paga') return comVisto();
+  if (entendido.tipo === 'estorno') return acrescentarEstorno(estado, aviso, entendido, comVisto, jaGravados);
 
   const base = { id: aviso.id, avisoIds: [aviso.id], pacote: aviso.pacote, classe, quando: aviso.quando };
   if (entendido.tipo === 'nao_entendi') {
@@ -125,14 +237,70 @@ function acrescentarAviso(estado: EstadoDaCaixa, aviso: AvisoDoDiarioParaCaixa):
   return comVisto({ valor: entendido.valor, itemId: item.id }, [...estado.itens, item]);
 }
 
-/** Processa o que ainda não foi visto, do aviso mais antigo para o mais novo. */
-export function aplicarAvisos(estado: EstadoDaCaixa, avisos: AvisoDoDiarioParaCaixa[], agora: number): EstadoDaCaixa {
+/**
+ * Item pendente cujos avisos, relidos com o dicionário atual, são todos compra
+ * recusada: sai da lista. Só alcança o que ainda está no diário (7 dias); o que
+ * já foi gravado não é tocado.
+ */
+function semRecusasAntigas(itens: ItemAConferir[], avisos: AvisoDoDiarioParaCaixa[], jaGravados: ReadonlySet<string>): ItemAConferir[] {
+  const porId = new Map(avisos.map((a) => [a.id, a]));
+  return itens.filter((item) => {
+    if (item.tipo === 'estorno' || jaGravados.has(item.id) || item.contaEmPagamento) return true;
+    const textos = item.avisoIds.map((id) => porId.get(id)).filter((a): a is AvisoDoDiarioParaCaixa => !!a);
+    if (!textos.length) return true;
+    return !textos.every((a) => {
+      const relido = interpretarAviso(a);
+      return relido.tipo === 'ignorar' && relido.motivo === 'recusada';
+    });
+  });
+}
+
+/**
+ * Processa o que ainda não foi visto, do aviso mais antigo para o mais novo.
+ * `jaGravados` são os itens já registrados que só faltam sair da lista: contam
+ * como lançamento confirmado, e o estorno deles nunca é descartado sozinho.
+ */
+export function aplicarAvisos(
+  estado: EstadoDaCaixa,
+  avisos: AvisoDoDiarioParaCaixa[],
+  agora: number,
+  jaGravados: ReadonlySet<string> = new Set(),
+): EstadoDaCaixa {
   const novos = avisos.filter((a) => !estado.vistos[a.id]).sort((a, b) => a.quando - b.quando);
-  const proximo = novos.reduce(acrescentarAviso, estado);
+  const proximo = novos.reduce((e, a) => acrescentarAviso(e, a, jaGravados), estado);
+  const recibos = (proximo.recibos ?? []).filter((r) => r.expiraEm > agora);
   return {
-    itens: proximo.itens.filter((i) => i.expiraEm > agora),
+    itens: semRecusasAntigas(proximo.itens, avisos, jaGravados).filter((i) => i.expiraEm > agora),
     vistos: Object.fromEntries(Object.entries(proximo.vistos).filter(([, v]) => v.quando + VALIDADE_DO_VISTO_MS > agora)),
+    ...(recibos.length ? { recibos } : {}),
   };
+}
+
+type LancamentoParaEstorno = {
+  id: string; type: TxType; amount: number; occurred_on: string; description?: string | null; card_id?: string | null;
+  installment_total?: number | null; recurring?: boolean | null;
+};
+
+/**
+ * Lançamentos já confirmados que este estorno pode anular, para a tela perguntar.
+ * Mesmo valor em centavos, saída, até 7 dias antes, loja equivalente e, quando o
+ * lançamento é de um cartão conhecido, o mesmo final. A tela só oferece remover
+ * com exatamente um; quem remove é o toque da pessoa.
+ */
+export function lancamentosDoEstorno<T extends LancamentoParaEstorno>(item: ItemAConferir, lancamentos: T[], cartoes: CreditCard[] = []): T[] {
+  if (item.tipo !== 'estorno' || item.valor === undefined) return [];
+  const valor = item.valor;
+  const doEstorno = Date.parse(`${item.data}T12:00:00Z`);
+  return lancamentos.filter((t) => {
+    if (t.type !== 'out' || centavos(Number(t.amount)) !== centavos(valor)) return false;
+    /* Parcela e série que se repete têm outra pergunta para apagar: nunca por aqui. */
+    if ((t.installment_total ?? 1) > 1 || t.recurring) return false;
+    const dias = (doEstorno - Date.parse(`${t.occurred_on}T12:00:00Z`)) / DIA_MS;
+    if (!(dias >= 0 && dias <= 7)) return false;
+    const final = t.card_id ? cartoes.find((c) => c.id === t.card_id)?.last_digits : undefined;
+    if (final && item.digitos && final !== item.digitos) return false;
+    return mesmoComerciante(t.description, item.contraparte ?? item.descricao);
+  });
 }
 
 /** Chave de idempotência estável, derivada do id do aviso, no formato de UUID. */

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lerDiarioAvisos } from '@/modules/grana-avisos';
-import { aplicarAvisos, CAIXA_VAZIA, FINAL_VARIAVEL, type EstadoDaCaixa, type FormasAprendidas, type ItemAConferir } from './decidir';
+import { aplicarAvisos, CAIXA_VAZIA, FINAL_VARIAVEL, type EstadoDaCaixa, type FormasAprendidas, type ItemAConferir, type ReciboDeEstorno } from './decidir';
 import type { FormaDoAviso } from './interpretar';
 
 /**
@@ -33,15 +33,34 @@ async function ler(dono: string): Promise<EstadoDaCaixa> {
 
 const gravar = (dono: string, estado: EstadoDaCaixa) => AsyncStorage.setItem(chaveDoDono(dono), JSON.stringify(estado));
 
-export type ResultadoDaCaixa = { itens: ItemAConferir[]; ilegiveis: number };
+export type ResultadoDaCaixa = { itens: ItemAConferir[]; ilegiveis: number; recibos: ReciboDeEstorno[] };
 
-/** Traz do diário o que ainda não foi visto. Rejeita se o diário ou a caixa falharem. */
+/**
+ * Traz do diário o que ainda não foi visto. Rejeita se o diário ou a caixa falharem.
+ * Os itens já gravados (marca de gravado) contam como confirmados: estorno deles
+ * nunca é descartado sozinho.
+ */
 export function sincronizarCaixa(dono: string, agora: number = Date.now()): Promise<ResultadoDaCaixa> {
   return naVez(async () => {
-    const [diario, estado] = await Promise.all([lerDiarioAvisos(), ler(dono)]);
-    const proximo = aplicarAvisos(estado, diario.itens, agora);
+    const [diario, estado, marcas] = await Promise.all([lerDiarioAvisos(), ler(dono), lerMarcas(dono)]);
+    const proximo = aplicarAvisos(estado, diario.itens, agora, new Set(Object.keys(marcas)));
     await gravar(dono, proximo);
-    return { itens: proximo.itens, ilegiveis: diario.ilegiveis };
+    return { itens: proximo.itens, ilegiveis: diario.ilegiveis, recibos: proximo.recibos ?? [] };
+  });
+}
+
+/** Recibos do descarte automático por estorno, para a tela mostrar o que saiu. */
+export function recibosDaCaixa(dono: string): Promise<ReciboDeEstorno[]> {
+  return naVez(async () => (await ler(dono)).recibos ?? []);
+}
+
+/** A pessoa já viu o recibo: sai da lista. */
+export function dispensarRecibo(dono: string, id: string): Promise<void> {
+  return naVez(async () => {
+    const estado = await ler(dono);
+    const recibos = (estado.recibos ?? []).filter((r) => r.id !== id);
+    const { recibos: _antigos, ...resto } = estado;
+    await gravar(dono, recibos.length ? { ...resto, recibos } : resto);
   });
 }
 

@@ -34,19 +34,51 @@ export type AvisoEntendido =
       data: string;
     }
   | { tipo: 'nao_entendi'; data: string }
+  | {
+      /**
+       * Dinheiro que voltou: estorno, compra cancelada, reembolso ou devolução.
+       * Nunca vira saída. `valor` fica null quando o aviso traz mais de um valor:
+       * aí nada é descartado sozinho.
+       */
+      tipo: 'estorno';
+      valor: number | null;
+      contraparte: string | null;
+      digitos: string | null;
+      data: string;
+    }
   | { tipo: 'fatura_paga'; data: string }
   | { tipo: 'ignorar'; motivo: MotivoIgnorado };
 
 export type AvisoParaInterpretar = { pacote: string; titulo: string; texto: string; quando: number };
 
 const ESPACOS = /[   ]/g;
-const VALOR = /r\$\s?(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{2}))?(?!\d|,\d)/g;
+/* `R$ 12.34` (C6, 07/11/2026) usa ponto no lugar da vírgula: dois dígitos depois do
+   ponto, e nada colado, é centavo; três dígitos continuam sendo milhar (`R$ 1.234`). */
+const VALOR = /r\$\s?(?:(\d+)\.(\d{2})(?![\d.,])|(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{2}))?(?!\d|,\d))/g;
 /** Verbo e valor separados por mais que isto, ou por fim de frase, não contam como colados. */
 const FOLGA_MAXIMA = 50;
 
+/**
+ * Compra que não aconteceu: recusa, tentativa, análise ou bloqueio. Vence todo o
+ * resto, até a menção à fatura, porque nada disso tirou dinheiro de ninguém.
+ * "Cancelada" sozinha é estorno (a compra existiu e voltou); só conta como recusa
+ * junto de segurança ou suspeita. Lida no texto sem acento e em minúsculas.
+ */
+export const RECUSA = new RegExp([
+  String.raw`\b(?:recusad|negad|rejeitad|reprovad|bloquead|impedid)`,
+  String.raw`\bnao\s+(?:foi\s+|pode\s+ser\s+)?(?:autorizad|aprovad|concluid|realizad|efetuad|processad|finalizad|completad|permitid)`,
+  String.raw`\bnao foi possivel|\bnao conseguimos|\bfalhou\b|\bfalha\s+n[ao]\b`,
+  String.raw`\b(?:limite|saldo)\s+(?:\S+\s+){0,3}?insuficiente`,
+  String.raw`\btentativa\s+de\s+(?:compra|pagamento|transacao|pix|uso)`,
+  String.raw`\b(?:compra|transacao|pagamento|pix)\s+(?:\S+\s+){0,4}?(?:em|sob)\s+analise\b`,
+  String.raw`\bcancelad[ao]s?\s+(?:\S+\s+){0,2}?por\s+(?:sua\s+)?seguranca\b`,
+  String.raw`\b(?:suspeita\s+de\s+fraude|compra\s+suspeita|transacao\s+suspeita)`,
+].join('|'));
+
+/* Dinheiro que voltou. "Pix devolvido" e "reembolso" também: nenhum é saída. */
+const ESTORNO = /\b(?:estorn|reembols|devoluc|devolvid|revertid|revers[ao]|cancelad|cancelament|desfeit)\w*/;
+
 const NEGATIVOS: [RegExp, MotivoIgnorado][] = [
-  [/\b(?:recusad|negad|nao\s+(?:foi\s+|pode\s+ser\s+)?(?:autorizad|aprovad|concluid|realizad|efetuad|processad|finalizad)|nao foi possivel|nao conseguimos|falhou|bloquead|cancelad)/, 'recusada'],
-  [/\b(?:estorn|reembols|devoluc|devolvid|revertid|revers[ao])/, 'estorno'],
   [/\b(?:agendad|agendament|programad)/, 'agendado'],
   [/\blimite\b/, 'limite'],
   [/\b(?:oferta|promoc|aproveite|ganhe|cashback|desconto|pre-?aprovad|emprestimo|consignado|cupom|convite|indique|sorteio)/, 'oferta'],
@@ -113,8 +145,10 @@ type ValorAchado = { valor: number; inicio: number; fim: number };
 function valoresDe(base: string): ValorAchado[] {
   const achados: ValorAchado[] = [];
   for (const m of base.matchAll(VALOR)) {
-    const reais = Number(m[1].replace(/\./g, ''));
-    const valor = reais + (m[2] ? Number(m[2]) / 100 : 0);
+    const comPonto = m[1] !== undefined;
+    const reais = comPonto ? Number(m[1]) : Number(m[3].replace(/\./g, ''));
+    const centavos = comPonto ? m[2] : m[4];
+    const valor = Math.round((reais + (centavos ? Number(centavos) / 100 : 0)) * 100) / 100;
     if (valor > 0) achados.push({ valor, inicio: m.index, fim: m.index + m[0].length });
   }
   return achados;
@@ -185,8 +219,9 @@ function dataLocal(quando: number): string {
 }
 
 function digitosDe(base: string): string | null {
-  const m = base.match(/\bfinal\s*:?\s*(\d{4})\b/)
-    ?? base.match(/(?:\*{2,}|•+|\.{2,})\s?(\d{4})\b/)
+  /* "final 1234********0000" (C6): o final de verdade é o grupo depois da máscara. */
+  const m = base.match(/(?:\*{2,}|•+|\.{2,})\s?(\d{4})\b/)
+    ?? base.match(/\bfinal\s*:?\s*(\d{4})\b/)
     ?? base.match(/\bcartao\s+(\d{4})\b/);
   return m ? m[1] : null;
 }
@@ -258,6 +293,8 @@ export function interpretarAviso(aviso: AvisoParaInterpretar): AvisoEntendido {
     return { tipo: 'ignorar', motivo: 'moeda_estrangeira' };
   }
   if (!valoresDe(completo).length) return { tipo: 'ignorar', motivo: 'sem_valor' };
+  /* Antes de apagar limite e saldo: "Limite insuficiente" no título é a recusa, não rodapé. */
+  if (RECUSA.test(completo)) return { tipo: 'ignorar', motivo: 'recusada' };
 
   /* "Limite disponível: R$ 900,00" no fim de um aviso de compra não é o valor
      da compra. Troca por espaços para as posições continuarem valendo. */
@@ -267,6 +304,20 @@ export function interpretarAviso(aviso: AvisoParaInterpretar): AvisoEntendido {
   const valores = valoresDe(semSaldo);
   if (!valores.length) {
     return { tipo: 'ignorar', motivo: base === completo ? 'saldo' : 'limite' };
+  }
+
+  /* Pagamento de fatura devolvido não é compra voltando: segue a regra da fatura. */
+  if (ESTORNO.test(semSaldo) && !(MENCAO_A_FATURA.test(semSaldo) && PAGOU.test(semSaldo))) {
+    const umValor = new Set(valores.map((v) => v.valor)).size === 1;
+    const doEstorno = umValor ? valorColado(semSaldo, ESTORNO, valores) ?? valores[0] : null;
+    return {
+      tipo: 'estorno',
+      valor: doEstorno?.valor ?? null,
+      /* "Reembolso de R$ 15,00 da compra em Loja Modelo": a loja é o que vem depois. */
+      contraparte: doEstorno ? contraparteDe(original, semSaldo, doEstorno)?.replace(/^(?:sua\s+)?(?:compra|pagamento)\s+(?:feit[ao]\s+)?(?:em|no|na)\s+/i, '') || null : null,
+      digitos: digitosDe(semSaldo),
+      data,
+    };
   }
 
   /* Com fatura no texto, só compra, comprou ou gastou podem virar lançamento, e
@@ -358,6 +409,10 @@ export function resumoDoEntendido(e: AvisoEntendido): string {
   };
   if (e.tipo === 'nao_entendi') return 'Não entendi. Foi para a lista, para preencher à mão.';
   if (e.tipo === 'fatura_paga') return 'Fatura paga. Não vira lançamento.';
+  if (e.tipo === 'estorno') {
+    const partes = [e.valor !== null ? `R$ ${e.valor.toFixed(2).replace('.', ',')}` : 'valor incerto', e.contraparte, e.digitos ? `final ${e.digitos}` : null];
+    return `Estorno: ${partes.filter(Boolean).join(', ')}. Nunca vira saída.`;
+  }
   if (e.tipo === 'ignorar') return `Ignorado: ${MOTIVOS[e.motivo]}.`;
   const valor = `R$ ${e.valor.toFixed(2).replace('.', ',')}`;
   const partes = [

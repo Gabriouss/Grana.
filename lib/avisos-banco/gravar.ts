@@ -1,4 +1,4 @@
-import { payBill } from '../data';
+import { deleteTransaction, payBill } from '../data';
 import { todayISO } from '../format';
 import { salvarOuGuardarNoAparelho, salvarOuGuardarParceladaNoAparelho } from '../offline-cache';
 import type { Bill } from '../types';
@@ -84,11 +84,21 @@ async function aprenderForma(dono: string, item: ItemAConferir, entrada: Entrada
   });
 }
 
+/** Estorno nunca vira saída por este caminho. */
+export class ItemNaoGravavel extends Error {
+  constructor() {
+    super('Este aviso é um estorno e não vira lançamento');
+    this.name = 'ItemNaoGravavel';
+  }
+}
+
 export async function gravarItem(
   dono: string,
   item: ItemAConferir,
   entrada: EntradaDoAviso
 ): Promise<{ guardado: boolean; jaEstava: boolean }> {
+  /* Dinheiro que voltou nunca é gravado como saída (pedido do autor, 07/11/2026). */
+  if (item.tipo === 'estorno') throw new ItemNaoGravavel();
   let guardado = gravadosNesteProcesso.get(`${dono}:${item.id}`) ?? await marcaDeGravado(dono, item.id);
   const jaEstava = guardado !== undefined;
   if (guardado === undefined) {
@@ -131,6 +141,16 @@ export async function itensJaGravados(dono: string): Promise<Set<string>> {
   const prefixo = `${dono}:`;
   const naMemoria = [...gravadosNesteProcesso.keys()].filter((k) => k.startsWith(prefixo)).map((k) => k.slice(prefixo.length));
   return new Set([...naMemoria, ...Object.keys(await todasAsMarcasDeGravado(dono))]);
+}
+
+/**
+ * Só com o toque da pessoa no item de estorno: apaga o lançamento já confirmado
+ * que o estorno anula e tira o estorno da lista. Se apagar falhar, o item fica.
+ */
+export async function removerLancamentoDoEstorno(dono: string, item: ItemAConferir, lancamentoId: string): Promise<void> {
+  if (item.tipo !== 'estorno') throw new Error('Só um aviso de estorno remove lançamento');
+  await deleteTransaction(lancamentoId);
+  await tirarDaLista(dono, item.id, 'lancamento');
 }
 
 /** Tira da lista o aviso já registrado. Não grava nada. */

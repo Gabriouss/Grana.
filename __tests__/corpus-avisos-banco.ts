@@ -44,6 +44,15 @@ function ignorado(titulo: string, texto: string, motivo: string) {
   if (r.tipo === 'ignorar' && r.motivo === motivo) passaram++;
   else falhou(`${titulo} | ${texto}`, r);
 }
+/** Estorno nunca é lançamento: vira item próprio, com o valor para achar a compra. */
+function estorno(titulo: string, texto: string, e: { valor: number | null; contraparte?: string | null; digitos?: string | null }, pacote = NUBANK) {
+  const r = ler(titulo, texto, pacote);
+  const certo = r.tipo === 'estorno' && (e.valor === null ? r.valor === null : r.valor !== null && Math.abs(r.valor - e.valor) < 0.001)
+    && (e.contraparte === undefined || r.contraparte === e.contraparte)
+    && (e.digitos === undefined || r.digitos === e.digitos);
+  if (certo) passaram++;
+  else falhou(`${titulo} | ${texto}`, r);
+}
 function tipo(titulo: string, texto: string, esperado: AvisoEntendido['tipo'], pacote = NUBANK) {
   const r = ler(titulo, texto, pacote);
   if (r.tipo === esperado) passaram++;
@@ -95,9 +104,10 @@ ignorado('Fatura fechada', 'Sua fatura de R$ 700,00 vence amanhã', 'fatura');
 /* Negativos, com o mesmo peso */
 ignorado('Compra recusada', 'Compra de R$ 89,90 em Mercado Modelo foi recusada', 'recusada');
 ignorado('', 'Compra de R$ 89,90 não autorizada', 'recusada');
-ignorado('', 'Compra de R$ 20,00 cancelada', 'recusada');
-ignorado('Estorno', 'Estorno de R$ 89,90 em Mercado Modelo', 'estorno');
-ignorado('', 'Reembolso de R$ 15,00 da compra em Loja Modelo', 'estorno');
+/* Desde 07/11/2026 "cancelada" sozinha é estorno (a compra existiu e voltou), nunca saída. */
+estorno('', 'Compra de R$ 20,00 cancelada', { valor: 20 });
+estorno('Estorno', 'Estorno de R$ 89,90 em Mercado Modelo', { valor: 89.9, contraparte: 'Mercado Modelo' });
+estorno('', 'Reembolso de R$ 15,00 da compra em Loja Modelo', { valor: 15, contraparte: 'Loja Modelo' });
 ignorado('', 'Pix agendado de R$ 100,00 para Maria Exemplo', 'agendado');
 ignorado('', 'Pagamento agendado: R$ 90,00', 'agendado');
 ignorado('', 'Seu limite aumentou para R$ 5.000,00', 'limite');
@@ -118,7 +128,7 @@ for (const fim of ['não foi aprovada', 'não foi autorizada', 'não foi conclu�
   ignorado('Compra no débito', `Compra de R$ 89,90 em Mercado Modelo ${fim}`, 'recusada');
 }
 ignorado('', 'Não foi possível concluir a compra de R$ 89,90', 'recusada');
-ignorado('', 'Compra de R$ 89,90 foi revertida', 'estorno');
+estorno('', 'Compra de R$ 89,90 foi revertida', { valor: 89.9 });
 lancamento('', 'Compra aprovada de R$ 89,90 em Mercado Modelo', { direcao: 'out', forma: null, valor: 89.9, descricao: 'Mercado Modelo' });
 
 /* A2: fatura sem compra nunca lança, a qualquer distância e em outra linha */
@@ -231,7 +241,7 @@ ignorado('', 'Aumentamos seu limite para R$ 5.000,00', 'limite');
 /* Recusa vence, com o limite em qualquer lugar */
 ignorado('', 'Compra de R$ 10,00 negada por falta de limite', 'recusada');
 ignorado('', 'Compra de R$ 10,00 negada. Seu limite de crédito disponível é R$ 900,00', 'recusada');
-ignorado('', 'Limite insuficiente, compra de R$ 10,00 negada', 'limite');
+ignorado('', 'Limite insuficiente, compra de R$ 10,00 negada', 'recusada'); // era 'limite' antes de 07/11: continua ignorado, agora pelo motivo certo
 /* Vírgula logo depois do valor não pode fazer a compra sumir */
 lancamento('', 'Compra de R$ 10,00, em Loja Exemplo', { ...compra(null), descricao: 'Loja Exemplo' });
 /* Na dúvida entre compra e descarte: visível, nunca lançamento */
@@ -259,6 +269,51 @@ lancamento('Compra aprovada', 'Debitado R$ 10,00 da sua conta.', { ...compra('de
 lancamento('Você pagou Pix Modelo', 'R$ 10,00 na loja', compra('pix'));
 lancamento('Você pagou Crédito Modelo', 'Debitamos R$ 10,00 da sua conta.', compra(null));
 lancamento('Você pagou Débito Modelo', 'R$ 10,00 na loja', compra('debit'));
+
+/* Recusa (pedido do autor, 07/11/2026). O primeiro é o formato real do C6, com
+   cartão e valor trocados por dados inventados. Nada disso tirou dinheiro. */
+const C6 = 'com.c6bank.app';
+const recusa = (titulo: string, texto: string, pacote = NUBANK) => {
+  const r = ler(titulo, texto, pacote);
+  if (r.tipo === 'ignorar' && r.motivo === 'recusada') passaram++;
+  else falhou(`${titulo} | ${texto}`, r);
+};
+recusa('Compra recusada: limite insuficiente', 'A compra no cartão final 1234********0000 em 07/11/2026, de R$ 12.34, em DL *UberRides Sao Paulo BRA, foi recusada por limite de crédito insuficiente. Toque para conferir seu limite', C6);
+recusa('Compra recusada', 'Sua compra de R$ 45,90 em Loja Modelo foi recusada.');
+recusa('Compra nao aprovada', 'Compra de R$ 45,90 em LOJA MODELO nao aprovada no cartao final 4321', 'br.com.intermedium');
+recusa('Compra não autorizada', 'Compra de R$ 45,90 em LOJA MODELO não autorizada. Cartão final 4321', 'com.itau');
+recusa('Transação negada', 'Transação de R$ 45,90 em LOJA MODELO negada. Saldo insuficiente.', 'com.bradesco');
+recusa('Santander', 'Compra negada de R$ 45,90 em LOJA MODELO no cartão final 4321', 'com.santander.app');
+recusa('CAIXA', 'Transacao nao autorizada: R$ 45,90 LOJA MODELO', 'br.com.gabba.Caixa');
+recusa('BB', 'Compra não efetuada de R$ 45,90 em LOJA MODELO. Cartão final 4321', 'br.com.bb.android');
+recusa('Pagamento não realizado', 'Seu pagamento de R$ 45,90 para Loja Modelo não foi realizado.', 'com.picpay');
+recusa('Pagamento rejeitado', 'Seu pagamento de R$ 45,90 em Loja Modelo foi rejeitado.', 'com.mercadopago.wallet');
+recusa('Tentativa de compra', 'Identificamos uma tentativa de compra de R$ 45,90 em LOJA MODELO no cartão final 4321');
+recusa('Compra em análise', 'Sua compra de R$ 45,90 em Loja Modelo está em análise.');
+recusa('Compra bloqueada', 'Bloqueamos a compra de R$ 45,90 em Loja Modelo por segurança.');
+recusa('Transação cancelada por segurança', 'Compra de R$ 45,90 em Loja Modelo cancelada por segurança.');
+recusa('Saldo insuficiente', 'Compra no débito de R$ 45,90 em Loja Modelo não aprovada: saldo insuficiente');
+recusa('Limite insuficiente', 'Compra de R$ 45,90 em LOJA MODELO. Limite insuficiente.');
+recusa('Pix não concluído', 'Seu Pix de R$ 45,90 para Maria Modelo não foi concluído.');
+
+/* Sem falso positivo: o que é compra feita continua virando item igual a antes. */
+lancamento('Compra aprovada', 'Compra de R$ 12.34 aprovada em DL *UberRides Sao Paulo BRA no cartão final 1234********0000', { direcao: 'out', forma: null, valor: 12.34, digitos: '0000' }, C6);
+lancamento('Compra aprovada', 'Compra no crédito de R$ 1.234,56 aprovada em Loja Modelo', { direcao: 'out', forma: 'credit', valor: 1234.56 });
+lancamento('Pix enviado', 'Pix enviado de R$ 45,90 para Maria Modelo', { direcao: 'out', forma: 'pix', valor: 45.9 });
+lancamento('Pix recebido', 'Pix recebido de R$ 45,90 de Maria Modelo', { direcao: 'in', forma: 'pix', valor: 45.9 });
+lancamento('Pagamento realizado', 'Pagamento de R$ 45,90 realizado em Loja Modelo com o cartão de débito', { direcao: 'out', forma: 'debit', valor: 45.9 });
+lancamento('Compra aprovada', 'Compra de R$ 45,90 em Loja Modelo. Limite disponível R$ 900,00', { direcao: 'out', forma: 'credit', valor: 45.9, descricao: 'Loja Modelo' });
+
+/* Estorno: nunca saída; leva valor, loja e final para achar a compra. */
+estorno('Estorno', 'Estorno de R$ 12.34 em DL *UberRides Sao Paulo BRA no cartão final 1234********0000', { valor: 12.34, digitos: '0000' }, C6);
+estorno('Compra estornada', 'A compra de R$ 45,90 em Loja Modelo foi estornada.', { valor: 45.9 });
+estorno('Compra cancelada', 'Sua compra de R$ 45,90 em LOJA MODELO foi cancelada. O valor volta para o seu limite.', { valor: 45.9 });
+estorno('Reembolso', 'Você recebeu um reembolso de R$ 45,90 de Loja Modelo', { valor: 45.9 });
+estorno('Pix devolvido', 'Devolução de Pix de R$ 45,90 recebida de Maria Modelo', { valor: 45.9 });
+estorno('Estorno', 'Estorno de R$ 45,90 creditado na sua fatura', { valor: 45.9 });
+estorno('Estorno parcial', 'Estorno de R$ 10,00 da compra de R$ 45,90 em Loja Modelo', { valor: null });
+/* Fatura paga e devolvida continua sendo assunto de fatura. */
+tipo('Pagamento devolvido', 'O pagamento da fatura de R$ 45,90 foi devolvido', 'fatura_paga');
 
 /* A data é a da hora local do aviso, mesmo perto da meia-noite */
 const r = interpretarAviso({ pacote: NUBANK, titulo: 'Compra', texto: 'Compra de R$ 10,00 em Loja Modelo', quando: QUANDO });
