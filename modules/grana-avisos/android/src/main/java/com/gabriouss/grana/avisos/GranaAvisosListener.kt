@@ -73,6 +73,8 @@ class GranaAvisosListener : NotificationListenerService() {
     val quando = sbn.notification.`when`.takeIf { it > 0L } ?: sbn.postTime
     val novo = diario(this).guardar(AvisosDiario.Aviso(sbn.packageName, sbn.key, quando, titulo, texto))
     if (!novo || !notificar) return
+    /* Compra recusada fica no diário (o app a ignora), mas não pede conferência. */
+    if (AvisosFiltro.ehRecusa(titulo, texto)) return
     val valor = VALOR_EM_REAIS.find("$titulo $texto")?.value ?: return
     publicarNotificacao(valor)
   }
