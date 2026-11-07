@@ -169,6 +169,16 @@ Lumen relata denúncia em `1a1f9cfa`/`ead42e2b`, com UI incorporada ao commit de
 
 **Watchtower libera portão:** `relatorio-watchtower-validacao.md` conclui WT-R1/R2/R3/R4/R5 corrigidos nos caminhos e casos verificados, sem novo bloqueador comprovado. Sondas e focais independentes são de Watchtower; Codex leu o parecer, mas não os repetiu, nem Ledger. Não homologa aparelho, produção ou migrations. Codex relata clone limpo `0f1394a6`, reversão nova de `d76855f3`, `package.json` idêntico a `5760248e` e cobertura transitiva do ciclo preservada sem duplicação. Harbor iniciou portão sequencial: main tsc/CI → clone tsc/CI/avisos, com logs e hashes, sem repetir etapas verdes. Nenhum resultado global confirmado; `FIM-harbor-2.md` só após conclusão.
 
+**Retorno da coordenação e novas decisões do autor:** conta Claude atingiu o limite de 5h por volta das 11h; a pedido do autor, Codex conduziu a retomada. Orquestrador Supremo voltou às 14h25 e retomou a coordenação.
+
+**Build pessoal — somente preparação:** autor pediu “deixa o aplicativo pronto aí pra gente disparar uma build de teste pra instalar aqui só no meu celular, beleza?”. `ordem-build-teste.md` distingue preparar de disparar: ainda não houve “dispara” ou equivalente explícito. É uma build `development` para o celular do autor, dependente do portão e das conferências da ordem; não foi disparada neste registro.
+
+**Migrations — autorização e revisão:** à pergunta “Aplico antes da build?”, autor respondeu “Sim, as duas (Recomendado)” e informou que só consegue liberar manual mode no terminal do Orquestrador Supremo. Ele próprio aplicará as duas após revisão Lynx (`ordem-lynx-migrations.md`); autorização não comprova aplicação. Checagem somente leitura relatada: ambas as tabelas ausentes e `tem_direito_acesso` presente. A ordem de build atribui a Anvil renomear somente o arquivo de denúncia para timestamp distinto antes da build; execução ainda não confirmada. Grants reais e RLS em Postgres continuam sem prova até verificação própria.
+
+**Avisos — decisões do autor:** respostas literais “Ícone discreto no cabeçalho (Recomendado)” e “Avisar antes de sumir (Recomendado)”. `ordem-meridian-3.md` determina atalho com contagem e que item vencido não saia por validade sem ter aparecido ao menos uma vez marcado “Vence hoje”; implementação não confirmada.
+
+**Portão parcial, relato da coordenação:** vigia encerrado pelo sistema por falta de memória. Main `tsc` e `test:ci` exit 0; clone `tsc` exit 0; clone `test:ci` em andamento. Ledger não repetiu as provas. Não há resultado global ou `FIM` confirmado.
+
 **Em aberto.** Os relatórios `relatorio-*.md` e os `FIM-*.md` da pasta da rodada entram aqui à medida que surgirem, cada um em registro curto, separando testado de relatado.
 
 ## 02/11 — motion-supremo unificada nas três cópias
