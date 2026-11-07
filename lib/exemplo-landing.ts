@@ -1,13 +1,14 @@
 /** Exemplo ficticio de setembro/2026. Atualizado para a regra autorizada em
- * 17/10/2026: os cofrinhos existentes sao anteriores ao mes (reserva zero),
- * e a fatura aberta de 1342,50 reserva dinheiro antes do pagamento.
+ * 07/11/2026: os cofrinhos existentes sao anteriores ao mes (reserva zero), e
+ * a fatura aberta de 1342,50 so desconta do Livre quando for paga.
  * Os numeros textuais acompanham a regra; capturas estaticas antigas precisam
  * ser refeitas pelo fluxo de capturas, sem retocar os valores em imagem.
  */
 const PARTIDA_CENTAVOS = {
   saldo: 581500,
   cofrinhos: 0,
-  creditoNaoPago: 134250,
+  /** 07/11/2026: credito nao pago nao reduz mais o Livre. */
+  creditoNaoPago: 0,
   diasRestantes: 26,
 } as const;
 
@@ -17,7 +18,7 @@ const CONTAS_DO_MES_CENTAVOS = 181135;
 const livreCentavos = PARTIDA_CENTAVOS.saldo - PARTIDA_CENTAVOS.cofrinhos - PARTIDA_CENTAVOS.creditoNaoPago;
 
 /* O por dia é ARREDONDADO ao centavo, igual ao que o app mostra
-   (4.472,50 ÷ 26 = 172,0230…). A exigência do V01 era que a subtração que a
+   (5.815,00 ÷ 26 = 223,6538…). A exigência do V01 era que a subtração que a
    pessoa lê na tela feche, e ela fecha ao centavo. */
 const porDiaCentavos = Math.round(livreCentavos / PARTIDA_CENTAVOS.diasRestantes);
 
@@ -26,9 +27,9 @@ export const EXEMPLO_LIVRE = {
   cofrinhos: PARTIDA_CENTAVOS.cofrinhos / 100,
   creditoNaoPago: PARTIDA_CENTAVOS.creditoNaoPago / 100,
   diasRestantes: PARTIDA_CENTAVOS.diasRestantes,
-  /** R$ 4.472,50: o que sobra depois da reserva do credito. */
+  /** R$ 5.815,00: saldo menos o guardado do mes (zero neste exemplo). */
   livreNoTotal: livreCentavos / 100,
-  /** R$ 172,02: o valor por dia que a Início mostra. */
+  /** R$ 223,65: o valor por dia que a Início mostra. */
   porDia: porDiaCentavos / 100,
 } as const;
 

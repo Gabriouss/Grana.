@@ -179,23 +179,30 @@ const caixa = (type, amount, occurred_on, extra = {}) => ({ type, amount, occurr
     '2026-09-24',
   );
   ok(Math.abs(r.saldoAtual - 142.67) < 1e-9, 'função pura: só setembro, só caixa (sem agosto, outubro, compra nem estorno no cartão)');
-  ok(r.diasRestantes === 7 && r.livrePorDia === 0, 'função pura: 7 dias e livre por dia');
+  /* 07/11/2026, pedido expresso do autor ("Fatura só desconta ao pagar"): a
+     compra de 500 no crédito não reduz mais o Livre, que era zero por ela. */
+  ok(r.diasRestantes === 7 && Math.abs(r.livrePorDia - 142.67 / 7) < 1e-9, 'função pura: 7 dias e livre por dia');
   ok(!('contasFixasPendentes' in r), 'função pura: boleto não faz parte do contrato');
   ok(calcularLivreParaGastar([], [], '2026-02-28').diasRestantes === 1 && calcularLivreParaGastar([], [], '2028-02-28').diasRestantes === 2,
     'dias restantes no fim de fevereiro, com e sem ano bissexto');
 
   // Pedido expresso 17/10/2026: handler real, origens e pagamento parcial.
+  // Atualizado pelo pedido de 07/11/2026 ("Fatura só desconta ao pagar"): o
+  // cartao (750) so pesa quando pago, entao 1000 -> 700 (parcial) -> 250 (quitada).
   agoraFixo = DataReal.parse('2026-10-17T12:00:00-03:00');
   TX = [caixa('in',5000,'2026-10-10'),caixa('out',3000,'2026-10-10'),caixa('out',750,'2026-10-10',{card_id:'c'})];
   CARDS = [{id:'c',closing_day:20}];
   PAYMENTS = [];
   GOALS = [{current_amount:6000,month_reserves:{'2026-10':1000}}];
-  casa(await perguntar(tool('livreParaGastar')),/: R\$ 250,00\n/,'17/10 exemplo real do autor: 250');
+  casa(await perguntar(tool('livreParaGastar')),/: R\$ 1\.000,00\n/,'07/11: fatura aberta nao reduz o Livre (1000)');
   TX.push(caixa('out',300,'2026-10-15'));
   PAYMENTS = [{card_id:'c',year:2026,month:9,amount:300,paid_on:'2026-10-15'}];
-  casa(await perguntar(tool('livreParaGastar')),/: R\$ 250,00\n/,'parcial nao conta duas vezes no handler');
+  casa(await perguntar(tool('livreParaGastar')),/: R\$ 700,00\n/,'parcial desconta uma vez no handler');
   TX.push(caixa('out',450,'2026-10-16'));PAYMENTS[0].amount=750;
   casa(await perguntar(tool('livreParaGastar')),/: R\$ 250,00\n/,'quitacao nao conta duas vezes no handler');
+  // 07/11: salario de 25/10 ja conta no Livre em 17/10, e o texto diz que e previsto.
+  TX.push(caixa('in',2000,'2026-10-25'));
+  casa(await perguntar(tool('livreParaGastar')),/: R\$ 2\.250,00\n[\s\S]*entradas previstas ainda neste mês R\$ 2\.000,00/,'07/11: salario futuro do mes conta desde ja no handler');
   TX=Array.from({length:1001},(_,i)=>caixa('in',1,'2026-10-10',{id:String(i)}));
   GOALS=[];CARDS=[];PAYMENTS=[];
   casa(await perguntar(tool('livreParaGastar')),/: R\$ 1\.001,00\n/,'handler pagina alem de 1000 lancamentos');

@@ -24,7 +24,7 @@ const app = carregar(path.join(root, 'lib/safe-to-spend.ts'));
 const servidor = carregar(path.join(root, 'supabase/functions/_shared/caixa.ts'));
 
 let passou = 0;
-const CAMPOS = ['saldoAtual', 'creditoNaoPago', 'reservadoEmMetas', 'diasRestantes', 'livreTotal', 'livrePorDia'];
+const CAMPOS = ['saldoAtual', 'entradasPrevistas', 'creditoNaoPago', 'reservadoEmMetas', 'diasRestantes', 'livreTotal', 'livrePorDia'];
 function comparar(transacoes, metas, hojeISO, rotulo) {
   const [a, m, d] = hojeISO.split('-').map(Number);
   const doApp = app.calcularSafeToSpend(transacoes, metas, new Date(a, m - 1, d, 12));
@@ -44,7 +44,9 @@ const ref = comparar([
   tx('in', 9000, '2026-08-10'), tx('in', 2948, '2026-09-05'), tx('out', 2805.33, '2026-09-10'),
   tx('out', 500, '2026-09-12', { payment_method: 'credit', card_id: 'c6' }),
 ], [], '2026-09-24', 'referência do autor');
-assert.ok(Math.abs(ref.saldoAtual - 142.67) < 1e-9 && ref.diasRestantes === 7 && ref.livrePorDia === 0);
+/* 07/11/2026, pedido expresso do autor ("Fatura só desconta ao pagar"): a
+   compra de 500 no crédito, ainda não paga, deixou de zerar o Livre. */
+assert.ok(Math.abs(ref.saldoAtual - 142.67) < 1e-9 && ref.diasRestantes === 7 && Math.abs(ref.livrePorDia - 142.67 / 7) < 1e-9);
 passou++;
 
 /* ── Históricos gerados ─────────────────────────────────────────────────── */

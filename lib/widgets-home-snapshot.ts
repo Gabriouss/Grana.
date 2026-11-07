@@ -168,7 +168,7 @@ export function montarSnapshotWidgets(input: {
       livrePorDia: livre.livrePorDia,
       livreTotal: livre.livreTotal,
       diasRestantes: livre.diasRestantes,
-      semSaldo: livre.saldoAtual <= 0,
+      semSaldo: livre.semSaldo,
     },
     nextCommitment: selecionarProximoCompromisso(input.bills, hoje),
     commitments: compromissos.itens,

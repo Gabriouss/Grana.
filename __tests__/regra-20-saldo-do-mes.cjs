@@ -1,4 +1,6 @@
-// Regra atualizada por pedido expresso do autor em 17/10/2026 (ordem da tarde).
+// Regra atualizada por pedido expresso do autor em 17/10/2026 (ordem da tarde)
+// e de novo em 07/11/2026 (ordem do orquestrador "ordem-keel-livre": salario
+// futuro do mes conta desde o dia 1; fatura so desconta ao pagar).
 /*
  * TRAVA DA REGRA 20 do AGENTS.md: "Saldo atual" e "Livre para gastar" usam
  * SÓ o mês vigente. Nunca saldo acumulado de meses anteriores, nunca
@@ -105,10 +107,13 @@ const contas = [
   const r = calcularSafeToSpend(transacoes, [], hoje);
   trava(centavos(r.saldoAtual) === 14267, `caso do autor: saldo esperado 142,67, veio ${r.saldoAtual}`);
   trava(r.diasRestantes === 7, `dias restantes em 24/09: 7, veio ${r.diasRestantes}`);
-  trava(centavos(r.livreTotal) === 0, `17/10: livre no total zero com credito pendente, veio ${r.livreTotal}`);
-  trava(centavos(r.livrePorDia) === 0, `17/10: livre por dia zero com credito pendente, veio ${r.livrePorDia}`);
+  /* 07/11/2026, pedido do autor: "Fatura só desconta ao pagar". As compras
+     no crédito de 345 + 90 deixam de zerar o Livre, que volta ao caso de
+     referência original: 142,67 no total e 20,38 por dia. */
+  trava(centavos(r.livreTotal) === 14267, `07/11: credito nao pago nao reduz o Livre, esperado 142,67, veio ${r.livreTotal}`);
+  trava(centavos(r.livrePorDia) === 2038, `07/11: livre por dia 20,38, veio ${r.livrePorDia}`);
   trava(!('contasFixasPendentes' in r), 'o resultado voltou a ter contas pendentes');
-  ok('17/10/2026: credito pendente zera o Livre; referencia de caixa preservada');
+  ok('07/11/2026: credito ainda nao pago nao reduz o Livre; referencia de caixa preservada');
 
   /* 2. Mês anterior e mês seguinte não entram. */
   const soSetembro = transacoes.filter((t) => t.occurred_on.startsWith('2026-09'));
@@ -206,12 +211,12 @@ const contas = [
     bills: [...contas, bill({ amount: 5000, due_date: '2026-09-02' }), bill({ amount: 800, due_date: '2026-08-10' })],
   });
   trava(
-    centavos(comMuitosBoletos.safeToSpend.livreTotal) === 0,
+    centavos(comMuitosBoletos.safeToSpend.livreTotal) === 14267,
     `boleto pendente ou atrasado mudou o Livre: ${comMuitosBoletos.safeToSpend.livreTotal}`
   );
   /* Pago, o boleto vira saída de caixa (pagar_conta) e aí sim pesa. */
   const pago = [...transacoes, tx({ type: 'out', amount: 107.18, occurred_on: '2026-09-24', description: 'Boleto pago' })];
-  trava(centavos(calcularSafeToSpend(pago, [], hoje).livreTotal) === 0, 'boleto pago não saiu do caixa');
+  trava(centavos(calcularSafeToSpend(pago, [], hoje).livreTotal) === 14267 - 10718, 'boleto pago não saiu do caixa');
   ok('boleto pendente ou atrasado não muda o Livre; pago, pesa pela saída de caixa');
 
   /* 7. ENTRADA FUTURA (pedido expresso do autor, 01/11/2026, regra 20):
@@ -237,7 +242,12 @@ const contas = [
     trava(saldo(em(16)) === 320000, 'depois da data a entrada segue contando');
     trava(saldo(em(15, 21, 50)) === 320000, 'dia da data às 21h50 (UTC já é 16/11): a entrada de hoje conta o dia inteiro');
     trava(saldo(em(14, 21, 50)) === 70000, 'véspera às 21h50: continua sem a entrada');
-    trava(centavos(calcularSafeToSpend(exemplo, [], em(1)).livreTotal) === 70000, 'o Livre acompanha o Saldo atual (base 700)');
+    /* 07/11/2026, pedido do autor: "Salário futuro conta desde o dia 1". O
+       Saldo atual continua como em 01/11; só o Livre passa a contar a entrada. */
+    const livre = (d) => calcularSafeToSpend(exemplo, [], d);
+    trava(centavos(livre(em(1)).livreTotal) === 320000, `07/11: no dia 1 o Livre ja conta a entrada de 15/11 (3.200), veio ${livre(em(1)).livreTotal}`);
+    trava(centavos(livre(em(1)).entradasPrevistas) === 250000 && centavos(livre(em(15)).entradasPrevistas) === 0, '07/11: entradasPrevistas e a parte que ainda nao chegou');
+    trava(centavos(livre(em(15)).livreTotal) === 320000, 'no dia da data o Livre nao muda');
     trava(centavos(calcularSaldoAtual(exemplo, em(1))) === 70000 && centavos(calcularSaldoAtual(exemplo, em(15))) === 320000, 'calcularSaldoAtual usa o mesmo predicado');
     /* Núcleo do Granabô (data em Brasília) igual ao do app. */
     for (const [iso, d] of [['2026-11-01', em(1)], ['2026-11-14', em(14)], ['2026-11-15', em(15)]]) {
@@ -250,8 +260,30 @@ const contas = [
     /* Crédito, fatura, boleto e cofrinho seguem como antes. */
     const comCredito = [...exemplo, tx({ type: 'out', amount: 200, occurred_on: '2026-11-03', payment_method: 'credit', card_id: 'c-1' })];
     trava(centavos(calcularSafeToSpend(comCredito, [], em(1)).saldoAtual) === 70000, 'compra no crédito segue fora do caixa');
-    trava(centavos(calcularSafeToSpend(comCredito, [], em(1), { cards: [{ id: 'c-1', closing_day: 28 }], payments: [] }).creditoNaoPago) === 20000, 'crédito não pago segue reduzindo o Livre');
-    ok('entrada futura só conta a partir da data; saída futura do mês desconta; fuso 21h50 e virada do mês');
+    const ctx = { cards: [{ id: 'c-1', closing_day: 28 }], payments: [] };
+    trava(centavos(calcularSafeToSpend(comCredito, [], em(1), ctx).livreTotal) === centavos(livre(em(1)).livreTotal), '07/11: fatura aberta nao reduz o Livre');
+    /* Pagar a fatura: pagar_fatura_cartao grava UMA saída de caixa sem card_id. */
+    const pagaFatura = [...comCredito, tx({ type: 'out', amount: 200, occurred_on: '2026-11-05', description: 'Pagamento fatura' })];
+    const ctxPago = { cards: ctx.cards, payments: [{ card_id: 'c-1', year: 2026, month: 10, amount: 200, paid_on: '2026-11-05' }] };
+    trava(centavos(calcularSafeToSpend(pagaFatura, [], em(7), ctxPago).livreTotal) === 300000, '07/11: pagar a fatura reduz o Livre uma vez (3.200 - 200)');
+    /* A queixa do autor em 07/11: dinheiro do mês já previsto e o card dizendo
+       "Sem saldo disponível". Salário em 20/11, hoje 07/11, gastos de 600. */
+    const queixa = [
+      tx({ type: 'in', amount: 3000, occurred_on: '2026-11-20' }),
+      tx({ type: 'out', amount: 600, occurred_on: '2026-11-03', payment_method: 'debit' }),
+      tx({ type: 'out', amount: 400, occurred_on: '2026-11-04', payment_method: 'credit', card_id: 'c-1' }),
+    ];
+    const q = calcularSafeToSpend(queixa, [], em(7), ctx);
+    trava(centavos(q.saldoAtual) === -60000, `07/11: o Saldo atual não muda (-600), veio ${q.saldoAtual}`);
+    trava(centavos(q.livreTotal) === 240000 && q.semSaldo === false, `07/11: salário de 20/11 já conta no dia 7 (2.400) e não há "Sem saldo", veio ${q.livreTotal}`);
+    trava(q.diasRestantes === 24 && centavos(q.livrePorDia) === 10000, '07/11: 2.400 em 24 dias = 100 por dia');
+    const qWidget = montarSnapshotWidgets({ userId: 'u', transactions: queixa, bills: [], goals: [], privacyHidden: false, hoje: em(7), cards: ctx.cards, payments: [] });
+    trava(centavos(qWidget.safeToSpend.livreTotal) === 240000 && qWidget.safeToSpend.semSaldo === false, '07/11: widget igual à Início');
+    const qGranabo = nucleo.calcularLivre(queixa, [], '2026-11-07', ctx);
+    trava(centavos(qGranabo.livreTotal) === 240000 && qGranabo.semSaldo === false, '07/11: Granabô igual à Início');
+    const semNada = calcularSafeToSpend([tx({ type: 'out', amount: 50, occurred_on: '2026-11-02' })], [], em(7));
+    trava(semNada.semSaldo === true && semNada.livreTotal === 0, 'só saída no mês: Sem saldo e Livre zero');
+    ok('saldo: entrada futura só a partir da data; Livre: entrada do mês desde o dia 1; crédito só ao pagar; fuso 21h50 e virada do mês');
   }
 
   console.log(`\n${aprovadas} checagens da trava da regra 20 passaram — 0 falhas`);

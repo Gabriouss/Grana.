@@ -1,4 +1,8 @@
 // Pedido expresso do autor, 17/10/2026. Executa os modulos reais e SQL real.
+// Atualizado pelo pedido expresso de 07/11/2026 (ordem "ordem-keel-livre"): salario
+// futuro do mes conta desde o dia 1 e credito so desconta quando a fatura e paga.
+// Por isso o exemplo de 17/10 (5000 - 3000 - 1000 guardado - 750 de cartao = 250)
+// passa a 1000: os 750 do cartao so pesam ao pagar a fatura.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -39,30 +43,32 @@ function conferir(transactions, goals, ctx, esperado) {
   return a;
 }
 (async()=>{
-  assert.equal(conferir(base,metas,contexto,250).livrePorDia,250/15);
+  assert.equal(conferir(base,metas,contexto,1000).livrePorDia,1000/15);
   const parcial = {card_id:'c',year:2026,month:9,amount:300,paid_on:'2026-10-15'};
-  assert.equal(conferir([...base,tx('pago','out',300)],metas,{cards,payments:[parcial]},250).creditoNaoPago,450);
-  assert.equal(conferir([...base,tx('pago','out',750)],metas,{cards,payments:[{...parcial,amount:750}]},250).creditoNaoPago,0);
-  conferir([...base,tx('passado','out',100,{card_id:'c',occurred_on:'2026-09-05'})],metas,contexto,150);
-  conferir([...base,tx('futuro','out',900,{card_id:'c',occurred_on:'2026-11-10'})],metas,contexto,250);
-  /* 01/11/2026, pedido expresso do autor (regra 20): "Salário futuro no livre para
-     gastar só entra após a data da entrada". Entrada futura do mês não soma;
-     a de hoje soma o dia inteiro; saída futura do mês desconta desde já. */
-  conferir([...base,tx('salario-futuro','in',2000,{occurred_on:'2026-10-25'})],metas,contexto,250);
-  conferir([...base,tx('salario-hoje','in',2000,{occurred_on:'2026-10-17'})],metas,contexto,2250);
-  conferir([...base,tx('saida-futura','out',100,{occurred_on:'2026-10-25'})],metas,contexto,150);
+  // Pagamento parcial ou total desconta uma vez, pela saida de caixa do pagamento.
+  conferir([...base,tx('pago','out',300)],metas,{cards,payments:[parcial]},700);
+  conferir([...base,tx('pago','out',750)],metas,{cards,payments:[{...parcial,amount:750}]},250);
+  conferir([...base,tx('passado','out',100,{card_id:'c',occurred_on:'2026-09-05'})],metas,contexto,1000);
+  conferir([...base,tx('futuro','out',900,{card_id:'c',occurred_on:'2026-11-10'})],metas,contexto,1000);
+  /* 07/11/2026, pedido expresso do autor (regra 20), substitui o de 01/11 nas
+     entradas: "Salário futuro conta desde o dia 1". Entrada futura do mês soma
+     no Livre desde já; saída futura do mês continua descontando desde já. */
+  conferir([...base,tx('salario-futuro','in',2000,{occurred_on:'2026-10-25'})],metas,contexto,3000);
+  conferir([...base,tx('salario-hoje','in',2000,{occurred_on:'2026-10-17'})],metas,contexto,3000);
+  conferir([...base,tx('salario-novembro','in',2000,{occurred_on:'2026-11-01'})],metas,contexto,1000);
+  conferir([...base,tx('saida-futura','out',100,{occurred_on:'2026-10-25'})],metas,contexto,900);
   // Parcela com fechamento 31: data original decide, incluindo fevereiro curto.
   const parcelas = [tx('orig','out',200,{card_id:'c',occurred_on:'2026-01-30',installment_current:1,installment_total:12}),
     tx('p10','out',200,{card_id:'c',occurred_on:'2026-10-30',installment_current:10,installment_total:12,parent_id:'orig'})];
-  conferir([...base.filter(t=>!t.card_id),...parcelas],metas,{cards:[{id:'c',closing_day:31}],payments:[]},600);
-  // Credito orfao nao desaparece; dados legados com um cartao usam seu ciclo.
-  conferir(base.map(t=>t.card_id?{...t,card_id:null,payment_method:'credit'}:t),metas,contexto,250);
+  conferir([...base.filter(t=>!t.card_id),...parcelas],metas,{cards:[{id:'c',closing_day:31}],payments:[]},1000);
+  // Credito orfao (payment_method credit sem cartao) tambem nao reduz.
+  conferir(base.map(t=>t.card_id?{...t,card_id:null,payment_method:'credit'}:t),metas,contexto,1000);
   const anterior = cofre.movimentarCofrinhoLocal(metas[0],2000,'anterior','2026-10');
-  conferir(base,[anterior],contexto,250);
-  conferir(base,[cofre.movimentarCofrinhoLocal(anterior,-2000,'anterior','2026-10')],contexto,250);
-  conferir(base,[cofre.movimentarCofrinhoLocal(metas[0],-500,'mes','2026-10')],contexto,750);
-  conferir(base,[cofre.movimentarCofrinhoLocal(metas[0],200,'mes','2026-10')],contexto,50);
-  conferir(base,[{...metas[0],month_reserves:{'2026-09':6000}}],contexto,1250);
+  conferir(base,[anterior],contexto,1000);
+  conferir(base,[cofre.movimentarCofrinhoLocal(anterior,-2000,'anterior','2026-10')],contexto,1000);
+  conferir(base,[cofre.movimentarCofrinhoLocal(metas[0],-500,'mes','2026-10')],contexto,1500);
+  conferir(base,[cofre.movimentarCofrinhoLocal(metas[0],200,'mes','2026-10')],contexto,800);
+  conferir(base,[{...metas[0],month_reserves:{'2026-09':6000}}],contexto,2000);
   assert.throws(()=>cofre.movimentarCofrinhoLocal(metas[0],-1001,'mes','2026-10'));
   // RPC real encaminha origem, invalida cache e avisa widgets, sem transacao.
   const calls=[];
@@ -74,7 +80,7 @@ function conferir(transactions, goals, ctx, esperado) {
   });
   await goals.depositToGoal(metas[0],2000,'anterior');
   assert.deepEqual(calls,[['deposit_to_goal',{p_goal_id:'g',p_delta:2000,p_origin:'anterior'}],'cache','widget']);
-  // Sincronizador REAL: busca pagamentos/cartoes e envia o mesmo 250 ao nativo.
+  // Sincronizador REAL: busca pagamentos/cartoes e envia o mesmo 1000 ao nativo.
   const snapshots=[];let falharPagamentos=false;
   const sync=load('lib/widgets-home-sync.ts',{
     './data':{fetchTransactions:async()=>base,fetchBills:async()=>[],fetchCreditCards:async()=>cards,
@@ -85,7 +91,7 @@ function conferir(transactions, goals, ctx, esperado) {
       definirPrivacidade:()=>{},garantirUsuario:()=>{},limparSnapshot:()=>{}},
   });
   assert.equal(await sync.sincronizarWidgetsHome('u',false),true);
-  assert.equal(snapshots[0].safeToSpend.livreTotal,250);
+  assert.equal(snapshots[0].safeToSpend.livreTotal,1000);
   falharPagamentos=true;
   assert.equal(await sync.sincronizarWidgetsHome('u',false),false);
   assert.equal(snapshots.length,1,'fonte incompleta nao vira snapshot falso');
@@ -118,5 +124,5 @@ function conferir(transactions, goals, ctx, esperado) {
     await db.exec(`set app.acesso='sim'; select public.deposit_to_goal('00000000-0000-0000-0000-000000000001',-800);`);
     const legado=(await db.query('select * from public.goals')).rows[0];assert.equal(Number(legado.month_reserves[mes]),0);assert.equal(Number(legado.current_amount),5500);
   }finally{await db.close()}
-  console.log('livre-regra-20-outubro: exemplo 250, paridade, parcial, origens, RPC e SQL real OK');
+  console.log('livre-regra-20-outubro: exemplo 1000 (07/11), paridade, parcial, origens, RPC e SQL real OK');
 })().catch(e=>{console.error(e);process.exitCode=1});
