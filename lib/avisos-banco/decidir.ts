@@ -1,6 +1,6 @@
 import { categoriaReconhecida, decidirCategoria, semNomeDaCategoria } from '../heuristics';
 import type { CreditCard, TxType } from '../types';
-import { classeDoApp, type ClasseDoApp } from './catalogo';
+import { APPS_INICIAIS, classeDoApp, type ClasseDoApp } from './catalogo';
 import { interpretarAviso, type AvisoParaInterpretar, type FormaDoAviso } from './interpretar';
 
 /**
@@ -55,6 +55,10 @@ export type AvisoVisto = {
   itemId?: string;
   /** Aviso de estorno: o mesmo estorno avisado de novo não abre outro item. */
   estorno?: boolean;
+  /** Identidade resumida; registros antigos sem ela não provam duplicidade. */
+  direcao?: TxType;
+  contraparte?: string | null;
+  digitos?: string | null;
 };
 
 /**
@@ -140,6 +144,39 @@ const centavos = (valor: number) => Math.round(valor * 100);
 
 type EstornoLido = { valor: number | null; contraparte: string | null; digitos: string | null; data: string };
 
+type IdentidadeDoMovimento = Pick<AvisoVisto, 'valor' | 'direcao' | 'contraparte' | 'digitos' | 'estorno'>;
+
+function mesmaIdentidade(a: IdentidadeDoMovimento, b: IdentidadeDoMovimento): boolean {
+  return a.valor !== undefined && b.valor !== undefined && centavos(a.valor) === centavos(b.valor)
+    && !!a.estorno === !!b.estorno && !!a.direcao && a.direcao === b.direcao
+    && !(a.digitos && b.digitos && a.digitos !== b.digitos)
+    && mesmoComerciante(a.contraparte, b.contraparte);
+}
+
+function atualizacaoForte(v: AvisoVisto, aviso: AvisoDoDiarioParaCaixa, identidade: IdentidadeDoMovimento): boolean {
+  return v.pacote === aviso.pacote && v.chave === aviso.chave
+    && Math.abs(v.quando - aviso.quando) <= JANELA_DE_DUPLICATA_MS && mesmaIdentidade(v, identidade);
+}
+
+function pacotesDoGrupo(itemId: string, vistos: Record<string, AvisoVisto>): Set<string> {
+  return new Set(Object.values(vistos).filter((v) => v.itemId === itemId).map((v) => v.pacote));
+}
+
+/** Banco/carteira só se unem por loja e final fortes, sem ponte entre bancos. */
+function parForte(vistos: Record<string, AvisoVisto>, aviso: AvisoDoDiarioParaCaixa, identidade: IdentidadeDoMovimento): AvisoVisto | undefined {
+  const candidatos = Object.values(vistos).filter((v) => {
+    if (!v.itemId || v.classe === classeDoApp(aviso.pacote) || !mesmaIdentidade(v, identidade)) return false;
+    if (!v.digitos || !identidade.digitos || v.digitos !== identidade.digitos) return false;
+    if (Math.abs(v.quando - aviso.quando) > JANELA_DE_DUPLICATA_MS) return false;
+    const grupo = Object.values(vistos).filter((outro) => outro.itemId === v.itemId);
+    // Uma nova chave do mesmo app pode ser outra operação real.
+    if (grupo.some((outro) => outro.pacote === aviso.pacote && outro.chave !== aviso.chave)) return false;
+    const bancos = new Set([...pacotesDoGrupo(v.itemId, vistos), aviso.pacote].filter((p) => classeDoApp(p) === 'banco'));
+    return bancos.size === 1;
+  });
+  return new Set(candidatos.map((v) => v.itemId)).size === 1 ? candidatos[0] : undefined;
+}
+
 /**
  * Compra pendente que este estorno anula: mesmo app de banco, mesmo valor em
  * centavos, mesmo final quando os dois trazem, mesma loja (forte), até 7 dias antes.
@@ -148,9 +185,10 @@ function compraPendenteDoEstorno(
   item: ItemAConferir, estorno: EstornoLido, aviso: { pacote: string; quando: number }, vistos: Record<string, AvisoVisto>, jaGravados: ReadonlySet<string>,
 ): boolean {
   if (item.tipo !== 'lancamento' || item.direcao !== 'out' || item.valor === undefined || estorno.valor === null) return false;
-  if (jaGravados.has(item.id) || item.contaEmPagamento) return false;
-  const pacotes = new Set([item.pacote, ...item.avisoIds.map((id) => vistos[id]?.pacote).filter(Boolean)]);
-  if (!pacotes.has(aviso.pacote)) return false;
+  if (jaGravados.has(item.id) || item.contaEmPagamento || item.formaEmDisputa) return false;
+  const pacotes = new Set([item.pacote, ...pacotesDoGrupo(item.id, vistos), ...item.avisoIds.map((id) => vistos[id]?.pacote).filter((p): p is string => !!p)]);
+  const bancos = [...pacotes].filter((p) => classeDoApp(p) === 'banco');
+  if (bancos.length !== 1 || bancos[0] !== aviso.pacote) return false;
   const quando = aviso.quando;
   if (centavos(item.valor) !== centavos(estorno.valor)) return false;
   if (item.quando > quando || quando - item.quando > JANELA_DO_ESTORNO_MS) return false;
@@ -179,9 +217,9 @@ function acrescentarEstorno(
   jaGravados: ReadonlySet<string>,
 ): EstadoDaCaixa {
   const valor = estorno.valor ?? undefined;
-  /* O mesmo estorno avisado de novo (banco e carteira, ou texto atualizado). */
-  const repetido = valor === undefined ? undefined : Object.values(estado.vistos).find((v) => v.estorno && v.valor === valor
-    && ((v.pacote === aviso.pacote && v.chave === aviso.chave) || Math.abs(v.quando - aviso.quando) <= JANELA_DE_DUPLICATA_MS));
+  const identidade: IdentidadeDoMovimento = { valor, direcao: 'out', contraparte: estorno.contraparte, digitos: estorno.digitos, estorno: true };
+  const repetido = Object.values(estado.vistos).find((v) => atualizacaoForte(v, aviso, identidade))
+    ?? parForte(estado.vistos, aviso, identidade);
   if (repetido) return comVisto({ estorno: true, valor, itemId: repetido.itemId });
 
   const candidatas = estado.itens.filter((i) => compraPendenteDoEstorno(i, estorno, aviso, estado.vistos, jaGravados));
@@ -196,7 +234,7 @@ function acrescentarEstorno(
       dataDaCompra: compra.data,
       dataDoEstorno: estorno.data,
     };
-    return comVisto({ estorno: true, valor }, estado.itens.filter((i) => i.id !== compra.id), [...(estado.recibos ?? []), recibo]);
+    return comVisto({ estorno: true, valor, itemId: aviso.id }, estado.itens.filter((i) => i.id !== compra.id), [...(estado.recibos ?? []), recibo]);
   }
 
   const item: ItemAConferir = {
@@ -220,6 +258,11 @@ function acrescentarAviso(estado: EstadoDaCaixa, aviso: AvisoDoDiarioParaCaixa, 
   const classe = classeDoApp(aviso.pacote);
   const visto: AvisoVisto = { quando: aviso.quando, pacote: aviso.pacote, chave: aviso.chave, classe };
   const entendido = interpretarAviso(aviso);
+  if (entendido.tipo === 'lancamento' || entendido.tipo === 'estorno') {
+    visto.direcao = entendido.tipo === 'estorno' ? 'out' : entendido.direcao;
+    visto.contraparte = entendido.contraparte;
+    visto.digitos = entendido.digitos;
+  }
   const comVisto: ComVisto = (extra = {}, itens = estado.itens, recibos = estado.recibos) => ({
     itens,
     vistos: { ...estado.vistos, [aviso.id]: { ...visto, ...extra } },
@@ -237,13 +280,13 @@ function acrescentarAviso(estado: EstadoDaCaixa, aviso: AvisoDoDiarioParaCaixa, 
 
   const vistos = Object.values(estado.vistos);
   /* O banco atualizou o mesmo aviso com outro texto e o mesmo valor. */
-  const atualizacao = vistos.find((v) => v.pacote === aviso.pacote && v.chave === aviso.chave && v.valor === entendido.valor);
+  const identidade: IdentidadeDoMovimento = { valor: entendido.valor, direcao: entendido.direcao, contraparte: entendido.contraparte, digitos: entendido.digitos };
+  const atualizacao = vistos.find((v) => atualizacaoForte(v, aviso, identidade));
   if (atualizacao) return comVisto({ valor: entendido.valor, itemId: atualizacao.itemId });
 
   /* Mesma compra avisada pelo banco e pela carteira. Se o par já foi confirmado
      ou descartado, este aviso não abre um item novo. */
-  const par = vistos.find((v) => v.classe !== classe && v.valor === entendido.valor
-    && Math.abs(v.quando - aviso.quando) <= JANELA_DE_DUPLICATA_MS);
+  const par = parForte(estado.vistos, aviso, identidade);
   if (par) {
     const itens = estado.itens.map((i) => (i.id !== par.itemId ? i : {
       ...i,
@@ -313,13 +356,14 @@ export function aplicarAvisos(
 
 type LancamentoParaEstorno = {
   id: string; type: TxType; amount: number; occurred_on: string; description?: string | null; card_id?: string | null;
-  installment_total?: number | null; recurring?: boolean | null;
+  installment_total?: number | null; recurring?: boolean | null; bank?: string | null;
 };
 
 /**
  * Lançamentos já confirmados que este estorno pode anular, para a tela perguntar.
  * Mesmo valor em centavos, saída, até 7 dias antes, loja equivalente e, quando o
- * lançamento é de um cartão conhecido, o mesmo final. A tela só oferece remover
+ * lançamento é de um cartão conhecido, o mesmo final. Banco confiável da origem
+ * e do lançamento/cartão precisa coincidir. A tela só oferece remover
  * com exatamente um; quem remove é o toque da pessoa.
  */
 /**
@@ -347,6 +391,8 @@ export function ofertaDoEstorno<T extends LancamentoParaEstorno>(
 export function lancamentosDoEstorno<T extends LancamentoParaEstorno>(item: ItemAConferir, lancamentos: T[], cartoes: CreditCard[] = []): T[] {
   if (item.tipo !== 'estorno' || item.valor === undefined) return [];
   const valor = item.valor;
+  const banco = APPS_INICIAIS.find((a) => a.pacote === item.pacote && a.classe === 'banco')?.banco;
+  if (!banco || banco === 'outro') return [];
   const doEstorno = Date.parse(`${item.data}T12:00:00Z`);
   return lancamentos.filter((t) => {
     if (t.type !== 'out' || centavos(Number(t.amount)) !== centavos(valor)) return false;
@@ -354,7 +400,13 @@ export function lancamentosDoEstorno<T extends LancamentoParaEstorno>(item: Item
     if ((t.installment_total ?? 1) > 1 || t.recurring) return false;
     const dias = (doEstorno - Date.parse(`${t.occurred_on}T12:00:00Z`)) / DIA_MS;
     if (!(dias >= 0 && dias <= 7)) return false;
-    const final = t.card_id ? cartoes.find((c) => c.id === t.card_id)?.last_digits : undefined;
+    const cartao = t.card_id ? cartoes.find((c) => c.id === t.card_id) : undefined;
+    const confiavel = (b?: string | null) => APPS_INICIAIS.some((a) => a.classe === 'banco' && a.banco === b) ? b : undefined;
+    const bancoDoLancamento = confiavel(t.bank);
+    const bancoDoCartao = confiavel(cartao?.bank);
+    if ((bancoDoLancamento && bancoDoLancamento !== banco) || (bancoDoCartao && bancoDoCartao !== banco)) return false;
+    if ((bancoDoLancamento ?? bancoDoCartao) !== banco) return false;
+    const final = cartao?.last_digits;
     if (final && item.digitos && final !== item.digitos) return false;
     return mesmoComerciante(t.description, item.contraparte ?? item.descricao);
   });

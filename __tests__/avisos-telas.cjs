@@ -356,7 +356,7 @@ async function main() {
 
   ({ ctx, card } = await lista([
     aviso('Compra no crédito de R$ 89,90 em Mercado Modelo final 1234'),
-    { ...aviso('Compra de R$ 89,90 em Mercado Modelo'), pacote: 'com.google.android.apps.walletnfcrel' },
+    { ...aviso('Compra de R$ 89,90 em Mercado Modelo final 1234'), pacote: 'com.google.android.apps.walletnfcrel' },
   ]));
   assert.equal(elementos(ctx.tree).filter((e) => e.type === telas.CartaoDoAviso).length, 1);
   card().props.aoConfirmar(); await ctx.settle();
@@ -788,7 +788,7 @@ async function main() {
   {
     const hoje = new Date(); const pad = (n) => String(n).padStart(2, '0');
     const dia = `${hoje.getFullYear()}-${pad(hoje.getMonth() + 1)}-${pad(hoje.getDate())}`;
-    const lancamento = { id: 't1', type: 'out', amount: 25, occurred_on: dia, description: 'Loja Modelo', card_id: null, installment_total: 1 };
+    const lancamento = { id: 't1', type: 'out', amount: 25, occurred_on: dia, description: 'Loja Modelo', bank: 'nubank', card_id: null, installment_total: 1 };
     const estorno = () => aviso('Estorno de R$ 25,00 em Loja Modelo', 'Estorno');
     const cartaoDoEstorno = (card) => {
       const el = telas.CartaoDoAviso(card().props);
@@ -821,6 +821,15 @@ async function main() {
     assert.equal(chamadas.filter((c) => c[0] === 'apagar' || c[0] === 'gravar').length, 0);
     assert.equal((await caixa.listarCaixa('dono')).length, 0);
     ok('Manter lançamento tira o estorno da lista sem apagar nem gravar');
+
+    for (const candidato of [{ ...lancamento, bank: 'c6' }, { ...lancamento, bank: undefined }]) {
+      r = await lista(estorno(), { historico: [candidato] });
+      ({ arvore } = cartaoDoEstorno(r.card));
+      assert.deepEqual(rotulos(arvore), ['Entendi'], 'outro banco ou banco ausente não oferece remover');
+      assert.equal(chamadas.length, 0, 'oferta recusada não grava nem apaga');
+      assert.equal((await caixa.listarCaixa('dono')).length, 1, 'estorno continua para revisão');
+    }
+    ok('estorno real com confirmado de outro banco ou sem banco não oferece remover nem escreve dinheiro');
 
     /* Sem candidato, dois candidatos ou sem histórico: só "Entendi", nunca botão que dá erro. */
     for (const [historicoTeste, frase] of [

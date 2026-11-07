@@ -156,7 +156,7 @@ const ESTORNO_UBER = (extra) => aviso('Estorno', 'Estorno de R$ 12.34 em DL *Ube
 
     /* A tela acha o lançamento confirmado para perguntar. */
     const lancamentos = [
-      { id: 't1', type: 'out', amount: 12.34, occurred_on: '2026-11-07', description: 'DL UberRides Sao Paulo BRA', card_id: null },
+      { id: 't1', bank: 'c6', type: 'out', amount: 12.34, occurred_on: '2026-11-07', description: 'DL UberRides Sao Paulo BRA', card_id: null },
       { id: 't2', type: 'out', amount: 12.34, occurred_on: '2026-10-20', description: 'DL UberRides', card_id: null },
       { id: 't3', type: 'out', amount: 12.35, occurred_on: '2026-11-07', description: 'DL UberRides', card_id: null },
       { id: 't4', type: 'in', amount: 12.34, occurred_on: '2026-11-07', description: 'DL UberRides', card_id: null },
@@ -244,8 +244,8 @@ const ESTORNO_UBER = (extra) => aviso('Estorno', 'Estorno de R$ 12.34 em DL *Ube
   /* 11. O mesmo estorno avisado pelo banco e pela carteira: um item só. */
   {
     const r = await sync('dono-repetido',
-      aviso('Estorno', 'Estorno de R$ 30,00 em Loja Modelo', { pacote: NUBANK }),
-      aviso('Estorno', 'Estorno de R$ 30,00 em Loja Modelo', { pacote: WALLET, quando: AGORA + 2 * MIN }));
+      aviso('Estorno', 'Estorno de R$ 30,00 em Loja Modelo final 1234', { pacote: NUBANK }),
+      aviso('Estorno', 'Estorno de R$ 30,00 em Loja Modelo final 1234', { pacote: WALLET, quando: AGORA + 2 * MIN }));
     assert.equal(r.itens.length, 1);
     ok('estorno repetido em até 5 minutos não abre dois itens');
   }
@@ -340,19 +340,103 @@ const ESTORNO_UBER = (extra) => aviso('Estorno', 'Estorno de R$ 12.34 em DL *Ube
     /* Compra avisada pelo banco e pela carteira: o estorno do banco ainda casa. */
     r = await sync('dono-par-carteira',
       aviso('Compra aprovada', 'Compra no crédito de R$ 40,00 em Padaria Modelo, final 1234', { pacote: NUBANK }),
-      aviso('Padaria', 'R$ 40,00 com Visa ••1234', { pacote: WALLET, quando: AGORA + 2 * MIN }),
+      aviso('Padaria Modelo', 'R$ 40,00 com Visa ••1234', { pacote: WALLET, quando: AGORA + 2 * MIN }),
       aviso('Estorno', 'Estorno de R$ 40,00 em Padaria Modelo, final 1234', { pacote: NUBANK, quando: AGORA + 60 * MIN }));
     assert.equal(r.itens.length, 0);
     ok('compra com par da carteira casa com o estorno do mesmo banco');
 
     const est = { id: 'e', avisoIds: ['e'], pacote: C6, classe: 'banco', quando: AGORA, expiraEm: AGORA + DIA, tipo: 'estorno', data: '2026-11-07', valor: 25, contraparte: 'Loja Modelo', descricao: 'Loja Modelo', digitos: null };
-    const t = (id, extra = {}) => ({ id, type: 'out', amount: 25, occurred_on: '2026-11-06', description: 'Loja Modelo', card_id: null, ...extra });
+    const t = (id, extra = {}) => ({ id, type: 'out', amount: 25, occurred_on: '2026-11-06', description: 'Loja Modelo', bank: 'c6', card_id: null, ...extra });
     assert.deepEqual(decidir.ofertaDoEstorno(est, [t('a')]), { tipo: 'remover', lancamento: t('a') });
     assert.deepEqual(decidir.ofertaDoEstorno(est, [t('a'), t('b')]), { tipo: 'varios' });
     assert.deepEqual(decidir.ofertaDoEstorno(est, [t('a', { description: 'Loja Modelo Centro' })]), { tipo: 'nenhum' });
     assert.deepEqual(decidir.ofertaDoEstorno(est, null), { tipo: 'sem_historico' });
     assert.deepEqual(decidir.ofertaDoEstorno({ ...est, valor: undefined }, [t('a')]), { tipo: 'sem_valor' });
     ok('oferta do cartão: remover só com exatamente um lançamento forte');
+  }
+
+  /* Identidade conservadora: casos sintéticos Watchtower, caixa e decisão reais. */
+  {
+    const antes = chamadas.length;
+    const compra = (pacote, loja = 'Loja Modelo', extra = {}) => aviso('Compra aprovada',
+      `Compra no crédito de R$ 25,00 em ${loja} final 1234`, { pacote, ...extra });
+    const estorno = (pacote, loja = 'Loja Modelo', extra = {}) => aviso('Estorno',
+      `Estorno de R$ 25,00 em ${loja} final 1234`, { pacote, ...extra });
+    const c6 = compra(C6);
+    const wallet = compra(WALLET, 'Loja Modelo', { quando: AGORA + 1000 });
+    const nu = compra(NUBANK, 'Loja Modelo', { quando: AGORA + 2000 });
+    let r = await sync('wt-ponte', c6, wallet, nu);
+    assert.equal(r.itens.length, 2, 'Wallet não funde duas compras de bancos distintos');
+    assert.equal(r.itens.find((i) => i.id === c6.id).avisoIds.length, 2, 'par forte C6/Wallet preservado');
+    r = await sync('wt-ponte', c6, wallet, nu, estorno(NUBANK, 'Loja Modelo', { quando: AGORA + 3000 }));
+    assert.deepEqual(r.itens.map((i) => i.id), [c6.id], 'C6 real continua para conferir');
+    assert.equal(r.recibos.length, 1, 'só Nubank foi anulado');
+    r = await sync('wt-wallet-primeiro', compra(WALLET), compra(C6, 'Loja Modelo', { quando: AGORA + 1000 }), compra(NUBANK, 'Loja Modelo', { quando: AGORA + 2000 }));
+    assert.equal(r.itens.length, 2, 'a ordem Wallet/banco também impede ponte entre bancos');
+    ok('WT-R1: C6+Wallet+Nubank do mesmo valor preserva C6 após estorno Nubank');
+
+    // Caixa antiga já contaminada: o estorno não pode confiar em só uma origem.
+    const antiga = decidir.aplicarAvisos(decidir.CAIXA_VAZIA, [c6], AGORA);
+    antiga.itens[0].avisoIds.push(nu.id);
+    antiga.vistos[nu.id] = { quando: nu.quando, pacote: NUBANK, chave: nu.chave, classe: 'banco', valor: 25, itemId: c6.id };
+    disco.dados.set('grana_avisos_caixa:wt-legado', JSON.stringify(antiga));
+    r = await sync('wt-legado', c6, nu, estorno(NUBANK, 'Loja Modelo', { quando: AGORA + 3000 }));
+    assert.deepEqual(r.itens.map((i) => i.tipo), ['lancamento', 'estorno']);
+    assert.equal(r.recibos.length, 0);
+    const semIdentidade = decidir.aplicarAvisos(decidir.CAIXA_VAZIA, [c6], AGORA);
+    for (const v of Object.values(semIdentidade.vistos)) { delete v.direcao; delete v.contraparte; delete v.digitos; }
+    disco.dados.set('grana_avisos_caixa:wt-visto-antigo', JSON.stringify(semIdentidade));
+    r = await sync('wt-visto-antigo', c6, wallet);
+    assert.equal(r.itens.length, 2, 'visto antigo sem identidade não prova fusão');
+    ok('WT-R1: item legado com origens conflitantes nunca é descartado automaticamente');
+
+    for (const [pacote, loja] of [[NUBANK, 'Outra Loja'], [C6, 'Outra Loja'], [C6, 'Loja Modelo']]) {
+      r = await sync(`wt-estornos-${pacote}-${loja}`, estorno(C6), estorno(pacote, loja, { quando: AGORA + 1000 }));
+      assert.equal(r.itens.length, 2, 'duas chaves bancárias distintas continuam dois estornos reais');
+      assert.ok(r.itens.every((i) => i.tipo === 'estorno'));
+      assert.equal(r.recibos.length, 0);
+    }
+    r = await sync('wt-estornos-forte', estorno(C6), estorno(WALLET, 'Loja Modelo', { quando: AGORA + 1000 }));
+    assert.equal(r.itens.length, 1, 'mesmo estorno banco/carteira com identidade forte continua único');
+    r = await sync('wt-estornos-sem-final',
+      aviso('Estorno', 'Estorno de R$ 25,00 em Loja Modelo'),
+      aviso('Estorno', 'Estorno de R$ 25,00 em Loja Modelo', { pacote: WALLET, quando: AGORA + 1000 }));
+    assert.equal(r.itens.length, 2, 'sem final não se presume duplicidade entre apps');
+    ok('WT-R2: estornos reais distintos ficam, par forte é único e par incerto é preservado');
+
+    const primeiro = estorno(C6);
+    r = await sync('wt-atualizacao', primeiro, { ...primeiro, id: 'atualizado'.padEnd(64, '0'), quando: AGORA + 1000 });
+    assert.equal(r.itens.length, 1, 'mesma chave e identidade atualizada não duplicam');
+    r = await sync('wt-chave-reutilizada', primeiro, estorno(C6, 'Outra Loja', { chave: primeiro.chave, quando: AGORA + 1000 }));
+    assert.equal(r.itens.length, 2, 'chave reutilizada com outra loja não esconde operação');
+    r = await sync('wt-chave-outro-dia', primeiro, estorno(C6, 'Loja Modelo', { chave: primeiro.chave, quando: AGORA + 10 * MIN }));
+    assert.equal(r.itens.length, 2, 'chave reutilizada fora da janela não prova a mesma operação');
+    ok('atualização da mesma chave exige identidade e prazo; outra loja ou outra operação ficam');
+
+    // Dois bancos candidatos antes da Wallet: não escolher só o primeiro.
+    r = await sync('wt-par-ambiguo', compra(C6), compra(NUBANK), compra(WALLET));
+    assert.equal(r.itens.length, 3);
+    for (const outro of [compra(WALLET, 'Outra Loja'), compra(WALLET, 'Loja Modelo', { texto: 'Pix recebido de R$ 25,00 de Loja Modelo final 1234' }), compra(WALLET, 'Loja Modelo', { texto: 'Compra de R$ 25,00 em Loja Modelo final 9999' })]) {
+      r = await sync(`wt-identidade-${outro.id}`, compra(C6), outro);
+      assert.equal(r.itens.length, 2, 'loja, direção ou final conflitante não funde');
+    }
+    ok('pares ambíguos ou com loja/direção/final conflitante continuam separados');
+
+    const item = decidir.aplicarAvisos(decidir.CAIXA_VAZIA, [estorno(NUBANK)], AGORA).itens[0];
+    const t = { id: 'confirmado', type: 'out', amount: 25, occurred_on: '2026-11-07', description: 'Loja Modelo', card_id: null };
+    const oferta = (tx, cartoes = [], e = item) => decidir.ofertaDoEstorno(e, [tx], cartoes);
+    assert.equal(oferta({ ...t, bank: 'c6' }).tipo, 'nenhum');
+    assert.equal(oferta(t).tipo, 'nenhum', 'candidato único sem banco não basta');
+    assert.equal(oferta({ ...t, description: 'Loja Nubank' }).tipo, 'nenhum', 'nome de loja não identifica banco');
+    assert.equal(oferta({ ...t, bank: 'outro' }).tipo, 'nenhum');
+    assert.equal(oferta({ ...t, bank: 'nubank' }).tipo, 'remover');
+    assert.equal(oferta({ ...t, card_id: 'c' }, [{ id: 'c', bank: 'nubank', last_digits: '1234' }]).tipo, 'remover');
+    assert.equal(oferta({ ...t, bank: 'nubank', card_id: 'c' }, [{ id: 'c', bank: 'c6', last_digits: '1234' }]).tipo, 'nenhum');
+    assert.equal(oferta({ ...t, bank: 'nubank', card_id: 'c' }, [{ id: 'c', bank: 'nubank', last_digits: '9999' }]).tipo, 'nenhum');
+    assert.equal(oferta({ ...t, bank: 'nubank' }, [], { ...item, pacote: WALLET }).tipo, 'nenhum');
+    assert.equal(oferta({ ...t, bank: 'nubank' }, [], { ...item, pacote: 'app.desconhecido' }).tipo, 'nenhum');
+    assert.equal(chamadas.length, antes, 'sync, recibos e oferta nunca escrevem dinheiro nem apagam lançamentos');
+    ok('WT-R5: só oferece confirmado com banco confiável compatível, inclusive cartão; conflito/ausência não oferecem');
   }
 
   /* O listener nativo não publica "Novo aviso para conferir" para recusa, com o

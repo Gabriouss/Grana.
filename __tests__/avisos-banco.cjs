@@ -194,7 +194,7 @@ async function main() {
   /* Banco e carteira em até 5 minutos viram um item só */
   diario.itens = [
     aviso('b1', 'Compra aprovada', 'Compra no crédito de R$ 40,00 em Padaria Modelo, final 1234', { quando: AGORA }),
-    aviso('b2', 'Padaria', 'R$ 40,00 com Visa ••1234', { pacote: WALLET, quando: AGORA + 120000 }),
+    aviso('b2', 'Padaria Modelo', 'R$ 40,00 com Visa ••1234', { pacote: WALLET, quando: AGORA + 120000 }),
   ];
   r = await caixa.sincronizarCaixa('dono-c', AGORA + 130000);
   assert.equal(r.itens.length, 1);
@@ -205,7 +205,7 @@ async function main() {
 
   /* Par que chega depois de o item ser confirmado não reabre */
   await caixa.removerItemDaCaixa('dono-c', r.itens[0].id);
-  diario.itens.push(aviso('b3', 'Padaria', 'R$ 40,00 com Visa ••1234', { pacote: WALLET, chave: 'k-b3', quando: AGORA + 200000 }));
+  diario.itens.push(aviso('b3', 'Padaria Modelo', 'R$ 40,00 com Visa ••1234', { pacote: WALLET, chave: 'k-b2', quando: AGORA + 200000 }));
   r = await caixa.sincronizarCaixa('dono-c', AGORA + 210000);
   assert.equal(r.itens.length, 0);
   ok('par que chega depois do item resolvido não reabre');
@@ -282,7 +282,7 @@ async function main() {
   /* "Debitamos" responde a forma, e a forma do aviso vence o final do cartão. */
   {
     const interpretar = carregar('lib/avisos-banco/interpretar.ts');
-    const doBanco = (id, loja, quando = AGORA) => aviso(id, `Você pagou ${loja}`, 'Debitamos R$ 10,00 da sua conta.', { quando });
+    const doBanco = (id, loja, quando = AGORA) => aviso(id, `Você pagou ${loja}`, 'Debitamos R$ 10,00 da sua conta no cartão final 1234.', { quando });
     const daCarteira = (id, loja, quando = AGORA) => aviso(id, loja, 'R$ 10,00 com Visa ••1234', { pacote: WALLET, quando });
     const itensDe = (...avisos) => decidir.aplicarAvisos(decidir.CAIXA_VAZIA, avisos, AGORA + 5000).itens;
 
@@ -344,9 +344,9 @@ async function main() {
       ['Loja Exemplo', 'LOJA EXEMPLO', 'Loja Exemplo'],
       ['CAFE MODELO', 'Café Modelo', 'Café Modelo'],
       ['KFC', 'KFC', 'KFC'],
-      /* Nomes diferentes: a regra de antes, o mais longo */
-      ['LOJA EXEMPLO', 'Loja Exemplo Centro', 'Loja Exemplo Centro'],
-      ['LOJA EXEMPLO CENTRO', 'Loja Exemplo', 'LOJA EXEMPLO CENTRO'],
+      /* Sufixo de localização conhecido: mantém o nome mais completo. */
+      ['LOJA EXEMPLO', 'Loja Exemplo Sao Paulo BRA', 'Loja Exemplo Sao Paulo BRA'],
+      ['LOJA EXEMPLO SAO PAULO BRA', 'Loja Exemplo', 'LOJA EXEMPLO SAO PAULO BRA'],
     ]) {
       for (const ordem of [
         [doBanco('nome1', noBanco), daCarteira('nome2', naCarteira, AGORA + 1000)],
@@ -358,12 +358,12 @@ async function main() {
         assert.equal(itens[0].contraparte, esperado);
       }
     }
-    ok('par de avisos: mesmo nome fica sem as maiúsculas, nome diferente segue a regra de antes');
+    ok('par forte conserva nome sem maiúsculas e localização conhecida');
 
     /* Passo 3: o outro aviso completa, e discordar deixa para a pessoa */
-    const semForma = (id, quando = AGORA) => aviso(id, 'Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo', { quando });
+    const semForma = (id, quando = AGORA) => aviso(id, 'Compra aprovada', 'Compra de R$ 10,00 em Loja Exemplo final 5678', { quando });
     const noCredito = (id, quando = AGORA) => aviso(id, 'Loja Exemplo', 'R$ 10,00 com cartão de crédito ••1234', { pacote: WALLET, quando });
-    const comPix = (id, quando = AGORA) => aviso(id, 'Você pagou Loja Exemplo', 'R$ 10,00 com Pix', { quando });
+    const comPix = (id, quando = AGORA) => aviso(id, 'Você pagou Loja Exemplo', 'R$ 10,00 com Pix final 1234', { quando });
     const noDebito = (id, quando = AGORA) => aviso(id, 'Loja Exemplo', 'R$ 10,00 no débito ••5678', { pacote: WALLET, quando });
     for (const [a, b] of [[semForma('par1'), noDebito('par2', AGORA + 1000)], [noDebito('par2'), semForma('par1', AGORA + 1000)]]) {
       const itens = itensDe(a, b);
