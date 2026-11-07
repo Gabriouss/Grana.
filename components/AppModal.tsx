@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Modal, Platform, type ModalProps } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets, type EdgeInsets } from 'react-native-safe-area-context';
 import { useReducedMotion } from '@/lib/motion';
 import { useSheetFlutuante } from '@/lib/breakpoints';
+import { registrarJanelaAberta } from '@/lib/janelas-abertas';
 
 /**
  * Único ponto de entrada para modais animados do produto. A preferência de
@@ -22,9 +23,15 @@ export default function AppModal({
   navigationBarTranslucent,
   statusBarTranslucent,
   children,
+  semRegistro = false,
   ...props
-}: ModalProps) {
+}: ModalProps & {
+  /** A janela de conferência dos avisos não se conta: é ela quem espera as outras fecharem. */
+  semRegistro?: boolean;
+}) {
   const reduzirMovimento = useReducedMotion();
+  const visivel = props.visible !== false;
+  useEffect(() => (visivel && !semRegistro ? registrarJanelaAberta() : undefined), [visivel, semRegistro]);
 
   return (
     <Modal
