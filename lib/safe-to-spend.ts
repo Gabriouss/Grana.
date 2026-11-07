@@ -3,7 +3,8 @@ import type { Goal, Transaction } from './types';
 
 export type SafeToSpend = {
   saldoAtual: number;
-  /** Sobra do mês anterior confirmada pela pessoa (zero sem confirmação). */
+  /** Sobra do mês anterior confirmada pela pessoa (zero sem confirmação). Já
+   *  está somada em `saldoAtual` (rodada 2, 07/11/2026). */
   sobraConfirmada: number;
   /** Entradas de caixa do mês com data depois de hoje (07/11/2026). */
   entradasPrevistas: number;
