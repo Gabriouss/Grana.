@@ -780,63 +780,42 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     agente, e não o escreve ele mesmo.
     **30/10/2026, pedido do autor:** “Eu quero que o Codex, sempre que disponível documente o trabalho em tempo real”. Sempre que houver Codex disponível, ele documenta em tempo real; se Ledger não estiver no canvas ou estiver sem limite, outro Codex assume.
 
-20. **"Saldo atual" e "Livre para gastar" usam SÓ o mês vigente. Nunca saldo
-    acumulado de meses anteriores, nunca `initial_balance`.** Decisão do autor
-    em 24/09/2026: "não quero saldo acumulado, quero saldo apenas do mês
-    vigente", e, na mesma noite, "anote isso como uma regra, não deveremos
-    regredir para isso novamente". A mudança expressa pelo autor em 17/10/2026
-    complementa a regra: dinheiro já guardado não vira receita do mês, e o
-    crédito ainda não pago reduz o Livre antes do pagamento.
+20. **“Saldo atual” e “Livre para gastar” têm regras distintas.** Em
+    07/11/2026 o autor pediu: “Eu não estou gostando de como o livre para gastar
+    está funcionando atualmente. Eu estou com dinheiro em conta, utilizando o
+    dinheiro e ele está como (zero reais disponíveis para gastar) isso está me
+    incomodando”. Ele escolheu contar a sobra do mês anterior, contar salário
+    futuro desde o dia 1 e descontar fatura só ao pagar. A ordem e as escolhas
+    completas estão em `E:\Grana-temporarios\2026-11-07-play-fase1\ordem-keel-livre.md`.
+    Keel é o responsável pela implementação no `main`; esta regra registra a
+    decisão, não comprova que a implementação já foi concluída ou publicada.
 
-    O motivo original permanece: em 19/09/2026, o achado A12 mostrou que o
-    "Saldo atual" da Início (só o mês) e o seletor de carteira (acumulado)
-    davam dois números diferentes para a mesma palavra. O 867e1b5 passou a
-    somar `initial_balance` e todo o histórico; com histórico importado
-    incompleto, o acumulado ficava muito acima da realidade. Os dados reais da
-    conta do autor não entram nos registros (regra 15).
-
-    As regras que andam junto com esta:
-
-    - **Saldo é caixa do mês.** Entradas e saídas efetivamente registradas em
-      débito/Pix no mês vigente compõem o saldo. Compra no crédito fica fora
-      do caixa até o pagamento da fatura.
-      Decisão do autor em 01/11/2026: saída com data futura dentro do mês já desconta do Livre; entrada com data futura dentro do mês, como salário, só conta a partir do dia da data dela; lançamento de outro mês não conta.
-    - **Dinheiro já guardado em cofrinho fica fora do mês.** Ao guardar, a
-      origem deve distinguir "Já estava guardado" de "Do dinheiro deste mês".
-      Dinheiro anterior não exige uma receita, não aparece como entrada ou
-      saída de débito/Pix, não muda o saldo do mês e não reduz o Livre. Apenas
-      o valor líquido que veio do caixa deste mês e continua no cofrinho reduz
-      o Livre deste mês. Um resgate de dinheiro anterior também não vira
-      receita. Como os saldos antigos não têm histórico confiável de origem,
-      são tratados como anteriores; não se inventa uma receita passada.
-    - **Crédito ainda não pago reduz o Livre antes do pagamento.** Contam a
-      fatura aberta do ciclo atual e as faturas fechadas com saldo não pago;
-      ciclos futuros de parcelas ficam fora. Pagamento parcial reduz a reserva
-      só pelo valor pago, que já entra como saída de caixa no mês do
-      pagamento, sem contar duas vezes. Boleto ou conta pendente/atrasada
-      continuam fora: só entram quando pagos e registrados como saída de
-      caixa.
-    - A fórmula é: Livre = max(0, saldo de caixa do mês − aportes líquidos
-      deste mês ainda guardados − crédito elegível ainda não pago) ÷ dias
-      restantes (incluindo hoje). O exemplo autorizado é R$ 5.000 recebidos,
-      R$ 3.000 de conta pagos, R$ 1.000 guardados do dinheiro deste mês e
-      R$ 750 de cartão ainda não pagos: R$ 250 livres antes da divisão pelos
-      dias restantes.
-    - **A mesma palavra mostra o mesmo número em todo lugar.** Início,
-      widgets e Granabô usam o mesmo núcleo de cálculo, sem políticas próprias
-      por superfície. O defeito do A12 não era haver um cálculo único, mas
-      dois cálculos diferentes; corrigir só um lado seria regressão.
-    - **O seletor de carteira mostra outra grandeza, com outro nome.** É o
-      total de todas as entradas daquela carteira, em todo o período, só
-      entradas, sem rótulo que diga "saldo". A coluna `initial_balance` fica
-      sem uso e não volta a nenhum cálculo de saldo.
-    - **Qualquer mudança nesse cálculo exige pedido explícito do autor na
-      sessão.** A alteração de 17/10 foi autorizada expressamente; auditoria,
-      sugestão de agente ou preferência contábil não autorizam mudanças futuras.
-    - **O teste de trava não se afrouxa para passar.** Ele pode ser atualizado
-      para codificar esta ordem explícita de 17/10; fora da atualização
-      autorizada, uma falha indica mudança incorreta ou pedido ainda ausente.
-      Editar a asserção para caber no código novo apaga esta regra.
+    - **Livre para gastar:** soma a sobra do mês imediatamente anterior, com
+      piso zero, calculada como entradas menos saídas em débito/Pix daquele
+      mês, com a mesma regra de cofrinho. Não recorre a meses mais antigos e
+      não usa `initial_balance`; mês anterior sem dados resulta em zero.
+    - Todas as entradas do mês vigente contam desde o dia 1, inclusive as de
+      data futura. Saídas do mês vigente, inclusive futuras, descontam.
+    - Compra no crédito e fatura não paga não reduzem o Livre. O pagamento da
+      fatura entra uma vez como saída de caixa no mês em que é pago.
+    - Aportes líquidos do dinheiro deste mês ainda guardados em cofrinho
+      reduzem o Livre; dinheiro anterior guardado continua fora. Resgate de
+      dinheiro anterior não vira receita.
+    - Fórmula: Livre = max(0, sobra do mês anterior + entradas do mês − saídas
+      do mês − aportes líquidos deste mês ainda guardados) ÷ dias restantes,
+      incluindo hoje.
+    - Início, widgets e Granabô seguem a mesma regra e o mesmo núcleo de
+      cálculo, sem políticas por superfície. O Granabô no servidor exige
+      alteração própria e publicação autorizada; app e widget exigem build.
+    - **Saldo atual e seletor de carteira não mudam nesta tarefa.** O saldo
+      continua com a regra de caixa do mês; o seletor mostra o total de entradas
+      da carteira em todo o período, sem chamá-lo de saldo. `initial_balance`
+      não volta ao cálculo de saldo. O motivo para evitar histórico acumulado
+      permanece: importações incompletas já inflaram o número.
+    - Qualquer mudança futura nesse cálculo exige pedido explícito do autor.
+      O teste de trava pode ser atualizado para codificar a ordem de 07/11,
+      sem afrouxar as demais asserções; paridade entre Início, widget e
+      Granabô deve ser testada com módulos reais.
 
 21. **Nenhum material estático nem de vídeo é produzido antes do fim de
     semana de 3 e 4 de outubro de 2026.** Decisão do autor em 30/09/2026:

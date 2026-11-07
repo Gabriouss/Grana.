@@ -123,6 +123,8 @@ Autor: "deixar tudo pronto pra gente colocar o aplicativo na Play Store". Decis�
 
 **P1 — Início vazia:** autor relatou com print que a Início no celular, build pessoal versionCode 30 da branch de teste, aparece sem blocos e com a faixa “Atualização pendente”. Causa e alcance no APK dos usuários atuais ainda desconhecidos. Investigação atribuída ao Claude Code (Opus 5.5 medium), conforme `E:\Grana-temporarios\2026-11-07-play-fase1\ordem-bug-inicio-vazia.md`; relatório e reprodução ainda pendentes. Ledger leu a ordem, não verificou o aparelho.
 
+**Regra 20 — pedido de 07/11:** autor pediu contar a sobra do mês anterior no Livre, salário futuro desde o dia 1 e fatura só ao pagar. Keel (Opus 5.5 medium) implementa no `main`; `AGENTS.md` registra a decisão e cita `ordem-keel-livre.md`. Implementação, testes e publicação ainda não confirmados; saldo atual e seletor de carteira ficam fora desta tarefa.
+
 **Em aberto.** Os relatórios `relatorio-*.md` e os `FIM-*.md` da pasta da rodada entram aqui à medida que surgirem, cada um em registro curto, separando testado de relatado.
 
 ## 02/11 — motion-supremo unificada nas três cópias
