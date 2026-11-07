@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
  */
 let pendentes = 0;
 let pedidos = 0;
+let naFrente = false;
 const ouvintes = new Set<() => void>();
 
 function avisar() {
@@ -20,6 +21,13 @@ export function publicarPendentes(n: number) {
   avisar();
 }
 
+/** Há aviso a conferir que ainda vai abrir (ou já abriu) a janela: as outras perguntas esperam. */
+export function publicarAvisosNaFrente(v: boolean) {
+  if (v === naFrente) return;
+  naFrente = v;
+  avisar();
+}
+
 export function pedirConferencia() {
   pedidos += 1;
   avisar();
@@ -27,6 +35,7 @@ export function pedirConferencia() {
 
 export const pendentesAgora = () => pendentes;
 export const pedidosAgora = () => pedidos;
+export const avisosNaFrenteAgora = () => naFrente;
 
 function useDoStore<T>(ler: () => T): T {
   const [valor, setValor] = useState(ler);
@@ -41,6 +50,7 @@ function useDoStore<T>(ler: () => T): T {
 
 export const usePendentesDeAvisos = () => useDoStore(pendentesAgora);
 export const usePedidoDeConferencia = () => useDoStore(pedidosAgora);
+export const useAvisosNaFrente = () => useDoStore(avisosNaFrenteAgora);
 
 /** Texto lido pelo leitor de tela no atalho do cabeçalho. */
 export const rotuloDoAtalho = (n: number) => (n === 1 ? '1 lançamento para conferir' : `${n} lançamentos para conferir`);

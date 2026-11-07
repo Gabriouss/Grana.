@@ -77,7 +77,7 @@ function montar(props) {
   const modal = () => achar(render(), (x) => x.tipo === 'AppModal')[0];
   const botao = (rotulo) => achar(render(), (x) => x.tipo === 'AppPressable' && texto(x).includes(rotulo))[0];
   const campo = () => achar(render(), (x) => x.tipo === 'TextInput')[0];
-  return { render, botao, campo, modal };
+  return { render, botao, campo, modal, props };
 }
 
 (async () => {
@@ -117,6 +117,13 @@ function montar(props) {
   ok(bloqueada.modal().props.visible === false, 'com outra janela aberta, não abre por cima');
   outraJanela.valor = false;
   ok(bloqueada.modal().props.visible === true, 'quando a outra fecha, a da sobra abre');
+  /* Avisos do banco primeiro: com aviso na frente a sobra não abre; já aberta, não fecha. */
+  const naFrente = montar({ pode: true, espera: true, sugestao: 0, onConfirmar: async () => {}, onAgoraNao: () => {} });
+  ok(naFrente.modal().props.visible === false, 'com aviso do banco na frente, a sobra espera');
+  naFrente.props.espera = false;
+  ok(naFrente.modal().props.visible === true, 'liberada a vez, a sobra abre');
+  naFrente.props.espera = true;
+  ok(naFrente.modal().props.visible === true, 'aviso chegando depois não fecha a sobra já aberta');
   const semFoco = montar({ pode: false, sugestao: 0, onConfirmar: async () => {}, onAgoraNao: () => {} });
   ok(semFoco.modal().props.visible === false, 'fora de foco ou adiada, não abre');
 
@@ -124,6 +131,8 @@ function montar(props) {
   const inicio = fs.readFileSync(path.join(root, 'app/(app)/index.tsx'), 'utf8');
   ok(/!isDemoMode && sobraDoMes\?\.estado === 'pendente' && \(/.test(inicio) && /pode=\{activeWalletId === 'total' && sobraAdiada === false && !carregandoFontesLivre && inicioEmFoco\}/.test(inicio), 'Início só pergunta na visão total, pendente, fora do exemplo, em foco e depois de ler o adiamento');
   const blocoSaldo = inicio.slice(inicio.indexOf('saldo: () => ('), inicio.indexOf('cofrinhos: () => ('));
+  const avisos = fs.readFileSync(path.join(root, 'components/AvisosAConferir.tsx'), 'utf8');
+  ok(/publicarAvisosNaFrente\(avisosDisponivel && itens\.length > 0 && !adiada\)/.test(avisos) && /espera=\{avisosNaFrente\}/.test(inicio), 'a Início passa a vez dos avisos do banco para a sobra');
   ok(!/PerguntaSobraDoMes/.test(blocoSaldo), 'a Início não tem mais card da sobra no bloco do saldo (regra do autor: nada de bloco novo)');
   ok(/onAgoraNao=\{adiarSobra\}/.test(inicio), '"Agora não" usa o ciclo de vida compartilhado');
 

@@ -30,6 +30,7 @@ import FaixaOffline, { useRecarregarAoChegarDadoNovo } from '@/components/FaixaO
 import FaixaAssinatura from '@/components/FaixaAssinatura';
 import LancamentosEmRevisao from '@/components/LancamentosEmRevisao';
 import AvisosAConferir from '@/components/AvisosAConferir';
+import { useAvisosNaFrente } from '@/lib/avisos-banco/conferencia-aberta';
 import AtalhoDeAvisos from '@/components/AtalhoDeAvisos';
 import { versaoDosLancamentos } from '@/lib/lancamentos-alterados';
 import { Alert } from '@/lib/alerta';
@@ -245,6 +246,7 @@ export default function InicioScreen() {
   // vez, em NENHUM aparelho/navegador da mesma conta.
   const userId = session?.user.id;
   const inicioEmFoco = useIsFocused();
+  const avisosNaFrente = useAvisosNaFrente();
   const { hoje: hojeDaSobra, sobraDoMes, sobraAdiada, carregando: carregandoSobra, erro: erroSobra,
     adiar: adiarSobra, confirmar: confirmarSobra, recarregar: recarregarSobra } = useSobraDoMes(userId, !isDemoMode);
   useEffect(() => {
@@ -1821,6 +1823,7 @@ export default function InicioScreen() {
       {!isDemoMode && sobraDoMes?.estado === 'pendente' && (
         <PerguntaSobraDoMes
           key={`${userId}:${sobraDoMes.mes}`}
+          espera={avisosNaFrente}
           pode={activeWalletId === 'total' && sobraAdiada === false && !carregandoFontesLivre && inicioEmFoco}
           sugestao={sugerirSobraDoMesAnterior(transactions, goals, todayISO())}
           onAgoraNao={adiarSobra}

@@ -7,7 +7,7 @@ import PrivacyValue from './PrivacyValue';
 import TransactionSheet, { type ValoresLancamento } from './TransactionSheet';
 import { Alert } from '@/lib/alerta';
 import { dispensarRecibo, formasAprendidas, listarCaixa, registrarVencimentoVisto, removerItemDaCaixa, sincronizarCaixa } from '@/lib/avisos-banco/caixa';
-import { pedidosAgora, publicarPendentes, usePedidoDeConferencia } from '@/lib/avisos-banco/conferencia-aberta';
+import { pedidosAgora, publicarAvisosNaFrente, publicarPendentes, usePedidoDeConferencia } from '@/lib/avisos-banco/conferencia-aberta';
 import { nomeDoApp, PACOTES_INICIAIS } from '@/lib/avisos-banco/catalogo';
 import {
   cartaoDoItem,
@@ -181,7 +181,10 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
     setAdiada(false);
   }, [pedido]);
 
-  useEffect(() => () => publicarPendentes(0), []);
+  useEffect(() => () => { publicarPendentes(0); publicarAvisosNaFrente(false); }, []);
+
+  /* A pergunta da sobra (e qualquer outra janela de pergunta) espera enquanto há aviso a conferir que vai abrir. */
+  useEffect(() => { publicarAvisosNaFrente(avisosDisponivel && itens.length > 0 && !adiada); }, [itens.length, adiada]);
 
   /* Abre quando há pendência e o caminho está livre; fecha quando acabou. */
   useEffect(() => {

@@ -25,12 +25,15 @@ import Sheet from './Sheet';
  */
 export default function PerguntaSobraDoMes({
   pode,
+  espera = false,
   sugestao,
   onConfirmar,
   onAgoraNao,
 }: {
   /** Início em foco e sobra pendente. Fora disso a janela não abre. */
   pode: boolean;
+  /** Algo precede esta janela (os avisos do banco): só impede de ABRIR, não fecha uma já aberta. */
+  espera?: boolean;
   sugestao: number;
   onConfirmar: (valor: number) => Promise<void>;
   onAgoraNao: () => void;
@@ -44,8 +47,8 @@ export default function PerguntaSobraDoMes({
   const [aberta, setAberta] = useState(false);
   useEffect(() => {
     if (!pode) { if (aberta) setAberta(false); return; }
-    if (!aberta && !outraAberta) setAberta(true);
-  }, [pode, outraAberta, aberta]);
+    if (!aberta && !outraAberta && !espera) setAberta(true);
+  }, [pode, outraAberta, aberta, espera]);
 
   async function confirmar() {
     const numero = valor.trim() ? parseAmount(valor) : 0;
