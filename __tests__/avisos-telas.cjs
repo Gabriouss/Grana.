@@ -938,6 +938,72 @@ async function main() {
     }
   }
 
+  /* Atalho no cabeçalho da Início e item do último dia (07/11/2026). */
+  {
+    const AtalhoDeAvisos = carregar('components/AtalhoDeAvisos.tsx').default;
+    const conferencia = carregar('lib/avisos-banco/conferencia-aberta.ts');
+    conferencia.publicarPendentes(0);
+    const atalho = montar(AtalhoDeAvisos, {}); atalho.render();
+    assert.equal(atalho.tree, null, 'sem pendência o atalho some');
+
+    preparar([aviso('Compra no débito de R$ 52,00 em Mercado Modelo')]);
+    janela = montar(telas.default, { dono: 'dono' }); await janela.settle(); await janela.settle();
+    atalho.render();
+    assert.equal(atalho.tree.type, './HeaderAction', 'mesmo componente do botão do olho');
+    assert.equal(atalho.tree.props.label, '1');
+    assert.equal(atalho.tree.props.accessibilityLabel, '1 lançamento para conferir');
+    assert.equal(atalho.tree.props.icon, 'notifications-outline');
+    assert.equal(conferencia.rotuloDoAtalho(3), '3 lançamentos para conferir');
+
+    /* Depois do "Revisar depois" a janela fecha; o toque no atalho a abre de novo, sem descartar nada. */
+    elementos(janela.tree).find((e) => e.type === telas.ListaAConferir).props.aoAdiar();
+    await janela.settle(); await janela.settle();
+    assert.equal(listaAberta(janela), false);
+    atalho.render();
+    assert.equal(atalho.tree.props.label, '1', 'adiada, a contagem continua');
+    atalho.tree.props.onPress(); for (let i = 0; i < 4; i++) await janela.settle();
+    assert.equal(listaAberta(janela), true, 'toque abre mesmo adiada');
+    assert.equal((await caixa.listarCaixa('dono')).length, 1);
+    assert.equal(chamadas.filter((c) => c[0] === 'gravar' || c[0] === 'apagar').length, 0);
+
+    /* Com outra janela aberta o toque não abre por cima: espera. */
+    elementos(janela.tree).find((e) => e.type === telas.ListaAConferir).props.aoAdiar();
+    await janela.settle(); await janela.settle();
+    const liberar = janelas.registrarJanelaAberta();
+    atalho.tree.props.onPress(); for (let i = 0; i < 4; i++) await janela.settle();
+    assert.equal(listaAberta(janela), false, 'outra janela aberta: não abre por cima');
+    liberar(); for (let i = 0; i < 3; i++) await janela.settle();
+    assert.equal(listaAberta(janela), true, 'abre quando a outra fecha');
+
+    /* Resolvido o último item, o atalho some. */
+    elementos(janela.tree).find((e) => e.type === telas.ListaAConferir).props.aoMudar([]);
+    await janela.settle(); atalho.render();
+    assert.equal(atalho.tree, null);
+    ok('atalho do cabeçalho: contagem da própria janela, abre mesmo adiada, não abre por cima de outra janela e some sem pendência');
+  }
+
+  {
+    const DIA = 24 * 60 * 60 * 1000;
+    /* Aviso de 29,5 dias atrás: está no último dia da validade. */
+    const velho = { ...aviso('Compra no débito de R$ 53,00 em Mercado Modelo'), quando: Date.now() - 29.5 * DIA };
+    const fresco = { ...aviso('Compra no débito de R$ 54,00 em Mercado Modelo'), quando: Date.now() - 2 * DIA };
+    ({ ctx } = await lista([velho, fresco]));
+    const cartoes = elementos(ctx.tree).filter((e) => e.type === telas.CartaoDoAviso);
+    const textos = cartoes.map((c) => texto(telas.CartaoDoAviso(c.props)));
+    const doVelho = textos.find((t) => /53,00/.test(t)), doFresco = textos.find((t) => /54,00/.test(t));
+    assert.match(doVelho, /Vence hoje/);
+    assert.doesNotMatch(doFresco, /Vence hoje/);
+    const guardados = await caixa.listarCaixa('dono');
+    assert.equal(guardados.find((i) => i.valor === 53).vencimentoVisto, true, 'a janela registrou que mostrou a marca');
+    assert.equal(guardados.find((i) => i.valor === 54).vencimentoVisto, undefined);
+    /* Visto e vencido: a próxima leitura o tira; o fresco fica. */
+    diario = [fresco]; // o diário real só guarda 7 dias: o aviso de 29 dias já saiu dele
+    const depois = await caixa.sincronizarCaixa('dono', Date.now() + 2 * DIA);
+    assert.equal(depois.itens.map((i) => i.valor).join(","), "54");
+    assert.equal(chamadas.filter((c) => c[0] === 'gravar' || c[0] === 'apagar').length, 0);
+    ok('janela mostra "Vence hoje" no último dia, registra que mostrou e só então a validade tira o item');
+  }
+
   console.log(`\n${checagens} grupos de verificação passaram. Sem rede ou aparelho.`);
 }
 main().catch((e) => { console.error(e); process.exitCode = 1; });

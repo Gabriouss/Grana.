@@ -30,6 +30,7 @@ import FaixaOffline, { useRecarregarAoChegarDadoNovo } from '@/components/FaixaO
 import FaixaAssinatura from '@/components/FaixaAssinatura';
 import LancamentosEmRevisao from '@/components/LancamentosEmRevisao';
 import AvisosAConferir from '@/components/AvisosAConferir';
+import AtalhoDeAvisos from '@/components/AtalhoDeAvisos';
 import { versaoDosLancamentos } from '@/lib/lancamentos-alterados';
 import { Alert } from '@/lib/alerta';
 import { mensagemErro } from '@/lib/erros';
@@ -1720,6 +1721,7 @@ export default function InicioScreen() {
               }}
               accessibilityLabel={hidden ? 'Mostrar valores' : 'Ocultar valores'}
             />
+            <AtalhoDeAvisos />
             <WalletPill onPress={() => setWalletModalOpen(true)} />
           </>
         }

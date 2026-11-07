@@ -6,7 +6,8 @@ import Sheet from './Sheet';
 import PrivacyValue from './PrivacyValue';
 import TransactionSheet, { type ValoresLancamento } from './TransactionSheet';
 import { Alert } from '@/lib/alerta';
-import { dispensarRecibo, formasAprendidas, listarCaixa, removerItemDaCaixa, sincronizarCaixa } from '@/lib/avisos-banco/caixa';
+import { dispensarRecibo, formasAprendidas, listarCaixa, registrarVencimentoVisto, removerItemDaCaixa, sincronizarCaixa } from '@/lib/avisos-banco/caixa';
+import { pedidosAgora, publicarPendentes, usePedidoDeConferencia } from '@/lib/avisos-banco/conferencia-aberta';
 import { nomeDoApp, PACOTES_INICIAIS } from '@/lib/avisos-banco/catalogo';
 import {
   cartaoDoItem,
@@ -18,6 +19,7 @@ import {
   ofertaDoEstorno,
   pareceEntreContas,
   pareceJaLancado,
+  venceHoje,
   type FormasAprendidas,
   type ItemAConferir,
   type ReciboDeEstorno,
@@ -137,12 +139,15 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
   /** Leitura das referências falhou e a pessoa escolheu "Agora não": volta quando o app voltar ao primeiro plano. */
   const [adiada, setAdiada] = useState(false);
   const outraJanela = useHaJanelaAberta();
+  const pedido = usePedidoDeConferencia();
+  const pedidoVisto = useRef(pedidosAgora());
 
   const carregar = useCallback(async () => {
     if (!avisosDisponivel) return;
     try {
       const { itens: lidos, ilegiveis, recibos: lidosRecibos } = await sincronizarCaixa(dono);
       setItens(lidos);
+      publicarPendentes(lidos.length);
       setRecibos(lidosRecibos);
       if (ilegiveis > 0) avisarFalhaDeLeitura(`${ilegiveis} avisos não puderam ser lidos`);
     } catch (e) {
@@ -169,6 +174,15 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
     return () => { evento.remove(); clearInterval(intervalo); };
   }, [carregar, dono]);
 
+  /* O atalho do cabeçalho desfaz o "Revisar depois"; a janela abre pela regra de sempre (nunca por cima de outra). */
+  useEffect(() => {
+    if (pedido === pedidoVisto.current) return;
+    pedidoVisto.current = pedido;
+    setAdiada(false);
+  }, [pedido]);
+
+  useEffect(() => () => publicarPendentes(0), []);
+
   /* Abre quando há pendência e o caminho está livre; fecha quando acabou. */
   useEffect(() => {
     if (!avisosDisponivel) return;
@@ -190,7 +204,7 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
       recibos={recibos}
       aoDispensarRecibo={dispensar}
       aoAdiar={() => { setAberta(false); setAdiada(true); }}
-      aoMudar={setItens}
+      aoMudar={(lista) => { setItens(lista); publicarPendentes(lista.length); }}
     />
   );
 }
@@ -239,6 +253,10 @@ function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = 
     const salvos = await itensJaGravados(dono);
     const lembradas = await formasAprendidas(dono);
     setItens(lista);
+    if (lista.some((i) => venceHoje(i, Date.now()) && !i.vencimentoVisto)) {
+      /* A janela vai mostrar "Vence hoje": só depois disso a validade pode tirar o item. */
+      void registrarVencimentoVisto(dono).catch((e) => console.warn('[avisos] vencimento visto não gravou', e instanceof Error ? e.name : 'erro'));
+    }
     setJaSalvos(salvos);
     setFormas(lembradas);
     aoMudar(lista);
@@ -625,6 +643,7 @@ function CartaoDoAviso({ item, jaSalvo, dados, formas, texto, entreContas, ocupa
   aoRemoverLancamento: (t: Transaction) => void;
 }) {
   const app = nomeDoApp(item.pacote);
+  const vence = venceHoje(item, Date.now()) ? <Text style={styles.selo}>Vence hoje</Text> : null;
   /* Estorno nunca oferece Confirmar nem Editar: nada disso funciona para ele. */
   if (item.tipo === 'estorno') {
     return <CartaoDoEstorno item={item} dados={dados} ocupado={ocupado} aoDescartar={aoDescartar} aoRemoverLancamento={aoRemoverLancamento} />;
@@ -632,6 +651,7 @@ function CartaoDoAviso({ item, jaSalvo, dados, formas, texto, entreContas, ocupa
   if (jaSalvo) {
     return (
       <View style={styles.cartao}>
+        {vence}
         <Text style={styles.selo}>Já salvo</Text>
         <Text style={styles.corpo}>{item.descricao || 'Sem descrição'}</Text>
         <Text style={styles.legenda}>{semViuva('Para corrigir o valor, edite nos lançamentos.')}</Text>
@@ -644,6 +664,7 @@ function CartaoDoAviso({ item, jaSalvo, dados, formas, texto, entreContas, ocupa
   if (item.tipo === 'nao_entendi') {
     return (
       <View style={styles.cartao}>
+        {vence}
         <Text style={styles.selo}>Não entendi este aviso</Text>
         <Text style={styles.legenda}>{app} · {formatDateLabel(item.data)}</Text>
         <Text style={styles.corpo}>{texto ?? semViuva('O texto deste aviso já foi apagado.')}</Text>
@@ -667,6 +688,7 @@ function CartaoDoAviso({ item, jaSalvo, dados, formas, texto, entreContas, ocupa
   ].filter(Boolean).join(' · ');
   return (
     <View style={styles.cartao}>
+      {vence}
       {jaLancado && <Text style={styles.selo}>Parece já lançado</Text>}
       {entreContas && <Text style={styles.selo}>Entre suas contas?</Text>}
       <PrivacyValue><Text style={styles.valor}>{entrada ? '+ ' : ''}R${formatMoney(item.valor ?? 0)}</Text></PrivacyValue>
