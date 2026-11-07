@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { fonts, radius, spacing, theme, touchTarget, type } from '@/lib/theme';
@@ -14,20 +14,34 @@ import Sheet from './Sheet';
 
 /** Denúncia de uma resposta do Granabô (política da Play para IA generativa).
     Só reaproveita Sheet, AppModal e AppPressable; não cria componente visual novo. */
-export default function DenunciarRespostaModal({
-  mensagem,
-  onClose,
-}: {
+type Props = {
   mensagem: { id: string; texto: string } | null;
   onClose: () => void;
-}) {
+};
+
+export default function DenunciarRespostaModal({ mensagem, onClose }: Props) {
+  // Cada resposta/abertura tem seu formulário; resultado antigo nunca o reutiliza.
+  return mensagem ? <FormularioDenuncia key={`${mensagem.id}:${mensagem.texto}`} mensagem={mensagem} onClose={onClose} /> : null;
+}
+
+function FormularioDenuncia({
+  mensagem,
+  onClose,
+}: Props) {
+  const geracao = useRef(0);
+  const emAndamento = useRef(false);
   const [motivo, setMotivo] = useState<MotivoDenuncia | null>(null);
   const [comentario, setComentario] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [falhou, setFalhou] = useState(false);
   const [enviado, setEnviado] = useState(false);
 
+  useEffect(() => () => { geracao.current += 1; }, []);
+
   function fechar() {
+    geracao.current += 1;
+    emAndamento.current = false;
+    setEnviando(false);
     setMotivo(null);
     setComentario('');
     setFalhou(false);
@@ -36,17 +50,22 @@ export default function DenunciarRespostaModal({
   }
 
   async function enviar() {
-    if (!mensagem || !motivo || enviando) return;
+    if (!mensagem || !motivo || emAndamento.current) return;
+    const tentativa = ++geracao.current;
+    emAndamento.current = true;
     setEnviando(true);
     setFalhou(false);
     try {
       await denunciarResposta(mensagem, motivo, comentario);
-      setEnviado(true);
+      if (tentativa === geracao.current) setEnviado(true);
     } catch {
       // O erro já foi registrado em denunciarResposta; aqui o recibo é visível.
-      setFalhou(true);
+      if (tentativa === geracao.current) setFalhou(true);
     } finally {
-      setEnviando(false);
+      if (tentativa === geracao.current) {
+        emAndamento.current = false;
+        setEnviando(false);
+      }
     }
   }
 
