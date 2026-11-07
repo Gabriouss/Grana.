@@ -155,6 +155,12 @@ Lumen relata denúncia em `1a1f9cfa`/`ead42e2b`, com UI incorporada ao commit de
 
 **Harbor 2 — integração parcial:** `relatorio-harbor-2.md` relata bundles verificados e cherry-picks `4eb0b859` → `5026be9a` e `7cfe303b` → `1d901237`. `64b8124d` parou em conflito apenas na linha `test:ci`. Codex relata ter lido o relatório e `diff --cc`, confirmado adições independentes e autorizado preservar campos e comandos do clone, acrescentar `sobra-do-mes.cjs`, manter `test:avisos`, validar JSON e comandos e continuar; conflitos equivalentes de adições de CI seguem o mesmo critério. Integração ainda não concluída, reparos UI/Forge não concluídos e portão global não comprovado. Sequência mantida: Harbor integra → Prism → Forge → Harbor portão final. Ledger leu o relatório e não repetiu verificações.
 
+**Retomada após redefinição do limite:** autor pediu continuar sem refazer. Harbor relata integração concluída em `b2aebba8`: `4eb0b859`→`5026be9a`, `7cfe303b`→`1d901237`, `64b8124d`→`9f75e98b`, `856b6deb`→`9df3dd1a`, `6ec0f4d0`→`78c950d9`, `58fabe75`→`b2aebba8`. Relata bundles verificados, JSON válido, comandos CI preservados e apenas os dois testes acrescentados; Ledger não repetiu as provas. `LIBERADO-prism.md` liberou as árvores; Prism parou por limite antes dos reparos e recebeu retomada.
+
+**Achados e sequência:** além de UI-01/02/03, Codex confirmou por leitura WT-R4 (P1): helper aceita sobra confirmada sem guardar mês e Home usa estado de mês capturado, permitindo sobra antiga após virada; WT-R3 duplica UI-03. Codex relata leitura dos caminhos WT-R1/R2/R5 em `decidir.ts`; sondas reais de R1/R2 são do Watchtower, não repetidas por Codex ou Ledger. Prism recebeu UI-01/02/03 e WT-R4; Forge recebeu F1/F2 e WT-R1/R2/R5 após liberação Prism. Sequência: Prism → Forge → revisão Watchtower → Harbor portão sequencial. Nada desses reparos concluído neste registro. Ordem de coordenação: `E:\Grana-temporarios\2026-11-07-play-fase1\ORDEM-retomada-codex.md`.
+
+**Implantação pendente:** migrations da sobra e denúncia têm o mesmo timestamp `20261107120000`; revisar controle de versões antes da implantação. Grants reais e RLS em Postgres real não foram testados. Sem aplicar nem renomear agora. Sem push, build, deploy, migration aplicada ou restart.
+
 **Em aberto.** Os relatórios `relatorio-*.md` e os `FIM-*.md` da pasta da rodada entram aqui à medida que surgirem, cada um em registro curto, separando testado de relatado.
 
 ## 02/11 — motion-supremo unificada nas três cópias
