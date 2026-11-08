@@ -23,6 +23,40 @@ const CHAVE = 'grana_app_lock_ativo';
    copiar um valor e voltar é fluxo normal, e pedir digital toda vez treina a
    pessoa a desligar a trava. 30s cobre isso sem abrir janela real de risco. */
 const CARENCIA_MS = 30_000;
+const PRAZO_PREPARACAO_MS = 5_000;
+const PRAZO_AUTENTICACAO_MS = 60_000;
+const PRAZO_CANCELAMENTO_MS = 2_000;
+
+function noPrazo<T>(promessa: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('prazo_do_bloqueio')), ms);
+    promessa.then(
+      valor => { clearTimeout(timer); resolve(valor); },
+      erro => { clearTimeout(timer); reject(erro); },
+    );
+  });
+}
+
+/* O prompt é único no módulo nativo, inclusive se a Activity remontar o
+   provider no mesmo runtime. Não deixar um cancelamento antigo fechar um
+   prompt novo: esperar a MESMA promessa nativa, sem repetir o cancelamento. */
+let cancelamentoNativo: Promise<void> | null = null;
+function cancelarNativo(): Promise<void> {
+  if (Platform.OS !== 'android') return Promise.resolve();
+  if (!cancelamentoNativo) {
+    const tarefa = Promise.resolve().then(() => LocalAuthentication.cancelAuthenticate());
+    cancelamentoNativo = tarefa;
+    void tarefa.then(
+      () => { if (cancelamentoNativo === tarefa) cancelamentoNativo = null; },
+      () => { if (cancelamentoNativo === tarefa) cancelamentoNativo = null; },
+    );
+  }
+  return noPrazo(cancelamentoNativo, PRAZO_CANCELAMENTO_MS);
+}
+
+function registrarFalha(etapa: string) {
+  console.error(`[bloqueio] ${etapa}`);
+}
 
 type AppLockValue = {
   /** Se a trava está ligada nas preferências. */
@@ -35,6 +69,8 @@ type AppLockValue = {
       pra cobrir a tela durante esse instante, já que `bloqueado` começa falso
       por padrão e só vira true depois de saber se a trava está ligada. */
   pronto: boolean;
+  autenticando: boolean;
+  erro: string | null;
   alternar: () => Promise<void>;
   desbloquear: () => Promise<boolean>;
 };
@@ -44,6 +80,8 @@ const AppLockContext = createContext<AppLockValue>({
   bloqueado: false,
   disponivel: false,
   pronto: false,
+  autenticando: false,
+  erro: null,
   alternar: async () => {},
   desbloquear: async () => false,
 });
@@ -69,20 +107,70 @@ export function AppLockProvider({ children }: PropsWithChildren) {
      efeito abaixo não roda saía no HTML do servidor por cima da landing, que
      ficava invisível até o JavaScript chegar (A3, 24/10/2026). */
   const [pronto, setPronto] = useState(Platform.OS === 'web');
+  const [autenticando, setAutenticando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
   const saiuEm = useRef<number | null>(null);
+  const vivo = useRef(true);
+  const ativoAtual = useRef(false);
+  const preparado = useRef(Platform.OS === 'web');
+  const carregamento = useRef<Promise<boolean | null> | null>(null);
+  const recuperacao = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tentativa = useRef<{
+    promessa: Promise<boolean>;
+    terminar: (sucesso: boolean, mensagem?: string) => void;
+  } | null>(null);
+
+  const preparar = useCallback((): Promise<boolean | null> => {
+    if (Platform.OS === 'web') return Promise.resolve(false);
+    if (carregamento.current) return carregamento.current;
+    const tarefa = (async () => {
+      setPronto(false);
+      setErro(null);
+      try {
+        const [disp, salvo] = await noPrazo(
+          Promise.all([checarDisponibilidade(), AsyncStorage.getItem(CHAVE)]), PRAZO_PREPARACAO_MS,
+        );
+        if (!vivo.current) return null;
+        const ligado = salvo === '1' && disp;
+        ativoAtual.current = ligado;
+        preparado.current = true;
+        setDisponivel(disp);
+        setAtivo(ligado);
+        setBloqueado(ligado);
+        setPronto(true);
+        return ligado;
+      } catch {
+        if (!vivo.current) return null;
+        registrarFalha('não foi possível conferir a proteção');
+        preparado.current = false;
+        // Preferência desconhecida não pode liberar o conteúdo financeiro.
+        setBloqueado(true);
+        setPronto(true);
+        setErro('Não consegui conferir a proteção. Toque em Desbloquear para tentar de novo.');
+        return null;
+      }
+    })();
+    carregamento.current = tarefa;
+    void tarefa.then(() => { if (carregamento.current === tarefa) carregamento.current = null; });
+    return tarefa;
+  }, []);
+
+  const interromper = useCallback((mensagem: string) => {
+    const anterior = tentativa.current;
+    if (!anterior) return;
+    anterior.terminar(false, mensagem);
+    void cancelarNativo().catch(() => registrarFalha('cancelamento da confirmação não respondeu'));
+  }, []);
 
   useEffect(() => {
-    (async () => {
-      const disp = await checarDisponibilidade();
-      setDisponivel(disp);
-      const salvo = await AsyncStorage.getItem(CHAVE);
-      const ligado = salvo === '1' && disp;
-      setAtivo(ligado);
-      // Abertura do app já entra bloqueada quando a trava está ligada.
-      setBloqueado(ligado);
-      setPronto(true);
-    })();
-  }, []);
+    vivo.current = true;
+    void preparar();
+    return () => {
+      vivo.current = false;
+      if (recuperacao.current !== null) clearTimeout(recuperacao.current);
+      interromper('A confirmação foi interrompida. Tente de novo.');
+    };
+  }, [preparar, interromper]);
 
   /* Rebloqueia ao voltar do segundo plano depois da carência. O timestamp é
      gravado na saída, não na volta: medir na volta não diria há quanto tempo
@@ -91,28 +179,89 @@ export function AppLockProvider({ children }: PropsWithChildren) {
     const sub = AppState.addEventListener('change', (estado) => {
       if (estado === 'active') {
         const saida = saiuEm.current;
-        if (ativo && saida !== null && Date.now() - saida > CARENCIA_MS) {
+        const pendente = tentativa.current;
+        if (ativoAtual.current && saida !== null && Date.now() - saida > CARENCIA_MS && !pendente) {
           setBloqueado(true);
+        }
+        /* A senha do aparelho também volta por esta Activity. Dar tempo para
+           seu resultado chegar, em vez de cancelar uma confirmação válida.
+           Se a promessa antiga persistir, o botão recupera sem matar o app. */
+        if (saida !== null && pendente) {
+          if (recuperacao.current !== null) clearTimeout(recuperacao.current);
+          recuperacao.current = setTimeout(() => {
+            recuperacao.current = null;
+            if (tentativa.current === pendente) interromper('A confirmação foi interrompida. Toque em Desbloquear para tentar de novo.');
+          }, 250);
         }
         saiuEm.current = null;
       } else if (estado === 'background') {
+        if (recuperacao.current !== null) clearTimeout(recuperacao.current);
+        recuperacao.current = null;
         saiuEm.current = Date.now();
       }
     });
     return () => sub.remove();
-  }, [ativo]);
+  }, [interromper]);
+
+  const autenticar = useCallback((promptMessage: string): Promise<boolean> => {
+    if (tentativa.current) return tentativa.current.promessa;
+    let resolver!: (sucesso: boolean) => void;
+    const promessa = new Promise<boolean>(resolve => { resolver = resolve; });
+    const operacao = {
+      promessa,
+      terminar(sucesso: boolean, mensagem?: string) {
+        if (tentativa.current !== operacao) return;
+        tentativa.current = null;
+        clearTimeout(timer);
+        if (vivo.current) {
+          setAutenticando(false);
+          setErro(mensagem ?? null);
+        }
+        resolver(sucesso && vivo.current);
+      },
+    };
+    tentativa.current = operacao;
+    setAutenticando(true);
+    setErro(null);
+    const timer = setTimeout(() => {
+      registrarFalha('confirmação excedeu o prazo');
+      interromper('A confirmação demorou demais. Toque em Desbloquear para tentar de novo.');
+    }, PRAZO_AUTENTICACAO_MS);
+    void (async () => {
+      try {
+        if (cancelamentoNativo) await noPrazo(cancelamentoNativo, PRAZO_CANCELAMENTO_MS);
+        if (tentativa.current !== operacao) return;
+        const resultado = await LocalAuthentication.authenticateAsync({
+          promptMessage, cancelLabel: 'Cancelar', disableDeviceFallback: false,
+        });
+        if (tentativa.current !== operacao) return;
+        if (resultado.success) operacao.terminar(true);
+        else {
+          registrarFalha('confirmação não foi concluída');
+          operacao.terminar(false, 'A confirmação não foi concluída. Toque em Desbloquear para tentar de novo.');
+          if (resultado.error === 'app_cancel' || resultado.error === 'invalid_context') {
+            void cancelarNativo().catch(() => registrarFalha('cancelamento da confirmação não respondeu'));
+          }
+        }
+      } catch {
+        if (tentativa.current !== operacao) return;
+        registrarFalha('não foi possível abrir a confirmação');
+        operacao.terminar(false, 'Não consegui abrir a confirmação do aparelho. Toque em Desbloquear para tentar de novo.');
+      }
+    })();
+    return promessa;
+  }, [interromper]);
 
   const desbloquear = useCallback(async () => {
-    const { success } = await LocalAuthentication.authenticateAsync({
-      promptMessage: 'Desbloqueie o Grana.',
-      cancelLabel: 'Cancelar',
-      // Sem isto, quem não conseguir usar a digital fica trancado para fora
-      // do próprio app — a senha do aparelho precisa continuar valendo.
-      disableDeviceFallback: false,
-    });
-    if (success) setBloqueado(false);
-    return success;
-  }, []);
+    if (!preparado.current) {
+      const ligado = await preparar();
+      if (ligado === null) return false;
+      if (!ligado) return true;
+    }
+    const sucesso = await autenticar('Desbloqueie o Grana.');
+    if (sucesso && vivo.current) setBloqueado(false);
+    return sucesso;
+  }, [preparar, autenticar]);
 
   const alternar = useCallback(async () => {
     if (!disponivel) return;
@@ -120,22 +269,20 @@ export function AppLockProvider({ children }: PropsWithChildren) {
       /* Desligar a trava é, em si, uma ação protegida: sem exigir a
          autenticação aqui, quem pegasse o aparelho desbloqueado simplesmente
          desligaria a proteção. */
-      const { success } = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Confirme para desativar o bloqueio',
-        cancelLabel: 'Cancelar',
-      });
-      if (!success) return;
+      if (!await autenticar('Confirme para desativar o bloqueio')) return;
       await AsyncStorage.setItem(CHAVE, '0');
+      ativoAtual.current = false;
       setAtivo(false);
       setBloqueado(false);
       return;
     }
     await AsyncStorage.setItem(CHAVE, '1');
+    ativoAtual.current = true;
     setAtivo(true);
-  }, [ativo, disponivel]);
+  }, [ativo, disponivel, autenticar]);
 
   return (
-    <AppLockContext value={{ ativo, bloqueado, disponivel, pronto, alternar, desbloquear }}>
+    <AppLockContext value={{ ativo, bloqueado, disponivel, pronto, autenticando, erro, alternar, desbloquear }}>
       {children}
     </AppLockContext>
   );
