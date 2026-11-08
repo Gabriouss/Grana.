@@ -229,6 +229,10 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
     setRecibos((antes) => antes.filter((r) => r.id !== id));
     dispensarRecibo(dono, id).catch((e) => console.warn('[avisos] recibo não saiu da lista', e instanceof Error ? e.name : 'erro'));
   };
+  /* Estável de propósito: a lista recarrega quando `aoMudar` muda. Função nova a
+     cada desenho virou laço infinito na build 31 (707ade87): JS em 100%, disco
+     congestionado e o app inteiro sem carregar. Teste em `avisos-telas.cjs`. */
+  const aoMudar = useCallback((lista: ItemAConferir[]) => { setItens(lista); publicarPendentes(lista.length); }, []);
   if (!avisosDisponivel) return null;
   /* Sem pendência, o recibo abre numa janela pequena com "Entendi"; nunca bloco na Início. */
   if (!aberta || itens.length === 0) return <ReciboEmJanela recibos={recibos} aoDispensar={dispensar} bloqueado={bloqueado} />;
@@ -239,7 +243,7 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
       recibos={recibos}
       aoDispensarRecibo={dispensar}
       aoAdiar={() => { setAberta(false); setAdiada(true); }}
-      aoMudar={(lista) => { setItens(lista); publicarPendentes(lista.length); }}
+      aoMudar={aoMudar}
     />
   );
 }

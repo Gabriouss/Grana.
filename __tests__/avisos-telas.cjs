@@ -41,6 +41,7 @@ let falhaCaixa = { pular: 0, vezes: 0 };
 let falhaFormas = false, avisosDoConsole = [];
 let chamadas = [], alertas = [], copiado = '', dadosLocais = {}, historico = [];
 let privacidadeOculta = false;
+let leiturasDoHistorico = 0;
 const disco = new Map();
 const intervalos = new Set();
 const animacoes = [];
@@ -99,7 +100,7 @@ const stub = {
   '@/lib/cache-de-tela': { lerTela: async (chave) => chave in dadosLocais ? { dados: dadosLocais[chave] } : null },
   '@/lib/data': Object.fromEntries(['seedDefaultCategories', 'fetchCategories', 'addCategory', 'updateCategory', 'deleteCategory']
     .map((nome) => [nome, () => { chamadas.push(['rede-proibida', nome]); throw new Error(`Rede proibida: ${nome}`); }])),
-  '@/lib/offline-cache': { getCachedTransactions: async () => historico },
+  '@/lib/offline-cache': { getCachedTransactions: async () => { leiturasDoHistorico++; return historico; } },
   '../offline-cache': { salvarOuGuardarNoAparelho: salvar, salvarOuGuardarParceladaNoAparelho: async (...args) => {
     chamadas.push(['parcelada']); return salvar(...args);
   } },
@@ -156,7 +157,8 @@ function carregar(relativo) {
 }
 function montar(fn, props) {
   const ctx = { slots: [], cursor: 0, efeitos: [], limpezas: [], tree: null };
-  ctx.render = () => { ctx.cursor = 0; corrente = ctx; ctx.tree = fn(props); for (const efeito of ctx.efeitos.splice(0)) efeito(); return ctx.tree; };
+  /* `novas`: o pai redesenhou e entregou props novas ao MESMO componente, como o React faz. */
+  ctx.render = (novas) => { if (novas) props = novas; ctx.cursor = 0; corrente = ctx; ctx.tree = fn(props); for (const efeito of ctx.efeitos.splice(0)) efeito(); return ctx.tree; };
   ctx.settle = async () => { for (let i = 0; i < 5; i++) await new Promise((r) => setImmediate(r)); ctx.render(); };
   ctx.unmount = () => { for (const limpar of ctx.limpezas) limpar?.(); ctx.limpezas = []; };
   ctx.render();
@@ -1010,6 +1012,28 @@ async function main() {
     assert.equal(depois.itens.map((i) => i.valor).join(","), "54");
     assert.equal(chamadas.filter((c) => c[0] === 'gravar' || c[0] === 'apagar').length, 0);
     ok('janela mostra "Vence hoje" no último dia, registra que mostrou e só então a validade tira o item');
+  }
+
+  {
+    /* Build 31, 07/11/2026 (707ade87): a janela-mãe passava `aoMudar` como função
+       nova a cada desenho. A lista recarrega quando `aoMudar` muda, avisa a mãe,
+       a mãe redesenha e o ciclo não parava: JS do aparelho em 100%, o disco
+       congestionado e o app inteiro sem carregar. Aqui mãe e lista rodam juntas,
+       como no React: cada desenho da mãe entrega props novas à MESMA lista. */
+    preparar([aviso('Compra no débito de R$ 55,00 em Mercado Modelo')]);
+    const mae = montar(telas.default, { dono: 'dono' }); await mae.settle(); await mae.settle();
+    const daLista = () => elementos(mae.tree).find((e) => e.type === telas.ListaAConferir);
+    assert.ok(daLista(), 'a janela abriu');
+    leiturasDoHistorico = 0;
+    const filha = montar(telas.ListaAConferir, daLista().props);
+    for (let ciclo = 0; ciclo < 6; ciclo++) {
+      await filha.settle(); // a lista termina de ler e chama aoMudar: a mãe guarda a lista nova
+      mae.render(); // a mãe redesenha
+      filha.render(daLista().props); // e entrega as props do novo desenho à mesma lista
+    }
+    await filha.settle();
+    assert.equal(leiturasDoHistorico, 1, `a lista releu o histórico ${leiturasDoHistorico} vezes: laço de recarga`);
+    ok('janela aberta pela mãe carrega uma vez só, sem laço de recarga quando a mãe redesenha (build 31)');
   }
 
   console.log(`\n${checagens} grupos de verificação passaram. Sem rede ou aparelho.`);
