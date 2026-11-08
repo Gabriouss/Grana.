@@ -151,3 +151,19 @@ async function testarCacheDias() {
   console.log('C-01: isolamento de conta, limpeza e consultas em voo passaram.');
 }
 testarCacheDias().catch(e => { console.error(e); process.exitCode = 1; });
+
+async function testarPendentesNoCache() {
+  const { api, estado } = cacheDiasReal();
+  estado.bancos.a = [];
+  estado.pendentes = [{ created_at: '2026-10-31T23:30:00-03:00', occurred_on: '2026-09-01' }];
+  assert((await api.fetchDiasComRegistro(2026, 9)).has('2026-10-31'), 'C-02: primeira consulta inclui criadoEm local, nao occurred_on');
+  const segunda = await api.fetchDiasComRegistro(2026, 9);
+  assert(segunda.has('2026-10-31'), 'C-02: cache reune pendente novamente');
+  assert.equal(estado.chamadas, 1, 'C-02: cache evita outra consulta ao banco');
+  estado.pendentes = [];
+  assert.equal((await api.fetchDiasComRegistro(2026, 9)).size, 0, 'C-02: retirar pendente nao deixa dia persistido');
+  estado.pendentes = [{ created_at: '2026-11-01T03:30:00Z', occurred_on: '2026-10-31' }];
+  assert.equal((await api.fetchDiasComRegistro(2026, 9)).size, 0, 'C-02: registro criado em novembro nao entra em outubro');
+  console.log('C-02: pendentes no cache, remocao e limite de mes passaram.');
+}
+testarPendentesNoCache().catch(e => { console.error(e); process.exitCode = 1; });

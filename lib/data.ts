@@ -1224,6 +1224,15 @@ function prepararCacheDeDias(): void {
   }
 }
 
+async function reunirDiasPendentes(doBanco: ReadonlySet<string>, prefixo?: string): Promise<Set<string>> {
+  const dias = new Set(doBanco);
+  // A fila continua viva: não guardar seus dias junto ao snapshot do banco.
+  for (const dia of diasComRegistro(await juntarPendentes([]))) {
+    if (!prefixo || dia.startsWith(prefixo)) dias.add(dia);
+  }
+  return dias;
+}
+
 async function diasEntre(inicioISO: string, fimISO: string, prefixo?: string): Promise<{ doBanco: Set<string>; comPendentes: Set<string> }> {
   prepararCacheDeDias();
   const geracao = geracaoDias;
@@ -1232,8 +1241,7 @@ async function diasEntre(inicioISO: string, fimISO: string, prefixo?: string): P
   const doBanco = diasComRegistro(linhas);
   /* Pendentes da fila offline entram como em `juntarPendentes`, mas pelo dia
      em que foram anotados (`criadoEm`), não pelo `occurred_on`. */
-  const comPendentesLista = await juntarPendentes(linhas as unknown as Transaction[]);
-  const comPendentes = diasComRegistro(comPendentesLista);
+  const comPendentes = await reunirDiasPendentes(doBanco, prefixo);
   if (prefixo) {
     for (const d of [...comPendentes]) if (!d.startsWith(prefixo)) comPendentes.delete(d);
   }
@@ -1252,7 +1260,11 @@ export async function fetchDiasComRegistro(ano: number, mes: number): Promise<Se
   const fechado = ano * 12 + mes < agora.getFullYear() * 12 + agora.getMonth();
   const prefixo = `${ano}-${String(mes + 1).padStart(2, '0')}-`;
   const guardado = fechado ? diasDeMesFechado.get(chave) : undefined;
-  if (guardado) return new Set(guardado);
+  if (guardado) {
+    const comPendentes = await reunirDiasPendentes(guardado, prefixo);
+    await conferirDonoDosDias(userId, geracao);
+    return comPendentes;
+  }
   const { inicio, fim } = limitesDoMes(ano, mes);
   const { doBanco, comPendentes } = await diasEntre(inicio, fim, prefixo);
   await conferirDonoDosDias(userId, geracao);
