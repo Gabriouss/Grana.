@@ -198,14 +198,14 @@ export function calcularPadraoDeGastos(
   if (quinzena) {
     frases.quinzena =
       quinzena.tipo === 'parecidas'
-        ? 'As duas quinzenas tiveram gastos parecidos.'
-        : `A ${quinzena.periodo.rotulo} quinzena teve mais gasto: ${brl(quinzena.periodo.total)}, contra ${brl(quinzena.outro.total)} na ${quinzena.outro.rotulo}.`;
+        ? 'As duas quinzenas tiveram gastos parecidos por dia.'
+        : `A ${quinzena.periodo.rotulo} quinzena teve a maior média diária: ${brl(quinzena.periodo.mediaPorDia)} por dia, contra ${brl(quinzena.outro.mediaPorDia)} na ${quinzena.outro.rotulo}.`;
   }
   if (semana) {
     frases.semana =
       semana.tipo === 'parecidas'
-        ? 'As semanas tiveram gastos parecidos.'
-        : `A semana de ${semana.periodo.rotulo} foi a de maior gasto: ${brl(semana.periodo.total)}.`;
+        ? 'As semanas tiveram gastos parecidos por dia.'
+        : `A semana de ${semana.periodo.rotulo} teve a maior média diária: ${brl(semana.periodo.mediaPorDia)} por dia.`;
   }
   if (dia) frases.dia = `O dia de maior gasto foi ${dd(dia.iso)}, com ${brl(dia.total)}.`;
 

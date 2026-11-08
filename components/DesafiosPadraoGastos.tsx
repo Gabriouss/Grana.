@@ -11,11 +11,11 @@ export default function DesafiosPadraoGastos({ padrao }: { padrao: PadraoDeGasto
   const data = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
   if (padrao.quinzena?.tipo === 'maior') {
     const { periodo, outro } = padrao.quinzena;
-    frases.push(`A ${periodo.rotulo} quinzena teve mais gasto: ${formatBRL(periodo.total)}, contra ${formatBRL(outro.total)} na ${outro.rotulo}.`);
+    frases.push(`A ${periodo.rotulo} quinzena teve a maior média diária: ${formatBRL(periodo.mediaPorDia)} por dia, contra ${formatBRL(outro.mediaPorDia)} na ${outro.rotulo}.`);
   } else if (padrao.quinzena) frases.push('As duas quinzenas tiveram gastos parecidos por dia.');
   if (padrao.semana?.tipo === 'maior') {
     const { periodo } = padrao.semana;
-    frases.push(`A semana de ${data(periodo.inicio)} a ${data(periodo.fim)} foi a de maior gasto: ${formatBRL(periodo.total)}.`);
+    frases.push(`A semana de ${data(periodo.inicio)} a ${data(periodo.fim)} teve a maior média diária: ${formatBRL(periodo.mediaPorDia)} por dia.`);
   } else if (padrao.semana) frases.push('As semanas tiveram gastos parecidos por dia.');
   if (padrao.dia) frases.push(`O dia de maior gasto foi ${data(padrao.dia.iso)}, com ${formatBRL(padrao.dia.total)}.`);
   return <View style={s.card}>
