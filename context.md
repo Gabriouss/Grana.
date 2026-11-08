@@ -163,6 +163,92 @@ Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052
 **Beacon:** três fixes H preparados no main com regressões RED→GREEN, conforme Codex; ainda sem recibo de commit ou hashes finais. `package.json` relacionado a H02 fica sob responsabilidade exclusiva do Beacon. Não presumir entrega no clone ou revisão final.
 
 **Janelas e limites:** Codex liberou Git exclusivo ao Ledger para fetch, comparação e commit somente de `context.md`; Forge será próximo após término declarado. Carga pesada atual é Metro do Sentinel. Sem push, build ou Supabase. Nenhum novo sintoma ou causa foi investigado pelo Ledger; descartado incluir WIP de produto alheio ou declarar gate, tsc, guarda ou QA nativo aprovados.
+
+### Complemento — revisão G e pedidos Supabase
+
+**Entrega:** Codex informa G concluída pelo Harbor sem novos P1/P2/P3, nos cortes main `e0df3a45` e clone `8894eb80`; Deno local EXIT 0. Fontes: `E:/Grana-temporarios/2026-11-08-retomada/relatorio-revisao-G-harbor.md`, `pedido-supabase-g-funcoes.md` e `pedido-supabase-g-migrations.md` na mesma pasta; Codex relata ter lido os três. Ledger não repetiu a revisão ou o Deno.
+
+**Limites e pendências:** os dois pedidos estão preparados e NÃO foram executados; remoto, SQL, JWT, `updated_at`, backup e reconciliação são exclusivos do Supremo e dependem de aval. Para Play/produto, continuam sem definição retenção, responsável pela triagem e leitura administrativa de `assistant_reports`; não inventar política. A caixa do Supremo contém rascunho do autor; Codex não escreveu nela e o aviso aguarda caixa vazia.
+
+**Ocorrências e descarte:** este corte veio após o commit documental `c20c813d` e aguarda nova janela própria. Não inferir aplicação Supabase, validação do servidor ou gate verde a partir de Deno local e pedidos preparados. Nenhum novo sintoma ou causa de produto foi investigado pelo Ledger; sem push, build ou Supabase.
+
+### Complemento — Forge assume janela Git após documento
+
+**Pedido e situação:** Codex confirmou recebimento do commit documental `c20c813d` e término de sua janela. Git agora concedido exclusivamente ao Forge para C02/B01 no main e cherry-picks C01/C02/B01 no clone; depois Beacon para três fixes H e três cherry-picks, depois Sentinel quando pronto. Cada próximo titular depende de concessão do Codex. Pesado atual: Sentinel no Metro.
+
+**Limites:** revisão G chegou depois do commit anterior e integra este corte ainda não commitado. Não há confirmação neste registro de que Forge, Beacon ou Sentinel tenham concluído suas entregas; janelas não são recibos. Nenhum novo sintoma ou causa de produto foi investigado. Descartado executar Git documental durante a janela Forge; aguardar próxima liberação sem loop de espera, sem push/build/Supabase.
+
+### Complemento — limites e andamento das janelas
+
+**Estado informado pelo Codex:** Forge concluiu C02 main `f73d410d` e B01 main `51838604`; os três cherry-picks C01/C02/B01 no clone ainda estão em curso, sem hashes de conclusão neste corte. Terminal Forge mostra PH 2% restantes em 5h e redefinição às 17h17; Codex prepara continuidade com Prism na conta Gabriel somente após liberação e estado consistente do Forge, sem reinício ou troca de conta. Ledger não mediu o limite diretamente.
+
+**Carga pesada:** Sentinel encontrou 1.505 MiB livres, abaixo do mínimo de 1.536 MiB; na última conferência do Codex nenhum Metro havia sido aberto. Sentinel prepara D01 por trabalho leve. Gate poderá precisar da conta Gabriel caso PH esgote; Watchtower preparará o roteiro existente. Esses são planejamento e contingência, não resultados de teste.
+
+**Coordenação e limites:** pedidos antigos Harbor/Ledger para o commit já feito `c20c813d` são históricos, não autorização nova; novos cortes documentais aguardam janela expressa do Codex. Não declarar os cherry-picks nem fixes H commitados sem recibo. Nenhum sintoma ou causa novos foram investigados pelo Ledger; sem push/build/Supabase e sem alterar perfil de agente.
+
+### Complemento — continuidade na conta Gabriel e bloqueio de memória
+
+**Pedido e causa operacional:** Codex confirmou esgotamento da janela de 5h da conta PH nos terminais Forge e Beacon, com redefinição às 17h17. Revogou a janela Forge após conferir clone limpo em `7576f136`, sem `CHERRY_PICK_HEAD`, `index.lock` ou processo `git.exe`. Esses são relatos do Codex; Ledger não repetiu as sondas nem leu o status da conta.
+
+**Git:** Codex concedeu exclusividade ao Prism na conta Gabriel para três cherry-picks Forge no clone e os três fixes H preparados pelo Beacon no main mais três cherry-picks no clone. É continuidade mecânica, sem duplicar implementação/testes. Main Forge confirmado: C01 `287a449a`, C02 `f73d410d`, B01 `51838604`. Nenhum novo cherry-pick ou commit H está comprovado neste corte. Atualização de titular em `E:/Grana-temporarios/2026-11-08-retomada/controle-janelas-harbor.md`.
+
+**Sentinel e pesado:** Sentinel declarou janela encerrada; segundo o Codex, porta 8083 sem listener e processos próprios 26220/25612/17064 encerrados, com 0,949 GiB livres. Saudação A ficou sem captura ou edição; D01 tem teste real RED 1, WIP somente em `home-layout-sessao-presa`, sem fix, tsc ou Git. Janela pesada está livre, mas não iniciar carga abaixo de 1,5 GiB. Watchtower assumirá o gate futuro devido ao limite PH, ainda não autorizado.
+
+**Limites e descartes:** não reiniciar agentes, trocar contas, repetir trabalho preparado ou declarar gate verde; não confundir teste vermelho com correção. Ledger não executou produto, teste, processo ou sonda nessa atualização. Commit documental continua aguardando janela expressa do Codex; sem push/build/Supabase.
+
+### Complemento — integridade E concluída; cinco correções autorizadas
+
+**Pedido e resultado:** Compass concluiu `E:/Grana-temporarios/2026-11-08-retomada/relatorio-revisao-E-compass.md`: 33 caminhos no recorte main `e0df3a45`/clone `8894eb80`, 0 P1, 5 P2 e 0 P3. Codex relata ter conferido os cinco alvos atuais e autorizado correção antes do gate. A revisão não aprova bytes posteriores; Ledger leu o relatório sem repetir suas provas.
+
+**Sintomas, causas e provas relatadas:** E01: `test:avisos` não alcançado pelo CI do clone, confirmado pelo grafo; Prism encadeará no clone. E02: Promise pendurada deixa o processo terminar com exit 0 antes das asserções, reproduzida por mutação em memória; Sentinel tratará watchdog. E03: dublê de `useEffect` ignora dependências e mascara regressão, mutante sobreviveu às 31 checagens; Sentinel corrigirá o harness. E04: fixture da sobra não fixa TZ, São Paulo passou e UTC falhou; Sentinel corrigirá os dois testes da sobra nas duas árvores. E05: teste de canal Play valida sintaxe sem provar booleano da tela, mutante falso continuou 21/21; Prism reforçará sensibilidade apenas no clone após integrações/H. Não há fix E concluído neste corte nem produto alterado pela revisão E.
+
+**Coordenação e descarte:** Git exclusivo Prism; Sentinel só edita e faz teste leve até nova janela, enquanto UI aguarda RAM. Gate final deve incluir fixes E e revisão independente do Watchtower; não declarar CI verde. Baseline visual antiga não foi aceita pelo Sentinel: prints 360/390/768/1440, sem 412; bytes do bundle não comprovados; nenhuma escuta nas portas 8081/8082/8083/19006 no corte relatado. Sem nova captura, tsc ou validação nativa por Ledger. Nenhum push/build/Supabase; commit documental aguarda janela expressa.
+
+### Complemento — encerramento das sessões PH para liberar memória
+
+**Pedido e motivo:** Codex autorizou salvar handoff curto e encerrar apenas os processos Codex de Forge, Beacon, Compass e Harbor, sem remover nós ou mudar contas/perfis, para liberar memória. Fonte e sessões preserváveis em `E:/Grana-temporarios/2026-11-08-retomada/handoff-ph-encerramento.md`; não contém email ou credencial.
+
+**Verificação e resultado:** Forge, Beacon e Harbor estavam parados por quota; Compass estava ocioso após revisão E, sem comando ativo no terminal. `/status` confirmou as sessões e os esforços atuais, inclusive Forge high. `/exit` e Enter separados foram usados nos quatro; todos retornaram ao shell. Memória disponível pontual antes 1.089.512 KiB (1.064 MiB), depois 1.996.736 KiB (1.950 MiB). A diferença não garante disponibilidade futura ou autoriza gate: medir novamente e obter sinal do Codex antes da carga.
+
+**Limites e descarte:** nenhuma retomada, reinício, alteração de modelo/esforço/conta, remoção de nó ou ação Git; Prism permaneceu titular Git. O handoff cita os relatórios e cortes observados, não comprova conclusão de fixes pendentes. Não houve teste de produto; próximo commit documental depende de janela expressa.
+
+### Complemento — integrações Prism e frente 8 de release geral
+
+**Entrega e provas relatadas:** Prism encerrou Git, clone limpo, em `E:/Grana-temporarios/2026-11-08-retomada/relatorio-prism-integracao.md`. Pares main/clone: C01 `287a449a`/`ad97de5c`; C02 `f73d410d`/`4e3d826f`; B01 `51838604`/`007c33c1`; H01 `1c70a441`/`69796db3`; H02 `5540d8b1`/`ffb7e5a7`; H03 `4f6ea4bc`/`742873da`. Apenas clone: E01 `570d595a`, E05 `6d5d9fcb`; baseline 49/49 e mutante 12 falhas, conforme Codex. Ledger não repetiu os testes. Git agora Sentinel para três pares E; documentação só após término e novo sinal. Pesado Sentinel Metro requer nova medição de RAM.
+
+**Pedido de release:** autor quer build geral sem leitura de notificações, preservar seu app de teste e impedir conteúdo do clone no main/GitHub. Ordem `00-ORDEM-codex-release-geral.md`: 8A com Prism somente após frentes 1–7, gate, revisão final e novo sinal; 8B documentação por Ledger agora. Estrutura pendente em `checklist-release-geral.md`, sem bump, preparação, push, build ou Supabase. Revisão literal da nota pelo Beacon indisponível por quota até 17h17, sem aprovação inferida; autor decide nota, minor versus patch, push, preparar, disparar e publicação do Granabô pelo Supremo.
+
+**Análise condicionada:** no clone `835e548e`, `lib/atualizacao.ts` pula aviso apenas em canal Play; fora dele pode anunciar versão maior se link válido e versão não dispensada. Não se comprovou canal embutido/estado real da build instalada. Instalação do APK geral sobre mesmo pacote e assinatura compatível pode substituir app de teste; orientação provisória é dispensar e não instalar no aparelho até alternativa validada. Descartado presumir isolamento de pacote ou aplicar mudança de servidor. Semana 02–08/11 tem duas builds usadas segundo a ordem, teto três; conferir novamente antes de qualquer disparo, com versionCode superior a 32.
+
+**Limites:** gate, Sentinel, revisão final, frente 8A e revisão/aprovação da nota seguem pendentes; testes informados não provam CI global, servidor ou aparelho. Nenhum sintoma novo investigado pelo Ledger; leitura de código não substitui teste no dispositivo. Sem Git documental até janela expressa, sem push/EAS/Supabase.
+
+### Complemento — E02–E04 entregues e push prioritário delimitado
+
+**Recibo Sentinel:** main/clone E02 `e05d947e`/`fae4e5fd`, E03 `6460ae56`/`55ca1072`, E04 `736bbbdd`/`f4562223`; janela Git encerrada. `relatorio-sentinel-testes-E.md` relata testes focais e mutantes: clone baseline 35 exit 0, dependências e Promise pendurada exit 1 como esperado; erro inicial de objeto ausente no clone resolvido com fetch local e cherry-picks sem conflito. Ledger leu o recibo, não repetiu provas. CI, revisão independente e QA nativo pendentes.
+
+**Ordens do autor:** `00-ORDEM-codex-push-main.md` (12h44) registra “manda só para o github, os commits pendentes”, “não dispararemos build ainda” e escolha “Enviar agora e deixar a web publicar”. Codex delimitou explicitamente este único push ao corte `c20c813d`; C02/B01/H/E e demais commits posteriores ficam para outra autorização. Prism recebeu Git exclusivo para filtro de app de teste e segredos no intervalo, fetch/zero atrás, sem força e monitoramento CI/Vercel. Não se afirma push, contagem ou deploy até o recibo. Sem commit documental até término explícito da janela Prism e nova liberação.
+
+A ordem `00-ORDEM-codex-corrigir-p2.md` (12h46) registra “manda corrigir os defeitos P2”: D01 antes da saudação; C02/B01 já integrados por Prism, sem chamar Forge PH encerrado; E01–E05 têm commits relatados, mas tsc/gate e revisão aguardam Watchtower na conta Gabriel. Frente 8A continua dependente da conclusão 1–7 e novo sinal; checklist 8B preparado, revisão literal Beacon da nota ainda pendente. Não autoriza outro push, preparar versão, EAS ou Supabase.
+
+**Limites:** os hashes e testes são recibos de responsáveis, sem repetição por Ledger; não confundem revisão de integridade com gate global. Nenhum novo sintoma ou causa de produto foi investigado aqui. Contagem real do push, CI e Vercel serão registrados quando chegarem, sem antecipar resultado.
+
+### Complemento — push prioritário publicado e D01 antes da saudação
+
+**Decisão do autor e recibo:** diante do aviso de que o push publicaria a web com CI ainda sem gate verde e Granabô no servidor com regra antiga, o autor escolheu “Enviar agora e deixar a web publicar”, além de “manda só para o github, os commits pendentes” e “não dispararemos build ainda”. Prism publicou o corte `2600f08a..c20c813d`: 121 commits, 96 arquivos, filtro de código de teste 0 e varredura de segredos 0, segundo Codex; `origin/main` em `c20c813d`, HEAD local `736bbbdd` e WIP preservados no corte relatado. C02/B01/H/E permanecem locais para outro push somente sob nova ordem do autor. Fonte `E:/Grana-temporarios/2026-11-08-retomada/relatorio-prism-push-main.md`; Ledger não repetiu filtros nem conferiu remoto.
+
+**Ocorrência:** pushurl antigo bloqueou antes da rede; houve uma única publicação pela URL do origin, sem alterar configuração, conforme relato. Prism acompanha CI e Vercel; publicação Git não prova CI verde nem deploy concluído.
+
+**Ordem e prova visual:** janela Git Prism encerrada; Codex concedeu Git ao Sentinel para D01 main e clone, com Ledger próximo após término declarado e nova liberação. D01 precede saudação A por nova ordem do autor. Captura ANTES agora é válida em 360/390/412/768/1440, com duas linhas nas larguras estreitas; Metro encerrado, conforme Codex. Nenhuma correção D01 ou saudação concluída inferida da captura.
+
+**Limites:** gate e revisão final pendentes, assim como provas e hashes D01; resultados de CI/Vercel aguardam relatório. Sem novo push, build ou Supabase; nenhum novo sintoma ou causa investigado pelo Ledger, que registra o relato sem repetir testes ou capturas.
+
+### Complemento — D01 entregue antes da saudação
+
+**Entrega:** Sentinel encerrou janela Git após D01 main `3287e91e` e clone `2017b9b9`; nove cenários reais verdes, fetch antes do commit com oito à frente e zero atrás, segundo Codex. D01 veio antes da saudação conforme decisão do autor. Todos os P2 desta rodada têm commits nas cópias aplicáveis; isso não equivale a CI consolidado nem revisão final. Ledger não repetiu os nove cenários.
+
+**Estado:** o push único até `c20c813d` já foi publicado; CI e Vercel seguem em acompanhamento pelo Prism. Os commits posteriores permanecem fora desse push. Codex liberou janela exclusiva ao Ledger para fetch/comparação e commit apenas `context.md`; Sentinel será próximo para layout A após encerramento e nova concessão. Preservar WIP de saudação e demais caminhos.
+
+**Limites e descarte:** sem declarar CI verde, QA nativo ou release concluídos; sem novo push, alteração de versão, build ou Supabase. Nenhum sintoma ou causa novos foram investigados pelo Ledger neste corte; os relatórios dos responsáveis são a fonte das provas.
 ## 08/11 — retomada da pausa da noite
 
 **Pedido e fonte:** autor pediu “continue o trabalho pausado na noite passada”, depois “verifique a disponibilidade dos agentes e delegue suas tarefas” e “pode torrar os tokens todos das contas codex, tenho duas redefinições, pode jogar a maior parte do esforço de trabalho para as contas codex”. Registro pelo Beacon, substituindo o Ledger sem limite, conforme `E:\Grana-temporarios\2026-11-08-retomada\ordem-beacon-registro.md`. O corte operacional abaixo foi apurado pelo orquestrador; Beacon registra sem repetir testes, sondas ou revisão de produto.
