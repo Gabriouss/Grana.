@@ -95,22 +95,28 @@ async function main() {
   check((await api.consultarCategorias('2026-11-01', '2026-11-30', r.resultado)).resultado === r.resultado, 'B-01: falha no mesmo intervalo preserva o ultimo resultado');
   check((await api.consultarCategorias('2026-11-01', '2026-11-30')).resultado === null, 'primeira falha não inventa resultado vazio');
   // B-01: hook REAL esconde o snapshot antigo já no render, antes do efeito.
-  let cursor = 0;
+  let cursor = 0, semSessao = false;
   const slots = [];
   const hook = load('lib/use-categorias.ts', {
     react: { useState: initial => { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === 'function' ? initial() : initial; return [slots[i], v => { slots[i] = typeof v === 'function' ? v(slots[i]) : v; }]; },
       useRef: initial => { const i = cursor++; return slots[i] ?? (slots[i] = { current: initial }); }, useCallback: f => f, useEffect: () => {} },
     'expo-router': { useFocusEffect: () => {} },
     '@react-native-async-storage/async-storage': {},
-    './auth-context': { useSession: () => ({ session: { user: { id: usuario } } }) },
+    './auth-context': { useSession: () => ({ session: semSessao ? null : { user: { id: usuario } } }) },
     './categorias-cliente': api, './gastos-categoria': core,
     '@/components/FaixaOffline': { useRecarregarAoChegarDadoNovo: () => {} },
   });
   const render = (inicio = '2026-11-01', fim = '2026-11-30') => { cursor = 0; return hook.useCategorias(inicio, fim, false, []); };
+  semSessao = true;
+  check(render().resultado === null, 'B-01: hook real sem sessao e sem resultado renderiza null sem lancar');
+  semSessao = false;
   falha = false;
   await render().carregar();
   const snapshot = render().resultado;
   check(snapshot !== null, 'B-01: hook carregou novembro');
+  semSessao = true;
+  check(render().resultado === null, 'B-01: remover sessao esconde snapshot sem acessar dados de outro dono');
+  semSessao = false;
   check(render('2026-12-01', '2026-12-31').resultado === null, 'B-01: render de dezembro ja esconde novembro antes de consultar');
   check(render('2026-11-01', '2026-11-29').resultado === null, 'B-01: trocar somente o fim tambem invalida o snapshot');
   falha = true;
