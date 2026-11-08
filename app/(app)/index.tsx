@@ -2213,7 +2213,7 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     flexShrink: 1,
   },
-  smartActionTextCompacto: { fontSize: type.micro, lineHeight: lh(type.micro, 'apoio') },
+  smartActionTextCompacto: { fontFamily: fonts.regular, fontSize: type.micro, lineHeight: lh(type.micro, 'apoio') },
   card: { backgroundColor: theme.paperRaised, borderRadius: cardTokens.radius, borderWidth: cardTokens.borderWidth, borderColor: theme.rule, padding: cardTokens.padding, gap: spacing.md },
   /* paddingRight na web: a alça de arraste (components/WidgetGrid.tsx) pousa
      no canto superior direito do card, e é exatamente onde estes cabeçalhos
