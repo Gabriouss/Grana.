@@ -23,7 +23,7 @@ internal class AvisosDiario(private val pasta: File, private val agora: () -> Lo
   }
 
   /** @return true só quando o aviso é novo. Atualização igual não duplica. */
-  fun guardar(aviso: Aviso): Boolean {
+  fun guardar(aviso: Aviso): Boolean = synchronized(TRAVA) {
     if (!AvisosFiltro.ehBanco(aviso.pacote)) return false
     garantirPasta()
     val destino = File(pasta, "${aviso.id}.json")
@@ -49,13 +49,13 @@ internal class AvisosDiario(private val pasta: File, private val agora: () -> Lo
    * Pasta sem permissão ou ilegível lança: erro de leitura não pode virar
    * "nenhum aviso" (lição do WT-02). Arquivo corrompido conta em `ilegiveis`.
    */
-  fun listar(): String {
+  fun listar(): String = synchronized(TRAVA) {
     limparVencidos()
     val (itens, ilegiveis) = lerPermitidos()
     return JSONObject().put("itens", itens).put("ilegiveis", ilegiveis).toString()
   }
 
-  fun limparForaDoCatalogo() { lerPermitidos() }
+  fun limparForaDoCatalogo() = synchronized(TRAVA) { lerPermitidos(); Unit }
 
   private fun lerPermitidos(): Pair<JSONArray, Int> {
     val itens = JSONArray()
@@ -82,13 +82,15 @@ internal class AvisosDiario(private val pasta: File, private val agora: () -> Lo
     return Pair(itens, ilegiveis)
   }
 
-  fun apagarTudo() {
-    pasta.listFiles()?.forEach { it.delete() }
+  fun apagarTudo() = synchronized(TRAVA) {
+    pasta.listFiles()?.forEach { check(it.delete()) { "nao apagou o diario" } }
+    Unit
   }
 
-  fun limparVencidos() {
+  fun limparVencidos() = synchronized(TRAVA) {
     val limite = agora() - RETENCAO_MS
     pasta.listFiles()?.forEach { if (it.lastModified() < limite) it.delete() }
+    Unit
   }
 
   private fun garantirPasta() {
@@ -96,6 +98,9 @@ internal class AvisosDiario(private val pasta: File, private val agora: () -> Lo
   }
 
   companion object {
+    // Serviço e bridge criam instâncias diferentes: limpeza não pode apagar
+    // um .tmp enquanto outra instância ainda está gravando nele.
+    private val TRAVA = Any()
     const val RETENCAO_MS = 7L * 24 * 60 * 60 * 1000
 
     fun idDoAviso(pacote: String, chave: String, quando: Long, texto: String): String =
