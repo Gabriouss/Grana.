@@ -119,47 +119,46 @@ desconectado.
   não afeta decisão de produto, mas é uma restrição permanente de como o
   trabalho é publicado (ver `AGENTS.md`).
 
-### Saldo e Livre para Gastar: só o mês vigente (decisão de 24/09, complementada em 17/10/2026)
+### Saldo e Livre para Gastar: regra 20 de 07/11/2026
 
-"Saldo atual" e "Livre para Gastar" contam apenas o mês vigente, nunca o
-saldo acumulado de meses anteriores nem `initial_balance`. O mesmo número vale
-na Início, nos widgets e no Granabô. O seletor de carteira mostra outra
-grandeza, com outro nome: o total de todas as entradas da carteira, em todo o
-período, sem a palavra "saldo". O campo "saldo inicial" sai da tela e a coluna
-fica no banco sem uso.
+A regra 20 do `AGENTS.md`, atualizada por decisão do autor em 07/11/2026,
+substitui a política de 17/10 sobre crédito reservado. Saldo e Livre usam o
+mês vigente e a sobra confirmada para esse mês; não usam o histórico
+acumulado nem `initial_balance`. A mesma regra vale na Início, nos widgets e
+no Granabô. O seletor de carteira continua mostrando o total das entradas da
+carteira em todo o período, sem chamá-lo de saldo.
 
-O saldo atual considera entradas e saídas efetivamente registradas no caixa
-durante o mês; compras no crédito ficam fora desse saldo. O pedido expresso do
-autor em 17/10/2026 complementou o cálculo do Livre:
+- **Sobra por confirmação:** na virada do mês, a Início pergunta quanto
+  sobrou, sugerindo o caixa calculado do mês anterior com piso zero. A pessoa
+  confirma, corrige ou informa zero. Até confirmar, a sobra é zero para todos.
+  "Agora não" mantém zero e a pergunta volta no dia seguinte, não no mesmo
+  dia. Falha ao salvar precisa de recibo visível. O valor confirmado pertence
+  ao usuário e ao mês: soma no Livre e no Saldo atual, não vira receita nem
+  lançamento, não muda o seletor e não acumula para o mês seguinte.
+- **Livre:** conta todas as entradas do mês desde o dia 1, inclusive futuras,
+  e desconta as saídas de caixa do mês, inclusive futuras.
+- **Saldo atual:** soma a sobra confirmada ao caixa do mês; entradas futuras
+  só contam a partir da data delas. Saídas do mês, inclusive futuras,
+  descontam. Compras no crédito ficam fora do caixa.
+- **Crédito:** compra e fatura ainda não paga não reduzem o Livre. Pagar a
+  fatura gera uma saída de caixa no mês do pagamento, contada uma única vez;
+  não se reserva novamente o valor não pago.
+- **Cofrinhos:** somente aportes líquidos do dinheiro deste mês ainda
+  guardados reduzem o Livre. Dinheiro "Já estava guardado" fica fora;
+  resgatar dinheiro anterior não cria receita. Não se inventa origem para
+  saldos antigos sem procedência comprovável.
 
-- Dinheiro que já estava guardado em um cofrinho pode ser registrado sem criar
-  receita do mês. A origem do aporte distingue dinheiro "Já estava guardado"
-  do "Do dinheiro deste mês". O valor anterior não aparece nas entradas ou
-  saídas de débito/Pix, não muda o saldo nem reduz o Livre deste mês. Somente o
-  valor líquido que veio do caixa do mês vigente e continua guardado reduz o
-  Livre. Resgatar dinheiro anterior também não cria receita. Saldos antigos
-  sem origem comprovável são considerados anteriores; não se inventa
-  procedência passada.
-- Faturas de crédito reduzem o Livre antes de serem pagas: contam a fatura
-  aberta do ciclo atual e faturas fechadas com saldo não pago. Parcelas de
-  ciclos futuros não entram. Se houver pagamento parcial, só o valor ainda
-  não pago permanece reservado; o pagamento feito já sai do caixa no mês do
-  pagamento, sem dupla contagem.
+Livre = max(0, sobra confirmada para o mês + entradas do mês − saídas do mês
+− aportes líquidos deste mês ainda guardados em cofrinhos) ÷ dias restantes,
+incluindo hoje. Boleto ou conta pendente ou atrasada só entra como saída
+quando é pago; a linha "Contas a vencer" continua fora do cartão.
 
-A fórmula é max(0, saldo de caixa do mês − aportes líquidos deste mês ainda
-guardados em cofrinhos − crédito elegível ainda não pago) ÷ dias restantes,
-incluindo hoje. No exemplo aprovado pelo autor, R$ 5.000 recebidos menos
-R$ 3.000 de conta já pagos, R$ 1.000 guardados do dinheiro deste mês e
-R$ 750 de fatura não paga deixam R$ 250 livres antes da divisão pelos dias
-restantes.
-
-Boleto ou conta pendente ou atrasada continua sem descontar nada do Livre;
-entra quando é marcada como paga e o dinheiro sai no Pix ou débito (decisão
-de 25/09). A linha "Contas a vencer" permanece fora do cartão. Essa regra 20
-desfaz o acumulado de 19/09 (867e1b5, achado A12), que com histórico
-importado incompleto ficava muito acima da realidade. Mudanças no cálculo
-exigem pedido explícito do autor, e o teste de trava só muda para codificar
-uma ordem explícita como a de 17/10, nunca para fazer uma regressão passar.
+Esta é a política escolhida, não prova de implantação: app e widget exigem
+build, `assistente-financeiro` exige publicação autorizada e a persistência
+da sobra por usuário/mês exige a migration aplicada, com RLS e compatibilidade
+com cliente antigo. Mudanças futuras no cálculo exigem pedido explícito do
+autor; testes de trava só mudam para codificar a ordem autorizada, sem
+afrouxar asserções, e a paridade usa os módulos reais.
 
 ## Brand Commitments
 
