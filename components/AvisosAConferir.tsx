@@ -654,7 +654,7 @@ function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = 
           ...dados.extras.filter((c) => !CATEGORIES.some((padrao) => padrao.name === c.name)),
         ]}
         avisoDeOrigem={<View style={styles.cartao}>
-          <Text style={styles.corpo}>{textos[revisao.item.avisoIds[0]] ?? 'Texto do aviso indisponível.'}</Text>
+          <PrivacyValue><Text style={styles.corpo}>{textos[revisao.item.avisoIds[0]] ?? 'Texto do aviso indisponível.'}</Text></PrivacyValue>
           {pareceJaLancado(revisao.item, dados.lancamentos) && <Text style={styles.selo}>{semViuva('Parece já lançado. Confira antes de salvar.')}</Text>}
           {dados.semConferenciaDeDuplicata && <Text style={styles.corpo}>{semViuva('Histórico indisponível neste aparelho. Confira se já lançou este gasto.')}</Text>}
           {pareceEntreContas(revisao.item, nomeDoPerfil) && <Text style={styles.corpo}>{semViuva('Pode ser dinheiro entre suas contas. Descarte se só mudou de lugar.')}</Text>}
@@ -745,7 +745,7 @@ function CartaoDoAviso({ item, jaSalvo, dados, formas, texto, entreContas, ocupa
         {vence}
         <Text style={styles.selo}>Não entendi este aviso</Text>
         <Text style={styles.legenda}>{app} · {formatDateLabel(item.data)}</Text>
-        <Text style={styles.corpo}>{texto ?? semViuva('O texto deste aviso já foi apagado.')}</Text>
+        <PrivacyValue><Text style={styles.corpo}>{texto ?? semViuva('O texto deste aviso já foi apagado.')}</Text></PrivacyValue>
         <View style={styles.botoes}>
           <Botao rotulo="Descartar" onPress={aoDescartar} desligado={ocupado} />
           <Botao rotulo="Preencher" onPress={aoEditar} desligado={ocupado} destaque />

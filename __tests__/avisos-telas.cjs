@@ -211,6 +211,36 @@ async function lista(avisoTeste, opcoes = {}) {
 }
 async function main() {
   {
+    const original = aviso('Mensagem ambigua R$ 123,45 para Pessoa Sintetica', 'Aviso');
+    const { ctx: revisao, card: avisoReal } = await lista(original);
+    assert.equal(avisoReal().props.item.tipo, 'nao_entendi');
+    const PrivacyValue = carregar('components/PrivacyValue.tsx').default;
+    function expandir(no) {
+      if (Array.isArray(no)) return no.map(expandir);
+      if (!no || typeof no !== 'object') return no;
+      if (no.type === PrivacyValue) return expandir(PrivacyValue(no.props));
+      return { ...no, props: { ...no.props, children: expandir(no.props?.children) } };
+    }
+    privacidadeOculta = true;
+    const protegido = expandir(telas.CartaoDoAviso(avisoReal().props));
+    assert.doesNotMatch(texto(protegido), /123,45|Pessoa Sintetica/, 'F02: cartao nao expoe texto bancario');
+    assert.ok(elementos(protegido).some(e => e.props.accessibilityLabel === 'Valor oculto'));
+    const preencher = elementos(protegido).find(e => e.props.rotulo === 'Preencher');
+    assert.ok(preencher && !preencher.props.desligado, 'F02: Preencher continua disponivel');
+    preencher.props.onPress(); revisao.render();
+    const escolher = alertas.at(-1);
+    escolher[2].find(b => b.text === 'Débito').onPress(); revisao.render();
+    const sheet = elementos(revisao.tree).find(e => e.type === TransactionSheet);
+    assert.ok(sheet, 'F02: acao abre folha de revisao');
+    assert.doesNotMatch(texto(expandir(sheet.props.avisoDeOrigem)), /123,45|Pessoa Sintetica/, 'F02: origem tambem protegida');
+    privacidadeOculta = false;
+    assert.match(texto(expandir(telas.CartaoDoAviso(avisoReal().props))), /123,45.*Pessoa Sintetica/);
+    assert.match(texto(expandir(sheet.props.avisoDeOrigem)), /123,45.*Pessoa Sintetica/);
+    revisao.unmount();
+    ok('F02: cartao e origem ocultam texto bancario; Preencher abre revisao e modo visivel preserva texto');
+  }
+
+  {
     const DIA = 24 * 60 * 60 * 1000;
     const antigo = { ...aviso('Compra no débito de R$ 53,00 em Mercado Modelo'), quando: Date.now() - 31 * DIA };
     disco.clear(); diario = [antigo];
