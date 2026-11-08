@@ -64,6 +64,23 @@ function carregar({ plataforma = 'android', disponivel = true, falhaMover = fals
 }
 
 (async () => {
+  // H01: titulo/resumo dos slides REAIS e HTML REAL, sem copiar a regra plural.
+  const { componente } = require('./_copy-componentes-reais.cjs');
+  const slides = componente('components/MonthlyWrappedModal.tsx', '\nexports.slidesParaTeste = montarSlides;').slidesParaTeste;
+  const html = require('./_carregar-ts.cjs').carregar('lib/pdf-report-html.ts');
+  for (const metas of [0, 1, 2]) {
+    const wrapped = { label: 'Outubro de 2026', entradas: 100, saidas: 20, saldo: 80,
+      totalLancamentos: 2, diasComRegistro: 2, diasNoMes: 31, boletosPagos: 1,
+      valorBoletosPagos: 10, taxaPoupanca: null, saidasMesAnterior: null,
+      comprometidoFixo: 0, metasConcluidas: metas, totalGuardado: 15 };
+    const esperado = metas === 1 ? '1 meta concluída' : `${metas} metas concluídas`;
+    const montados = slides(wrapped);
+    assert.equal(montados.find(s => s.key === 'metas').titulo, esperado);
+    assert.ok(montados.find(s => s.key === 'final').apoio.includes(esperado), 'resumo concorda com a quantidade');
+    const documento = html.montarHtml({ ano: 2026, mes: 9, transactions: [], bills: [], carteira: 'Total', wrapped });
+    assert.ok(documento.includes(esperado), 'PDF concorda com a quantidade');
+  }
+  console.log('ok H01: 0/1/2 metas nos slides e no HTML reais');
   for (const plataforma of ['android', 'ios']) {
     const m = carregar({ plataforma });
     const [primeiro, segundo] = await Promise.all([

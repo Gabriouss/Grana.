@@ -35,6 +35,8 @@ type Slide = {
 function montarSlides(w: MonthlyWrapped): Slide[] {
   const slides: Slide[] = [];
   const superavit = w.saldo >= 0;
+  const metas = w.metasConcluidas ?? 0;
+  const textoMetas = `${metas} ${metas === 1 ? 'meta concluída' : 'metas concluídas'}`;
 
   /* `theme.down` (ciano) no déficit, nunca `theme.danger`. Vermelho não existe
      no vocabulário de cor do produto, e a regra vale especialmente aqui: a
@@ -128,7 +130,7 @@ function montarSlides(w: MonthlyWrapped): Slide[] {
   slides.push({
     key: 'metas',
     rotulo: 'Suas metas',
-    titulo: `${w.metasConcluidas ?? 0} metas concluídas`,
+    titulo: textoMetas,
     destaque: formatBRL(w.totalGuardado ?? 0),
     destaqueCor: theme.accent2,
     apoio: 'Total guardado nos cofrinhos até agora.',
@@ -143,7 +145,7 @@ function montarSlides(w: MonthlyWrapped): Slide[] {
     destaqueCor: superavit ? theme.up : theme.down,
     apoio: `${w.totalLancamentos} lançamentos em ${w.diasComRegistro} de ${w.diasNoMes} dias · ${w.boletosPagos} ${
       w.boletosPagos === 1 ? 'boleto quitado' : 'boletos quitados'
-    } (R$ ${formatMoney(w.valorBoletosPagos)}) · ${w.metasConcluidas ?? 0} metas concluídas, ${formatBRL(w.totalGuardado ?? 0)} guardados até agora.`,
+    } (R$ ${formatMoney(w.valorBoletosPagos)}) · ${textoMetas}, ${formatBRL(w.totalGuardado ?? 0)} guardados até agora.`,
     icone: 'sparkles-outline',
   });
 
