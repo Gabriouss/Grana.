@@ -19,12 +19,15 @@ export default function HeaderAction({
   label,
   onPress,
   accessibilityLabel,
+  destaque = false,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   /** Sem rótulo, o botão vira só o ícone num alvo quadrado — mesma altura. */
   label?: string;
   onPress: () => void;
   accessibilityLabel?: string;
+  /** Chama a atenção em menta (fundo e borda `accent2`, ícone e número em `paper`), como o botão principal das janelas. */
+  destaque?: boolean;
 }) {
   return (
     <AppPressable
@@ -36,11 +39,12 @@ export default function HeaderAction({
       style={({ hovered }) => [
         styles.base,
         label ? styles.comRotulo : styles.soIcone,
-        hovered && styles.hover,
+        destaque && styles.destaque,
+        hovered && (destaque ? styles.hoverDestaque : styles.hover),
       ]}
     >
-      <Ionicons name={icon} size={16} color={theme.accent2} />
-      {label ? <Text style={styles.texto}>{label}</Text> : null}
+      <Ionicons name={icon} size={16} color={destaque ? theme.paper : theme.accent2} />
+      {label ? <Text style={[styles.texto, destaque && styles.textoDestaque]}>{label}</Text> : null}
     </AppPressable>
   );
 }
@@ -78,5 +82,10 @@ const styles = StyleSheet.create({
      sobrescrever a altura venceria a largura de novo. */
   soIcone: { width: 36, height: 36, minHeight: 36, paddingVertical: 0, paddingHorizontal: 0 },
   hover: { borderColor: theme.accent2 },
+  /* Mesmo par de cores do botão principal das janelas (Confirmar). */
+  destaque: { backgroundColor: theme.accent2, borderColor: theme.accent2 },
+  /* Sobre menta o hover usa a opacidade 0.88 dos outros botões cheios (AppLockGate, ConviteAppAndroid). */
+  hoverDestaque: { opacity: 0.88 },
   texto: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
+  textoDestaque: { color: theme.paper },
 });

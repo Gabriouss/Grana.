@@ -1029,6 +1029,7 @@ async function main() {
     atalho.render();
     assert.equal(atalho.tree.type, './HeaderAction', 'mesmo componente do botão do olho');
     assert.equal(atalho.tree.props.label, '1');
+    assert.equal(atalho.tree.props.destaque, true, 'com pendência o sininho fica em menta');
     assert.equal(atalho.tree.props.accessibilityLabel, '1 lançamento para conferir');
     assert.equal(atalho.tree.props.icon, 'notifications-outline');
     assert.equal(conferencia.rotuloDoAtalho(3), '3 lançamentos para conferir');
@@ -1057,7 +1058,24 @@ async function main() {
     elementos(janela.tree).find((e) => e.type === telas.ListaAConferir).props.aoMudar([]);
     await janela.settle(); atalho.render();
     assert.equal(atalho.tree, null);
-    ok('atalho do cabeçalho: contagem da própria janela, abre mesmo depois de fechada, não abre por cima de outra janela e some sem pendência');
+    /* HeaderAction REAL: sem `destaque` fica igual ao de hoje; com ele, só acrescenta o par menta do botão principal da janela. */
+    const HeaderAction = carregar('components/HeaderAction.tsx').default;
+    const estilosDe = (props, hovered = false) => elementos(HeaderAction(props)).find((e) => e.type === './AppPressable').props.style({ hovered }).filter(Boolean);
+    const normal = estilosDe({ icon: 'eye-outline', label: '2', onPress() {} });
+    const comMenta = estilosDe({ icon: 'eye-outline', label: '2', onPress() {}, destaque: true });
+    assert.equal(normal.length, 2, 'sem destaque: só base e rótulo, como antes');
+    assert.equal(comMenta.length, 3, 'com destaque: um estilo a mais');
+    assert.equal(comMenta[0], normal[0], 'mesma base (tamanho, padding, raio)');
+    assert.equal(comMenta[1], normal[1], 'mesmo padding de rótulo');
+    assert.equal(estilosDe({ icon: 'eye-outline', onPress() {} }).length, 2, 'só ícone sem destaque não muda');
+    assert.equal(estilosDe({ icon: 'eye-outline', label: '2', onPress() {}, destaque: true }, true).length, 4, 'hover continua visível no destaque');
+    const fonteHeader = fs.readFileSync(path.join(root, 'components/HeaderAction.tsx'), 'utf8');
+    const fonteAvisos = fs.readFileSync(path.join(root, 'components/AvisosAConferir.tsx'), 'utf8');
+    assert.match(fonteHeader, /destaque: \{ backgroundColor: theme\.accent2, borderColor: theme\.accent2 \}/);
+    assert.match(fonteHeader, /textoDestaque: \{ color: theme\.paper \}/);
+    assert.match(fonteAvisos, /botaoDestaque: \{ backgroundColor: theme\.accent2, borderColor: theme\.accent2 \}/, 'mesmo par do Confirmar');
+    assert.match(fonteAvisos, /botaoTextoDestaque: \{ color: theme\.paper \}/);
+    ok('atalho do cabeçalho: contagem da própria janela, abre mesmo depois de fechada, em menta, não abre por cima de outra janela e some sem pendência');
   }
 
   {

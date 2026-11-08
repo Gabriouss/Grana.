@@ -19,6 +19,7 @@ export default function AtalhoDeAvisos() {
       label={String(pendentes)}
       onPress={pedirConferencia}
       accessibilityLabel={rotuloDoAtalho(pendentes)}
+      destaque
     />
   );
 }
