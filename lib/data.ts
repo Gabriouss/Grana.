@@ -1198,29 +1198,21 @@ const linhasDeRegistroComCache = comCacheOffline('dias-registro', buscar_linhasD
 
 /** Mês FECHADO não muda de dia com registro; fica na memória até `limparDiasComRegistro()`. */
 const diasDeMesFechado = new Map<string, Set<string>>();
+let geracaoDias = 0;
 export function limparDiasComRegistro(): void {
+  geracaoDias++;
   diasDeMesFechado.clear();
+}
+async function conferirDonoDosDias(userId: string, geracao: number): Promise<void> {
+  if (await idDoUsuarioLocal() !== userId || geracao !== geracaoDias) {
+    throw new Error('A consulta de dias foi invalidada. A conta mudou ou os registros foram atualizados.');
+  }
 }
 // O sinal cobre gravação, edição, exclusão e voz; a versão cobre a fila offline.
 // A inscrição fica na primeira consulta para evitar ciclos de import.
 let observaDias = false;
 let versaoDias = -1;
-
-async function diasEntre(inicioISO: string, fimISO: string, prefixo?: string): Promise<{ doBanco: Set<string>; comPendentes: Set<string> }> {
-  const linhas = await linhasDeRegistroComCache(inicioISO, fimISO);
-  const doBanco = diasComRegistro(linhas);
-  /* Pendentes da fila offline entram como em `juntarPendentes`, mas pelo dia
-     em que foram anotados (`criadoEm`), não pelo `occurred_on`. */
-  const comPendentesLista = await juntarPendentes(linhas as unknown as Transaction[]);
-  const comPendentes = diasComRegistro(comPendentesLista);
-  if (prefixo) {
-    for (const d of [...comPendentes]) if (!d.startsWith(prefixo)) comPendentes.delete(d);
-  }
-  return { doBanco, comPendentes };
-}
-
-/** Dias (ISO local) do mês com algum registro. `mes` é 0-indexado. */
-export async function fetchDiasComRegistro(ano: number, mes: number): Promise<Set<string>> {
+function prepararCacheDeDias(): void {
   if (!observaDias) {
     observarDadosDosWidgets(limparDiasComRegistro);
     observaDias = true;
@@ -1230,7 +1222,32 @@ export async function fetchDiasComRegistro(ano: number, mes: number): Promise<Se
     limparDiasComRegistro();
     versaoDias = versaoAtual;
   }
-  const chave = `${ano}-${mes}`;
+}
+
+async function diasEntre(inicioISO: string, fimISO: string, prefixo?: string): Promise<{ doBanco: Set<string>; comPendentes: Set<string> }> {
+  prepararCacheDeDias();
+  const geracao = geracaoDias;
+  const userId = await currentUserId();
+  const linhas = await linhasDeRegistroComCache(inicioISO, fimISO);
+  const doBanco = diasComRegistro(linhas);
+  /* Pendentes da fila offline entram como em `juntarPendentes`, mas pelo dia
+     em que foram anotados (`criadoEm`), não pelo `occurred_on`. */
+  const comPendentesLista = await juntarPendentes(linhas as unknown as Transaction[]);
+  const comPendentes = diasComRegistro(comPendentesLista);
+  if (prefixo) {
+    for (const d of [...comPendentes]) if (!d.startsWith(prefixo)) comPendentes.delete(d);
+  }
+  await conferirDonoDosDias(userId, geracao);
+  return { doBanco, comPendentes };
+}
+
+/** Dias (ISO local) do mês com algum registro. `mes` é 0-indexado. */
+export async function fetchDiasComRegistro(ano: number, mes: number): Promise<Set<string>> {
+  prepararCacheDeDias();
+  const geracao = geracaoDias;
+  const userId = await currentUserId();
+  await conferirDonoDosDias(userId, geracao);
+  const chave = `${userId}:${ano}-${mes}`;
   const agora = new Date();
   const fechado = ano * 12 + mes < agora.getFullYear() * 12 + agora.getMonth();
   const prefixo = `${ano}-${String(mes + 1).padStart(2, '0')}-`;
@@ -1238,6 +1255,7 @@ export async function fetchDiasComRegistro(ano: number, mes: number): Promise<Se
   if (guardado) return new Set(guardado);
   const { inicio, fim } = limitesDoMes(ano, mes);
   const { doBanco, comPendentes } = await diasEntre(inicio, fim, prefixo);
+  await conferirDonoDosDias(userId, geracao);
   for (const d of [...doBanco]) if (!d.startsWith(prefixo)) doBanco.delete(d);
   /* Só o que veio do banco é guardado: o pendente pode mudar de dia quando sobe. */
   if (fechado) diasDeMesFechado.set(chave, doBanco);

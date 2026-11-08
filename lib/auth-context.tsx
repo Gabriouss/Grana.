@@ -19,6 +19,7 @@ import { esquecerTelas } from './cache-de-tela';
 import { esquecerLancamentosLocais } from './offline-cache';
 import { limparSnapshotWidgets } from './widgets-home-sync';
 import { sairDaConta } from './sair-da-conta';
+import { limparDiasComRegistro } from './data';
 import { MODO_TESTE, SESSAO_TESTE } from './modo-teste';
 
 type AuthContextValue = {
@@ -124,8 +125,14 @@ export function SessionProvider({ children }: PropsWithChildren) {
      sessão do disco — ler o `useState` ali entregaria o valor do render
      anterior. */
   const naoConfirmadaRef = useRef(false);
+  const donoDosDiasRef = useRef<string | null>(null);
 
   const aplicarSessao = useCallback((nova: Session | null, doDisco: boolean) => {
+    const dono = nova?.user.id ?? null;
+    if (dono !== donoDosDiasRef.current) {
+      limparDiasComRegistro();
+      donoDosDiasRef.current = dono;
+    }
     naoConfirmadaRef.current = doDisco;
     // O mesmo estado precisa alcançar quem não é componente (cache de tela).
     marcarSessaoNaoConfirmada(doDisco);
@@ -327,6 +334,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         /* Some da tela inicial antes de a sessão ser removida: nenhuma conta
            seguinte pode herdar o saldo, boleto ou cofrinho da anterior. */
         limparWidgets: limparSnapshotWidgets,
+        limparDiasComRegistro,
         /* O acesso guardado para uso offline sai junto: sair é deliberado, e
            nenhuma conta seguinte pode entrar no app pelo prazo da anterior. */
         esquecerAcesso,

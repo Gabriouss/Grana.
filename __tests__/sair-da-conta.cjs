@@ -50,6 +50,7 @@ function etapasQueAnotam(sobrescrever = {}) {
     idDoUsuario: anotar('idDoUsuario', 'uid-1'),
     limparVozesDaConta: anotar('limparVozesDaConta'),
     limparWidgets: () => { chamadas.push(['limparWidgets']); },
+    limparDiasComRegistro: () => { chamadas.push(['limparDiasComRegistro']); },
     esquecerAcesso: anotar('esquecerAcesso'),
     esquecerTelas: anotar('esquecerTelas'),
     /* Etapa acrescentada em 23/09/2026 (achado A1): o cache de leitura dos
@@ -75,7 +76,8 @@ function etapasQueAnotam(sobrescrever = {}) {
     const t = etapasQueAnotam();
     await sairDaConta(t.etapas);
     const n = t.nomes();
-    for (const etapa of ['limparWidgets', 'limparVozesDaConta', 'esquecerAcesso', 'esquecerTelas', 'esquecerLancamentosLocais', 'removerPush', 'signOutNoServidor', 'esquecerSessaoDoDisco', 'aplicarSaida']) {
+    assert.ok(n.indexOf('limparDiasComRegistro') < n.indexOf('idDoUsuario'), 'cache e voos sao invalidados antes de esperar sessao');
+    for (const etapa of ['limparDiasComRegistro', 'limparWidgets', 'limparVozesDaConta', 'esquecerAcesso', 'esquecerTelas', 'esquecerLancamentosLocais', 'removerPush', 'signOutNoServidor', 'esquecerSessaoDoDisco', 'aplicarSaida']) {
       assert.ok(n.includes(etapa), `faltou ${etapa}`);
     }
     assert.deepEqual(t.chamadas.find((c) => c[0] === 'limparVozesDaConta'), ['limparVozesDaConta', 'uid-1']);

@@ -27,6 +27,8 @@
 export const PRAZO_ETAPA_SAIDA_MS = 4000;
 
 export type EtapasDeSaida = {
+  /** Síncrona: invalida também consultas em voo antes de esperar rede/disco. */
+  limparDiasComRegistro?: () => void;
   /** Dono da sessão atual, para limpar só as vozes dele. */
   idDoUsuario: () => Promise<string | null>;
   limparVozesDaConta: (userId: string) => Promise<void>;
@@ -78,6 +80,11 @@ async function comPrazo<T>(
 export async function sairDaConta(etapas: EtapasDeSaida, prazoMs = PRAZO_ETAPA_SAIDA_MS): Promise<void> {
   const avisar = etapas.avisar ?? ((mensagem, erro) => console.warn(mensagem, erro));
   try {
+    try {
+      etapas.limparDiasComRegistro?.();
+    } catch (erro) {
+      avisar('[sair] limpar os dias com registro falhou; a saída continua', erro);
+    }
     try {
       etapas.limparWidgets();
     } catch (erro) {
