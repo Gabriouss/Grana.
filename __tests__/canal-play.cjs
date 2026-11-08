@@ -1,8 +1,8 @@
 /*
  * Canal Play (EXPO_PUBLIC_CANAL=play): Cakto, renovação externa, aviso de
  * atualização por APK e download do APK têm de ficar inacessíveis; sem canal,
- * nada muda. Roda os módulos reais de lib/ e confere a fiação das telas no
- * código-fonte (telas de RN não montam sem Jest).
+ * nada muda. Executa lib/ e AssinarScreen reais em vm, com JSX/contexto/I/O
+ * nativos dublados; nao representa montagem no aparelho.
  */
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -30,6 +30,71 @@ function carregar(arquivo, env, extras = {}) {
     require: (n) => { if (!(n in requires)) throw new Error('require inesperado: ' + n); return requires[n]; },
   });
   return modulo.exports;
+}
+
+// AssinarScreen real: canal/aviso reais; JSX, contexto e I/O nas fronteiras.
+function montarAssinar(env, estado, gerenciamento) {
+  const abertos = [];
+  const jsx = (type, props) => ({ type, props: props || {} });
+  const dubles = {
+    react: { useState: v => [v, () => {}], useEffect() {} },
+    'react/jsx-runtime': { jsx, jsxs: jsx },
+    'react-native': { ActivityIndicator: 'ActivityIndicator', Pressable: 'Pressable', ScrollView: 'ScrollView',
+      Text: 'Text', View: 'View', StyleSheet: { create: v => v } },
+    'expo-linking': { openURL: url => abertos.push(url) },
+    '@/lib/canal': carregar('lib/canal.ts', env),
+    '@/lib/aviso-assinatura': carregar('lib/aviso-assinatura.ts', env),
+    '@/lib/feature-flags': { useFlags: () => ({ ligado: () => true }) },
+    '@/lib/entitlement-context': { useEntitlement: () => ({ estado, sincronizacao: {}, recarregar() {} }) },
+    '@/lib/auth-context': { useSession: () => ({ session: { user: { id: 'sintetico', email: 'pessoa@example.test' } }, signOut() {} }) },
+    '@/lib/alerta': { Alert: { alert() {} } },
+    '@/lib/checkout': { checkoutComEmail: url => url },
+    '@/lib/checkout-assinatura': { destinoCompra: 'https://example.test/mensal', destinoGerenciamento: gerenciamento,
+      destinoSuporte: 'https://example.test/suporte' },
+    '@/lib/resumo-dados-guardados': { obterResumoDadosGuardados: () => { throw new Error('I/O inesperado'); } },
+    '@/lib/theme': { fonts: {}, radius: {}, spacing: {}, theme: {} },
+  };
+  for (const nome of ['SafeAreaViewComFaixa', 'BaixarMeusDadosBotao', 'ExcluirContaSheet']) {
+    dubles['@/components/' + nome] = { __esModule: true, default: nome };
+  }
+  const api = {};
+  vm.runInNewContext(ts.transpileModule(ler('app/assinar.tsx'), { fileName: 'app/assinar.tsx',
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022,
+      jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText,
+  { exports: api, process: { env: { ...env, EXPO_PUBLIC_CHECKOUT_URL_ANUAL: 'https://example.test/anual' } },
+    require: id => { if (!(id in dubles)) throw new Error('Import inesperado da tela: ' + id); return dubles[id]; } });
+  return { arvore: api.default(), abertos };
+}
+function elementos(no) {
+  if (Array.isArray(no)) return no.flatMap(elementos);
+  return no && typeof no === 'object' ? [no, ...elementos(no.props?.children)] : [];
+}
+function texto(no) {
+  if (Array.isArray(no)) return no.map(texto).join(' ');
+  return no && typeof no === 'object' ? texto(no.props?.children) : no == null || typeof no === 'boolean' ? '' : String(no);
+}
+function conferirAssinar() {
+  for (const [nome, estado, gerenciamento] of [
+    ['planos', null, 'https://example.test/cobranca'],
+    ['cobranca', { enforced: true, allowed: false, status: 'past_due' }, 'https://example.test/cobranca'],
+    ['suporte', { enforced: true, allowed: false, status: 'past_due' }, null],
+    ['renovacao', { enforced: true, allowed: false, status: 'canceled' }, null],
+  ]) {
+    for (const canalPlay of [true, false]) {
+      const { arvore, abertos } = montarAssinar(canalPlay ? { EXPO_PUBLIC_CANAL: 'play' } : {}, estado, gerenciamento);
+      const conteudo = texto(arvore);
+      const nos = elementos(arvore);
+      const botoes = nos.filter(n => n.type === 'Pressable' && !n.props.disabled);
+      if (canalPlay) {
+        conferir('tela Play ' + nome + ': ramo neutro montado', conteudo.includes('Google Play'));
+        conferir('tela Play ' + nome + ': sem preco ou verificar pagamento', !/R\$|verificar acesso/.test(conteudo + JSON.stringify(nos.map(n => n.props.accessibilityLabel))));
+        conferir('tela Play ' + nome + ': sair e excluir disponiveis', botoes.some(n => /Sair da conta/.test(texto(n))) && botoes.some(n => /Excluir conta e dados/.test(texto(n))));
+        conferir('tela Play ' + nome + ': exportar dados disponivel', nos.some(n => n.type === 'BaixarMeusDadosBotao'));
+      } else conferir('tela APK ' + nome + ': verificar pagamento permanece', conteudo.includes('verificar acesso'));
+      for (const botao of botoes) botao.props.onPress();
+      conferir('tela ' + (canalPlay ? 'Play' : 'APK') + ' ' + nome + ': handlers externos', canalPlay ? abertos.length === 0 : abertos.length > 0, abertos);
+    }
+  }
 }
 
 // 1. canal
@@ -66,6 +131,7 @@ async function atualizacao(env) {
   conferir('no canal play, não há aviso nem consulta', play.r === null && play.leituras === 0, play);
 
   // 4. fiação das telas (código-fonte)
+  conferirAssinar();
   const layout = ler('app/_layout.tsx');
   conferir('_layout só monta UpdateBanner fora do canal play', /\{session && !ehCanalPlay\(\) && <UpdateBanner \/>\}/.test(layout));
   const faixa = ler('components/FaixaAssinatura.tsx');
