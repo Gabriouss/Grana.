@@ -288,7 +288,7 @@ function blocoRetrospectiva(w: MonthlyWrapped | null | undefined): string {
 
   linhas.push({
     rotulo: 'Suas metas',
-    valor: `${w.metasConcluidas ?? 0} metas concluídas`,
+    valor: `${w.metasConcluidas ?? 0} ${w.metasConcluidas === 1 ? 'meta concluída' : 'metas concluídas'}`,
     nota: `${formatBRL(w.totalGuardado ?? 0)} guardados até agora`,
   });
 
