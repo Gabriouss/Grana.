@@ -1690,12 +1690,7 @@ export default function CreditoScreen() {
         </View>
 
         {/* Lista de Compras no Crédito */}
-        <Text style={styles.sectionLabel}>
-          {semViuva(selectedCardId === 'all'
-            ? 'Compras por cartão · use as opções para editar ou excluir'
-            : 'Compras da fatura · use as opções para editar ou excluir')}
-        </Text>
-        {creditTransactions.length > 0 && <View style={{ gap: spacing.sm }} onLayout={(e) => { campoBuscaY.current = e.nativeEvent.layout.y; }}>
+        {creditTransactions.length > 0 && <View style={{ gap: screenRhythm.gap }} onLayout={(e) => { campoBuscaY.current = e.nativeEvent.layout.y; }}>
           <CampoBusca value={buscaCompra} onChangeText={setBuscaCompra} onFocus={() => { campoFocado.current = true; if (tecladoAberto) rolarAteCampoBusca(); }} onBlur={() => { campoFocado.current = false; }} />
           <ChipsCategoria opcoes={categoriasCompras} selecionada={categoriaEfetiva} onSelect={setCategoriaCompra} keyboardShouldPersistTaps="handled" />
           {mostrarComprasFiltradas({ filtroAtivo: filtroCompraAtivo, comprasVisiveis: comprasVisiveis.length, cartaoSelecionado: selectedCardId !== 'all', cartoesNaLista: secoesDeLancamentos.length }) && <View style={styles.filteredSummaryCard}>
@@ -2366,14 +2361,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   fabHover: { opacity: 0.85 },
-  sectionLabel: {
-    fontFamily: fonts.regular,
-    fontSize: type.legenda,
-    lineHeight: lh(type.legenda, 'corpo'),
-    color: theme.inkFaint,
-    letterSpacing: 0.5,
-    marginTop: spacing.sm,
-  },
   cardSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
