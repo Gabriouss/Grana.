@@ -1,8 +1,9 @@
 import { StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, type, fonts, touchTarget } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts } from '@/lib/theme';
 import { useWallet } from '@/lib/wallet-context';
 import AppPressable from './AppPressable';
+import { ALTURA_CABECALHO } from './HeaderAction';
 
 /**
  * Seletor de carteira do cabeçalho. Existe como componente único porque a
@@ -25,6 +26,7 @@ export default function WalletPill({ onPress }: { onPress: () => void }) {
   return (
     <AppPressable
       onPress={onPress}
+      hitSlop={8}
       style={styles.pill}
       accessibilityLabel={`Carteira ${activeWalletName}. Trocar de carteira`}
     >
@@ -49,7 +51,8 @@ const styles = StyleSheet.create({
     borderColor: theme.rule,
     backgroundColor: theme.paperRaised,
     maxWidth: 132,
-    minHeight: touchTarget,
+    /* Mesma altura do olho e do sininho (HeaderAction); o toque cabe no `hitSlop`. */
+    minHeight: ALTURA_CABECALHO,
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
   texto: { color: theme.inkSoft, fontSize: type.nota, flexShrink: 1, fontFamily: fonts.light },

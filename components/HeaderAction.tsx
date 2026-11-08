@@ -1,6 +1,6 @@
 import { Platform, StyleSheet, Text } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { theme, radius, spacing, type, fonts, touchTarget } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts } from '@/lib/theme';
 import AppPressable from './AppPressable';
 
 /**
@@ -45,6 +45,9 @@ export default function HeaderAction({
   );
 }
 
+/** Altura visual da fileira de ações do cabeçalho; o WalletPill usa a mesma. */
+export const ALTURA_CABECALHO = 36;
+
 const styles = StyleSheet.create({
   base: {
     flexDirection: 'row',
@@ -56,7 +59,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.rule,
     backgroundColor: theme.paperRaised,
-    minHeight: touchTarget,
+    /* 36 para toda a fileira do cabeçalho (olho, sininho e carteira): o alvo
+       de toque de 52 vem do `hitSlop`, não da altura desenhada. */
+    minHeight: ALTURA_CABECALHO,
     justifyContent: 'center',
   },
   /* Mesmo paddingVertical do WalletPill: as duas pílulas precisam fechar na
@@ -74,8 +79,8 @@ const styles = StyleSheet.create({
      separadas: o `hitSlop` de 8 no componente leva a área tocável a 52, acima
      dos 48 do Android, sem inflar o desenho.
 
-     `minHeight` volta a 36 aqui porque o `base` o fixa em `touchTarget`, e sem
-     sobrescrever a altura venceria a largura de novo. */
+     `minHeight` repete 36 aqui por clareza (o `base` já usa ALTURA_CABECALHO, 36 desde 07/11/2026,
+     quando sininho e carteira, que eram 44, foram alinhados ao olho). */
   soIcone: { width: 36, height: 36, minHeight: 36, paddingVertical: 0, paddingHorizontal: 0 },
   hover: { borderColor: theme.accent2 },
   texto: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
