@@ -136,9 +136,11 @@ async function main() {
   let observador, consultas = 0;
   let linhas = [{ created_at: '2025-09-02T12:00:00-03:00', occurred_on: '2020-01-01' }];
   const versao = carregar('lib/lancamentos-alterados.ts');
+  const usuarioSintetico = 'usuario-vocabulario';
   const fake = {
+    './sessao-offline': { idDoUsuarioLocal: async () => usuarioSintetico },
     './supabase': { supabase: { from: () => {
-      const q = { select: () => q, gte: () => q, lt: () => q, order: () => q, range: async () => { consultas++; return { data: linhas }; } };
+      const q = { select: () => q, eq: (coluna, valor) => { assert.equal(coluna, 'user_id'); assert.equal(valor, usuarioSintetico); return q; }, gte: () => q, lt: () => q, order: () => q, range: async () => { consultas++; return { data: linhas }; } };
       return q;
     } } },
     './cache-de-tela': { comCacheOffline: (_key, fn) => fn },
