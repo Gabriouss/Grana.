@@ -68,7 +68,7 @@ import FlowChart, { ChartPeriod } from '@/components/FlowChart';
 import CategoryChips from '@/components/CategoryChips';
 import AppPressable from '@/components/AppPressable';
 import ScreenHeader from '@/components/ScreenHeader';
-import HeaderAction from '@/components/HeaderAction';
+import HeaderAction, { ALTURA_CABECALHO } from '@/components/HeaderAction';
 import WalletPickerModal from '@/components/WalletPickerModal';
 import WalletPill from '@/components/WalletPill';
 import WidgetGrid, { ESPACO_ALCA } from '@/components/WidgetGrid';
@@ -1696,6 +1696,7 @@ export default function InicioScreen() {
           </>
         }
         title={saudacaoDoDia(nomeExibicao)}
+        saudacaoCompacta
         left={
           <AppPressable onPress={() => router.push('/perfil')} hitSlop={10} style={styles.avatarBtn} android_ripple={{ color: theme.hover, borderless: false, foreground: true }} accessibilityLabel="Abrir perfil">
             {perfil?.fotoUrl ? (
@@ -1707,7 +1708,7 @@ export default function InicioScreen() {
                 accessibilityLabel="Foto de perfil"
               />
             ) : (
-              <Ionicons name="person-circle-outline" size={44} color={theme.inkFaint} />
+              <Ionicons name="person-circle-outline" size={ALTURA_CABECALHO} color={theme.inkFaint} />
             )}
           </AppPressable>
         }
@@ -2163,11 +2164,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   customizeBtnText: { color: theme.inkSoft, fontSize: type.nota, fontFamily: fonts.light },
-  avatarBtn: { padding: spacing.fio, borderRadius: radius.pill, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },
-  /* 44, não 34: a foto é a identidade da pessoa na tela e estava menor que
-     os botões de ação ao lado. Passa a ser o maior elemento circular do
-     cabeçalho, com os botões de ícone em 36. */
-  avatarImg: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: theme.rule },
+  avatarBtn: { width: ALTURA_CABECALHO, height: ALTURA_CABECALHO, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, overflow: Platform.OS === 'android' ? 'hidden' : 'visible' },
+  avatarImg: { width: ALTURA_CABECALHO, height: ALTURA_CABECALHO, borderRadius: radius.pill, borderWidth: 1, borderColor: theme.rule },
   errorText: { color: theme.danger, fontSize: type.apoio,
   lineHeight: lh(type.apoio, 'apoio'), fontFamily: fonts.regular },
   quickChipsSection: { gap: spacing.icone },
