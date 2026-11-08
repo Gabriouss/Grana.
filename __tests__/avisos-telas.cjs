@@ -43,6 +43,7 @@ let falhaFormas = false, avisosDoConsole = [];
 let falhaMarca = { ler: false, gravar: false };
 let chamadas = [], alertas = [], copiado = '', dadosLocais = {}, historico = [];
 let privacidadeOculta = false;
+let erroReferencias = false;
 let leiturasDoHistorico = 0;
 const disco = new Map();
 const intervalos = new Set();
@@ -101,7 +102,7 @@ const stub = {
       disco.set(k, v);
     }, removeItem: async (k) => { disco.delete(k); } },
   '@/modules/grana-avisos': nativo,
-  '@/lib/cache-de-tela': { lerTela: async (chave) => chave in dadosLocais ? { dados: dadosLocais[chave] } : null },
+  '@/lib/cache-de-tela': { lerTela: async (chave) => { if (erroReferencias) throw new Error('referencias indisponiveis'); return chave in dadosLocais ? { dados: dadosLocais[chave] } : null; } },
   '@/lib/data': Object.fromEntries(['seedDefaultCategories', 'fetchCategories', 'addCategory', 'updateCategory', 'deleteCategory']
     .map((nome) => [nome, () => { chamadas.push(['rede-proibida', nome]); throw new Error(`Rede proibida: ${nome}`); }])),
   '@/lib/offline-cache': { getCachedTransactions: async () => { leiturasDoHistorico++; return historico; } },
@@ -209,6 +210,36 @@ async function lista(avisoTeste, opcoes = {}) {
   return { ctx, card };
 }
 async function main() {
+  {
+    const DIA = 24 * 60 * 60 * 1000;
+    const antigo = { ...aviso('Compra no débito de R$ 53,00 em Mercado Modelo'), quando: Date.now() - 31 * DIA };
+    disco.clear(); diario = [antigo];
+    await caixa.sincronizarCaixa('dono', antigo.quando);
+    diario = [];
+    erroReferencias = true;
+    const falhou = montar(telas.ListaAConferir, { dono: 'dono', aoMudar() {}, aoAdiar() {} });
+    await falhou.settle();
+    assert.equal(elementos(falhou.tree).filter(e => e.type === telas.CartaoDoAviso).length, 0);
+    assert.equal((await caixa.listarCaixa('dono'))[0].vencimentoVisto, undefined, 'F01: falha antes de desenhar nao marca vencimento');
+    assert.equal((await caixa.sincronizarCaixa('dono')).itens.length, 1, 'F01: aviso nao exibido sobrevive a sincronizacao');
+    erroReferencias = false;
+    elementos(falhou.tree).find(e => e.props.rotulo === 'Tentar de novo').props.onPress(); await falhou.settle();
+    assert.equal((await caixa.listarCaixa('dono'))[0].vencimentoVisto, undefined, 'F01: referencias prontas sem layout ainda nao marcam');
+    const exibido = elementos(falhou.tree).find(e => e.props.onLayout && elementos(e).some(c => c.type === telas.CartaoDoAviso));
+    assert.ok(exibido, 'F01: cartao expoe confirmacao do layout');
+    const outro = { ...antigo, id: 'outro', quando: antigo.quando - 1000, chave: 'outra' };
+    diario = [outro];
+    await caixa.sincronizarCaixa('dono', outro.quando);
+    diario = [];
+    exibido.props.onLayout();
+    const guardados = await caixa.listarCaixa('dono');
+    assert.equal(guardados.find(i => i.avisoIds.includes(antigo.id)).vencimentoVisto, true);
+    assert.equal(guardados.find(i => i.avisoIds.includes(outro.id)).vencimentoVisto, undefined, 'F01: item que chegou depois do desenho permanece intocado');
+    assert.equal((await caixa.sincronizarCaixa('dono')).itens.length, 1);
+    falhou.unmount();
+    ok('F01: falha nao marca nem apaga; so o ID cujo cartao recebeu layout e marcado');
+  }
+
   ok('componentes carregam sem importar data, wallets ou fazer rede (T2)');
   let { ctx, card } = await lista(aviso('Compra no crédito de R$ 89,90 em Mercado Modelo final 1234'));
   assert.equal(chamadas.length, 0);
@@ -1089,6 +1120,7 @@ async function main() {
     const doVelho = textos.find((t) => /53,00/.test(t)), doFresco = textos.find((t) => /54,00/.test(t));
     assert.match(doVelho, /Vence hoje/);
     assert.doesNotMatch(doFresco, /Vence hoje/);
+    elementos(ctx.tree).filter(e => e.props.onLayout).forEach(e => e.props.onLayout());
     const guardados = await caixa.listarCaixa('dono');
     assert.equal(guardados.find((i) => i.valor === 53).vencimentoVisto, true, 'a janela registrou que mostrou a marca');
     assert.equal(guardados.find((i) => i.valor === 54).vencimentoVisto, undefined);

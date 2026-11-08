@@ -330,10 +330,6 @@ function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = 
     const salvos = await itensJaGravados(dono);
     const lembradas = await formasAprendidas(dono);
     setItens(lista);
-    if (lista.some((i) => venceHoje(i, Date.now()) && !i.vencimentoVisto)) {
-      /* A janela vai mostrar "Vence hoje": só depois disso a validade pode tirar o item. */
-      void registrarVencimentoVisto(dono).catch((e) => console.warn('[avisos] vencimento visto não gravou', e instanceof Error ? e.name : 'erro'));
-    }
     setJaSalvos(salvos);
     setFormas(lembradas);
     aoMudar(lista);
@@ -603,20 +599,25 @@ function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = 
         {dados && !dados.carteiras.length && <Text style={styles.corpo}>{semViuva('Abra a Início para carregar suas carteiras antes de confirmar.')}</Text>}
         <View style={styles.lista}>
           {dados && itens.map((item) => (
-            <CartaoDoAviso
-              key={item.id}
-              item={item}
-              jaSalvo={jaSalvos.has(item.id)}
-              dados={dados}
-              formas={formas}
-              texto={textos[item.avisoIds[0]]}
-              entreContas={pareceEntreContas(item, nomeDoPerfil)}
-              ocupado={ocupado !== null}
-              aoConfirmar={() => confirmar(item, dados)}
-              aoEditar={() => abrirRevisao(item, dados)}
-              aoDescartar={() => void descartar(item)}
-              aoRemoverLancamento={(t) => removerDoEstorno(item, t)}
-            />
+            <View key={item.id} onLayout={() => {
+              if (revisao || !venceHoje(item, Date.now()) || item.vencimentoVisto) return;
+              // Este cartao recebeu layout; itens novos na caixa ainda nao foram mostrados.
+              void registrarVencimentoVisto(dono, Date.now(), [item.id]).catch((e) => console.warn('[avisos] vencimento visto não gravou', e instanceof Error ? e.name : 'erro'));
+            }}>
+              <CartaoDoAviso
+                item={item}
+                jaSalvo={jaSalvos.has(item.id)}
+                dados={dados}
+                formas={formas}
+                texto={textos[item.avisoIds[0]]}
+                entreContas={pareceEntreContas(item, nomeDoPerfil)}
+                ocupado={ocupado !== null}
+                aoConfirmar={() => confirmar(item, dados)}
+                aoEditar={() => abrirRevisao(item, dados)}
+                aoDescartar={() => void descartar(item)}
+                aoRemoverLancamento={(t) => removerDoEstorno(item, t)}
+              />
+            </View>
           ))}
         </View>
         {/* Discreto, abaixo da lista: adia sem resolver nada. Tocar fora e o Voltar continuam sem fechar. */}

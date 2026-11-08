@@ -59,9 +59,10 @@ export function venceHoje(item: Pick<ItemAConferir, 'expiraEm' | 'tipo'>, agora:
 const aindaValeOuNaoFoiVisto = (i: ItemAConferir, agora: number) => i.expiraEm > agora || (i.tipo !== 'estorno' && !i.vencimentoVisto);
 
 /** Marca como visto o vencimento dos itens que a janela mostrou no último dia. */
-export function marcarVencimentoVisto(estado: EstadoDaCaixa, agora: number): EstadoDaCaixa {
-  if (!estado.itens.some((i) => venceHoje(i, agora) && !i.vencimentoVisto)) return estado;
-  return { ...estado, itens: estado.itens.map((i) => (venceHoje(i, agora) && !i.vencimentoVisto ? { ...i, vencimentoVisto: true } : i)) };
+export function marcarVencimentoVisto(estado: EstadoDaCaixa, agora: number, ids?: readonly string[]): EstadoDaCaixa {
+  const foiMostrado = (i: ItemAConferir) => (!ids || ids.includes(i.id)) && venceHoje(i, agora) && !i.vencimentoVisto;
+  if (!estado.itens.some(foiMostrado)) return estado;
+  return { ...estado, itens: estado.itens.map((i) => (foiMostrado(i) ? { ...i, vencimentoVisto: true } : i)) };
 }
 
 /** O que sobra de um aviso já processado. Sem título nem texto. */

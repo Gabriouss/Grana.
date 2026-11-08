@@ -65,10 +65,10 @@ export function dispensarRecibo(dono: string, id: string): Promise<void> {
 }
 
 /** A janela mostrou os itens do último dia: só agora a validade pode tirá-los. */
-export function registrarVencimentoVisto(dono: string, agora: number = Date.now()): Promise<void> {
+export function registrarVencimentoVisto(dono: string, agora: number = Date.now(), ids?: readonly string[]): Promise<void> {
   return naVez(async () => {
     const estado = await ler(dono);
-    const marcado = marcarVencimentoVisto(estado, agora);
+    const marcado = marcarVencimentoVisto(estado, agora, ids);
     if (marcado !== estado) await gravar(dono, marcado);
   });
 }
