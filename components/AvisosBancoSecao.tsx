@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import AppModal, { InsetsDoModal } from './AppModal';
 import AppPressable from './AppPressable';
 import ToggleSwitch from './ToggleSwitch';
+import Sheet from './Sheet';
 import { Alert } from '@/lib/alerta';
-import { nomeDoApp } from '@/lib/avisos-banco/catalogo';
+import { BANCOS_DO_CATALOGO, nomeDoApp } from '@/lib/avisos-banco/catalogo';
 import { interpretarAviso, resumoDoEntendido } from '@/lib/avisos-banco/interpretar';
 import { fonts, lh, radius, spacing, theme, touchTarget, type } from '@/lib/theme';
 import { semViuva } from '@/lib/sem-viuva';
@@ -15,6 +16,7 @@ import {
   apagarDiarioAvisos,
   avisosDisponivel,
   definirAppAvisos,
+  definirAceiteAvisos,
   estadoAvisos,
   lerDiarioAvisos,
   listarAppsAvisos,
@@ -23,7 +25,7 @@ import {
   type EstadoAvisos,
 } from '@/modules/grana-avisos';
 
-const EXPLICACAO = semViuva('O Android entrega todas as notificações do aparelho ao serviço, e o Grana. só lê as dos apps ligados na lista abaixo. Dos outros, guarda só o nome do app e quantas vezes notificou. O texto dos avisos fica neste aparelho.');
+const EXPLICACAO = semViuva('O Android entrega todas as notificações ao serviço. O Grana. só lê as dos bancos ligados abaixo, com seu aceite. Outros apps são descartados sem guardar dados.');
 const RESTRITA = semViuva('Se o Android mostrar "Configuração restrita": abra as informações do app, toque no menu de três pontos e escolha "Permitir configurações restritas".');
 
 function textoDoSinal(estado: EstadoAvisos): string {
@@ -38,6 +40,8 @@ export default function AvisosBancoSecao() {
   const [apps, setApps] = useState<AppQueNotificou[]>([]);
   const [diarioAberto, setDiarioAberto] = useState(false);
   const [falha, setFalha] = useState<string | null>(null);
+  const [aceiteAberto, setAceiteAberto] = useState(false);
+  const aceiteEmCurso = useRef(false);
 
   const carregar = useCallback(() => {
     try {
@@ -59,7 +63,7 @@ export default function AvisosBancoSecao() {
 
   if (!avisosDisponivel) return null;
 
-  function alternar(app: AppQueNotificou) {
+  function alternar(app: Pick<AppQueNotificou, 'pacote' | 'ligado'>) {
     try {
       definirAppAvisos(app.pacote, !app.ligado);
       carregar();
@@ -69,7 +73,38 @@ export default function AvisosBancoSecao() {
     }
   }
 
-  const ordenados = [...apps].sort((a, b) => Number(b.ligado) - Number(a.ligado) || b.contagem - a.contagem);
+  const ordenados = BANCOS_DO_CATALOGO.map((banco) => ({
+    ...banco, ligado: apps.find((a) => a.pacote === banco.pacote)?.ligado ?? false,
+  }));
+
+  function pedirAcesso() {
+    aceiteEmCurso.current = false;
+    setFalha(null);
+    setAceiteAberto(true);
+  }
+
+  function aceitar() {
+    if (aceiteEmCurso.current) return;
+    aceiteEmCurso.current = true;
+    try {
+      definirAceiteAvisos(true);
+      abrirAcessoAvisos();
+      setAceiteAberto(false);
+      carregar();
+    } catch (erro) {
+      aceiteEmCurso.current = false;
+      console.error('[avisos] aceite ou ajustes falharam', erro instanceof Error ? erro.name : 'erro');
+      setFalha('Não consegui abrir os ajustes ou guardar seu aceite. Tente de novo.');
+    }
+  }
+
+  function desligar() {
+    try { definirAceiteAvisos(false); carregar(); }
+    catch (erro) {
+      console.error('[avisos] desligar leitura falhou', erro instanceof Error ? erro.name : 'erro');
+      setFalha('Não consegui desligar a leitura. Retire o acesso nas informações do app no Android.');
+    }
+  }
   function abrirAjustes(abrir: () => void) {
     try { abrir(); }
     catch (erro) {
@@ -84,11 +119,14 @@ export default function AvisosBancoSecao() {
       <Text style={styles.corpo}>{EXPLICACAO}</Text>
       {falha && <Text style={styles.corpo}>{falha}</Text>}
       <View style={styles.linha}>
-        <Text style={styles.chave}>{estado?.acesso ? 'Acesso liberado' : 'Acesso desligado'}</Text>
-        <AppPressable style={styles.acaoAlvo} accessibilityRole="button" onPress={() => abrirAjustes(abrirAcessoAvisos)}>
+        <Text style={styles.chave}>{estado?.acesso && estado.aceite ? 'Leitura liberada' : 'Leitura desligada'}</Text>
+        <AppPressable style={styles.acaoAlvo} accessibilityRole="button" onPress={pedirAcesso}>
           <Text style={styles.acao}>{estado?.acesso ? 'Ajustar' : 'Liberar'}</Text>
         </AppPressable>
       </View>
+      {estado?.aceite && <AppPressable style={styles.acaoAlvo} accessibilityRole="button" onPress={desligar}>
+        <Text style={styles.acao}>Desligar leitura</Text>
+      </AppPressable>}
       {estado && <Text style={styles.legenda}>{textoDoSinal(estado)}</Text>}
       {!estado?.acesso && (
         <>
@@ -108,21 +146,35 @@ export default function AvisosBancoSecao() {
       </AppPressable>
     </View>
 
-    <Text style={styles.rotulo}>Apps que notificaram</Text>
+    <Text style={styles.rotulo}>Bancos do catálogo</Text>
     <View style={styles.cartao}>
-      {!ordenados.length && <Text style={styles.corpo}>Nenhum app notificou ainda.</Text>}
       {ordenados.map((app) => (
         <View key={app.pacote} style={styles.linha}>
           <View style={styles.appTexto}>
             <Text style={styles.chave}>{nomeDoApp(app.pacote, app.nome)}</Text>
             <Text style={styles.legenda}>
-              {app.ligado ? 'Sendo lido' : `${app.contagem} ${app.contagem === 1 ? 'notificação' : 'notificações'}, sem leitura`}
+              {app.ligado ? (estado?.acesso && estado.aceite ? 'Leitura ligada' : 'Selecionado; leitura desligada') : 'Leitura desligada'}
             </Text>
           </View>
           <ToggleSwitch value={app.ligado} onToggle={() => alternar(app)} label={`Ler avisos de ${nomeDoApp(app.pacote, app.nome)}`} />
         </View>
       ))}
     </View>
+    {aceiteAberto && <AppModal visible onRequestClose={() => setAceiteAberto(false)}>
+      <Sheet centered onClose={() => setAceiteAberto(false)}>
+        <Text style={styles.titulo} accessibilityRole="header">Ler avisos dos bancos?</Text>
+        <Text style={styles.corpo}>{semViuva('Para sugerir lançamentos, o Grana. acessa o título e o texto das notificações dos bancos do catálogo que você ligar, mesmo com o app fechado.')}</Text>
+        <Text style={styles.corpo}>{semViuva('O Android entrega eventos de todos os apps ao serviço. Os que não são bancos são descartados antes da leitura do conteúdo, sem guardar pacote, contagem ou horário. Nunca lemos o título nem o texto de WhatsApp, Instagram, Tinder, ChatGPT ou carteiras digitais.')}</Text>
+        <Text style={styles.corpo}>{semViuva('O título e o texto lidos ficam só neste aparelho por até 7 dias e não são enviados ao servidor. Você confere e escolhe o que virar lançamento; lançamentos confirmados são sincronizados com sua conta. Pode desligar a leitura aqui ou retirar o acesso no Android.')}</Text>
+        {falha && <Text style={styles.corpo} accessibilityLiveRegion="polite">{falha}</Text>}
+        <AppPressable style={styles.acaoAlvo} accessibilityRole="button" onPress={aceitar}>
+          <Text style={styles.acao}>Aceitar e continuar</Text>
+        </AppPressable>
+        <AppPressable style={styles.acaoAlvo} accessibilityRole="button" onPress={() => setAceiteAberto(false)}>
+          <Text style={styles.acao}>Agora não</Text>
+        </AppPressable>
+      </Sheet>
+    </AppModal>}
     {diarioAberto && <DiarioDoTeste aoFechar={() => setDiarioAberto(false)} />}
   </>;
 }

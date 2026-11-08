@@ -107,6 +107,8 @@ Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052
 
 **Conferência posterior:** trava do diário em `deb301dc`. Retirada a query genérica de apps lançáveis do Manifest e a consulta de nomes via PackageManager, desnecessárias para nomes fixos do catálogo. Tsc sem incremental EXIT 0 com 2,51 GiB; guarda real 1.973/1.973 com 2,43 GiB. Não são `test:ci` integral nem QA visual no aparelho.
 
+**Interface concluída no escopo de código:** Perfil lista só os dez bancos, sem contagem/seleção de outros apps; Liberar/Ajustar exige janela flutuante AppModal+Sheet, aceite explícito, Agora não/Voltar sem efeito e recibos de falha. Desligar leitura remove aceite nativo. Commit de layout separado do núcleo, conforme regra 14. Testes reais da tela 61 grupos verdes; A2 pronto para A5/A6, sem afirmar aprovação legal ou resultado no APK instalado. O terminal Supremo tem texto do autor ainda no compositor; não foi sobrescrito nem enviado Enter sobre esse texto para notificar esta entrega.
+
 ## 08/11 — desbloqueio do app de teste, investigação PH em andamento
 
 **Pedido e escopo:** autor relata Desbloquear sem prompt e tela petróleo vazia recorrentes; fechar recentes não resolve, Forçar parada resolve. Supremo priorizou a correção e liberou somente o clone para Codex PH como único escritor, sem push/build/Supabase; gate deve usar HEAD novo. Conta/modelo/esforço preservados. Ledger parado; registro PH assumido pelo executor, sem reiniciar atores.

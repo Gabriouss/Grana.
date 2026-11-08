@@ -35,7 +35,7 @@ const react = {
 };
 const jsx = (type, props) => ({ type, props: props || {} });
 const TransactionSheet = function TransactionSheet() {};
-let diario = [], erroDiario = false, erroGravacao = false, erroAjustes = false;
+let diario = [], erroDiario = false, erroGravacao = false, erroAjustes = false, erroAceite = false, aceiteDoTeste = false;
 /* Falha só a escrita da caixa escolhida: pula as primeiras e recusa as seguintes. */
 let falhaCaixa = { pular: 0, vezes: 0 };
 let falhaFormas = false, avisosDoConsole = [];
@@ -55,8 +55,9 @@ class ValorAnimado {
 }
 const nativo = {
   avisosDisponivel: true,
-  estadoAvisos: () => ({ acesso: false, ultimoSinal: 0, desconectadoEm: 0, ultimaFalha: null }),
-  listarAppsAvisos: () => [{ pacote: 'com.exemplo.banco', nome: 'Banco Exemplo', ligado: false, contagem: 2 }],
+  estadoAvisos: () => ({ acesso: false, aceite: aceiteDoTeste, ultimoSinal: 0, desconectadoEm: 0, ultimaFalha: null }),
+  listarAppsAvisos: () => [{ pacote: 'com.nu.production', nome: 'Nubank', ligado: false, contagem: 0 }, { pacote: 'com.whatsapp', nome: 'WhatsApp', ligado: true, contagem: 2 }],
+  definirAceiteAvisos: (valor) => { if (erroAceite) throw new Error('disco'); aceiteDoTeste = valor; chamadas.push(['aceite', valor]); },
   definirDonoAvisos() {}, garantirListaInicialAvisos() {},
   definirAppAvisos: (...args) => chamadas.push(['app', ...args]),
   abrirAcessoAvisos: () => { if (erroAjustes) throw new Error('ajustes'); chamadas.push(['acesso']); },
@@ -541,15 +542,39 @@ async function main() {
 
   const p = montar(perfil.default, {}); await p.settle();
   assert.match(texto(p.tree), /Android entrega todas/);
-  assert.match(texto(p.tree), /Acesso desligado/);
+  assert.match(texto(p.tree), /Leitura desligada/);
   assert.match(texto(p.tree), /Sem sinal/);
   assert.match(texto(p.tree), /Permitir configurações\s+restritas/);
-  botao(p, 'Liberar')(); assert.equal(chamadas.at(-1)[0], 'acesso');
+  chamadas = [];
+  botao(p, 'Liberar')(); p.render();
+  assert.equal(chamadas.length, 0, 'ajustes não abrem antes do aceite');
+  assert.ok(elementos(p.tree).some((e) => e.type === './Sheet'), 'aviso em janela do DS');
+  assert.match(texto(p.tree), /título e (?:o )?texto/);
+  assert.match(texto(p.tree), /WhatsApp/); // só a explicação do que nunca é lido
+  botao(p, 'Agora não')(); p.render();
+  assert.equal(chamadas.length, 0);
+  assert.equal(elementos(p.tree).filter((e) => e.type === './Sheet').length, 0);
+  botao(p, 'Liberar')(); p.render();
+  elementos(p.tree).find((e) => e.type === './AppModal' && e.props.visible).props.onRequestClose(); p.render();
+  assert.equal(chamadas.length, 0, 'Voltar também não aceita');
+  botao(p, 'Liberar')(); p.render();
+  erroAceite = true;
+  botao(p, 'Aceitar e continuar')(); p.render();
+  assert.equal(chamadas.length, 0, 'falha ao persistir não abre ajustes');
+  assert.match(texto(p.tree), /Não consegui/);
+  erroAceite = false;
+  const aceitar = botao(p, 'Aceitar e continuar'); aceitar(); aceitar(); p.render();
+  assert.equal(JSON.stringify(chamadas), JSON.stringify([['aceite', true], ['acesso']]), 'aceite gravado antes dos ajustes, uma vez');
+  assert.doesNotMatch(texto(p.tree), /WhatsApp|Apps que notificaram|notificações, sem leitura/);
+  assert.equal(elementos(p.tree).filter((e) => e.props.onToggle).length, 10, 'só os dez bancos do catálogo');
   const toggle = elementos(p.tree).find((e) => e.props.onToggle);
   toggle.props.onToggle(); assert.equal(chamadas.at(-1)[0], 'app');
-  erroAjustes = true; botao(p, 'Liberar')(); p.render();
+  erroAjustes = true; botao(p, 'Liberar')(); p.render(); botao(p, 'Aceitar e continuar')(); p.render();
   assert.match(texto(p.tree), /Não consegui abrir/);
-  ok('Perfil explica acesso, sem sinal, restrição oficial, toggle local e erro dos ajustes');
+  erroAjustes = false;
+  botao(p, 'Agora não')(); p.render();
+  botao(p, 'Desligar leitura')(); p.render(); assert.deepEqual(chamadas.at(-1), ['aceite', false]);
+  ok('Perfil só lista bancos, exige aceite em janela antes dos ajustes, cancela/Voltar não aceitam e falhas deixam recibo');
 
   erroDiario = true;
   const d = montar(perfil.DiarioDoTeste, { aoFechar() {} }); await d.settle();
