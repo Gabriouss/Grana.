@@ -93,6 +93,24 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 08/11 — retomada da pausa da noite
+
+**Pedido e fonte:** autor pediu “continue o trabalho pausado na noite passada”, depois “verifique a disponibilidade dos agentes e delegue suas tarefas” e “pode torrar os tokens todos das contas codex, tenho duas redefinições, pode jogar a maior parte do esforço de trabalho para as contas codex”. Registro pelo Beacon, substituindo o Ledger sem limite, conforme `E:\Grana-temporarios\2026-11-08-retomada\ordem-beacon-registro.md`. O corte operacional abaixo foi apurado pelo orquestrador; Beacon registra sem repetir testes, sondas ou revisão de produto.
+
+**Retomada dos cinco itens da pausa:** (1) orquestrador relata leitura dos diffs `8b94d5c2` e `6ccb1d3e` no main, sem defeito encontrado; segunda leitura independente atribuída ao Forge. (2) Saudação numa linha segue SEM decisão: A, 14 px numa linha; B, só “Boa noite”; C, reticências, conforme seção 6 de `relatorio-anvil-2.md`. (3) `test:ci` ainda não refeito no corte recebido; Forge o executará depois da entrega/liberação do Anvil, main primeiro e clone depois. (4) Ordem do Crédito e da palavra viúva do Granabô enviada ao Anvil por volta de 11h30; ficou parada na caixa e só foi entregue com Enter separado, após o qual ele começou. (5) Autor decidiu juntar as mudanças numa build futura; nenhuma build hoje.
+
+**Sintoma e causa separados:** a pausa deixou pendentes revisão, decisão de saudação, CI e envio da ordem de layout. O relato atual de “texto parado” é falha de entrega da instrução ao terminal, resolvida pelo Enter separado, não novo diagnóstico do app. As causas e a validação física do travamento da build 31 continuam no registro de 07/11 abaixo; não foram reavaliadas pelo Beacon.
+
+**Disponibilidade às 11h25, segundo o orquestrador, sem gasto de modelo na consulta:** Claude `conta-9787a74a`, 2% usados em 5h e 36% na semana; Gabriel Codex, lido no Prism, 100% restantes em 5h e **0% restantes na semana**, retorno em 11/11 às 11h45; Codex PH, lido no Harbor, 100% restantes em 5h e 13% na semana, retorno em 11/11 às 12h11. Memória disponível 1.169 MB de 15.743 MB; 13 processos Claude somam 3,2 GB. São medições relatadas nesse horário, não disponibilidade reconsultada pelo Beacon. Prism, Sentinel, Watchtower e Ledger parados por limite até redefinição do autor.
+
+**Distribuição:** Anvil, Sonnet 5.5 medium, com Crédito (`app/(app)/credito.tsx`) e viúva (`components/Granachat.tsx`); Forge, Sol 6.1 medium/PH, com revisão independente do cabeçalho e CI após liberação, conforme `ordem-forge-revisao-e-ci.md`; Beacon, Sol 6.1 medium/PH, somente registros. Compass e Harbor parados para poupar PH; Meridian, Lumen, Vigil, Keel e Flare parados. Sem modelo/esforço alterado pelo Beacon.
+
+**Arquivos e corte Git conferido pelo Beacon às 11h31:** apenas main, um worktree (`E:\GranaPonto`), nenhum stash; árvore limpa antes deste registro. A ordem descrevia Crédito/Granachat alterados e não commitados durante o início do Anvil; na leitura posterior já constam os commits `6ba156f0` (Crédito) e `0404faea` (Granabô). Apenas existência e assuntos vistos no log: relatório, testes, equivalência no clone e aceite desses dois commits NÃO inferidos. As revisões do cabeçalho continuam referidas a `8b94d5c2`/`6ccb1d3e` e cherry-picks anteriores `66cd8a4f`/`65dafb9d`.
+
+**Descartado e ocorrências:** não reiniciar trabalho já entregue, não declarar saudação resolvida, não rodar CI enquanto a árvore estiver sendo alterada e não disparar build por esta retomada. Nenhum erro novo de produto foi apurado pelo documentador. O envio parado foi a ocorrência operacional relatada; a consulta de limites não autoriza gastar ou reiniciar agentes sem tarefa.
+
+**Sem verificação neste corte:** parecer independente do Forge, CI integral main/clone, decisão A/B/C, entrega formal e QA do Crédito/Granabô, aparência em Android/iOS e fonte grande. Nada testado no aparelho, nem suíte ou tsc executados pelo Beacon nesta rodada. Registros adicionais em `00 - Sessões/2026-11-08 - M1 - Retomada da pausa.md` no vault e na nota homônima do `Fichário - Sessões`; resumo vigente em `Contexto - context` no canvas. Atualizações serão acrescentadas quando o orquestrador avisar de novo relatório. Sem push, build, deploy ou migration.
+
 ## 07/11 (noite) — travamento da build 31: causa, correção e build de teste
 
 **Pedido (21h, sessão Claude direta com o autor):** “a gente precisa disparar outra build de urgência, porque o aplicativo ele não tá carregando corretamente nada [...] tentativa de confirmar o lançamento que foi lido da notificação e não tá indo, não vai nem fecha a janela, nem faz o lançamento”; depois: “tá travando tudo”.
