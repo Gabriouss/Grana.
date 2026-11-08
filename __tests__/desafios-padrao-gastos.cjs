@@ -73,7 +73,7 @@ ok(total([...base(), saida(6, 25, { category: 'Investimentos' })]).totalDoMes ==
   ok(r.quinzena.tipo === 'maior' && r.quinzena.periodo.rotulo === 'segunda', 'segunda quinzena é a de maior gasto');
   ok(r.quinzena.periodo.total === 1240 && r.quinzena.outro.total === 980, 'totais 1.240 e 980');
   ok(r.quinzena.periodo.dias === 16 && r.quinzena.outro.dias === 15, 'média por dia usa 16 e 15 dias');
-  ok(/^A segunda quinzena teve mais gasto: R\$.1\.240,00, contra R\$.980,00 na primeira\.$/.test(r.frases.quinzena), 'frase da quinzena: ' + r.frases.quinzena);
+  ok(/^A segunda quinzena teve a maior média diária: R\$.77,50 por dia, contra R\$.65,33 na primeira\.$/.test(r.frases.quinzena), 'frase da quinzena: ' + r.frases.quinzena);
   ok(!/[—–]/.test(Object.values(r.frases).join(' ')), 'sem travessão nas frases');
   ok(/R\$ \d/.test(r.frases.quinzena), 'R$ colado ao número (espaço inquebrável)');
 }
@@ -85,6 +85,11 @@ ok(total([...base(), saida(6, 25, { category: 'Investimentos' })]).totalDoMes ==
   const r = p.calcularPadraoDeGastos(t, 2026, 1, new Date(2026, 2, 3));
   ok(r.quinzena.tipo === 'maior' && r.quinzena.periodo.rotulo === 'segunda' && r.quinzena.periodo.total === 950, 'a média por dia decide: segunda quinzena vence com total menor');
   ok(r.quinzena.periodo.dias === 13 && r.quinzena.outro.dias === 15, 'fevereiro: 13 e 15 dias');
+  ok(r.frases.quinzena === 'A segunda quinzena teve a maior média diária: R$ 73,08 por dia, contra R$ 66,67 na primeira.', 'H03 fevereiro: frase usa médias em centavos antes de mapear');
+  const { componente, textos } = require('./_copy-componentes-reais.cjs');
+  const Tela = componente('components/DesafiosPadraoGastos.tsx').default;
+  const texto = textos(Tela({ padrao: r })).join(' ');
+  ok(texto.includes('A segunda quinzena teve a maior média diária: R$ 73,08 por dia, contra R$ 66,67 na primeira.'), 'H03 componente real usa médias em reais depois de mapear, sem fator100');
 }
 {
   // Empate: médias com menos de 5% de diferença
@@ -92,7 +97,9 @@ ok(total([...base(), saida(6, 25, { category: 'Investimentos' })]).totalDoMes ==
     saida(17, 280), saida(20, 280), saida(24, 280), saida(26, 290), saida(28, 0.01)]; // ~1.130/16 = 70,6
   const r = total(t);
   ok(r.quinzena.tipo === 'parecidas', 'médias a menos de 5%: "parecidas", sem vencedora');
-  ok(r.frases.quinzena === 'As duas quinzenas tiveram gastos parecidos.', 'frase de empate');
+  ok(r.frases.quinzena === 'As duas quinzenas tiveram gastos parecidos por dia.', 'frase de empate');
+  const { componente, textos } = require('./_copy-componentes-reais.cjs');
+  ok(textos(componente('components/DesafiosPadraoGastos.tsx').default({ padrao: r })).join(' ').includes(r.frases.quinzena), 'H03 empate de quinzena tem unidade por dia tambem na tela');
 }
 
 // Mês em andamento
@@ -118,7 +125,10 @@ ok(total([...base(), saida(6, 25, { category: 'Investimentos' })]).totalDoMes ==
     saida(26, 10), saida(29, 10)]; // 26 a 31: 20
   const r = total(t);
   ok(r.semana.tipo === 'maior' && r.semana.periodo.rotulo === '05/10 a 11/10' && r.semana.periodo.total === 300, 'semana de maior gasto: 05/10 a 11/10');
-  ok(/^A semana de 05\/10 a 11\/10 foi a de maior gasto: R\$.300,00\.$/.test(r.frases.semana), 'frase da semana: ' + r.frases.semana);
+  ok(/^A semana de 05\/10 a 11\/10 teve a maior média diária: R\$.42,86 por dia\.$/.test(r.frases.semana), 'frase da semana: ' + r.frases.semana);
+  const { componente, textos } = require('./_copy-componentes-reais.cjs');
+  const Tela = componente('components/DesafiosPadraoGastos.tsx').default;
+  ok(textos(Tela({ padrao: r })).join(' ').includes('A semana de 05/10 a 11/10 teve a maior média diária: R$ 42,86 por dia.'), 'H03 semana na tela real tem mesma unidade');
   // mês em andamento: precisa de 2 semanas elegíveis
   const andamento = p.calcularPadraoDeGastos([...t.filter((x) => x.occurred_on <= '2026-10-11'), saida(10, 5)], 2026, 9, new Date(2026, 9, 11, 23));
   ok(andamento.semana !== null, 'dia 11: duas semanas completas (01-04 e 05-11) permitem comparar');
@@ -127,6 +137,13 @@ ok(total([...base(), saida(6, 25, { category: 'Investimentos' })]).totalDoMes ==
 }
 
 // Dia: maior soma; empate fica com o mais recente
+{
+  const r = total(Array.from({ length: 11 }, (_, i) => saida(i + 1, 10)));
+  ok(r.semana.tipo === 'parecidas', 'H03 semanas de 4 e 7 dias empatam com media de 10 por dia');
+  ok(r.frases.semana === 'As semanas tiveram gastos parecidos por dia.', 'H03 empate de semana declara unidade');
+  const { componente, textos } = require('./_copy-componentes-reais.cjs');
+  ok(textos(componente('components/DesafiosPadraoGastos.tsx').default({ padrao: r })).join(' ').includes(r.frases.semana), 'H03 empate de semana tambem coerente na tela');
+}
 {
   const t = [...base(), saida(12, 80), saida(12, 20), saida(20, 100)];
   const r = total(t);
