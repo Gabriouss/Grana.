@@ -19,6 +19,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 /* `expo-image` no lugar do `Image` do React Native: o avatar do cabeçalho vem
@@ -120,8 +121,13 @@ import { useReducedMotion } from '@/lib/motion';
 type ChartView = 'in' | 'out' | 'both';
 
 
+/** Abaixo desta largura (dp/px) os atalhos da grade 2x2 usam recuo e rótulo menores. */
+const ATALHOS_COMPACTOS_ATE = 430;
+
 export default function InicioScreen() {
   const { ligado } = useFlags();
+  /* Celular estreito (360 a 390): os rótulos dos atalhos 2x2 não cabem no tamanho de tela larga. */
+  const atalhosCompactos = useWindowDimensions().width < ATALHOS_COMPACTOS_ATE;
   const { paddingConteudoComFab } = useTabBarInset();
   const router = useRouter();
   const { hidden, toggle } = usePrivacy();
@@ -1593,12 +1599,12 @@ export default function InicioScreen() {
         <VoiceEntryButton
           label="Lançar por voz"
           onSaved={() => { void load(); }}
-          textStyle={styles.smartActionText}
+          textStyle={[styles.smartActionText, atalhosCompactos && styles.smartActionTextCompacto]}
           /* Mesmo padrão dos outros três atalhos (autor, 18/10/2026): a voz
              segue na primeira posição, sem destaque próprio. */
           iconColor={theme.ink}
           iconSize={18}
-          style={styles.smartActionBtn}
+          style={[styles.smartActionBtn, atalhosCompactos && styles.smartActionBtnCompacto]}
           hoverStyle={styles.smartActionBtnHover}
           onTranscribed={(text, ref) => {
             const destino = destinoDaFala(text, wallets, creditCards);
@@ -1620,39 +1626,39 @@ export default function InicioScreen() {
     ligado('foto_nota') ? (
       <View key="foto-nota" style={styles.smartActionCell}>
         <AppPressable
-          style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
+          style={({ hovered }) => [styles.smartActionBtn, atalhosCompactos && styles.smartActionBtnCompacto, hovered && styles.smartActionBtnHover]}
           onPress={() => setFotoNotaOpen(true)}
           accessibilityRole="button"
           accessibilityLabel="Fotografar nota"
         >
           <Ionicons name="camera-outline" size={18} color={theme.ink} />
-          <Text style={styles.smartActionText} numberOfLines={1} adjustsFontSizeToFit>Fotografar nota</Text>
+          <Text style={[styles.smartActionText, atalhosCompactos && styles.smartActionTextCompacto]} numberOfLines={1} adjustsFontSizeToFit>Fotografar nota</Text>
         </AppPressable>
       </View>
     ) : null,
     ligado('colar_comprovante') ? (
       <View key="colar-comprovante" style={styles.smartActionCell}>
         <AppPressable
-          style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
+          style={({ hovered }) => [styles.smartActionBtn, atalhosCompactos && styles.smartActionBtnCompacto, hovered && styles.smartActionBtnHover]}
           onPress={() => setPasteModalOpen(true)}
           accessibilityRole="button"
           accessibilityLabel="Colar comprovante"
         >
           <Ionicons name="clipboard-outline" size={18} color={theme.ink} />
-          <Text style={styles.smartActionText} numberOfLines={1} adjustsFontSizeToFit>Colar comprovante</Text>
+          <Text style={[styles.smartActionText, atalhosCompactos && styles.smartActionTextCompacto]} numberOfLines={1} adjustsFontSizeToFit>Colar comprovante</Text>
         </AppPressable>
       </View>
     ) : null,
     ligado('importar_extrato') ? (
       <View key="importar-extrato" style={styles.smartActionCell}>
         <AppPressable
-          style={({ hovered }) => [styles.smartActionBtn, hovered && styles.smartActionBtnHover]}
+          style={({ hovered }) => [styles.smartActionBtn, atalhosCompactos && styles.smartActionBtnCompacto, hovered && styles.smartActionBtnHover]}
           onPress={() => setCsvModalOpen(true)}
           accessibilityRole="button"
           accessibilityLabel="Importar extrato"
         >
           <Ionicons name="document-text-outline" size={18} color={theme.ink} />
-          <Text style={styles.smartActionText} numberOfLines={1} adjustsFontSizeToFit>Importar extrato</Text>
+          <Text style={[styles.smartActionText, atalhosCompactos && styles.smartActionTextCompacto]} numberOfLines={1} adjustsFontSizeToFit>Importar extrato</Text>
         </AppPressable>
       </View>
     ) : null,
@@ -2195,6 +2201,9 @@ const styles = StyleSheet.create({
     borderWidth: cardTokens.borderWidth,
     borderColor: theme.rule,
   },
+  /* 360 a 390: a célula tem 160 a 175, e "Colar comprovante" a 14px pede 134 só de texto.
+     Recuo `sm` e rótulo `micro` (escala existente) fazem o texto inteiro caber, sem reticências. */
+  smartActionBtnCompacto: { paddingHorizontal: spacing.sm },
   smartActionBtnHover: { borderColor: theme.ruleStrong },
   smartActionText: {
     color: theme.ink,
@@ -2204,6 +2213,7 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     flexShrink: 1,
   },
+  smartActionTextCompacto: { fontSize: type.micro, lineHeight: lh(type.micro, 'apoio') },
   card: { backgroundColor: theme.paperRaised, borderRadius: cardTokens.radius, borderWidth: cardTokens.borderWidth, borderColor: theme.rule, padding: cardTokens.padding, gap: spacing.md },
   /* paddingRight na web: a alça de arraste (components/WidgetGrid.tsx) pousa
      no canto superior direito do card, e é exatamente onde estes cabeçalhos
