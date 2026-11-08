@@ -118,6 +118,7 @@ export default function RootLayout() {
       {identidadeWeb}
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <FaixaTopoProvider>
+          <AppLockProvider>
           <AlertaHost />
           <SessionProvider>
           {/* Dentro do SessionProvider porque a leitura de `feature_flags`
@@ -128,7 +129,6 @@ export default function RootLayout() {
             <PrivacyProvider>
             <WidgetPrivacyProvider>
               <DemoProvider>
-                <AppLockProvider>
                   <ScreenCaptureProvider>
                     <StatusBar style="light" />
                     {/* A trava fica por fora do WebPhoneFrame: cobrir só o miolo
@@ -140,13 +140,13 @@ export default function RootLayout() {
                       </WebPhoneFrame>
                     </AppLockGate>
                   </ScreenCaptureProvider>
-                </AppLockProvider>
               </DemoProvider>
             </WidgetPrivacyProvider>
             </PrivacyProvider>
           </EntitlementProvider>
           </FlagsProvider>
           </SessionProvider>
+          </AppLockProvider>
         </FaixaTopoProvider>
       </SafeAreaProvider>
     </>

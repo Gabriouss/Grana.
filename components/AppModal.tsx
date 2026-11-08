@@ -4,6 +4,7 @@ import { SafeAreaProvider, useSafeAreaInsets, type EdgeInsets } from 'react-nati
 import { useReducedMotion } from '@/lib/motion';
 import { useSheetFlutuante } from '@/lib/breakpoints';
 import { registrarJanelaAberta } from '@/lib/janelas-abertas';
+import { useAppLock } from '@/lib/app-lock-context';
 
 /**
  * Único ponto de entrada para modais animados do produto. A preferência de
@@ -30,12 +31,15 @@ export default function AppModal({
   semRegistro?: boolean;
 }) {
   const reduzirMovimento = useReducedMotion();
-  const visivel = props.visible !== false;
+  const { pronto, bloqueado } = useAppLock();
+  // Modal cria outra janela nativa: zIndex da cobertura não a protege.
+  const visivel = props.visible !== false && pronto && !bloqueado;
   useEffect(() => (visivel && !semRegistro ? registrarJanelaAberta() : undefined), [visivel, semRegistro]);
 
   return (
     <Modal
       {...props}
+      visible={visivel}
       animationType={reduzirMovimento ? 'none' : animationType}
       hardwareAccelerated={hardwareAccelerated ?? Platform.OS === 'android'}
       navigationBarTranslucent={navigationBarTranslucent ?? Platform.OS === 'android'}

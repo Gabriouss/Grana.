@@ -15,12 +15,12 @@ import BrandLogotype from './BrandLogotype';
  * daí a cobertura ser opaca e ocupar a tela toda.
  */
 export default function AppLockGate({ children }: PropsWithChildren) {
-  const { bloqueado, pronto, desbloquear } = useAppLock();
+  const { bloqueado, pronto, autenticando, erro, desbloquear } = useAppLock();
   const jaPediu = useRef(false);
   /* Enquanto `pronto` é false ainda não sabemos se a trava está ligada —
      `bloqueado` começa como false por padrão, então sem isso o conteúdo
      financeiro pisca visível por um frame antes da leitura do AsyncStorage
-     terminar. Cobre com uma tela em branco até saber a resposta. */
+     terminar. A cobertura já mostra marca e orientação durante a leitura. */
   const cobrindo = !pronto || bloqueado;
 
   /* Pede a biometria assim que a tela de bloqueio aparece, sem exigir um toque
@@ -30,28 +30,37 @@ export default function AppLockGate({ children }: PropsWithChildren) {
       jaPediu.current = false;
       return;
     }
-    if (jaPediu.current) return;
+    if (!pronto || erro || jaPediu.current) return;
     jaPediu.current = true;
-    desbloquear();
-  }, [bloqueado, desbloquear]);
+    void desbloquear();
+  }, [bloqueado, pronto, erro, desbloquear]);
 
   return (
     <View style={{ flex: 1 }}>
-      {children}
+      <View
+        style={{ flex: 1 }}
+        pointerEvents={cobrindo ? 'none' : 'auto'}
+        accessibilityElementsHidden={cobrindo}
+        importantForAccessibility={cobrindo ? 'no-hide-descendants' : 'auto'}
+      >
+        {children}
+      </View>
       {cobrindo && (
         <View style={styles.cobertura}>
-          {bloqueado && (
-            <>
-              <BrandLogotype width={150} />
-              <Text style={styles.texto}>Seus valores estão protegidos.</Text>
+          <BrandLogotype width={150} />
+          <Text style={styles.texto}>{pronto ? 'Seus valores estão protegidos.' : 'Conferindo a proteção do app…'}</Text>
+          {erro && <Text style={styles.erro} accessibilityRole="alert" accessibilityLiveRegion="polite">{erro}</Text>}
+          {pronto && (
               <AppPressable
                 style={({ hovered }) => [styles.botao, hovered && { opacity: 0.88 }]}
-                onPress={desbloquear}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: autenticando, busy: autenticando }}
+                disabled={autenticando}
+                onPress={() => { jaPediu.current = true; void desbloquear(); }}
               >
                 <Ionicons name="finger-print-outline" size={18} color={theme.paper} />
-                <Text style={styles.botaoTexto}>Desbloquear</Text>
+                <Text style={styles.botaoTexto}>{autenticando ? 'Aguardando confirmação…' : 'Desbloquear'}</Text>
               </AppPressable>
-            </>
           )}
         </View>
       )}
@@ -73,6 +82,7 @@ const styles = StyleSheet.create({
     zIndex: 999,
   },
   texto: { color: theme.inkSoft, fontSize: type.corpo, fontFamily: fonts.light },
+  erro: { color: theme.inkSoft, fontSize: type.corpo, fontFamily: fonts.regular, textAlign: 'center', paddingHorizontal: spacing.xl },
   botao: {
     flexDirection: 'row',
     alignItems: 'center',

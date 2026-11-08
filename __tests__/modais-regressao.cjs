@@ -93,6 +93,7 @@ console.log('OK: Escape fecha apenas o topo; Sheet preserva teto calculado e rol
 // da janela nativa e tirava a barra de status de baixo do escurecido (T19).
 const insetsDoModal = { top: 42, bottom: 24, left: 0, right: 0 };
 const appModalMod = carregar('components/AppModal.tsx', {
+  '@/lib/app-lock-context': { useAppLock: () => ({ pronto: true, bloqueado: false }) },
   'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'Fragment' },
   'react-native': { Platform: { OS: 'android' }, Modal: 'Modal' },
   'react-native-safe-area-context': {
