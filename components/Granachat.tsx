@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { semViuva } from '@/lib/sem-viuva';
 import {
   ActivityIndicator,
   Animated,
@@ -600,10 +601,9 @@ export default function Granachat({
             />
           </AppPressable>
 
-          <Text style={styles.vazioTitulo}>{saudacaoTitulo}</Text>
+          <Text style={styles.vazioTitulo}>{semViuva(saudacaoTitulo)}</Text>
           <Text style={styles.vazioTexto}>
-            Pergunte sobre suas finanças ou peça um lançamento direto por aqui: quanto gastou em uma
-            categoria, como está o crédito, boletos pendentes ou quanto ainda dá pra gastar no mês.
+            {semViuva('Pergunte sobre suas finanças ou peça um lançamento direto por aqui: quanto gastou em uma categoria, como está o crédito, boletos pendentes ou quanto ainda dá pra gastar no mês.')}
           </Text>
 
           <View style={styles.sugestoes}>
