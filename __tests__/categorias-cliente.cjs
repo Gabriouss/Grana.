@@ -91,8 +91,33 @@ async function main() {
   check(gd.linhas.length === 1 && gd.centavos === 1500, 'dia futuro com lançamento aparece');
   falha = true;
   const antigo = await api.consultarCategorias('2026-12-01', '2026-12-31', r.resultado);
-  check(antigo.resultado === r.resultado && antigo.erro && antigo.resultado.inicio === '2026-11-01', 'falha preserva o último intervalo identificado, sem zero');
+  check(antigo.resultado === null && antigo.erro, 'B-01: falha em dezembro nao serve o snapshot de novembro');
+  check((await api.consultarCategorias('2026-11-01', '2026-11-30', r.resultado)).resultado === r.resultado, 'B-01: falha no mesmo intervalo preserva o ultimo resultado');
   check((await api.consultarCategorias('2026-11-01', '2026-11-30')).resultado === null, 'primeira falha não inventa resultado vazio');
+  // B-01: hook REAL esconde o snapshot antigo já no render, antes do efeito.
+  let cursor = 0;
+  const slots = [];
+  const hook = load('lib/use-categorias.ts', {
+    react: { useState: initial => { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === 'function' ? initial() : initial; return [slots[i], v => { slots[i] = typeof v === 'function' ? v(slots[i]) : v; }]; },
+      useRef: initial => { const i = cursor++; return slots[i] ?? (slots[i] = { current: initial }); }, useCallback: f => f, useEffect: () => {} },
+    'expo-router': { useFocusEffect: () => {} },
+    '@react-native-async-storage/async-storage': {},
+    './auth-context': { useSession: () => ({ session: { user: { id: usuario } } }) },
+    './categorias-cliente': api, './gastos-categoria': core,
+    '@/components/FaixaOffline': { useRecarregarAoChegarDadoNovo: () => {} },
+  });
+  const render = (inicio = '2026-11-01', fim = '2026-11-30') => { cursor = 0; return hook.useCategorias(inicio, fim, false, []); };
+  falha = false;
+  await render().carregar();
+  const snapshot = render().resultado;
+  check(snapshot !== null, 'B-01: hook carregou novembro');
+  check(render('2026-12-01', '2026-12-31').resultado === null, 'B-01: render de dezembro ja esconde novembro antes de consultar');
+  check(render('2026-11-01', '2026-11-29').resultado === null, 'B-01: trocar somente o fim tambem invalida o snapshot');
+  falha = true;
+  await render().carregar();
+  check(render().resultado === snapshot && render().erro, 'B-01: hook preserva snapshot em falha do mesmo periodo');
+  await render('2026-12-01', '2026-12-31').carregar();
+  check(render('2026-12-01', '2026-12-31').resultado === null && render().erro, 'B-01: falha em outro mes deixa erro sem dados');
   usuario = 'usuario-b';
   check((await api.consultarCategorias('2026-11-01', '2026-11-30', r.resultado)).resultado === null, 'sem vazamento entre usuários');
   check(notificacoes === 0 && chamadas.length >= 4, 'atualizações não disparam alertas de orçamento/cartão');

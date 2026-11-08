@@ -35,7 +35,8 @@ export function useCategorias(inicio: string, fim: string, demo: boolean, linhas
   }, [inicio, fim, demo, linhasDemo, userId, ativo]);
   useFocusEffect(useCallback(() => { void carregar(); return () => { geracao.current++; }; }, [carregar]));
   useRecarregarAoChegarDadoNovo(() => { void carregar(); });
-  return { resultado: resultado?.userId === userId ? resultado : null, erro, carregando, carregar };
+  const resultadoDoPeriodo = resultado?.userId === userId && resultado.inicio === inicio && resultado.fim === fim ? resultado : null;
+  return { resultado: resultadoDoPeriodo, erro, carregando, carregar };
 }
 
 export function useVisaoCategorias() {
