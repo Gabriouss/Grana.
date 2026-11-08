@@ -105,6 +105,8 @@ Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052
 
 **Núcleo entregue / interface em preparo:** `10da09f5`, Kotlin real 9/9 e caixa/financeiro 72 verdes. RED da tela confirmou ajustes abertos antes do aceite; janela AppModal+Sheet agora passou as 61 verificações reais, inclusive Agora não/Voltar, falha de persistência, ordem aceite→ajustes, toque duplicado e dez bancos mesmo com pacote extra no retorno. Texto diferencia eventos recebidos pelo Android, leitura de conteúdo e sincronização de lançamento confirmado. Falta commit de interface e conferência final. Diário passou a compartilhar trava entre instâncias do serviço/bridge: a limpeza do .tmp legado não pode apagar escrita em curso. Tentativa de commit antes de adicionar os testes novos foi recusada por pathspec; adicionados explicitamente, sem mudar escopo/hook. Hook só padrões, zero valores de .env comparados.
 
+**Conferência posterior:** trava do diário em `deb301dc`. Retirada a query genérica de apps lançáveis do Manifest e a consulta de nomes via PackageManager, desnecessárias para nomes fixos do catálogo. Tsc sem incremental EXIT 0 com 2,51 GiB; guarda real 1.973/1.973 com 2,43 GiB. Não são `test:ci` integral nem QA visual no aparelho.
+
 ## 08/11 — desbloqueio do app de teste, investigação PH em andamento
 
 **Pedido e escopo:** autor relata Desbloquear sem prompt e tela petróleo vazia recorrentes; fechar recentes não resolve, Forçar parada resolve. Supremo priorizou a correção e liberou somente o clone para Codex PH como único escritor, sem push/build/Supabase; gate deve usar HEAD novo. Conta/modelo/esforço preservados. Ledger parado; registro PH assumido pelo executor, sem reiniciar atores.

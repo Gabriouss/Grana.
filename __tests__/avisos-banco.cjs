@@ -542,6 +542,7 @@ async function main() {
   const listener = nativo('java/com/gabriouss/grana/avisos/GranaAvisosListener.kt');
   const manifesto = nativo('AndroidManifest.xml');
   assert.match(manifesto, /BIND_NOTIFICATION_LISTENER_SERVICE/);
+  assert.doesNotMatch(manifesto, /<queries>|QUERY_ALL_PACKAGES/);
   assert.match(manifesto, /disabled_filter_types[\s\S]*conversations\|ongoing/);
   assert.ok(listener.indexOf('AvisosFiltro.decidir') < listener.indexOf('EXTRA_TITLE'), 'filtro antes de abrir o texto');
   assert.doesNotMatch(listener, /Destino\.CONTAR|contarForaDaLista/);

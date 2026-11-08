@@ -1,14 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-  <!-- Só para mostrar o nome do app em "Apps que notificaram". Sem isto o
-       Android 11+ esconde os outros apps, e a lista ficaria só com o pacote. -->
-  <queries>
-    <intent>
-      <action android:name="android.intent.action.MAIN" />
-      <category android:name="android.intent.category.LAUNCHER" />
-    </intent>
-  </queries>
-
   <application>
     <!-- Conversa e notificação contínua não chegam ao serviço a partir do
          Android 12. Quem filtra por app é a primeira linha do serviço. -->

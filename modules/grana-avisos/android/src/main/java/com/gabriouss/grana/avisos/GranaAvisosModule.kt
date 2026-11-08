@@ -3,7 +3,6 @@ package com.gabriouss.grana.avisos
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
 import android.util.Log
@@ -30,13 +29,6 @@ class GranaAvisosModule : Module() {
     val habilitados = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners").orEmpty()
     val componente = ComponentName(context, GranaAvisosListener::class.java).flattenToString()
     return habilitados.split(':').contains(componente)
-  }
-
-  private fun nomeDoApp(pacote: String): String? = try {
-    val pm = context.packageManager
-    pm.getApplicationLabel(pm.getApplicationInfo(pacote, 0)).toString()
-  } catch (_: PackageManager.NameNotFoundException) {
-    null
   }
 
   private fun abrir(intent: Intent) {
@@ -72,7 +64,7 @@ class GranaAvisosModule : Module() {
     Function("garantirListaInicial") { pacotes: List<String> ->
       AvisosConfig.garantirListaInicial(context, pacotes, System.currentTimeMillis())
     }
-    Function("listarApps") { AvisosConfig.listarApps(context, ::nomeDoApp) }
+    Function("listarApps") { AvisosConfig.listarApps(context) { null } }
     Function("definirApp") { pacote: String, ligado: Boolean ->
       AvisosConfig.definirApp(context, pacote, ligado, System.currentTimeMillis())
     }
