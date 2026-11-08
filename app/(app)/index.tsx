@@ -160,6 +160,17 @@ export default function InicioScreen() {
   const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
   /* Nunca vazio: lista vazia desenha uma Início sem nenhum bloco enquanto a sessão renova. */
   const [homeLayout, setHomeLayout] = useState<HomeBlockConfig[]>(layoutPadrao);
+  const cargaLayoutRef = useRef({ dono: session?.user.id, geracao: 0 });
+  if (cargaLayoutRef.current.dono !== session?.user.id) {
+    cargaLayoutRef.current = { dono: session?.user.id, geracao: 0 };
+  }
+  const carregarHomeLayout = useCallback(() => {
+    const carga = cargaLayoutRef.current;
+    const geracao = ++carga.geracao;
+    return carregarLayoutHomeEmEtapas((novo) => {
+      if (cargaLayoutRef.current === carga && carga.geracao === geracao) setHomeLayout(novo);
+    });
+  }, []);
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nomeExibicao, setNomeExibicao] = useState(() => {
@@ -656,14 +667,14 @@ export default function InicioScreen() {
         setNomeExibicao(nomeDeExibicao(p));
       });
       carregarDiagnostico().then(setDiagnostico);
-      void carregarLayoutHomeEmEtapas(setHomeLayout);
+      void carregarHomeLayout();
       pieAnim.setValue(0);
       if (reduzirMovimento) {
         pieAnim.setValue(1);
         return;
       }
       Animated.spring(pieAnim, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 7 }).start();
-    }, [load, carregarDadosLeves, isDemoMode, pieAnim, reduzirMovimento])
+    }, [load, carregarDadosLeves, isDemoMode, pieAnim, reduzirMovimento, carregarHomeLayout])
   );
 
   /* ── Valores derivados ──────────────────────────────────────────────────
@@ -1205,6 +1216,7 @@ export default function InicioScreen() {
   }
 
   function handleLayoutChange(novo: HomeBlockConfig[]) {
+    cargaLayoutRef.current.geracao++;
     setHomeLayout(novo);
     salvarLayoutHome(novo);
   }
@@ -2087,7 +2099,7 @@ export default function InicioScreen() {
         onFinished={() => {
           triggerToast('Diagnóstico concluído');
           load();
-          void carregarLayoutHomeEmEtapas(setHomeLayout);
+          void carregarHomeLayout();
           markOnboardingSeen();
         }}
       />

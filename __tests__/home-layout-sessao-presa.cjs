@@ -14,6 +14,8 @@ let comportamento = 'pendurado'; // 'pendurado' | 'rejeita' | 'ok'
 let sessaoNoDisco = null;
 let sessaoDoServidor = null;
 let logs = [];
+let resolverSessao;
+let salvos = [];
 
 const supabaseDublê = {
   supabase: {
@@ -22,9 +24,10 @@ const supabaseDublê = {
         chamadasGetSession++;
         if (comportamento === 'pendurado') return new Promise(() => {});
         if (comportamento === 'rejeita') return Promise.reject(new Error('fetch failed'));
+        if (comportamento === 'controlada') return new Promise((resolve) => { resolverSessao = resolve; });
         return Promise.resolve({ data: { session: sessaoDoServidor }, error: null });
       },
-      updateUser: async () => ({}),
+      updateUser: async (input) => { salvos.push(input.data.home_layout); return {}; },
     },
   },
   CHAVE_SESSAO: 'sessao',
@@ -136,7 +139,72 @@ const ok = (t) => console.log(`ok ${++n}: ${t}`);
   const tela = fs.readFileSync(path.join(root, 'app/(app)/index.tsx'), 'utf8');
   assert.match(tela, /useState<HomeBlockConfig\[\]>\(layoutPadrao\)/);
   assert.doesNotMatch(tela, /carregarLayoutHome\(\)\.then\(setHomeLayout\)/);
-  assert.equal((tela.match(/carregarLayoutHomeEmEtapas\(setHomeLayout\)/g) || []).length, 2);
+  assert.equal((tela.match(/void carregarHomeLayout\(\)/g) || []).length, 2);
   ok('Início nasce com layout padrão e as duas cargas usam as etapas com tratamento de erro');
+
+  // D01: consulta iniciada antes do toque não pode desfazer a personalização.
+  // Extraímos o handler e o ponto real de carga da tela; só React/setState são fronteiras.
+  cache.clear();
+  const layoutD01 = carregar('lib/home-layout.ts');
+  const ast = ts.createSourceFile('index.tsx', tela, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let handler, carga, ref, pontoCarga, trocaDono;
+  function visitar(node) {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === 'handleLayoutChange') handler = node;
+    if (ts.isVariableDeclaration(node) && node.name.getText(ast) === 'cargaLayoutRef') ref = node;
+    if (ts.isVariableDeclaration(node) && node.name.getText(ast) === 'carregarHomeLayout') carga = node;
+    if (ts.isIfStatement(node) && node.expression.getText(ast).includes('cargaLayoutRef.current.dono')) trocaDono = node;
+    if (!pontoCarga && ts.isCallExpression(node) && node.expression.getText(ast) === 'carregarLayoutHomeEmEtapas') pontoCarga = node;
+    ts.forEachChild(node, visitar);
+  }
+  visitar(ast);
+  assert.ok(handler && pontoCarga, 'handler e carga reais presentes');
+  let naTela = layoutD01.layoutPadrao();
+  const contexto = {
+    session: { user: usuario(undefined) },
+    useRef: (current) => ({ current }), useCallback: (fn) => fn,
+    setHomeLayout: (novo) => { naTela = novo; },
+    carregarLayoutHomeEmEtapas: layoutD01.carregarLayoutHomeEmEtapas,
+    salvarLayoutHome: layoutD01.salvarLayoutHome,
+  };
+  const codigo = [
+    ref ? `const ${ref.getText(ast)};` : '',
+    carga ? `const ${carga.getText(ast)};` : '',
+    handler.getText(ast),
+    trocaDono ? `globalThis.atualizarDono = () => { ${trocaDono.getText(ast)} };` : '',
+    `globalThis.iniciar = ${carga ? 'carregarHomeLayout' : `() => ${pontoCarga.getText(ast)}`};`,
+    'globalThis.editar = handleLayoutChange;',
+  ].join('\n');
+  vm.runInNewContext(ts.transpileModule(codigo, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, contexto);
+  comportamento = 'controlada'; chamadasGetSession = 0; salvos = []; resolverSessao = undefined;
+  sessaoNoDisco = sessaoCom(undefined);
+  const pendente = contexto.iniciar();
+  for (let i = 0; i < 30 && !resolverSessao; i++) await Promise.resolve();
+  assert.equal(typeof resolverSessao, 'function', 'segunda etapa está pendente');
+  assert.equal(naTela[0].key, 'saldo', 'primeira etapa preservada');
+  const escolhido = naTela.map((bloco) => bloco.key === 'saldo' ? { ...bloco, visible: false } : bloco);
+  contexto.editar(escolhido);
+  assert.equal(naTela.find((b) => b.key === 'saldo').visible, false, 'edição aparece imediatamente');
+  resolverSessao({ data: { session: sessaoCom(undefined) }, error: null });
+  await pendente;
+  assert.equal(salvos.length, 1, 'uma gravação real, sem repetição');
+  assert.equal(salvos[0].find((b) => b.key === 'saldo').visible, false, 'servidor recebe escolha do usuário');
+  assert.equal(naTela.find((b) => b.key === 'saldo').visible, false, 'D01: carga antiga não desfaz edição na tela');
+  assert.equal(chamadasGetSession, 1, 'uma consulta ao servidor');
+  ok('D01: edição entre etapas permanece na tela e é enviada uma vez para salvar');
+
+  assert.ok(trocaDono, 'troca de dono é guardada no código real');
+  resolverSessao = undefined;
+  const cargaAntiga = contexto.iniciar();
+  for (let i = 0; i < 30 && !resolverSessao; i++) await Promise.resolve();
+  assert.equal(typeof resolverSessao, 'function');
+  contexto.session = { user: { id: 'outro' } };
+  contexto.atualizarDono();
+  const telaNovaConta = [{ key: 'saldo', visible: false }];
+  naTela = telaNovaConta;
+  resolverSessao({ data: { session: sessaoCom(undefined) }, error: null });
+  await cargaAntiga;
+  assert.equal(naTela, telaNovaConta, 'resultado da conta anterior não altera a nova conta');
+  assert.equal(salvos.length, 1, 'troca de dono não grava nenhuma alteração adicional');
+  ok('D01: carga antiga é descartada após troca de dono');
   process.exit(0);
 })().catch((e) => { console.error(e); process.exit(1); });
