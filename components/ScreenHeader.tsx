@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import { fonts, spacing, theme, type, textStyles } from '@/lib/theme';
 import { colunaConteudo } from '@/lib/breakpoints';
 import { useFaixaTopoVisivel } from '@/lib/faixa-topo';
@@ -16,6 +16,7 @@ export default function ScreenHeader({
   eyebrow,
   eyebrowBadges,
   title,
+  saudacaoCompacta = false,
   right,
   children,
   coluna = colunaConteudo,
@@ -25,6 +26,7 @@ export default function ScreenHeader({
   /** Selos curtos ("exemplo", "oculto") ao lado do eyebrow — ex.: modo demo na Início. */
   eyebrowBadges?: ReactNode;
   title: string;
+  saudacaoCompacta?: boolean;
   right?: ReactNode;
   children?: ReactNode;
   /* Teto de largura do CONTEÚDO do cabeçalho. A borda de baixo continua
@@ -49,7 +51,7 @@ export default function ScreenHeader({
     <View style={[styles.header, faixaTopoVisivel && styles.headerComFaixa]}>
       <View style={[styles.interno, coluna]}>
         <View style={[styles.row, quebraAcoes && styles.rowQuebra]}>
-          <View style={styles.leftCol}>
+          <View style={[styles.leftCol, saudacaoCompacta && styles.leftColCompacta]}>
             {left}
             <View style={styles.texts}>
               {eyebrow || eyebrowBadges ? <View style={styles.eyebrowRow}>
@@ -75,7 +77,7 @@ export default function ScreenHeader({
                   o título continua numa linha só onde cabe (nada muda em tela
                   folgada) e QUEBRA em vez de truncar onde aperta. Reticências
                   voltam a ser o último recurso, não o primeiro. */}
-              <Text style={styles.title} numberOfLines={2} accessibilityRole="header">
+              <Text style={[styles.title, saudacaoCompacta && styles.titleCompacto]} numberOfLines={saudacaoCompacta ? 1 : 2} adjustsFontSizeToFit={saudacaoCompacta} minimumFontScale={saudacaoCompacta ? 1 / Math.max(1, fontScale) : undefined} accessibilityRole="header">
                 {title}
               </Text>
             </View>
@@ -117,6 +119,7 @@ const styles = StyleSheet.create({
   rowQuebra: { flexWrap: 'wrap', rowGap: spacing.sm },
   rightQuebra: { marginLeft: 'auto' },
   leftCol: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexShrink: 1, minWidth: 0 },
+  leftColCompacta: { gap: spacing.sm },
   texts: { flexShrink: 1, minWidth: 0 },
 
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -143,5 +146,10 @@ const styles = StyleSheet.create({
        linhas vieram resolver. Quebrar só entre palavras devolve a decisão
        pro caminho normal: cabe em uma linha, cabe em duas, ou elide. */
     ...({ wordBreak: 'keep-all', overflowWrap: 'normal' } as any),
+  },
+  titleCompacto: {
+    fontFamily: fonts.brandRegular,
+    fontSize: Platform.OS === 'ios' ? type.legenda + spacing.fio : Platform.OS === 'android' ? type.nota : type.legenda,
+    lineHeight: Math.round((Platform.OS === 'ios' ? type.legenda + spacing.fio : Platform.OS === 'android' ? type.nota : type.legenda) * 1.25),
   },
 });
