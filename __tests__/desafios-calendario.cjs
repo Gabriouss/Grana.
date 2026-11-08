@@ -94,3 +94,60 @@ ok(diasComRegistro([tx({ created_at: null, occurred_on: '2026-10-05' })]).has('2
   ok(l.fim.startsWith('2026-11-01T03:00'), 'fim = início do mês seguinte');
 }
 console.log(`\n${n} verificações passaram.`);
+
+// C-01: executa o data.ts real; só sessão, paginação, fila e plataforma são dubladas.
+function cacheDiasReal() {
+  const fs = require('node:fs'), vm = require('node:vm'), ts = require('typescript');
+  const { root } = require('./_carregar-ts.cjs');
+  const path = require('node:path');
+  const estado = { usuario: 'a', chamadas: 0, pendentes: [], espera: null,
+    bancos: { a: [{ created_at: '2026-10-10T15:00:00Z', occurred_on: '2026-10-10' }], b: [] } };
+  class Relogio extends Date { constructor(...args) { super(...(args.length ? args : ['2026-11-08T15:00:00Z'])); } }
+  const mocks = {
+    './format': carregar('lib/format.ts'),
+    './cache-de-tela': { comCacheOffline: (_nome, fn) => fn },
+    './paginacao': { buscarTodasAsPaginas: async () => { estado.chamadas++; const rows = estado.bancos[estado.usuario]; if (estado.espera) await estado.espera; return rows; } },
+    './sessao-offline': { idDoUsuarioLocal: async () => estado.usuario },
+    './widgets-home-events': { observarDadosDosWidgets: () => () => {} },
+    './lancamentos-alterados': { versaoDosLancamentos: () => 1 },
+    './fila-pendente': { juntarPendentes: async rows => [...rows, ...estado.pendentes] },
+  };
+  // Imports fora do caminho testado ficam inertes; chamada inesperada falha.
+  const inerte = new Proxy({}, { get: (_obj, key) => { throw new Error(`dependência não simulada: ${String(key)}`); } });
+  const exports = {};
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root, 'lib/data.ts'), 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+  }).outputText, { exports, require: id => mocks[id] ?? inerte, console, Date: Relogio, Set, Map, Promise });
+  return { api: exports, estado };
+}
+async function testarCacheDias() {
+  const paralela = cacheDiasReal();
+  assert((await paralela.api.fetchDiasDeAtividade()).has('2026-10-10'), 'C-01: primeira carga paralela de meses nao se invalida');
+  const { api, estado } = cacheDiasReal();
+  assert((await api.fetchDiasComRegistro(2026, 9)).has('2026-10-10'));
+  estado.usuario = 'b';
+  assert.equal((await api.fetchDiasComRegistro(2026, 9)).size, 0, 'C-01: conta B não herda dias de A');
+  assert.equal(estado.chamadas, 2, 'C-01: outra conta consulta seu próprio banco');
+  estado.usuario = null;
+  await assert.rejects(api.fetchDiasComRegistro(2026, 9), /conta|sessão|autenticado/i, 'C-01: sem sessão não serve cache');
+  estado.usuario = 'a';
+  api.limparDiasComRegistro();
+  estado.bancos.a = [];
+  assert.equal((await api.fetchDiasComRegistro(2026, 9)).size, 0, 'C-01: limpeza remove cache mesmo mantendo usuário');
+  for (const voltaParaA of [false, true]) {
+    api.limparDiasComRegistro(); estado.usuario = 'a';
+    estado.bancos.a = [{ created_at: '2026-10-11T15:00:00Z', occurred_on: '2026-10-11' }];
+    let liberar;
+    estado.espera = new Promise(resolve => { liberar = resolve; });
+    const voo = api.fetchDiasComRegistro(2026, 9);
+    // Espera o buscador ter atravessado os awaits iniciais de sessão.
+    const chamadasAntes = estado.chamadas;
+    while (estado.chamadas === chamadasAntes) await Promise.resolve();
+    estado.usuario = 'b';
+    if (voltaParaA) { api.limparDiasComRegistro(); estado.usuario = 'a'; }
+    estado.espera = null; liberar();
+    await assert.rejects(voo, /conta|invalidada/i, 'C-01: resposta em voo é descartada após troca/invalidação');
+  }
+  console.log('C-01: isolamento de conta, limpeza e consultas em voo passaram.');
+}
+testarCacheDias().catch(e => { console.error(e); process.exitCode = 1; });

@@ -99,6 +99,7 @@ async function cenario({ fonteA = fonteAuth, guardada = 'vencida' } = {}) {
       './entitlement-cache': { esquecerAcesso: async () => {} },
       './sessao-offline': sessao.exports,
       './cache-de-tela': { esquecerTelas: async () => {} },
+      './data': { limparDiasComRegistro: () => {} },
       './offline-cache': { esquecerLancamentosLocais: async () => {} },
       './widgets-home-sync': { limparSnapshotWidgets: async () => {} },
       './sair-da-conta': { sairDaConta: async () => {} },
