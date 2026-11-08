@@ -93,6 +93,76 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+# Registro da distribuição — 08/11/2026
+
+### 08/11 — distribuição Codex e registro em tempo real
+
+**Pedido:** autor redefiniu os limites das duas contas e determinou que só o time Codex trabalhe. Ledger assume o registro antes feito por Beacon, preservando Terra low atual; Beacon faz H (copy). Nenhum perfil foi alterado.
+
+**Sintoma e causa:** frentes e revisão pendentes após interrupção de limites; redefinição informada pelo autor, sem medição independente. CI anterior falhou no guarda Only-Font; correção relatada em `af20581c`/`4688946c`, mas etapas posteriores e gate global seguem sem recibo verde.
+
+**Donos:** Forge C01/C02/B01 lib; Prism F01/F02 só clone; Sentinel saudação A depois D01; Watchtower conferência A01/A02 (`e0df3a45`/`8894eb80`) e única revisão final após gate; Compass E testes; Beacon H copy; Harbor G backend, janelas Git e carga pesada, e gate após sinal do Codex. Fonte: `E:/Grana-temporarios/2026-11-08-retomada/registro-distribuicao-codex.md`.
+
+**Descartado:** time Claude para execução; antecipar gate ou duplicar revisão final; push, build, Supabase, stash, branch ou worktree. Supabase segue fluxo manual autorizado da ordem.
+
+**Ocorrências:** inventário direto: `main` em `e0df3a45`, 119 à frente de `origin/main`, árvore limpa, um worktree e zero stash. Medição de /status pelo Codex via Forge/Prism: PH 100% em 5h/100% semana; Gabriel 98% em 5h/100% semana. Ledger não fez leitura independente. Pedido de janela Git ao Harbor bloqueado por texto na caixa; não enviado.
+
+**Pendente e verificação:** relatórios dos donos com seis respostas da regra 12; conferência A01/A02, etapas faltantes, CI completo nas duas árvores e revisão final. Ledger não testou produto, aparelho ou produção. Distribuição não comprova entrega. Resumo consolidado após resultados.
+
+
+### Complemento — retorno à Play após fechamento da rodada
+
+**Pedido:** autor/Supremo determinou avisar o autor para retomar a Play e fazer a parte manual somente quando todas as correções, verificações e análises terminarem. O resumo final precisa de hashes main/clone, logs e saídas do CI nas duas árvores, achados sem correção e motivo, tarefas concretas da Play e eventuais pedidos Supabase sem presumir aplicação.
+
+**Situação e causa:** frentes e gate ainda em andamento; não existe recibo final para liberar o aviso. `E:/Grana-temporarios/2026-11-08-retomada/resumo-orquestrador-codex.md` é estrutura provisória. Guia e ficha em `E:/Grana-temporarios/2026-11-07-play-fase1/passo-a-passo-fase0.md` e `ficha-play-proposta.md`; Data Safety e política no `relatorio-watchtower-2.md` da mesma pasta, com política atual em `lib/legal-content.ts`.
+
+**Descartado:** anunciar conclusão com frentes 1–7, E/G/H, CI ou revisão final pendentes; enviar diretamente ao Supremo. **Ocorrência:** nenhum novo erro de produto foi investigado neste corte; H-01 é relato parcial do Beacon, ainda sem decisão. **Não verificado:** resultados finais, Play, produção e aparelho; aguardam-se recibos dos donos. O Codex receberá uma linha quando o resumo final estiver efetivamente pronto.
+
+### Complemento — arbitragem Git e cargas pesadas
+
+**Pedido e motivo:** Codex assume a arbitragem Git e de cargas pesadas para destravar a fila, substituindo concessões anteriores do Harbor. Janela atual exclusiva do Forge somente para commit C01 no main; commit de `context.md` é o próximo pedido pronto, mas Ledger só age após liberação expressa do Codex e término do Forge.
+
+**Identificadores e limites:** `E:/Grana-temporarios/2026-11-08-retomada/registro-distribuicao-codex.md`; Harbor conserva P001 Deno já iniciada e revisão G. Gate final continua pendente. Não aceitar concessões antigas do Harbor, não commitar antes da janela, sem push. A mudança é operacional; nenhum novo sintoma ou causa de defeito do produto foi apurado. Nenhum teste, conclusão de frente ou execução do gate é inferido deste registro.
+
+### Complemento — revisão H concluída e correções pendentes
+
+**Pedido:** Codex recebeu H do Beacon (`relatorio-revisao-H-beacon.md`) e conferiu os três achados no código; delegou H01/H02/H03 ao próprio Beacon, com medium preservado. O gate final deve esperar também essas correções; haverá uma única revisão final posterior, com hashes e provas no fechamento.
+
+**Sintomas e causas relatados pelo Codex:** H01: plural fixo para 1 em `MonthlyWrappedModal` e PDF; H02: `CategoriasContexto` anuncia último resultado mesmo com `resultado=null`; H03: `DesafiosPadraoGastos`/`desafios-padrao-gastos` classificam média diária e anunciam totais. São achados conferidos pelo Codex, não por Ledger. Relatório H nos cortes main `e0df3a45` e clone `8894eb80`: 0 P1, 0 P2, 3 P3. As correções estão pendentes, não concluídas; aguardam-se arquivos, hashes, testes e decisões de eventual pendência.
+
+**Coordenação:** Codex arbitra; Git ativo Forge C01 main, pesado Harbor P001 em curso, Ledger é próximo Git após liberação do Codex e demais aguardam. Harbor mantém G. **Descartado:** gate sobre delta anterior às correções H e revisões finais duplicadas. **Ocorrências e limites:** nenhuma investigação ou teste de produto pelo Ledger; revisão H concluída não comprova correção, CI, aparelho ou produção. Sem commit documental antes da janela expressa.
+
+### Complemento — P001 Deno encerrada; janela de testes focais
+
+**Pedido e estado operacional:** Codex informa que Harbor encerrou P001 Deno local com EXIT 0, após medir 2,00 GiB livres. Isso não é gate global, deploy nem validação do servidor. Harbor continua na revisão G e em eventuais pedidos Supabase.
+
+**Arbitragem:** Git segue exclusivo ao Forge para C01 main até término confirmado; o relato anterior do Harbor de Git livre não vale neste corte. Codex concedeu carga pesada ao Watchtower exclusivamente para os três testes focais da sobra nas duas árvores. `tsc` e guarda ficam para janela posterior às edições, evitando WIP e duplicação. Ledger aguarda liberação expressa para commit de `context.md`. Gate continua bloqueado até frentes 1–4 e correções H.
+
+**Limites:** informação atribuída ao Codex/Harbor, sem repetição do Deno ou inspeção independente pelo Ledger. A janela não comprova resultado dos testes focais; nenhum novo sintoma ou causa de produto foi investigado. Descartados declaração antecipada de CI verde, execução de gate anterior aos fixes e uso de concessões antigas. Sem push ou commit documental antes da liberação.
+
+### Complemento — autorizações presas na fila dos agentes
+
+**Pedido e sintoma:** Codex relata ocorrência operacional comprovada: autorizações ficaram na fila de turnos futuros enquanto os agentes aguardavam no turno ativo. O helper `.maestri/enviar.sh`, ao detectar `tab to queue`, envia Tab, levando a mensagem à fila em vez de destravar o turno atual.
+
+**Solução e estado:** Codex enviou ao Forge texto por raw e Enter separado, sem Tab; Forge confirmou o recebimento e inicia o commit C01 no main. Commit ainda não foi confirmado. Harbor e Watchtower recebem a mesma orientação ativa; seus recebimentos não foram confirmados neste registro. Git continua exclusivo do Forge; o commit documental de Ledger será o próximo após recibo e liberação do Codex.
+
+**Descartado e limites:** não alterar o helper nem presumir que a mensagem enfileirada já foi executada. Codex não alterou o helper nem executou código de produto nesta ocorrência. Ledger registra o relato, sem reproduzir a falha ou verificar os terminais; não há novo teste, gate ou validação de produto. Sem commit documental antes da liberação.
+
+### Complemento — C01 main e novas janelas
+
+**Pedido e situação:** Codex confirmou fim da janela Forge: C01 main commit `287a449a`; clone ainda pendente. Git agora exclusivo ao Prism para F01/F02 somente clone; Ledger é o próximo após término do Prism e concessão expressa do Codex; depois Forge para C02/B01 e clone. Codex arbitra, Harbor não concede janelas. Histórico e estado atual em `E:/Grana-temporarios/2026-11-08-retomada/controle-janelas-harbor.md`.
+
+**Carga pesada:** Watchtower encerrou três testes focais da sobra nas duas árvores, seis exits 0 relatados pelo Codex. Sentinel recebeu agora janela somente para Metro e capturas no main. Resultados focais não são CI global ou validação em produção; Ledger não repetiu testes.
+
+**Limites e descartes:** C01 no clone, demais correções, gate e revisão final seguem pendentes. Nenhum novo sintoma ou causa de produto foi investigado neste corte. Não inferir conclusão dos trabalhos de Prism/Sentinel a partir da janela concedida; nenhum commit documental antes da liberação do Codex, sem push.
+
+### Complemento — Prism concluiu F01/F02 no clone; correções H em preparo
+
+**Pedido e entrega:** Codex informa encerramento explícito da janela Prism e entrega somente no clone: F01 `a9af5678` e F02 `7576f136`, árvore limpa e zero atrás; relatório `E:/Grana-temporarios/2026-11-08-retomada/relatorio-prism-correcoes.md`. Relato de testes: 61 telas, 71 banco e 31 recusa-estorno, com regressões RED→GREEN. `tsc`, guarda e QA nativo permanecem pendentes. Ledger não repetiu as provas; recebimento dos hashes não equivale a gate global.
+
+**Beacon:** três fixes H preparados no main com regressões RED→GREEN, conforme Codex; ainda sem recibo de commit ou hashes finais. `package.json` relacionado a H02 fica sob responsabilidade exclusiva do Beacon. Não presumir entrega no clone ou revisão final.
+
+**Janelas e limites:** Codex liberou Git exclusivo ao Ledger para fetch, comparação e commit somente de `context.md`; Forge será próximo após término declarado. Carga pesada atual é Metro do Sentinel. Sem push, build ou Supabase. Nenhum novo sintoma ou causa foi investigado pelo Ledger; descartado incluir WIP de produto alheio ou declarar gate, tsc, guarda ou QA nativo aprovados.
 ## 08/11 — retomada da pausa da noite
 
 **Pedido e fonte:** autor pediu “continue o trabalho pausado na noite passada”, depois “verifique a disponibilidade dos agentes e delegue suas tarefas” e “pode torrar os tokens todos das contas codex, tenho duas redefinições, pode jogar a maior parte do esforço de trabalho para as contas codex”. Registro pelo Beacon, substituindo o Ledger sem limite, conforme `E:\Grana-temporarios\2026-11-08-retomada\ordem-beacon-registro.md`. O corte operacional abaixo foi apurado pelo orquestrador; Beacon registra sem repetir testes, sondas ou revisão de produto.
