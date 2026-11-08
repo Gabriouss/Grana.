@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 import { theme, radius, spacing, fonts, type, lh } from '@/lib/theme';
 import { useHaJanelaAberta } from '@/lib/janelas-abertas';
+import { usePrivacy } from '@/lib/privacy-context';
 import { formatMoney, formatMoneyInput, parseAmount } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
 import AppModal from './AppModal';
@@ -35,7 +36,18 @@ export default function PerguntaSobraDoMes({
   onConfirmar: (valor: number) => Promise<void>;
   onAgoraNao: () => void;
 }) {
-  const [valor, setValor] = useState(() => formatMoney(sugestao));
+  /* Valores ocultos (A-02, revisão de 08/11/2026): a janela abre sozinha, então
+     a sugestão real não pode aparecer nela. Campo vazio, e a pessoa digita. */
+  const { hidden } = usePrivacy();
+  const [valor, setValor] = useState(() => (hidden ? '' : formatMoney(sugestao)));
+  /* A-01: a sugestão acompanha as fontes enquanto a pessoa não digitou nada;
+     depois que digitou, o que ela escreveu nunca é sobrescrito. */
+  const [editado, setEditado] = useState(false);
+  useEffect(() => {
+    if (editado) return;
+    const alvo = hidden ? '' : formatMoney(sugestao);
+    if (valor !== alvo) setValor(alvo);
+  }, [sugestao, editado, hidden, valor]);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   /* Trava: depois de abrir, a janela fica aberta mesmo com ela mesma contando
@@ -48,6 +60,10 @@ export default function PerguntaSobraDoMes({
   }, [pode, outraAberta, aberta]);
 
   async function confirmar() {
+    if (hidden && !valor.trim()) {
+      setErro('Digite o valor que sobrou (pode ser 0,00).');
+      return;
+    }
     const numero = valor.trim() ? parseAmount(valor) : 0;
     if (!Number.isFinite(numero) || numero < 0) {
       setErro('Confira o valor digitado.');
@@ -82,7 +98,7 @@ export default function PerguntaSobraDoMes({
           placeholderTextColor={theme.inkFaint}
           keyboardType="number-pad"
           value={valor}
-          onChangeText={(t) => { setValor(formatMoneyInput(t)); setErro(null); }}
+          onChangeText={(t) => { setEditado(true); setValor(formatMoneyInput(t)); setErro(null); }}
           editable={!salvando}
         />
       </View>

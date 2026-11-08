@@ -12,6 +12,7 @@ const root = path.resolve(__dirname, '..');
 
 let estados = [], indice = 0, efeitos = [], mudou = false;
 const outraJanela = { valor: false };
+const privacidade = { valor: false };
 const React = {
   useEffect: (fn) => { efeitos.push(fn); },
   useState: (ini) => {
@@ -30,6 +31,7 @@ const stub = (id) => {
   if (id === './AppPressable') return 'AppPressable';
   if (id === './AppModal') return 'AppModal';
   if (id === './Sheet') return 'Sheet';
+  if (id === '@/lib/privacy-context') return { usePrivacy: () => ({ hidden: privacidade.valor }) };
   if (id === '@/lib/janelas-abertas') return { useHaJanelaAberta: () => outraJanela.valor };
   throw Error('Import inesperado: ' + id);
 };
@@ -119,6 +121,44 @@ function montar(props) {
   ok(bloqueada.modal().props.visible === true, 'quando a outra fecha, a da sobra abre');
   const semFoco = montar({ pode: false, sugestao: 0, onConfirmar: async () => {}, onAgoraNao: () => {} });
   ok(semFoco.modal().props.visible === false, 'fora de foco ou adiada, não abre');
+
+
+  /* A-01 / A-02 da revisão do Harbor (08/11/2026). Escritos ANTES da correção:
+     no código antigo (useState só na montagem, sem usePrivacy) os quatro falham. */
+  {
+    const gr = [];
+    const p1 = { pode: false, sugestao: 0, onConfirmar: async (v) => { gr.push(v); }, onAgoraNao: () => {} };
+    const a = montar(p1);
+    a.render();
+    p1.pode = true; p1.sugestao = 1200;
+    ok(a.campo().props.value === '1.200,00', 'A-01: sugestão que chega depois da montagem entra no campo');
+    a.campo().props.onChangeText('50000');
+    p1.sugestao = 900;
+    ok(a.campo().props.value === '500,00', 'A-01: o que a pessoa digitou nunca é sobrescrito pela sugestão nova');
+
+    privacidade.valor = true;
+    const p2 = { pode: true, sugestao: 1200, onConfirmar: async (v) => { gr.push(v); }, onAgoraNao: () => {} };
+    const b = montar(p2);
+    ok(b.campo().props.value === '' && b.campo().props.placeholder === '0,00', 'A-02: com valores ocultos o campo abre vazio, com placeholder 0,00');
+    const visivel = JSON.stringify(b.render(), (k, v) => (typeof v === 'function' ? undefined : v));
+    ok(!/1\.200/.test(visivel), 'A-02: a sugestão não aparece em nenhum texto ou rótulo da janela');
+    const antesGr = gr.length;
+    await b.botao('Confirmar').props.onPress();
+    const alertaPriv = achar(b.render(), (x) => x.props.accessibilityRole === 'alert')[0];
+    ok(gr.length === antesGr && alertaPriv && /Digite o valor que sobrou \(pode ser 0,00\)\./.test(texto(alertaPriv)), 'A-02: confirmar vazio com privacidade não confirma zero e mostra o erro');
+    b.campo().props.onChangeText('30000');
+    await b.botao('Confirmar').props.onPress();
+    ok(gr[gr.length - 1] === 300, 'A-02: digitar 300 e confirmar chama onConfirmar(300)');
+
+    const c = montar({ pode: true, sugestao: 1200, onConfirmar: async () => {}, onAgoraNao: () => {} });
+    ok(c.campo().props.value === '', 'A-01: com privacidade ligada o campo segue vazio');
+    privacidade.valor = false;
+    ok(c.campo().props.value === '1.200,00', 'A-01: privacidade desligada e campo não editado passa a mostrar a sugestão');
+    const d = montar({ pode: true, sugestao: 1200, onConfirmar: async (v) => { gr.push(v); }, onAgoraNao: () => {} });
+    d.campo().props.onChangeText('');
+    await d.botao('Confirmar').props.onPress();
+    ok(gr[gr.length - 1] === 0, 'sem privacidade, campo vazio continua valendo zero');
+  }
 
   /* Início: condições de exibição e o que a confirmação faz, no código real. */
   const inicio = fs.readFileSync(path.join(root, 'app/(app)/index.tsx'), 'utf8');
