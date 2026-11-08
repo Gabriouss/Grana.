@@ -13,7 +13,7 @@ export default function CategoriasContexto({ visao, onChange, resultado, erro, c
 }) {
   return <View style={s.grupo}>
     <SegmentedTabs options={[{ key: 'tudo', label: 'Tudo' }, { key: 'avista', label: 'Débito e Pix' }, { key: 'credito', label: 'Crédito' }]} value={visao} onChange={onChange} />
-    <Text style={s.legenda}>{semViuva(`Todas as carteiras e cartões${resultado?.doCache || erro ? '. Último resultado disponível' : ''}`)}</Text>
+    <Text style={s.legenda}>{semViuva(`Todas as carteiras e cartões${resultado && (resultado.doCache || erro) ? '. Último resultado disponível' : ''}`)}</Text>
     {mostrarPeriodo && resultado && <Text style={s.legenda}>{semViuva(`${formatDateLabel(resultado.inicio)} a ${formatDateLabel(resultado.fim)}`)}</Text>}
     {erro && <AppPressable accessibilityRole="button" onPress={carregar} style={s.acao}><Text accessibilityRole="alert" style={s.texto}>{semViuva(`${erro} Toque para tentar novamente.`)}</Text></AppPressable>}
     {!resultado && !erro && <Text style={s.texto}>{semViuva('Carregando categorias…')}</Text>}
