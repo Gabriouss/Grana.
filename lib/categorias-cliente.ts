@@ -21,7 +21,8 @@ export async function consultarCategorias(inicio: string, fim: string, anterior?
     return { resultado: { userId, inicio, fim, atualizadoEm: new Date().toISOString(), linhas, consumo: apurarGastosCategoria(linhas, { inicio, fim, idsPagamentos }), doCache: estaServindoDoCache() }, erro: null };
   } catch (e) {
     console.error('[categorias] consulta falhou', e);
-    return { resultado: anterior?.userId === userId ? anterior : null, erro: 'Não foi possível atualizar as categorias.' };
+    const mesmoPeriodo = anterior?.inicio === inicio && anterior.fim === fim;
+    return { resultado: anterior?.userId === userId && mesmoPeriodo ? anterior : null, erro: 'Não foi possível atualizar as categorias.' };
   }
 }
 
