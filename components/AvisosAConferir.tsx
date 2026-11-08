@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-native';
 import AppModal from './AppModal';
@@ -150,14 +151,20 @@ function carteiraPadrao(item: ItemAConferir, dados: DadosDaLista, forma: FormaDo
   return cartao?.wallet_id ?? dados.carteiras.find((w) => w.is_default)?.id ?? dados.carteiras[0]?.id ?? '';
 }
 
+/** Marca por conta: a janela já abriu sozinha e foi fechada neste aparelho. Depois dela, só o sininho abre. */
+const chaveJanelaFechada = (dono: string) => `grana_avisos_janela_fechada:${dono}`;
+
 /**
  * Janela de conferência dos avisos do banco. Abre sozinha no centro da tela
- * sempre que há aviso pendente e nenhuma outra janela, folha ou tutorial está
- * aberta, e só fecha quando todos forem confirmados ou descartados (07/11/2026,
- * pedido do autor: a barra "N gastos para conferir" saiu da Início).
+ * UMA única vez por aparelho e conta (07/11/2026, pedido do autor: depois de
+ * aberta e fechada, só o botão de lançamentos pendentes no cabeçalho, em menta,
+ * a abre; abrir sozinha toda vez era chato). A abertura espera nenhuma outra
+ * janela, folha ou tutorial aberta, e a janela só fecha quando todos forem
+ * confirmados ou descartados, ou em "Revisar depois".
  *
  * Uma vez aberta, fica até o último item: abrir outra janela por cima não a
  * derruba, e a revisão de um item é a folha de lançamento por cima dela.
+ * Item novo que chegar depois não a reabre: avisa o sininho.
  */
 export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false }: {
   dono: string;
@@ -168,8 +175,10 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
   const [itens, setItens] = useState<ItemAConferir[]>([]);
   const [recibos, setRecibos] = useState<ReciboDeEstorno[]>([]);
   const [aberta, setAberta] = useState(false);
-  /** Leitura das referências falhou e a pessoa escolheu "Agora não": volta quando o app voltar ao primeiro plano. */
-  const [adiada, setAdiada] = useState(false);
+  /** null = lendo a marca. Verdadeiro: já abriu e fechou antes, nunca mais abre sozinha. */
+  const [jaFechada, setJaFechada] = useState<boolean | null>(null);
+  /** O toque no sininho pediu a janela; vale uma vez, na primeira chance de abrir. */
+  const [pediu, setPediu] = useState(false);
   const outraJanela = useHaJanelaAberta();
   const pedido = usePedidoDeConferencia();
   const pedidoVisto = useRef(pedidosAgora());
@@ -200,30 +209,57 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
     }
     void carregar();
     const evento = AppState.addEventListener('change', (estado) => {
-      if (estado === 'active') { setAdiada(false); void carregar(); }
+      if (estado === 'active') void carregar();
     });
     const intervalo = setInterval(() => { if (AppState.currentState === 'active') void carregar(); }, 15000);
     return () => { evento.remove(); clearInterval(intervalo); };
   }, [carregar, dono]);
 
-  /* O atalho do cabeçalho desfaz o "Revisar depois"; a janela abre pela regra de sempre (nunca por cima de outra). */
+  /* Lê a marca da conta. Sem a leitura, não abre sozinha (sem piscar); se falhar, vale como já fechada. */
+  useEffect(() => {
+    let vivo = true;
+    setJaFechada(null);
+    AsyncStorage.getItem(chaveJanelaFechada(dono)).then(
+      (v) => { if (vivo) setJaFechada(v === '1'); },
+      (e) => {
+        console.warn('[avisos] marca da janela não foi lida', e instanceof Error ? e.name : 'erro');
+        if (vivo) setJaFechada(true);
+      },
+    );
+    return () => { vivo = false; };
+  }, [dono]);
+
+  /* A marca fica em memória nesta sessão mesmo que a gravação falhe. */
+  const marcarFechada = useCallback(() => {
+    setJaFechada(true);
+    AsyncStorage.setItem(chaveJanelaFechada(dono), '1').catch((e) => console.warn('[avisos] marca da janela não gravou', e instanceof Error ? e.name : 'erro'));
+  }, [dono]);
+
+  /* O sininho do cabeçalho abre a janela a qualquer momento, mas nunca por cima de outra (a regra de abrir vale igual). */
   useEffect(() => {
     if (pedido === pedidoVisto.current) return;
     pedidoVisto.current = pedido;
-    setAdiada(false);
+    setPediu(true);
   }, [pedido]);
 
   useEffect(() => () => { publicarPendentes(0); publicarAvisosNaFrente(false); }, []);
 
-  /* A pergunta da sobra (e qualquer outra janela de pergunta) espera enquanto há aviso a conferir que vai abrir. */
-  useEffect(() => { publicarAvisosNaFrente(avisosDisponivel && itens.length > 0 && !adiada); }, [itens.length, adiada]);
+  /* A pergunta da sobra (e qualquer outra janela de pergunta) espera só enquanto a janela está aberta ou ainda vai abrir. Fechada de vez, ela passa. */
+  useEffect(() => {
+    publicarAvisosNaFrente(avisosDisponivel && itens.length > 0 && (aberta || pediu || jaFechada !== true));
+  }, [itens.length, aberta, pediu, jaFechada]);
 
-  /* Abre quando há pendência e o caminho está livre; fecha quando acabou. */
+  /* Abre quando há pendência e o caminho está livre (sozinha só na primeira vez; depois, só a pedido); fecha quando acabou. */
   useEffect(() => {
     if (!avisosDisponivel) return;
-    if (itens.length === 0) { if (aberta) setAberta(false); return; }
-    if (!aberta && !adiada && !outraJanela && !bloqueado) setAberta(true);
-  }, [itens.length, aberta, adiada, outraJanela, bloqueado]);
+    if (itens.length === 0) {
+      if (pediu) setPediu(false);
+      if (aberta) { setAberta(false); marcarFechada(); }
+      return;
+    }
+    if (aberta || outraJanela || bloqueado) return;
+    if (pediu || jaFechada === false) { setAberta(true); setPediu(false); }
+  }, [itens.length, aberta, pediu, jaFechada, outraJanela, bloqueado, marcarFechada]);
 
   const dispensar = (id: string) => {
     setRecibos((antes) => antes.filter((r) => r.id !== id));
@@ -233,6 +269,8 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
      cada desenho virou laço infinito na build 31 (707ade87): JS em 100%, disco
      congestionado e o app inteiro sem carregar. Teste em `avisos-telas.cjs`. */
   const aoMudar = useCallback((lista: ItemAConferir[]) => { setItens(lista); publicarPendentes(lista.length); }, []);
+  /* Estável pelo mesmo motivo: `marcarFechada` só muda com o dono. */
+  const aoAdiar = useCallback(() => { setAberta(false); marcarFechada(); }, [marcarFechada]);
   if (!avisosDisponivel) return null;
   /* Sem pendência, o recibo abre numa janela pequena com "Entendi"; nunca bloco na Início. */
   if (!aberta || itens.length === 0) return <ReciboEmJanela recibos={recibos} aoDispensar={dispensar} bloqueado={bloqueado} />;
@@ -242,7 +280,7 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
       nomeDoPerfil={nomeDoPerfil}
       recibos={recibos}
       aoDispensarRecibo={dispensar}
-      aoAdiar={() => { setAberta(false); setAdiada(true); }}
+      aoAdiar={aoAdiar}
       aoMudar={aoMudar}
     />
   );
@@ -265,9 +303,9 @@ function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = 
   recibos?: ReciboDeEstorno[];
   aoDispensarRecibo?: (id: string) => void;
   /**
-   * Adia a conferência: a janela fecha sem descartar nem confirmar nada e volta
-   * quando o app voltar a abrir. Serve ao "Revisar depois" (decisão do autor,
-   * 07/11/2026) e à falha de leitura das referências locais.
+   * Adia a conferência: a janela fecha sem descartar nem confirmar nada e só
+   * volta pelo sininho do cabeçalho (nunca sozinha). Serve ao "Revisar depois"
+   * (decisão do autor, 07/11/2026) e à falha de leitura das referências locais.
    */
   aoAdiar: () => void;
   aoMudar: (itens: ItemAConferir[]) => void;
@@ -586,7 +624,7 @@ function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = 
           <AppPressable
             style={styles.revisarDepois}
             accessibilityRole="button"
-            accessibilityHint="Fecha sem descartar nem salvar. A janela volta quando você abrir o app de novo."
+            accessibilityHint="Fecha sem descartar nem salvar. Para voltar, toque no botão de lançamentos para conferir."
             disabled={ocupado !== null}
             onPress={aoAdiar}
           >

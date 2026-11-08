@@ -39,6 +39,8 @@ let diario = [], erroDiario = false, erroGravacao = false, erroAjustes = false;
 /* Falha só a escrita da caixa escolhida: pula as primeiras e recusa as seguintes. */
 let falhaCaixa = { pular: 0, vezes: 0 };
 let falhaFormas = false, avisosDoConsole = [];
+/* Falha a marca "janela ja fechada" na leitura e/ou na gravacao. */
+let falhaMarca = { ler: false, gravar: false };
 let chamadas = [], alertas = [], copiado = '', dadosLocais = {}, historico = [];
 let privacidadeOculta = false;
 let leiturasDoHistorico = 0;
@@ -86,10 +88,12 @@ const stub = {
     enviarPergunta: () => { throw new Error('envio inesperado'); } },
   '@react-native-async-storage/async-storage': { getItem: async (k) => {
       if (falhaFormas && k.startsWith('grana_avisos_formas:')) throw new Error('disco');
+      if (falhaMarca.ler && k.startsWith('grana_avisos_janela_fechada:')) throw new Error('disco');
       return disco.get(k) ?? null;
     },
     setItem: async (k, v) => {
       if (falhaFormas && k.startsWith('grana_avisos_formas:')) throw new Error('disco');
+      if (falhaMarca.gravar && k.startsWith('grana_avisos_janela_fechada:')) throw new Error('disco');
       if (k.startsWith('grana_avisos_caixa:')) {
         if (falhaCaixa.pular > 0) falhaCaixa.pular--;
         else if (falhaCaixa.vezes > 0) { falhaCaixa.vezes--; throw new Error('disco'); }
@@ -908,12 +912,13 @@ async function main() {
     ok('com item pendente, o recibo aparece dentro da janela');
   }
 
-  /* "Revisar depois" (decisão do autor, 07/11/2026): adia sem gravar nem descartar, e a janela volta ao abrir o app. */
+  /* "Revisar depois" (decisão do autor, 07/11/2026): adia sem gravar nem descartar. A janela abre sozinha UMA vez; depois só o sininho a abre. */
   {
     const appState = stub['react-native'].AppState;
     const adicionarOriginal = appState.addEventListener;
     const ouvintes = [];
     appState.addEventListener = (evento, fn) => { ouvintes.push(fn); return { remove() {} }; };
+    const conferencia = carregar('lib/avisos-banco/conferencia-aberta.ts');
     try {
       preparar([aviso('Compra no débito de R$ 41,00 em Mercado Modelo')]);
       await caixa.sincronizarCaixa('dono');
@@ -922,28 +927,91 @@ async function main() {
       const revisar = elementos(sozinha.tree).find((e) => e.props.onPress && texto(e) === 'Revisar depois');
       assert.ok(revisar, 'Revisar depois visível');
       assert.equal(revisar.type, './AppPressable', 'componente do design system');
-      assert.match(revisar.props.accessibilityHint, /volta/);
+      assert.match(revisar.props.accessibilityHint, /voltar/);
       revisar.props.onPress();
       assert.equal(adiou, 1);
 
+      /* Primeira vez: abre sozinha, e a pergunta da sobra espera por ela. */
       janela = montar(telas.default, { dono: 'dono' }); await janela.settle(); await janela.settle();
-      assert.equal(listaAberta(janela), true);
+      assert.equal(listaAberta(janela), true, 'primeira vez abre sozinha');
+      assert.equal(conferencia.avisosNaFrenteAgora(), true, 'aberta: a pergunta da sobra espera');
       elementos(janela.tree).find((e) => e.type === telas.ListaAConferir).props.aoAdiar();
       await janela.settle(); await janela.settle();
       assert.equal(listaAberta(janela), false, 'adiada, a janela fecha');
+      assert.equal(disco.get('grana_avisos_janela_fechada:dono'), '1', 'a marca fica gravada por dono');
       assert.equal((await caixa.listarCaixa('dono')).length, 1, 'nada descartado');
       assert.equal(chamadas.filter((c) => c[0] === 'gravar' || c[0] === 'apagar').length, 0, 'nada gravado');
-      /* Os 15 s de releitura não reabrem enquanto adiada. */
+      assert.equal(conferencia.avisosNaFrenteAgora(), false, 'fechada de vez: a pergunta da sobra não espera mais');
+      /* Os 15 s de releitura e a volta do app ao primeiro plano não reabrem. */
       await janela.settle(); await janela.settle();
       assert.equal(listaAberta(janela), false);
-      /* O app volta ao primeiro plano: a janela volta. */
       ouvintes.at(-1)('active'); await janela.settle(); await janela.settle();
-      assert.equal(listaAberta(janela), true, 'volta ao abrir o app de novo');
-      /* App aberto do zero também mostra. */
+      assert.equal(listaAberta(janela), false, 'a volta do app não reabre');
+      /* App aberto do zero também não. */
       const nova = montar(telas.default, { dono: 'dono' }); await nova.settle(); await nova.settle();
-      assert.equal(listaAberta(nova), true);
-      ok('Revisar depois adia sem gravar nem descartar, e a janela volta quando o app abre de novo');
+      assert.equal(listaAberta(nova), false, 'nova montagem não reabre sozinha');
+      assert.equal(conferencia.pendentesAgora(), 1, 'a contagem do sininho continua');
+      /* O sininho reabre. */
+      conferencia.pedirConferencia(); for (let i = 0; i < 3; i++) await nova.settle();
+      assert.equal(listaAberta(nova), true, 'o sininho abre a qualquer momento');
+      /* Fechar uma janela aberta pelo sininho não muda nada: continua só pelo sininho. */
+      elementos(nova.tree).find((e) => e.type === telas.ListaAConferir).props.aoAdiar();
+      await nova.settle(); await nova.settle();
+      assert.equal(listaAberta(nova), false);
+      nova.unmount(); janela.unmount();
+      ok('janela abre sozinha só na primeira vez; depois de fechada nem a volta do app nem nova montagem a reabrem, só o sininho');
+
+      /* Resolvido o último item, item novo não reabre sozinho. */
+      preparar([aviso('Compra no débito de R$ 42,00 em Mercado Modelo')]);
+      const resolvida = montar(telas.default, { dono: 'dono' }); await resolvida.settle(); await resolvida.settle();
+      assert.equal(listaAberta(resolvida), true);
+      elementos(resolvida.tree).find((e) => e.type === telas.ListaAConferir).props.aoMudar([]);
+      await resolvida.settle(); await resolvida.settle();
+      assert.equal(listaAberta(resolvida), false);
+      assert.equal(disco.get('grana_avisos_janela_fechada:dono'), '1', 'resolver o último item também grava a marca');
+      diario = [aviso('Compra no débito de R$ 43,00 em Mercado Modelo')];
+      await [...intervalos].at(-1)(); await resolvida.settle(); await resolvida.settle();
+      assert.equal(listaAberta(resolvida), false, 'item novo não reabre sozinho');
+      assert.equal(conferencia.avisosNaFrenteAgora(), false);
+      resolvida.unmount();
+      ok('depois de resolver o último item, item novo só avisa o sininho e não reabre a janela');
+
+      /* A marca é por dono. */
+      preparar([aviso('Compra no débito de R$ 44,00 em Mercado Modelo')]);
+      disco.set('grana_avisos_janela_fechada:dono', '1');
+      const outraConta = montar(telas.default, { dono: 'outra-conta' }); await outraConta.settle(); await outraConta.settle();
+      assert.equal(listaAberta(outraConta), true, 'outra conta ainda abre na primeira vez');
+      outraConta.unmount();
+      const mesmaConta = montar(telas.default, { dono: 'dono' }); await mesmaConta.settle(); await mesmaConta.settle();
+      assert.equal(listaAberta(mesmaConta), false, 'a conta já marcada não abre');
+      mesmaConta.unmount();
+      ok('a marca de janela já fechada é por dono');
+
+      /* Leitura da marca falhando: não abre sozinha, o sininho funciona, avisa no console. */
+      preparar([aviso('Compra no débito de R$ 45,00 em Mercado Modelo')]);
+      avisosDoConsole = []; falhaMarca = { ler: true, gravar: false };
+      const semMarca = montar(telas.default, { dono: 'dono' }); await semMarca.settle(); await semMarca.settle();
+      assert.equal(listaAberta(semMarca), false, 'sem conseguir ler a marca, não abre sozinha');
+      assert.ok(avisosDoConsole.some((a) => /marca da janela não foi lida/.test(a[0])), 'registra o aviso');
+      assert.equal(conferencia.avisosNaFrenteAgora(), false);
+      conferencia.pedirConferencia(); for (let i = 0; i < 3; i++) await semMarca.settle();
+      assert.equal(listaAberta(semMarca), true, 'o sininho segue funcionando');
+      semMarca.unmount();
+      /* Gravação falhando: a marca fica em memória na sessão e o aviso aparece. */
+      preparar([aviso('Compra no débito de R$ 46,00 em Mercado Modelo')]);
+      avisosDoConsole = []; falhaMarca = { ler: false, gravar: true };
+      const semGravar = montar(telas.default, { dono: 'dono' }); await semGravar.settle(); await semGravar.settle();
+      assert.equal(listaAberta(semGravar), true);
+      elementos(semGravar.tree).find((e) => e.type === telas.ListaAConferir).props.aoAdiar();
+      await semGravar.settle(); await semGravar.settle();
+      assert.equal(listaAberta(semGravar), false);
+      assert.ok(avisosDoConsole.some((a) => /marca da janela não gravou/.test(a[0])), 'registra a falha de gravação');
+      await [...intervalos].at(-1)(); await semGravar.settle(); await semGravar.settle();
+      assert.equal(listaAberta(semGravar), false, 'a marca em memória segura a sessão');
+      semGravar.unmount();
+      ok('marca ilegível não abre sozinha e registra; marca que não grava vale na sessão e registra');
     } finally {
+      falhaMarca = { ler: false, gravar: false };
       appState.addEventListener = adicionarOriginal;
     }
   }
@@ -989,7 +1057,7 @@ async function main() {
     elementos(janela.tree).find((e) => e.type === telas.ListaAConferir).props.aoMudar([]);
     await janela.settle(); atalho.render();
     assert.equal(atalho.tree, null);
-    ok('atalho do cabeçalho: contagem da própria janela, abre mesmo adiada, não abre por cima de outra janela e some sem pendência');
+    ok('atalho do cabeçalho: contagem da própria janela, abre mesmo depois de fechada, não abre por cima de outra janela e some sem pendência');
   }
 
   {

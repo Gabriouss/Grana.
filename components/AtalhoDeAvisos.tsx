@@ -6,8 +6,9 @@ import { pedirConferencia, rotuloDoAtalho, usePendentesDeAvisos } from '@/lib/av
  * Atalho discreto no cabeçalho da Início para os avisos do banco que esperam
  * conferência (07/11/2026). Mesma fileira e mesmo desenho do botão do olho; o
  * número é a contagem da própria janela. Some sem pendência e sem o leitor
- * (web, APK sem o módulo). O toque reabre a janela mesmo depois do "Revisar
- * depois"; se outra janela estiver aberta, ela espera, como sempre.
+ * (web, APK sem o módulo). A janela abre sozinha só na primeira vez; depois, o
+ * toque aqui é o único caminho, a qualquer momento (se outra janela estiver
+ * aberta, ela espera). Por isso o botão fica em menta: avisa que há o que ver.
  */
 export default function AtalhoDeAvisos() {
   const pendentes = usePendentesDeAvisos();

@@ -132,7 +132,7 @@ function montar(props) {
   ok(/!isDemoMode && sobraDoMes\?\.estado === 'pendente' && \(/.test(inicio) && /pode=\{activeWalletId === 'total' && sobraAdiada === false && !carregandoFontesLivre && inicioEmFoco\}/.test(inicio), 'Início só pergunta na visão total, pendente, fora do exemplo, em foco e depois de ler o adiamento');
   const blocoSaldo = inicio.slice(inicio.indexOf('saldo: () => ('), inicio.indexOf('cofrinhos: () => ('));
   const avisos = fs.readFileSync(path.join(root, 'components/AvisosAConferir.tsx'), 'utf8');
-  ok(/publicarAvisosNaFrente\(avisosDisponivel && itens\.length > 0 && !adiada\)/.test(avisos) && /espera=\{avisosNaFrente\}/.test(inicio), 'a Início passa a vez dos avisos do banco para a sobra');
+  ok(/publicarAvisosNaFrente\(avisosDisponivel && itens\.length > 0 && \(aberta \|\| pediu \|\| jaFechada !== true\)\)/.test(avisos) && /espera=\{avisosNaFrente\}/.test(inicio), 'a Início passa a vez dos avisos do banco para a sobra');
   ok(!/PerguntaSobraDoMes/.test(blocoSaldo), 'a Início não tem mais card da sobra no bloco do saldo (regra do autor: nada de bloco novo)');
   ok(/onAgoraNao=\{adiarSobra\}/.test(inicio), '"Agora não" usa o ciclo de vida compartilhado');
 
