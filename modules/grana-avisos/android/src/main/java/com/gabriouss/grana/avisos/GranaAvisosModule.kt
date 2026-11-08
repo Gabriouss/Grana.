@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
+import android.util.Log
 import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -13,6 +14,14 @@ import org.json.JSONObject
 
 /** A parte da leitura de avisos que o JavaScript enxerga. */
 class GranaAvisosModule : Module() {
+  private var catalogoPreparado = false
+
+  private fun prepararCatalogo() {
+    if (catalogoPreparado) return
+    AvisosConfig.limparLegado(context)
+    GranaAvisosListener.diario(context).limparForaDoCatalogo()
+    catalogoPreparado = true
+  }
 
   private val context: Context
     get() = appContext.reactContext ?: throw Exceptions.ReactContextLost()
@@ -37,9 +46,18 @@ class GranaAvisosModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("GranaAvisos")
 
+    OnCreate {
+      if (appContext.reactContext != null) try { prepararCatalogo() } catch (erro: Exception) {
+        Log.w("GranaAvisos", "falha ao limpar legado: ${erro.javaClass.simpleName}")
+        AvisosConfig.registrarFalha(context, erro.javaClass.simpleName, System.currentTimeMillis())
+      }
+    }
+
     Function("estado") {
+      prepararCatalogo()
       JSONObject()
         .put("acesso", acessoConcedido())
+        .put("aceite", AvisosConfig.temAceite(context))
         .put("ultimoSinal", AvisosConfig.ultimoSinal(context))
         .put("desconectadoEm", AvisosConfig.desconectadoEm(context))
         .put("ultimaFalha", AvisosConfig.ultimaFalha(context) ?: JSONObject.NULL)
@@ -66,7 +84,13 @@ class GranaAvisosModule : Module() {
       AvisosConfig.limpar(context)
     }
 
-    Function("abrirAcesso") { abrir(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
+    Function("definirAceite") { aceito: Boolean ->
+      AvisosConfig.definirAceite(context, aceito, System.currentTimeMillis())
+    }
+    Function("abrirAcesso") {
+      check(AvisosConfig.temAceite(context)) { "aceite obrigatorio" }
+      abrir(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+    }
     /* O caminho oficial de "Permitir configurações restritas" sai daqui. */
     Function("abrirInformacoesDoApp") {
       abrir(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))

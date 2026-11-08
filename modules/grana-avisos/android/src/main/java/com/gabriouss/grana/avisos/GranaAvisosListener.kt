@@ -20,10 +20,12 @@ import java.io.File
 class GranaAvisosListener : NotificationListenerService() {
 
   override fun onListenerConnected() {
-    AvisosConfig.registrarSinal(this, System.currentTimeMillis())
     /* O que chegou enquanto o serviço estava fora e ainda está na bandeja. O id
        do diário impede a duplicata, e `notificar = false` evita uma rajada. */
     try {
+      AvisosConfig.limparLegado(this)
+      diario(this).limparForaDoCatalogo()
+      AvisosConfig.registrarSinal(this, System.currentTimeMillis())
       activeNotifications?.forEach { receber(it, notificar = false) }
     } catch (erro: Exception) {
       registrarFalha(erro)
@@ -51,18 +53,13 @@ class GranaAvisosListener : NotificationListenerService() {
       pacoteProprio = packageName,
       resumoDeGrupo = sbn.notification.flags and Notification.FLAG_GROUP_SUMMARY != 0,
       temDono = AvisosConfig.dono(this) != null,
-      ativadoEm = AvisosConfig.ativadoEm(this, sbn.packageName),
+      ativadoEm = AvisosConfig.inicioDaLeitura(this, sbn.packageName),
       postadoEm = sbn.postTime,
       depuravel = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0,
     )
     if (destino == AvisosFiltro.Destino.DESCARTAR) return
     val agora = System.currentTimeMillis()
     AvisosConfig.registrarSinal(this, agora)
-    if (destino == AvisosFiltro.Destino.CONTAR) {
-      /* A recuperação ao reconectar não conta de novo o que já está na bandeja. */
-      if (notificar) AvisosConfig.contarForaDaLista(this, sbn.packageName, agora)
-      return
-    }
 
     val extras = sbn.notification.extras
     val titulo = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()

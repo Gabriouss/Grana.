@@ -24,9 +24,12 @@ export const APPS_INICIAIS: AppDoCatalogo[] = [
   { pacote: 'com.samsung.android.spay', nome: 'Samsung Wallet', banco: 'outro', classe: 'carteira' },
 ];
 
-export const PACOTES_INICIAIS = APPS_INICIAIS.map((a) => a.pacote);
+/** Catálogo fechado de captura; carteiras antigas só servem ao parser legado. */
+export const BANCOS_DO_CATALOGO = APPS_INICIAIS.filter((a) => a.classe === 'banco');
+export const PACOTES_INICIAIS = BANCOS_DO_CATALOGO.map((a) => a.pacote);
+export const ehBancoDoCatalogo = (pacote: string): boolean => PACOTES_INICIAIS.includes(pacote);
 
-/** App ligado à mão pela pessoa conta como banco. */
+/** Compatibilidade do parser legado; não decide permissão de captura. */
 export function classeDoApp(pacote: string): ClasseDoApp {
   return APPS_INICIAIS.find((a) => a.pacote === pacote)?.classe ?? 'banco';
 }

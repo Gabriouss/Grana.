@@ -6,8 +6,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Lista de apps, dono e sinais do serviço. Guarda o nome do pacote e a contagem
- * dos apps fora da lista, nunca título ou texto.
+ * Bancos habilitados, dono, aceite explícito e sinais do serviço.
  */
 internal object AvisosConfig {
   private const val PREFS = "grana_avisos"
@@ -18,7 +17,7 @@ internal object AvisosConfig {
   private const val CHAVE_SINAL = "ultimo_sinal"
   private const val CHAVE_DESCONECTADO = "desconectado_em"
   private const val CHAVE_FALHA = "ultima_falha"
-  private const val MAXIMO_DE_APPS_CONTADOS = 200
+  private const val CHAVE_ACEITE = "aceite_bancos_v1"
 
   private fun prefs(context: Context): SharedPreferences =
     context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -27,18 +26,20 @@ internal object AvisosConfig {
 
   /** Devolve true quando trocou de conta: quem chama apaga o diário da anterior. */
   fun definirDono(context: Context, dono: String?): Boolean {
+    limparLegado(context)
     val anterior = dono(context)
     if (anterior == dono) return false
-    prefs(context).edit().putString(CHAVE_DONO, dono).commit()
+    check(prefs(context).edit().putString(CHAVE_DONO, dono).remove(CHAVE_ACEITE).commit()) { "nao gravou o dono" }
     return anterior != null
   }
 
   /** Nada ligado até o JavaScript mandar a lista inicial: falha fechada. */
   fun garantirListaInicial(context: Context, pacotes: List<String>, agora: Long) {
+    limparLegado(context)
     val p = prefs(context)
     if (p.getBoolean(CHAVE_INICIADA, false)) return
     val ligados = JSONObject()
-    pacotes.forEach { ligados.put(it, agora) }
+    pacotes.filter(AvisosFiltro::ehBanco).forEach { ligados.put(it, agora) }
     p.edit().putString(CHAVE_LIGADOS, ligados.toString()).putBoolean(CHAVE_INICIADA, true).commit()
   }
 
@@ -49,38 +50,55 @@ internal object AvisosConfig {
   }
 
   fun ativadoEm(context: Context, pacote: String): Long? {
+    if (!AvisosFiltro.ehBanco(pacote)) return null
     val ligados = lerObjeto(context, CHAVE_LIGADOS)
     return if (ligados.has(pacote)) ligados.optLong(pacote) else null
   }
 
   fun definirApp(context: Context, pacote: String, ligado: Boolean, agora: Long) {
+    require(AvisosFiltro.ehBanco(pacote)) { "app fora do catalogo bancario" }
     val ligados = lerObjeto(context, CHAVE_LIGADOS)
     if (ligado) ligados.put(pacote, agora) else ligados.remove(pacote)
-    prefs(context).edit().putString(CHAVE_LIGADOS, ligados.toString()).commit()
+    check(prefs(context).edit().putString(CHAVE_LIGADOS, ligados.toString()).commit()) { "nao gravou a escolha" }
   }
 
-  fun contarForaDaLista(context: Context, pacote: String, agora: Long) {
-    val fora = lerObjeto(context, CHAVE_FORA)
-    if (!fora.has(pacote) && fora.length() >= MAXIMO_DE_APPS_CONTADOS) return
-    val atual = fora.optJSONObject(pacote)
-    fora.put(pacote, JSONObject().put("contagem", (atual?.optInt("contagem") ?: 0) + 1).put("ultimo", agora))
-    prefs(context).edit().putString(CHAVE_FORA, fora.toString()).apply()
-  }
-
-  /** Apps ligados e apps que só notificaram, cada um uma vez. */
-  fun listarApps(context: Context, nomeDoApp: (String) -> String?): String {
+  fun limparLegado(context: Context) {
+    val p = prefs(context)
     val ligados = lerObjeto(context, CHAVE_LIGADOS)
-    val fora = lerObjeto(context, CHAVE_FORA)
+    val proibidos = ligados.keys().asSequence().filterNot(AvisosFiltro::ehBanco).toList()
+    if (!p.contains(CHAVE_FORA) && proibidos.isEmpty()) return
+    proibidos.forEach { ligados.remove(it) }
+    check(p.edit().remove(CHAVE_FORA).putString(CHAVE_LIGADOS, ligados.toString()).commit()) { "nao limpou o legado" }
+  }
+
+  fun temAceite(context: Context): Boolean = dono(context) != null && prefs(context).getLong(CHAVE_ACEITE, 0L) > 0L
+
+  fun definirAceite(context: Context, aceito: Boolean, agora: Long) {
+    require(!aceito || dono(context) != null) { "aceite precisa de conta" }
+    val editor = prefs(context).edit()
+    if (aceito) editor.putLong(CHAVE_ACEITE, agora) else editor.remove(CHAVE_ACEITE)
+    check(editor.commit()) { "nao gravou o aceite" }
+  }
+
+  /** Permissão do Android sozinha não basta, nem autoriza recuperar avisos anteriores. */
+  fun inicioDaLeitura(context: Context, pacote: String): Long? {
+    if (!temAceite(context)) return null
+    val ativado = ativadoEm(context, pacote) ?: return null
+    return maxOf(ativado, prefs(context).getLong(CHAVE_ACEITE, 0L))
+  }
+
+  /** Só os bancos do catálogo, inclusive os desligados. */
+  fun listarApps(context: Context, nomeDoApp: (String) -> String?): String {
+    limparLegado(context)
+    val ligados = lerObjeto(context, CHAVE_LIGADOS)
     val saida = JSONArray()
-    val pacotes = (ligados.keys().asSequence() + fora.keys().asSequence()).toSortedSet()
-    pacotes.forEach { pacote ->
-      val contado = fora.optJSONObject(pacote)
+    AvisosFiltro.BANCOS.sorted().forEach { pacote ->
       saida.put(JSONObject()
         .put("pacote", pacote)
         .put("nome", nomeDoApp(pacote) ?: JSONObject.NULL)
         .put("ligado", ligados.has(pacote))
-        .put("contagem", contado?.optInt("contagem") ?: 0)
-        .put("ultimo", contado?.optLong("ultimo") ?: 0L))
+        .put("contagem", 0)
+        .put("ultimo", 0L))
     }
     return saida.toString()
   }

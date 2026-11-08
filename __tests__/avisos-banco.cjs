@@ -174,6 +174,14 @@ async function main() {
   }
   ok('nenhum dos quatro cita supabase, fetch, data ou offline-cache');
 
+  diario.itens = [aviso('fora', 'Compra', 'Compra de R$ 25,00 em Loja Modelo', { pacote: 'com.whatsapp' })];
+  assert.equal((await caixa.sincronizarCaixa('fora-do-catalogo', AGORA)).itens.length, 0);
+  const compraLegada = decidir.aplicarAvisos(decidir.CAIXA_VAZIA, diario.itens, AGORA);
+  disco.dados.set('grana_avisos_caixa:legado-fora', JSON.stringify(compraLegada));
+  assert.equal((await caixa.listarCaixa('legado-fora')).length, 0);
+  assert.ok(!disco.dados.get('grana_avisos_caixa:legado-fora').includes('com.whatsapp'));
+  ok('caixa real recusa novos avisos de fora e remove pendências/metadados legados de fora');
+
   /* Compra vira item; ler de novo não duplica */
   diario.itens = [aviso('a1', 'Compra aprovada', 'Compra no crédito de R$ 89,90 em Mercado Modelo final 1234')];
   let r = await caixa.sincronizarCaixa('dono-a', AGORA);
@@ -200,8 +208,14 @@ async function main() {
   assert.equal(r.itens.length, 1);
   assert.equal(r.itens[0].forma, 'credit');
   assert.equal(r.itens[0].descricao, 'Padaria Modelo');
-  assert.equal(r.itens[0].avisoIds.length, 2);
-  ok('banco e carteira em até 5 minutos viram um item, com a melhor descrição');
+  assert.equal(r.itens[0].avisoIds.length, 1, 'captura nova exclui a carteira');
+  const grupoLegado = decidir.aplicarAvisos(decidir.CAIXA_VAZIA, diario.itens, AGORA + 130000);
+  assert.equal(grupoLegado.itens[0].avisoIds.length, 2, 'parser legado conserva a deduplicação');
+  const idDoLegado = grupoLegado.itens[0].id;
+  disco.dados.set('grana_avisos_caixa:legado-misto', JSON.stringify(grupoLegado));
+  assert.equal((await caixa.listarCaixa('legado-misto'))[0].id, idDoLegado, 'limpeza não muda chave financeira');
+  assert.ok(!disco.dados.get('grana_avisos_caixa:legado-misto').includes(WALLET));
+  ok('captura só de banco; grupo legado conserva id financeiro e perde metadados da carteira');
 
   /* Par que chega depois de o item ser confirmado não reabre */
   await caixa.removerItemDaCaixa('dono-c', r.itens[0].id);
@@ -216,8 +230,9 @@ async function main() {
     aviso('c2', 'Banca', 'R$ 10,00 com Visa ••1234', { pacote: WALLET, quando: AGORA + 6 * 60000 }),
   ];
   r = await caixa.sincronizarCaixa('dono-d', AGORA + 7 * 60000);
-  assert.equal(r.itens.length, 2);
-  ok('fora da janela de 5 minutos continuam dois itens');
+  assert.equal(r.itens.length, 1, 'só o banco entra no runtime novo');
+  assert.equal(decidir.aplicarAvisos(decidir.CAIXA_VAZIA, diario.itens, AGORA + 7 * 60000).itens.length, 2);
+  ok('parser legado conserva janela de 5 minutos; runtime novo só admite bancos');
 
   /* Fatura paga e recusada não viram item */
   diario.itens = [
@@ -529,7 +544,8 @@ async function main() {
   assert.match(manifesto, /BIND_NOTIFICATION_LISTENER_SERVICE/);
   assert.match(manifesto, /disabled_filter_types[\s\S]*conversations\|ongoing/);
   assert.ok(listener.indexOf('AvisosFiltro.decidir') < listener.indexOf('EXTRA_TITLE'), 'filtro antes de abrir o texto');
-  assert.ok(listener.indexOf('Destino.CONTAR') < listener.indexOf('EXTRA_TITLE'), 'contagem antes de abrir o texto');
+  assert.doesNotMatch(listener, /Destino\.CONTAR|contarForaDaLista/);
+  assert.match(listener, /ativadoEm = AvisosConfig\.inicioDaLeitura/);
   assert.ok(!/Log\.[a-z]+\([^)]*(titulo|texto)/.test(listener), 'título e texto nunca no logcat');
   assert.match(listener, /requestRebind/);
   assert.ok(!/INTERNET/.test(manifesto));

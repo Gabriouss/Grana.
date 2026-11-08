@@ -93,6 +93,16 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 08/11 — A2, leitor restrito a bancos e aceite, PH em execução
+
+**Pedido e escopo:** fila mestre do Supremo, depois do desbloqueio commitado, somente clone e um escritor. Remover captura/contagem de outros apps, limpar legado e exigir aceite em janela antes dos ajustes. Sem push/build/Supabase; Ledger parado, registro PH autorizado. Catálogo tem dez bancos e duas carteiras: captura nova só dos dez `classe: banco`, inclusive Mercado Pago; Google/Samsung Wallet deixam de entrar. Parser legado permanece compatível, sem poder autorizar captura.
+
+**Sintoma e causa confirmada no fonte:** filtro retornava CONTAR para app desligado e preferências aceitavam qualquer pacote; ligar um app de fora permitia abrir título/texto. RED real Kotlin: 2 passaram/7 falharam; tela real abriu ajustes sem aceite e caixa real aceitou pacote de fora (logs externos avisos-bancos-red, avisos-aceite-red, avisos-caixa-red). Não são medições do aparelho.
+
+**Mudança em andamento:** catálogo fechado no filtro/config/diário, remoção de `fora_da_lista` e ativações estranhas, limpeza do diário na inicialização e leitura. Caixa derivada remove itens/metadados de fora preservando id de grupo com banco; nenhuma transação confirmada é apagada. Aceite nativo por conta, revogável, bloqueia captura mesmo com permissão Android antiga; não recupera notificações anteriores ao aceite. Kotlin real passou 9 cenários com RAM 2,39/2,41 GiB. Interface e regressões ainda em execução, sem pronto/CI declarado.
+
+**Descartado/pendente:** não manter exceção de shell de depuração nem cadastro aberto de apps. Não prometer que Android deixa de entregar eventos: o descarte ocorre antes de extras/metadata local. Janela do DS vai em commit próprio; Watchtower revisará texto, gate integral A5/A6 e QA nativo dependem dos responsáveis e APK novo autorizado. Relatório externo `relatorio-codexPH-leitor-bancos.md`.
+
 ## 08/11 — desbloqueio do app de teste, investigação PH em andamento
 
 **Pedido e escopo:** autor relata Desbloquear sem prompt e tela petróleo vazia recorrentes; fechar recentes não resolve, Forçar parada resolve. Supremo priorizou a correção e liberou somente o clone para Codex PH como único escritor, sem push/build/Supabase; gate deve usar HEAD novo. Conta/modelo/esforço preservados. Ledger parado; registro PH assumido pelo executor, sem reiniciar atores.

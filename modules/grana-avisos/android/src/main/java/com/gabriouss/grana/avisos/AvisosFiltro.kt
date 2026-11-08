@@ -7,21 +7,25 @@ import java.text.Normalizer
  * fora da lista nunca chega à leitura do título e do texto (trava T3).
  */
 internal object AvisosFiltro {
-  const val PACOTE_DO_SHELL = "com.android.shell"
+  /* Mesmo catálogo bancário do TypeScript; avisos-bancos-nativo.cjs confere os
+     conjuntos inteiros. Não aceitar pacotes vindos de preferências antigas. */
+  val BANCOS = setOf(
+    "com.nu.production", "com.itau", "br.com.intermedium", "com.bradesco",
+    "com.santander.app", "com.c6bank.app", "com.mercadopago.wallet",
+    "br.com.gabba.Caixa", "br.com.bb.android", "com.btg.pactual.banking",
+  )
+  fun ehBanco(pacote: String): Boolean = pacote in BANCOS
 
   enum class Destino {
     /** Nada é gravado. */
     DESCARTAR,
-    /** Grava só o nome do pacote e a contagem. Título e texto não são abertos. */
-    CONTAR,
     /** Só aqui título e texto podem ser lidos. */
     LER,
   }
 
   /**
    * @param ativadoEm quando o app foi ligado, ou null se não está na lista
-   * @param depuravel só a build de depuração aceita `com.android.shell`, que é
-   *   como `adb shell cmd notification post` publica no emulador
+   * @param depuravel mantido na assinatura; depuração não abre exceção ao catálogo
    */
   fun decidir(
     pacote: String,
@@ -30,13 +34,13 @@ internal object AvisosFiltro {
     temDono: Boolean,
     ativadoEm: Long?,
     postadoEm: Long,
-    depuravel: Boolean,
+    @Suppress("UNUSED_PARAMETER") depuravel: Boolean,
   ): Destino {
+    if (!ehBanco(pacote)) return Destino.DESCARTAR
     if (pacote == pacoteProprio) return Destino.DESCARTAR
     if (resumoDeGrupo) return Destino.DESCARTAR
     if (!temDono) return Destino.DESCARTAR
-    if (pacote == PACOTE_DO_SHELL && !depuravel) return Destino.DESCARTAR
-    if (ativadoEm == null) return Destino.CONTAR
+    if (ativadoEm == null) return Destino.DESCARTAR
     /* "Ligado, passa a ser lido daquele momento em diante": o que já estava na
        bandeja ao ligar não entra na recuperação de onListenerConnected. */
     return if (postadoEm >= ativadoEm) Destino.LER else Destino.DESCARTAR

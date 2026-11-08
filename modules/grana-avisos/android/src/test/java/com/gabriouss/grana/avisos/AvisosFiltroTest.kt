@@ -6,7 +6,7 @@ import org.junit.Test
 
 class AvisosFiltroTest {
   private fun decidir(
-    pacote: String = "com.banco",
+    pacote: String = "com.nu.production",
     resumo: Boolean = false,
     dono: Boolean = true,
     ativadoEm: Long? = 100L,
@@ -15,7 +15,8 @@ class AvisosFiltroTest {
   ) = AvisosFiltro.decidir(pacote, "com.gabriouss.grana", resumo, dono, ativadoEm, postadoEm, depuravel)
 
   @Test fun appDaListaEhLido() = assertEquals(Destino.LER, decidir())
-  @Test fun appForaDaListaSoConta() = assertEquals(Destino.CONTAR, decidir(ativadoEm = null))
+  @Test fun bancoDesligadoDescarta() = assertEquals(Destino.DESCARTAR, decidir(ativadoEm = null))
+  @Test fun appDeForaMesmoLigadoDescarta() = assertEquals(Destino.DESCARTAR, decidir(pacote = "com.whatsapp"))
   @Test fun proprioPacoteDescarta() = assertEquals(Destino.DESCARTAR, decidir(pacote = "com.gabriouss.grana"))
   @Test fun resumoDeGrupoDescarta() = assertEquals(Destino.DESCARTAR, decidir(resumo = true))
   @Test fun semDonoDescarta() = assertEquals(Destino.DESCARTAR, decidir(dono = false, ativadoEm = null))
@@ -30,8 +31,8 @@ class AvisosFiltroTest {
     assertEquals(false, AvisosFiltro.ehRecusa("Compra aprovada", "Compra de R$ 45,90 em Loja Modelo"))
     assertEquals(false, AvisosFiltro.ehRecusa("Pix enviado", "Pix enviado de R$ 45,90 para Maria Modelo"))
   }
-  @Test fun shellSoEmDepuracao() {
-    assertEquals(Destino.DESCARTAR, decidir(pacote = AvisosFiltro.PACOTE_DO_SHELL))
-    assertEquals(Destino.LER, decidir(pacote = AvisosFiltro.PACOTE_DO_SHELL, depuravel = true))
+  @Test fun shellNuncaEhBanco() {
+    assertEquals(Destino.DESCARTAR, decidir(pacote = "com.android.shell"))
+    assertEquals(Destino.DESCARTAR, decidir(pacote = "com.android.shell", depuravel = true))
   }
 }

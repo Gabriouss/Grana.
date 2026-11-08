@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lerDiarioAvisos } from '@/modules/grana-avisos';
 import { aplicarAvisos, CAIXA_VAZIA, marcarVencimentoVisto, FINAL_VARIAVEL, type EstadoDaCaixa, type FormasAprendidas, type ItemAConferir, type ReciboDeEstorno } from './decidir';
 import type { FormaDoAviso } from './interpretar';
+import { ehBancoDoCatalogo } from './catalogo';
 
 /**
  * A lista "A conferir", por dono, só neste aparelho. Não chama rede e não guarda
@@ -28,7 +29,18 @@ async function ler(dono: string): Promise<EstadoDaCaixa> {
   if (!bruto) return CAIXA_VAZIA;
   const estado = JSON.parse(bruto) as EstadoDaCaixa;
   if (!Array.isArray(estado.itens) || typeof estado.vistos !== 'object') throw new Error('caixa de avisos ilegível');
-  return estado;
+  const vistos = Object.fromEntries(Object.entries(estado.vistos).filter(([, v]) => ehBancoDoCatalogo(v.pacote)));
+  const itens = estado.itens.flatMap((item): ItemAConferir[] => {
+    // Um grupo antigo banco+carteira conserva seu id (e a chave de gravação).
+    const banco = ehBancoDoCatalogo(item.pacote) ? item.pacote
+      : Object.values(vistos).find((v) => v.itemId === item.id)?.pacote;
+    if (!banco) return [];
+    return [{ ...item, pacote: banco, classe: 'banco',
+      avisoIds: item.avisoIds.filter((id) => !estado.vistos[id] || !!vistos[id]) }];
+  });
+  const limpo = { ...estado, itens, vistos };
+  if (JSON.stringify(limpo) !== bruto) await gravar(dono, limpo);
+  return limpo;
 }
 
 const gravar = (dono: string, estado: EstadoDaCaixa) => AsyncStorage.setItem(chaveDoDono(dono), JSON.stringify(estado));
@@ -43,7 +55,7 @@ export type ResultadoDaCaixa = { itens: ItemAConferir[]; ilegiveis: number; reci
 export function sincronizarCaixa(dono: string, agora: number = Date.now()): Promise<ResultadoDaCaixa> {
   return naVez(async () => {
     const [diario, estado, marcas] = await Promise.all([lerDiarioAvisos(), ler(dono), lerMarcas(dono)]);
-    const proximo = aplicarAvisos(estado, diario.itens, agora, new Set(Object.keys(marcas)));
+    const proximo = aplicarAvisos(estado, diario.itens.filter((a) => ehBancoDoCatalogo(a.pacote)), agora, new Set(Object.keys(marcas)));
     await gravar(dono, proximo);
     return { itens: proximo.itens, ilegiveis: diario.ilegiveis, recibos: proximo.recibos ?? [] };
   });

@@ -14,6 +14,7 @@ type NativeGranaAvisos = {
   apagarDiario(): Promise<void>;
   limparTudo(): Promise<void>;
   abrirAcesso(): void;
+  definirAceite(aceito: boolean): void;
   abrirInformacoesDoApp(): void;
 };
 
@@ -23,6 +24,7 @@ export const avisosDisponivel = Platform.OS === 'android' && !!nativo;
 
 export type EstadoAvisos = {
   acesso: boolean;
+  aceite: boolean;
   ultimoSinal: number;
   desconectadoEm: number;
   ultimaFalha: string | null;
@@ -45,7 +47,7 @@ export type AvisoDoDiario = {
 export type LeituraDoDiario = { itens: AvisoDoDiario[]; ilegiveis: number };
 
 export function estadoAvisos(): EstadoAvisos {
-  if (!nativo) return { acesso: false, ultimoSinal: 0, desconectadoEm: 0, ultimaFalha: null };
+  if (!nativo) return { acesso: false, aceite: false, ultimoSinal: 0, desconectadoEm: 0, ultimaFalha: null };
   return JSON.parse(nativo.estado());
 }
 export function definirDonoAvisos(dono: string | null): void {
@@ -73,6 +75,9 @@ export async function limparTudoAvisos(): Promise<void> {
 }
 export function abrirAcessoAvisos(): void {
   nativo?.abrirAcesso();
+}
+export function definirAceiteAvisos(aceito: boolean): void {
+  nativo?.definirAceite(aceito);
 }
 export function abrirInformacoesDoAppAvisos(): void {
   nativo?.abrirInformacoesDoApp();

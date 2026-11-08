@@ -24,6 +24,7 @@ internal class AvisosDiario(private val pasta: File, private val agora: () -> Lo
 
   /** @return true só quando o aviso é novo. Atualização igual não duplica. */
   fun guardar(aviso: Aviso): Boolean {
+    if (!AvisosFiltro.ehBanco(aviso.pacote)) return false
     garantirPasta()
     val destino = File(pasta, "${aviso.id}.json")
     if (destino.exists()) return false
@@ -50,19 +51,35 @@ internal class AvisosDiario(private val pasta: File, private val agora: () -> Lo
    */
   fun listar(): String {
     limparVencidos()
+    val (itens, ilegiveis) = lerPermitidos()
+    return JSONObject().put("itens", itens).put("ilegiveis", ilegiveis).toString()
+  }
+
+  fun limparForaDoCatalogo() { lerPermitidos() }
+
+  private fun lerPermitidos(): Pair<JSONArray, Int> {
     val itens = JSONArray()
     var ilegiveis = 0
     if (pasta.exists()) {
       val arquivos = pasta.listFiles() ?: throw IllegalStateException("nao listou o diario")
+      // Escritas interrompidas nunca foram confirmadas no diário e podem conter legado.
+      arquivos.filter { it.name.endsWith(".tmp") }.forEach {
+        check(it.delete()) { "nao apagou temporario do diario" }
+      }
       arquivos.filter { it.name.endsWith(".json") }.sortedBy { it.name }.forEach { arquivo ->
-        try {
-          itens.put(JSONObject(arquivo.readText(Charsets.UTF_8)))
+        val item = try {
+          JSONObject(arquivo.readText(Charsets.UTF_8))
         } catch (_: Exception) {
           ilegiveis++
+          null
+        }
+        if (item != null) {
+          if (AvisosFiltro.ehBanco(item.optString("pacote"))) itens.put(item)
+          else check(arquivo.delete()) { "nao apagou aviso fora do catalogo" }
         }
       }
     }
-    return JSONObject().put("itens", itens).put("ilegiveis", ilegiveis).toString()
+    return Pair(itens, ilegiveis)
   }
 
   fun apagarTudo() {
