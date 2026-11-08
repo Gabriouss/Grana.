@@ -10,15 +10,23 @@ const Module = require('node:module');
 const ts = require('typescript');
 const root = path.resolve(__dirname, '..');
 
-let estados = [], indice = 0, efeitos = [], mudou = false;
+let atual;
 const outraJanela = { valor: false };
 const privacidade = { valor: false };
 const React = {
-  useEffect: (fn) => { efeitos.push(fn); },
+  useEffect: (fn, deps) => {
+    const ctx = atual, i = ctx.indice++, anterior = ctx.slots[i];
+    if (!anterior || !deps || !anterior.deps || deps.length !== anterior.deps.length || deps.some((v, j) => !Object.is(v, anterior.deps[j]))) {
+      ctx.efeitos.push(() => {
+        if (typeof anterior?.limpar === 'function') anterior.limpar();
+        ctx.slots[i] = { deps, limpar: fn() };
+      });
+    }
+  },
   useState: (ini) => {
-    const i = indice++;
-    if (!(i in estados)) estados[i] = typeof ini === 'function' ? ini() : ini;
-    return [estados[i], (v) => { const novo = typeof v === 'function' ? v(estados[i]) : v; if (novo !== estados[i]) mudou = true; estados[i] = novo; }];
+    const ctx = atual, i = ctx.indice++;
+    if (!(i in ctx.slots)) ctx.slots[i] = typeof ini === 'function' ? ini() : ini;
+    return [ctx.slots[i], (v) => { const novo = typeof v === 'function' ? v(ctx.slots[i]) : v; if (!Object.is(novo, ctx.slots[i])) ctx.mudou = true; ctx.slots[i] = novo; }];
   },
 };
 const jsx = (tipo, props) => ({ tipo, props: props || {} });
@@ -65,14 +73,14 @@ const texto = (no) => (no == null || no === false ? '' : typeof no !== 'object' 
 let n = 0; const ok = (c, r) => { assert.ok(c, r); n++; };
 
 function montar(props) {
-  estados = [];
+  const ctx = { slots: [], indice: 0, efeitos: [], mudou: false };
   const render = () => {
     let arvore;
     for (let i = 0; i < 4; i++) {
-      indice = 0; efeitos = []; mudou = false;
+      atual = ctx; ctx.indice = 0; ctx.efeitos = []; ctx.mudou = false;
       arvore = Pergunta(props);
-      efeitos.forEach((f) => f());
-      if (!mudou) break;
+      ctx.efeitos.forEach((f) => f());
+      if (!ctx.mudou) break;
     }
     return arvore;
   };
