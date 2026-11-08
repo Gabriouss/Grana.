@@ -7,6 +7,11 @@ const ts = require('typescript');
 const root = path.resolve(__dirname, '..');
 
 module.exports = async function testarCicloDaSobra() {
+  const watchdog = setTimeout(() => {
+    console.error('sobra-ciclo-de-vida: prazo excedido antes de concluir a suíte');
+    process.exit(1);
+  }, 3000);
+  try {
   let instante = '2026-11-07T12:00:00-03:00', usuario = 'A', corrente, foco = true;
   let discoLento = false, gravarLento = false;
   const disco = new Map(), consultas = [], escritas = [], leituras = [], timers = new Map(), eventos = new Set(), snapshots = [];
@@ -170,6 +175,9 @@ module.exports = async function testarCicloDaSobra() {
   qA.resolve({ data: { valor: 900 }, error: null }); assert.equal(await widgetA, false);
   assert.equal(snapshots.at(-1).userId, 'B'); assert.equal(snapshots.length, 2);
   console.log('sobra-ciclo-de-vida: módulos reais, dia/foco/foreground, novembro-dezembro, usuário, leituras/escritas atrasadas e widget ok');
+  } finally {
+    clearTimeout(watchdog);
+  }
 };
 
 if (require.main === module) module.exports().catch(e => { console.error(e); process.exitCode = 1; });
