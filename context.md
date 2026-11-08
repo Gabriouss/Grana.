@@ -93,6 +93,22 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 07/11 (noite) — travamento da build 31: causa, correção e build de teste
+
+**Pedido (21h, sessão Claude direta com o autor):** “a gente precisa disparar outra build de urgência, porque o aplicativo ele não tá carregando corretamente nada [...] tentativa de confirmar o lançamento que foi lido da notificação e não tá indo, não vai nem fecha a janela, nem faz o lançamento”; depois: “tá travando tudo”.
+
+**Sintoma (dois vídeos e sete prints do autor, vc31):** a Início abre normal; a janela “A conferir” abre; em seguida Início em “Conferindo cofrinhos e pagamentos...”, Crédito, Lançamentos, Contas e Desafios presos em carregando; o “Salvar compra” da folha aberta pelo aviso gira sem fim; a janela reaparece sozinha.
+
+**Medido:** servidor saudável (auth, REST e sonda de RPC entre 25 e 300 ms). No aparelho, por adb: a thread do JavaScript (`mqt_v_js`) em cerca de 100% de CPU, com 8 min acumulados. Ou seja, laço no app, não rede.
+
+**Causa, comprovada no código e por teste:** `707ade87` (atalho dos avisos no cabeçalho) trocou `aoMudar={setItens}`, estável na vc30, por função nova a cada desenho em `components/AvisosAConferir.tsx`. Em `ListaAConferir`, `recarregarItens` depende de `aoMudar`, `carregarTudo` depende dele e um `useEffect` roda `carregarTudo` quando ele muda. Cada recarga chama `aoMudar`, a mãe guarda um array novo e redesenha, e o ciclo não para, relendo a caixa, o diário e o cache inteiro de lançamentos a cada volta. **Hipótese não isolada:** o laço também congestiona o armazenamento local do Android (fila serial), onde fica a sessão, o que explicaria as outras telas presas e “Atualização pendente”.
+
+**Correção:** `aoMudar` estável (`useCallback`), commit `835e548e` no clone `teste/leitura-avisos` (sem push; o `main` não tem a janela de avisos). `__tests__/avisos-telas.cjs` ganhou o teste que monta mãe e lista juntas, como no React. Ele falha no código antigo (7 leituras do histórico em 6 redesenhos) e passa no novo (1). O teste antigo montava a lista sozinha, com `aoMudar` fixo, por isso o laço passou nos 55 grupos.
+
+**Verificado:** `avisos-telas` 56 ok, `tsc` exit 0, `test:avisos` 193 ok, `janelas-abertas`, `modais-regressao` e `pergunta-sobra-do-mes` verdes. **Não verificado:** `test:ci` completo (memória livre perto de 660 MB) e o comportamento no aparelho. Descartados por leitura, sem laço: `janelas-abertas`, `conferencia-aberta`, `ReciboEmJanela`, `PerguntaSobraDoMes`, `use-sobra-do-mes`, efeitos novos do Crédito; hipóteses (c) `getSession` e (d) servidor de “Causa NÃO investigada” abaixo ficam superadas por esta.
+
+**Build:** `f6cb1ec3-f28c-4ee4-bb8b-8a4a6f1769be`, perfil development, do `835e548e`, disparada pelo Claude após o autor ativar o modo manual (“dispara a build você mesmo”); o auto mode tinha barrado a primeira tentativa. É a 2ª da semana 02–08/11 e a 5ª de 15 no mês (EAS em 4/15 antes). Produção antes: `app_release` 1.10.12, release `v1.10.12`, `eas-build-webhook` com `updated_at` 2026-10-16 (ignora development). Script, foto da produção e logs em `E:\Grana-temporarios\2026-11-07-urgente-laco\`. **Em aberto:** concluir a build, conferir o APK, comparar a produção depois, instalar e testar com o autor; a frequência da janela automática (pendência 2 abaixo) segue para decisão dele.
+
 ## 07/11 — preparação da Play, Fases 1 e 5
 
 Autor: "deixar tudo pronto pra gente colocar o aplicativo na Play Store". Decisões desta rodada: a Fase 0 (CNPJ, D-U-N-S, Play Console) ainda não começou, e os agentes adiantam só o que não depende da conta. Os 10 commits do `main` que faltam na branch de teste (`53b7c1bd..30ca3db3`) entram por cherry-pick, sem fundir o `main`. Backup local em outro disco (git bundle em `C:\Grana-backup\`). Nada vai para o GitHub.
