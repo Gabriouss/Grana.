@@ -1,5 +1,7 @@
 // Hook, serviço, armazenamento e sincronizador REAIS; só React, relógio e I/O são dublês.
+process.env.TZ = 'America/Sao_Paulo';
 const assert = require('node:assert/strict');
+assert.equal(new Date('2026-12-01T03:00:01Z').getTimezoneOffset(), 180, 'fixture exige horário de São Paulo');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
