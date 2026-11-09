@@ -1352,7 +1352,7 @@ export default function CreditoScreen() {
       {/* A faixa acima diz "estou mostrando dado salvo"; esta diz outra coisa,
           mais grave: parte do dado NÃO existe no aparelho, e o total na tela é
           menor que o de verdade. Duas frases, porque são dois fatos. */}
-      {parcelaIncerta && (
+      {!intervaloCategoria && parcelaIncerta && (
         <View style={[styles.avisoIncompleto, colunaConteudo]} accessibilityRole="alert">
           <Ionicons name="alert-circle-outline" size={16} color={theme.danger} aria-hidden />
           <Text style={styles.avisoIncompletoTexto}>
@@ -1361,7 +1361,7 @@ export default function CreditoScreen() {
           </Text>
         </View>
       )}
-      {faturaIncompleta && (
+      {!intervaloCategoria && faturaIncompleta && (
         <View style={[styles.avisoIncompleto, colunaConteudo]} accessibilityRole="alert">
           <Ionicons name="alert-circle-outline" size={16} color={theme.danger} aria-hidden />
           <Text style={styles.avisoIncompletoTexto}>
@@ -1389,7 +1389,9 @@ export default function CreditoScreen() {
               <View style={styles.cardSectionText}>
                 <Text style={styles.cardSectionTitle}>{section.titulo}</Text>
                 <Text style={styles.cardSectionPeriod}>
-                  {section.cartao
+                  {intervaloCategoria
+                    ? semViuva(`${formatDateLabel(intervaloCategoria.inicio)} a ${formatDateLabel(intervaloCategoria.fim)}`)
+                    : section.cartao
                     ? `Ciclo ${rotuloPeriodoFatura(viewYear, viewMonth, section.cartao.closing_day)}`
                     : 'Sem ciclo definido'}
                 </Text>
