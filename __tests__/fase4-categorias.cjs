@@ -9,6 +9,7 @@ const tx = (id, category, payment_method = 'debit') => ({ id, category, payment_
   wallet_id: 'wallet', type: 'out', amount: 10, occurred_on: '2026-11-08', description: id, color: '#147a99' });
 const linhas = [...categorias.map((c, i) => tx('debito-' + i, c)), tx('credito', 'Somente crédito', 'credit'), tx('credito-misto', 'Moradia', 'credit')];
 linhas.at(-1).occurred_on = '2026-11-26'; // compra de novembro na fatura de dezembro.
+linhas.push({ ...tx('receita-ficticia', 'Salário', 'pix'), type: 'in' });
 const resultado = { ...periodo, linhas, consumo: core.apurarGastosCategoria(linhas, periodo), doCache: false };
 function tela(arquivo, params = {}) {
   const slots = []; let cursor = 0, array = 0;
@@ -59,6 +60,14 @@ function nos(no) { if (!no || typeof no !== 'object') return []; if (Array.isArr
   return [no, ...nos(no.props?.children), ...nos(no.props?.ListHeaderComponent)]; }
 const encontrar = (arvore, tipo) => nos(arvore).find(n => n.type === tipo);
 const texto = no => typeof no === 'string' ? no : !no || typeof no !== 'object' ? '' : Array.isArray(no) ? no.map(texto).join(' ') : texto(no.props?.children) + ' ' + texto(no.props?.ListHeaderComponent);
+const renda = tela('app/(app)/lancamentos.tsx');
+assert.ok(encontrar(renda(), '@/components/ChipsCategoria').props.opcoes.some(([nome]) => nome === 'Salário'));
+encontrar(renda(), '@/components/ChipsCategoria').props.onSelect('Salário');
+assert.equal(encontrar(renda(), 'FlatList').props.data.length, 1, 'chip de receita em Tudo preserva a entrada');
+assert.equal(encontrar(renda(), 'FlatList').props.data[0].type, 'in');
+encontrar(renda(), '@/components/SegmentedTabs').props.onChange('in');
+encontrar(renda(), '@/components/SegmentedTabs').props.onChange('tudo');
+assert.equal(encontrar(renda(), 'FlatList').props.data.length, 1, 'voltar de Entradas para Tudo não oculta a receita');
 const render = tela('app/(app)/lancamentos.tsx', { modo: 'categoria', categoria: 'Moradia', ...periodo, forma: 'tudo' });
 render();
 encontrar(render(), '@/components/SegmentedTabs').props.onChange('tudo');
