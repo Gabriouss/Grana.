@@ -40,4 +40,6 @@
 - Every GranaPonto plan includes a 7-day free trial regardless of plan choice; payment is required only after the trial ends.
 - Limit the semestral plan to a maximum of 3 wallets, counting the main wallet, which cannot be deleted.
 - Set GranaPonto plan limits: never limit transaction history by plan; monthly plan gets only 2 cards; put all widgets in the semiannual plan.
+- Granabô must never recommend investments, loans, or financial strategies, since this is prohibited by law and regulations.
+- Use the .env Supabase credentials for read-only access only; modify Supabase only in this terminal with manual mode active.
 <!-- end claude-reflect -->
