@@ -41,6 +41,8 @@ import {
 import ExcluirContaSheet from '@/components/ExcluirContaSheet';
 import BaixarMeusDadosBotao from '@/components/BaixarMeusDadosBotao';
 import ExportarLancamentosBotao from '@/components/ExportarLancamentosBotao';
+import ConciliarPixBotao from '@/components/ConciliarPixBotao';
+import { CONCILIACAO_PIX_LIBERADA } from '@/lib/conciliacao-pix-disponibilidade';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
 import { useReducedMotion } from '@/lib/motion';
 import {
@@ -778,6 +780,7 @@ export default function PerfilScreen() {
             assinatura, para quem perdeu o acesso. */}
         <View style={{ gap: 10, marginTop: spacing.md }}>
           <ExportarLancamentosBotao />
+          {CONCILIACAO_PIX_LIBERADA && ligado('importar_extrato') ? <ConciliarPixBotao /> : null}
           <BaixarMeusDadosBotao />
           <AppPressable
             style={({ hovered }) => [styles.signOutBtn, hovered && styles.signOutBtnHover]}
