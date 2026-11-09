@@ -11,7 +11,7 @@ const linhas = [...categorias.map((c, i) => tx('debito-' + i, c)), tx('credito',
 linhas.at(-1).occurred_on = '2026-11-26'; // compra de novembro na fatura de dezembro.
 linhas.push({ ...tx('receita-ficticia', 'Salário', 'pix'), type: 'in' });
 const resultado = { ...periodo, linhas, consumo: core.apurarGastosCategoria(linhas, periodo), doCache: false };
-function tela(arquivo, params = {}) {
+function tela(arquivo, params = {}, simulacao = {}) {
   const slots = []; let cursor = 0, array = 0;
   const jsx = (type, props) => ({ type, props });
   const inerte = new Proxy({}, { get: (_, nome) => nome === '__esModule' ? false : () => undefined });
@@ -46,7 +46,10 @@ function tela(arquivo, params = {}) {
     if (id === '@/lib/teclado') return { useKeyboardHeight: () => 0 };
     if (id === '@/components/FaixaOffline') return { useModoOffline: () => false, useMotivoOffline: () => null, useRecarregarAoChegarDadoNovo() {} };
     if (['@/lib/format', '@/lib/transaction-rules'].includes(id)) return format;
-    if (['@/lib/types', '@/lib/filtro-compras', '@/lib/creditoFaturas', '@/lib/sem-viuva', '@/lib/faturaCiclo'].includes(id)) return carregar(id.replace('@/', '') + '.ts');
+    if (['@/lib/types', '@/lib/filtro-compras', '@/lib/creditoFaturas', '@/lib/sem-viuva', '@/lib/faturaCiclo'].includes(id)) {
+      const real = carregar(id.replace('@/', '') + '.ts');
+      return id === '@/lib/creditoFaturas' && simulacao.parcelaIncerta ? { ...real, faturaTemParcelaIncerta: () => true } : real;
+    }
     if (id.startsWith('@/components/')) return { __esModule: true, default: id };
     return inerte;
   };
@@ -110,11 +113,21 @@ const listaCredito = encontrar(credito(), 'SectionList').props.sections.flatMap(
 assert.equal(listaCredito.length, 1); assert.equal(listaCredito[0].id, 'credito-misto');
 assert.ok(listaCredito.every(t => format.isCreditTx(t)), 'Crédito preserva o período e exclui débito/Pix');
 assert.equal(listaCredito[0].occurred_on, '2026-11-26', 'o período do gráfico não vira ciclo de fechamento');
+const listaPeriodo = encontrar(credito(), 'SectionList');
+const legendaPeriodo = texto(listaPeriodo.props.renderSectionHeader({ section: listaPeriodo.props.sections[0] })).replace(/\s+/g, ' ');
+assert.ok(!legendaPeriodo.includes('Ciclo'), 'seção de compras do período não recebe ciclo de fatura');
+assert.ok(legendaPeriodo.includes(format.formatDateLabel(periodo.inicio)) && legendaPeriodo.includes(format.formatDateLabel(periodo.fim)));
 assert.ok(!texto(credito()).includes('Total das faturas'), 'categoria por compra não é apresentada como fatura');
 assert.ok(/Gastos\s+na\s+categoria/.test(texto(credito())), 'Crédito tem total da categoria mesmo com um cartão');
 assert.equal(encontrar(credito(), '@/components/CategoriasContexto').props.mostrarSeletor, false);
 encontrar(credito(), '@/components/ChipsCategoria').props.onTodas();
 assert.ok(texto(credito()).includes('Total das faturas'), 'Todas retorna à visão de faturas');
+const listaFatura = encontrar(credito(), 'SectionList');
+assert.ok(texto(listaFatura.props.renderSectionHeader({ section: listaFatura.props.sections[0] })).includes('Ciclo'));
+const incompleta = tela('app/(app)/credito.tsx', { modo: 'categoria', categoria: 'Moradia', ...periodo }, { parcelaIncerta: true });
+incompleta(); assert.ok(!texto(incompleta()).includes('Não achei a compra original'), 'aviso de fatura não contamina consulta por data de compra');
+const incompletaNormal = tela('app/(app)/credito.tsx', {}, { parcelaIncerta: true });
+assert.ok(texto(incompletaNormal()).includes('Não achei a compra original'), 'alerta de fatura permanece no modo de faturas');
 encontrar(render(), '@/components/ChipsCategoria').props.onSelect('Moradia');
 assert.equal(encontrar(render(), '@/components/CategoriasContexto').props.mostrarSeletor, false);
 alertas[0][2][0].onPress(); assert.equal(navegar.pop().pathname, '/(app)/lancamentos');
