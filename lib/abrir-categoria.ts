@@ -1,4 +1,5 @@
 import { Alert } from './alerta';
+import { semViuva } from './sem-viuva';
 import type { CategoriasConsultadas } from './categorias-cliente';
 import type { Visao } from './gastos-categoria';
 
@@ -19,7 +20,7 @@ export function abrirCategoria(r: CategoriasConsultadas | null, categoria: strin
   });
   if (destinos.length === 1) { abrir(destinos[0]); return; }
   if (!destinos.length) { Alert.alert('Categoria sem gastos', 'Atualize as categorias e tente novamente.'); return; }
-  Alert.alert('Onde abrir esta categoria?', 'Há gastos em débito e Pix e no crédito. Escolha o que quer consultar.', [
+  Alert.alert(semViuva('Onde abrir esta categoria?'), semViuva('Há gastos em débito e Pix e no crédito. Escolha o que quer consultar.'), [
     { text: 'Débito e Pix', onPress: () => abrir('avista') },
     { text: 'Crédito', onPress: () => abrir('credito') },
     { text: 'Cancelar', style: 'cancel' },

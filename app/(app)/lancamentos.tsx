@@ -757,7 +757,7 @@ export default function LancamentosScreen() {
             saldo zero para quem tem R$ 1.322,79, com a faixa de "mostrando
             dados salvos no aparelho" acesa por cima. Número velho é útil;
             número INVENTADO não — enquanto não há dado, mostra-se travessão. */}
-        {modoCategoria ? <View style={styles.monthSummaryCard}>
+        {modoCategoria ? <View style={[styles.monthSummaryCard, styles.categorySummaryCard]}>
           <Text style={styles.monthSummaryLabel}>Gastos na categoria</Text>
           <PrivacyValue><Text style={[styles.monthSummaryVal, { color: theme.down }]}>{consultaCategoria.resultado ? formatBRL(monthOut) : 'Indisponível agora'}</Text></PrivacyValue>
         </View> : <>
@@ -808,11 +808,11 @@ export default function LancamentosScreen() {
 
         <CampoBusca value={search} onChangeText={setSearch} />
 
-        {modoCategoria && <CategoriasContexto mostrarPeriodo visao="avista" onChange={() => {}} resultado={consultaCategoria.resultado} erro={consultaCategoria.erro} carregar={consultaCategoria.carregar} />}
+        {modoCategoria && <CategoriasContexto mostrarSeletor={false} mostrarPeriodo visao="avista" onChange={() => {}} resultado={consultaCategoria.resultado} erro={consultaCategoria.erro} carregar={consultaCategoria.carregar} />}
 
         <ChipsCategoria opcoes={categoryOptions} selecionada={categoryFilter}
           onTodas={() => { setCategoryFilter(null); setModoCategoria(false); setIntervaloCategoria(null); }}
-          onSelect={categoria => { setCategoryFilter(categoria); setModoCategoria(categoria !== null && filter !== 'in'); }} />
+          onSelect={categoria => { setCategoryFilter(categoria); setModoCategoria(categoria !== null && filter !== 'in'); if (categoria === null) setIntervaloCategoria(null); }} />
       </View>
 
       {loading ? (
@@ -822,7 +822,7 @@ export default function LancamentosScreen() {
           data={visible}
           keyExtractor={(t) => t.id}
           contentContainerStyle={[styles.listContent, colunaLista, { paddingBottom: paddingConteudoComFab }]}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={theme.ink} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); void consultaCategoria.carregar(); }} tintColor={theme.ink} />}
           ListEmptyComponent={
             <Text style={styles.emptyText}>
               {textoDaListaVazia(!!(search || categoryFilter), temHistorico || walletTransactions.length > 0)}
@@ -946,6 +946,7 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: theme.ink, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', marginTop: spacing.xs },
   saveBtnHover: { opacity: 0.88 },
   saveBtnText: { color: theme.paper, fontSize: type.corpo, fontFamily: fonts.regular },
+  categorySummaryCard: { flexWrap: 'wrap', gap: spacing.sm },
   monthSummaryCard: {
     flexDirection: 'row',
     alignItems: 'center',

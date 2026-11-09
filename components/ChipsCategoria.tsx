@@ -7,7 +7,7 @@ export default function ChipsCategoria({ opcoes, selecionada, onSelect, onTodas,
   onSelect: (categoria: string | null) => void; onTodas?: () => void;
   keyboardShouldPersistTaps?: ScrollViewProps['keyboardShouldPersistTaps'];
 }) {
-  if (!opcoes.length) return null;
+  if (!opcoes.length && !onTodas) return null;
   return <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryChipsRow} keyboardShouldPersistTaps={keyboardShouldPersistTaps}>
     <AppPressable onPress={onTodas ?? (() => onSelect(null))} hitSlop={{ top: 7, bottom: 7 }} style={[styles.categoryChip, !selecionada && styles.categoryChipActive]}>
       <Text style={[styles.categoryChipText, !selecionada && styles.categoryChipTextActive]}>Todas</Text>

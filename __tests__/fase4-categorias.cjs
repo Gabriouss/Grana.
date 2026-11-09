@@ -58,7 +58,7 @@ function tela(arquivo, params = {}) {
 function nos(no) { if (!no || typeof no !== 'object') return []; if (Array.isArray(no)) return no.flatMap(nos);
   return [no, ...nos(no.props?.children), ...nos(no.props?.ListHeaderComponent)]; }
 const encontrar = (arvore, tipo) => nos(arvore).find(n => n.type === tipo);
-const texto = no => typeof no === 'string' ? no : !no || typeof no !== 'object' ? '' : Array.isArray(no) ? no.map(texto).join(' ') : texto(no.props?.children);
+const texto = no => typeof no === 'string' ? no : !no || typeof no !== 'object' ? '' : Array.isArray(no) ? no.map(texto).join(' ') : texto(no.props?.children) + ' ' + texto(no.props?.ListHeaderComponent);
 const render = tela('app/(app)/lancamentos.tsx', { modo: 'categoria', categoria: 'Moradia', ...periodo, forma: 'tudo' });
 render();
 encontrar(render(), '@/components/SegmentedTabs').props.onChange('tudo');
@@ -101,8 +101,26 @@ const listaCredito = encontrar(credito(), 'SectionList').props.sections.flatMap(
 assert.equal(listaCredito.length, 1); assert.equal(listaCredito[0].id, 'credito-misto');
 assert.ok(listaCredito.every(t => format.isCreditTx(t)), 'Crédito preserva o período e exclui débito/Pix');
 assert.equal(listaCredito[0].occurred_on, '2026-11-26', 'o período do gráfico não vira ciclo de fechamento');
+assert.ok(!texto(credito()).includes('Total das faturas'), 'categoria por compra não é apresentada como fatura');
+assert.ok(/Gastos\s+na\s+categoria/.test(texto(credito())), 'Crédito tem total da categoria mesmo com um cartão');
+assert.equal(encontrar(credito(), '@/components/CategoriasContexto').props.mostrarSeletor, false);
+encontrar(credito(), '@/components/ChipsCategoria').props.onTodas();
+assert.ok(texto(credito()).includes('Total das faturas'), 'Todas retorna à visão de faturas');
+encontrar(render(), '@/components/ChipsCategoria').props.onSelect('Moradia');
+assert.equal(encontrar(render(), '@/components/CategoriasContexto').props.mostrarSeletor, false);
 alertas[0][2][0].onPress(); assert.equal(navegar.pop().pathname, '/(app)/lancamentos');
 assert.equal(alertas[0][2][2].style, 'cancel');
 abrir(null, 'Moradia', 'tudo', d => navegar.push(d)); assert.equal(navegar.length, 0);
+const { componente, textos } = require('./_copy-componentes-reais.cjs');
+const Contexto = componente('components/CategoriasContexto.tsx').default;
+for (const visao of ['avista', 'credito']) {
+  const arvore = Contexto({ visao, onChange() {}, resultado, erro: null, carregar() {}, mostrarSeletor: false });
+  const palavras = textos(arvore);
+  assert.ok(!palavras.includes('Tudo') && !palavras.includes('Débito e Pix') && !palavras.includes('Crédito'));
+}
+let limpezas = 0;
+const chipsVazios = componente('components/ChipsCategoria.tsx').default({ opcoes: [], selecionada: 'ausente', onSelect() {}, onTodas() { limpezas++; } });
+assert.ok(textos(chipsVazios).includes('Todas'), 'Todos permanece disponível no vazio/carregamento');
+chipsVazios.props.children[0].props.onPress(); assert.equal(limpezas, 1);
 console.log('fase4-categorias: sequência de chips e exclusão de crédito no módulo real OK');
 module.exports = { tela, nos, encontrar, texto, linhas, resultado };
