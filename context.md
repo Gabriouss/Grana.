@@ -95,6 +95,13 @@ Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052
 
 # 2026-11-09 - M1 - Retomada da manhã
 
+### Decisão do autor após P7 — C4 parado, gates e A7 mantidos
+
+**Pedido literal:** “Nao dispararemos build ainda”. Supremo determinou registrar imediatamente: APK de teste (C4) parado até ordem nova. O gate do clone continua para validar a árvore; A7 no emulador não depende de build e continua depois dos gates, respeitando a trava de RAM. Esta decisão supera a expectativa anterior de pedir “prepara” logo após o clone verde; não há preparação nem disparo autorizado.
+
+**Sintoma e causa:** ajuste de autorização operacional, sem falha nova de produto investigada. **Fonte:** mensagem direta do Supremo após publicação P7; registro em context.md, sessão do vault e canvas. **Descartado:** tratar gate verde como autorização de build, parar o gate por C4 suspenso ou condicionar A7 a APK novo. **Ocorrências e verificação:** trava atual pertence ao gate Watchtower do clone 3776e647; nenhum teste, build ou emulador iniciado por Beacon. C4 aguarda nova ordem; gate clone e QA A7 exigem recibos próprios. Context.md fica como novo WIP documental após fe8dc493; janela de commit já devolvida a Prism, sem commit concorrente ou inclusão de caminhos 8A.
+
+
 ### Recibo A5 main e liberação documental
 
 Beacon leu gate-A5-main-73e31118-watchtower.log.json: esperado 73e31118461a4540b470e8efe53458e85498f81e, tsc/guarda/test:ci EXIT 0, concluido=true, execução 16:52:42–17:08:26 local. Gate limitado a esse corte, com AGENTS.md/context.md expressamente permitidos como WIP documental; não é prova de aparelho nem do clone. Watchtower confirmou remoção da trava e liberação Prism/Beacon; ausência da trava main conferida antes do commit. Fetch imediato: HEAD quatro à frente, zero atrás de origin/main. Pedido e decisão: primeiro commit documental somente AGENTS.md/context.md; janela devolvida a Prism em seguida. Nenhum teste repetido e nenhum caminho de Prism tocado. O comentário anterior de gate pendente fica histórico, encerrado por este recibo.
