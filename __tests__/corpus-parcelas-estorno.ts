@@ -177,7 +177,7 @@ checar('ciclos repetidos não repetem mês',
 
 /* ---------- 6. Tela de Crédito e resumo da Início somam pelo mesmo lugar ----------
    Um reduce de `+ Number(amount)` numa soma de fatura faz o estorno voltar a
-   somar. As duas telas grandes não rodam em vm, então a guarda é no fonte. */
+   somar. A ligação da soma é conferida no fonte; o aviso abaixo roda na tela real. */
 for (const arquivo of ['app/(app)/credito.tsx', 'components/CreditSummaryCard.tsx']) {
   const fonte = readFileSync(join(__dirname, '..', arquivo), 'utf8');
   checar(`${arquivo}: nenhuma soma de fatura sem sinal`, /\+\s*Number\(\w+\.amount\)/.test(fonte), false);
@@ -192,7 +192,14 @@ checar('regra do resumo soma com sinal', /function resumoDeFaturas\([\s\S]*?soma
   const tela = readFileSync(join(__dirname, '..', 'app/(app)/credito.tsx'), 'utf8');
   checar('Crédito busca os meses pelas faturas', tela.includes('mesesCivisDasFaturas('), true);
   checar('Crédito busca a compra original das parcelas', tela.includes('fetchDatasDeCompra(ausentes)'), true);
-  checar('Crédito avisa quando a fatura tem parcela incerta', tela.includes('{parcelaIncerta && ('), true);
+  const { tela: renderizarTela, texto } = require('./fase4-categorias.cjs');
+  const fatura = renderizarTela('app/(app)/credito.tsx', {}, { parcelaIncerta: true });
+  checar('Crédito avisa quando a fatura tem parcela incerta', texto(fatura()).includes('Não achei a compra original'), true);
+  const consulta = renderizarTela('app/(app)/credito.tsx', {
+    modo: 'categoria', categoria: 'Moradia', inicio: '2026-11-01', fim: '2026-11-30',
+  }, { parcelaIncerta: true });
+  consulta(); // aplica os parâmetros; o próximo render já representa a consulta civil.
+  checar('consulta civil não recebe aviso específico da fatura', texto(consulta()).includes('Não achei a compra original'), false);
 }
 
 console.log(`\n${total - falhas}/${total} checagens de parcelas e estorno passaram — ${falhas} falhas`);
