@@ -127,8 +127,9 @@ function carregar({ acesso, acessoError = null, cotaResposta, cotaError = null }
       /* A conversa com o modelo tem suíte própria (test:assistente-*). Aqui
          ela só grava o prompt que recebeu, que é onde a memória tem de chegar. */
       return {
-        conduzirConversa: async ({ messages, chamar }) => {
+        conduzirConversa: async ({ messages, chamar, tools }) => {
           diario.prompts.push(messages[0].content);
+          diario.ferramentas = tools;
           if (cotaResposta) await chamar({ messages });
           return { resposta: 'resposta do teste', registros: [], recuperado: false };
         },

@@ -198,9 +198,10 @@ afrouxar asserções, e a paridade usa os módulos reais.
    voz e foto da nota existem porque até uma tela de "adicionar rápido" ainda é
    fricção demais pro usuário-alvo, e o widget de voz existe porque abrir o
    app já é navegação.
-3. Mostrar quanto é seguro gastar, não só o que já foi gasto — o
-   diferenciador do produto é um número que olha pra frente (Livre para
-   Gastar), não um extrato histórico.
+3. Mostrar quanto ainda está livre para gastar, pelo que a pessoa
+   registrou, além do que já foi gasto. O diferenciador do produto é um
+   número que olha pra frente, o Livre para Gastar, apresentado como
+   projeção e sem tom de garantia.
 4. Verdade do produto acima de invenção decorativa — superfícies de
    marketing (landing page) reaproveitam telas/cores/componentes reais em
    vez de inventar versões fictícias mais bonitas.

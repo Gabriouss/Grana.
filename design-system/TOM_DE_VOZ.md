@@ -154,7 +154,7 @@ As notificações do Grana têm a missão de **construir consistência sem cansa
 38. **Seus cofrinhos estão crescendo? 🐷**  
     *Que tal guardar um trocadinho hoje para a sua meta do mês?*
 39. **Olho no 'Livre para Gastar' 👀**  
-    *Veja quanto você ainda pode gastar com segurança até o fim do mês no card da Home.*
+    *Veja no card da Início quanto está livre por dia até o fim do mês, pelo que você registrou.*
 40. **Categoria no limite? 🚨**  
     *Dê uma olhada nos gráficos para saber se ainda sobra espaço para os gastos de lazer.*
 
