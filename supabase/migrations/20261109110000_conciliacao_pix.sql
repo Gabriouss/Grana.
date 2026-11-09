@@ -30,6 +30,7 @@ declare
   v_id uuid;
   v_candidatos bigint;
   v_snapshot jsonb;
+  v_mesma_chave boolean := false;
 begin
   if v_user is null or not public.tem_direito_acesso() then
     raise exception 'Acesso não confirmado' using errcode = '42501';
@@ -51,13 +52,20 @@ begin
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('conciliacao-pix:' || v_user::text, 0));
   select * into v_atual from public.transactions t where t.user_id = v_user and t.fitid = v_chave for update;
   if found then
+    -- Reenvio já concluído: tudo confere, inclusive a data.
     if coalesce(v_atual.wallet_id, v_principal) = v_wallet and v_atual.card_id is null
       and v_atual.payment_method is distinct from 'credit' and v_atual.type = v_tipo
       and v_atual.amount * 100 = v_centavos and v_atual.occurred_on = v_data
       and (v_alvo is null or v_atual.id = v_alvo) then
       return jsonb_build_object('situacao','ja_confirmado','id',v_atual.id);
     end if;
-    return jsonb_build_object('situacao','conflito');
+    -- Correção explícita de data do MESMO lançamento que já carrega esta chave (reimportação depois
+    -- de edição manual da data, ou retificação do banco). Segue para as guardas do ramo 'data'.
+    -- Qualquer outro uso da chave já gravada continua conflito: ela nunca migra de lançamento.
+    if v_operacao <> 'data' or v_alvo is null or v_atual.id <> v_alvo then
+      return jsonb_build_object('situacao','conflito');
+    end if;
+    v_mesma_chave := true;
   end if;
 
   select count(*) into v_candidatos from public.transactions t
@@ -81,11 +89,15 @@ begin
     return jsonb_build_object('situacao','inserido','id',v_id);
   end if;
 
-  if v_alvo is null or v_candidatos <> 1 then return jsonb_build_object('situacao','conflito'); end if;
+  -- Unicidade: sem chave, o único candidato por valor na janela; com a mesma chave, a própria chave
+  -- (índice único por usuário e fitid) já identifica o alvo, como faz o matcher do app.
+  if v_alvo is null or (not v_mesma_chave and v_candidatos <> 1) then return jsonb_build_object('situacao','conflito'); end if;
   select * into v_atual from public.transactions t where t.id = v_alvo and t.user_id = v_user for update;
   if not found or coalesce(v_atual.wallet_id, v_principal) <> v_wallet or v_atual.card_id is not null
     or v_atual.payment_method = 'credit' or v_atual.type <> v_tipo or v_atual.amount * 100 <> v_centavos
-    or abs(v_atual.occurred_on - v_data) > 3 or v_atual.fitid is not null then
+    or abs(v_atual.occurred_on - v_data) > 3
+    or (v_atual.fitid is not null and v_atual.fitid <> v_chave) then
+    -- Fitid diferente continua recusado: outra identidade bancária nunca sobrescreve a gravada.
     return jsonb_build_object('situacao','conflito');
   end if;
   v_snapshot := jsonb_build_object('occurred_on',v_atual.occurred_on,'amount',v_atual.amount,'type',v_atual.type,
