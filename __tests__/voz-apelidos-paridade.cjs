@@ -278,7 +278,11 @@ async function nasTres(frase) {
       'saída: a pergunta não oferece "Salário" (aporte em Investimentos continua)');
     const { categoriaServeAoTipo } = interp;
     igual(['Alimentação', 'Salário', 'Investimentos', 'Outros', 'Pets'].map((n) => categoriaServeAoTipo(n, n !== 'Pets', 'in')),
-      [false, true, true, true, true], 'entrada: das padrão só Salário, Investimentos e Outros; a criada pela pessoa vale');
+      [true, true, true, true, true], 'entrada: todas as categorias, padrão e criadas pela pessoa (T7)');
+    for (const c of interp.CATEGORIES) {
+      ok(categoriaServeAoTipo(c.name, true, 'in'), `entrada permite ${c.name}`);
+      igual(categoriaServeAoTipo(c.name, true, 'out'), c.name !== 'Salário', `saída preservada: ${c.name}`);
+    }
   }
   APELIDOS = APELIDOS_DA_PESSOA;
 
