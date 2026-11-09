@@ -87,7 +87,7 @@
     "GranaAvisosModule"
   ],
   "fragmentos": [
-    "/grana-avisos",
+    "/grana-avisos/",
     "\"grana-avisos\"",
     "'grana-avisos'",
     "avisos-banco/",

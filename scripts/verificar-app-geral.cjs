@@ -4,13 +4,14 @@
 const fs = require('node:fs'), path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const CATALOGO = path.join(__dirname, 'marcadores-app-de-teste.json');
-const SUPORTE = new Set(['scripts/marcadores-app-de-teste.json', 'scripts/verificar-app-geral.cjs', '__tests__/app-geral.cjs']);
+const SUPORTE = new Set(['scripts/marcadores-app-de-teste.json', '__tests__/app-geral.cjs', '__tests__/app-geral-revisao.cjs']);
 const IGNORADOS = new Set(['.git', 'node_modules', '.agents', '.claude', '.codex', '.maestri', '.expo', 'Feedbacks', 'Screenshots']);
 const CODIGO = /\.(?:[cm]?jsx?|[cm]?tsx?|json|xml|kt|kts|java|gradle|properties|plist|html|css|scss|ya?ml|toml|sh|bash|ps1|sql|py|swift|[cmh]|cpp|hpp|rs|go|dart|rb)$/i;
 const SHA = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i;
 const ZERO = /^0+$/;
 const BINARY = /\.(?:png|jpe?g|gif|webp|ico|ttf|otf|woff2?|mp4|mp3|wav|pdf|zip|apk|aab|hbc)$/i;
 const textoAplicavel = nome => !BINARY.test(nome) && !/\.md$/i.test(nome);
+class ErroDaGuarda extends Error {}
 
 function caminhoSeguro(p) {
   return typeof p === 'string' && p.length > 0 && !/[\\\0\r\n]/.test(p) &&
@@ -18,17 +19,17 @@ function caminhoSeguro(p) {
 }
 function carregarCatalogo(arquivo = CATALOGO) {
   const c = JSON.parse(fs.readFileSync(arquivo, 'utf8'));
-  if (c?.versao !== 1 || !c.fonte || !SHA.test(c.fonte.main) || !SHA.test(c.fonte.clone)) throw Error('Catálogo inválido: versão ou fonte');
+  if (c?.versao !== 1 || !c.fonte || !SHA.test(c.fonte.main) || !SHA.test(c.fonte.clone)) throw new ErroDaGuarda('Catálogo inválido: versão ou fonte');
   for (const chave of ['caminhos', 'prefixos', 'identificadores', 'fragmentos', 'seletores']) {
-    if (!Array.isArray(c[chave]) || !c[chave].length) throw Error('Catálogo inválido: lista obrigatória');
+    if (!Array.isArray(c[chave]) || !c[chave].length) throw new ErroDaGuarda('Catálogo inválido: lista obrigatória');
   }
-  for (const p of c.caminhos) if (!caminhoSeguro(p)) throw Error('Catálogo inválido: caminho');
-  for (const p of c.prefixos) if (!p.endsWith('/') || !caminhoSeguro(p.slice(0, -1))) throw Error('Catálogo inválido: prefixo');
-  for (const id of c.identificadores) if (typeof id !== 'string' || !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(id)) throw Error('Catálogo inválido: identificador');
-  for (const t of c.fragmentos) if (typeof t !== 'string' || !t || /[\0\r\n]/.test(t)) throw Error('Catálogo inválido: fragmento');
+  for (const p of c.caminhos) if (!caminhoSeguro(p)) throw new ErroDaGuarda('Catálogo inválido: caminho');
+  for (const p of c.prefixos) if (!p.endsWith('/') || !caminhoSeguro(p.slice(0, -1))) throw new ErroDaGuarda('Catálogo inválido: prefixo');
+  for (const id of c.identificadores) if (typeof id !== 'string' || !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(id)) throw new ErroDaGuarda('Catálogo inválido: identificador');
+  for (const t of c.fragmentos) if (typeof t !== 'string' || !t || /[\0\r\n]/.test(t)) throw new ErroDaGuarda('Catálogo inválido: fragmento');
   for (const s of c.seletores) {
     if (!caminhoSeguro(s.arquivo) || !Array.isArray(s.caminho) || !s.caminho.length ||
-      !s.caminho.every(p => typeof p === 'string' && p.length && !/[\0\r\n]/.test(p))) throw Error('Catálogo inválido: seletor');
+      !s.caminho.every(p => typeof p === 'string' && p.length && !/[\0\r\n]/.test(p))) throw new ErroDaGuarda('Catálogo inválido: seletor');
   }
   return c;
 }
@@ -44,17 +45,17 @@ function textoDoArquivo(buf, nome) {
   if (buf[0] === 0xff && buf[1] === 0xfe) return buf.subarray(2).toString('utf16le');
   if (buf[0] === 0xfe && buf[1] === 0xff) return Buffer.from(buf.subarray(2)).swap16().toString('utf16le');
   if (buf.includes(0)) {
-    if (CODIGO.test(nome)) throw Error('Código com codificação ilegível: ' + nome);
+    if (CODIGO.test(nome)) throw new ErroDaGuarda('Código com codificação ilegível: ' + nome);
     return null; // binário sem extensão conhecida; paths continuam verificados.
   }
   return buf.toString('utf8');
 }
 function verificarArquivo(nome, buf, c) {
-  if (!caminhoSeguro(nome)) throw Error('Caminho fora da raiz');
+  if (!caminhoSeguro(nome)) throw new ErroDaGuarda('Caminho fora da raiz');
   const achados = [];
   const add = regra => achados.push({ arquivo: nome, regra });
   if (c.caminhos.includes(nome) || c.prefixos.some(p => nome.startsWith(p))) add('caminho-exclusivo');
-  // Exceção apenas de TEXTO nos três arquivos da própria guarda; nunca de caminho.
+  // Exceção de TEXTO só no catálogo e fixtures; nunca de caminho ou segredos.
   if (SUPORTE.has(nome) || ignorado(nome) || !textoAplicavel(nome)) return achados;
   const texto = textoDoArquivo(buf, nome);
   if (texto === null) return achados;
@@ -75,13 +76,14 @@ function varrerArvore(raiz, c = carregarCatalogo(), usarGit = true) {
   // EAS é sempre percorrido por inteiro, mesmo se ainda contiver .git.
   if (usarGit && fs.existsSync(path.join(raiz, '.git'))) {
     const nomes = git(raiz, ['ls-files', '--cached', '--others', '--exclude-standard', '-z']).split('\0').filter(Boolean);
+    const apagados = new Set(git(raiz, ['ls-files', '--deleted', '-z']).split('\0').filter(Boolean));
     for (const nome of new Set(nomes)) {
-      if (!caminhoSeguro(nome)) throw Error('Caminho fora da raiz');
-      if (ignorado(nome)) continue;
+      if (!caminhoSeguro(nome)) throw new ErroDaGuarda('Caminho fora da raiz');
+      if (ignorado(nome) || apagados.has(nome)) continue;
       let atual = raiz;
       for (const parte of nome.split('/')) {
         atual = path.join(atual, parte);
-        if (fs.lstatSync(atual).isSymbolicLink()) throw Error('Link não inspecionado: ' + nome);
+        if (fs.lstatSync(atual).isSymbolicLink()) throw new ErroDaGuarda('Link não inspecionado: ' + nome);
       }
       const relevante = textoAplicavel(nome) || c.caminhos.includes(nome) || c.prefixos.some(p => nome.startsWith(p));
       if (relevante) achados.push(...verificarArquivo(nome, fs.readFileSync(atual), c));
@@ -92,15 +94,15 @@ function varrerArvore(raiz, c = carregarCatalogo(), usarGit = true) {
     for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
       const nome = prefixo + item.name;
       if (usarGit ? ignorado(nome) : ['.git', 'node_modules'].includes(nome.split('/')[0])) continue;
-      if (!usarGit && ['Feedbacks', 'Screenshots'].includes(nome.split('/')[0])) throw Error('Material local dentro do pacote EAS');
+      if (!usarGit && ['Feedbacks', 'Screenshots'].includes(nome.split('/')[0])) throw new ErroDaGuarda('Material local dentro do pacote EAS');
       const absoluto = path.join(dir, item.name);
-      if (item.isSymbolicLink()) throw Error('Link não inspecionado: ' + nome);
+      if (item.isSymbolicLink()) throw new ErroDaGuarda('Link não inspecionado: ' + nome);
       if (item.isDirectory()) andar(absoluto, nome + '/');
       else if (item.isFile()) {
         // Caminhos binários também são proibidos; só a leitura textual é seletiva.
         const relevante = textoAplicavel(nome) || c.caminhos.includes(nome) || c.prefixos.some(p => nome.startsWith(p));
         if (relevante) achados.push(...verificarArquivo(nome, fs.readFileSync(absoluto), c));
-      } else throw Error('Arquivo não inspecionado: ' + nome);
+      } else throw new ErroDaGuarda('Arquivo não inspecionado: ' + nome);
     }
   }
   andar(raiz);
@@ -110,13 +112,13 @@ function git(raiz, args, buffer = false, input) {
   return execFileSync('git', ['--no-optional-locks', ...args], { cwd: raiz, encoding: buffer ? undefined : 'utf8',
     input, windowsHide: true, maxBuffer: 128 * 1024 * 1024, stdio: ['pipe', 'pipe', 'pipe'] });
 }
-function validarSha(sha) { if (!SHA.test(sha)) throw Error('Hash de commit inválido'); }
+function validarSha(sha) { if (!SHA.test(sha)) throw new ErroDaGuarda('Hash de commit inválido'); }
 const chaveEntrada = e => [e.modo, e.tipo, e.oid, e.nome].join('\0');
 function arquivosCommit(raiz, sha, inspecionados = new Set()) {
   validarSha(sha);
   const entradas = git(raiz, ['ls-tree', '-r', '-z', '--full-tree', sha]).split('\0').filter(Boolean).map(l => {
     const m = /^(\d+) (\w+) ([a-f0-9]+)\t([\s\S]+)$/.exec(l);
-    if (!m || !caminhoSeguro(m[4])) throw Error('Árvore Git inválida');
+    if (!m || !caminhoSeguro(m[4])) throw new ErroDaGuarda('Árvore Git inválida');
     return { modo: m[1], tipo: m[2], oid: m[3], nome: m[4] };
   });
   const blobs = entradas.filter(e => e.tipo === 'blob' && !BINARY.test(e.nome) && !inspecionados.has(chaveEntrada(e)));
@@ -126,9 +128,9 @@ function arquivosCommit(raiz, sha, inspecionados = new Set()) {
   for (const b of blobs) {
     const fim = dados.indexOf(10, pos);
     const m = /^([a-f0-9]+) blob (\d+)$/.exec(dados.subarray(pos, fim).toString('utf8'));
-    if (!m || m[1] !== b.oid) throw Error('Blob Git ilegível');
+    if (!m || m[1] !== b.oid) throw new ErroDaGuarda('Blob Git ilegível');
     const tamanho = Number(m[2]), inicio = fim + 1;
-    if (inicio + tamanho >= dados.length || dados[inicio + tamanho] !== 10) throw Error('Blob Git truncado');
+    if (inicio + tamanho >= dados.length || dados[inicio + tamanho] !== 10) throw new ErroDaGuarda('Blob Git truncado');
     b.buf = dados.subarray(inicio, inicio + tamanho); pos = inicio + tamanho + 1;
   }
   return entradas.map(e => ({ ...e, buf: e.buf || Buffer.alloc(0) }));
@@ -136,16 +138,16 @@ function arquivosCommit(raiz, sha, inspecionados = new Set()) {
 function varrerCommit(raiz, sha, c = carregarCatalogo()) {
   return arquivosCommit(raiz, sha).flatMap(e => {
     if (ignorado(e.nome)) return [];
-    if (e.tipo !== 'blob' || e.modo === '120000') throw Error('Entrada Git não inspecionada: ' + e.nome);
+    if (e.tipo !== 'blob' || e.modo === '120000') throw new ErroDaGuarda('Entrada Git não inspecionada: ' + e.nome);
     return verificarArquivo(e.nome, e.buf, c);
   });
 }
-function varrerIntervalo(raiz, base, fim, c = carregarCatalogo()) {
+function varrerIntervalo(raiz, base, fim, c = carregarCatalogo(), protegerMain = true) {
   validarSha(fim);
   if (!ZERO.test(base)) {
     validarSha(base);
     git(raiz, ['merge-base', '--is-ancestor', base, fim]);
-  } else if (!SHA.test(base)) throw Error('Hash remoto inválido');
+  } else if (!SHA.test(base)) throw new ErroDaGuarda('Hash remoto inválido');
   const commits = git(raiz, ['rev-list', '--reverse', ZERO.test(base) ? fim : base + '..' + fim]).trim().split('\n').filter(Boolean);
   const { varrerTexto, lerEnv } = require('./varrer-segredos.cjs');
   const valores = lerEnv(path.join(raiz, '.env'));
@@ -155,7 +157,7 @@ function varrerIntervalo(raiz, base, fim, c = carregarCatalogo()) {
   const cortes = new Set([...commits, fim]);
   for (const sha of cortes) {
     const mensagem = git(raiz, ['show', '-s', '--format=%B', sha]);
-    if (commits.includes(sha)) {
+    if (protegerMain && commits.includes(sha)) {
       const pais = git(raiz, ['show', '-s', '--format=%P', sha]).trim().split(' ').filter(Boolean);
       if (pais.length > 1) achados.push({ arquivo: sha, regra: 'merge-no-main' });
       if (/\(cherry picked from commit\b/i.test(mensagem)) achados.push({ arquivo: sha, regra: 'cherry-pick-no-main' });
@@ -166,16 +168,30 @@ function varrerIntervalo(raiz, base, fim, c = carregarCatalogo()) {
       if (inspecionados.has(chave)) continue;
       inspecionados.add(chave);
       if (!ignorado(e.nome)) {
-        if (e.tipo !== 'blob' || e.modo === '120000') throw Error('Entrada Git não inspecionada: ' + e.nome);
-        achados.push(...verificarArquivo(e.nome, e.buf, c));
+        if (e.tipo !== 'blob' || e.modo === '120000') throw new ErroDaGuarda('Entrada Git não inspecionada: ' + e.nome);
+        if (protegerMain) achados.push(...verificarArquivo(e.nome, e.buf, c));
       }
-      if (!BINARY.test(e.nome) && !e.buf.includes(0)) {
-        achados.push(...varrerTexto(e.buf.toString('utf8'), e.nome, valores).filter(a => !a.aviso)
+      if (!BINARY.test(e.nome)) {
+        const texto = textoDoArquivo(e.buf, e.nome);
+        if (texto === null) continue;
+        achados.push(...varrerTexto(texto, e.nome, valores).filter(a => !a.aviso)
           .map(a => ({ arquivo: a.arquivo, regra: 'segredo:' + a.regra })));
       }
     }
   }
   return achados;
+}
+function resolverRemoto(raiz, destino, endereco) {
+  const urls = remoto => git(raiz, ['remote', 'get-url', '--all', remoto]).trim().split('\n');
+  if (/^[A-Za-z0-9_.-]+$/.test(destino)) {
+    if (endereco && !urls(destino).includes(endereco)) throw new ErroDaGuarda('Endereço não corresponde ao remoto configurado');
+    return destino;
+  }
+  if (endereco && endereco !== destino) throw new ErroDaGuarda('Endereço não corresponde ao destino');
+  const candidatos = git(raiz, ['remote']).trim().split('\n').filter(Boolean)
+    .filter(remoto => urls(remoto).includes(destino));
+  if (candidatos.length !== 1) throw new ErroDaGuarda(candidatos.length ? 'Remoto ambíguo para o endereço' : 'Remoto desconhecido ou inválido');
+  return candidatos[0];
 }
 function ehMainNoCi(raiz, env = process.env) {
   if (env.GITHUB_ACTIONS === 'true') {
@@ -197,46 +213,50 @@ function principal(args, env = process.env, cwd = path.resolve(__dirname, '..'),
   try {
     const c = carregarCatalogo();
     const i = args.indexOf('--raiz');
-    if (i >= 0 && (!args[i + 1] || args[i + 1].startsWith('--'))) throw Error('Raiz ausente');
+    if (i >= 0 && (!args[i + 1] || args[i + 1].startsWith('--'))) throw new ErroDaGuarda('Raiz ausente');
     const raiz = path.resolve(i >= 0 ? args[i + 1] : cwd);
     const parametros = i >= 0 ? args.filter((_, j) => j !== i && j !== i + 1) : args;
     const modo = parametros[0] || '--arvore';
     let achados;
     if (['--arvore', '--eas', '--ci'].includes(modo)) {
-      if (parametros.length > 1) throw Error('Argumentos inesperados');
+      if (parametros.length > 1) throw new ErroDaGuarda('Argumentos inesperados');
       if (modo === '--eas') {
-        if (!['preview', 'production', 'development', 'play'].includes(env.EAS_BUILD_PROFILE)) throw Error('EAS_BUILD_PROFILE ausente ou desconhecido');
+        if (!['preview', 'production', 'development', 'play'].includes(env.EAS_BUILD_PROFILE)) throw new ErroDaGuarda('EAS_BUILD_PROFILE ausente ou desconhecido');
         if (['development', 'play'].includes(env.EAS_BUILD_PROFILE)) { console.log('[app-geral] perfil de teste explícito; filtro geral dispensado'); return 0; }
       }
       if (modo === '--ci' && !ehMainNoCi(raiz, env)) { console.log('[app-geral] ref fora da branch padrão; filtro geral dispensado'); return 0; }
       achados = varrerArvore(raiz, c, modo !== '--eas');
     } else if (modo === '--intervalo') {
-      if (parametros.length !== 3) throw Error('Uso: --intervalo <base> <fim> [--raiz pasta]');
+      if (parametros.length !== 3) throw new ErroDaGuarda('Uso: --intervalo <base> <fim> [--raiz pasta]');
       achados = varrerIntervalo(raiz, parametros[1], parametros[2], c);
     } else if (modo === '--pre-push') {
-      if (parametros.length !== 2 || !/^[A-Za-z0-9_.-]+$/.test(parametros[1])) throw Error('Remoto inválido');
-      const remoto = parametros[1];
+      if (![2, 3].includes(parametros.length) || !parametros[1]) throw new ErroDaGuarda('Remoto inválido');
+      const remoto = resolverRemoto(raiz, parametros[1], parametros[2]);
       // Ausência de default remoto reprova, em vez de ignorar o destino protegido.
       const padrao = git(raiz, ['symbolic-ref', '--quiet', '--short', 'refs/remotes/' + remoto + '/HEAD']).trim();
-      if (!padrao.startsWith(remoto + '/')) throw Error('Branch padrão do remoto indisponível');
+      if (!padrao.startsWith(remoto + '/')) throw new ErroDaGuarda('Branch padrão do remoto indisponível');
       const linhas = (entrada ?? fs.readFileSync(0, 'utf8')).trim().split('\n').filter(Boolean);
-      if (!linhas.length) throw Error('Pre-push sem refs');
+      if (!linhas.length) throw new ErroDaGuarda('Pre-push sem refs');
       achados = [];
       for (const linha of linhas) {
         const campos = linha.trim().split(/\s+/);
-        if (campos.length !== 4) throw Error('Ref pre-push inválida');
+        if (campos.length !== 4) throw new ErroDaGuarda('Ref pre-push inválida');
         const [, localSha, remotoRef, remotoSha] = campos;
-        if (remotoRef !== 'refs/heads/' + padrao.slice(remoto.length + 1)) continue;
-        if (ZERO.test(localSha)) throw Error('Exclusão da branch padrão bloqueada');
-        achados.push(...varrerIntervalo(raiz, remotoSha, localSha, c));
+        validarSha(localSha); validarSha(remotoSha);
+        const protegerMain = remotoRef === 'refs/heads/' + padrao.slice(remoto.length + 1);
+        if (ZERO.test(localSha)) {
+          if (protegerMain) throw new ErroDaGuarda('Exclusão da branch padrão bloqueada');
+          continue; // exclusão não publica blobs; as outras refs ainda serão inspecionadas.
+        }
+        achados.push(...varrerIntervalo(raiz, remotoSha, localSha, c, protegerMain));
       }
-    } else throw Error('Modo desconhecido');
+    } else throw new ErroDaGuarda('Modo desconhecido');
     for (const a of achados) console.error('[app-geral] ' + JSON.stringify(a));
     console.log('[app-geral] ' + (achados.length ? 'BLOQUEADO' : 'OK') + ': ' + achados.length + ' achados; nenhum conteúdo de arquivo impresso');
     return achados.length ? 1 : 0;
   } catch (e) {
     // Não ecoar stderr do git/JSON: ele pode conter dados de arquivos inspecionados.
-    console.error('[app-geral] ERRO de configuração ou leitura; inspeção não concluída (' + (e?.code || 'invalido') + ')');
+    console.error('[app-geral] ERRO de configuração ou leitura; inspeção não concluída (' + (e instanceof ErroDaGuarda ? e.message : e?.code || 'invalido') + ')');
     return 2;
   }
 }
