@@ -36,6 +36,8 @@ vm.runInNewContext(ts.transpileModule(fonte, {
   }, 'voz');
   assert.equal(bloqueado.permitido, false);
   assert.match(api.mensagemCotaEsgotada('voz', bloqueado.motivo), /amanhã/);
+  assert.match(api.mensagemCotaEsgotada('assistente', 'mes', new Date('2026-12-01T02:59:59Z')), /01\/12\/2026/);
+  assert.match(api.mensagemCotaEsgotada('assistente', 'mes', new Date('2026-12-01T03:00:00Z')), /01\/01\/2027/);
 
   await assert.rejects(
     api.consumirCotaIA({

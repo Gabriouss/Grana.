@@ -2494,6 +2494,7 @@ Deno.serve(async (req) => {
       return erro('limite_indisponivel', 503, 'Não consegui confirmar o limite de uso agora. Tenta de novo em instantes.');
     }
     if (!cota.permitido) {
+      // O texto sai do servidor para que as builds já instaladas mostrem a renovação mensal.
       return erro('muitas_tentativas', 429, mensagemCotaEsgotada('assistente', cota.motivo));
     }
 

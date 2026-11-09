@@ -2,7 +2,7 @@ export type TipoCotaIA = 'assistente' | 'voz';
 
 export type ResultadoCotaIA = {
   permitido: boolean;
-  motivo: 'minuto' | 'dia' | null;
+  motivo: 'minuto' | 'dia' | 'mes' | null;
   minutoRestante: number;
   diaRestante: number;
 };
@@ -42,17 +42,24 @@ export async function consumirCotaIA(cliente: ClienteCota, tipo: TipoCotaIA): Pr
 
   return {
     permitido: resposta.permitido,
-    motivo: resposta.motivo === 'minuto' || resposta.motivo === 'dia' ? resposta.motivo : null,
+    motivo: resposta.motivo === 'minuto' || resposta.motivo === 'dia' || resposta.motivo === 'mes' ? resposta.motivo : null,
     minutoRestante: Number.isFinite(Number(resposta.minuto_restante)) ? Number(resposta.minuto_restante) : 0,
     diaRestante: Number.isFinite(Number(resposta.dia_restante)) ? Number(resposta.dia_restante) : 0,
   };
 }
 
-export function mensagemCotaEsgotada(tipo: TipoCotaIA, motivo: ResultadoCotaIA['motivo']): string {
+export function mensagemCotaEsgotada(tipo: TipoCotaIA, motivo: ResultadoCotaIA['motivo'], agora = new Date()): string {
   if (tipo === 'voz') {
     return motivo === 'dia'
       ? 'Você atingiu o limite diário de lançamentos por voz. Tenta de novo amanhã.'
       : 'Você fez muitos lançamentos por voz seguidos. Espera um minutinho e tenta de novo.';
+  }
+  if (motivo === 'mes') {
+    const partes = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: 'numeric' }).formatToParts(agora);
+    const ano = Number(partes.find(p => p.type === 'year')!.value);
+    const mes = Number(partes.find(p => p.type === 'month')!.value);
+    const volta = `01/${String(mes === 12 ? 1 : mes + 1).padStart(2, '0')}/${mes === 12 ? ano + 1 : ano}`;
+    return `Você atingiu o limite mensal de perguntas ao Granabô. Suas perguntas voltam em ${volta}.`;
   }
   return motivo === 'dia'
     ? 'Você atingiu o limite diário de perguntas ao Granabô. Tenta de novo amanhã.'

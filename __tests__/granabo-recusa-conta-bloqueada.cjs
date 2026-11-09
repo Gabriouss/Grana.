@@ -70,8 +70,8 @@ function dadosDaConsulta(consulta) {
   return [];
 }
 
-function carregar({ acesso, acessoError = null }) {
-  const diario = { cota: 0, modelo: 0, rpcs: [], consultas: [], erros: [], prompts: [] };
+function carregar({ acesso, acessoError = null, cotaResposta, cotaError = null }) {
+  const diario = { cota: 0, modelo: 0, provedores: [], rpcs: [], consultas: [], erros: [], prompts: [] };
   let handler = null;
 
   const clienteFake = {
@@ -79,6 +79,7 @@ function carregar({ acesso, acessoError = null }) {
     rpc: async (nome, args) => {
       diario.rpcs.push(nome);
       if (nome === 'tem_direito_acesso') return { data: acesso, error: acessoError };
+      if (nome === 'consumir_cota_ia') { diario.cota++; return { data: cotaResposta, error: cotaError }; }
       if (nome === 'buscar_exemplos_similares') return { data: MEMORIA.exemplos, error: null };
       return { data: null, error: null };
     },
@@ -110,6 +111,13 @@ function carregar({ acesso, acessoError = null }) {
     if (nome.includes('supabase-js/cors')) return { corsHeaders: {} };
     if (nome.includes('supabase-js')) return { createClient: () => clienteFake };
     if (nome.includes('ai-quota')) {
+      if (cotaResposta || cotaError) {
+        const api = {};
+        vm.runInNewContext(ts.transpileModule(fs.readFileSync('supabase/functions/_shared/ai-quota.ts', 'utf8'), {
+          compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+        }).outputText, { exports: api, console: consoleFake });
+        return api;
+      }
       return {
         consumirCotaIA: async () => { diario.cota++; return { permitido: true }; },
         mensagemCotaEsgotada: () => 'cota esgotada',
@@ -119,8 +127,9 @@ function carregar({ acesso, acessoError = null }) {
       /* A conversa com o modelo tem suíte própria (test:assistente-*). Aqui
          ela só grava o prompt que recebeu, que é onde a memória tem de chegar. */
       return {
-        conduzirConversa: async ({ messages }) => {
+        conduzirConversa: async ({ messages, chamar }) => {
           diario.prompts.push(messages[0].content);
+          if (cotaResposta) await chamar({ messages });
           return { resposta: 'resposta do teste', registros: [], recuperado: false };
         },
         respostaFinalSegura: (resposta) => resposta,
@@ -132,7 +141,12 @@ function carregar({ acesso, acessoError = null }) {
     }
     if (nome.includes('seguranca')) {
       return {
-        fetchComTimeout: async () => { diario.modelo++; throw new Error('o teste nao deveria chegar no modelo'); },
+        fetchComTimeout: async (url, opts) => {
+          diario.modelo++;
+          if (!cotaResposta) throw new Error('o teste nao deveria chegar no modelo');
+          diario.provedores.push({ url, modelo: JSON.parse(opts.body).model });
+          return new Response(JSON.stringify({ choices: [{ message: { content: 'resposta' } }] }));
+        },
         criarRateLimiter: () => () => false,
       };
     }
@@ -182,7 +196,8 @@ function pedido() {
   });
 }
 
-(async () => {
+module.exports = { carregar, pedido };
+if (require.main === module) (async () => {
   /* -- 1 e 2. Conta bloqueada ------------------------------------------ */
   {
     const { handler, diario } = carregar({ acesso: false });
