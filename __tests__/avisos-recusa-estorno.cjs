@@ -367,7 +367,11 @@ const ESTORNO_UBER = (extra) => aviso('Estorno', 'Estorno de R$ 12.34 em DL *Ube
     const nu = compra(NUBANK, 'Loja Modelo', { quando: AGORA + 2000 });
     let r = await sync('wt-ponte', c6, wallet, nu);
     assert.equal(r.itens.length, 2, 'Wallet não funde duas compras de bancos distintos');
-    assert.equal(r.itens.find((i) => i.id === c6.id).avisoIds.length, 2, 'par forte C6/Wallet preservado');
+    assert.deepEqual(r.itens.find((i) => i.id === c6.id).avisoIds, [c6.id], 'A2: Wallet não entra no grupo bancário');
+    assert.ok(!disco.dados.get('grana_avisos_caixa:wt-ponte').includes(wallet.id), 'A2: Wallet não fica nos vistos');
+    const legado = decidir.aplicarAvisos(decidir.CAIXA_VAZIA, [c6, wallet, nu], AGORA + DIA);
+    assert.equal(legado.itens.length, 2, 'parser legado mantém a proteção contra ponte');
+    assert.equal(legado.itens.find((i) => i.id === c6.id).avisoIds.length, 2, 'parser legado ainda reconhece par forte');
     r = await sync('wt-ponte', c6, wallet, nu, estorno(NUBANK, 'Loja Modelo', { quando: AGORA + 3000 }));
     assert.deepEqual(r.itens.map((i) => i.id), [c6.id], 'C6 real continua para conferir');
     assert.equal(r.recibos.length, 1, 'só Nubank foi anulado');
@@ -387,7 +391,8 @@ const ESTORNO_UBER = (extra) => aviso('Estorno', 'Estorno de R$ 12.34 em DL *Ube
     for (const v of Object.values(semIdentidade.vistos)) { delete v.direcao; delete v.contraparte; delete v.digitos; }
     disco.dados.set('grana_avisos_caixa:wt-visto-antigo', JSON.stringify(semIdentidade));
     r = await sync('wt-visto-antigo', c6, wallet);
-    assert.equal(r.itens.length, 2, 'visto antigo sem identidade não prova fusão');
+    assert.deepEqual(r.itens.map((i) => i.id), [c6.id], 'A2: visto antigo conserva o banco e ignora Wallet');
+    assert.equal(decidir.aplicarAvisos(semIdentidade, [wallet], AGORA + DIA).itens.length, 2, 'parser legado: visto sem identidade não prova fusão');
     ok('WT-R1: item legado com origens conflitantes nunca é descartado automaticamente');
 
     for (const [pacote, loja] of [[NUBANK, 'Outra Loja'], [C6, 'Outra Loja'], [C6, 'Loja Modelo']]) {
@@ -397,11 +402,13 @@ const ESTORNO_UBER = (extra) => aviso('Estorno', 'Estorno de R$ 12.34 em DL *Ube
       assert.equal(r.recibos.length, 0);
     }
     r = await sync('wt-estornos-forte', estorno(C6), estorno(WALLET, 'Loja Modelo', { quando: AGORA + 1000 }));
-    assert.equal(r.itens.length, 1, 'mesmo estorno banco/carteira com identidade forte continua único');
+    assert.equal(r.itens.length, 1, 'A2: somente o estorno bancário entra');
+    assert.equal(r.itens[0].avisoIds.length, 1, 'A2: estorno da Wallet não se associa ao banco');
     r = await sync('wt-estornos-sem-final',
       aviso('Estorno', 'Estorno de R$ 25,00 em Loja Modelo'),
       aviso('Estorno', 'Estorno de R$ 25,00 em Loja Modelo', { pacote: WALLET, quando: AGORA + 1000 }));
-    assert.equal(r.itens.length, 2, 'sem final não se presume duplicidade entre apps');
+    assert.equal(r.itens.length, 1, 'A2: Wallet sem final também é ignorada');
+    assert.equal(decidir.aplicarAvisos(decidir.CAIXA_VAZIA, diario.itens, AGORA + DIA).itens.length, 2, 'parser legado: sem final não se presume duplicidade');
     ok('WT-R2: estornos reais distintos ficam, par forte é único e par incerto é preservado');
 
     const primeiro = estorno(C6);
@@ -415,10 +422,12 @@ const ESTORNO_UBER = (extra) => aviso('Estorno', 'Estorno de R$ 12.34 em DL *Ube
 
     // Dois bancos candidatos antes da Wallet: não escolher só o primeiro.
     r = await sync('wt-par-ambiguo', compra(C6), compra(NUBANK), compra(WALLET));
-    assert.equal(r.itens.length, 3);
+    assert.equal(r.itens.length, 2, 'A2: apenas os dois bancos entram');
+    assert.equal(decidir.aplicarAvisos(decidir.CAIXA_VAZIA, diario.itens, AGORA + DIA).itens.length, 3, 'parser legado: par ambíguo não escolhe banco');
     for (const outro of [compra(WALLET, 'Outra Loja'), compra(WALLET, 'Loja Modelo', { texto: 'Pix recebido de R$ 25,00 de Loja Modelo final 1234' }), compra(WALLET, 'Loja Modelo', { texto: 'Compra de R$ 25,00 em Loja Modelo final 9999' })]) {
       r = await sync(`wt-identidade-${outro.id}`, compra(C6), outro);
-      assert.equal(r.itens.length, 2, 'loja, direção ou final conflitante não funde');
+      assert.equal(r.itens.length, 1, 'A2: Wallet é ignorada independentemente da identidade');
+      assert.equal(decidir.aplicarAvisos(decidir.CAIXA_VAZIA, diario.itens, AGORA + DIA).itens.length, 2, 'parser legado: loja, direção ou final conflitante não funde');
     }
     ok('pares ambíguos ou com loja/direção/final conflitante continuam separados');
 
