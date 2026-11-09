@@ -43,7 +43,7 @@ import { confirmarExclusaoDeLancamento, conferirContaPaga } from '@/lib/excluir-
 import { carregarLayoutHomeEmEtapas, layoutPadrao, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
 import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals, updateGoal } from '@/lib/goals';
 import { calcularSafeToSpend, projetarComprometimentoFuturo, sugerirEvolucaoArquetipo } from '@/lib/projections';
-import { sobraParaOLivre } from '@/lib/sobra-do-mes';
+import { carteiraPrincipalDaSobra, carteiraRecebeSobra, sobraParaOLivre } from '@/lib/sobra-do-mes';
 import { useSobraDoMes } from '@/lib/use-sobra-do-mes';
 import { sugerirSobraDoMesAnterior } from '@/lib/safe-to-spend';
 import { notificarDadosDosWidgetsAlterados } from '@/lib/widgets-home-events';
@@ -686,24 +686,24 @@ export default function InicioScreen() {
      de outro app, isso é a diferença entre a tela responder e engasgar.
      `graficos.tsx` já fazia assim; esta tela era a exceção. */
 
-  // Views da Home respeitam a carteira ativa — "Total" mostra tudo, uma
-  // carteira específica filtra pelo wallet_id gravado no lançamento/conta.
-  // Mesmo filtro que app/(app)/graficos.tsx já usa.
+  const carteiraPrincipalId = useMemo(() => carteiraPrincipalDaSobra(wallets, userId), [wallets, userId]);
+  const carteiraIncluiSobra = carteiraRecebeSobra(activeWalletId, carteiraPrincipalId);
+  // Total agrega; legado sem carteira pertence à Principal do próprio dono.
   const walletTransactions = useMemo(
-    () => (activeWalletId === 'total' ? transactions : transactions.filter((t) => t.wallet_id === activeWalletId)),
-    [activeWalletId, transactions]
+    () => (activeWalletId === 'total' ? transactions : transactions.filter((t) => (t.wallet_id ?? carteiraPrincipalId) === activeWalletId)),
+    [activeWalletId, transactions, carteiraPrincipalId]
   );
   const walletBills = useMemo(
-    () => (activeWalletId === 'total' ? bills : bills.filter((b) => b.wallet_id === activeWalletId)),
-    [activeWalletId, bills]
+    () => (activeWalletId === 'total' ? bills : bills.filter((b) => (b.wallet_id ?? carteiraPrincipalId) === activeWalletId)),
+    [activeWalletId, bills, carteiraPrincipalId]
   );
   // `createGoal` (mais abaixo) já grava o `wallet_id` da carteira ativa no
   // momento da criação — os cofrinhos são pensados como algo por carteira,
   // igual lançamento/conta/cartão. Sem este filtro, o "Livre para Gastar" de
   // uma carteira descontava o valor guardado em cofrinhos de OUTRA carteira.
   const walletGoals = useMemo(
-    () => (activeWalletId === 'total' ? goals : goals.filter((g) => g.wallet_id === activeWalletId)),
-    [activeWalletId, goals]
+    () => (activeWalletId === 'total' ? goals : goals.filter((g) => (g.wallet_id ?? carteiraPrincipalId) === activeWalletId)),
+    [activeWalletId, goals, carteiraPrincipalId]
   );
   // Compra no crédito só vira saída de caixa quando a fatura é paga — some
   // do saldo/fluxo/orçamento até lá (ver lib/wallets.ts::calcularSaldosWallets).
@@ -717,8 +717,8 @@ export default function InicioScreen() {
      inicial e sem boleto pendente (regra 20 do AGENTS.md). O recorte do mês é
      feito dentro de `calcularSafeToSpend`, a mesma função dos widgets. */
   const safeToSpend = useMemo(
-    () => calcularSafeToSpend(lancamentosDaCarteira(transactions, creditCards, activeWalletId), walletGoals, new Date(`${hojeDaSobra}T12:00:00`), { cards: creditCards, payments: invoicePayments ?? [], sobraConfirmada: activeWalletId === 'total' ? sobraParaOLivre(sobraDoMes, userId, hojeDaSobra.slice(0, 7)) : 0 }),
-    [transactions, creditCards, activeWalletId, walletGoals, invoicePayments, sobraDoMes, userId, hojeDaSobra]
+    () => calcularSafeToSpend(lancamentosDaCarteira(transactions, creditCards, activeWalletId, carteiraPrincipalId), walletGoals, new Date(`${hojeDaSobra}T12:00:00`), { cards: creditCards, payments: invoicePayments ?? [], sobraConfirmada: sobraParaOLivre(sobraDoMes, userId, hojeDaSobra.slice(0, 7), activeWalletId, carteiraPrincipalId) }),
+    [transactions, creditCards, activeWalletId, walletGoals, invoicePayments, sobraDoMes, userId, hojeDaSobra, carteiraPrincipalId]
   );
   // O núcleo resolve séries e ciclos com o histórico completo antes de filtrar a carteira.
   const comprometimentoFuturo = useMemo(
@@ -1491,7 +1491,7 @@ export default function InicioScreen() {
           cartoesNaConta={creditCards.length}
           /* Crédito segue a carteira do CARTÃO (P11), não o wallet_id gravado
              no lançamento: mesmo filtro da tela de Crédito. */
-          transactions={lancamentosDaCarteira(transactions, creditCards, activeWalletId)}
+          transactions={lancamentosDaCarteira(transactions, creditCards, activeWalletId, carteiraPrincipalId)}
           pagamentos={invoicePayments}
           year={selectedYear}
           month={selectedMonth}
@@ -1829,13 +1829,13 @@ export default function InicioScreen() {
 
       {/* Sheet de lançamento — mesmo componente das telas de Lançamentos e Crédito. */}
       {/* Sobra do mês passado (autor, 07/11/2026): janela flutuante, nunca bloco
-          na Início. Só na visão de todas as carteiras, só enquanto não
+          na Início. No Total e na Principal do dono, só enquanto não
           confirmada, e nunca com a tabela ainda ausente no servidor (estado
           `desligada`). Abre com a Início em foco e sem outra janela aberta. */}
       {!isDemoMode && sobraDoMes?.estado === 'pendente' && (
         <PerguntaSobraDoMes
           key={`${userId}:${sobraDoMes.mes}`}
-          pode={activeWalletId === 'total' && sobraAdiada === false && !carregandoFontesLivre && inicioEmFoco}
+          pode={carteiraIncluiSobra && sobraAdiada === false && !carregandoFontesLivre && inicioEmFoco}
           sugestao={sugerirSobraDoMesAnterior(transactions, goals, todayISO())}
           onAgoraNao={adiarSobra}
           onConfirmar={async (valor) => {

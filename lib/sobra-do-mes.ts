@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { idDoUsuarioLocal } from './sessao-offline';
+import type { Wallet } from './types';
 
 /**
  * Sobra do mês anterior confirmada pela pessoa (Adendo 2 do autor, 07/11/2026,
@@ -44,9 +45,23 @@ export async function buscarSobraDoMes(mes: string, userId: string): Promise<Est
   return { estado: 'confirmada', mes, userId, valor: Number(data.valor) };
 }
 
-/** Valor que entra no cálculo: só o confirmado. */
-export function sobraParaOLivre(estado: EstadoSobra | null, userId: string | null | undefined, mes: string): number {
-  return userId && estado?.userId === userId && estado.mes === mes && estado.estado === 'confirmada'
+/** Mesma identidade de preencher_wallet_padrao: default do próprio dono. */
+export function carteiraPrincipalDaSobra(wallets: Wallet[], userId: string | null | undefined): string | null {
+  if (!userId) return null;
+  return wallets.filter((w) => w.user_id === userId && w.is_default)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id))[0]?.id ?? null;
+}
+
+export function carteiraRecebeSobra(carteiraId: string, principalId: string | null): boolean {
+  return carteiraId === 'total' || (principalId !== null && carteiraId === principalId);
+}
+
+/** Sobra pertence à Principal; Total a inclui uma vez (também nos widgets). */
+export function sobraParaOLivre(
+  estado: EstadoSobra | null, userId: string | null | undefined, mes: string,
+  carteiraId = 'total', principalId: string | null = null,
+): number {
+  return carteiraRecebeSobra(carteiraId, principalId) && userId && estado?.userId === userId && estado.mes === mes && estado.estado === 'confirmada'
     && Number.isFinite(estado.valor) && estado.valor >= 0 ? estado.valor : 0;
 }
 

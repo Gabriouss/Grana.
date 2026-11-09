@@ -170,7 +170,7 @@ function montar(props) {
 
   /* Início: condições de exibição e o que a confirmação faz, no código real. */
   const inicio = fs.readFileSync(path.join(root, 'app/(app)/index.tsx'), 'utf8');
-  ok(/!isDemoMode && sobraDoMes\?\.estado === 'pendente' && \(/.test(inicio) && /pode=\{activeWalletId === 'total' && sobraAdiada === false && !carregandoFontesLivre && inicioEmFoco\}/.test(inicio), 'Início só pergunta na visão total, pendente, fora do exemplo, em foco e depois de ler o adiamento');
+  ok(/!isDemoMode && sobraDoMes\?\.estado === 'pendente' && \(/.test(inicio) && /pode=\{carteiraIncluiSobra && sobraAdiada === false && !carregandoFontesLivre && inicioEmFoco\}/.test(inicio), 'Início pergunta no Total ou Principal canonica, pendente, fora do exemplo, em foco e depois de ler o adiamento');
   const blocoSaldo = inicio.slice(inicio.indexOf('saldo: () => ('), inicio.indexOf('cofrinhos: () => ('));
   ok(!/PerguntaSobraDoMes/.test(blocoSaldo), 'a Início não tem mais card da sobra no bloco do saldo (regra do autor: nada de bloco novo)');
   ok(/onAgoraNao=\{adiarSobra\}/.test(inicio), '"Agora não" usa o ciclo de vida compartilhado');

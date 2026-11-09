@@ -488,18 +488,20 @@ export function resumoDeFaturas(
  * filtro usava o `wallet_id` do lançamento, e uma compra no cartão da mãe
  * gravada com a carteira Principal (a voz e o Granabô gravavam assim) sumia
  * da carteira da mãe e aparecia na Principal como órfã. Lançamento sem cartão,
- * ou com cartão excluído, segue o próprio `wallet_id`. `'total'` é tudo.
+ * ou com cartão excluído, segue o próprio `wallet_id`; legado sem carteira
+ * vai para `principalId`, quando informado pelo dono. `'total'` é tudo.
  */
 export function lancamentosDaCarteira(
   transacoes: Transaction[],
   todosOsCartoes: CreditCard[],
-  carteiraId: string
+  carteiraId: string,
+  principalId: string | null = null,
 ): Transaction[] {
   if (carteiraId === 'total') return transacoes;
   const carteiraDoCartao = new Map(todosOsCartoes.map((c) => [c.id, c.wallet_id]));
   return transacoes.filter((t) => {
-    if (t.card_id && carteiraDoCartao.has(t.card_id)) return carteiraDoCartao.get(t.card_id) === carteiraId;
-    return t.wallet_id === carteiraId;
+    if (t.card_id && carteiraDoCartao.has(t.card_id)) return (carteiraDoCartao.get(t.card_id) ?? principalId) === carteiraId;
+    return (t.wallet_id ?? principalId) === carteiraId;
   });
 }
 

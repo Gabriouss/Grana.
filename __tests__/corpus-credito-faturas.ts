@@ -437,7 +437,7 @@ checar('o restante só soma se o valor pago for o que a tela viu', /if v_invoice
   checar('Crédito filtra pela carteira do cartão', tela.includes('lancamentosDaCarteira(transactions, cards, activeWalletId)'), true);
   checar('Crédito reinicia a seleção ao trocar de carteira', tela.includes('selecaoAposTrocarCarteira(atual, walletCards)'), true);
   const inicio = readFileSync(join(__dirname, '..', 'app', '(app)', 'index.tsx'), 'utf8');
-  checar('Início filtra o resumo pela carteira do cartão', inicio.includes('lancamentosDaCarteira(transactions, creditCards, activeWalletId)'), true);
+  checar('Início filtra o resumo pela carteira do cartão', inicio.includes('lancamentosDaCarteira(transactions, creditCards, activeWalletId, carteiraPrincipalId)'), true);
 }
 
 /* ── Estado vazio por carteira (T24, 25/09/2026) ────────────────────────────
