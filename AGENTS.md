@@ -11,7 +11,7 @@ Por decisão do autor em 28/10/2026, os agentes Codex devem iniciar com os model
 
 | Agente | Conta | Modelo | Esforço |
 |---|---|---|---|
-| Codex | Gabriel Codex | gpt-6.1-sol | ultra |
+| Codex | Gabriel Codex | gpt-6.1-sol | medium |
 | Compass | Codex PH | gpt-6.1-sol | xhigh |
 | Forge | Codex PH | gpt-6.1-sol | xhigh |
 | Prism | Gabriel Codex | gpt-6.1-sol | medium |
@@ -21,6 +21,8 @@ Por decisão do autor em 28/10/2026, os agentes Codex devem iniciar com os model
 | Sentinel | Gabriel Codex | gpt-6.1-sol | medium |
 | Watchtower | Gabriel Codex | gpt-6.1-sol | medium |
 | Codex PH (terminal) | Codex PH | gpt-6.1-sol | high |
+
+**Atualização de 08/11/2026:** o autor decidiu sobre o orquestrador Codex: “pode trocar para médio”. O manifesto do Codex passa a medium; persistência no preset está pendente porque o helper foi recusado neste terminal sem papel Maestro. Não houve alteração de outros perfis nem reinício.
 
 Compass e parent confirmaram os dez perfis acima; dez presets completos foram criados e relidos. Os comandos dos nós existentes não foram alterados: não declarar que o restart pela interface já usa os comandos corrigidos. Inicializações futuras devem usar o helper ou preset correto. Codex #2 permanece fora por falta de conexão; não adivinhar conta ou configuração.
 

@@ -7,7 +7,7 @@
       "name": "Codex",
       "account": "Gabriel Codex",
       "model": "gpt-6.1-sol",
-      "effort": "ultra",
+      "effort": "medium",
       "maestro": true,
       "preset": "Grana Codex - Codex",
       "evidence": "maestri check Codex"
