@@ -277,6 +277,56 @@ Supremo relata correção de dados autorizada pelo autor envolvendo outubro, Pix
 A1 desbloqueio no clone: `3d99e419`, `58752198`, `4989de43`, relatório `relatorio-codexPH-desbloqueio.md`. A2 leitor só de bancos: `10da09f5`, `deb301dc`, `2f3f7a17`, `fad46dac`, relatório `relatorio-codexPH-leitor-bancos.md`. A3 canal Play: `68ca7b56`, 76 testes relatados, `relatorio-codexPH-play-P2.md`. Fontes em `E:/Grana-temporarios/2026-11-08-retomada/`; Ledger não repetiu as provas. QA nativo, A4, gate A5 e revisão A6 seguem pendentes.
 
 Os horários antes estimados da preparação Play devem usar a tabela da passagem `00-PASSAGEM-2230-time-codex.md`: planos 18:47, limites 19:14, Groq 19:23, contatos e RevenueCat inicial 19:25, conta dona 19:32, descrição completa 19:34 e configuração RevenueCat 19:45. Onde um horário estimado não identifica exatamente esses assuntos, preserva-se o registro e esta tabela corrige a interpretação. Sem nova autorização de push, build ou Supabase.
+
+### Complemento — encerramento da noite (09/11, 00:19)
+
+**Pedido:** o autor encerrou às 00:19 de 09/11 ("Vamos encerrar o trabalho por agora. Voltaremos pela manhã, por volta das 9h. Documente o estado atual do projeto e desligue o computador"). Quem registra é o Supremo, porque as duas contas Codex estavam sem limite: a Gabriel Codex até 03:13 e a Codex PH até 03:32. Nenhum agente ficou trabalhando, e a retomada automática da madrugada foi cancelada.
+
+**Entregas desde o complemento anterior.** São relatos dos agentes; o Supremo conferiu os logs e os hashes.
+- **A4:** no main em `cd7edb8c` e no clone em `fd876f92`, por `cherry-pick -x`.
+- **P7, a retirada do fallback OpenAI da transcrição:** no main em `05536b9d`.
+- **P8, o transporte Groq isolado e inativo:** no main em `16e28ee0`.
+- **Gate A5 do main `16e28ee0`: VERDE.** Passaram o `tsc`, a guarda e o `test:ci` integral, com exit 0, e o `deno check` das três funções tocadas.
+- **Gate A5 do clone `fd876f92`: VERMELHO no `test:ci`.** Falhou `__tests__/avisos-recusa-estorno.cjs:370`, "par forte C6/Wallet preservado", que esperava 2 e veio 1.
+  - A hipótese, não confirmada, é que o leitor só de bancos (A2) deixou de ler o Google Wallet, que não é banco.
+  - Isso é a tarefa 1b do Codex PH. Sem ela, não há APK de teste novo.
+- **A6-01:** saneado no clone em `73999a27`.
+- **E6, etapa 1 (o gerador do CSV):** no clone em `32ce2b3b`.
+- **Estudo de custo do Granabô, em `relatorio-codexPH-granabo-custo.md` na pasta da rodada:**
+  - o Gemini pago (`gemini-3.5-flash-lite`) sai a R$ 21,76 por 1.000 perguntas, e a Groq 20B a R$ 5,34, pela PTAX de 06/11;
+  - os caminhos gratuitos, a Groq enxuta e o Cloudflare Workers AI, estão sem qualidade medida, e a transferência internacional ainda vai ser conferida pelo Watchtower;
+  - o Google tem um limite de gasto mensal que corta o uso, e não só avisa. O corte vem com atraso.
+
+**Decisões do autor nesta noite:**
+- A P7 e a P8 podem ir para o main ("Vai, Mete marcha. Pode ir pra principal"). O push e o deploy esperam o "ok" dele.
+- O ícone e a descrição completa da loja foram aprovados.
+- **O limite do Granabô usa as cotas mensais por plano da decisão 2d: 5, 50, 100 e 200 perguntas.** Não há cota por dia. O autor disse: "Eu defini mensagens por mês, porque por dia é muita loucura".
+- **Decisão 19:** todas as contas de hoje são de teste e ganham o Anual vitalício.
+  - No main, a cota do Granabô passa de 120 por dia para 200 por mês, para todos. É a tarefa 1c, ainda não implementada.
+  - O corte assumido são as contas criadas até 09/11/2026, e falta a confirmação do autor.
+- O autor tende a ativar o faturamento do Gemini, mas não ativou.
+
+**Git e servidor no encerramento:**
+- O main está limpo em `16e28ee0`, 19 commits acima do `origin/main`. O último push foi em `c20c813d`.
+- O push espera autorização, porque publica o A4 na web pela Vercel.
+- O clone está limpo em `fd876f92`.
+- Não houve build, deploy, migration nem escrita no Supabase.
+- A única ação no servidor foi uma leitura autorizada pelo autor, que contou o uso do Granabô em 30 dias. O número fica fora deste arquivo público e está na fila mestre.
+
+**Retomada às 9h:**
+- A fila está em `E:\Grana-temporarios\2026-11-08-retomada\00-FILA-MESTRE-pendencias.md`, e a ordem do Codex PH em `00-ORDEM-codexPH-fila-da-noite.md`.
+- O Codex PH segue nesta ordem:
+  1. a 1b, o vermelho do clone;
+  2. a 1c, a cota mensal de 200 no main, sem aplicar;
+  3. as tarefas 2 a 8, com troca de modelo em cada fronteira.
+- O Watchtower faz o A6 da P7 e da P8. O Ledger faz o B3, o vault e as notas do canvas.
+- As três mensagens das 23:3x ao Codex PH foram recusadas pelo limite e precisam ser reenviadas.
+
+**Sem verificação:**
+- o QA no aparelho do A1 e do A2;
+- a qualidade da Groq com ferramentas;
+- o limite de 120 por dia em produção, lido só na migration `20260908140000`;
+- o limite de gasto no Google, que ainda não foi configurado.
 ## 08/11 — retomada da pausa da noite
 
 **Pedido e fonte:** autor pediu “continue o trabalho pausado na noite passada”, depois “verifique a disponibilidade dos agentes e delegue suas tarefas” e “pode torrar os tokens todos das contas codex, tenho duas redefinições, pode jogar a maior parte do esforço de trabalho para as contas codex”. Registro pelo Beacon, substituindo o Ledger sem limite, conforme `E:\Grana-temporarios\2026-11-08-retomada\ordem-beacon-registro.md`. O corte operacional abaixo foi apurado pelo orquestrador; Beacon registra sem repetir testes, sondas ou revisão de produto.
