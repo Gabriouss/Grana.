@@ -147,7 +147,7 @@ const contas = [
     'o widget passa boletos (ou outra coisa) para calcularSafeToSpend');
   const inicio = fs.readFileSync(path.join(root, 'app/(app)/index.tsx'), 'utf8');
   trava(
-    /calcularSafeToSpend\(lancamentosDaCarteira\(transactions, creditCards, activeWalletId\), walletGoals, new Date\(`\$\{hojeDaSobra\}T12:00:00`\), \{ cards: creditCards, payments: invoicePayments \?\? \[\], sobraConfirmada: activeWalletId === 'total' \? sobraParaOLivre\(sobraDoMes, userId, hojeDaSobra\.slice\(0, 7\)\) : 0 \}\)/.test(inicio),
+    /calcularSafeToSpend\(lancamentosDaCarteira\(transactions, creditCards, activeWalletId, carteiraPrincipalId\), walletGoals, new Date\(`\$\{hojeDaSobra\}T12:00:00`\), \{ cards: creditCards, payments: invoicePayments \?\? \[\], sobraConfirmada: sobraParaOLivre\(sobraDoMes, userId, hojeDaSobra\.slice\(0, 7\), activeWalletId, carteiraPrincipalId\) \}\)/.test(inicio),
     'a Início passa outra coisa para calcularSafeToSpend (contas ou saldo inicial?)'
   );
   trava(!/saldoInicialEmEscopo/.test(inicio), 'a Início voltou a somar o saldo inicial das carteiras');
@@ -316,6 +316,8 @@ const contas = [
     ok('sobra: só a confirmada entra no Livre; sugestão = caixa do mês anterior, piso zero');
   }
 
+  // A4 (08/11): Principal e Total recebem a mesma sobra, sem duplicar a soma.
+  require('./sobra-carteira.cjs')();
   console.log(`\n${aprovadas} checagens da trava da regra 20 passaram — 0 falhas`);
 })().catch((e) => {
   console.error(e);
