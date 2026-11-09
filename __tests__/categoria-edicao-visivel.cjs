@@ -76,6 +76,8 @@ const categorias = ['Alimentação', 'Moradia', 'Transporte', 'Lazer', 'Saúde',
   .concat({ id: 'c1', name: 'AUDIT QA T18', color: '#222222', is_default: false });
 
 let reduzir = false;
+const alertas = [];
+let escritas = 0;
 const Modal = carregar('components/CategoryPickerModal.tsx', {
   react,
   'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'Fragment' },
@@ -84,7 +86,7 @@ const Modal = carregar('components/CategoryPickerModal.tsx', {
     StyleSheet: { create: (s) => s }, Text: 'Text', TextInput: 'TextInput', View: 'View',
   },
   './AppModal': { __esModule: true, default: 'AppModal', JanelaFlutuante },
-  '@/lib/alerta': { Alert: { alert: () => {} } },
+  '@/lib/alerta': { Alert: { alert: (...args) => alertas.push(args) } },
   '@expo/vector-icons/Ionicons': { default: 'Ionicons' },
   '@/lib/theme': {
     theme: {}, radius: {}, spacing: { xl: 24, md: 16 }, PALETTE_30: ['#000000'], fonts: {}, type: { apoio: 14 }, hitSlopPara: () => 0,
@@ -92,7 +94,7 @@ const Modal = carregar('components/CategoryPickerModal.tsx', {
   '@/lib/types': { CATEGORIES: [] },
   '@/lib/heuristics': carregarLib('lib/heuristics.ts'),
   '@/lib/data': {
-    addCategory: async () => {}, deleteCategory: async () => {}, updateCategory: async () => {},
+    addCategory: async () => { escritas++; }, deleteCategory: async () => {}, updateCategory: async () => { escritas++; },
     fetchApelidosCategoria: async () => [], fetchCategories: async () => categorias, seedDefaultCategories: async () => {},
   },
   '@/lib/cache-de-tela': { isLikelyNetworkError: () => false },
@@ -105,9 +107,9 @@ const Modal = carregar('components/CategoryPickerModal.tsx', {
   './Sheet': { useKeyboardHeight: () => 300 },
 }).default;
 
-function render() {
+function render(props = {}) {
   indice = 0;
-  const arvore = Modal({ visible: true, onClose: () => {}, mode: 'manage' });
+  const arvore = Modal({ visible: true, onClose: () => {}, mode: 'manage', ...props });
   const efeitos = efeitosPendentes;
   efeitosPendentes = [];
   efeitos.forEach((fn) => fn());
@@ -160,4 +162,24 @@ async function cenario() {
   rolagens = await cenario();
   assert.deepEqual(JSON.parse(JSON.stringify(rolagens)), [{ y: 9 * 44, animated: false }], 'movimento reduzido rola sem animar');
   console.log('OK categoria em edição: a lista rola até o formulário e encolhe com o painel (T18).');
+  for (const tipo of ['in', 'out']) {
+    slots = []; efeitosPendentes = [];
+    const props = { mode: 'pick', tipo };
+    render(props); await new Promise((r) => setImmediate(r));
+    let arvore = render(props);
+    assert.ok(acha(arvore, (n) => n.type === 'Text' && n.props.children === 'Assinaturas'), 'Assinaturas visível também na entrada');
+    assert.equal(!!acha(arvore, (n) => n.type === 'Text' && n.props.children === 'Salário'), tipo === 'in');
+    const criar = [...nos(arvore)].reverse().find((n) => n.props.onPress && acha(n.props.children, (c) => c.type === 'Text' && c.props.children === '+ Criar categoria'));
+    criar.props.onPress(); arvore = render(props);
+    acha(arvore, (n) => n.props.accessibilityLabel === 'Nome da nova categoria').props.onChangeText('salário');
+    arvore = render(props);
+    const adicionar = [...nos(arvore)].reverse().find((n) => n.props.onPress && acha(n.props.children, (c) => c.type === 'Text' && c.props.children === 'Adicionar categoria'));
+    await adicionar.props.onPress();
+    const alerta = alertas.at(-1);
+    assert.equal(alerta[0], 'Categoria já existe');
+    assert.ok(alerta[1].includes('Salário'), 'duplicidade identifica o nome existente');
+    if (tipo === 'out') assert.match(alerta[1], /entrada.*não aparece.*saída/, 'categoria oculta tem explicação');
+    assert.equal(escritas, 0, 'duplicidade não escreve no banco');
+  }
+  console.log('OK T7: lista por tipo e duplicidade com recibo, sem escrita.');
 })().catch((e) => { console.error(e); process.exit(1); });
