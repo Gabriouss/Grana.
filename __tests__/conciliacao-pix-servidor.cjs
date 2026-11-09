@@ -11,6 +11,10 @@ const snapshot=t=>({...Object.fromEntries(campos.map(k=>[k,t[k]??null])),amount:
   await db.exec(schema.match(/create unique index if not exists transactions_user_fitid_uniq\s+[^;]*;/)[0]);
   await db.exec("create function public.tem_direito_acesso() returns boolean language sql as $$ select current_setting('app.allowed',true) is distinct from 'false' $$;");
   await db.exec(migration('20261109110000'));
+  // Restrições de produção que a RPC precisa respeitar (pré-aplicação de 09/11): tamanhos pelo schema.sql e o teto de valor,
+  // conferido em produção e no schema.sql do main (:329), que este clone ainda não tem.
+  for(const re of [/alter table transactions add constraint transactions_description_len\s+check[^;]*;/,/alter table transactions add constraint transactions_category_len\s+check[^;]*;/])await db.exec(schema.match(re)[0]);
+  await db.exec('alter table transactions add constraint transactions_amount_max check (amount <= 999999999.99)');
   const u=await novoUsuario(db),outro=await novoUsuario(db);
   const w=(await db.query("insert into wallets(user_id,name,is_default) values($1,'Principal',true) returning id",[u])).rows[0].id;
   await db.query("select set_config('app.uid',$1,false)",[u]);
@@ -33,5 +37,12 @@ const snapshot=t=>({...Object.fromEntries(campos.map(k=>[k,t[k]??null])),amount:
   assert.equal((await call({...base,chave:chave('5'),centavos:2200})).situacao,'conflito');
   await assert.rejects(call({...base,chave:'id-sem-escopo'}));await assert.rejects(call({...base,chave:chave('6'),operacao:'apagar'}));
   const grants=(await db.query("select has_function_privilege('anon','public.confirmar_conciliacao_pix(jsonb)','EXECUTE') a,has_function_privilege('authenticated','public.confirmar_conciliacao_pix(jsonb)','EXECUTE') b")).rows[0];assert.equal(grants.a,false);assert.equal(grants.b,true);
-  console.log('Pix SQL real: dono/acesso, idempotência, reimportação, data sem cópia, snapshot alterado, duplicatas/ambiguidade e permissões OK');
+  // P3 da pré-aplicação: o teto da RPC é o da tabela, com 22023 limpo (nunca 23514), e o texto vai aparado para a tabela.
+  const idTeto=(await call({...base,chave:chave('7'),centavos:99999999999,data:'2026-09-01'})).id;assert.ok(idTeto,'R$ 999.999.999,99 cabe');assert.equal(Number((await row(idTeto)).amount),999999999.99);
+  await assert.rejects(call({...base,chave:chave('8'),centavos:100000000000,data:'2026-08-01'}),e=>e.code==='22023');assert.equal(Number((await db.query("select count(*) n from transactions where fitid=$1",[chave('8')])).rows[0].n),0);
+  const r9=await row((await call({...base,chave:chave('9'),centavos:4321,data:'2026-07-01',descricao:'  Pix padaria  ',categoria:'  Mercado  '})).id);
+  assert.equal(r9.description,'Pix padaria');assert.equal(r9.category,'Mercado');assert.equal(r9.payment_method,'pix');
+  const longa='C'.repeat(58),rb=await row((await call({...base,chave:chave('b'),centavos:4322,data:'2026-06-01',categoria:longa+'     ',descricao:'D'.repeat(198)+'     '})).id);
+  assert.equal(rb.category,longa);assert.equal(rb.description,'D'.repeat(198));
+  console.log('Pix SQL real: dono/acesso, idempotência, reimportação, data sem cópia, snapshot alterado, duplicatas/ambiguidade, teto de valor, texto aparado e permissões OK');
 }finally{await db.close();}})().then(()=>clearTimeout(watchdog),e=>{clearTimeout(watchdog);console.error(e);process.exitCode=1;});

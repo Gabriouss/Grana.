@@ -35,10 +35,11 @@ begin
   if v_user is null or not public.tem_direito_acesso() then
     raise exception 'Acesso não confirmado' using errcode = '42501';
   end if;
+  -- Teto igual ao check transactions_amount_max (R$ 999.999.999,99): valor maior cai aqui com 22023, nunca na tabela com 23514.
   if v_chave is null or v_chave !~ '^pix1:[0-9a-f]{64}:[0-9a-f]{64}$'
     or v_operacao is null or v_operacao not in ('novo', 'data')
     or v_data is null or extract(year from v_data) not between 1000 and 9999
-    or v_centavos is null or v_centavos <= 0 or v_centavos > 999999999999
+    or v_centavos is null or v_centavos <= 0 or v_centavos > 99999999999
     or v_tipo is null or v_tipo not in ('in','out') then
     raise exception 'Item de conciliação inválido' using errcode = '22023';
   end if;
@@ -80,11 +81,12 @@ begin
       or coalesce(p_item->>'cor','') !~ '^#[0-9a-fA-F]{6}$' then
       raise exception 'Confira descrição e categoria' using errcode = '22023';
     end if;
+    -- Grava o texto já aparado: o tamanho conferido acima é o do que vai para a tabela.
     insert into public.transactions(user_id, wallet_id, type, description, amount, category, color,
       occurred_on, recurring, payment_method, fitid)
-    values(v_user, v_wallet, v_tipo, p_item->>'descricao', v_centavos::numeric / 100,
-      p_item->>'categoria', p_item->>'cor', v_data, false,
-      case when lower(p_item->>'descricao') ~ '\mpix\M' then 'pix' else null end, v_chave)
+    values(v_user, v_wallet, v_tipo, btrim(p_item->>'descricao'), v_centavos::numeric / 100,
+      btrim(p_item->>'categoria'), p_item->>'cor', v_data, false,
+      case when lower(btrim(p_item->>'descricao')) ~ '\mpix\M' then 'pix' else null end, v_chave)
     returning id into v_id;
     return jsonb_build_object('situacao','inserido','id',v_id);
   end if;
