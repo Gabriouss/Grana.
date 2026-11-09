@@ -1,5 +1,7 @@
 import CampoBusca from '@/components/CampoBusca';
 import ChipsCategoria from '@/components/ChipsCategoria';
+import { useCategorias } from '@/lib/use-categorias';
+import { linhasDaCategoria } from '@/lib/categorias-cliente';
 import { filtrarCompras, mostrarComprasFiltradas, opcoesDeCategoria } from '@/lib/filtro-compras';
 import { useKeyboardHeight } from '@/lib/teclado';
 import { semViuva } from '@/lib/sem-viuva';
@@ -113,7 +115,7 @@ export default function CreditoScreen() {
   const campoFocado = useRef(false);
   const { ehCompacto } = useBreakpoint();
   const router = useRouter();
-  const { novaCompra, texto, falaGuardada, referencia, aproximada, editarCompra, compraData } = useLocalSearchParams<{ novaCompra?: string; texto?: string; falaGuardada?: string; referencia?: string; aproximada?: string; editarCompra?: string; compraData?: string }>();
+  const { novaCompra, texto, falaGuardada, referencia, aproximada, editarCompra, compraData, modo, categoria, inicio, fim } = useLocalSearchParams<{ novaCompra?: string; texto?: string; falaGuardada?: string; referencia?: string; aproximada?: string; editarCompra?: string; compraData?: string; modo?: string; categoria?: string; inicio?: string; fim?: string }>();
   /* Fala da fila de áudios em revisão: o salvamento a tira da fila. */
   const falaGuardadaDaRevisao = useRef<string | undefined>(undefined);
   const { hidden, toggle: togglePrivacy } = usePrivacy();
@@ -231,6 +233,17 @@ export default function CreditoScreen() {
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [buscaCompra, setBuscaCompra] = useState('');
   const [categoriaCompra, setCategoriaCompra] = useState<string | null>(null);
+  const [intervaloCategoria, setIntervaloCategoria] = useState<{ inicio: string; fim: string } | null>(null);
+  const consultaCategoria = useCategorias(intervaloCategoria?.inicio ?? '', intervaloCategoria?.fim ?? '', isDemoMode, DEMO_TRANSACTIONS, !!intervaloCategoria);
+  useAberturaPorParametro(modo === 'categoria', () => {
+    if (inicio && fim && /^\d{4}-\d{2}-\d{2}$/.test(inicio) && /^\d{4}-\d{2}-\d{2}$/.test(fim) && inicio <= fim) {
+      setIntervaloCategoria({ inicio, fim }); setCategoriaCompra(categoria ?? null); setBuscaCompra(''); setSelectedCardId('all');
+      const [ano, mes] = inicio.split('-').map(Number); setSelectedYear(ano); setSelectedMonth(mes - 1);
+    } else {
+      Alert.alert('Período indisponível', 'Abra a categoria novamente pelo Início ou pelos Gráficos.');
+    }
+    router.setParams({ modo: undefined, categoria: undefined, inicio: undefined, fim: undefined });
+  });
   const abrirAcoesCompra = useCallback((tx: Transaction) => {
     setSelectedTx(tx); setActionSheetOpen(true);
   }, []);
@@ -624,9 +637,15 @@ export default function CreditoScreen() {
     [walletTransactions, walletCards, selectedCardId, viewYear, viewMonth, datasDasCompras]
   );
 
-  const categoriasCompras = useMemo(() => opcoesDeCategoria(creditTransactions), [creditTransactions]);
-  const categoriaEfetiva = categoriasCompras.some(([nome]) => nome === categoriaCompra) ? categoriaCompra : null;
-  const comprasVisiveis = useMemo(() => filtrarCompras(creditTransactions, buscaCompra, categoriaEfetiva), [creditTransactions, buscaCompra, categoriaEfetiva]);
+  // O gráfico usa data de compra; fatura mantém seu eixo próprio e seu pagamento intactos.
+  const baseDasCompras = useMemo(() => intervaloCategoria
+    ? (consultaCategoria.resultado ? linhasDaCategoria(consultaCategoria.resultado, null, 'credito') : [])
+    : creditTransactions, [intervaloCategoria, consultaCategoria.resultado, creditTransactions]);
+  const categoriasCompras = useMemo(() => opcoesDeCategoria(baseDasCompras), [baseDasCompras]);
+  const categoriaEfetiva = intervaloCategoria || categoriasCompras.some(([nome]) => nome === categoriaCompra) ? categoriaCompra : null;
+  const comprasVisiveis = useMemo(() => intervaloCategoria
+    ? filtrarCompras(baseDasCompras.filter(t => !categoriaEfetiva || t.category === categoriaEfetiva), buscaCompra, null)
+    : filtrarCompras(baseDasCompras, buscaCompra, categoriaEfetiva), [baseDasCompras, buscaCompra, categoriaEfetiva, intervaloCategoria]);
   const filtroCompraAtivo = !!buscaCompra.trim() || categoriaEfetiva !== null;
   const subtotalFiltrado = useMemo(() => somaDaFatura(comprasVisiveis), [comprasVisiveis]);
   /* Busca sem ver o resultado não serve: ao abrir o teclado, a lista rola até o
@@ -642,7 +661,7 @@ export default function CreditoScreen() {
   }, [alturaTeclado, rolarAteCampoBusca]);
 
   const secoesDeLancamentos = useMemo(() => {
-    if (selectedCardId === 'all') return agruparLancamentosPorCartao(comprasVisiveis, walletCards);
+    if (intervaloCategoria || selectedCardId === 'all') return agruparLancamentosPorCartao(comprasVisiveis, intervaloCategoria ? cards : walletCards);
     if (!selectedCard || comprasVisiveis.length === 0) return [];
     return [{
       chave: selectedCard.id,
@@ -652,7 +671,7 @@ export default function CreditoScreen() {
       data: comprasVisiveis,
       subtotal: somaDaFatura(comprasVisiveis),
     }];
-  }, [selectedCardId, selectedCard, comprasVisiveis, walletCards]);
+  }, [selectedCardId, selectedCard, comprasVisiveis, walletCards, cards, intervaloCategoria]);
 
   const totalInvoice = useMemo(
     () => somaDaFatura(creditTransactions),
