@@ -93,6 +93,62 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+# 2026-11-09 - M1 - Retomada da manhã
+
+## T4 — abertura e diagnóstico B3
+
+1. Pedido: executar T4 da ordem 00-ORDEM-orquestrador-codex-0911.md, com registro imediato e saneamento B3.
+2. Sintoma: verificador confirma 32 itens; causa documental: 27 perenes desatualizadas, quatro sessões sem entrada e uma nota com duas fontes Kiwify removidas. Não é diagnóstico de falha do produto.
+3. Fontes: E:/Grana-temporarios/2026-11-08-retomada/00-FILA-MESTRE-pendencias.md e B3-antes-ledger-0911.log; main 58bef892, ahead 20, um worktree e zero stash, conferidos. T1 clone, T2 main, T3 leitura, T4 registro e T5 texto externo conforme ordem.
+4. Descartado: alterar modelos, reiniciar, publicar, build, Supabase ou criar isolamento Git. Commit apenas context.md após janela combinada com Prism; push proibido nesta rodada.
+5. Ocorrências: pipe Python inicial perdeu Unicode no console; nova execução usa arquivo UTF-8. Nenhuma nota alterada por esse erro. Pedido de janela enviado e conferido para Prism.
+6. Verificação: inventário Git e verificador executados localmente. Produto, aparelho e produção não testados por Ledger. Resultados dos outros agentes serão atribuídos aos respectivos recibos, sem antecipar aprovação.
+
+[[Grana]] · [[00 - Índice - Sessões]]
+
+
+
+## T4/B3 — 32 apontamentos saneados
+
+1. Pedido: corrigir os 32 itens do B3, revisar cada perene e executar verificador final.
+2. Sintoma e causa: 27 perenes ficaram atrás dos commits de suas fontes; quatro registros não tinham link de entrada; a nota de gateways ainda declarava os dois arquivos Kiwify removidos por d5d6172d.
+3. Arquivos: relatório individual E:/Grana-temporarios/2026-11-08-retomada/B3-revisoes-ledger-0911.md; logs B3-antes-ledger-0911.log e B3-depois-ledger-0911.log. As 27 notas receberam estado atual específico, revisado 2026-11-09 e vínculo a esta sessão; o índice recebeu quatro entradas e a declaração de fonte Kiwify foi corrigida. Conteúdo anterior preservado como histórico, com cópia de retorno externa em B3-backup.
+4. Descartado: carimbar datas sem correção de conteúdo, recriar Kiwify, tratar proposta Groq como provedor ativo ou afirmar deploy a partir de código. Corrigidos Pixel por padrão sem banner, Stories Facebook, fluxo da voz, avisos locais de assinatura, fórmula Saldo/Livre e limites dos gates. A divergência remanescente no Positioning de PRODUCT.md foi explicitada nas notas de produto, sem editar esse caminho fora do escopo.
+5. Ocorrências: console Windows exigiu script em arquivo UTF-8 após pipe perder acentos; corrigido antes das escritas. Nenhum aplicativo ou serviço externo alterado. Prism ainda trabalha em T2; janela documental solicitada e aguardada, sem commit concorrente.
+6. Verificação: node scripts/verificar-vault.mjs com --estrito retornou zero itens em todas as categorias. Revisão documental local e histórico; sem teste de produto, aparelho ou produção. Fonte pode voltar a mudar por T2, exigindo nova conferência do delta. Não houve push/build/Supabase.
+
+## T1/1b e T3 — recibos lidos durante o B3
+
+1. Pedido: registro imediato das frentes da rodada, distinguindo parcial de entrega integral.
+2. Sintoma e causa: teste C6/Wallet antigo contrariava o filtro bancário A2; RED e focal GREEN 31/31 são recibos do executor, não repetidos pelo Ledger.
+3. Arquivos/hashes: 1b 4a9772a1, relatorio-codexPH-1b.md; revisão relatorio-watchtower-revisao-final.md. Watchtower libera P7 05536b9d no delta e P8 16e28ee0 apenas como transporte inativo. Aceite original fad46dac não liberado isoladamente; saneamento 73999a27 revisado. 1b liberado no recorte do diff, ainda sem gate integral neste corte.
+4. Descartado: ajustar produto para aceitar Wallet, antecipar gate verde, interpretar P8 como troca ativa ou aceite original como saneado retroativamente.
+5. Ocorrências: Ledger leu o relatório externo e o andamento visível do Codex; não conduziu nova auditoria ou testes. T2 ainda sem hash entregue; não converter WIP em entrega.
+6. Verificação: recibos lidos, não reexecutados. Watchtower relata zero achados novos e um P2 histórico saneado. Faltam gate clone e 1c, QA nativo e autorizações de publicação. C1 a C5 continuam bloqueados conforme ordem.
+
+
+
+## Adendo 09:58 e T5 — decisões e texto externo
+
+1. Pedido: registrar as decisões novas do adendo e a entrega documental T5/P4 v2, sem ampliar a autorização operacional deste terminal.
+2. Sintoma e causa: pagar Gemini era intenção, não faturamento ativo. Autor adiou eventual pagamento; Granabô continua no Gemini gratuito, P8 parada e Groq desligada. Limite mensal de gasto será configuração do autor quando ativar faturamento; a tarefa 1c permanece. V1 legal precisava incorporar decisões posteriores, conforme relatório Forge.
+3. Fontes: adendo 09:58 de 00-ORDEM-orquestrador-codex-0911.md; texto-legal-play-v2-para-revisao.md e relatorio-forge-P4-v2.md em E:/Grana-temporarios/2026-11-07-play-fase1/. SHA-256 externo da v2 conferido por Ledger: fb3b448e0707811009452ee01b1520c8c0d565e5f425cbad5c6f1ef7b2c1e6a3; não é commit. Forge relata v1 preservada, quatro planos, teste nos pagos, saída OpenAI condicionada à implantação, suporte, público, Brasil e propostas de retenção; duas variantes de provedor não selecionadas.
+4. Descartado: registrar faturamento como ativo, selecionar variante, copiar dados cadastrais ou publicar texto sem revisão. O adendo atribui T6a ao Watchtower e T6b ao Prism: push somente do hash coberto por manifesto verde, compatível com build/Supabase/web atuais e sem leitor, com fetch e varredura prévia. Não autoriza push por Ledger nem deploy Supabase.
+5. Ocorrências: relatório Forge lido e hash externo conferido; não houve nova revisão jurídica por Ledger. O gate clone tem prioridade e o gate main aguarda sua conclusão; git documental aguarda a janela com Prism. Nenhuma ação operacional executada por este registro.
+6. Pendências: Watchtower revisa P4 v2 e manifesto; autor aprova texto/prazos e eventual provedor/faturamento; confirmar termos e implantação efetiva. T6 não é push executado. Propostas de retenção não são política aplicada. App, produção e contas não sondados pelo Ledger.
+
+
+
+## T2/1c — recibo focal, antes do commit
+
+1. Pedido: registrar a substituição da cota diária do Granabô pela mensal, com compatibilidade do cliente instalado.
+2. Sintoma e causa: relatorio-prism-1c.md relata RPC com limite diário e helper que não reconhecia motivo mes; RED mostrou mensagem de rajada indevida. Não foi falha sondada em produção por Ledger.
+3. Arquivos: supabase/migrations/20261109100000_granabo_cota_mensal.sql, shared ai-quota.ts, assistente-financeiro/index.ts e teste granabo-cota-mensal.cjs; pedido-supabase-limite-granabo.md, relatorio-prism-1c.md, 1c-red.log, 1c-green.log e 1c-deno-check.log na rodada. Ainda sem hash entregue. Prism relata SQL real em PGlite, helper/handler/cliente reais e nenhum provedor chamado na recusa.
+4. Descartado: nova assinatura da RPC, aplicar migration, publicar Edge ou interpretar teste local como produção. Cota da voz preservada; contador mensal inicia em zero quando aplicado, condição explicitada no pedido. Não reconstruir histórico pessoal.
+5. Ocorrências: Prism aguarda liberação documental para seu commit e encerramento do gate clone para o gate main. Ledger pediu confirmação de janela própria antes de tocar Git; não houve commit concorrente. Erros iniciais de caminho Deno e codificação foram corrigidos pelo executor conforme relatório.
+6. Verificação: focais e Deno verdes relatados por Prism, sem repetição pelo Ledger; commit, gate main e revisão 1c ainda pendentes neste corte. Concorrência de backends independentes, aparelho e produção não validados. Gate clone iniciado conforme recibo PH, ainda sem resultado final lido.
+
+
 # Registro da distribuição — 08/11/2026
 
 ### 08/11 — distribuição Codex e registro em tempo real
