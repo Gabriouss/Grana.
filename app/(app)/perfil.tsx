@@ -87,7 +87,7 @@ const WIDGETS_HOME: Array<{
   nomeNoLauncher: string;
 }> = [
   { tipo: 'voz', titulo: 'Lançar por voz', tamanho: '1 × 1', descricao: 'Fale qualquer lançamento sem precisar abrir o app.', nomeNoLauncher: 'Grana. Lançar por voz' },
-  { tipo: 'livre', titulo: 'Livre para gastar', tamanho: '2 × 1', descricao: 'Veja quanto está realmente disponível neste mês.', nomeNoLauncher: 'Grana. Livre para gastar' },
+  { tipo: 'livre', titulo: 'Livre para gastar', tamanho: '2 × 1', descricao: 'Veja quanto está livre por dia até o fim do\u00a0mês.', nomeNoLauncher: 'Grana. Livre para gastar' },
   { tipo: 'central', titulo: 'Central de lançamentos', tamanho: '2 × 2', descricao: 'Abra rapidamente Entrada, Débito/Pix, Crédito ou Boleto.', nomeNoLauncher: 'Grana. Central de lançamentos' },
   { tipo: 'compromisso', titulo: 'Contas do mês', tamanho: '2 × 2', descricao: 'Acompanhe as contas do mês e as que estão atrasadas.', nomeNoLauncher: 'Grana. Contas do mês' },
   { tipo: 'cofrinho', titulo: 'Cofrinho', tamanho: '2 × 1', descricao: 'Acompanhe uma meta e vá direto para adicionar dinheiro.', nomeNoLauncher: 'Grana. Cofrinho' },

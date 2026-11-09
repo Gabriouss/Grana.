@@ -626,7 +626,7 @@ const TOOLS = [
     function: {
       name: 'livreParaGastar',
       description:
-        'Retorna quanto o usuário ainda pode gastar no MÊS ATUAL sem comprometer as contas fixas. ' +
+        'Retorna o Livre para gastar do MÊS ATUAL, uma projeção feita com o que o usuário registrou, sem garantia de que as contas do mês estejam cobertas. ' +
         'É o "livre para gastar": entradas menos saídas de caixa do mês, menos o guardado em metas. ' +
         'Boleto pendente ou atrasado não entra: ele pesa quando é pago. ' +
         'Use quando o usuário perguntar "quanto posso gastar", "quanto tenho livre", "quanto sobra". ' +
