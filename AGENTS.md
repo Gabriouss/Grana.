@@ -821,6 +821,18 @@ Regras permanentes para qualquer sessão que abrir este repositório:
       em todo o período, sem chamá-lo de saldo. `initial_balance` não volta ao
       cálculo de saldo; importações incompletas já inflaram o histórico acumulado.
       Decisão do autor na Rodada 2 de `ordem-keel-livre.md`, em 07/11.
+    - **Decisão de 08/11/2026 — sobra e carteiras:** a sobra confirmada pertence
+      à carteira Principal padrão do mesmo usuário, identificada por `user_id`
+      e `is_default`, nunca por nome ou posição. Na visão Principal, somam-se
+      seus lançamentos e a sobra; cada outra carteira considera apenas seus
+      próprios lançamentos, sem sobra. A visão Total soma todas as carteiras e
+      a sobra exatamente uma vez. A pergunta aparece em Total e Principal;
+      lançamento legado sem carteira entra na Principal. Assim, Principal e
+      Total só coincidem por esse critério quando não há outras carteiras com
+      valores. A decisão vale também com várias carteiras; Início e widgets
+      devem compartilhar o núcleo e preservar a regra do Granabô. Pedido do
+      autor em `00-ORDEM-codex-sobra-carteira-unica.md`: implementação e
+      publicação dependem de entregas e autorizações próprias.
     - Qualquer mudança futura nesse cálculo exige pedido explícito do autor.
       O teste de trava pode ser atualizado para codificar a ordem de 07/11,
       sem afrouxar as demais asserções; paridade entre Início, widget e
