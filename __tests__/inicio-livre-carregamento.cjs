@@ -81,7 +81,7 @@ function scenario(failCore = { on: false }) {
   const leves = [];
   const focar = compile(`exports.focar = ${foco.getText(ast)};`, 'foco.tsx', { ...env, load, carregarDadosLeves: async () => { leves.push(1); },
     ultimoModoCarregadoRef: { current: false }, carregarPerfil: async () => null, carregarDiagnostico: async () => null, setDiagnostico() {},
-    carregarLayoutHomeEmEtapas: async () => {}, setHomeLayout() {}, pieAnim: { setValue() {} }, reduzirMovimento: true }).focar;
+    carregarHomeLayout: async () => {}, setHomeLayout() {}, pieAnim: { setValue() {} }, reduzirMovimento: true }).focar;
   const cargas = () => calls.filter(c => c === 'transactions').length;
   return { load, states, calls, get goals() { return goals; }, get payments() { return payments; }, render, env, focar, leves, cargas,
     renovar() { goals = deferred(); payments = deferred(); } };

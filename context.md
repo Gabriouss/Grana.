@@ -93,6 +93,10 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 08/11 — equivalente de 6f90c18d no clone
+
+Passagem 22:30 atribuiu ao PH o saneamento do harness do Prism, após A3 `68ca7b56`. RED no clone: ReferenceError carregarHomeLayout, dublê ainda com nome carregarLayoutHomeEmEtapas. Corrigida só a dependência em `__tests__/inicio-livre-carregamento.cjs`; asserções e módulo real preservados. Sem alteração de produto/pesado/push/build/Supabase. Não transportar o contexto do main junto.
+
 ## 08/11 — A3/P2, isolamento dos textos e caminhos de compra externa na Play
 
 **Pedido/escopo:** fila mestre autoriza A3 no clone após A2, sem push/build/Supabase e sem implementar Billing P1. Base `fad46dac`, A2 com núcleo `10da09f5`, trava `deb301dc`, queries `2f3f7a17` e interface própria; árvore limpa antes de A3.
