@@ -136,7 +136,9 @@ export default function AvisosBancoSecao() {
           </AppPressable>
         </>
       )}
-      {estado?.ultimaFalha && <Text style={styles.legenda}>Última falha ao ler: {estado.ultimaFalha.split('@')[0]}</Text>}
+      {estado?.ultimaFalha && <Text style={styles.legenda} accessibilityLiveRegion="polite">{estado.ultimaFalha.startsWith('FalhaLimpezaDiario@')
+        ? 'Não consegui apagar textos antigos do diário. Abra o diário e tente Apagar tudo.'
+        : `Última falha ao ler: ${estado.ultimaFalha.split('@')[0]}`}</Text>}
       <AppPressable style={styles.acaoAlvo} accessibilityRole="button" onPress={carregar}>
         <Text style={styles.acao}>Atualizar estado</Text>
       </AppPressable>
@@ -165,7 +167,7 @@ export default function AvisosBancoSecao() {
         <Text style={styles.titulo} accessibilityRole="header">Ler avisos dos bancos?</Text>
         <Text style={styles.corpo}>{semViuva('Para sugerir lançamentos, o Grana. acessa o título e o texto das notificações dos bancos do catálogo que você ligar, mesmo com o app fechado.')}</Text>
         <Text style={styles.corpo}>{semViuva('O Android entrega eventos de todos os apps ao serviço. Os que não são bancos são descartados antes da leitura do conteúdo, sem guardar pacote, contagem ou horário. Nunca lemos o título nem o texto de WhatsApp, Instagram, Tinder, ChatGPT ou carteiras digitais.')}</Text>
-        <Text style={styles.corpo}>{semViuva('O título e o texto lidos ficam só neste aparelho por até 7 dias e não são enviados ao servidor. Você confere e escolhe o que virar lançamento; lançamentos confirmados são sincronizados com sua conta. Pode desligar a leitura aqui ou retirar o acesso no Android.')}</Text>
+        <Text style={styles.corpo}>{semViuva('O título e o texto ficam só neste aparelho e não são enviados ao servidor. Textos guardados há 7 dias ou mais são apagados quando o app ou o serviço retoma, lê ou grava o diário. Com o app e o serviço parados, a limpeza espera a próxima execução. Se a exclusão falhar, mostramos um aviso para tentar novamente. Você confere e escolhe o que virar lançamento; lançamentos confirmados são sincronizados com sua conta. Pode desligar a leitura aqui ou retirar o acesso no Android.')}</Text>
         {falha && <Text style={styles.corpo} accessibilityLiveRegion="polite">{falha}</Text>}
         <AppPressable style={styles.acaoAlvo} accessibilityRole="button" onPress={aceitar}>
           <Text style={styles.acao}>Aceitar e continuar</Text>
@@ -194,7 +196,7 @@ function DiarioDoTeste({ aoFechar }: { aoFechar: () => void }) {
       setIlegiveis(lido.ilegiveis);
     } catch (erro) {
       console.error('[avisos] diário não foi lido', erro instanceof Error ? erro.name : 'erro');
-      setFalha('Não consegui ler o diário. Os avisos seguem guardados no aparelho.');
+      setFalha('Não consegui abrir ou limpar o diário. Tente atualizar ou apagar os textos novamente.');
     }
   }, []);
 
@@ -244,7 +246,7 @@ function DiarioDoTeste({ aoFechar }: { aoFechar: () => void }) {
               <Text style={styles.acao}>Fechar</Text>
             </AppPressable>
           </View>
-          <Text style={styles.legenda}>{semViuva('Fica só neste aparelho e some depois de 7 dias.')}</Text>
+          <Text style={styles.legenda}>{semViuva('Só neste aparelho. Apagamos textos guardados há 7 dias ou mais ao retomar, ler ou gravar o diário. Se o app e o serviço ficarem parados, a limpeza espera a próxima execução. Se falhar, avisamos para tentar novamente.')}</Text>
           {recibo && <Text style={styles.acao} accessibilityLiveRegion="polite">{recibo}</Text>}
           {falha && <Text style={styles.corpo}>{falha}</Text>}
           <AppPressable style={styles.acaoAlvo} accessibilityRole="button" disabled={apagando} onPress={() => void carregar()}>
@@ -266,7 +268,7 @@ function DiarioDoTeste({ aoFechar }: { aoFechar: () => void }) {
                 </AppPressable>
               </View>
             ))}
-            {!!avisos?.length && (
+            {(!!avisos?.length || !!falha) && (
               <AppPressable style={styles.acaoAlvo} accessibilityRole="button" disabled={apagando} accessibilityState={{ disabled: apagando, busy: apagando }} onPress={apagar}>
                 <Text style={styles.acao}>Apagar tudo</Text>
               </AppPressable>

@@ -120,6 +120,12 @@ internal object AvisosConfig {
   fun desconectadoEm(context: Context): Long = prefs(context).getLong(CHAVE_DESCONECTADO, 0L)
   fun ultimaFalha(context: Context): String? = prefs(context).getString(CHAVE_FALHA, null)
 
+  fun confirmarLimpeza(context: Context) {
+    if (ultimaFalha(context)?.startsWith("FalhaLimpezaDiario@") == true) {
+      prefs(context).edit().remove(CHAVE_FALHA).apply()
+    }
+  }
+
   fun limpar(context: Context) {
     prefs(context).edit().clear().commit()
   }

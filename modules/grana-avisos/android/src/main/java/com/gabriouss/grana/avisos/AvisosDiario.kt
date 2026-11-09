@@ -5,6 +5,8 @@ import java.security.MessageDigest
 import org.json.JSONArray
 import org.json.JSONObject
 
+internal class FalhaLimpezaDiario : IllegalStateException("nao confirmou limpeza do diario")
+
 /**
  * Um arquivo por aviso em `noBackupFilesDir`, fora do backup do Android. A
  * escrita vai para um temporário e só depois troca de nome: processo morto no
@@ -25,6 +27,7 @@ internal class AvisosDiario(private val pasta: File, private val agora: () -> Lo
   /** @return true só quando o aviso é novo. Atualização igual não duplica. */
   fun guardar(aviso: Aviso): Boolean = synchronized(TRAVA) {
     if (!AvisosFiltro.ehBanco(aviso.pacote)) return false
+    limparVencidos()
     garantirPasta()
     val destino = File(pasta, "${aviso.id}.json")
     if (destino.exists()) return false
@@ -41,7 +44,6 @@ internal class AvisosDiario(private val pasta: File, private val agora: () -> Lo
       temporario.delete()
       throw IllegalStateException("nao gravou o aviso")
     }
-    limparVencidos()
     return true
   }
 
@@ -55,13 +57,24 @@ internal class AvisosDiario(private val pasta: File, private val agora: () -> Lo
     return JSONObject().put("itens", itens).put("ilegiveis", ilegiveis).toString()
   }
 
-  fun limparForaDoCatalogo() = synchronized(TRAVA) { lerPermitidos(); Unit }
+  fun limparForaDoCatalogo() = synchronized(TRAVA) { limparVencidos(); lerPermitidos(); Unit }
+
+  private fun arquivos(): Array<File> {
+    if (!pasta.exists()) return emptyArray()
+    return pasta.listFiles() ?: throw FalhaLimpezaDiario()
+  }
+
+  private fun excluir(lista: List<File>) {
+    var falhou = false
+    lista.forEach { if (!it.delete() && it.exists()) falhou = true }
+    if (falhou) throw FalhaLimpezaDiario()
+  }
 
   private fun lerPermitidos(): Pair<JSONArray, Int> {
     val itens = JSONArray()
     var ilegiveis = 0
     if (pasta.exists()) {
-      val arquivos = pasta.listFiles() ?: throw IllegalStateException("nao listou o diario")
+      val arquivos = arquivos()
       // Escritas interrompidas nunca foram confirmadas no diário e podem conter legado.
       arquivos.filter { it.name.endsWith(".tmp") }.forEach {
         check(it.delete()) { "nao apagou temporario do diario" }
@@ -83,13 +96,13 @@ internal class AvisosDiario(private val pasta: File, private val agora: () -> Lo
   }
 
   fun apagarTudo() = synchronized(TRAVA) {
-    pasta.listFiles()?.forEach { check(it.delete()) { "nao apagou o diario" } }
+    excluir(arquivos().toList())
     Unit
   }
 
   fun limparVencidos() = synchronized(TRAVA) {
     val limite = agora() - RETENCAO_MS
-    pasta.listFiles()?.forEach { if (it.lastModified() < limite) it.delete() }
+    excluir(arquivos().filter { it.lastModified() <= limite })
     Unit
   }
 

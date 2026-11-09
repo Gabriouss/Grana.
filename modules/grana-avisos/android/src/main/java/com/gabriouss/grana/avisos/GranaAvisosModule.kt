@@ -16,10 +16,23 @@ class GranaAvisosModule : Module() {
   private var catalogoPreparado = false
 
   private fun prepararCatalogo() {
-    if (catalogoPreparado) return
-    AvisosConfig.limparLegado(context)
-    GranaAvisosListener.diario(context).limparForaDoCatalogo()
-    catalogoPreparado = true
+    if (!catalogoPreparado) {
+      AvisosConfig.limparLegado(context)
+      GranaAvisosListener.diario(context).limparForaDoCatalogo()
+      catalogoPreparado = true
+    }
+    GranaAvisosListener.diario(context).limparVencidos()
+    AvisosConfig.confirmarLimpeza(context)
+  }
+
+  private fun registrarFalha(erro: Exception) {
+    Log.w("GranaAvisos", "falha no diario: ${erro.javaClass.simpleName}")
+    AvisosConfig.registrarFalha(context, erro.javaClass.simpleName, System.currentTimeMillis())
+  }
+
+  private fun limparAoRetomar() {
+    if (appContext.reactContext == null) return
+    try { prepararCatalogo() } catch (erro: Exception) { registrarFalha(erro) }
   }
 
   private val context: Context
@@ -38,15 +51,11 @@ class GranaAvisosModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("GranaAvisos")
 
-    OnCreate {
-      if (appContext.reactContext != null) try { prepararCatalogo() } catch (erro: Exception) {
-        Log.w("GranaAvisos", "falha ao limpar legado: ${erro.javaClass.simpleName}")
-        AvisosConfig.registrarFalha(context, erro.javaClass.simpleName, System.currentTimeMillis())
-      }
-    }
+    OnCreate { limparAoRetomar() }
+    OnActivityEntersForeground { limparAoRetomar() }
 
     Function("estado") {
-      prepararCatalogo()
+      limparAoRetomar()
       JSONObject()
         .put("acesso", acessoConcedido())
         .put("aceite", AvisosConfig.temAceite(context))
@@ -69,8 +78,16 @@ class GranaAvisosModule : Module() {
       AvisosConfig.definirApp(context, pacote, ligado, System.currentTimeMillis())
     }
 
-    AsyncFunction("lerDiario") { GranaAvisosListener.diario(context).listar() }
-    AsyncFunction("apagarDiario") { GranaAvisosListener.diario(context).apagarTudo() }
+    AsyncFunction("lerDiario") {
+      try { GranaAvisosListener.diario(context).listar() }
+      catch (erro: Exception) { registrarFalha(erro); throw erro }
+    }
+    AsyncFunction("apagarDiario") {
+      try {
+        GranaAvisosListener.diario(context).apagarTudo()
+        AvisosConfig.confirmarLimpeza(context)
+      } catch (erro: Exception) { registrarFalha(erro); throw erro }
+    }
     AsyncFunction("limparTudo") {
       GranaAvisosListener.diario(context).apagarTudo()
       AvisosConfig.limpar(context)

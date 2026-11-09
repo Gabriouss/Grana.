@@ -92,6 +92,55 @@ fun main(args: Array<String>) {
     AvisosConfig.definirDono(ctx, "outra-conta-de-teste")
     check(inicio.invoke(AvisosConfig, ctx, nubank) == null)
   }
+  caso("retomada limpa vencidos inclusive no limite, sem depender de novo aviso") {
+    val agora = System.currentTimeMillis()
+    val pasta = File(raiz, "retencao").apply { mkdirs() }
+    fun gravar(nome: String, idade: Long): File = File(pasta, nome).apply {
+      writeText(JSONObject().put("pacote", nubank).put("titulo", "fixture").toString())
+      check(setLastModified(agora - idade))
+    }
+    val antigo = gravar("antigo.json", AvisosDiario.RETENCAO_MS + 1)
+    val limite = gravar("limite.json", AvisosDiario.RETENCAO_MS)
+    val recente = gravar("recente.json", AvisosDiario.RETENCAO_MS - 1)
+    AvisosDiario(pasta) { agora }.limparForaDoCatalogo()
+    check(!antigo.exists() && !limite.exists()) { "retomada conservou texto vencido" }
+    check(recente.exists()) { "apagou texto ainda no prazo" }
+  }
+  caso("falha de exclusão vencida não vira sucesso nem devolve texto expirado") {
+    val agora = System.currentTimeMillis()
+    val real = File(raiz, "falha-excluir").apply { mkdirs() }
+    val arquivo = File(real, "velho.json").apply {
+      writeText(JSONObject().put("pacote", nubank).put("titulo", "fixture").toString())
+      setLastModified(agora - AvisosDiario.RETENCAO_MS - 1)
+    }
+    val negado = object : File(arquivo.path) { override fun delete(): Boolean = false }
+    val pasta = object : File(real.path) { override fun listFiles(): Array<File> = arrayOf(negado) }
+    val diario = AvisosDiario(pasta) { agora }
+    val erro = runCatching { diario.listar() }.exceptionOrNull()
+    check(erro != null) { "falha de exclusão foi ignorada" }
+    check(arquivo.exists())
+    check(runCatching { diario.limparForaDoCatalogo() }.isFailure)
+    check(runCatching { diario.apagarTudo() }.isFailure)
+  }
+  caso("diretório ilegível nunca confirma limpeza manual ou automática") {
+    val pasta = object : File(raiz, "ilegivel") {
+      override fun exists(): Boolean = true
+      override fun listFiles(): Array<File>? = null
+    }
+    val diario = AvisosDiario(pasta)
+    check(runCatching { diario.limparVencidos() }.isFailure)
+    check(runCatching { diario.apagarTudo() }.isFailure)
+  }
+  caso("recibo de limpeza só some após sucesso, sem apagar outra falha") {
+    val ctx = Context()
+    AvisosConfig.registrarFalha(ctx, "FalhaLimpezaDiario", 10L)
+    check(AvisosConfig.ultimaFalha(ctx) == "FalhaLimpezaDiario@10")
+    AvisosConfig.confirmarLimpeza(ctx)
+    check(AvisosConfig.ultimaFalha(ctx) == null)
+    AvisosConfig.registrarFalha(ctx, "OutraFalha", 20L)
+    AvisosConfig.confirmarLimpeza(ctx)
+    check(AvisosConfig.ultimaFalha(ctx) == "OutraFalha@20")
+  }
   println("avisos bancos nativo: $passaram OK, $falhas falhas")
   check(falhas == 0)
 }

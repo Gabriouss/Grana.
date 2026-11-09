@@ -25,6 +25,7 @@ class GranaAvisosListener : NotificationListenerService() {
     try {
       AvisosConfig.limparLegado(this)
       diario(this).limparForaDoCatalogo()
+      AvisosConfig.confirmarLimpeza(this)
       AvisosConfig.registrarSinal(this, System.currentTimeMillis())
       activeNotifications?.forEach { receber(it, notificar = false) }
     } catch (erro: Exception) {

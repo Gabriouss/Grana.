@@ -93,6 +93,14 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 08/11 — saneamento A6-01 da retenção de avisos
+
+Codex/Watchtower apontaram que os textos “até 7 dias”/“some depois de 7” excediam a garantia real. Antes, só guardar/listar acionavam vencidos e delete false era ignorado. RED real Kotlin final: 9 passaram/3 falharam em retomada, exclusão recusada e diretório ilegível; UI real sem recibo claro também vermelha. Primeira fixture de falha tinha JSON sem pacote e disparava outra proteção: corrigida para banco válido antes do RED definitivo.
+
+`AvisosDiario.kt` agora limpa também na preparação/retomada, inclui o limite exato de sete dias, verifica listagem/exclusão e lança FalhaLimpezaDiario sem conteúdo privado. Gravação limpa antes de criar/retornar duplicata. Module tenta limpar em OnCreate/OnActivityEntersForeground/estado; Listener ao reconectar; falhas deixam tipo em prefs e recibo claro no Perfil/diário. Limpeza confirmada remove só o recibo de retenção. Apagar tudo continua disponível mesmo se leitura/limpeza falhar. Mesma trava entre instâncias preserva escrita em curso. API de ciclo de vida conferida na documentação Expo e no fonte instalado ModuleDefinitionBuilder.
+
+Ambos textos de AvisosBancoSecao e política Play em legal-content dizem que a limpeza acontece quando app/serviço executa; não prometem timer com ambos parados. Proposta legal externa alinhada. Mudança sem nova geometria de tela; ação de apagar já existente passa a aparecer na falha. Testes reais Kotlin e 61 grupos de telas verdes; CI integral/revisão final/QA Android continuam pendentes, sem declarar causa do aparelho. Hash A4 cd7edb8c recebido após passo CSV 32ce2b3b; fechar este saneamento antes do pick-x, árvore limpa para A5. Sem push/build/Supabase.
+
 ## 08/11 — E6, núcleo CSV, primeira etapa PH
 
 Supremo antecipou E6 enquanto Prism faz A4 main: ao chegar hash, fechar passo verde/commit e pick-x, antes do gate do clone. Base a1e61e27, um worktree/zero stash, árvore limpa. Ordem CSV lida inteira e escopo autorizado: só clone, período/carteira, oito colunas PT, BOM UTF-8 e ;, proteção de fórmulas, compartilhamento e recibos, sem OFX/push/build/Supabase.

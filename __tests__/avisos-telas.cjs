@@ -36,6 +36,7 @@ const react = {
 const jsx = (type, props) => ({ type, props: props || {} });
 const TransactionSheet = function TransactionSheet() {};
 let diario = [], erroDiario = false, erroGravacao = false, erroAjustes = false, erroAceite = false, aceiteDoTeste = false;
+let ultimaFalhaDoTeste = null;
 /* Falha só a escrita da caixa escolhida: pula as primeiras e recusa as seguintes. */
 let falhaCaixa = { pular: 0, vezes: 0 };
 let falhaFormas = false, avisosDoConsole = [];
@@ -55,7 +56,7 @@ class ValorAnimado {
 }
 const nativo = {
   avisosDisponivel: true,
-  estadoAvisos: () => ({ acesso: false, aceite: aceiteDoTeste, ultimoSinal: 0, desconectadoEm: 0, ultimaFalha: null }),
+  estadoAvisos: () => ({ acesso: false, aceite: aceiteDoTeste, ultimoSinal: 0, desconectadoEm: 0, ultimaFalha: ultimaFalhaDoTeste }),
   listarAppsAvisos: () => [{ pacote: 'com.nu.production', nome: 'Nubank', ligado: false, contagem: 0 }, { pacote: 'com.whatsapp', nome: 'WhatsApp', ligado: true, contagem: 2 }],
   definirAceiteAvisos: (valor) => { if (erroAceite) throw new Error('disco'); aceiteDoTeste = valor; chamadas.push(['aceite', valor]); },
   definirDonoAvisos() {}, garantirListaInicialAvisos() {},
@@ -540,7 +541,10 @@ async function main() {
   erroDiario = false;
   ok('falha ao ler o diário deixa recibo (alerta) em vez de barra');
 
+  ultimaFalhaDoTeste = 'FalhaLimpezaDiario@123';
   const p = montar(perfil.default, {}); await p.settle();
+  assert.match(texto(p.tree), /Não consegui apagar textos antigos/);
+  ultimaFalhaDoTeste = null;
   assert.match(texto(p.tree), /Android entrega todas/);
   assert.match(texto(p.tree), /Leitura desligada/);
   assert.match(texto(p.tree), /Sem sinal/);
@@ -550,6 +554,8 @@ async function main() {
   assert.equal(chamadas.length, 0, 'ajustes não abrem antes do aceite');
   assert.ok(elementos(p.tree).some((e) => e.type === './Sheet'), 'aviso em janela do DS');
   assert.match(texto(p.tree), /título e (?:o )?texto/);
+  assert.match(texto(p.tree), /limpeza espera a próxima execução/);
+  assert.doesNotMatch(texto(p.tree), /por até\s+7 dias|some depois de\s+7 dias/);
   assert.match(texto(p.tree), /WhatsApp/); // só a explicação do que nunca é lido
   botao(p, 'Agora não')(); p.render();
   assert.equal(chamadas.length, 0);
@@ -578,7 +584,11 @@ async function main() {
 
   erroDiario = true;
   const d = montar(perfil.DiarioDoTeste, { aoFechar() {} }); await d.settle();
-  assert.match(texto(d.tree), /Não consegui ler o diário/);
+  assert.match(texto(d.tree), /Não consegui abrir ou limpar o diário/);
+  botao(d, 'Apagar tudo')();
+  await alertas.at(-1)[2].find((b) => b.text === 'Apagar tudo').onPress(); await d.settle();
+  assert.match(texto(d.tree), /Não consegui apagar/);
+  assert.doesNotMatch(texto(d.tree), /Diário apagado/);
   erroDiario = false; diario = [aviso('Compra no débito de R$ 22,00 em Mercado Modelo')];
   botao(d, 'Atualizar diário')(); await d.settle();
   botao(d, 'Copiar')(); await d.settle();
