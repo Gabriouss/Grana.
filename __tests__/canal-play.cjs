@@ -17,8 +17,8 @@ function conferir(nome, ok, visto) {
 }
 const ler = (p) => fs.readFileSync(p, 'utf8');
 
-function carregar(arquivo, env, extras = {}) {
-  const codigo = ts.transpileModule(ler(arquivo), {
+function carregar(arquivo, env, extras = {}, fonte = ler(arquivo)) {
+  const codigo = ts.transpileModule(fonte, {
     fileName: arquivo,
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
@@ -79,6 +79,8 @@ function conferirAssinar() {
     ['cobranca', { enforced: true, allowed: false, status: 'past_due' }, 'https://example.test/cobranca'],
     ['suporte', { enforced: true, allowed: false, status: 'past_due' }, null],
     ['renovacao', { enforced: true, allowed: false, status: 'canceled' }, null],
+    ['ativa', { enforced: true, allowed: true, status: 'active' }, null],
+    ['cortesia', { enforced: false, allowed: true, status: null }, null],
   ]) {
     for (const canalPlay of [true, false]) {
       const { arvore, abertos } = montarAssinar(canalPlay ? { EXPO_PUBLIC_CANAL: 'play' } : {}, estado, gerenciamento);
@@ -94,6 +96,76 @@ function conferirAssinar() {
       for (const botao of botoes) botao.props.onPress();
       conferir('tela ' + (canalPlay ? 'Play' : 'APK') + ' ' + nome + ': handlers externos', canalPlay ? abertos.length === 0 : abertos.length > 0, abertos);
     }
+  }
+}
+
+// Rotas legais e ativação reais, inclusive TextoComLinks e seus handlers.
+function conferirRotas() {
+  const path = require('node:path');
+  for (const canalPlay of [true, false]) {
+    const env = canalPlay ? { EXPO_PUBLIC_CANAL: 'play' } : {};
+    const abertos = [], navegados = [], cache = new Map();
+    const jsx = (type, props) => ({ type, props: props || {} });
+    const router = { push: r => navegados.push(r), replace: r => navegados.push(r), back() {}, canGoBack: () => false };
+    const fronteiras = {
+      react: { useState: v => [v === 'carregando' ? 'vinculado' : v, () => {}], useEffect() {}, useMemo: f => f(), useRef: v => ({ current: v }) },
+      'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'Fragment' },
+      'react-native': { Platform: { OS: 'android' }, Text: 'Text', View: 'View', ScrollView: 'ScrollView', ActivityIndicator: 'ActivityIndicator',
+        StyleSheet: { create: v => v }, useWindowDimensions: () => ({ width: 390, height: 800 }), Linking: { openURL: u => abertos.push(u) } },
+      'expo-linking': { openURL: u => abertos.push(u) },
+      'expo-router': { useRouter: () => router, usePathname: () => '/termos', useLocalSearchParams: () => ({}) },
+      'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) },
+      '@expo/vector-icons/Ionicons': { __esModule: true, default: 'Ionicons' },
+      '@/lib/theme': { theme: {}, spacing: {}, radius: {}, fonts: {}, type: {}, hitSlopPara: () => 12, lh: n => n },
+      '@/lib/breakpoints': { colunaLeitura: {}, colunaFormulario: {}, useBreakpoint: () => ({ ehCompacto: true, ehAmplo: false }) },
+      '@/lib/auth-context': { useSession: () => ({ session: { user: { id: 'teste' } }, isLoading: false }) },
+      '@/lib/assinatura': { guardarTokenAtivacaoPendente: () => { throw Error('efeito inesperado'); } },
+      '@/lib/supabase': { supabase: { rpc: () => { throw Error('rede inesperada'); } } },
+      '@/lib/entitlement-context': { useEntitlement: () => ({ estado: { enforced: true, allowed: true, status: 'canceled', access_until: new Date(Date.now() + 2 * 86400000).toISOString() } }) },
+      '@/lib/feature-flags': { useFlags: () => ({ ligado: () => true }) },
+      '@/lib/alerta': { Alert: { alert() {} } },
+      '@/components/AppPressable': { __esModule: true, default: 'Pressable' },
+      '@/components/BrandLogotype': { __esModule: true, default: 'Marca' },
+    };
+    function real(arquivo) {
+      if (cache.has(arquivo)) return cache.get(arquivo);
+      const api = {}; cache.set(arquivo, api);
+      vm.runInNewContext(ts.transpileModule(ler(arquivo), { fileName: arquivo,
+        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText,
+      { exports: api, process: { env }, require: id => {
+        if (id in fronteiras) return fronteiras[id];
+        let f = id.startsWith('@/') ? id.slice(2) : path.posix.join(path.posix.dirname(arquivo), id);
+        if (!path.extname(f)) f += fs.existsSync(f + '.ts') ? '.ts' : '.tsx';
+        return real(f);
+      } });
+      return api;
+    }
+    function expandir(no) {
+      if (Array.isArray(no)) return no.map(expandir);
+      if (!no || typeof no !== 'object') return no;
+      if (typeof no.type === 'function') return expandir(no.type(no.props));
+      return { ...no, props: { ...no.props, children: expandir(no.props.children) } };
+    }
+    for (const rota of ['termos', 'privacidade', 'exclusao-de-dados']) {
+      const arvore = expandir(real('app/' + rota + '.tsx').default());
+      const nos = elementos(arvore), visivel = texto(arvore) + JSON.stringify(nos.map(n => [n.props.href, n.props.accessibilityLabel]));
+      if (canalPlay) conferir('documento Play ' + rota + ': sem compra externa', !/cakto|checkout|pay\./i.test(visivel));
+      else if (rota !== 'exclusao-de-dados') conferir('documento APK ' + rota + ': parceiro preservado', /Cakto/.test(visivel));
+      for (const n of nos) if (n.props.onPress) n.props.onPress({ stopPropagation() {}, preventDefault() {} });
+    }
+    const ativar = expandir(real('app/ativar.tsx').default());
+    const botoesDownload = elementos(ativar).filter(n => n.props.onPress && /Baixar o aplicativo/.test(texto(n)));
+    conferir('ativar ' + (canalPlay ? 'Play' : 'APK') + ': download só no APK', canalPlay ? botoesDownload.length === 0 : botoesDownload.length === 1);
+    for (const n of elementos(ativar)) if (n.props.onPress) n.props.onPress();
+    const faixa = expandir(real('components/FaixaAssinatura.tsx').default());
+    conferir('faixa ' + (canalPlay ? 'Play' : 'APK') + ': renovação externa só no APK', canalPlay ? faixa === null : faixa !== null);
+    for (const n of elementos(faixa)) if (n.props.onPress) n.props.onPress();
+    if (canalPlay) conferir('rotas Play: nenhum handler abre compra, download ou site', abertos.every(u => u.startsWith('mailto:')) && !navegados.includes('/baixar'), { abertos, navegados });
+  }
+  const original = require('node:child_process').execFileSync('git', ['show', 'fad46dac:lib/legal-content.ts'], { encoding: 'utf8' });
+  const antes = carregar('lib/legal-content.ts', {}, {}, original), depois = carregar('lib/legal-content.ts', {});
+  for (const documento of ['TERMOS_DE_SERVICO', 'POLITICA_PRIVACIDADE', 'EXCLUSAO_DE_DADOS']) {
+    conferir('APK: documento e data preservados integralmente ' + documento, JSON.stringify(antes[documento]) === JSON.stringify(depois[documento]));
   }
 }
 
@@ -132,6 +204,7 @@ async function atualizacao(env) {
 
   // 4. fiação das telas (código-fonte)
   conferirAssinar();
+  conferirRotas();
   const layout = ler('app/_layout.tsx');
   conferir('_layout só monta UpdateBanner fora do canal play', /\{session && !ehCanalPlay\(\) && <UpdateBanner \/>\}/.test(layout));
   const faixa = ler('components/FaixaAssinatura.tsx');

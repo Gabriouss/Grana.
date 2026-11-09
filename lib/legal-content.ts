@@ -18,6 +18,8 @@
  * URL externa abrem por Linking.
  */
 
+import { ehCanalPlay } from './canal';
+
 export type BlocoLegal =
   | { tipo: 'paragrafo'; texto: string }
   | { tipo: 'subtitulo'; texto: string }
@@ -34,7 +36,7 @@ const EMAIL_CONTATO = '[contato@granaponto.com.br](mailto:contato@granaponto.com
 
 export const POLITICA_PRIVACIDADE: DocumentoLegal = {
   titulo: 'Política de Privacidade',
-  atualizadoEm: '26 de outubro de 2026',
+  atualizadoEm: ehCanalPlay() ? '8 de novembro de 2026' : '26 de outubro de 2026',
   blocos: [
     {
       tipo: 'paragrafo',
@@ -109,7 +111,9 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
         'Microsoft (Clarity), somente na página inicial pública do site (granaponto.com.br): recebe eventos técnicos de interação com a página (rolagem, cliques, dimensões da tela e dados técnicos do navegador) para mapas de calor e gravação anonimizada da sessão, com cookies desligados por padrão e só gravando cookies de sessão (_clck e _clsk) se você aceitar no aviso de privacidade. Não roda no aplicativo nem recebe dados financeiros.',
         'Resend, serviço de e-mail: envia os e-mails da sua conta (confirmação de cadastro, troca de senha e avisos sobre prazo e estado da assinatura) e recebe as mensagens que você manda para contato@granaponto.com.br e suporte@granaponto.com.br. Para isso, recebe o seu endereço de e-mail e o conteúdo dessas mensagens. Os avisos de assinatura informam o prazo de acesso e como renovar ou atualizar a cobrança, sem incluir seus lançamentos, saldos, cartões ou metas.',
         'Google (Gmail), a caixa de e-mail em que o nosso atendimento lê e responde as suas mensagens. As mensagens que você manda para o atendimento, com os anexos, e as nossas respostas ficam guardadas nessa caixa.',
-        'Cakto, se você assinar o Grana. como plano pago: o processamento do pagamento é feito inteiramente pela Cakto, que nos informa o e-mail usado na compra e o status da assinatura (ativa, atrasada, cancelada, reembolsada), só para liberar o acesso correspondente. O Grana. não recebe nem armazena dados de cartão.',
+        ehCanalPlay()
+          ? 'Assinaturas já vinculadas à conta: o prestador responsável pelo pagamento nos informa o e-mail usado na contratação e o estado da assinatura (ativa, atrasada, cancelada, reembolsada), só para liberar o acesso correspondente. O Grana. não recebe nem armazena dados de cartão.'
+          : 'Cakto, se você assinar o Grana. como plano pago: o processamento do pagamento é feito inteiramente pela Cakto, que nos informa o e-mail usado na compra e o status da assinatura (ativa, atrasada, cancelada, reembolsada), só para liberar o acesso correspondente. O Grana. não recebe nem armazena dados de cartão.',
       ],
     },
     {
@@ -178,7 +182,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
 
 export const TERMOS_DE_SERVICO: DocumentoLegal = {
   titulo: 'Termos de Uso',
-  atualizadoEm: '4 de outubro de 2026',
+  atualizadoEm: ehCanalPlay() ? '8 de novembro de 2026' : '4 de outubro de 2026',
   blocos: [
     {
       tipo: 'paragrafo',
@@ -221,7 +225,9 @@ export const TERMOS_DE_SERVICO: DocumentoLegal = {
     {
       tipo: 'paragrafo',
       texto:
-        'O Grana. atualmente oferece acesso pago. A cobrança é processada por um parceiro de pagamento (atualmente Cakto), e não diretamente por nós. As condições de cobrança, renovação, período de acesso e cancelamento válidas são as apresentadas na página de compra no momento da assinatura. Cancelamento e contestação de cobrança são tratados pelo parceiro de pagamento conforme a política aplicável; o acesso ao app é ajustado automaticamente a partir dessas notificações. Nas contratações a distância, você pode exercer o direito de arrependimento em até 7 dias, nos termos do art. 49 do CDC. Solicite pelo canal de atendimento indicado ou pelo checkout da Cakto. O processamento pelo parceiro de pagamento não limita seus direitos nem afasta as responsabilidades legais do fornecedor.',
+        ehCanalPlay()
+          ? `A contratação de novos planos pela Google Play ainda não está disponível nesta versão. Quem já tem acesso vinculado à conta pode continuar usando-o. As condições de cobrança, renovação, período de acesso e cancelamento de uma assinatura existente são as apresentadas no momento da contratação. Para dúvidas sobre essa assinatura, use ${EMAIL_CONTATO}. O processamento da cobrança não limita seus direitos nem afasta as responsabilidades legais do fornecedor.`
+          : 'O Grana. atualmente oferece acesso pago. A cobrança é processada por um parceiro de pagamento (atualmente Cakto), e não diretamente por nós. As condições de cobrança, renovação, período de acesso e cancelamento válidas são as apresentadas na página de compra no momento da assinatura. Cancelamento e contestação de cobrança são tratados pelo parceiro de pagamento conforme a política aplicável; o acesso ao app é ajustado automaticamente a partir dessas notificações. Nas contratações a distância, você pode exercer o direito de arrependimento em até 7 dias, nos termos do art. 49 do CDC. Solicite pelo canal de atendimento indicado ou pelo checkout da Cakto. O processamento pelo parceiro de pagamento não limita seus direitos nem afasta as responsabilidades legais do fornecedor.',
     },
     { tipo: 'subtitulo', texto: '6. Limites técnicos do serviço' },
     {

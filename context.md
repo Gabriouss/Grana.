@@ -93,6 +93,16 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 08/11 — A3/P2, isolamento dos textos e caminhos de compra externa na Play
+
+**Pedido/escopo:** fila mestre autoriza A3 no clone após A2, sem push/build/Supabase e sem implementar Billing P1. Base `fad46dac`, A2 com núcleo `10da09f5`, trava `deb301dc`, queries `2f3f7a17` e interface própria; árvore limpa antes de A3.
+
+**Diagnóstico/prova inicial:** teste `canal-play.cjs` ampliado monta rotas legais reais, LegalDocScreen e TextoComLinks reais e aciona handlers, além da ativação e assinatura. RED 53/57: Termos e Privacidade citavam Cakto no Play, ativação mostrava download do APK e navegava para /baixar. Não havia abertura de compra pelos CTAs Play já protegidos de Assinar. Correção cria variantes editoriais só Play e esconde o download nessa rota; preserva vinculação de assinaturas existentes. Integração Billing ainda futura é declarada como tal, sem anunciar recurso implementado ou limites novos.
+
+**Arquivos/alternativas/pendências:** `lib/legal-content.ts`, `app/ativar.tsx` e teste real. Não remover helper puro de URL, métricas internas ou componentes exclusivos da landing só por comentários citarem Cakto. A landing nativa já redireciona para login; TesteInterativo/ConsentimentoMarketing só são montados na landing web, convite depende da URL de APK que já é null no Play. Guardas UpdateBanner/atualizacao/download e FaixaAssinatura já existentes serão mantidas e verificadas. Texto P4 completo, revisão legal A6, P1/P7 futuros e QA no candidato continuam pendentes. Nenhuma alteração de plano/servidor ou remoção de OpenAI nesta etapa.
+
+**Entrega A3:** 76/76 verificações verdes, repetidas por ordem da passagem 22:30. Montagem real de termos/privacidade/exclusão, TextoComLinks e handlers, ativação, FaixaAssinatura e Assinar nos estados ausente/ativa/cortesia/atrasada/cancelada; zero abertura externa de compra no Play, apenas contato por e-mail nas rotas legais. Documentos APK e datas comparados integralmente com a base fad46dac, sem alteração. Sem etapa pesada junto do CI do main; gate integral/revisão legal continuam com Watchtower. Passagem lida: equivalente de 6f90c18d depois deste commit, P5 depois; P7/P8 aguardam decisão sobre main, sem código de servidor.
+
 ## 08/11 — A2, leitor restrito a bancos e aceite, PH em execução
 
 **Pedido e escopo:** fila mestre do Supremo, depois do desbloqueio commitado, somente clone e um escritor. Remover captura/contagem de outros apps, limpar legado e exigir aceite em janela antes dos ajustes. Sem push/build/Supabase; Ledger parado, registro PH autorizado. Catálogo tem dez bancos e duas carteiras: captura nova só dos dez `classe: banco`, inclusive Mercado Pago; Google/Samsung Wallet deixam de entrar. Parser legado permanece compatível, sem poder autorizar captura.

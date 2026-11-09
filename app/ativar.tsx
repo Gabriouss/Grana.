@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { theme, spacing, radius, fonts, type, lh } from '@/lib/theme';
 import { colunaFormulario } from '@/lib/breakpoints';
 import { obterUrlDownloadAndroid } from '@/lib/download-app';
+import { ehCanalPlay } from '@/lib/canal';
 import AppPressable from '@/components/AppPressable';
 import BrandLogotype from '@/components/BrandLogotype';
 
@@ -127,12 +128,12 @@ export default function Ativar() {
             >
               <Text style={styles.primaryBtnText}>Ir para o Grana.</Text>
             </AppPressable>
-            <AppPressable
+            {!ehCanalPlay() && <AppPressable
               style={({ hovered }) => [styles.secondaryBtn, hovered && styles.secondaryBtnHover]}
               onPress={abrirDownload}
             >
               <Text style={styles.secondaryBtnText}>Baixar o aplicativo</Text>
-            </AppPressable>
+            </AppPressable>}
             {erroDownload ? <Text style={styles.erroDownload}>{erroDownload}</Text> : null}
           </>
         )}
