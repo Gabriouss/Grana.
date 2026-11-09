@@ -142,11 +142,17 @@ function varrerCommit(raiz, sha, c = carregarCatalogo()) {
     return verificarArquivo(e.nome, e.buf, c);
   });
 }
+function ehAncestral(raiz, anterior, topo) {
+  try { git(raiz, ['merge-base', '--is-ancestor', anterior, topo]); return true; }
+  catch (e) { if (e.status === 1) return false; throw e; }
+}
 function varrerIntervalo(raiz, base, fim, c = carregarCatalogo(), protegerMain = true) {
   validarSha(fim);
   if (!ZERO.test(base)) {
     validarSha(base);
-    git(raiz, ['merge-base', '--is-ancestor', base, fim]);
+    try { git(raiz, ['cat-file', '-e', base + '^{commit}']); }
+    catch { throw new ErroDaGuarda('Topo remoto ausente no repositório local. Rode git fetch antes de tentar novamente.'); }
+    if (!ehAncestral(raiz, base, fim)) throw new ErroDaGuarda('Topo remoto fora do histórico enviado. Rode git fetch e sincronize o main antes de tentar novamente.');
   } else if (!SHA.test(base)) throw new ErroDaGuarda('Hash remoto inválido');
   const commits = git(raiz, ['rev-list', '--reverse', ZERO.test(base) ? fim : base + '..' + fim]).trim().split('\n').filter(Boolean);
   const { varrerTexto, lerEnv } = require('./varrer-segredos.cjs');
@@ -159,8 +165,13 @@ function varrerIntervalo(raiz, base, fim, c = carregarCatalogo(), protegerMain =
     const mensagem = git(raiz, ['show', '-s', '--format=%B', sha]);
     if (protegerMain && commits.includes(sha)) {
       const pais = git(raiz, ['show', '-s', '--format=%P', sha]).trim().split(' ').filter(Boolean);
-      if (pais.length > 1) achados.push({ arquivo: sha, regra: 'merge-no-main' });
-      if (/\(cherry picked from commit\b/i.test(mensagem)) achados.push({ arquivo: sha, regra: 'cherry-pick-no-main' });
+      // Sincronização entre máquinas: cada pai adicional já pertence ao topo remoto recebido pelo hook.
+      if (pais.length > 1 && (ZERO.test(base) || pais.slice(1).some(p => !ehAncestral(raiz, p, base)))) {
+        achados.push({ arquivo: sha, regra: 'merge-no-main', orientacao: 'Rode git fetch e peça revisão: só merges de sincronização com os pais adicionais já no main remoto são permitidos.' });
+      }
+      if (/\(cherry picked from commit\b/i.test(mensagem)) {
+        achados.push({ arquivo: sha, regra: 'cherry-pick-no-main', orientacao: 'Peça revisão antes de publicar: o fluxo autorizado de cherry-pick é do main para o clone.' });
+      }
     }
     achados.push(...varrerTexto(mensagem, 'mensagem:' + sha, valores).filter(a => !a.aviso).map(a => ({ arquivo: a.arquivo, regra: 'segredo:' + a.regra })));
     for (const e of arquivosCommit(raiz, sha, inspecionados)) {
@@ -182,7 +193,10 @@ function varrerIntervalo(raiz, base, fim, c = carregarCatalogo(), protegerMain =
   return achados;
 }
 function resolverRemoto(raiz, destino, endereco) {
-  const urls = remoto => git(raiz, ['remote', 'get-url', '--all', remoto]).trim().split('\n');
+  const urls = remoto => [...new Set([
+    ...git(raiz, ['remote', 'get-url', '--all', remoto]).trim().split('\n'),
+    ...git(raiz, ['remote', 'get-url', '--push', '--all', remoto]).trim().split('\n'),
+  ])];
   if (/^[A-Za-z0-9_.-]+$/.test(destino)) {
     if (endereco && !urls(destino).includes(endereco)) throw new ErroDaGuarda('Endereço não corresponde ao remoto configurado');
     return destino;
