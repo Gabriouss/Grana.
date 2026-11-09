@@ -44,9 +44,7 @@ export default function CategoryPickerModal({
   /** "pick": tocar numa linha seleciona e fecha (uso normal, dentro de um formulário).
       "manage": lista só de consulta/edição, sem seleção — usado em Perfil → Categorias. */
   mode?: 'pick' | 'manage';
-  /** No formulário, evita oferecer categoria de entrada para uma saída e
-      vice-versa. Categorias criadas pela pessoa continuam disponíveis nos
-      dois tipos, pois não têm natureza fixa. */
+  /** Na entrada, todas as categorias; na saída, só Salário padrão fica oculto. */
   tipo?: TxType;
 }) {
   const { isDemoMode } = useDemo();
@@ -124,6 +122,13 @@ export default function CategoryPickerModal({
     return true;
   }
 
+  function avisarCategoriaRepetida(item: ListItem) {
+    const oculta = !itemsVisiveis.some((visivel) => visivel.id === item.id);
+    Alert.alert('Categoria já existe', oculta
+      ? `A categoria "${item.name}" já existe. Ela é de entrada e não aparece na lista de saída.`
+      : `A categoria "${item.name}" já existe. Escolha a categoria na lista ou use outro nome.`);
+  }
+
   async function handleCreateCategory() {
     if (blockInDemo()) return;
     const name = newCatName.trim();
@@ -131,8 +136,9 @@ export default function CategoryPickerModal({
       Alert.alert('Nome obrigatório', 'Digite o nome da nova categoria.');
       return;
     }
-    if (items.some((i) => i.name.toLowerCase() === name.toLowerCase())) {
-      Alert.alert('Categoria já existe', 'Já existe uma categoria com esse nome.');
+    const repetida = items.find((i) => i.name.toLowerCase() === name.toLowerCase());
+    if (repetida) {
+      avisarCategoriaRepetida(repetida);
       return;
     }
     setSaving(true);
@@ -168,8 +174,9 @@ export default function CategoryPickerModal({
       Alert.alert('Nome obrigatório', 'Digite o nome da categoria.');
       return;
     }
-    if (items.some((i) => i.id !== editingId && i.name.toLowerCase() === name.toLowerCase())) {
-      Alert.alert('Categoria já existe', 'Já existe uma categoria com esse nome.');
+    const repetida = items.find((i) => i.id !== editingId && i.name.toLowerCase() === name.toLowerCase());
+    if (repetida) {
+      avisarCategoriaRepetida(repetida);
       return;
     }
     setSaving(true);
