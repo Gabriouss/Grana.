@@ -19,6 +19,34 @@ const out = (iso, amount, parcial = {}) => ({
 const NOV = { inicio: '2026-11-01', fim: '2026-11-30' };
 const cat = (r, nome) => r.porCategoria.find((c) => c.category === nome);
 
+// T7: mesma entrada, trocando apenas Salário por Assinaturas, não vira gasto.
+{
+  const hoje = new Date('2026-11-20T12:00:00-03:00');
+  const receita = out('2026-11-10', 70, { type: 'in', category: 'Assinaturas' });
+  const despesa = out('2026-11-10', 100, { category: 'Assinaturas' });
+  const linhas = [despesa, receita];
+  const referencia = [despesa, { ...receita, category: 'Salário' }];
+  const consumo = g.apurarGastosCategoria(linhas, NOV);
+  ok(consumo.total.tudo === 10000 && cat(consumo, 'Assinaturas').tudo === 10000,
+    'T7: entrada em Assinaturas não infla nem abate consumo por categoria (Gráficos/orçamento)');
+  const desafios = carregar('lib/desafios-padrao-gastos.ts');
+  ok(desafios.saidasDeConsumo(linhas, 2026, 10, hoje).length === 1, 'T7: desafios excluem receita de Assinaturas');
+  const livre = carregar('lib/safe-to-spend.ts');
+  ok(livre.calcularSaldoAtual(linhas, hoje) === -30, 'T7: receita de Assinaturas entra no saldo');
+  ok(livre.calcularSafeToSpend(linhas, [], hoje).livreTotal === livre.calcularSafeToSpend(referencia, [], hoje).livreTotal,
+    'T7: Livre independe da categoria da entrada');
+  const score = carregar('lib/gamification.ts');
+  const tetos = [{ category: 'Assinaturas', amount: 110 }];
+  const nota = score.calculateScoreBreakdown(linhas, [], tetos, 0, hoje);
+  assert.deepEqual(JSON.parse(JSON.stringify(nota)), JSON.parse(JSON.stringify(score.calculateScoreBreakdown(referencia, [], tetos, 0, hoje))),
+    'T7: Score, indicadores de resultado e orçamento não mudam por categoria de entrada');
+  const pdf = carregar('lib/pdf-report-html.ts');
+  const html = pdf.montarHtml({ ano: 2026, mes: 10, transactions: linhas, bills: [] });
+  const htmlRef = pdf.montarHtml({ ano: 2026, mes: 10, transactions: referencia, bills: [] });
+  assert.equal(html.replaceAll('Assinaturas', 'Salário'), htmlRef.replaceAll('Assinaturas', 'Salário'),
+    'T7: PDF e insights preservam valores; apenas rótulo da categoria muda');
+}
+
 // 1. Transporte no mesmo mês: débito 60, Pix 20, crédito 50 -> 130 / 80 / 50; teto 100: 30 acima.
 {
   const r = g.apurarGastosCategoria([

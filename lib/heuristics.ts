@@ -1352,15 +1352,15 @@ export function decidirCategoria(
 
 /**
  * Se a categoria serve ao tipo do lançamento: na saída, todas as padrão menos
- * "Salário" (aporte em "Investimentos" é saída); na entrada, das padrão só
- * "Salário", "Investimentos" e "Outros". Categoria criada pela pessoa serve
+ * "Salário" (aporte em "Investimentos" é saída); na entrada, todas as categorias.
+ * Categoria criada pela pessoa serve
  * aos dois. É a regra do seletor do app (`CategoryPickerModal`), e a pergunta
  * de categoria do Granabô usa a mesma: até 15/10/2026 ela oferecia "Salário"
  * para "paguei 35 pro ze" (achado V1 do Vigil).
  */
 export function categoriaServeAoTipo(nome: string, padrao: boolean, tipo: 'in' | 'out'): boolean {
   if (!padrao) return true;
-  if (tipo === 'in') return ['Salário', 'Investimentos', 'Outros'].includes(nome);
+  if (tipo === 'in') return true;
   return nome !== 'Salário';
 }
 
