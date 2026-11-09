@@ -1,0 +1,116 @@
+{
+  "versao": 1,
+  "fonte": {
+    "main": "fe8dc493c078ab444511386015d4a6c6bcde5af5",
+    "clone": "3776e647b3d89115dc1c49c670446e9077d3d542"
+  },
+  "caminhos": [
+    "__tests__/app-lock-recuperacao.cjs",
+    "__tests__/avisos-banco.cjs",
+    "__tests__/avisos-bancos-nativo.cjs",
+    "__tests__/avisos-recusa-estorno.cjs",
+    "__tests__/avisos-telas.cjs",
+    "__tests__/canal-play.cjs",
+    "__tests__/conciliacao-pix-arquivo.cjs",
+    "__tests__/conciliacao-pix-botao.cjs",
+    "__tests__/conciliacao-pix-servico.cjs",
+    "__tests__/conciliacao-pix-servidor.cjs",
+    "__tests__/conciliacao-pix.cjs",
+    "__tests__/corpus-avisos-banco.ts",
+    "__tests__/denunciar-resposta.cjs",
+    "__tests__/eas-webhook-perfis.cjs",
+    "__tests__/exportar-lancamentos-botao.cjs",
+    "__tests__/exportar-lancamentos-csv.cjs",
+    "__tests__/exportar-lancamentos-efeitos.cjs",
+    "__tests__/native/AvisosBancosCatalogoTest.kt",
+    "components/AtalhoDeAvisos.tsx",
+    "components/AvisosAConferir.tsx",
+    "components/AvisosBancoSecao.tsx",
+    "components/ConciliarPixBotao.tsx",
+    "components/DenunciarRespostaModal.tsx",
+    "components/ExportarLancamentosBotao.tsx",
+    "lib/avisos-banco/caixa.ts",
+    "lib/avisos-banco/catalogo.ts",
+    "lib/avisos-banco/conferencia-aberta.ts",
+    "lib/avisos-banco/decidir.ts",
+    "lib/avisos-banco/gravar.ts",
+    "lib/avisos-banco/interpretar.ts",
+    "lib/canal.ts",
+    "lib/conciliacao-pix-disponibilidade.ts",
+    "lib/conciliacao-pix-servico.ts",
+    "lib/conciliacao-pix.ts",
+    "lib/exportar-lancamentos-csv.ts",
+    "lib/exportar-lancamentos.ts",
+    "modules/grana-avisos/android/build.gradle",
+    "modules/grana-avisos/android/src/main/AndroidManifest.xml",
+    "modules/grana-avisos/android/src/main/java/com/gabriouss/grana/avisos/AvisosConfig.kt",
+    "modules/grana-avisos/android/src/main/java/com/gabriouss/grana/avisos/AvisosDiario.kt",
+    "modules/grana-avisos/android/src/main/java/com/gabriouss/grana/avisos/AvisosFiltro.kt",
+    "modules/grana-avisos/android/src/main/java/com/gabriouss/grana/avisos/GranaAvisosListener.kt",
+    "modules/grana-avisos/android/src/main/java/com/gabriouss/grana/avisos/GranaAvisosModule.kt",
+    "modules/grana-avisos/android/src/main/res/values/strings.xml",
+    "modules/grana-avisos/android/src/test/java/com/gabriouss/grana/avisos/AvisosFiltroTest.kt",
+    "modules/grana-avisos/expo-module.config.json",
+    "modules/grana-avisos/index.ts",
+    "supabase/migrations/20261107120100_denuncias_assistente.sql",
+    "supabase/migrations/20261109110000_conciliacao_pix.sql"
+  ],
+  "prefixos": [
+    "modules/grana-avisos/",
+    "lib/avisos-banco/"
+  ],
+  "identificadores": [
+    "AvisosAConferir",
+    "AtalhoDeAvisos",
+    "AvisosBancoSecao",
+    "DenunciarRespostaModal",
+    "ehCanalPlay",
+    "EXPO_PUBLIC_CANAL",
+    "NotificationListener",
+    "NotificationListenerService",
+    "BIND_NOTIFICATION_LISTENER_SERVICE",
+    "GranaAvisosListener",
+    "denunciarResposta",
+    "assistant_reports",
+    "MOTIVOS_DENUNCIA",
+    "LIMITE_COMENTARIO_DENUNCIA",
+    "limparAvisosDoBanco",
+    "ExportarLancamentosBotao",
+    "exportarLancamentosCsv",
+    "montarCsvLancamentos",
+    "ConciliarPixBotao",
+    "analisarExtratoPix",
+    "confirmarItensPix",
+    "lerExtratoConciliacao",
+    "conciliarPix",
+    "CONCILIACAO_PIX_LIBERADA",
+    "GranaAvisosModule"
+  ],
+  "fragmentos": [
+    "/grana-avisos",
+    "\"grana-avisos\"",
+    "'grana-avisos'",
+    "avisos-banco/",
+    "grana_avisos_",
+    "exportar-lancamentos",
+    "conciliacao-pix"
+  ],
+  "seletores": [
+    {
+      "arquivo": "eas.json",
+      "caminho": [
+        "build",
+        "play"
+      ]
+    },
+    {
+      "arquivo": "eas.json",
+      "caminho": [
+        "build",
+        "*",
+        "env",
+        "EXPO_PUBLIC_CANAL"
+      ]
+    }
+  ]
+}
