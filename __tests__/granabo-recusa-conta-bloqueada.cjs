@@ -183,7 +183,8 @@ function pedido() {
   });
 }
 
-(async () => {
+module.exports = { carregar, pedido };
+if (require.main === module) (async () => {
   /* -- 1 e 2. Conta bloqueada ------------------------------------------ */
   {
     const { handler, diario } = carregar({ acesso: false });
