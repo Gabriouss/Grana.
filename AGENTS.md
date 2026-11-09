@@ -336,6 +336,29 @@ Regras permanentes para qualquer sessão que abrir este repositório:
     `GET /v1/projects/<ref>/functions` ANTES de publicar, e publique só o que
     de fato mudou.
 
+    **Leitura do Supabase pelo time Codex — autorização permanente do autor,
+    09/11/2026 (adendo das 10:25).** Os agentes podem acessar o Supabase
+    somente para leitura, usando a credencial do `.env` local dentro do próprio
+    processo. Nunca imprimir, gravar ou colar seu valor em comando, log,
+    relatório, commit ou mensagem (regra 15).
+
+    - SQL pela API de gestão somente em `begin read only; ...; rollback;`.
+      Pelo PostgREST, somente `GET` e `HEAD`.
+    - Preferir catálogo e contagens (`pg_indexes`, `information_schema`,
+      `count`). Dados de usuário só quando indispensáveis à tarefa; nenhum
+      valor, nome, e-mail ou identificador pessoal entra em relatório, vault
+      ou repositório.
+    - Permitido baixar o pacote publicado de Edge Function por `GET .../body`
+      e consultar `version`, `updated_at` e `verify_jwt`, conforme esta regra.
+    - Proibidos deploy, `db push`, migration, `secrets set`, `POST`, `PATCH`
+      e `DELETE` na API de gestão ou no PostgREST, e RPC por `POST`, exceto o
+      `POST` em `/v1/projects/<ref>/database/query` com o SQL inteiro dentro
+      de `begin read only; ...; rollback;` (correção do Supremo às 10:55).
+      Essa exceção única não libera mutações nem outros endpoints por `POST`.
+    - Alteração necessária vira `pedido-supabase-<tema>.md`; somente o
+      Orquestrador Supremo aplica, no próprio terminal, com modo manual ativo
+      e o "ok" do autor. Leitura não autoriza escrita nem publicação.
+
 12. **Todo registro do projeto vai para o vault do Obsidian, em
     `G:\Meu Drive\Obsidian\Gabriel\Grana` — menos arquivo sensível.** Regra
     dada pelo autor em 10/09/2026, nas duas metades: registrar ali todas as
