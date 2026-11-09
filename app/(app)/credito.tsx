@@ -1,5 +1,6 @@
 import CampoBusca from '@/components/CampoBusca';
 import ChipsCategoria from '@/components/ChipsCategoria';
+import CategoriasContexto from '@/components/CategoriasContexto';
 import { useCategorias } from '@/lib/use-categorias';
 import { linhasDaCategoria } from '@/lib/categorias-cliente';
 import { filtrarCompras, mostrarComprasFiltradas, opcoesDeCategoria } from '@/lib/filtro-compras';
@@ -1407,12 +1408,14 @@ export default function CreditoScreen() {
             onRefresh={() => {
               setRefreshing(true);
               loadData();
+              void consultaCategoria.carregar();
             }}
             tintColor={theme.ink}
           />
         }
         ListHeaderComponent={
           <>
+        {intervaloCategoria ? <CategoriasContexto mostrarSeletor={false} mostrarPeriodo visao="credito" onChange={() => {}} resultado={consultaCategoria.resultado} erro={consultaCategoria.erro} carregar={consultaCategoria.carregar} /> : <>
         {/* Seletor do mês de fechamento — agregado na visão Total e fatura a
             fatura quando um cartão está selecionado. */}
         <MonthSelector
@@ -1708,17 +1711,18 @@ export default function CreditoScreen() {
           )}
         </View>
 
+        </>}
         {/* Lista de Compras no Crédito */}
-        {creditTransactions.length > 0 && <View style={{ gap: screenRhythm.gap }} onLayout={(e) => { campoBuscaY.current = e.nativeEvent.layout.y; }}>
+        {(baseDasCompras.length > 0 || intervaloCategoria) && <View style={{ gap: screenRhythm.gap }} onLayout={(e) => { campoBuscaY.current = e.nativeEvent.layout.y; }}>
           <CampoBusca value={buscaCompra} onChangeText={setBuscaCompra} onFocus={() => { campoFocado.current = true; if (tecladoAberto) rolarAteCampoBusca(); }} onBlur={() => { campoFocado.current = false; }} />
-          <ChipsCategoria opcoes={categoriasCompras} selecionada={categoriaEfetiva} onSelect={setCategoriaCompra} keyboardShouldPersistTaps="handled" />
-          {mostrarComprasFiltradas({ filtroAtivo: filtroCompraAtivo, comprasVisiveis: comprasVisiveis.length, cartaoSelecionado: selectedCardId !== 'all', cartoesNaLista: secoesDeLancamentos.length }) && <View style={styles.filteredSummaryCard}>
-            <Text style={styles.filteredSummaryLabel}>{semViuva('Compras filtradas')}</Text>
-            <PrivacyValue><Text style={[styles.filteredSummaryVal, { color: theme.down }]}>{formatBRL(subtotalFiltrado)}</Text></PrivacyValue>
+          <ChipsCategoria opcoes={categoriasCompras} selecionada={categoriaEfetiva} onTodas={() => { setCategoriaCompra(null); setIntervaloCategoria(null); }} onSelect={categoria => { setCategoriaCompra(categoria); if (categoria === null) setIntervaloCategoria(null); }} keyboardShouldPersistTaps="handled" />
+          {(categoriaEfetiva || intervaloCategoria || mostrarComprasFiltradas({ filtroAtivo: filtroCompraAtivo, comprasVisiveis: comprasVisiveis.length, cartaoSelecionado: selectedCardId !== 'all', cartoesNaLista: secoesDeLancamentos.length })) && <View style={styles.filteredSummaryCard}>
+            <Text style={styles.filteredSummaryLabel}>{semViuva(categoriaEfetiva ? 'Gastos na categoria' : intervaloCategoria ? 'Gastos no crédito' : 'Compras filtradas')}</Text>
+            <PrivacyValue><Text style={[styles.filteredSummaryVal, { color: theme.down }]}>{intervaloCategoria && !consultaCategoria.resultado ? 'Indisponível agora' : formatBRL(subtotalFiltrado)}</Text></PrivacyValue>
           </View>}
-          {comprasVisiveis.length === 0 && <Text style={styles.emptyText}>{semViuva('Nenhuma compra nesta busca.')}</Text>}
+          {comprasVisiveis.length === 0 && (!intervaloCategoria || consultaCategoria.resultado) && <Text style={styles.emptyText}>{semViuva('Nenhuma compra nesta busca.')}</Text>}
         </View>}
-        {creditTransactions.length === 0 ? (
+        {!intervaloCategoria && creditTransactions.length === 0 ? (
           <Text style={styles.emptyText}>Nenhuma compra no crédito nesta fatura.</Text>
         ) : null}
           </>
@@ -2061,6 +2065,8 @@ const CreditTransactionRow = memo(function CreditTransactionRow({
 const styles = StyleSheet.create({
   filteredSummaryCard: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: theme.paperRaised,
