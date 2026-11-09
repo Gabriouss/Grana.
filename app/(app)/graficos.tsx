@@ -2,6 +2,7 @@ import { categoriaDaFatia } from '@/lib/chart-colors';
 import { semViuva } from '@/lib/sem-viuva';
 import { useCategorias, useVisaoCategorias } from '@/lib/use-categorias';
 import { categoriasDaVisao } from '@/lib/categorias-cliente';
+import { abrirCategoria } from '@/lib/abrir-categoria';
 import CategoriasContexto from '@/components/CategoriasContexto';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -429,7 +430,7 @@ export default function GraficosScreen() {
                     <PrivacyValue><Text style={styles.legendVal}>R$ {formatMoney(slice.value)}</Text></PrivacyValue>
                   </>;
                   return categoria ? (
-                    <AppPressable key={i} style={styles.legendRow} accessibilityRole="button" onPress={() => router.push({ pathname: '/(app)/lancamentos', params: { modo: 'categoria', categoria, inicio: categorias.resultado?.inicio ?? inicioCategorias, fim: categorias.resultado?.fim ?? fimCategorias, forma: visao } })}>{conteudo}</AppPressable>
+                    <AppPressable key={i} style={styles.legendRow} accessibilityRole="button" onPress={() => abrirCategoria(categorias.resultado, categoria, visao, destino => router.push(destino))}>{conteudo}</AppPressable>
                   ) : (
                     <View key={i} style={styles.legendRow}>{conteudo}</View>
                   );

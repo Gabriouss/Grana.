@@ -1,7 +1,7 @@
 import { casaComBusca } from '@/lib/filtro-compras';
 import CampoBusca from '@/components/CampoBusca';
 import ChipsCategoria from '@/components/ChipsCategoria';
-import { useCategorias, useVisaoCategorias } from '@/lib/use-categorias';
+import { useCategorias } from '@/lib/use-categorias';
 import { linhasDaCategoria } from '@/lib/categorias-cliente';
 import CategoriasContexto from '@/components/CategoriasContexto';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -140,7 +140,7 @@ const LinhaLancamento = memo(function LinhaLancamento({
 
 export default function LancamentosScreen() {
   const router = useRouter();
-  const { novoLancamento, origem, modo, categoria, inicio, fim, forma } = useLocalSearchParams<{ novoLancamento?: string; origem?: string; modo?: string; categoria?: string; inicio?: string; fim?: string; forma?: string }>();
+  const { novoLancamento, origem, modo, categoria, inicio, fim } = useLocalSearchParams<{ novoLancamento?: string; origem?: string; modo?: string; categoria?: string; inicio?: string; fim?: string; forma?: string }>();
   const voltarAoInicioDepoisDeSalvar = useRef(false);
   const { paddingConteudoComFab } = useTabBarInset();
   const { ehCompacto } = useBreakpoint();
@@ -160,7 +160,6 @@ export default function LancamentosScreen() {
   const [search, setSearch] = useState('');
   const [modoCategoria, setModoCategoria] = useState(false);
   const [intervaloCategoria, setIntervaloCategoria] = useState<{ inicio: string; fim: string } | null>(null);
-  const { visao, mudar: mudarVisao } = useVisaoCategorias();
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
   // Cache offline: true quando a última tentativa de buscar caiu pra cache local.
@@ -225,7 +224,6 @@ export default function LancamentosScreen() {
       setIntervaloCategoria({ inicio, fim });
       const [ano, mes] = inicio.split('-').map(Number); setSelectedYear(ano); setSelectedMonth(mes - 1);
     }
-    if (forma === 'tudo' || forma === 'avista' || forma === 'credito') mudarVisao(forma);
     router.setParams({ modo: undefined, categoria: undefined, inicio: undefined, fim: undefined, forma: undefined });
   });
 
@@ -650,8 +648,8 @@ export default function LancamentosScreen() {
 
   // Transações estritamente do mês selecionado
   const monthTransactions = useMemo(
-    () => modoCategoria ? (consultaCategoria.resultado ? linhasDaCategoria(consultaCategoria.resultado, categoryFilter, visao) : []) : walletTransactions.filter((t) => isSameMonth(t.occurred_on, selectedYear, selectedMonth)),
-    [selectedMonth, selectedYear, walletTransactions, modoCategoria, consultaCategoria.resultado, categoryFilter, visao]
+    () => modoCategoria ? (consultaCategoria.resultado ? linhasDaCategoria(consultaCategoria.resultado, categoryFilter, 'avista') : []) : walletTransactions.filter((t) => isSameMonth(t.occurred_on, selectedYear, selectedMonth)),
+    [selectedMonth, selectedYear, walletTransactions, modoCategoria, consultaCategoria.resultado, categoryFilter]
   );
 
   /* A19: o resumo acompanha a busca e a categoria visíveis, em vez de
@@ -680,9 +678,9 @@ export default function LancamentosScreen() {
   const categoryOptions = useMemo(
     () =>
       Array.from(
-        (modoCategoria ? (consultaCategoria.resultado?.consumo.saidas.map(t => ({ category: t.category, color: t.color ?? theme.down })) ?? []) : filter === 'out' ? transactions.filter(t => isSameMonth(t.occurred_on, selectedYear, selectedMonth) && t.type === 'out') : monthTransactions).reduce((map, t) => (map.has(t.category) ? map : map.set(t.category, t.color)), new Map<string, string>())
+        (modoCategoria && consultaCategoria.resultado ? linhasDaCategoria(consultaCategoria.resultado, null, 'avista') : walletTransactions.filter(t => isSameMonth(t.occurred_on, selectedYear, selectedMonth) && (filter === 'tudo' || t.type === filter))).reduce((map, t) => (map.has(t.category) ? map : map.set(t.category, t.color)), new Map<string, string>())
       ).sort((a, b) => a[0].localeCompare(b[0], 'pt-BR')),
-    [transactions, selectedYear, selectedMonth, filter, modoCategoria, consultaCategoria.resultado, monthTransactions]
+    [walletTransactions, selectedYear, selectedMonth, filter, modoCategoria, consultaCategoria.resultado]
   );
 
   // Filtrado por tipo, categoria e busca textual (descrição ou categoria) — todos dentro do mês selecionado.
@@ -746,7 +744,7 @@ export default function LancamentosScreen() {
           onChange={(y, m) => {
             setSelectedYear(y);
             setSelectedMonth(m);
-            setCategoryFilter(null); setIntervaloCategoria(null);
+            setCategoryFilter(null); setIntervaloCategoria(null); setModoCategoria(false);
           }}
         />
 
@@ -810,10 +808,11 @@ export default function LancamentosScreen() {
 
         <CampoBusca value={search} onChangeText={setSearch} />
 
-        {modoCategoria && <CategoriasContexto mostrarPeriodo visao={visao} onChange={mudarVisao} resultado={consultaCategoria.resultado} erro={consultaCategoria.erro} carregar={consultaCategoria.carregar} />}
+        {modoCategoria && <CategoriasContexto mostrarPeriodo visao="avista" onChange={() => {}} resultado={consultaCategoria.resultado} erro={consultaCategoria.erro} carregar={consultaCategoria.carregar} />}
+
         <ChipsCategoria opcoes={categoryOptions} selecionada={categoryFilter}
           onTodas={() => { setCategoryFilter(null); setModoCategoria(false); setIntervaloCategoria(null); }}
-          onSelect={categoria => { setCategoryFilter(categoria); setModoCategoria(categoria !== null && (filter === 'out' || (filter === 'tudo' && monthTransactions.some(t => t.type === 'out' && t.category === categoria)))); }} />
+          onSelect={categoria => { setCategoryFilter(categoria); setModoCategoria(categoria !== null && filter !== 'in'); }} />
       </View>
 
       {loading ? (

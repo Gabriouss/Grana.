@@ -4,6 +4,7 @@ import { consumirAvisoCategorias } from '@/lib/categorias-aviso';
 import { semViuva } from '@/lib/sem-viuva';
 import { useCategorias, useVisaoCategorias } from '@/lib/use-categorias';
 import { categoriasDaVisao } from '@/lib/categorias-cliente';
+import { abrirCategoria as abrirCategoriaNaAba } from '@/lib/abrir-categoria';
 import { linhaDoTeto } from '@/lib/gastos-categoria';
 import { fetchDiasDeAtividade } from '@/lib/data';
 import { movimentarCofrinhoLocal, type OrigemCofrinho } from '@/lib/cofrinho-origem';
@@ -782,7 +783,7 @@ export default function InicioScreen() {
     return () => { ativo = false; };
   }, [userId, isDemoMode, loading, onboardingOpen, !!categorias.resultado]);
   function abrirCategoria(category: string) {
-    router.push({ pathname: '/(app)/lancamentos', params: { modo: 'categoria', categoria: category, inicio: categorias.resultado?.inicio ?? categoriaInicio, fim: categorias.resultado?.fim ?? categoriaFim, forma: visaoCategoria } });
+    abrirCategoriaNaAba(categorias.resultado, category, visaoCategoria, destino => router.push(destino));
   }
 
   /* Mesmo tratamento do donut de Gráficos: paleta validada por nome de
