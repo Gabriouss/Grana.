@@ -40,6 +40,7 @@ import {
 } from '@/lib/data';
 import ExcluirContaSheet from '@/components/ExcluirContaSheet';
 import BaixarMeusDadosBotao from '@/components/BaixarMeusDadosBotao';
+import ExportarLancamentosBotao from '@/components/ExportarLancamentosBotao';
 import { useModalAccessibility } from '@/lib/modal-accessibility';
 import { useReducedMotion } from '@/lib/motion';
 import {
@@ -776,6 +777,7 @@ export default function PerfilScreen() {
             isso em lugar nenhum do app. O mesmo botão está na tela de
             assinatura, para quem perdeu o acesso. */}
         <View style={{ gap: 10, marginTop: spacing.md }}>
+          <ExportarLancamentosBotao />
           <BaixarMeusDadosBotao />
           <AppPressable
             style={({ hovered }) => [styles.signOutBtn, hovered && styles.signOutBtnHover]}
