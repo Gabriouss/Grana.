@@ -675,12 +675,19 @@ export default function LancamentosScreen() {
   const monthBalance = monthIn - monthOut;
 
   // Categorias presentes no mês selecionado, pro filtro por categoria (cada uma com a cor do próprio lançamento).
+  // Nunca depende de categoryFilter: o próximo chip não consulta as linhas do anterior.
+  const baseDasCategorias = useMemo(
+    () => modoCategoria && consultaCategoria.resultado
+      ? linhasDaCategoria(consultaCategoria.resultado, null, 'avista')
+      : walletTransactions.filter(t => isSameMonth(t.occurred_on, selectedYear, selectedMonth)),
+    [modoCategoria, consultaCategoria.resultado, walletTransactions, selectedYear, selectedMonth]
+  );
   const categoryOptions = useMemo(
     () =>
       Array.from(
-        (modoCategoria && consultaCategoria.resultado ? linhasDaCategoria(consultaCategoria.resultado, null, 'avista') : walletTransactions.filter(t => isSameMonth(t.occurred_on, selectedYear, selectedMonth) && (filter === 'tudo' || t.type === filter))).reduce((map, t) => (map.has(t.category) ? map : map.set(t.category, t.color)), new Map<string, string>())
+        baseDasCategorias.filter(t => filter === 'tudo' || t.type === filter).reduce((map, t) => (map.has(t.category) ? map : map.set(t.category, t.color)), new Map<string, string>())
       ).sort((a, b) => a[0].localeCompare(b[0], 'pt-BR')),
-    [walletTransactions, selectedYear, selectedMonth, filter, modoCategoria, consultaCategoria.resultado]
+    [baseDasCategorias, filter]
   );
 
   // Filtrado por tipo, categoria e busca textual (descrição ou categoria) — todos dentro do mês selecionado.
@@ -803,7 +810,7 @@ export default function LancamentosScreen() {
             { key: 'out', label: 'Saídas' },
           ]}
           value={filter}
-          onChange={(f) => { setFilter(f as 'tudo' | TxType); if (f === 'in') setModoCategoria(false); else if (categoryFilter) setModoCategoria(true); }}
+          onChange={(f) => { setFilter(f as 'tudo' | TxType); setModoCategoria(f !== 'in' && !!categoryFilter && baseDasCategorias.some(t => t.type === 'out' && t.category === categoryFilter)); }}
         />
 
         <CampoBusca value={search} onChangeText={setSearch} />
@@ -812,7 +819,7 @@ export default function LancamentosScreen() {
 
         <ChipsCategoria opcoes={categoryOptions} selecionada={categoryFilter}
           onTodas={() => { setCategoryFilter(null); setModoCategoria(false); setIntervaloCategoria(null); }}
-          onSelect={categoria => { setCategoryFilter(categoria); setModoCategoria(categoria !== null && filter !== 'in'); if (categoria === null) setIntervaloCategoria(null); }} />
+          onSelect={categoria => { setCategoryFilter(categoria); setModoCategoria(categoria !== null && filter !== 'in' && baseDasCategorias.some(t => t.type === 'out' && t.category === categoria)); if (categoria === null) setIntervaloCategoria(null); }} />
       </View>
 
       {loading ? (
