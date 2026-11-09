@@ -1410,8 +1410,8 @@ function gerarFitidSintetico(
  * descrição virava valor, e o valor de verdade ficava perdido ou incompleto
  * (achado do Codex, 19/09/2026, revisando o código).
  */
-function splitCsvLine(line: string): string[] {
-  const delim = line.split(';').length > line.split(',').length ? ';' : ',';
+export function splitCsvLine(line: string, separador?: ',' | ';'): string[] {
+  const delim = separador ?? (line.split(';').length > line.split(',').length ? ';' : ',');
   const campos: string[] = [];
   let atual = '';
   let dentroDeAspas = false;
@@ -1487,7 +1487,7 @@ export type CsvParseResult = {
   truncado: boolean;
 };
 
-export function parseCsvTextDetalhado(text: string): CsvParseResult {
+export function parseCsvTextDetalhado(text: string, separador?: ',' | ';'): CsvParseResult {
   const vazio: CsvParseResult = { rows: [], totalLinhas: 0, truncado: false };
 
   /* Corta o texto antes de qualquer processamento. Sem isto, colar um arquivo
@@ -1498,7 +1498,7 @@ export function parseCsvTextDetalhado(text: string): CsvParseResult {
   const lines = texto.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length === 0) return vazio;
 
-  const header = splitCsvLine(lines[0]).map((h) => h.toLowerCase());
+  const header = splitCsvLine(lines[0], separador).map((h) => h.toLowerCase());
   const hasHeader = header.some(
     (h) => h.includes('data') || h.includes('valor') || h.includes('desc') || h.includes('hist')
   );
@@ -1524,10 +1524,10 @@ export function parseCsvTextDetalhado(text: string): CsvParseResult {
      (`Math.abs`) e "11/09,Pix recebido,500.00" entrava como saída de R$ 500
      (achado A49 da auditoria no emulador). */
   const valorComSinal = (cols: string[]) => (cols[idxAmount] || '').trim().replace(/^R\$\s*/i, '');
-  const arquivoUsaSinal = dataLines.some((line) => valorComSinal(splitCsvLine(line)).startsWith('-'));
+  const arquivoUsaSinal = dataLines.some((line) => valorComSinal(splitCsvLine(line, separador)).startsWith('-'));
 
   for (const line of dataLines) {
-    const cols = splitCsvLine(line);
+    const cols = splitCsvLine(line, separador);
     if (cols.length < 2) continue;
 
     const rawAmount = cols[idxAmount] || '0';

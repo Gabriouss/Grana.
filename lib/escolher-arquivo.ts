@@ -31,6 +31,7 @@ export type ArquivoEscolhido = {
   nome: string;
   texto: string;
 };
+type OpcoesExtrato = { limiteBytes?: number; limparCopia?: boolean };
 
 /** Extensões aceitas, em minúsculas e com o ponto. */
 const EXTENSOES = ['.ofx', '.csv', '.txt', '.qfx'];
@@ -41,12 +42,12 @@ function extensaoAceita(nome: string): boolean {
 }
 
 /** `null` quando a pessoa fecha o seletor sem escolher. */
-export async function escolherArquivoDeExtrato(): Promise<ArquivoEscolhido | null> {
-  if (Platform.OS === 'web') return escolherNaWeb();
-  return escolherNoNativo();
+export async function escolherArquivoDeExtrato(opcoes: OpcoesExtrato = {}): Promise<ArquivoEscolhido | null> {
+  if (Platform.OS === 'web') return escolherNaWeb(opcoes);
+  return escolherNoNativo(opcoes);
 }
 
-function escolherNaWeb(): Promise<ArquivoEscolhido | null> {
+function escolherNaWeb(opcoes: OpcoesExtrato): Promise<ArquivoEscolhido | null> {
   return new Promise((resolve, reject) => {
     if (typeof document === 'undefined') {
       resolve(null);
@@ -77,6 +78,7 @@ function escolherNaWeb(): Promise<ArquivoEscolhido | null> {
         return;
       }
       try {
+        if (opcoes.limiteBytes && arquivo.size > opcoes.limiteBytes) throw new Error('Escolha um extrato menor para conferir.');
         const bytes = new Uint8Array(await arquivo.arrayBuffer());
         terminar({ nome: arquivo.name, texto: decodificarOfx(bytes) });
       } catch (e) {
@@ -92,7 +94,7 @@ function escolherNaWeb(): Promise<ArquivoEscolhido | null> {
   });
 }
 
-async function escolherNoNativo(): Promise<ArquivoEscolhido | null> {
+async function escolherNoNativo(opcoes: OpcoesExtrato): Promise<ArquivoEscolhido | null> {
   /* Tipo curinga em vez de lista de MIME: o Android reporta OFX ora como
      `application/octet-stream`, ora como `application/x-ofx`, ora sem tipo
      nenhum, e filtrar por MIME deixava o arquivo cinza e inselecionável no
@@ -103,10 +105,20 @@ async function escolherNoNativo(): Promise<ArquivoEscolhido | null> {
   const arquivo = resultado.assets?.[0];
   if (!arquivo) return null;
 
-  if (!extensaoAceita(arquivo.name)) {
-    throw new Error(`"${arquivo.name}" não parece um extrato. Escolha um arquivo .ofx ou .csv.`);
+  const copiaPropria = !!FileSystem.cacheDirectory && arquivo.uri.startsWith(FileSystem.cacheDirectory);
+  if (opcoes.limparCopia && !copiaPropria) throw new Error('Não foi possível preparar uma cópia local segura do extrato.');
+  try {
+    if (!extensaoAceita(arquivo.name)) throw new Error('Escolha um arquivo OFX ou CSV. Para PDF ou Excel, exporte o extrato em CSV no banco.');
+    if (opcoes.limiteBytes) {
+      const info = await FileSystem.getInfoAsync(arquivo.uri);
+      if (!info.exists || !('size' in info) || info.size > opcoes.limiteBytes) throw new Error('Escolha um extrato menor para conferir.');
+    }
+    const base64 = await FileSystem.readAsStringAsync(arquivo.uri, { encoding: 'base64' });
+    return { nome: arquivo.name, texto: decodificarOfx(base64ParaBytes(base64)) };
+  } finally {
+    if (opcoes.limparCopia && copiaPropria) {
+      try { await FileSystem.deleteAsync(arquivo.uri, { idempotent: true }); }
+      catch { console.warn('[extrato] cópia temporária não removida'); throw new Error('Não foi possível limpar a cópia temporária do extrato. Tente novamente.'); }
+    }
   }
-
-  const base64 = await FileSystem.readAsStringAsync(arquivo.uri, { encoding: 'base64' });
-  return { nome: arquivo.name, texto: decodificarOfx(base64ParaBytes(base64)) };
 }
