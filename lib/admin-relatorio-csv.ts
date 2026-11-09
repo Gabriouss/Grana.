@@ -222,9 +222,9 @@ function limparListaCodigos(lista: readonly string[] | null | undefined): string
   return resultado;
 }
 
-export function escaparCelulaCsv(valor: string): string {
+export function escaparCelulaCsv(valor: string, separador: ',' | ';' = ','): string {
   if (valor.length === 0) return '';
-  if (/[",\r\n]/.test(valor) || /^\s|\s$/.test(valor)) {
+  if (valor.includes(separador) || /["\r\n]/.test(valor) || /^\s|\s$/.test(valor)) {
     return `"${valor.replace(/"/g, '""')}"`;
   }
   return valor;

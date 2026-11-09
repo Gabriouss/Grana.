@@ -93,6 +93,14 @@ vault do Obsidian NÃO é fonte (está desatualizado).
 
 Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052cdf`); ambas passaram no validador e permanecem idênticas.
 
+## 08/11 — E6, núcleo CSV, primeira etapa PH
+
+Supremo antecipou E6 enquanto Prism faz A4 main: ao chegar hash, fechar passo verde/commit e pick-x, antes do gate do clone. Base a1e61e27, um worktree/zero stash, árvore limpa. Ordem CSV lida inteira e escopo autorizado: só clone, período/carteira, oito colunas PT, BOM UTF-8 e ;, proteção de fórmulas, compartilhamento e recibos, sem OFX/push/build/Supabase.
+
+Primeira etapa: `lib/exportar-lancamentos-csv.ts` puro; reutiliza proteção/escape administrativo e filtro real de cartão/carteira. Escape ganhou separador opcional (vírgula preservada por padrão). Principal canônica por dono+is_default recebe legado sem carteira; Total exporta linhas uma vez, sem criar sobra/saldo/recorrência; carteira do cartão prevalece e dados estrangeiros não são expostos. CSV tem data civil, decimal com vírgula e nenhum R$. Rejeita número/data inválidos em vez de inventar zero. Teste real `exportar-lancamentos-csv.cjs`: RED 7 falhas/1 passou antes da implementação; GREEN 8 grupos mais regressão admin verde. Sem testes pesados. Interface/consulta/entrega ainda pendentes, E6 não concluído.
+
+Novo achado A6-01 recebido durante este passo: retenção do diário só tentada em guardar/listar e exclusão vencida ignorava retorno. Próxima correção própria antes de A5: regressão Kotlin real, descarte na retomada e recibo de falha, textos/política sem timer prometido com app parado. Não houve reprodução no Android. Registro externo será encaminhado ao Ledger; ele continua dono documental do main.
+
 ## 08/11 — equivalente de 6f90c18d no clone
 
 Passagem 22:30 atribuiu ao PH o saneamento do harness do Prism, após A3 `68ca7b56`. RED no clone: ReferenceError carregarHomeLayout, dublê ainda com nome carregarLayoutHomeEmEtapas. Corrigida só a dependência em `__tests__/inicio-livre-carregamento.cjs`; asserções e módulo real preservados. Sem alteração de produto/pesado/push/build/Supabase. Não transportar o contexto do main junto.
