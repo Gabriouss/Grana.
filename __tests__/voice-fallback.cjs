@@ -12,8 +12,10 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync('supabase/functions/_share
 async function run(primary, secondary) {
   const calls = [];
   const result = await api.transcrever(new ArrayBuffer(4), { mimeType: 'audio/m4a', nomeArquivo: 'qa.m4a',
-    provedores: api.provedoresPadrao('qa', 'qa'), fetchComTimeout: async (url) => {
-      const nome = url.includes('groq') ? 'groq' : 'openai'; calls.push(nome);
+    // O mecanismo genérico ainda é testado com reserva sintética. A seleção
+    // produtiva única é verificada pelo endpoint real em voz-so-groq.cjs.
+    provedores: [...api.provedoresPadrao('qa'), { nome: 'reserva-fixture', url: 'https://reserva.invalid/transcricao', model: 'fixture', key: () => 'qa' }], fetchComTimeout: async (url) => {
+      const nome = url.includes('groq') ? 'groq' : 'reserva-fixture'; calls.push(nome);
       return nome === 'groq' ? primary() : secondary();
     },
   });
@@ -24,12 +26,12 @@ async function run(primary, secondary) {
   const ok = () => Response.json({ text: 'mercado 32' });
   const fail = () => new Response('', { status: 503 });
   let r = await run(ok, ok); assert.deepEqual(r.calls, ['groq']);
-  r = await run(fail, ok); assert.deepEqual(r.calls, ['groq', 'openai']); assert.equal(r.result.provedor, 'openai');
-  r = await run(() => new Promise(() => {}), ok); assert.equal(r.result.provedor, 'openai');
-  r = await run(fail, fail); assert.equal(r.result, null); assert.deepEqual(r.calls, ['groq', 'openai']);
+  r = await run(fail, ok); assert.deepEqual(r.calls, ['groq', 'reserva-fixture']); assert.equal(r.result.provedor, 'reserva-fixture');
+  r = await run(() => new Promise(() => {}), ok); assert.equal(r.result.provedor, 'reserva-fixture');
+  r = await run(fail, fail); assert.equal(r.result, null); assert.deepEqual(r.calls, ['groq', 'reserva-fixture']);
   for (const texto of [api.PROMPT_TRANSCRICAO, 'Comando de voz em português do Brasil', 'Merenda 57quenta e sete reais']) {
     r = await run(() => Response.json({ text: texto }), ok);
-    assert.equal(r.result.provedor, 'openai', 'transcrição corrompida aciona fallback');
+    assert.equal(r.result.provedor, 'reserva-fixture', 'transcrição corrompida aciona fallback');
   }
   for (const texto of [
     'Mercado 34,57 no C6', 'TV 1080p em 12x', 'Água 100ml',

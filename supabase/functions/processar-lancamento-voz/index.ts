@@ -5,7 +5,7 @@ import { lerCorpoLimitado } from '../_shared/request-body.ts';
 // aparelho grava o áudio, manda pra cá autenticado, e recebe de volta o TEXTO
 // já normalizado — o mesmo texto que o bot do WhatsApp obteria do mesmo áudio,
 // porque os dois passam pelo mesmo `_shared/voice-transcription.ts` (mesma
-// ordem Groq → OpenAI, mesmo prompt, mesma normalização de número por
+// Groq como único provedor, mesmo prompt, mesma normalização de número por
 // extenso).
 //
 // A INTERPRETAÇÃO do texto (valor, categoria, forma de pagamento, parcelas,
@@ -16,8 +16,7 @@ import { lerCorpoLimitado } from '../_shared/request-body.ts';
 // duplicaria em Deno um código que já é verificado onde está.
 //
 // Configuração (supabase secrets set):
-//   GROQ_API_KEY    — provedor preferido (whisper-large-v3).
-//   OPENAI_API_KEY  — opcional, fallback (whisper-1).
+//   GROQ_API_KEY    — único provedor (whisper-large-v3).
 //
 // Publicar COM verificação de JWT (o padrão — não passe --no-verify-jwt):
 //   supabase functions deploy processar-lancamento-voz
@@ -29,7 +28,6 @@ import { fetchComTimeout, criarRateLimiter } from '../_shared/seguranca.ts';
 import { consumirCotaIA, mensagemCotaEsgotada } from '../_shared/ai-quota.ts';
 
 const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY') ?? '';
-const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') ?? '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 
@@ -99,7 +97,7 @@ Deno.serve(async (req) => {
     const userId = userData?.user?.id;
     if (authError || !userId) return erro('nao_autenticado', 401);
 
-    if (!GROQ_API_KEY && !OPENAI_API_KEY) {
+    if (!GROQ_API_KEY) {
       console.error('[processar-lancamento-voz] nenhuma chave de transcrição configurada.');
       return erro('sem_provedor', 503);
     }
@@ -134,7 +132,7 @@ Deno.serve(async (req) => {
     const resultado = await transcrever(bytes, {
       mimeType: mime || 'audio/m4a',
       nomeArquivo: audio.name || 'audio.m4a',
-      provedores: provedoresPadrao(GROQ_API_KEY, OPENAI_API_KEY),
+      provedores: provedoresPadrao(GROQ_API_KEY),
       fetchComTimeout,
     });
 

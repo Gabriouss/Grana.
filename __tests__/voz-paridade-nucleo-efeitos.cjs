@@ -240,6 +240,12 @@ const CENARIOS = {
     m = await rodar(origem, CENARIOS.lixoDoServidor);
     ok(m.e.rpc.length === 0 && m.e.falhas.join() === 'nao_entendi' && !JSON.stringify(m.e).includes('Acompanhe'), `${origem}: lixo do servidor ao vivo vira "nao entendi" sem repetir a frase`);
 
+    for (const [codigo, status] of [['nao_entendi', 422], ['sem_provedor', 503]]) {
+      m = await rodar(origem, x => ({ local: null, servidor: x.falha(codigo, status) }));
+      ok(m.e.falhas.includes(codigo) && m.e.rpc.length === 0 && m.e.sucessos.length === 0 && m.e.revisoes.length === 0,
+        `${origem}: falha Groq ${codigo} deixa recibo visível e não grava nem confirma`);
+    }
+
     m = await rodar(origem, CENARIOS.localBom);
     ok(m.e.envios === 0 && m.e.rpc.length === 1, `${origem}: texto bom do aparelho nao gasta o servidor`);
 

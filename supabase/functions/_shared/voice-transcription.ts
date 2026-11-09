@@ -19,18 +19,13 @@ export type ProvedorTranscricao = {
 };
 
 /**
- * Provedores de transcrição, em ordem de preferência. Ambos falam o mesmo
- * dialeto de API (a Groq expõe endpoints compatíveis com a OpenAI), então o
- * corpo da requisição é idêntico — só mudam URL, modelo e chave. A Groq vem
- * primeiro por ser ordens de grandeza mais rápida e barata no mesmo Whisper;
- * a OpenAI fica como rede de segurança para quando a Groq estiver fora do ar
- * ou com rate limit, situação em que perder o lançamento seria pior do que
- * pagar alguns centavos.
+ * Somente Groq, decisão do autor de 08/11/2026. O caminho /openai/v1 é o
+ * protocolo compatível hospedado pela própria Groq; não chama a OpenAI.
+ * Indisponibilidade termina no erro tratado pelos clientes, sem provedor pago.
  */
-export function provedoresPadrao(groqKey: string, openaiKey: string): ProvedorTranscricao[] {
+export function provedoresPadrao(groqKey: string): ProvedorTranscricao[] {
   return [
     { nome: 'groq', url: 'https://api.groq.com/openai/v1/audio/transcriptions', model: 'whisper-large-v3', key: () => groqKey },
-    { nome: 'openai', url: 'https://api.openai.com/v1/audio/transcriptions', model: 'whisper-1', key: () => openaiKey },
   ];
 }
 

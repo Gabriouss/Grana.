@@ -24,13 +24,8 @@ import { lerCorpoLimitado } from '../_shared/request-body.ts';
 //                                este secret não estiver configurado, a
 //                                verificação fica desligada (com aviso no
 //                                log) em vez de derrubar o webhook inteiro.
-//   GROQ_API_KEY              — chave da Groq, provedor preferido para
-//                                transcrever áudio (whisper-large-v3). Ordem
-//                                de grandeza mais rápido e mais barato que a
-//                                OpenAI para o mesmo modelo.
-//   OPENAI_API_KEY            — opcional: fallback de transcrição (whisper-1)
-//                                usado só quando a Groq falha ou não está
-//                                configurada.
+//   GROQ_API_KEY              — único provedor de transcrição
+//                                (whisper-large-v3), sem fallback pago.
 //   SUPABASE_SERVICE_ROLE_KEY — já disponível por padrão no ambiente da função.
 //
 // Depois de configurar os secrets, publique com:
@@ -60,7 +55,6 @@ const WHATSAPP_ACCESS_TOKEN = Deno.env.get('WHATSAPP_ACCESS_TOKEN') ?? '';
 const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID') ?? '';
 const WHATSAPP_APP_SECRET = Deno.env.get('WHATSAPP_APP_SECRET') ?? '';
 const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY') ?? '';
-const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') ?? '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
@@ -654,12 +648,12 @@ async function transcribeAudio(mediaId: string): Promise<string | null> {
     const resultado = await transcrever(audioBytes, {
       mimeType: 'audio/ogg',
       nomeArquivo: 'audio.ogg',
-      provedores: provedoresPadrao(GROQ_API_KEY, OPENAI_API_KEY),
+      provedores: provedoresPadrao(GROQ_API_KEY),
       fetchComTimeout,
     });
     if (!resultado) {
-      if (!GROQ_API_KEY && !OPENAI_API_KEY) {
-        console.warn('[transcribeAudio] nenhuma chave de transcrição configurada (GROQ_API_KEY / OPENAI_API_KEY).');
+      if (!GROQ_API_KEY) {
+        console.warn('[transcribeAudio] chave de transcrição não configurada (GROQ_API_KEY).');
       }
       return null;
     }

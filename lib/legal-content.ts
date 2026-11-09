@@ -102,7 +102,7 @@ export const POLITICA_PRIVACIDADE: DocumentoLegal = {
       tipo: 'lista',
       itens: [
         'Supabase (banco de dados, autenticação e armazenamento de arquivos): infraestrutura que hospeda todos os dados descritos acima.',
-        'OpenAI e Groq (Whisper), somente para transcrever mensagens de áudio enviadas pelo app ou widget, quando você usa voz. O áudio é enviado só para a transcrição e não é retido por nós após o processamento.',
+        'Groq (Whisper), somente para transcrever mensagens de áudio enviadas pelo app ou widget, quando você usa voz. O áudio é enviado só para a transcrição e não é retido por nós após o processamento.',
         'Google (Gemini), somente para gerar a resposta textual do Granabô a partir da pergunta, do contexto da conversa e dos resultados financeiros necessários para responder. O modelo não recebe acesso direto ao banco.',
         `Google (ML Kit), biblioteca que lê a foto da nota no próprio aparelho, no Android. Segundo a documentação do Google, o ML Kit não envia aos servidores do Google a imagem, o conteúdo lido nem o resultado da leitura. A biblioteca envia ao Google métricas de diagnóstico e uso: dados do aparelho e da versão do app, um identificador por instalação, configuração e tamanho da leitura, tempo de processamento, versão do recurso, eventos e códigos de erro. O Google informa que usa essas métricas para manter, melhorar e proteger as APIs. O Grana. não recebe essas métricas. A biblioteca faz parte do app e é iniciada sempre que ele abre, inclusive pelo widget, mesmo que você não use a foto da nota. Por isso, não garantimos que nenhuma métrica seja enviada sem o uso dessas funções. A base legal desse envio é o legítimo interesse (LGPD, art. 7º, IX, e art. 10): manter a leitura da foto da nota funcionando com segurança. Você pode se opor a esse tratamento. Deixar de usar a foto da nota, que é opcional, evita as métricas dessa leitura, e você também pode escrever para ${EMAIL_CONTATO}.`,
         'Google Ads e Meta, somente se você chegou por um anúncio e seguiu dali para a compra: recebem o identificador daquele clique e a informação de que a compra aconteceu, para medir a campanha. A Meta recebe ainda, se você aceitar no site, as visitas descritas na seção anterior pelo Pixel. Nenhuma das duas recebe seus dados financeiros nem seu uso do app.',
@@ -215,7 +215,7 @@ export const TERMOS_DE_SERVICO: DocumentoLegal = {
     {
       tipo: 'paragrafo',
       texto:
-        'Alguns recursos (voz no app/widget e Granabô) dependem de serviços de terceiros: OpenAI, Groq (Whisper) e Google (Gemini). Interrupções, mudanças de política ou indisponibilidade desses serviços podem afetar esses recursos específicos sem que isso dependa de nós.',
+        'Alguns recursos (voz no app/widget e Granabô) dependem de serviços de terceiros: Groq (Whisper) e Google (Gemini). Interrupções, mudanças de política ou indisponibilidade desses serviços podem afetar esses recursos específicos sem que isso dependa de nós.',
     },
     { tipo: 'subtitulo', texto: '5. Planos pagos e assinatura' },
     {
