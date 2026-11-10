@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
-import { theme, spacing, type, fonts } from '@/lib/theme';
+import { theme, spacing, type, fonts, graficoLinha } from '@/lib/theme';
 import { formatMoney, todayISO } from '@/lib/format';
 import type { Transaction } from '@/lib/types';
 import AppPressable from './AppPressable';
@@ -276,13 +276,13 @@ export default function FlowChart({
       <Svg width={viewW} height={VIEW_H} viewBox={`0 0 ${viewW} ${VIEW_H}`} style={{ overflow: 'visible' }}>
         <Defs>
           <LinearGradient id="fluxoAreaFill" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={theme.up} stopOpacity={0.3} />
+            <Stop offset="0" stopColor={theme.up} stopOpacity={graficoLinha.opacidadeTopoDegrade} />
             <Stop offset="1" stopColor={theme.up} stopOpacity={0} />
           </LinearGradient>
         </Defs>
 
         {gridLines.map(({ y, valor }, i) => (
-          <Line key={`grid-${i}`} x1={AXIS_LEFT} y1={y} x2={viewW - PAD_RIGHT} y2={y} stroke={theme.rule} strokeWidth={1} opacity={0.6} />
+          <Line key={`grid-${i}`} x1={AXIS_LEFT} y1={y} x2={viewW - PAD_RIGHT} y2={y} stroke={theme.rule} strokeWidth={1} opacity={graficoLinha.opacidadeGrade} />
         ))}
 
         {/* Preenchimento em degradê sob a linha de Entradas — mesma
@@ -295,7 +295,7 @@ export default function FlowChart({
           d={inPath}
           fill="none"
           stroke={theme.up}
-          strokeWidth={2}
+          strokeWidth={graficoLinha.espessura}
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeDasharray={DASH_LEN}
@@ -307,7 +307,7 @@ export default function FlowChart({
           d={outPath}
           fill="none"
           stroke={theme.down}
-          strokeWidth={2}
+          strokeWidth={graficoLinha.espessura}
           strokeDasharray="4 3"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -322,9 +322,9 @@ export default function FlowChart({
             key={`in-${i}`}
             cx={p[0]}
             cy={p[1]}
-            r={i === selecionado ? 4 : 2.5}
+            r={i === selecionado ? graficoLinha.raioPontoSelecionado : graficoLinha.raioPonto}
             fill={theme.up}
-            opacity={i === selecionado ? dotOpacity : dotOpacity * 0.8}
+            opacity={i === selecionado ? dotOpacity : dotOpacity * graficoLinha.opacidadePonto}
           />
         ))}
         {outPoints.map((p, i) => (
@@ -332,9 +332,9 @@ export default function FlowChart({
             key={`out-${i}`}
             cx={p[0]}
             cy={p[1]}
-            r={i === selecionado ? 4 : 2.5}
+            r={i === selecionado ? graficoLinha.raioPontoSelecionado : graficoLinha.raioPonto}
             fill={theme.down}
-            opacity={i === selecionado ? outOpacity * dotOpacity : outOpacity * dotOpacity * 0.8}
+            opacity={i === selecionado ? outOpacity * dotOpacity : outOpacity * dotOpacity * graficoLinha.opacidadePonto}
           />
         ))}
       </Svg>

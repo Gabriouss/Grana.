@@ -1,7 +1,7 @@
 import { memo, useState } from 'react';
 import { ActivityIndicator, LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
-import { theme, radius, spacing, type, fonts } from '@/lib/theme';
+import { theme, radius, spacing, type, fonts, graficoLinha } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
 import AppPressable from './AppPressable';
 import PrivacyValue from './PrivacyValue';
@@ -161,7 +161,7 @@ function LineAreaChart({
         <Svg width={containerWidth} height={height}>
           <Defs>
             <LinearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={theme.accent2} stopOpacity={0.35} />
+              <Stop offset="0" stopColor={theme.accent2} stopOpacity={graficoLinha.opacidadeTopoDegrade} />
               <Stop offset="1" stopColor={theme.accent2} stopOpacity={0} />
             </LinearGradient>
           </Defs>
@@ -177,7 +177,7 @@ function LineAreaChart({
                   y2={y}
                   stroke={theme.rule}
                   strokeWidth={1}
-                  opacity={0.6}
+                  opacity={graficoLinha.opacidadeGrade}
                 />
                 {/* Ancorado no início (não no fim) e todos na mesma
                     coordenada x: rótulos com "end" ficavam com a borda
@@ -203,8 +203,10 @@ function LineAreaChart({
           })}
 
           <Path d={areaPath} fill="url(#areaFill)" />
-          <Path d={linhaPath} stroke={theme.accent2} strokeWidth={2.5} fill="none" strokeLinecap="round" />
+          <Path d={linhaPath} stroke={theme.accent2} strokeWidth={graficoLinha.espessura} fill="none" strokeLinecap="round" strokeLinejoin="round" />
 
+          {/* Marcador cheio, como o da Início: o tocado cresce, os outros
+              ficam um pouco apagados. */}
           {pontos.map(({ x, y }, i) => {
             const isSelected = selectedIndex === i;
             return (
@@ -212,10 +214,9 @@ function LineAreaChart({
                 key={`pt-${i}`}
                 cx={x}
                 cy={y}
-                r={isSelected ? 5 : 3}
-                fill={isSelected ? theme.accent2 : theme.paper}
-                stroke={theme.accent2}
-                strokeWidth={isSelected ? 0 : 2}
+                r={isSelected ? graficoLinha.raioPontoSelecionado : graficoLinha.raioPonto}
+                fill={theme.accent2}
+                opacity={isSelected ? 1 : graficoLinha.opacidadePonto}
               />
             );
           })}

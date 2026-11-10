@@ -169,6 +169,19 @@ export const card = {
   borderWidth: 1,
 };
 
+/* Desenho dos gráficos de linha. A Início (`FlowChart`) é a referência, e
+   Gráficos (`LineAreaChart`) segue o mesmo traço, marcador, degradê e grade
+   (pedido do autor de 09/11/2026: "Deixe o gráfico da aba de gráficos no
+   mesmo estilo do gráfico da home"). Mudou aqui, muda nos dois. */
+export const graficoLinha = {
+  espessura: 2,
+  raioPonto: 2.5,
+  raioPontoSelecionado: 4,
+  opacidadePonto: 0.8,
+  opacidadeTopoDegrade: 0.3,
+  opacidadeGrade: 0.6,
+};
+
 /* Sombra "persuasiva" dos cards de destaque da landing (cena de dor, card
    de benefício, FAQ) — grande, escura, sem cor de marca (ela só reforça
    profundidade, não decora). `as any` porque `boxShadow` não existe no
