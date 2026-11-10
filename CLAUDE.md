@@ -42,4 +42,7 @@
 - Set GranaPonto plan limits: never limit transaction history by plan; monthly plan gets only 2 cards; put all widgets in the semiannual plan.
 - Granabô must never recommend investments, loans, or financial strategies, since this is prohibited by law and regulations.
 - Use the .env Supabase credentials for read-only access only; modify Supabase only in this terminal with manual mode active.
+- Tester users migrate to the Play Store app as legacy users with lifetime annual plan access; users after the testers pay for plans.
+- Ask the user for explicit permission before triggering any app build.
+- Keep debit and credit category spending separate: show debit categories only on the debit tab and credit categories only on the credit tab.
 <!-- end claude-reflect -->
