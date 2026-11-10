@@ -72,7 +72,7 @@ export default function DesafiosCalendario({ dias, weekActivity, streak, demo, a
           {calendario.semanas.map((semana, i) => <View key={i} style={[s.linha, s.semana]}>{semana.map((d, j) => d ? <AppPressable key={j} accessibilityRole="button"
             accessibilityLabel={`${d.dia} de ${nome}${d.registro ? ', com registro' : ''}${d.hoje ? ', hoje' : ''}. Ver gastos do dia`}
             accessibilityState={{ selected: diaEscolhido === d.iso }} onPress={() => setDiaEscolhido(atual => atual === d.iso ? null : d.iso)} style={s.celula}>
-            <View style={[s.anel, diaEscolhido === d.iso && s.anelEscolhido]}><View style={[s.casa, d.registro && s.casaRegistro, d.futuro && s.casaFutura, d.hoje && s.casaHoje]}>
+            <View style={[s.anel, diaEscolhido === d.iso && s.anelEscolhido]}><View style={[s.casa, d.registro && s.casaRegistro, d.futuro && s.casaFutura, d.hoje && s.casaHoje, d.hoje && d.registro && s.casaHojeRegistro]}>
               <Text style={[s.numero, d.registro && s.numeroAtivo, d.futuro && s.numeroFuturo]}>{d.dia}</Text>
             </View></View>
           </AppPressable> : <View key={j} style={s.celula} />)}</View>)}
@@ -119,6 +119,8 @@ const s = StyleSheet.create({
   casaRegistro: { backgroundColor: theme.accent2 },
   casaFutura: { backgroundColor: 'transparent' },
   casaHoje: { borderColor: theme.ink },
+  // Sobre a casa clara, o contorno escuro distingue hoje dos outros dias com registro.
+  casaHojeRegistro: { borderColor: theme.paper },
   numeroFuturo: { color: theme.inkFaint },
   cabecalho: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   total: { color: theme.down, fontFamily: fonts.regular, fontSize: type.apoio, lineHeight: lh(type.apoio, 'valor'), flexShrink: 0 },

@@ -89,7 +89,53 @@ function load(file) {
 }
 function nodes(n) { if (Array.isArray(n)) return n.flatMap(nodes); if (!n || typeof n !== 'object') return []; return [n, ...nodes(n.props?.children)]; }
 function text(n) { if (Array.isArray(n)) return n.map(text).join(''); if (typeof n === 'string' || typeof n === 'number') return String(n); return n && typeof n === 'object' ? text(n.props?.children) : ''; }
+// Render real com a paleta real: o contorno de hoje precisa aparecer também
+// quando a casa já está preenchida por um registro, inclusive após seleção.
+function testarContrasteCalendario() {
+  const tokens = carregar('lib/theme.ts', { 'react-native': { Platform: { OS: 'android', select: op => op.android ?? op.default } } });
+  const slots = []; let cursor = 0;
+  class Relogio extends Date { constructor(...args) { super(...(args.length ? args : [2026, 10, 10, 12])); } }
+  const imports = { ...mocks,
+    react: { ...mocks.react, useState(initial) { const i = cursor++; if (!(i in slots)) slots[i] = initial; return [slots[i], v => { slots[i] = typeof v === 'function' ? v(slots[i]) : v; }]; } },
+    '@/lib/theme': tokens,
+    '@/lib/desafios-calendario': carregar('lib/desafios-calendario.ts'),
+    '@/lib/transaction-rules': carregar('lib/transaction-rules.ts'),
+  };
+  const api = {};
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root, 'components/DesafiosCalendario.tsx'), 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
+  }).outputText, { exports: api, Date: Relogio, Set, console, require(id) {
+    if (imports[id]) return imports[id];
+    if (['./AppPressable', './MonthSelector', './PrivacyValue'].includes(id)) return { __esModule: true, default: id.slice(2) };
+    throw new Error('import não simulado no contraste: ' + id);
+  } });
+  const style = value => Array.isArray(value) ? Object.assign({}, ...value.map(style)) : value || {};
+  const luminancia = hex => {
+    const rgb = hex.slice(1).match(/../g).map(v => parseInt(v, 16) / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+    return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+  };
+  const contraste = (a, b) => (Math.max(luminancia(a), luminancia(b)) + 0.05) / (Math.min(luminancia(a), luminancia(b)) + 0.05);
+  function render(dias) { cursor = 0; return api.default({ dias, weekActivity: [], streak: 0, demo: true }); }
+  const hoje = tree => nodes(tree).find(n => n.type === 'AppPressable' && n.props.accessibilityLabel?.includes(', hoje'));
+  const casa = day => style(day.props.children.props.children.props.style);
+  const dias = new Set(['2026-11-09', '2026-11-10']);
+  let tree = render(dias), day = hoje(tree), fill = casa(day);
+  ok(fill.backgroundColor === tokens.theme.accent2, 'registro mantém o preenchimento da marca');
+  ok(contraste(fill.borderColor, fill.backgroundColor) >= 3, 'hoje com registro: contraste da borda contra preenchimento >= 3:1');
+  ok(day.props.accessibilityLabel.includes('com registro'), 'hoje com registro mantém rótulo acessível');
+  const outro = nodes(tree).find(n => n.type === 'AppPressable' && n.props.accessibilityLabel?.startsWith('9 de '));
+  ok(casa(outro).borderColor === 'transparent', 'registro de outro dia não recebe a borda de hoje');
+  day.props.onPress(); tree = render(dias); day = hoje(tree); fill = casa(day);
+  ok(day.props.accessibilityState.selected === true, 'selecionar hoje preserva o estado acessível');
+  ok(style(day.props.children.props.style).borderColor === tokens.theme.accent2, 'seleção mantém o anel externo');
+  ok(contraste(fill.borderColor, fill.backgroundColor) >= 3, 'hoje registrado e selecionado mantém o contraste interno');
+  day.props.onPress(); tree = render(new Set()); day = hoje(tree); fill = casa(day);
+  ok(day.props.accessibilityState.selected === false, 'segundo toque desmarca o dia');
+  ok(fill.borderColor === tokens.theme.ink && fill.backgroundColor === tokens.menta(0.06), 'hoje sem registro mantém borda clara e casa escura');
+  console.log(`calendário hoje registrado: contraste ${contraste(casa(hoje(render(dias))).borderColor, tokens.theme.accent2).toFixed(3)}:1`);
+}
 async function main() {
+  testarContrasteCalendario();
   const Hoje = load('components/HojeNoSeuMes.tsx').default;
   const empty = { bills: [], cards: [], goals: [], tx: [] };
   ok(Hoje(empty) === null, 'sem dado real, sem cartão');
