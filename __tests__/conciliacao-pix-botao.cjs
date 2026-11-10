@@ -19,6 +19,27 @@ function criar(){const c={user:'a',demo:false,slots:[],i:0,effects:[],calls:[],a
     {exports:api,Date,console:{warn(){}},require:id=>{if(!(id in imports))throw Error(id);return imports[id];}});
   c.render=()=>{c.i=0;const tree=api.default();for(const fn of c.effects.splice(0))fn();return tree;};return c;}
 function nodes(t){if(!t)return [];if(Array.isArray(t))return t.flatMap(nodes);return typeof t==='object'?[t,...nodes(t.props?.children)]:[];}
+/* Perfil real, transpilado e renderizado sem rede, com o flag remoto importar_extrato ligado ou desligado.
+   A trava da E7 vem do módulo real; hooks e módulos de fora do caminho viram dublês inertes. */
+function telaPerfil(flags){const slots=[];let cursor=0;
+  const inerte=()=>new Proxy(function(){},{get:(_,k)=>k==='__esModule'?false:k===Symbol.toPrimitive?()=>'':k==='then'?undefined:k===Symbol.iterator?function*(){}:inerte(),apply:()=>inerte(),construct:()=>inerte()});
+  const modulo=()=>new Proxy({},{get:(_,k)=>k==='__esModule'?false:inerte()});
+  const trava={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/conciliacao-pix-disponibilidade.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:trava});
+  const stubs={react:{useState(v){const i=cursor++;if(!(i in slots))slots[i]=typeof v==='function'?v():v;return [slots[i],()=>{}];},useEffect(){},useRef(v){const i=cursor++;return slots[i]??(slots[i]={current:v});},useCallback:f=>f,useMemo:f=>f()},
+    'react/jsx-runtime':{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props}),Fragment:'Fragment'},
+    'react-native':new Proxy({Platform:{OS:'android',select:o=>o.android??o.default},StyleSheet:{create:v=>v,hairlineWidth:1},AppState:{addEventListener:()=>({remove(){}})}},{get:(o,k)=>o[k]??k}),
+    'expo-router':{useRouter:()=>({push(){},replace(){},back(){}})},
+    '@/lib/feature-flags':{useFlags:()=>({ligado:k=>flags[k]===true,flag:k=>flags[k]})},
+    '@/lib/auth-context':{useSession:()=>({session:{user:{id:'usuario-ficticio',email:'pessoa@exemplo.invalid',user_metadata:{}}},signOut(){}})},
+    '@/lib/privacy-context':{usePrivacy:()=>({hidden:false,toggle(){}})},'@/lib/widget-privacy-context':{useWidgetPrivacy:()=>({valoresVisiveis:true,toggle(){}})},
+    '@/lib/demo-context':{useDemo:()=>({isDemoMode:false,toggleDemoMode(){}})},'@/lib/app-lock-context':{useAppLock:()=>({ativo:false,disponivel:false,alternar(){}})},
+    '@/lib/screen-capture-context':{useScreenCapture:()=>({bloqueado:false,disponivel:false,alternar(){}})},'@/lib/tab-bar':{useTabBarInset:()=>({paddingConteudo:0})},
+    '@/lib/motion':{useReducedMotion:()=>false},'@/components/Sheet':{useKeyboardHeight:()=>0},'@/lib/modal-accessibility':{useModalAccessibility(){}},
+    '@/lib/conciliacao-pix-disponibilidade':trava};
+  const requerer=id=>id in stubs?stubs[id]:id.startsWith('@/components/')?{__esModule:true,default:id}:modulo();
+  const api={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('app/(app)/perfil.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,
+    {exports:api,require:requerer,console:{warn(){},log(){},error(){}},Date,Map,Set,Promise,setTimeout,clearTimeout,Intl,Math,JSON,Number,String,Object,Array,RegExp,Error});
+  return nodes(api.default());}
 const find=(c,label)=>nodes(c.render()).find(n=>n.props?.accessibilityLabel===label);
 async function abrir(c){find(c,'Conferir Pix pelo extrato').props.onPress();find(c,'Banco e apelido desta conta').props.onChangeText('Banco fixture');await find(c,'Escolher extrato').props.onPress();}
 const flush=()=>new Promise(r=>setImmediate(r));
@@ -32,7 +53,11 @@ const flush=()=>new Promise(r=>setImmediate(r));
   const d=criar();await abrir(d);let release;d.pending=new Promise(r=>{release=r;});find(d,'Confirmar item 1').props.onPress();find(d,'Confirmar item 1').props.onPress();assert.equal(d.calls.length,1,'duplo toque não abre dois lotes');release();await flush();
   const e=criar();e.cancelPick=true;await abrir(e);assert.equal(e.analyzed,0);assert.equal(e.calls.length,0);
   const f=criar();await abrir(f);f.fail=true;find(f,'Confirmar item 1').props.onPress();await flush();assert.match(f.alerts.at(-1)[1],/0 de 1/);assert.ok(nodes(f.render()).some(n=>n.props?.children==='Não confirmado.'));
-  assert.match(fs.readFileSync('app/(app)/perfil.tsx','utf8'),/CONCILIACAO_PIX_LIBERADA && ligado\('importar_extrato'\).*ConciliarPixBotao/);
-  const gate={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/conciliacao-pix-disponibilidade.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:gate});assert.equal(gate.CONCILIACAO_PIX_LIBERADA,false,'APK de teste mantém E7 oculta mesmo com importar_extrato ligado ou desconhecido');
-  console.log('Pix botão real: preview sem gravar, revisão fora do lote, ignorado desmarca, confirmação explícita/cancelamento, toque duplo e recibo parcial OK');
+  /* E7 liberada pelo autor em 09/11/2026 ("Pode ligar a conciliação completamente"): o Perfil real mostra a conferência
+     com o flag remoto importar_extrato ligado e a esconde com ele desligado, que continua sendo o interruptor de emergência. */
+  const perfilLigado=telaPerfil({importar_extrato:true}),perfilDesligado=telaPerfil({importar_extrato:false});
+  for(const tela of [perfilLigado,perfilDesligado])assert.ok(tela.some(n=>n.type==='@/components/ExportarLancamentosBotao'),'o render chegou aos botões de dados do Perfil');
+  assert.ok(perfilLigado.some(n=>n.type==='@/components/ConciliarPixBotao'),'Perfil esconde a Conciliação Pix com importar_extrato ligado');
+  assert.ok(!perfilDesligado.some(n=>n.type==='@/components/ConciliarPixBotao'),'Perfil mostra a Conciliação Pix com importar_extrato desligado');
+  console.log('Pix botão real: preview sem gravar, revisão fora do lote, ignorado desmarca, confirmação explícita/cancelamento, toque duplo, recibo parcial e Perfil com a conferência só com importar_extrato ligado OK');
 })().then(()=>clearTimeout(watchdog),e=>{clearTimeout(watchdog);console.error(e);process.exitCode=1;});

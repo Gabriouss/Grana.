@@ -1,5 +1,6 @@
-/** A RPC e seu rollout ainda aguardam revisão/aplicação. O APK de teste leva E6/T7.
- * Liberar este ponto exige recibos de servidor e revisão; a flag de importação
- * existente permanece necessária e, sozinha, não representa prontidão da E7.
+/** Conciliação Pix (E7) liberada pelo autor em 09/11/2026 ("Pode ligar a conciliação
+ * completamente"), depois que a RPC confirmar_conciliacao_pix foi aplicada em produção
+ * e conferida. O flag remoto importar_extrato continua necessário e é o interruptor
+ * de emergência: desligado, o Perfil esconde a conferência sem build nova.
  */
-export const CONCILIACAO_PIX_LIBERADA: boolean = false;
+export const CONCILIACAO_PIX_LIBERADA: boolean = true;
