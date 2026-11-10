@@ -1,12 +1,15 @@
 import { parseCsvTextDetalhado, splitCsvLine } from './heuristics';
 import { parseOfx } from './ofx-parser';
 import { LIMITS } from './limits';
+import { ehPagamentoDeFatura } from './gastos-categoria';
 import type { Transaction, TxType } from './types';
 
 export type LinhaPix = {
   id: string; fitid: string; idBanco: string | null; idOriginal?: string | null;
   data: string; centavos: number; direcao: TxType; descricao: string; categoria: string; cor: string;
   natureza: 'movimento' | 'cofrinho' | 'estorno' | 'fatura' | 'transferencia';
+  /** CSV com dd/mm e mm/dd possíveis: 'mes-dia' quando o arquivo prova MM/DD; 'dia-mes-presumido' quando nada prova. */
+  formatoData?: 'mes-dia' | 'dia-mes-presumido';
 };
 export type ResultadoPix = {
   linha: LinhaPix; status: 'conciliado' | 'falta' | 'data' | 'revisar' | 'ignorar';
@@ -14,11 +17,12 @@ export type ResultadoPix = {
 };
 const normal = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 const falhar = (): never => { throw new Error('Não foi possível ler todas as linhas. Use CSV em reais com Data (DD/MM/AAAA), Descrição e Valor com sinal, ou OFX da conta em BRL.'); };
-function diaCivil(raw: string): string {
+function diaCivil(raw: string, ordem: 'dm' | 'md' = 'dm'): string {
   const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   const br = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if (!iso && !br) return falhar();
-  const [ano, mes, dia] = iso ? iso.slice(1).map(Number) : [Number(br![3]), Number(br![2]), Number(br![1])];
+  const [ano, mes, dia] = iso ? iso.slice(1).map(Number)
+    : ordem === 'md' ? [Number(br![3]), Number(br![1]), Number(br![2])] : [Number(br![3]), Number(br![2]), Number(br![1])];
   const d = new Date(Date.UTC(ano, mes - 1, dia));
   if (ano < 1000 || d.getUTCFullYear() !== ano || d.getUTCMonth() !== mes - 1 || d.getUTCDate() !== dia) return falhar();
   return `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
@@ -32,7 +36,8 @@ function natureza(descricao: string): LinhaPix['natureza'] {
   const s = normal(descricao);
   if (/\bdinheiro (reservado|retirado)\b/.test(s)) return 'cofrinho';
   if (/\bestorno\b|\bdevolucao\b/.test(s)) return 'estorno';
-  if (/pagamento (da |de )?fatura|fatura (do |de )?cartao/.test(s)) return 'fatura';
+  // Qualquer "fatura", e pagamento de cartão em qualquer grafia comum de extrato (pag, pagto, pgto, pagamento).
+  if (/\bfatura\b/.test(s) || /\b(pag|pagto|pgto|pagamento)\b.*\bcartao\b/.test(s) || /\bcartao de credito\b/.test(s)) return 'fatura';
   if (/transferencia entre (minhas|suas|proprias) contas/.test(s)) return 'transferencia';
   return 'movimento';
 }
@@ -60,9 +65,15 @@ export function lerExtratoConciliacao(texto: string): LinhaPix[] {
   const campos = linhas.slice(1).map(l => splitCsvLine(l, sep));
   const temNegativo = campos.some(c => c[valor]?.trim().startsWith('-'));
   const quote = (s: string) => '"' + s.replace(/"/g, '""') + '"';
+  // DD/MM ou MM/DD: o arquivo prova a ordem quando algum lado passa de 12. Misturado é recusado.
+  const barras = campos.map(c => (c[data] ?? '').trim().match(/^(\d{2})\/(\d{2})\/\d{4}$/)).filter(Boolean) as RegExpMatchArray[];
+  const provaDiaMes = barras.some(m => Number(m[1]) > 12), provaMesDia = barras.some(m => Number(m[2]) > 12);
+  if (provaDiaMes && provaMesDia) return falhar();
+  const ordem: 'dm' | 'md' = provaMesDia ? 'md' : 'dm';
+  const formatoData: LinhaPix['formatoData'] = provaMesDia ? 'mes-dia' : !provaDiaMes && barras.length ? 'dia-mes-presumido' : undefined;
   return campos.map((c, i) => {
     if (c.length !== cabecalho.length || !c[desc]?.trim() || (moeda >= 0 && c[moeda]?.toUpperCase() !== 'BRL')) return falhar();
-    const dia = diaCivil(c[data]?.trim() ?? '');
+    const dia = diaCivil(c[data]?.trim() ?? '', ordem);
     const bruto = (c[valor] ?? '').trim().replace(/^R\$\s*/, '');
     if (!/^[+-]?(?:\d+|\d{1,3}(?:\.\d{3})+)(?:,\d{2})?$/.test(bruto) && !/^[+-]?\d+\.\d{2}$/.test(bruto)) return falhar();
     const textoTipo = normal(c[tipo] ?? '');
@@ -80,7 +91,8 @@ export function lerExtratoConciliacao(texto: string): LinhaPix[] {
     if (r.rows.length !== 1 || r.truncado) return falhar();
     const row = r.rows[0];
     return { id: String(i), fitid: '', idBanco: id >= 0 ? c[id] || null : null, idOriginal: original >= 0 ? c[original] || null : null,
-      data: dia, centavos: centavos(row.amount), direcao, descricao: row.description, categoria: row.category, cor: row.color, natureza: natureza(row.description) };
+      data: dia, centavos: centavos(row.amount), direcao, descricao: row.description, categoria: row.category, cor: row.color, natureza: natureza(row.description),
+      ...(formatoData ? { formatoData } : {}) };
   });
 }
 
@@ -90,6 +102,9 @@ export function conciliarPix(op: { userId: string; carteiraId: string; principal
     && !t.card_id && t.payment_method !== 'credit');
   const distancia = (a: string, b: string) => Math.abs(Date.parse(diaCivil(a) + 'T00:00:00Z') - Date.parse(diaCivil(b) + 'T00:00:00Z')) / 86_400_000;
   const igualValor = (t: Transaction, l: LinhaPix) => Number.isFinite(t.amount) && Math.round(t.amount * 100) === l.centavos && t.type === l.direcao;
+  const noCredito = op.lancamentos.filter(t => t.user_id === op.userId && (!!t.card_id || t.payment_method === 'credit'));
+  // Série recorrente ocupa o mês pela data: mudar o mês faz a série recriar a ocorrência (duplicata). Parcela não é série.
+  const serieRecorrente = (t: Transaction) => !((t.installment_total ?? 1) > 1) && (t.recurring === true || !!t.parent_id);
   const planos = op.linhas.map(linha => {
     const porId = linha.fitid ? transacoes.filter(t => t.fitid === linha.fitid) : [];
     const candidatos = porId.length ? porId : transacoes.filter(t => igualValor(t, linha) && distancia(t.occurred_on, linha.data) <= 3);
@@ -122,12 +137,24 @@ export function conciliarPix(op: { userId: string; carteiraId: string; principal
     if (linha.natureza === 'fatura') return resultado('revisar', 'Confira o pagamento na tela de Crédito. Não é despesa comum.');
     if (linha.natureza === 'estorno') return resultado('revisar', 'Estorno sem par integral comprovado exige revisão.');
     if (linha.natureza === 'transferencia') return resultado('revisar', 'Confirme a titularidade e use a transferência entre carteiras.');
-    if (candidatos.length === 0) return resultado('falta', 'Nenhum lançamento de caixa encontrado.');
+    if (candidatos.length === 0) {
+      if (noCredito.some(t => igualValor(t, linha) && distancia(t.occurred_on, linha.data) <= 3)) {
+        return resultado('revisar', 'Há uma compra no crédito com este valor. Confira antes de lançar no caixa.');
+      }
+      return resultado('falta', 'Nenhum lançamento de caixa encontrado.');
+    }
+    if (!porId && candidatos.length === 1 && fortes.has(candidatos[0].id)) {
+      return resultado('revisar', 'Este valor já foi conferido em outra linha. Se for outro Pix, lance à mão em Lançamentos.');
+    }
     if (candidatos.length !== 1 || (porId ? fortes.get(candidatos[0].id) !== 1
-      : (usados.get(candidatos[0].id) ?? 0) !== 1 || fortes.has(candidatos[0].id))) return resultado('revisar', 'Mais de uma correspondência possível.');
+      : (usados.get(candidatos[0].id) ?? 0) !== 1)) return resultado('revisar', 'Mais de uma correspondência possível.');
     const alvo = candidatos[0];
     if (!igualValor(alvo, linha) || distancia(alvo.occurred_on, linha.data) > 3 || (!porId && alvo.fitid && alvo.fitid !== linha.fitid)) {
       return resultado('revisar', 'Identificador bancário ou lançamento em conflito.');
+    }
+    if (alvo.occurred_on !== linha.data && ehPagamentoDeFatura(alvo)) return resultado('revisar', 'Pagamento de fatura. Confira a data na tela de Crédito.');
+    if (alvo.occurred_on !== linha.data && serieRecorrente(alvo) && alvo.occurred_on.slice(0, 7) !== linha.data.slice(0, 7)) {
+      return resultado('revisar', 'Esta conta se repete todo mês, e a data do banco cai em outro mês. Ajuste pelo lançamento.');
     }
     return resultado(alvo.occurred_on === linha.data ? 'conciliado' : 'data', alvo.occurred_on === linha.data ? 'Já confere.' : 'Corrigir somente a data do lançamento existente.', alvo);
   });

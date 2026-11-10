@@ -12,7 +12,8 @@ assert.equal(match([linha('1')],[tx('t'),tx('u')])[0].status,'revisar');
 assert.equal(match([linha('1')],[tx('t',{occurred_on:'2026-10-09'})])[0].status,'falta');
 assert.equal(match([linha('1')],[tx('t',{user_id:'b'})])[0].status,'falta');
 assert.equal(match([linha('1')],[tx('t',{wallet_id:'o'})])[0].status,'falta');
-assert.equal(match([linha('1')],[tx('t',{payment_method:'credit',card_id:'card'})])[0].status,'falta');
+// Compra no crédito não é candidata de caixa, mas o mesmo valor em ±3 dias pede revisão em vez de "Falta lançar" (Keel, 09/11).
+assert.equal(match([linha('1')],[tx('t',{payment_method:'credit',card_id:'card'})])[0].status,'revisar');
 assert.equal(match([linha('1')],[tx('t',{wallet_id:null})])[0].status,'conciliado');
 assert.ok(match([linha('1'),linha('2')],[tx('t')]).every(r=>r.status==='revisar'),'um lançamento não atende duas linhas');
 assert.ok(match([linha('1'),linha('1')],[]).every(r=>r.status==='revisar'),'linhas indistinguíveis não se colapsam');

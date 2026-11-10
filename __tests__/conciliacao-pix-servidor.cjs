@@ -10,7 +10,7 @@ const snapshot=t=>({...Object.fromEntries(campos.map(k=>[k,t[k]??null])),amount:
   await db.exec(schema.match(/alter table transactions add column if not exists fitid[^;]*;/)[0]);
   await db.exec(schema.match(/create unique index if not exists transactions_user_fitid_uniq\s+[^;]*;/)[0]);
   await db.exec("create function public.tem_direito_acesso() returns boolean language sql as $$ select current_setting('app.allowed',true) is distinct from 'false' $$;");
-  await db.exec(migration('20261109110000'));
+  await db.exec(migration('20261109110000'));await db.exec(schema.match(/create table if not exists credit_card_invoices \([\s\S]*?\n\);/)[0]);await db.exec(migration('20261109220000')); // corpo das guardas de 09/11, o que vai para produção
   // Restrições de produção que a RPC precisa respeitar (pré-aplicação de 09/11): tamanhos pelo schema.sql e o teto de valor,
   // conferido em produção e no schema.sql do main (:329), que este clone ainda não tem.
   for(const re of [/alter table transactions add constraint transactions_description_len\s+check[^;]*;/,/alter table transactions add constraint transactions_category_len\s+check[^;]*;/])await db.exec(schema.match(re)[0]);

@@ -14,6 +14,12 @@ class ErroPix extends Error {}
 type SessaoAnalise = { token: string; conferir: () => Promise<void> };
 const sessoes = new WeakMap<AnalisePix, SessaoAnalise>();
 const camposSnapshot = ['occurred_on', 'amount', 'type', 'description', 'category', 'color', 'wallet_id', 'card_id', 'payment_method', 'fitid', 'recurring', 'parent_id', 'installment_current', 'installment_total'] as const;
+/** Motivos que a RPC devolve no conflito (migration 20261109220000). Sem motivo, vale a mensagem geral. */
+const mensagensDeConflito = new Map<unknown, string>([
+  ['mesmo_valor', 'Já existe um lançamento de mesmo valor perto desta data. Se for outro Pix, lance à mão em Lançamentos.'],
+  ['recorrente', 'Esta conta se repete todo mês, e a data do banco cai em outro mês. Ajuste pelo lançamento.'],
+  ['fatura', 'Pagamento de fatura. Confira a data na tela de Crédito.'],
+]);
 const snapshot = (t: Transaction) => Object.fromEntries(camposSnapshot.map(k => [k, t[k] ?? null]));
 
 export async function analisarExtratoPix(op: { userId: string; carteiraId: string; origemConta: string; texto: string }): Promise<AnalisePix> {
@@ -91,12 +97,12 @@ export async function confirmarItensPix(analise: AnalisePix, escolhas: EscolhaPi
         data: l.data, centavos: l.centavos, direcao: l.direcao, descricao: l.descricao, categoria: e.categoria, cor: e.cor,
         alvo_id: r.alvo?.id ?? null, esperado: r.alvo ? snapshot(r.alvo) : null,
       } }).setHeader('Authorization', `Bearer ${sessao.token}`);
-      await sessao.conferir();
+      // Sem conferir() aqui: a resposta já é o fato gravado. Se a sessão mudou, o próximo item do lote é que para.
       if (error) {
         if (error.code === 'PGRST202' || error.code === '42501') throw new ErroPix('A confirmação não está disponível para esta conta. Procure o suporte; o item continua aguardando conferência.');
         throw new ErroPix('Não foi possível confirmar o resultado. Confira o item e tente novamente; a mesma chave será usada.');
       }
-      if (data?.situacao === 'conflito') recibos.push({ id: e.id, status: 'conflito', mensagem: 'O lançamento mudou ou há mais de uma correspondência. Confira novamente.' });
+      if (data?.situacao === 'conflito') recibos.push({ id: e.id, status: 'conflito', mensagem: mensagensDeConflito.get(data?.motivo) ??'O lançamento mudou ou há mais de uma correspondência. Confira novamente.' });
       else if (['inserido','corrigido','ja_confirmado'].includes(data?.situacao) && typeof data?.id === 'string') recibos.push({ id: e.id, status: 'salvo', mensagem: data.situacao === 'corrigido' ? 'Data corrigida no lançamento existente.' : 'Lançamento confirmado.' });
       else throw new ErroPix('O servidor não confirmou o item. Confira antes de tentar de novo.');
     } catch (erro) {

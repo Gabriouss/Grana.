@@ -72,7 +72,7 @@ function servicoReal(db, usuario, carteira) {
     await db.exec(schema.match(/alter table transactions add column if not exists fitid[^;]*;/)[0]);
     await db.exec(schema.match(/create unique index if not exists transactions_user_fitid_uniq\s+[^;]*;/)[0]);
     await db.exec("create function public.tem_direito_acesso() returns boolean language sql as $$ select true $$;");
-    await db.exec(migration('20261109110000'));
+    await db.exec(migration('20261109110000'));await db.exec(schema.match(/create table if not exists credit_card_invoices \([\s\S]*?\n\);/)[0]);await db.exec(migration('20261109220000')); // corpo das guardas de 09/11, o que vai para produção
     const u = await novoUsuario(db), outro = await novoUsuario(db);
     const carteira = async (dono) => (await db.query("insert into wallets(user_id,name,is_default) values($1,'Principal',true) returning id", [dono])).rows[0].id;
     const w = await carteira(u), wOutro = await carteira(outro);
