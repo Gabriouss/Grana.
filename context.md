@@ -95,6 +95,40 @@ Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052
 
 # 2026-11-09 - M1 - Retomada da manhã
 
+### Supremo, seções 21:05 a 22:55: E7 ligada e corrigida, duas migrations aplicadas, build `46dd9d1c` instalada
+
+Registro em tempo real pelo Quill (Documentation and Vault do time Claude), porque as duas contas Codex estão sem limite até 00:41 (Gabriel) e 00:58 (PH). Fonte: seções 21:00 a 22:55 de `E:/Grana-temporarios/2026-11-08-retomada/00-ORDEM-retomada-tarde-0911.md`. Os recibos do Supremo e os relatórios dos revisores ficam nessa pasta. Nenhum valor de credencial entra aqui.
+
+1. **Pedidos do autor, como chegaram:**
+   - 21:00: "Não dispare build sem me perguntar se pode".
+   - 21:10, 21:15 e 21:20: o app de teste é o da Play; os testadores migram com o Anual vitalício; P2-1 = "B" (detalhe na entrada "Decisões do autor às 21:10, 21:15 e 21:20", logo abaixo).
+   - 21:35: "Aplica, tá no manual mode" e "Pode ligar a conciliação completamente e faz a conferência com alguém que tenha limite disponível em configuração de modelo hábil para a conferência".
+   - 21:45: "Use um agente com limite pra fazer o teste geral". O gate do clone passou ao Vigil (conta Claude principal, Haiku 5.5 só nessa sessão, por ser mecânico).
+   - 21:50: "Resolve, não vamos disparar build até tudo estar corrigido".
+   - 22:30: "Ativei o manual mode, corrija". Vale também para o achado antigo da conta recorrente movida de mês.
+   - 22:35: "Pode disparar a build do aplicativo de teste com a leitura das notificações, para instalar via depuração wifi".
+2. **E7 (Conciliação Pix), do banco ao aparelho:**
+   - **Migration da E7 aplicada às 21:30 pelo Supremo**, em transação e em modo manual: a de `e257ae91`, sha256 `e8382caf…11c8`. Conferência só leitura: `security definer`, `search_path=''`, dono `postgres`, md5 do corpo igual ao do arquivo, EXECUTE só para `authenticated` e `service_role`, sonda anônima 401/42501. Recibo: `recibo-E7-aplicacao-supremo.md`. Retorno: revogar o EXECUTE de `authenticated`; não apagar lançamentos confirmados nem o índice.
+   - **Ligada no clone** (`e0e08022`, Claude Code #2): `CONCILIACAO_PIX_LIBERADA` passou a `true` em `lib/conciliacao-pix-disponibilidade.ts`, com o teste do Perfil real nos dois estados do flag `importar_extrato`.
+   - **Revisão do Keel** (`relatorio-keel-E7-ligada.md`): 1 P1, 2 P2 e 4 P3. O P1, conferido pelo Supremo no código: `lib/conciliacao-pix.ts:132` devolve `data` sem olhar a recorrência, e o ramo `data` da RPC também não olha. Cenário: Pix que corrige a data de uma conta recorrente para outro mês deixa o mês de origem vazio e a série o recria, duplicando a conta.
+   - **Correção do Keel no clone:** guardas no matcher, no serviço e na migration nova `20261109220000_conciliacao_pix_guardas.sql` (`5d3fd9b7`, até `0ddfd5f1`), mais fatura/crédito/Pix duplicado/recibo/data americana. Revisão do Claude Code #2 aprovou a lógica, a migration e os testes, com dois achados só de texto; o Keel os corrigiu em `83eb54ca`, aprovado sem achado.
+   - **Migration das guardas aplicada às 22:30 pelo Supremo**, sha256 `277313af…5981`, md5 do corpo `e18997d1…3b72` igual ao do arquivo, ACL inalterada, sonda anônima 401/42501. Recibo: `recibo-E7-guardas-aplicacao-supremo.md`.
+   - **Gates:** os do Vigil em `e0e08022` e em `0ddfd5f1` ficaram superados (o segundo verde, mas superado pelo commit de texto). **O gate final em `83eb54ca` está verde** (`gate-A5-clone-83eb54ca-vigil.log.json`).
+3. **Gatilho da conta recorrente movida de mês (alcança o APK 1.10.12):**
+   - **Sintoma e causa:** mudar à mão a data de uma ocorrência recorrente para outro mês duplica a conta, no app de hoje e no da Play. `updateTransaction` (`lib/data.ts:409`) não olha a recorrência, e o banco só protege o mês apagado (gatilho de `delete` marca o mês; `ignorar_ocorrencia_de_mes_pulado` descarta a reinserção). Pela regra 9, a correção que alcança o APK instalado mora no servidor, num gatilho de `UPDATE` em `public.transactions` que marca o mês de origem como pulado e nunca devolve erro ao cliente antigo.
+   - **Keel:** migration `20261109230000`, sha256 `fd05aaa2…aaf5`, md5 do corpo `5505395c…6a3d6a`, numa cópia temporária (`keel-recorrente/`), com pedido em `pedido-supabase-recorrente-mes-movido.md` e relatório em `relatorio-keel-recorrente-mes-movido.md`.
+   - **Revisão do Lynx** (Opus 5.5 high, só leitura; `relatorio-lynx-recorrente-mes-movido.md`): **NÃO aplicar como estava.** **L1, média:** o gatilho marcava também mês de origem FUTURO, e a ocorrência desse mês nunca nascia (desfazer 05/11 → 05/12 → 05/11 fazia dezembro sumir; série criada em 01/12 e corrigida para 01/11 também). Ajuste de uma linha: não marcar quando o mês de origem for maior que o mês atual em São Paulo. Fora isso: sem erro ao APK, mesmo mês e parcela intactos, lote antigo não cai, compatível com a E7, e o vermelho sem o gatilho está provado.
+   - **Delta aprovado pelo Lynx:** sha256 `369512c5…5c06`, md5 do corpo `88711361…dd1c7`. **L4, baixo e latente:** um UPDATE em lote que muda o mês da cabeça e de uma ocorrência no mesmo comando às vezes falha com 27000; nenhum caminho do app faz isso, fica registrado como limite e não bloqueia (registrar no comentário da migration ou no pedido, sem mudar o corpo).
+   - **Estado:** NÃO aplicado em produção e NÃO commitado no clone. Com a build disparada, o Keel commita a migration e os testes no clone (hash conferido pelo Lynx) e o Supremo a aplica em modo manual.
+4. **Build pessoal `46dd9d1c-7dcb-4190-b8bb-730706f68c4c`** (https://expo.dev/accounts/gabriouss/projects/grana-app/builds/46dd9d1c-7dcb-4190-b8bb-730706f68c4c):
+   - Saiu do clone em `83eb54ca`, perfil `development`, versão 1.10.12 (quem usa o app de hoje não recebe aviso). Foi a 6ª build do mês e a 1ª da semana (regra 22).
+   - O classificador do modo automático barrou o `eas build` do Claude Code #2; o Supremo rodou o `disparar-build.cjs` dele, conferido, em modo manual, com o ok do autor. O clone continua limpo.
+   - **Instalação:** EAS terminou às 22:50; APK de 176,7 MB em `build-83eb54ca/grana-teste-46dd9d1c.apk`. Pareamento por Wi-Fi no moto g75 5G, `adb install -r` com Success, versionCode 32 → 33, versão 1.10.12, às 22:53:58, dados do app mantidos.
+5. **Decisões de arquitetura valem a partir daqui:** o app de teste é o da Play (o clone é a fonte única do app e das funções de servidor compartilhadas, sempre compatíveis com o APK 1.10.12); o main fica como está; a turma legado (testers) migra com o Anual vitalício e os limites da 2d valem só no app da Play. O **Granabô** segue pela **opção A**: pacote legado (v60 mais só o veto de empréstimo e investimento), por `scripts/pacote-granabo-legado.cjs`; o Supremo publica depois do gatilho, em modo manual.
+6. **Cópia do app da Play no Drive:** `G:/Meu Drive/Grana - copia do app da Play/grana-app-play-2026-11-09-0ddfd5f1.bundle`, `git bundle --all`, verificada ("is okay"), 1,0 GB, sem `.env` no histórico (só o `.env.example`). Está no hash `0ddfd5f1`, anterior aos textos de `83eb54ca`; refazer se a cópia precisar refletir o HEAD atual.
+7. **Descartado e erros no caminho:** o disparo pelo Claude Code #2 foi barrado pelo classificador do modo automático (resolvido com o script conferido rodado pelo Supremo); o gate do Vigil em `e0e08022` foi superado pela correção do Keel; o gatilho sem a guarda de mês futuro (L1) não foi aplicado.
+8. **Sem verificação / abertos:** a E7 e as guardas não foram vistas no aparelho com arquivo real de banco; o gatilho da recorrente não está em produção nem no clone; o Granabô (opção A) ainda não foi publicado; o commit do script e do teste do pacote do Granabô no clone é do Claude Code #2, que para depois dele para guardar o limite (conta PH volta às 00:40); o branch do clone ainda não está no GitHub, decisão do autor antes do primeiro deploy de servidor; nenhum push foi feito.
+
 ### Claude Code #2: textos da revisão da E7 corrigidos pelo Keel (`83eb54ca`), aprovados sem achado
 
 1. **Pedido:** mensagem do Supremo. Era conferir rápido só o delta `0ddfd5f1..83eb54ca`, enquanto o Vigil roda o gate final nele.
