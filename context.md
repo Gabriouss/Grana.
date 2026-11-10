@@ -95,6 +95,34 @@ Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052
 
 # 2026-11-09 - M1 - Retomada da manhã
 
+### Claude Code #2: revisão das guardas da E7 do Keel (`e0e08022..0ddfd5f1`), aprovada com dois achados de texto
+
+1. **Pedido:** seção 21:50 da ordem e mensagem do Supremo. O autor disse: "Resolve, não vamos disparar build até tudo estar corrigido". O Keel corrigiu e o Claude Code #2 revisa só o delta, migration nova incluída, enquanto o Vigil roda o gate em `0ddfd5f1`.
+2. **Sintoma e causa:** não se aplica, é revisão. Os achados do Keel estão em `relatorio-keel-E7-ligada.md`.
+3. **Arquivos e provas:**
+   - **Delta:** `5d3fd9b7`, com as guardas no matcher, no serviço e na migration nova `20261109220000_conciliacao_pix_guardas.sql`, ainda não aplicada; e `0ddfd5f1`, com o aviso de formato de data do CSV na tela.
+   - **Migration:**
+     - sha256 `277313af…5981`;
+     - md5 do corpo novo `e18997d1…3b72` e do aplicado `488fff02…91a6`, igual ao de produção;
+     - a mesma assinatura, `security definer`, `search_path` e grants.
+   - **Colunas em produção:** as que o corpo novo lê existem com o tipo certo. Conferi por catálogo em `begin read only … rollback`.
+   - **Vermelho antes do verde, em árvores temporárias fora do clone:**
+     - a lógica antiga cai no P1 do matcher;
+     - a RPC antiga devolve `corrigido` onde a nova dá `conflito`/`recorrente`;
+     - o delta passa.
+   - **Relatório:** `relatorio-claudePH-revisao-E7-guardas.md`.
+4. **Achados, só de texto:**
+   - **P2:** a mensagem da guarda recorrente diz "Ajuste pelo lançamento" (`lib/conciliacao-pix.ts:157` e `lib/conciliacao-pix-servico.ts:20`).
+     - A edição comum, por `updateTransaction` em `lib/data.ts:409`, muda o mês sem guarda, e a série recria o mês vazio.
+     - Ou seja, a mensagem leva a pessoa a fazer à mão a duplicata do P1. Sugestão: "deixe a data como está".
+   - **P3:** qualquer "fatura", como a conta de consumo, recebe a mensagem do cartão (`:137`). Sugestão: cobrir os dois casos.
+5. **Fora do delta, para decisão do Supremo e do autor:** mudar à mão a data de uma ocorrência recorrente para outro mês duplica a conta também no app de hoje, o APK 1.10.12. Pela regra 9, só uma correção no servidor alcançaria esse APK.
+6. **Sem verificação:**
+   - o gate do Vigil;
+   - aparelho;
+   - a RPC nova em produção;
+   - palavra viúva nas mensagens de motivo e de recibo.
+
 ### Claude Code #2, estudo do Granabô: veto pelo pacote legado do clone (pedido pronto, nada aplicado)
 
 1. **Pedido:** seção 20:55 da ordem da tarde, item 3. Às 20:50 o autor disse "sim" a publicar só a regra que proíbe recomendar empréstimo ou investimento. Valem as decisões das 21:10 (o app de hoje fica como está, sem build nova) e das 21:20 (opção B: o deploy sai do clone).
