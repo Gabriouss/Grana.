@@ -95,6 +95,41 @@ Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052
 
 # 2026-11-09 - M1 - Retomada da manhã
 
+### Claude Code #2, estudo do Granabô: veto pelo pacote legado do clone (pedido pronto, nada aplicado)
+
+1. **Pedido:** seção 20:55 da ordem da tarde, item 3. Às 20:50 o autor disse "sim" a publicar só a regra que proíbe recomendar empréstimo ou investimento. Valem as decisões das 21:10 (o app de hoje fica como está, sem build nova) e das 21:20 (opção B: o deploy sai do clone).
+2. **Sintoma e causa:**
+   - A produção de hoje recomenda produto financeiro. É o `assistente-financeiro` v60, igual à `cca3afba`: sem o veto, 0 de 8 pedidos de conselho são recusados no Gemini de produção.
+   - Publicar o clone ou o main como estão mudaria o Granabô do APK 1.10.12: Livre da regra 20, categorias de entrada (T7) e descrição com barra, e, no main, também a 1c.
+   - O cliente (`lib/assistente.ts`) manda só `mensagem` e `historico`. Por isso, o servidor não distingue o app da Play do APK 1.10.12.
+3. **Arquivos e provas:**
+   - **Recomendação, alternativa A:** publicar um pacote legado, que é a v60 byte a byte mais só o veto. Ele é montado por `scripts/pacote-granabo-legado.cjs` a partir da `cca3afba` e do veto do `index.ts` do clone.
+     - O script e o teste (`__tests__/granabo-pacote-legado.cjs`) estão prontos em `granabo-veto/`, na pasta da rodada, ainda fora do clone.
+     - O pedido, com as cinco alternativas, o custo de cada uma e o retorno, está em `pedido-supabase-granabo-veto.md`.
+   - **Provas:**
+     - contra a produção, o `index.ts` do pacote difere só no trecho do veto;
+     - o teste do pacote passa, e o teste real do veto cai sem o veto e passa com ele;
+     - o `deno check` dá 0 nos dois pacotes;
+     - no Gemini de produção com o veto, 21 de 24 pedidos de conselho passam em todos os critérios, nenhuma resposta dá conselho e os 6 controles passam;
+     - os 3 que não passam são o caso "com-dados", que recusa sem chamar `naoConsegui`. Perde só o registro da lacuna em `assistant_messages`.
+   - **Produção reconferida às 21:31, só leitura:** v60, `updated_at` 2026-10-21T20:28:08Z, `verify_jwt` true e pacote igual ao salvo.
+4. **Descartado:**
+   - **B, distinguir o app da Play agora:** custo alto, pede mudança no cliente e build nova, e é trabalho da P1.
+   - **C e D, deploy do clone ou do main como estão:** mudam o app de hoje.
+   - **E, esperar a P1:** o veto ficaria fora do ar até lá.
+   - **Uma pasta com cópia dos 11 módulos dentro do clone:** confundiria a fonte única e entraria no `tsc` e nas varreduras.
+5. **Erros no caminho:**
+   - O primeiro `deno check` falhou nos dois pacotes, antes de checar tipo, por causa de um `package.json` em `C:\Users\user\AppData\Local\Temp`. Refiz em `E:`.
+   - O teste do pacote caiu uma vez porque o caso 5 da suíte do portão lê `supabase/schema.sql`. O schema agora vai só para a pasta temporária do teste.
+   - Um comando com `rm -rf` foi recusado pela permissão. O `rm -rf` era desnecessário e saiu.
+6. **Sem verificação, e o que falta:**
+   - o autor decidir se o branch do clone vai ao GitHub (seção 21:20);
+   - o commit do script e do teste no clone, depois das correções do Keel, para não disputar a árvore com ele;
+   - o gate do clone com esse commit;
+   - o deploy pelo Supremo, com o ok do autor;
+   - o Livre de 07/11 no Granabô do app da Play, que fica para a P1.
+   - A migration da 1c continua proibida.
+
 ### Claude Code #2, seção 21:35: Conciliação Pix ligada no clone (`e0e08022`)
 
 1. **Pedido:** seção 21:35 da ordem da tarde. O autor pediu, literal: "Pode ligar a conciliação completamente e faz a conferência com alguém que tenha limite disponível em configuração de modelo hábil para a conferência".
