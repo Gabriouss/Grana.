@@ -95,6 +95,33 @@ Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052
 
 # 2026-11-09 - M1 - Retomada da manhã
 
+### Claude Code #2, seção 21:35: Conciliação Pix ligada no clone (`e0e08022`)
+
+1. **Pedido:** seção 21:35 da ordem da tarde. O autor pediu, literal: "Pode ligar a conciliação completamente e faz a conferência com alguém que tenha limite disponível em configuração de modelo hábil para a conferência".
+   - A migration da E7 já estava aplicada pelo Supremo às 21:30, com o ok do autor "Aplica, tá no manual mode".
+   - O recibo está em `recibo-E7-aplicacao-supremo.md`.
+2. **Sintoma e causa:** a conferência do Pix ficava oculta por decisão, sem defeito. `CONCILIACAO_PIX_LIBERADA` estava em `false` em `lib/conciliacao-pix-disponibilidade.ts` enquanto a RPC não existia em produção.
+3. **Arquivos e provas:**
+   - **Clone `e0e08022`, sobre `dd0e64e2`:** `CONCILIACAO_PIX_LIBERADA` passa a `true`. O Perfil (`app/(app)/perfil.tsx:783`) mostra "Conferir Pix pelo extrato" quando o flag remoto `importar_extrato` está ligado.
+   - **Outras travas no caminho:** não há.
+     - O botão (`components/ConciliarPixBotao.tsx`) só recusa dados de exemplo e sessão ausente.
+     - O serviço (`lib/conciliacao-pix-servico.ts`) confere `obter_estado_acesso` e trata a RPC ausente ou sem permissão (`PGRST202` e `42501`).
+   - **Teste:** em `__tests__/conciliacao-pix-botao.cjs`, o literal do fonte do Perfil e a trava exigida em `false` deram lugar a um render do Perfil real, com o flag ligado e desligado.
+     - Vermelho com a trava em `false`: "Perfil esconde a Conciliação Pix com importar_extrato ligado".
+     - Verde com a trava em `true`.
+     - O mutante do Perfil que ignora o flag cai em "Perfil mostra a Conciliação Pix com importar_extrato desligado", e o Perfil foi restaurado byte a byte.
+   - **Focais e `tsc`:** os seis `conciliacao-pix-*` e o `tsc` passam, com trava própria.
+   - **`pedido-supabase-E7.md`:** ganhou a seção "Aplicada às 21:30 pelo Supremo", com o retorno do mais leve ao mais forte.
+   - **Revisor:** o aviso ao Keel ficou em `aviso-keel-E7-ligada.md`, porque o Keel não está conectado ao terminal do Claude Code #2.
+4. **Descartado:**
+   - trocar o literal do fonte por outro literal, o mesmo defeito que derrubou o gate do main em `3072a3c3`;
+   - levar a decisão para uma função da `lib` e testar só a função, o que não provaria a tela.
+5. **Observação:** o flag `importar_extrato` também liga o "Importar extrato" da Início, que é a E6. Desligá-lo como interruptor de emergência da E7 esconde os dois.
+6. **Sem verificação:**
+   - aparelho, arquivo real de banco e gravação real pela RPC;
+   - a revisão do Keel e o gate do clone em `e0e08022`, que vem depois dela;
+   - a build pessoal, que espera o "pode" do autor. Ela passa a sair do HEAD com gate depois de `e0e08022`, e não mais de `dd0e64e2`, então a pré-checagem precisa ser refeita nesse HEAD.
+
 ### Claude Code #2, seção 21:05: teste do Prism no main, pick no clone, gates e pré-checagem da build pessoal
 
 1. **Pedido:** seção 21:05 da `00-ORDEM-retomada-tarde-0911.md`. As duas contas Codex estão sem limite: a Gabriel volta às 00:41 e a PH às 00:58. Na ordem, o Claude Code #2:
