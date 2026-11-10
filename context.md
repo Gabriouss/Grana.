@@ -19673,3 +19673,9 @@ Forge revisou em leitura a E7 no clone `a2aed766`: o diff em relação ao códig
 Pendências: [ ] QA nativa sem confirmar, incluindo picker, revisão, acessibilidade e rolagem; [ ] verificar compatibilidade com arquivo real de banco tratado em privado; [ ] prova autenticada de persistência e concorrência, somente mediante autorização e execução pelo Supremo. Fixture genérica não comprova formato real. Nenhuma correção é justificada pela evidência atual.
 
 O orquestrador informou que, a pedido do autor, conectou o controle remoto do Codex com `codex remote-control --no-daemon --json`, nome de servidor `PC`, estado `connected`. A tentativa com daemon normal falhou por limite de comprimento do caminho de socket (`path must be shorter than SUN_LEN`); a conexão sem daemon é o fato relatado, sem prova neste registro de operação pelo celular. Não registrar identificadores do ambiente nem credenciais.
+
+### Retomada 10/11 — Sentinel: gate A5 do clone bloqueado no preflight
+
+Sentinel confirmou o clone limpo no HEAD `a2aed766`, mas às 10:53:52 BRT havia 221932 KiB (0,212 GiB) de RAM física livre, abaixo do piso de 1,5 GiB. O preflight bloqueou a execução: recibo `gate-A5-clone-a2aed766-Sentinel.preflight.json` com `concluido=false`, etapas vazias e exit lógico 3 em `.preflight.exit`. O exit 0 da coleta apenas indica que o recibo foi gravado. **tsc, guarda e test:ci não iniciaram**; não houve snapshot, instalação, alteração de código ou acesso ao Supabase. Sentinel removeu sua própria trava. A causa da baixa RAM não foi investigada.
+
+O A5 anterior verde de `9cafa76c` não cobre os quatro ajustes de Lumen posteriores e não aprova `a2aed766`. Fonte: `E:/Grana-temporarios/2026-11-10-retomada/relatorio-Sentinel-gate.md`. Pendente: [ ] obter janela com pelo menos 1,5 GiB livre, reconferir HEAD e gates e executar A5 integral em cópia externa segura do hash exato; [ ] manter QA visual e em aparelho separados. Não há aprovação de release.
