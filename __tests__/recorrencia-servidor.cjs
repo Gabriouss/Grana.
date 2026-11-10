@@ -15,7 +15,7 @@
 const assert = require('node:assert/strict');
 const { novoBanco, aplicar, novoUsuario, inserir, tentar } = require('./helpers/postgres-t5.cjs');
 
-const MIGRATIONS = ['20261001120000', '20261001130000', '20261001140000'];
+const MIGRATIONS = ['20261001120000', '20261001130000', '20261001140000', '20261109230000'];
 let aprovadas = 0;
 const ok = (r) => { aprovadas++; console.log('  ok  ' + r); };
 

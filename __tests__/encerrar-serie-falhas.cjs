@@ -122,7 +122,7 @@ function adaptador(db, { falhaNoDelete = null } = {}) {
 
 async function preparar() {
   const db = await novoBanco();
-  for (const m of ['20261001120000', '20261001130000', '20261001140000']) await aplicar(db, m);
+  for (const m of ['20261001120000', '20261001130000', '20261001140000', '20261109230000']) await aplicar(db, m);
   return db;
 }
 const estado = async (db, ids) =>
