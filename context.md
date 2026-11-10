@@ -95,6 +95,95 @@ Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052
 
 # 2026-11-09 - M1 - Retomada da manhã
 
+### Claude Code #2, seção 21:05: teste do Prism no main, pick no clone, gates e pré-checagem da build pessoal
+
+1. **Pedido:** seção 21:05 da `00-ORDEM-retomada-tarde-0911.md`. As duas contas Codex estão sem limite: a Gabriel volta às 00:41 e a PH às 00:58. Na ordem, o Claude Code #2:
+   - revisa e commita a correção do Prism no teste;
+   - faz `cherry-pick -x` no clone;
+   - roda o gate do clone e a pré-checagem da build, e para;
+   - roda o gate do main enquanto o autor não responde;
+   - assume o registro e, depois, o estudo do Granabô.
+
+   Vale a ordem do autor das 21:00, repassada pelo Supremo: "Não dispare build sem me perguntar se pode".
+2. **Sintoma e causa:** o gate do Watchtower no main em `3072a3c3` deu `tsc` 0, guarda 0 e `test:ci` 1 às 20:43. A falha era do teste, e não do app:
+   - `__tests__/corpus-parcelas-estorno.ts` procurava no fonte o literal `{parcelaIncerta && (`;
+   - o layout `3072a3c3`, que no clone é o `c187e8b5`, trocou esse trecho de propósito por `{!intervaloCategoria && parcelaIncerta && (`, para tirar o aviso da fatura da consulta civil por categoria (`app/(app)/credito.tsx:1355` no clone).
+3. **Arquivos e provas:**
+   - **Main `dffaa839`:** só `__tests__/corpus-parcelas-estorno.ts`.
+     - A correção é do Prism, que bateu o limite sem commitar; o Claude Code #2 a revisou.
+     - O teste renderiza a tela real pelo andaime de `__tests__/fase4-categorias.cjs` e confere os dois lados: o aviso aparece na fatura e não aparece na consulta civil. Passa 45/45.
+   - **Clone `dd0e64e2`:** `cherry-pick -x` de `dffaa839`, também 45/45.
+     - Dois mutantes da tela, cada um rodado contra o teste real, derrubam o teste com exit 1: um tira o aviso da fatura, o outro o devolve à consulta civil.
+     - A tela foi restaurada byte a byte, e a árvore ficou limpa.
+   - **Gate do clone em `dd0e64e2`:** `tsc` 0, guarda 0 e `test:ci` 0 em 545 s, das 21:03 às 21:12. Rodou com trava própria e RAM acima de 2,4 GiB (`gate-A5-clone-dd0e64e2-claudePH.log.json`).
+   - **Pré-checagem da build pessoal:**
+     - árvore limpa, `expo.version` 1.10.12 e `env-fora-da-build` com exit 0;
+     - no EAS, nenhuma build em andamento, 4 em novembro (todas `development` 1.10.12) e 0 nesta semana, então a build seria a 1ª de 3 da semana e a 5ª de 15 do mês;
+     - linha ao Supremo às 21:23. **Nenhum `eas build` rodou**, e a build espera o "pode" do autor.
+   - **Gate do main em `dffaa839`:** verde, com trava: `tsc` 0, guarda 0 e `test:ci` 0 em 554 s, das 21:24 às 21:34 (`gate-A5-main-dffaa839-claudePH.log.json`).
+     - O runner `claudePH-gate-fase3.cjs` passou a aceitar `CLAUDE.md` como documentação permitida no main.
+     - Motivo: o arquivo ganhou três regras aprendidas do autor, sem commit e de outra origem, e nenhum teste ou script o lê.
+4. **Descartado:** manter a checagem pelo texto do fonte, ou só trocar o literal. As duas continuariam frágeis e não provariam o comportamento na tela.
+5. **Erros e observações:**
+   - Importar `fase4-categorias.cjs` roda a suíte dele de novo, porque o arquivo não tem guarda `require.main`. É efeito colateral, e não falha; vale pôr a guarda depois.
+   - O filtro dos mutantes mostrou só o exit 1, sem o nome da checagem que caiu. Os mutantes provam que o teste cai, mas não qual checagem caiu.
+6. **Sem verificação:** aparelho, e o CI do GitHub em Linux, porque não houve push.
+7. **Superado:** nas seções "Fase 4 — corte final 3072a3c3" e "Ocorrência operacional da trava", as pendências "novo gate Watchtower conjunto com 8A" e "pick pelo Codex PH só após liberação" foram cumpridas:
+   - o gate do Watchtower em `3072a3c3` rodou e caiu só no teste frágil;
+   - o Codex PH trouxe a fase 4 ao clone (`9bace489` a `c187e8b5`);
+   - o gate do clone com a fase 4 e a correção do teste está verde em `dd0e64e2`.
+
+### Decisões do autor às 21:10, 21:15 e 21:20 (registradas pelo Claude Code #2, sem Codex no ar)
+
+- **21:10, literal:** "o que a gente tá fazendo aqui na build de teste é o aplicativo da Play Store"; "o aplicativo que os usuários estão utilizando atualmente [...] ele vai permanecer da forma como está"; "O aplicativo de teste é o da Play Store".
+  - A build pessoal sai do clone com a `expo.version` 1.10.12, para quem usa o app de hoje não receber aviso de atualização.
+  - Não haverá build nova do app de hoje. A publicação do Granabô precisa servir o APK 1.10.12 sem mudar o comportamento dele.
+  - **Supera** a frase da correção das 19:10 segundo a qual "o `assistente-financeiro` sai junto com a build de produção que leva a regra 20 ao app": essa build não vai existir.
+- **21:15, literal:** "Quando o aplicativo de teste estiver na Play Store, a gente vai migrar esses usuários, que são os usuários testers [...] eles vão ter acesso vitalício no plano anual, pois eles são os primeiros usuários, é a turma legado [...] quem vier posteriormente, depois dos usuários de teste, é que vai pagar os planos". Com isso, o P2-2 do desenho da P1 está resolvido:
+  - no app de hoje, nada muda, nem as cotas;
+  - a turma legado recebe o Anual vitalício, com os limites da 2d, no app da Play;
+  - quem chegar depois paga, com os 7 dias grátis.
+- **21:20, o P2-1 do desenho da P1 ficou com a opção "B":**
+  - o clone, que é o app da Play, vira a fonte única do app e das funções de servidor compartilhadas, sempre compatíveis com o APK 1.10.12 (regra 9, último item);
+  - o main fica como está, e as correções do app vão direto para o clone;
+  - o deploy de servidor sai de commit do clone, com as cautelas da regra 11;
+  - antes do primeiro deploy, o autor decide se o branch do clone vai ao GitHub.
+- **Ponto aberto, por inferência do Claude Code #2 e sem conferência com o autor:**
+  - A 1c (`b1717fb5`, `_shared/ai-quota.ts` e a migration `20261109100000_granabo_cota_mensal.sql`) existe só no main.
+  - A ordem da 1c pedia o deploy do main antes da migration. Com o main parado e "nem as cotas" no app de hoje, a 1c fica sem caminho.
+  - A migration não deve ser aplicada enquanto o Supremo e o autor não decidirem.
+
+### Fase 4 — corte final 3072a3c3, sem commit documental até Watchtower liberar
+
+**Pedido/estado:** Prism encerrou código e commits; corte final `3072a3c3c4f79c5a79210158b142e9d9d3dc126c`. Corretivo lógico `6d0a728ed57366dc7637d91b27e71a75395296f3` preserva receita em Tudo por `baseDasCategorias`, independente do modo/filtro anterior; corretivo de layout `3072a3c3` usa período civil nos cabeçalhos da consulta e mantém ciclo/avisos de fatura apenas na visão de faturas. `dfeccd92` e `23b13a5e` são etapas anteriores, não corte final liberado.
+
+**Evidência/erros e descarte:** lido `relatorio-prism-fase4.md`, com seis respostas e erros próprios do executor: primeira lógica ocultava categoria só de entrada; primeiro layout ainda dizia Ciclo no callback de seção. REDs reais Harbor/receita permanente/ciclo e GREEN relatados, além dos focais; transpileModule não substitui tsc. Não repetidos por Beacon. Nenhum cálculo financeiro foi alterado segundo executor; não inferir revisão ou gate verde pelos focais. O meu commit documental `ba0839ab` mudou HEAD durante o gate `23b13a5e`, invalidando aquela execução. Corrijo a coordenação: documentação pode ficar em WIP, mas nenhum novo commit até liberação explícita do Watchtower; isso é separado do focal SQL indevido, ao qual não se atribui causalidade na interrupção.
+
+**Pendências:** novo gate Watchtower conjunto com 8A e revisão Harbor do corte final; pick pelo Codex PH só após liberação. QA de aparelho/fonte grande/navegação física/cache/efeitos de carga e pintura nativa continuam não executados pelo Prism. Fonte congelada para gate; Beacon mantém context.md como WIP e não toca código nem HEAD, não faz teste, push, build ou Supabase. Este recibo atualiza também sessão do vault e canvas.
+
+
+### Ocorrência operacional da trava e invalidação do gate 23b13a5e
+
+1. **Pedido e fonte:** registrar o recibo operacional do Watchtower e `relatorio-codexPH-schema-amount-max-0911.md`, lido por Beacon. A6 atualizado conforme mensagem do revisor, sem reauditoria por Beacon.
+2. **Sintoma e causa comprovados no relato PH:** CreateNew recusou criar TRAVA-RAM porque a trava Watchtower `main-23b13a5e` já existia. O comando PowerShell não usava ErrorActionPreference Stop; a exceção não terminante deixou o script continuar e rodar indevidamente o focal SQL curto `conciliacao-pix-servidor.cjs`, EXIT 0. Esse resultado não é gate nem prova de exclusividade. Trava alheia não foi alterada nem removida; comandos seguintes passaram a erro terminante.
+3. **Evidências:** log `focal-schema-amount-max-PH.log`, clone `e257ae91`, teste real/PGlite local sem SQL remoto. A prova de presença do check no schema veio separadamente dos blobs/histórico; o focal aplica explicitamente a restrição e não prova extração independente do DDL. Nenhum patch, pick ou commit do schema foi feito, pois o check já existia desde `7ebb1a34`.
+4. **Estado do gate:** segundo Watchtower, gate main `23b13a5e` já foi interrompido pela mudança de HEAD para `ba0839ab`; nenhuma etapa aceita, nenhum verde. Isso supera o recibo antigo de gate iniciado/tsc em execução. **Não inferir causalidade do focal SQL na interrupção**: o fato informado de invalidação é o HEAD diferente. Gates verdes anteriores de outros cortes permanecem históricos, sem cobrir o HEAD atual.
+5. **Ocorrências e descartes:** PH relata RAM inicial 2,79 GiB, sem editar código, cancelar processo ou fechar aplicativo do autor. Não repetir teste durante gate, reivindicar janela exclusiva ou apagar trava alheia. Caixa do Supremo continha pergunta do autor, preservada; nenhum envio sobreposto por Beacon para esse recibo. Não tratar mensagem preparada como entregue.
+6. **Pendências e limites:** novo gate aguarda correções Prism/Forge e corte estável, com trava própria e RAM suficiente. Correção fase 4/liberação Harbor, pick e gate final clone continuam pré-requisitos da build pessoal; P1 só no desenho até envio da build. Registro em context.md, vault e canvas como WIP documental, sem novo commit, teste, Supabase, build ou push por Beacon; caminhos dos executores preservados.
+
+
+
+### Tom de Voz revisado e check preexistente no clone
+
+1. **Pedido:** Supremo pediu conferir a nota perene Tom de Voz contra a fonte e registrar que transactions_amount_max já estava no schema clone em `7ebb1a34`; Codex PH não mudou nada.
+2. **Sintoma e causa:** verificador acusava nota com revisado 19/10 anterior ao delta da fonte em 09/11. O resumo antigo não trazia a nova redação do item 39. No schema, a pendência de “trazer o check do main” partia de premissa superada: ele já existia no histórico do clone.
+3. **Arquivos e prova:** comparados integralmente `design-system/TOM_DE_VOZ.md` e `G:/Meu Drive/Obsidian/Gabriel/Grana/02 - Design System/Tom de Voz.md`; delta `3c297a5a` confirmado no item 39, que descreve Livre por dia segundo registros em vez de prometer segurança. Nota ganhou essa redação/contexto, vínculo à sessão e `revisado: 2026-11-09`. Histórico do clone por busca de introdução confirma `7ebb1a34`; `supabase/schema.sql:329–330` contém drop/add de transactions_amount_max. Informação do Supremo: Codex PH não fez alteração, pick ou commit para isso.
+4. **Descartado:** apenas carimbar revisão sem ler a fonte; reinterpretar guia editorial como algoritmo vigente; introduzir check duplicado ou commit sem mudança; tratar histórico do schema como prova nova do catálogo de produção.
+5. **Ocorrências:** nenhum arquivo de código, schema ou caminho de outro agente alterado. Registro acrescentado ao context.md, sessão do vault e canvas. Nenhum commit documental durante gate; este complemento fica como WIP próprio até liberação, preservando a janela de código dos executores.
+6. **Verificação e limites:** leitura integral e histórico Git local, sem teste de produto, emulador, Supabase, build ou push. Não se mediram linhas viúvas. O apontamento conhecido da nota foi corrigido; resultado de nova varredura integral do vault só será afirmado com seu recibo, sem presumir que fontes de outros agentes pararam de mudar.
+
+
+
 ## Beacon — estado 20:20 e liberação E7 e257ae91
 
 1. **Pedido:** Supremo mandou registrar a seção “20:20” da `00-ORDEM-retomada-tarde-0911.md` e o parecer E7 posterior, nos três lugares habituais, commit apenas dos próprios caminhos. Este corte supera distribuições e bloqueios antigos somente nos pontos explicitamente atualizados abaixo. Fontes: ordem, topo de `relatorio-harbor-revisao-0911.md` e mensagem direta do Supremo; Beacon não repetiu testes de produto ou sondas remotas.
