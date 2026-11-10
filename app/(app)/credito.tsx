@@ -1715,7 +1715,7 @@ export default function CreditoScreen() {
 
         </>}
         {/* Lista de Compras no Crédito */}
-        {(baseDasCompras.length > 0 || intervaloCategoria) && <View style={{ gap: screenRhythm.gap }} onLayout={(e) => { campoBuscaY.current = e.nativeEvent.layout.y; }}>
+        {(baseDasCompras.length > 0 || intervaloCategoria) && <View style={styles.buscaBloco} onLayout={(e) => { campoBuscaY.current = e.nativeEvent.layout.y; }}>
           <CampoBusca value={buscaCompra} onChangeText={setBuscaCompra} onFocus={() => { campoFocado.current = true; if (tecladoAberto) rolarAteCampoBusca(); }} onBlur={() => { campoFocado.current = false; }} />
           <ChipsCategoria opcoes={categoriasCompras} selecionada={categoriaEfetiva} onTodas={() => { setCategoriaCompra(null); setIntervaloCategoria(null); }} onSelect={categoria => { setCategoriaCompra(categoria); if (categoria === null) setIntervaloCategoria(null); }} keyboardShouldPersistTaps="handled" />
           {(categoriaEfetiva || intervaloCategoria || mostrarComprasFiltradas({ filtroAtivo: filtroCompraAtivo, comprasVisiveis: comprasVisiveis.length, cartaoSelecionado: selectedCardId !== 'all', cartoesNaLista: secoesDeLancamentos.length })) && <View style={styles.filteredSummaryCard}>
@@ -2105,6 +2105,10 @@ const styles = StyleSheet.create({
   },
   scroll: { flex: 1 },
   content: { padding: screenRhythm.padding, gap: screenRhythm.gap },
+  /* O cabeçalho da SectionList é uma View só, sem o `gap` de `content`:
+     sem esta margem a busca encostava no cartão "Total das faturas"
+     (pedido do autor de 09/11/2026). */
+  buscaBloco: { gap: screenRhythm.gap, marginTop: screenRhythm.gap },
   /* `paddingVertical` maior que o resto das seções de propósito. O ritmo
      padrão (`screenRhythm.gap`, 12) separa bem um rótulo de um card, mas aqui
      o vizinho de baixo é OUTRO card, e o de cima pode estar com a borda de
