@@ -95,6 +95,57 @@ Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052
 
 # 2026-11-09 - M1 - Retomada da manhã
 
+### Fechamento da sessão (22:55 a 23:24): gatilho da recorrente e Granabô v61 publicados, bundle no Drive e quatro ajustes de tela do Lumen no clone
+
+Consolidação final de todo o trabalho de 09/11/2026 (seções 22:55 a 23:24 de `E:/Grana-temporarios/2026-11-08-retomada/00-ORDEM-retomada-tarde-0911.md`, `recibo-recorrente-mes-movido-supremo.md`, `recibo-granabo-veto-supremo.md`, `relatorio-claudePH-commit-granabo-clone.md`, `gate-A5-clone-9cafa76c-vigil.log.json` e `relatorio-lumen-ajustes-tela.md`). Nenhum valor de credencial entra aqui.
+
+1. **Pedidos do autor, como chegaram:**
+   - 22:30: "Ativei o manual mode, corrija" (autorizando também aplicar o gatilho da conta recorrente movida de mês em produção).
+   - ~23:00: "1 ok e 2 no drive" (1 = publicar no Granabô a regra que proíbe recomendar empréstimo ou investimento; 2 = guardar a cópia do app da Play no Google Drive, sem publicar branch do clone no GitHub).
+   - 23:10, literal, com seis prints anexados: "Problemas. Caixa de pesquisa de lançamentos sem margem. Bolinhas no seletor de bancos na criação do cartão de crédito desalinhadas. Deixe o gráfico da aba de gráficos no mesmo estilo do gráfico da home. O calendário não tem aparência de calendário".
+2. **Sintomas e causas, separados:**
+   - **Conta recorrente movida de mês:** mudar à mão `occurred_on` de uma ocorrência recorrente ou da cabeça da série para outro mês deixava o mês de origem vazio e `ocorrenciasFaltantes` (`lib/recorrencia.ts`) o recriava, duplicando a conta no APK 1.10.12, no app da Play e na web; `updateTransaction` (`lib/data.ts:409`) não olha a recorrência e o banco só marcava mês apagado (`DELETE`).
+   - **Granabô em produção sem o veto:** `assistente-financeiro` v60 (`cca3afba`) recomendava produtos financeiros (0/8 recusas sem a regra); publicar o clone ou o `main` como estão mudaria o Granabô do APK 1.10.12 (Livre da regra 20, T7 e, no `main`, a 1c).
+   - **Busca colada no cartão de total na Crédito:** `ListHeaderComponent` da `SectionList` em `app/(app)/credito.tsx` é uma única `View` e não recebe o `gap` de `styles.content`.
+   - **Bolinhas dos bancos desalinhadas nos chips:** os seletores de chips de banco (criar/editar cartão) e de carteira (pagamento da fatura) em `app/(app)/credito.tsx` reusavam `bankDot`, que tem `marginTop: 5` para o alinhamento pelo topo do cartão no carrossel.
+   - **Gráfico de Gráficos com estilo diferente da Início:** `LineAreaChart` (`components/LineAreaChart.tsx`) usava linha de 2,5px, marcador vazado (r 3) e degradê 0,35, enquanto `FlowChart` (`components/FlowChart.tsx`, na Início) usava linha de 2px com junção arredondada, marcador cheio (r 2,5 e 4 no toque, opacidade 0,8) e degradê 0,3.
+   - **Calendário de Constância sem cara de calendário:** `DesafiosCalendario` (`components/DesafiosCalendario.tsx`, cartão "Constância" em Desafios) desenhava os dias como fileiras de bolinhas; futuro e passado sem registro tinham o mesmo desenho, e o contorno do hoje sumia quando o dia tinha registro por usar a mesma cor do preenchimento.
+3. **Arquivos, hashes e provas concretas:**
+   - **Gatilho da conta recorrente movida de mês (clone `5d6484ab` e produção):**
+     - Commit **`5d6484ab`** no clone pelo Keel: `supabase/migrations/20261109230000_recorrencia_mes_movido.sql`, `__tests__/recorrencia-mes-movido.cjs`, `__tests__/encerrar-serie-falhas.cjs`, `__tests__/recorrencia-servidor.cjs` e `package.json` (`test:ci`). Registra o limite L4 do Lynx em comentário fora do corpo da função para manter o `md5` do corpo em `88711361d422f962f73832ad4d9dd1c7`.
+     - **Aplicado em produção pelo Supremo às ~23:00**, em modo manual (`aplicar-recorrente-supremo.cjs`, recibo em `recibo-recorrente-mes-movido-supremo.md`), a partir de `keel-recorrente/supabase/migrations/20261109230000_recorrencia_mes_movido.sql` em LF (`sha256: 369512c5000c7b3f2ccb4e1248f708e4f48799fc5e3358c3e10de14821df5c06`). Pré e pós-checagem em leitura confirmaram `md5 = 88711361d422f962f73832ad4d9dd1c7`, `security definer`, `search_path=""`, dono `postgres`, EXECUTE falso para `public`, `anon` e `authenticated`, e gatilho `BEFORE UPDATE OF occurred_on ON public.transactions FOR EACH ROW EXECUTE FUNCTION pular_mes_ao_mover_ocorrencia()`. Retorno: `drop trigger if exists pular_mes_ao_mover_ocorrencia on public.transactions; drop function if exists public.pular_mes_ao_mover_ocorrencia();`.
+   - **Granabô v61 publicado com veto (clone `9cafa76c` e produção) e bundle no Drive:**
+     - Commit **`9cafa76c`** no clone pelo Claude Code #2 (`relatorio-claudePH-commit-granabo-clone.md`): `scripts/pacote-granabo-legado.cjs` e `__tests__/granabo-pacote-legado.cjs` (idênticos por `cmp` aos validados em `granabo-veto/`; fora do `test:ci` por depender de `cca3afba` no histórico local).
+     - **Gate A5 do Vigil no clone em `9cafa76c` verde:** `tsc` 0, `guarda` 0 e `test:ci` 0 em ~542 s (`gate-A5-clone-9cafa76c-vigil.log.json`).
+     - **Pré-deploy (regra 11):** produção reconferida em v60 (`updated_at: 2026-10-21T20:28:08.882Z`, `verify_jwt: true`, pacote salvo em `claudePH-granabo-assistente-financeiro.body`); pacote montado em `pacote-granabo-veto-9cafa76c/` (`index.ts` `sha256: 1d8ba553…0d7d`, diferindo da `cca3afba` só no trecho do veto); `deno check` exit 0 (`pacote-granabo-veto-9cafa76c.deno.log`).
+     - **Publicado pelo Supremo às 23:06**, em modo manual (`deploy-granabo-veto-supremo.cjs`, recibo em `recibo-granabo-veto-supremo.md`): `assistente-financeiro` subiu para **v61** (`updated_at: 2026-11-10T02:06:30.515Z`, `verify_jwt: true`, ACTIVE). Pacote publicado baixado e conferido em `granabo-v61-publicado.body` (8.543.314 bytes, veto presente e regra de caixa preservada). A migration 1c (`20261109100000`) continua não aplicada de propósito. Retorno: montar com `--sem-veto` e publicar igual para voltar à v60 byte a byte.
+     - **Cópia do app da Play no Drive atualizada no commit que originou o deploy:** `G:/Meu Drive/Grana - copia do app da Play/grana-app-play-2026-11-09-9cafa76c.bundle` (`git bundle --all`, verificada "is okay").
+   - **Quatro ajustes de tela no clone pelo Lumen (`relatorio-lumen-ajustes-tela.md`, um commit por ajuste conforme regra 14):**
+     - **`eb8b396c`** (`layout(credito): busca ganha respiro abaixo do cartao Total das faturas`): `app/(app)/credito.tsx` — estilo `buscaBloco` com `marginTop: screenRhythm.gap` abaixo do cartão "Total das faturas" (e de `CategoriasContexto` quando visível). Lançamentos já tinha `gap: screenRhythm.gap` em `filtrosWrap` e não mudou.
+     - **`f1c8c103`** (`layout(credito): bolinha do banco centralizada no texto dos chips`): `app/(app)/credito.tsx` — novo `bankChipDot` sem `marginTop: 5`, centralizado pelo `alignItems: 'center'` do chip nos seletores de banco e de carteira do pagamento da fatura; `bankDot` do carrossel não mudou.
+     - **`69e7ea8f`** (`layout(graficos): grafico de Graficos no traco, marcador, degrade e grade da Inicio`): `lib/theme.ts`, `components/FlowChart.tsx`, `components/LineAreaChart.tsx` — novo token `graficoLinha` em `lib/theme.ts`, lido pelos dois gráficos. Na Início (`FlowChart`) nada mudou; em Gráficos (`LineAreaChart`), linha de 2,5 para 2px arredondada, marcador vazado (r 3) para cheio (r 2,5 / 4 no tocado, opacidade 0,8), degradê de 0,35 para 0,3 e grade em 0,6. A cor `accent2` e a série única de Gráficos permaneceram como estavam.
+     - **`a2aed766`** (`layout(desafios): calendario de constancia em grade de casas, com hoje e futuros distintos`): `components/DesafiosCalendario.tsx` — grade de casas (`radius.sm`, `gap: spacing.xs`), cabeçalho dos dias da semana em `legenda` com `inkFaint`, dia com registro cheio em `accent2`, dia vivido sem registro em `menta(0.06)`, hoje com contorno `ink` visível com ou sem registro, futuro sem fundo e número apagado, e dia selecionado com anel externo em `accent2`, preservando `montarCalendario`, a acessibilidade e o painel do dia.
+     - **Provas do Lumen:** `tsc` 0, `test:parser` (guarda do design system) 0 nos commits 3 e 4, `desafios-vocabulario` (2867) e `desafios-calendario` verdes; só `fonts.regular` e `fonts.light`, sem `fontWeight` e sem texto novo.
+4. **O que foi descartado e por quê:**
+   - Commitar `5d6484ab` ou `9cafa76c` no clone antes do disparo da build `46dd9d1c` (a build precisava sair exatamente de `83eb54ca`).
+   - Publicar a branch do clone no GitHub (decisão do autor: "2 no drive").
+   - Aplicar a migration da 1c (`20261109100000_granabo_cota_mensal.sql`) ou publicar o Granabô direto do HEAD do clone/main (mudaria o APK 1.10.12).
+   - Pôr `gap` no wrapper do cabeçalho da Crédito (somaria espaço entre seletor de mês e carrossel, que já têm `paddingVertical` próprio) ou tirar `marginTop: 5` de `bankDot` (quebraria o alinhamento do cartão do carrossel com nome de duas linhas).
+5. **Erros e ocorrências no caminho:**
+   - A primeira tentativa de commit de `9cafa76c` pelo Claude Code #2 esbarrou em `index.lock` do commit do Keel (`5d6484ab`); esperou a trava sair sem apagá-la, conferiu que o delta não tocava o Granabô, rodou o teste de novo sobre `5d6484ab` e commitou.
+   - **Prints dos gráficos trocados na ordem das 23:10:** pelo código, o print `77662a5a` é a **Início** (`FlowChart`, duas séries, saída tracejada, Jan/Dez, marcador cheio) e o `df39f613` é **Gráficos** (`LineAreaChart`, uma série, marcador vazado). O Lumen seguiu a frase literal do autor ("gráfico da aba de gráficos no mesmo estilo do gráfico da home"), fazendo Gráficos adotar o traço e o marcador cheio da Início via `graficoLinha`; se o autor queria o contrário (a Início com o marcador vazado de Gráficos), basta ajustar `graficoLinha` e o `Circle` de `FlowChart`.
+   - Ao terminar (`23:22`), o `maestri ask` do Lumen ao Supremo encontrou o terminal do Supremo parado num diálogo de permissão de leitura dos prints; o Lumen não respondeu ao diálogo alheio nem reenviou a mensagem.
+6. **Sem verificação e pendências abertas para a próxima sessão:**
+   - Os quatro commits de tela do Lumen (`eb8b396c..a2aed766`) **ainda não têm gate A5 integral no clone (`a2aed766`), não estão no bundle do Drive (que está em `9cafa76c`) e não estão na build `46dd9d1c` instalada no aparelho (que saiu de `83eb54ca`)**, nem foram conferidos no emulador/aparelho.
+   - **Checklist de QA visual e decisão do autor para esses quatro ajustes:**
+     - [ ] confirmar com o autor se o estilo desejado nos gráficos é o da Início (marcador cheio, aplicado em `69e7ea8f`) ou o marcador vazado de Gráficos;
+     - [ ] busca com respiro na tela Crédito;
+     - [ ] bolinhas dos bancos centralizadas nos chips;
+     - [ ] calendário em grade a 360dp (casas com 48dp de toque e contorno do hoje visível com ou sem registro);
+     - [ ] rodar o gate A5 do clone em `a2aed766`, atualizar o `.bundle` no Drive e perguntar ao autor se dispara nova build (seria a 2ª de 3 da semana e 7ª de 15 do mês).
+   - **QA em aparelho do que foi ao ar hoje:** testar a E7 com arquivo real de banco, a mudança de mês de conta recorrente (gatilho `20261109230000`) e a recusa do Granabô v61 ("devo investir em quê?").
+   - **Superados das seções anteriores:** as pendências das 22:55 ("o gatilho da recorrente não está em produção nem no clone", "o Granabô (opção A) ainda não foi publicado", "o commit do script e do teste do pacote do Granabô no clone é do Claude Code #2" e "o branch do clone ainda não está no GitHub, decisão do autor antes do primeiro deploy de servidor") foram todas cumpridas e encerradas entre 22:56 e 23:06.
+
 ### Supremo, seções 21:05 a 22:55: E7 ligada e corrigida, duas migrations aplicadas, build `46dd9d1c` instalada
 
 Registro em tempo real pelo Quill (Documentation and Vault do time Claude), porque as duas contas Codex estão sem limite até 00:41 (Gabriel) e 00:58 (PH). Fonte: seções 21:00 a 22:55 de `E:/Grana-temporarios/2026-11-08-retomada/00-ORDEM-retomada-tarde-0911.md`. Os recibos do Supremo e os relatórios dos revisores ficam nessa pasta. Nenhum valor de credencial entra aqui.
@@ -293,6 +344,12 @@ Registro em tempo real pelo Quill (Documentation and Vault do time Claude), porq
   - A 1c (`b1717fb5`, `_shared/ai-quota.ts` e a migration `20261109100000_granabo_cota_mensal.sql`) existe só no main.
   - A ordem da 1c pedia o deploy do main antes da migration. Com o main parado e "nem as cotas" no app de hoje, a 1c fica sem caminho.
   - A migration não deve ser aplicada enquanto o Supremo e o autor não decidirem.
+
+### Complemento histórico da ordem das 20:50, conferido na retomada de 10/11
+
+A seção 20:50 de `00-ORDEM-retomada-tarde-0911.md` confirmou liberação Harbor da fase 4 em `3072a3c3`, com lógica `6d0a728e` e layout `3072a3c3`, encerrando os dois P2; a rodada 3 da 8A foi entregue em `a1b7536d`, com revisão Claude PH prevista e posteriormente aprovada conforme adendo 20:55. Os picks ordenados para o clone foram dfeccd92, 23b13a5e, 6d0a728e e 3072a3c3; a guarda 8A (8e951007/a1b7536d) permaneceu exclusiva do main. A execução dos picks, falha do gate 3072a3c3, correção dffaa839 e gates verdes posteriores já constam no registro de 21:05, commit 8690e58f, e não foram refeitos. Isto registra a decisão histórica, sem reabrir build/gate/pick nem declarar 3072a3c3 integralmente verde.
+
+Na retomada, o único WIP preexistente de context.md é o fechamento 22:55–23:24 de outro documentador, após 794aca13. Preservado integralmente; nenhum commit que o inclua será feito por Beacon sem coordenação. Leitura documental e dos recibos existentes, sem novos testes, escrita remota ou publicação; fonte e identificação concretas registradas para distinguir a decisão das 20:50 das conclusões posteriores.
 
 ### Fase 4 — corte final 3072a3c3, sem commit documental até Watchtower liberar
 
