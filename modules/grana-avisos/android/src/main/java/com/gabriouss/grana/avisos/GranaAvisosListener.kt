@@ -8,6 +8,10 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
+import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
@@ -23,21 +27,28 @@ class GranaAvisosListener : NotificationListenerService() {
     /* O que chegou enquanto o serviço estava fora e ainda está na bandeja. O id
        do diário impede a duplicata, e `notificar = false` evita uma rajada. */
     try {
+      val recuperarAtivos = conexao.conectar(AvisosConfig.dono(this), AvisosConfig.temAceite(this), acessoConcedido(this))
       AvisosConfig.limparLegado(this)
       diario(this).limparForaDoCatalogo()
       AvisosConfig.confirmarLimpeza(this)
       AvisosConfig.registrarSinal(this, System.currentTimeMillis())
-      activeNotifications?.forEach { receber(it, notificar = false) }
+      if (recuperarAtivos) activeNotifications?.forEach { receber(it, notificar = false) }
     } catch (erro: Exception) {
       registrarFalha(erro)
+    } finally {
+      publicarConexao()
     }
   }
 
   override fun onListenerDisconnected() {
+    conexao.desconectar()
     AvisosConfig.registrarDesconexao(this, System.currentTimeMillis())
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-      requestRebind(ComponentName(this, GranaAvisosListener::class.java))
-    }
+    recuperarConexao(this)
+  }
+
+  override fun onDestroy() {
+    conexao.desconectar()
+    super.onDestroy()
   }
 
   override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -135,6 +146,47 @@ class GranaAvisosListener : NotificationListenerService() {
     private const val PREFS_DO_WIDGET = "grana_home_widgets"
     private const val CHAVE_PRIVACIDADE_DO_WIDGET = "privacy_hidden"
     private val VALOR_EM_REAIS = Regex("""R\$\s?\d[\d.]*(?:,\d{2})?""")
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val observadores = mutableSetOf<() -> Unit>()
+    internal val conexao = AvisosConexao(
+      agora = SystemClock::elapsedRealtime,
+      agendar = { prazo, fn -> handler.postDelayed({ fn() }, prazo); Unit },
+      publicar = ::publicarConexao,
+      registrarFalha = { tipo -> Log.w(TAG, tipo); Unit },
+    )
+
+    private fun publicarConexao() {
+      val atuais = synchronized(observadores) { observadores.toList() }
+      atuais.forEach { fn ->
+        try { fn() } catch (erro: Exception) { Log.w(TAG, "falha ao publicar conexao: ${erro.javaClass.simpleName}") }
+      }
+    }
+
+    internal fun observarConexao(fn: () -> Unit): () -> Unit {
+      synchronized(observadores) { observadores.add(fn) }
+      return { synchronized(observadores) { observadores.remove(fn) }; Unit }
+    }
+
+    internal fun acessoConcedido(context: Context): Boolean {
+      val habilitados = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners").orEmpty()
+      return habilitados.split(':').contains(ComponentName(context, GranaAvisosListener::class.java).flattenToString())
+    }
+
+    internal fun recuperarConexao(context: Context) {
+      val app = context.applicationContext
+      // A identidade e a autorização são relidas no main, nunca capturadas pelo chamador JS.
+      handler.post {
+        try {
+          conexao.recuperar(AvisosConfig.dono(app), AvisosConfig.temAceite(app), acessoConcedido(app)) {
+            requestRebind(ComponentName(app, GranaAvisosListener::class.java))
+          }
+        } catch (erro: Exception) {
+          Log.w(TAG, "falha ao consultar conexao: ${erro.javaClass.simpleName}")
+          conexao.falhar("FalhaAoReconectar")
+        }
+      }
+    }
 
     internal fun diario(context: Context) = AvisosDiario(File(context.noBackupFilesDir, "grana_avisos"))
   }

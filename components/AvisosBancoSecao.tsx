@@ -17,7 +17,8 @@ import {
   avisosDisponivel,
   definirAppAvisos,
   definirAceiteAvisos,
-  estadoAvisos,
+  recuperarConexaoAvisos,
+  observarEstadoAvisos,
   lerDiarioAvisos,
   listarAppsAvisos,
   type AppQueNotificou,
@@ -29,7 +30,10 @@ const EXPLICACAO = semViuva('O Android entrega todas as notificações ao servi�
 const RESTRITA = semViuva('Se o Android mostrar "Configuração restrita": abra as informações do app, toque no menu de três pontos e escolha "Permitir configurações restritas".');
 
 function textoDoSinal(estado: EstadoAvisos): string {
-  if (estado.desconectadoEm > 0) return 'Sem sinal do serviço. O Android o desligou';
+  if (estado.recuperando) return 'Tentando reconectar o leitor de avisos…';
+  if (estado.falhaConexao) return 'Não consegui reconectar. Confira o acesso nos ajustes do Android e tente atualizar.';
+  if (estado.acesso && estado.aceite && !estado.conectado) return 'Leitor desconectado. Toque em Atualizar estado para tentar reconectar.';
+  if (!estado.conectado && estado.desconectadoEm > 0) return 'Sem sinal do serviço. O Android o desligou';
   if (!estado.ultimoSinal) return 'Sem sinal do serviço ainda';
   return `Último sinal: ${new Date(estado.ultimoSinal).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`;
 }
@@ -45,7 +49,7 @@ export default function AvisosBancoSecao() {
 
   const carregar = useCallback(() => {
     try {
-      setEstado(estadoAvisos());
+      setEstado(recuperarConexaoAvisos());
       setApps(listarAppsAvisos());
       setFalha(null);
     } catch (erro) {
@@ -57,8 +61,9 @@ export default function AvisosBancoSecao() {
   useEffect(() => {
     if (!avisosDisponivel) return;
     carregar();
+    const parar = observarEstadoAvisos(setEstado, () => setFalha('Não consegui ler o estado dos avisos.'));
     const evento = AppState.addEventListener('change', (s) => { if (s === 'active') carregar(); });
-    return () => evento.remove();
+    return () => { evento.remove(); parar(); };
   }, [carregar]);
 
   if (!avisosDisponivel) return null;
@@ -119,7 +124,9 @@ export default function AvisosBancoSecao() {
       <Text style={styles.corpo}>{EXPLICACAO}</Text>
       {falha && <Text style={styles.corpo}>{falha}</Text>}
       <View style={styles.linha}>
-        <Text style={styles.chave}>{estado?.acesso && estado.aceite ? 'Leitura liberada' : 'Leitura desligada'}</Text>
+        <Text style={styles.chave}>{estado?.acesso && estado.aceite
+          ? estado.conectado ? 'Leitor conectado' : 'Leitor desconectado'
+          : 'Leitura desligada'}</Text>
         <AppPressable style={styles.acaoAlvo} accessibilityRole="button" onPress={pedirAcesso}>
           <Text style={styles.acao}>{estado?.acesso ? 'Ajustar' : 'Liberar'}</Text>
         </AppPressable>

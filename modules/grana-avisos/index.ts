@@ -6,6 +6,8 @@ import { Platform, requireOptionalNativeModule } from 'expo-modules-core';
  */
 type NativeGranaAvisos = {
   estado(): string;
+  recuperarConexao(): string;
+  addListener?(evento: string, fn: () => void): { remove(): void };
   definirDono(dono: string | null): void;
   garantirListaInicial(pacotes: string[]): void;
   listarApps(): string;
@@ -25,6 +27,9 @@ export const avisosDisponivel = Platform.OS === 'android' && !!nativo;
 export type EstadoAvisos = {
   acesso: boolean;
   aceite: boolean;
+  conectado: boolean;
+  recuperando: boolean;
+  falhaConexao: string | null;
   ultimoSinal: number;
   desconectadoEm: number;
   ultimaFalha: string | null;
@@ -47,8 +52,22 @@ export type AvisoDoDiario = {
 export type LeituraDoDiario = { itens: AvisoDoDiario[]; ilegiveis: number };
 
 export function estadoAvisos(): EstadoAvisos {
-  if (!nativo) return { acesso: false, aceite: false, ultimoSinal: 0, desconectadoEm: 0, ultimaFalha: null };
+  if (!nativo) return { acesso: false, aceite: false, conectado: false, recuperando: false, falhaConexao: null, ultimoSinal: 0, desconectadoEm: 0, ultimaFalha: null };
   return JSON.parse(nativo.estado());
+}
+export function recuperarConexaoAvisos(): EstadoAvisos {
+  if (!nativo) return estadoAvisos();
+  return JSON.parse(nativo.recuperarConexao());
+}
+export function observarEstadoAvisos(aoMudar: (estado: EstadoAvisos) => void, aoFalhar?: () => void): () => void {
+  const evento = nativo?.addListener?.('estadoAlterado', () => {
+    try { aoMudar(estadoAvisos()); }
+    catch (erro) {
+      console.error('[avisos] conexão não foi lida', erro instanceof Error ? erro.name : 'erro');
+      aoFalhar?.();
+    }
+  });
+  return () => evento?.remove();
 }
 export function definirDonoAvisos(dono: string | null): void {
   nativo?.definirDono(dono);

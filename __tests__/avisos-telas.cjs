@@ -57,6 +57,8 @@ class ValorAnimado {
 const nativo = {
   avisosDisponivel: true,
   estadoAvisos: () => ({ acesso: false, aceite: aceiteDoTeste, ultimoSinal: 0, desconectadoEm: 0, ultimaFalha: ultimaFalhaDoTeste }),
+  recuperarConexaoAvisos: () => nativo.estadoAvisos(),
+  observarEstadoAvisos: () => () => {},
   listarAppsAvisos: () => [{ pacote: 'com.nu.production', nome: 'Nubank', ligado: false, contagem: 0 }, { pacote: 'com.whatsapp', nome: 'WhatsApp', ligado: true, contagem: 2 }],
   definirAceiteAvisos: (valor) => { if (erroAceite) throw new Error('disco'); aceiteDoTeste = valor; chamadas.push(['aceite', valor]); },
   definirDonoAvisos() {}, garantirListaInicialAvisos() {},
@@ -1219,6 +1221,33 @@ async function main() {
     ok('janela aberta pela mãe carrega uma vez só, sem laço de recarga quando a mãe redesenha (build 31)');
   }
 
+  {
+    const originalRecuperar = nativo.recuperarConexaoAvisos;
+    const originalObservar = nativo.observarEstadoAvisos;
+    const originalAppState = stub['react-native'].AppState.addEventListener;
+    let ativo, publicar, publicarFalha, removido = false, pedidos = 0;
+    let atual = { acesso: true, aceite: true, conectado: false, recuperando: false,
+      falhaConexao: null, ultimoSinal: 0, desconectadoEm: 1, ultimaFalha: null };
+    nativo.recuperarConexaoAvisos = () => { pedidos++; return atual; };
+    nativo.observarEstadoAvisos = (fn, erro) => { publicar = fn; publicarFalha = erro; return () => { removido = true; }; };
+    stub['react-native'].AppState.addEventListener = (_, fn) => { ativo = fn; return { remove() {} }; };
+    const secao = montar(perfil.default, {}); await secao.settle();
+    assert.match(texto(secao.tree), /Leitor desconectado/);
+    assert.doesNotMatch(texto(secao.tree), /Leitura liberada/);
+    ativo('active'); botao(secao, 'Atualizar estado')(); assert.equal(pedidos, 3);
+    atual = { ...atual, recuperando: true }; publicar(atual); await secao.settle();
+    assert.match(texto(secao.tree), /Tentando reconectar/);
+    atual = { ...atual, conectado: true, recuperando: false }; publicar(atual); await secao.settle();
+    assert.match(texto(secao.tree), /Leitor conectado/); assert.doesNotMatch(texto(secao.tree), /Android o desligou/);
+    assert.equal(pedidos, 3, 'evento de estado não solicita outra recuperação');
+    atual = { ...atual, conectado: false, falhaConexao: 'ConexaoSemResposta' }; publicar(atual); await secao.settle();
+    assert.match(texto(secao.tree), /Não consegui reconectar/);
+    publicarFalha(); await secao.settle(); assert.match(texto(secao.tree), /Não consegui ler o estado/);
+    secao.unmount(); assert.ok(removido);
+    nativo.recuperarConexaoAvisos = originalRecuperar; nativo.observarEstadoAvisos = originalObservar;
+    stub['react-native'].AppState.addEventListener = originalAppState;
+    ok('Perfil recupera ao retomar/atualizar, distingue conexão viva, recebe falha e remove observador sem loop');
+  }
   console.log(`\n${checagens} grupos de verificação passaram. Sem rede ou aparelho.`);
 }
 main().catch((e) => { console.error(e); process.exitCode = 1; });

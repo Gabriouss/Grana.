@@ -1,6 +1,5 @@
 package com.gabriouss.grana.avisos
 
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -14,6 +13,7 @@ import org.json.JSONObject
 /** A parte da leitura de avisos que o JavaScript enxerga. */
 class GranaAvisosModule : Module() {
   private var catalogoPreparado = false
+  private var pararObservacao: (() -> Unit)? = null
 
   private fun prepararCatalogo() {
     if (!catalogoPreparado) {
@@ -32,17 +32,29 @@ class GranaAvisosModule : Module() {
 
   private fun limparAoRetomar() {
     if (appContext.reactContext == null) return
-    try { prepararCatalogo() } catch (erro: Exception) { registrarFalha(erro) }
+    try {
+      prepararCatalogo()
+      GranaAvisosListener.recuperarConexao(context)
+    } catch (erro: Exception) { registrarFalha(erro) }
   }
 
   private val context: Context
     get() = appContext.reactContext ?: throw Exceptions.ReactContextLost()
 
   private fun acessoConcedido(): Boolean {
-    val habilitados = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners").orEmpty()
-    val componente = ComponentName(context, GranaAvisosListener::class.java).flattenToString()
-    return habilitados.split(':').contains(componente)
+    return GranaAvisosListener.acessoConcedido(context)
   }
+
+  private fun estado(): String = JSONObject()
+    .put("acesso", acessoConcedido())
+    .put("aceite", AvisosConfig.temAceite(context))
+    .put("conectado", GranaAvisosListener.conexao.conectado)
+    .put("recuperando", GranaAvisosListener.conexao.recuperando)
+    .put("falhaConexao", GranaAvisosListener.conexao.falha ?: JSONObject.NULL)
+    .put("ultimoSinal", AvisosConfig.ultimoSinal(context))
+    .put("desconectadoEm", AvisosConfig.desconectadoEm(context))
+    .put("ultimaFalha", AvisosConfig.ultimaFalha(context) ?: JSONObject.NULL)
+    .toString()
 
   private fun abrir(intent: Intent) {
     context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -50,25 +62,28 @@ class GranaAvisosModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("GranaAvisos")
+    Events("estadoAlterado")
 
-    OnCreate { limparAoRetomar() }
+    OnCreate {
+      pararObservacao = GranaAvisosListener.observarConexao { sendEvent("estadoAlterado", emptyMap<String, Any?>()) }
+      limparAoRetomar()
+    }
+    OnDestroy { pararObservacao?.invoke(); pararObservacao = null }
     OnActivityEntersForeground { limparAoRetomar() }
 
     Function("estado") {
+      estado()
+    }
+    Function("recuperarConexao") {
       limparAoRetomar()
-      JSONObject()
-        .put("acesso", acessoConcedido())
-        .put("aceite", AvisosConfig.temAceite(context))
-        .put("ultimoSinal", AvisosConfig.ultimoSinal(context))
-        .put("desconectadoEm", AvisosConfig.desconectadoEm(context))
-        .put("ultimaFalha", AvisosConfig.ultimaFalha(context) ?: JSONObject.NULL)
-        .toString()
+      estado()
     }
 
     Function("definirDono") { dono: String? ->
       if (AvisosConfig.definirDono(context, dono)) {
         GranaAvisosListener.diario(context).apagarTudo()
       }
+      GranaAvisosListener.conexao.atualizarDono(dono)
     }
     Function("garantirListaInicial") { pacotes: List<String> ->
       AvisosConfig.garantirListaInicial(context, pacotes, System.currentTimeMillis())
@@ -95,6 +110,7 @@ class GranaAvisosModule : Module() {
 
     Function("definirAceite") { aceito: Boolean ->
       AvisosConfig.definirAceite(context, aceito, System.currentTimeMillis())
+      GranaAvisosListener.recuperarConexao(context)
     }
     Function("abrirAcesso") {
       check(AvisosConfig.temAceite(context)) { "aceite obrigatorio" }
