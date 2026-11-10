@@ -63,12 +63,20 @@ export default function DesafiosCalendario({ dias, weekActivity, streak, demo, a
     {erro ? <AppPressable accessibilityRole="button" onPress={() => setTentativa(t => t + 1)} style={s.navegacao}><Text accessibilityRole="alert" style={s.texto}>{semViuva('Não foi possível carregar o mês. Toque para tentar novamente.')}</Text></AppPressable>
       : !carregado ? <ActivityIndicator color={theme.ink} /> : <View style={s.grupo}>
         <Text style={s.texto}>{semViuva(calendario.resumo)}</Text>
-        <View style={s.linha}>{['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => <Text key={d} style={[s.texto, s.coluna, { textAlign: 'center' }]}>{d}</Text>)}</View>
-        <View>{calendario.semanas.map((semana, i) => <View key={i} style={s.linha}>{semana.map((d, j) => d ? <AppPressable key={j} accessibilityRole="button"
-          accessibilityLabel={`${d.dia} de ${nome}${d.registro ? ', com registro' : ''}${d.hoje ? ', hoje' : ''}. Ver gastos do dia`}
-          accessibilityState={{ selected: diaEscolhido === d.iso }} onPress={() => setDiaEscolhido(atual => atual === d.iso ? null : d.iso)} style={s.celula}>
-          <View style={[s.anel, diaEscolhido === d.iso && s.anelEscolhido]}><View style={[s.circulo, d.registro && s.ativo, d.hoje && s.hoje]}><Text style={[s.numero, d.registro && s.numeroAtivo]}>{d.dia}</Text></View></View>
-        </AppPressable> : <View key={j} style={s.celula} />)}</View>)}</View>
+        {/* Grade de calendário: cabeçalho dos dias da semana e uma casa
+            quadrada por dia. Com registro, a casa é cheia; vivido sem
+            registro, casa vazia; hoje, contorno claro; futuro, só o número
+            apagado, porque ainda não pode ter registro. */}
+        <View style={s.grade}>
+          <View style={s.linha}>{['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => <Text key={d} style={[s.diaSemana, s.coluna]}>{d}</Text>)}</View>
+          {calendario.semanas.map((semana, i) => <View key={i} style={[s.linha, s.semana]}>{semana.map((d, j) => d ? <AppPressable key={j} accessibilityRole="button"
+            accessibilityLabel={`${d.dia} de ${nome}${d.registro ? ', com registro' : ''}${d.hoje ? ', hoje' : ''}. Ver gastos do dia`}
+            accessibilityState={{ selected: diaEscolhido === d.iso }} onPress={() => setDiaEscolhido(atual => atual === d.iso ? null : d.iso)} style={s.celula}>
+            <View style={[s.anel, diaEscolhido === d.iso && s.anelEscolhido]}><View style={[s.casa, d.registro && s.casaRegistro, d.futuro && s.casaFutura, d.hoje && s.casaHoje]}>
+              <Text style={[s.numero, d.registro && s.numeroAtivo, d.futuro && s.numeroFuturo]}>{d.dia}</Text>
+            </View></View>
+          </AppPressable> : <View key={j} style={s.celula} />)}</View>)}
+        </View>
         {diaEscolhido && <View ref={painelRef} collapsable={false} onLayout={() => { if (painelRef.current) aoPainelMudar?.(painelRef.current); }} accessibilityLiveRegion="polite" style={s.grupo}>
           <View style={s.cabecalho}>
             <Text style={s.titulo}>{semViuva(`${Number(diaEscolhido.slice(8))} de ${new Date(mes.ano, mes.mes, 1).toLocaleDateString('pt-BR', { month: 'long' })}`)}</Text>
@@ -100,10 +108,18 @@ const s = StyleSheet.create({
   ativo: { backgroundColor: theme.accent2, borderColor: theme.accent2 }, hoje: { borderColor: theme.accent2 },
   ponto: { width: spacing.xs, height: spacing.xs, borderRadius: radius.pill, backgroundColor: theme.inkFaint },
   numero: { color: theme.inkSoft, fontFamily: fonts.regular, fontSize: type.micro, lineHeight: lh(type.micro, 'apoio') }, numeroAtivo: { color: theme.paper },
-  celula: { flex: 1, minWidth: 0, minHeight: touchTarget, alignItems: 'center', justifyContent: 'center' },
-  // Anel fora do círculo, com um vão sobre o fundo do cartão; sempre reservado para a grade não pular.
-  anel: { padding: 2, borderRadius: radius.pill, borderWidth: 1.5, borderColor: 'transparent' },
-  anelEscolhido: { borderColor: theme.ink },
+  grade: { gap: spacing.xs },
+  semana: { gap: spacing.xs },
+  diaSemana: { textAlign: 'center', color: theme.inkFaint, fontFamily: fonts.regular, fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio') },
+  celula: { flex: 1, minWidth: 0, minHeight: touchTarget },
+  // Anel fora da casa, com um vão sobre o fundo do cartão; sempre reservado para a grade não pular.
+  anel: { flex: 1, padding: spacing.fio, borderRadius: radius.sm, borderWidth: 1.5, borderColor: 'transparent' },
+  anelEscolhido: { borderColor: theme.accent2 },
+  casa: { flex: 1, borderRadius: radius.sm, backgroundColor: menta(0.06), borderWidth: 1.5, borderColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
+  casaRegistro: { backgroundColor: theme.accent2 },
+  casaFutura: { backgroundColor: 'transparent' },
+  casaHoje: { borderColor: theme.ink },
+  numeroFuturo: { color: theme.inkFaint },
   cabecalho: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   total: { color: theme.down, fontFamily: fonts.regular, fontSize: type.apoio, lineHeight: lh(type.apoio, 'valor'), flexShrink: 0 },
   // Mesmo desenho da linha de CreditTransactionRow (credito.tsx), sem data nem opções.
