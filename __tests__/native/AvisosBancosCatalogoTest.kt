@@ -92,6 +92,34 @@ fun main(args: Array<String>) {
     AvisosConfig.definirDono(ctx, "outra-conta-de-teste")
     check(inicio.invoke(AvisosConfig, ctx, nubank) == null)
   }
+  caso("reabrir ajustes com aceite vigente preserva o replay; revogar reinicia o corte") {
+    val ctx = Context()
+    AvisosConfig.definirDono(ctx, "conta-de-teste")
+    AvisosConfig.definirApp(ctx, nubank, true, 10L)
+    AvisosConfig.definirAceite(ctx, true, 30L)
+    // Aviso chegou após o aceite. Reabrir Ajustar/Aceitar não é uma revogação.
+    AvisosConfig.definirAceite(ctx, true, 50L)
+    val inicio = AvisosConfig.inicioDaLeitura(ctx, nubank)
+    check(inicio == 30L) { "reabrir ajustes deslocou o corte do aceite vigente" }
+    check(AvisosFiltro.decidir(nubank, "proprio", false, true, inicio, 40L, false) == AvisosFiltro.Destino.LER) {
+      "aviso posterior ao primeiro aceite sumiu do replay ao reabrir ajustes"
+    }
+    check(AvisosFiltro.decidir(nubank, "proprio", false, true, inicio, 20L, false) == AvisosFiltro.Destino.DESCARTAR)
+    AvisosConfig.definirApp(ctx, nubank, false, 55L)
+    check(AvisosConfig.inicioDaLeitura(ctx, nubank) == null)
+    AvisosConfig.definirApp(ctx, nubank, true, 56L)
+    AvisosConfig.definirAceite(ctx, true, 58L)
+    check(AvisosConfig.inicioDaLeitura(ctx, nubank) == 56L) { "idempotência apagou o corte novo da escolha do banco" }
+    AvisosConfig.definirAceite(ctx, false, 60L)
+    check(AvisosConfig.inicioDaLeitura(ctx, nubank) == null)
+    AvisosConfig.definirAceite(ctx, true, 70L)
+    check(AvisosConfig.inicioDaLeitura(ctx, nubank) == 70L)
+    check(AvisosFiltro.decidir(nubank, "proprio", false, true, AvisosConfig.inicioDaLeitura(ctx, nubank), 40L, false) == AvisosFiltro.Destino.DESCARTAR)
+    AvisosConfig.definirDono(ctx, "outra-conta-de-teste")
+    check(AvisosConfig.inicioDaLeitura(ctx, nubank) == null)
+    AvisosConfig.definirAceite(ctx, true, 90L)
+    check(AvisosConfig.inicioDaLeitura(ctx, nubank) == 90L) { "troca de conta herdou o corte do aceite anterior" }
+  }
   caso("retomada limpa vencidos inclusive no limite, sem depender de novo aviso") {
     val agora = System.currentTimeMillis()
     val pasta = File(raiz, "retencao").apply { mkdirs() }

@@ -75,6 +75,8 @@ internal object AvisosConfig {
 
   fun definirAceite(context: Context, aceito: Boolean, agora: Long) {
     require(!aceito || dono(context) != null) { "aceite precisa de conta" }
+    // Reabrir os ajustes não revoga o aceite nem corta o replay de avisos já autorizados.
+    if (aceito && temAceite(context)) return
     val editor = prefs(context).edit()
     if (aceito) editor.putLong(CHAVE_ACEITE, agora) else editor.remove(CHAVE_ACEITE)
     check(editor.commit()) { "nao gravou o aceite" }
