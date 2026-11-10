@@ -11,7 +11,7 @@ function criar(){const c={user:'a',demo:false,slots:[],i:0,effects:[],calls:[],a
     '@/lib/wallet-context':{useWallet:()=>({activeWalletId:'total',wallets:[{id:'p',name:'Principal',user_id:'a',is_default:true,created_at:'2026-01-01'}]})},
     '@/lib/demo-context':{useDemo:()=>({isDemoMode:c.demo})},'@/lib/alerta':{Alert:{alert:(...x)=>c.alerts.push(x)}},'@/lib/erros':{mensagemErro:e=>e.message},
     '@/lib/escolher-arquivo':{escolherArquivoDeExtrato:async opts=>{assert.equal(opts.limparCopia,true);return c.cancelPick?null:{texto:'fixture'};}},
-    '@/lib/conciliacao-pix-servico':{analisarExtratoPix:async op=>{c.analyzed++;assert.equal(op.carteiraId,'p');return {resultados:rows.map(r=>({...r})),cancelar:()=>{c.canceled++;}};},
+    '@/lib/conciliacao-pix-servico':{analisarExtratoPix:async op=>{c.analyzed++;assert.equal(op.carteiraId,'p');return {resultados:rows.map(r=>({...r,linha:{...r.linha,...(c.formato?{formatoData:c.formato}:{})}})),cancelar:()=>{c.canceled++;}};},
       confirmarItensPix:async(a,choices)=>{c.calls.push(choices);await c.pending;return choices.map(e=>({id:e.id,status:c.fail?'erro':'salvo',mensagem:c.fail?'Não confirmado.':'Salvo.'}));}},
     '@/lib/format':{formatDateLabel:x=>x,formatMoney:x=>String(x)},'@/lib/theme':{fonts:{},radius:{},spacing:{},theme:{},type:{},lh:()=>20},};
   for(const name of ['AppModal','Sheet','AppPressable','CategoryPickerModal'])imports['./'+name]={__esModule:true,default:name};
@@ -53,6 +53,10 @@ const flush=()=>new Promise(r=>setImmediate(r));
   const d=criar();await abrir(d);let release;d.pending=new Promise(r=>{release=r;});find(d,'Confirmar item 1').props.onPress();find(d,'Confirmar item 1').props.onPress();assert.equal(d.calls.length,1,'duplo toque não abre dois lotes');release();await flush();
   const e=criar();e.cancelPick=true;await abrir(e);assert.equal(e.analyzed,0);assert.equal(e.calls.length,0);
   const f=criar();await abrir(f);f.fail=true;find(f,'Confirmar item 1').props.onPress();await flush();assert.match(f.alerts.at(-1)[1],/0 de 1/);assert.ok(nodes(f.render()).some(n=>n.props?.children==='Não confirmado.'));
+  /* Formato de data do CSV (Keel, 09/11): arquivo que prova mês/dia e arquivo sem prova avisam na tela; DD/MM provado não avisa. */
+  const textos=t=>nodes(t).map(n=>n.props?.children).filter(x=>typeof x==='string');
+  for(const [formato,re] of [['mes-dia',/formato mês\/dia/],['dia-mes-presumido',/lidas como dia\/mês/]]){const m=criar();m.formato=formato;await abrir(m);assert.ok(textos(m.render()).some(x=>re.test(x)),formato);}
+  {const m=criar();await abrir(m);assert.ok(!textos(m.render()).some(x=>/mês\/dia|dia\/mês/.test(x)),'DD/MM provado não avisa');}
   /* E7 liberada pelo autor em 09/11/2026 ("Pode ligar a conciliação completamente"): o Perfil real mostra a conferência
      com o flag remoto importar_extrato ligado e a esconde com ele desligado, que continua sendo o interruptor de emergência. */
   const perfilLigado=telaPerfil({importar_extrato:true}),perfilDesligado=telaPerfil({importar_extrato:false});

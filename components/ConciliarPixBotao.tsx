@@ -15,7 +15,12 @@ import Sheet from './Sheet';
 import AppPressable from './AppPressable';
 import CategoryPickerModal from './CategoryPickerModal';
 
-const nomes = { falta: 'Falta lançar', data: 'Data diferente', revisar: 'Precisa conferir', conciliado: 'Já confere', ignorar: 'Fora do gasto' };
+// CSV em que dd/mm e mm/dd são possíveis: a tela diz como as datas foram lidas (regra 29: espaço fixo nas duas últimas).
+const avisoDeData = {
+  'mes-dia': 'As datas deste arquivo estão no formato mês/dia e foram lidas\u00a0assim.',
+  'dia-mes-presumido': 'As datas deste arquivo foram lidas como dia/mês. Se o banco usa mês/dia, confira antes de\u00a0confirmar.',
+};
+const nomes = { falta:'Falta lançar', data: 'Data diferente', revisar: 'Precisa conferir', conciliado: 'Já confere', ignorar: 'Fora do gasto' };
 export default function ConciliarPixBotao() {
   const { session } = useSession();
   const { wallets, activeWalletId } = useWallet();
@@ -87,6 +92,7 @@ export default function ConciliarPixBotao() {
   const visiveis = analise?.resultados.filter(r => !['conciliado','ignorar'].includes(r.status) && !ignorados.includes(r.linha.id)) ?? [];
   const editando = analise?.resultados.find(r => r.linha.id === categoriaId);
   const datas = analise?.resultados.map(r => r.linha.data).sort() ?? [];
+  const formatoData = analise?.resultados.find(r => r.linha.formatoData)?.linha.formatoData;
   return <>
     <AppPressable style={styles.botao} onPress={abrir} disabled={ocupado || !session} accessibilityRole="button" accessibilityLabel="Conferir Pix pelo extrato">
       <Text style={styles.texto}>Conferir Pix pelo extrato</Text>
@@ -104,6 +110,7 @@ export default function ConciliarPixBotao() {
           <AppPressable style={styles.primario} onPress={escolher} disabled={ocupado || !carteira || origem.trim().length < 3} accessibilityRole="button" accessibilityLabel="Escolher extrato"><Text style={styles.primarioTexto}>Escolher extrato</Text></AppPressable>
         </> : <>
           <Text style={styles.apoio}>{formatDateLabel(datas[0])} a {formatDateLabel(datas[datas.length - 1])}. A conferência cobre só as linhas deste arquivo, inclusive se o período estiver incompleto.</Text>
+          {formatoData ? <Text style={styles.apoio}>{avisoDeData[formatoData]}</Text> : null}
           <Text style={styles.apoio}>{analise.resultados.filter(r => r.status === 'conciliado').length} já conferem. {analise.resultados.filter(r => r.status === 'ignorar').length} movimentos neutros ficaram fora.</Text>
           {!visiveis.length ? <Text style={styles.texto}>Nenhum item deste arquivo precisa de lançamento ou correção.</Text> : null}
           {visiveis.slice(0, pagina * 20).map(r => {
