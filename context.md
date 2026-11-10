@@ -95,6 +95,23 @@ Em 31/10, a descrição da motion-supremo foi encurtada nas duas cópias (`4a052
 
 # 2026-11-09 - M1 - Retomada da manhã
 
+### Claude Code #2: textos da revisão da E7 corrigidos pelo Keel (`83eb54ca`), aprovados sem achado
+
+1. **Pedido:** mensagem do Supremo. Era conferir rápido só o delta `0ddfd5f1..83eb54ca`, enquanto o Vigil roda o gate final nele.
+2. **Sintoma e causa:** havia os dois achados de texto da revisão anterior:
+   - **P2:** "Ajuste pelo lançamento" levava à duplicata pela edição comum;
+   - **P3:** a "fatura" de conta de consumo recebia a mensagem do cartão.
+3. **Arquivos e provas:**
+   - **`83eb54ca`:** só texto e testes.
+     - A recorrente agora diz: "Esta conta se repete todo mês e já está lançada. Deixe a data como está para ela não ser lançada duas vezes." Vale em `lib/conciliacao-pix.ts` e em `lib/conciliacao-pix-servico.ts`.
+     - A fatura cobre cartão e outra conta, e orienta lançar à mão em Lançamentos.
+     - O teste da recorrente recusa "Ajuste", e um teste novo usa "PAGAMENTO FATURA CLARO".
+   - **Migration:** intacta, sha256 `277313af…5981`.
+   - **Testes:** os de guardas, serviço e núcleo passam numa árvore temporária fora do clone.
+4. **Descartado:** rodar no clone, porque o Vigil estava no gate.
+5. **Erro no caminho:** nenhum.
+6. **Sem verificação:** o gate do Vigil em `83eb54ca`, o aparelho e a migration nova em produção.
+
 ### Claude Code #2: revisão das guardas da E7 do Keel (`e0e08022..0ddfd5f1`), aprovada com dois achados de texto
 
 1. **Pedido:** seção 21:50 da ordem e mensagem do Supremo. O autor disse: "Resolve, não vamos disparar build até tudo estar corrigido". O Keel corrigiu e o Claude Code #2 revisa só o delta, migration nova incluída, enquanto o Vigil roda o gate em `0ddfd5f1`.
