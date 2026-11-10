@@ -31,7 +31,7 @@ function carregar(op={}){
   const sa=await s.analisar('Data;Descrição;Valor;ID\n05/10/2026;Pix enviado;-2,00;x\n06/10/2026;Pix enviado;-3,00;y');
   const sr=await s.api.confirmarItensPix(sa,[e,{...e,id:'1'}]);assert.deepEqual(Array.from(sr,x=>x.status),['salvo','erro']);assert.equal(s.escritas().length,1);assert.equal(s.events,1);sa.cancelar();
   // Conflito com motivo do servidor vira orientação própria; sem motivo, a mensagem antiga.
-  for(const [motivo,re] of [['mesmo_valor',/à mão em Lançamentos/],['recorrente',/todo mês/],['fatura',/Crédito/],[undefined,/mudou ou há mais de uma/]]){
+  for(const [motivo,re] of [['mesmo_valor',/à mão em Lançamentos/],['recorrente',/já está lançada\. Deixe a data como está/],['fatura',/Crédito/],[undefined,/mudou ou há mais de uma/]]){
     const m=carregar({rpc:(_c,name)=>name==='confirmar_conciliacao_pix'?{data:{situacao:'conflito',...(motivo?{motivo}:{})},error:null}:undefined}),ma=await m.analisar();
     const mr=await m.api.confirmarItensPix(ma,[e]);assert.equal(mr[0].status,'conflito');assert.match(mr[0].mensagem,re,String(motivo));ma.cancelar();}
   console.log('Pix serviço real: preview sem escrita, chave local por origem, confirmação explícita, conta/cancelamento, RPC ausente sem fallback, lote parcial com recibo, salvo após troca de sessão e motivo do conflito OK');

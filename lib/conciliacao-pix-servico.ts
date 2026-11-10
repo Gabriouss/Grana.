@@ -17,7 +17,7 @@ const camposSnapshot = ['occurred_on', 'amount', 'type', 'description', 'categor
 /** Motivos que a RPC devolve no conflito (migration 20261109220000). Sem motivo, vale a mensagem geral. */
 const mensagensDeConflito = new Map<unknown, string>([
   ['mesmo_valor', 'Já existe um lançamento de mesmo valor perto desta data. Se for outro Pix, lance à mão em Lançamentos.'],
-  ['recorrente', 'Esta conta se repete todo mês, e a data do banco cai em outro mês. Ajuste pelo lançamento.'],
+  ['recorrente', 'Esta conta se repete todo mês e já está lançada. Deixe a data como está para ela não ser lançada duas\u00a0vezes.'],
   ['fatura', 'Pagamento de fatura. Confira a data na tela de Crédito.'],
 ]);
 const snapshot = (t: Transaction) => Object.fromEntries(camposSnapshot.map(k => [k, t[k] ?? null]));

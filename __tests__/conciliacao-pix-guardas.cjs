@@ -16,7 +16,7 @@ const filha=(id,d)=>({...base,id,occurred_on:d,recurring:true,parent_id:'h'});
 // P1: ocorrência recorrente cuja data do banco cai em outro mês não vira "Corrigir data".
 const serie=[cabeca,filha('o10','2026-10-01'),filha('o11','2026-11-01')];
 const r1=match([linha()],serie)[0];
-assert.equal(r1.status,'revisar','recorrente que muda de mês exige revisão');assert.match(r1.motivo,/todo mês/);
+assert.equal(r1.status,'revisar','recorrente que muda de mês exige revisão');assert.match(r1.motivo,/já está lançada\. Deixe a data como está/);assert.doesNotMatch(r1.motivo,/Ajuste/,'não orientar a mudar a data à mão');
 // O mecanismo que a guarda evita: mover a filha de mês faz a série recriar a ocorrência (duplicata).
 assert.deepEqual(Array.from(rec.ocorrenciasFaltantes(serie,'2026-11-09')),[]);
 assert.deepEqual(Array.from(rec.ocorrenciasFaltantes(serie.map(t=>t.id==='o11'?{...t,occurred_on:'2026-10-30'}:t),'2026-11-09'),f=>f.occurred_on),['2026-11-01']);
@@ -33,6 +33,8 @@ const rf=match([linha()],[pagamento])[0];assert.equal(rf.status,'revisar');asser
 for(const d of ['Pagamento de fatura','PAGTO FATURA CARTAO','PAG FATURA ITAU','Pagamento cartão de crédito','PGTO CARTAO CREDITO','Pagto Fatura Inter','FATURA CARTAO NUBANK','Pagamento fatura','Fatura paga'])
   assert.equal(conc.lerExtratoConciliacao('Data;Descrição;Valor\n05/10/2026;'+d+';-500,00')[0].natureza,'fatura',d);
 assert.equal(conc.lerExtratoConciliacao('Data;Descrição;Valor\n05/10/2026;Pix enviado Padaria;-5,00')[0].natureza,'movimento');
+// Fatura de conta de consumo também cai aqui: o motivo cobre cartão e outra conta (revisão do Claude Code #2).
+{const rfat=match(conc.lerExtratoConciliacao('Data;Descrição;Valor\n05/10/2026;PAGAMENTO FATURA CLARO;-99,90').map(l=>({...l,fitid:'pix1:f:0'})),[])[0];assert.equal(rfat.status,'revisar');assert.match(rfat.motivo,/fatura do cartão.*Crédito/);assert.match(rfat.motivo,/outra conta, lance à mão em.Lançamentos/);assert.doesNotMatch(rfat.motivo,/Não é despesa comum/);}
 
 // P2: compra já lançada no crédito, mesmo valor e direção em ±3 dias, não vira "Falta lançar".
 const credito={...base,id:'c',occurred_on:'2026-10-29',recurring:false,parent_id:null,card_id:'card',payment_method:'credit'};

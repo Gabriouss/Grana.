@@ -134,7 +134,7 @@ export function conciliarPix(op: { userId: string; carteiraId: string; principal
     }
     if (par.length > 1) return resultado('revisar', 'Mais de um vínculo de estorno.');
     if (linha.natureza === 'cofrinho') return resultado(candidatos.length ? 'revisar' : 'ignorar', 'Movimentação do cofrinho do banco não é gasto.');
-    if (linha.natureza === 'fatura') return resultado('revisar', 'Confira o pagamento na tela de Crédito. Não é despesa comum.');
+    if (linha.natureza === 'fatura') return resultado('revisar', 'Pode ser pagamento da fatura do cartão: confira em Crédito. Se for outra conta, lance à mão em\u00a0Lançamentos.');
     if (linha.natureza === 'estorno') return resultado('revisar', 'Estorno sem par integral comprovado exige revisão.');
     if (linha.natureza === 'transferencia') return resultado('revisar', 'Confirme a titularidade e use a transferência entre carteiras.');
     if (candidatos.length === 0) {
@@ -154,7 +154,7 @@ export function conciliarPix(op: { userId: string; carteiraId: string; principal
     }
     if (alvo.occurred_on !== linha.data && ehPagamentoDeFatura(alvo)) return resultado('revisar', 'Pagamento de fatura. Confira a data na tela de Crédito.');
     if (alvo.occurred_on !== linha.data && serieRecorrente(alvo) && alvo.occurred_on.slice(0, 7) !== linha.data.slice(0, 7)) {
-      return resultado('revisar', 'Esta conta se repete todo mês, e a data do banco cai em outro mês. Ajuste pelo lançamento.');
+      return resultado('revisar', 'Esta conta se repete todo mês e já está lançada. Deixe a data como está para ela não ser lançada duas\u00a0vezes.');
     }
     return resultado(alvo.occurred_on === linha.data ? 'conciliado' : 'data', alvo.occurred_on === linha.data ? 'Já confere.' : 'Corrigir somente a data do lançamento existente.', alvo);
   });
