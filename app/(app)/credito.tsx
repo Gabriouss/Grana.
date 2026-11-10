@@ -1787,7 +1787,7 @@ export default function CreditoScreen() {
                 ]}
                 onPress={() => setCardBank(b.id)}
               >
-                <View style={[styles.bankDot, { backgroundColor: b.color }]} />
+                <View style={[styles.bankChipDot, { backgroundColor: b.color }]} />
                 <Text style={[styles.bankChipText, cardBank === b.id && { color: theme.ink}]}>
                   {b.name}
                 </Text>
@@ -1970,7 +1970,7 @@ export default function CreditoScreen() {
                     ]}
                     onPress={() => setPayWalletId(w.id)}
                   >
-                    <View style={[styles.bankDot, { backgroundColor: w.color }]} />
+                    <View style={[styles.bankChipDot, { backgroundColor: w.color }]} />
                     <Text style={[styles.bankChipText, payWalletId === w.id && { color: theme.ink}]}>
                       {w.name}
                     </Text>
@@ -2536,6 +2536,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.rule,
   },
+  /* Sem o `marginTop` do `bankDot`, que existe para o topo do cartão do
+     carrossel (alinhado em flex-start). No chip quem centraliza é o
+     `alignItems: 'center'` da fileira (pedido do autor de 09/11/2026). */
+  bankChipDot: { width: 8, height: 8, borderRadius: 4 },
   bankChipText: {
     fontFamily: fonts.regular,
     fontSize: type.legenda,
