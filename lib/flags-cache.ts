@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Flag } from './feature-flags-regras';
 
 const CHAVE = 'grana:cache:flags';
+let gravacoes = Promise.resolve();
 
 /**
  * Último mapa de interruptores remotos que o servidor confirmou.
@@ -31,13 +32,28 @@ const CHAVE = 'grana:cache:flags';
  * o servidor continua recusando.
  */
 export async function guardarFlags(flags: Record<string, Flag>): Promise<void> {
+  let bruto: string;
   try {
-    await AsyncStorage.setItem(CHAVE, JSON.stringify(flags));
+    // Captura o mapa aceito agora, antes de esperar uma gravação anterior.
+    bruto = JSON.stringify(flags);
   } catch (erro) {
-    // Best-effort: sem cache o comportamento volta a ser o antigo (falha
-    // aberta), que é degradação conhecida. Ainda assim, deixa recibo.
-    console.warn('[flags] não foi possível guardar os interruptores', (erro as { name?: string })?.name ?? 'erro');
+    console.warn('[flags] não foi possível preparar os interruptores para guardar', (erro as { name?: string })?.name ?? 'erro');
+    return;
   }
+  const gravar = async () => {
+    try {
+      await AsyncStorage.setItem(CHAVE, bruto);
+    } catch (erro) {
+      // Best-effort: sem cache o comportamento volta a ser o antigo (falha
+      // aberta), que é degradação conhecida. Ainda assim, deixa recibo.
+      console.warn('[flags] não foi possível guardar os interruptores', (erro as { name?: string })?.name ?? 'erro');
+    }
+  };
+  // O storage não cancela um setItem já iniciado. A escrita seguinte espera
+  // a anterior terminar, para a confirmação nova ficar por último no disco.
+  const gravacao = gravacoes.then(gravar, gravar);
+  gravacoes = gravacao;
+  await gravacao;
 }
 
 /** O mapa guardado, ou `null` quando nunca houve leitura boa neste aparelho. */

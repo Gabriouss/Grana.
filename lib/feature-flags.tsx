@@ -1,4 +1,4 @@
-import { createContext, use, useCallback, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
+import { createContext, use, useCallback, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import { AppState, Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { useSession } from './auth-context';
@@ -38,17 +38,36 @@ export function useFlags() {
 export function FlagsProvider({ children }: PropsWithChildren) {
   const { session } = useSession();
   const [flags, setFlags] = useState<Record<string, Flag>>({});
+  const dono = session?.user.id ?? null;
+  const cicloRef = useRef({ dono, vivo: true, pedido: 0 });
+  if (cicloRef.current.dono !== dono) {
+    cicloRef.current.vivo = false;
+    cicloRef.current.pedido++;
+    cicloRef.current = { dono, vivo: true, pedido: 0 };
+  }
+  const ciclo = cicloRef.current;
+  const confirmacaoRef = useRef(0);
+  useEffect(() => {
+    ciclo.vivo = true;
+    return () => { ciclo.vivo = false; ciclo.pedido++; };
+  }, [ciclo]);
 
   const recarregar = useCallback(async () => {
-    if (!session) return;
+    if (!dono || cicloRef.current !== ciclo || !ciclo.vivo) return;
+    const pedido = ++ciclo.pedido;
+    const atual = () => cicloRef.current === ciclo && ciclo.vivo && ciclo.pedido === pedido;
     try {
       const { data, error } = await supabase.from('feature_flags').select(COLUNAS_FLAG);
+      if (!atual()) return;
       if (error) throw error;
       const mapa: Record<string, Flag> = {};
       for (const linha of (data ?? []) as Flag[]) mapa[linha.key] = linha;
+      confirmacaoRef.current++;
       setFlags(mapa);
       void guardarFlags(mapa);
     } catch {
+      if (!atual()) return;
+      console.warn('[flags] não foi possível atualizar os interruptores; mantendo o último mapa');
       /* FALHA ABERTA — ver o cabeçalho do arquivo. Sem resposta, o mapa fica
          como está e `ligado()` devolve true para chave desconhecida.
 
@@ -57,7 +76,7 @@ export function FlagsProvider({ children }: PropsWithChildren) {
          remoto voltava a ligado — inclusive o do WhatsApp, um canal desligado
          por estar banido na Meta e que reapareceu num teste em modo avião. */
     }
-  }, [session]);
+  }, [ciclo, dono]);
 
   /* O último mapa confirmado entra ANTES da rede, e só enquanto não houver
      resposta boa. Offline é ele que decide; online ele é sobrescrito em
@@ -66,15 +85,17 @@ export function FlagsProvider({ children }: PropsWithChildren) {
      pior que o contrário. */
   useEffect(() => {
     let vivo = true;
+    const confirmacao = confirmacaoRef.current;
     void (async () => {
       const guardado = await lerFlagsGuardadas();
-      if (!vivo || !guardado) return;
+      if (!vivo || !ciclo.vivo || cicloRef.current !== ciclo || confirmacaoRef.current !== confirmacao || !guardado) return;
+      // Até um mapa vazio confirmado pelo servidor é mais novo que o disco.
       setFlags((atual) => (Object.keys(atual).length > 0 ? atual : guardado));
     })();
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [ciclo]);
 
   useEffect(() => {
     recarregar();
