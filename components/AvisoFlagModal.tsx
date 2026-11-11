@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -35,10 +35,12 @@ import AccessibleModalPanel from './AccessibleModalPanel';
  */
 
 const chaveDispensa = (f: Flag) => `grana_aviso_flag_${f.key}_v${f.aviso_versao}`;
+const dispensadosSessao = new Set<string>();
 
 export default function AvisoFlagModal() {
   const { avisosAtivos } = useFlags();
   const [visivel, setVisivel] = useState<Flag | null>(null);
+  const dispensadosAbertura = useRef(new Set<string>());
 
   useEffect(() => {
     let cancelado = false;
@@ -53,12 +55,20 @@ export default function AvisoFlagModal() {
 
       for (const f of fila) {
         if (f.severidade === 'info') continue;
+        const chave = chaveDispensa(f);
+        if (dispensadosAbertura.current.has(chave)) continue;
         if (f.severidade === 'critico') {
           if (!cancelado) setVisivel(f);
           return;
         }
-        const visto = await AsyncStorage.getItem(chaveDispensa(f));
-        if (!visto) {
+        if (dispensadosSessao.has(chave)) continue;
+        let visto: string | null = null;
+        try {
+          visto = await AsyncStorage.getItem(chave);
+        } catch {
+          console.warn('[AvisoFlagModal] Falha ao ler dispensa local.');
+        }
+        if (!visto && !dispensadosSessao.has(chave) && !dispensadosAbertura.current.has(chave)) {
           if (!cancelado) setVisivel(f);
           return;
         }
@@ -77,12 +87,20 @@ export default function AvisoFlagModal() {
   const flag = visivel;
 
   async function fechar() {
+    const chave = chaveDispensa(flag);
+    if (dispensadosAbertura.current.has(chave)) return;
+    dispensadosAbertura.current.add(chave);
+    setVisivel(null);
     /* `critico` não grava dispensa de propósito: volta na próxima abertura
        enquanto a situação durar. */
     if (flag.severidade !== 'critico') {
-      await AsyncStorage.setItem(chaveDispensa(flag), '1');
+      dispensadosSessao.add(chave);
+      try {
+        await AsyncStorage.setItem(chave, '1');
+      } catch {
+        console.warn('[AvisoFlagModal] Falha ao persistir dispensa local.');
+      }
     }
-    setVisivel(null);
   }
 
   return (
