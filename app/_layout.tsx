@@ -1,12 +1,12 @@
 import { fetchDiasDeAtividade } from '@/lib/data';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Stack, usePathname, useRouter, type ErrorBoundaryProps } from 'expo-router';
 import Head from 'expo-router/head';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
-import { ActivityIndicator, AppState, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
 import { SessionProvider, useSession } from '@/lib/auth-context';
 import { PrivacyProvider } from '@/lib/privacy-context';
@@ -48,11 +48,16 @@ const FAVICON_PNG = '/favicon.png?v=grana-gradiente-20260830';
    expo-splash-screen no app.json) até a Neue Machina estar carregada. Sem
    isso o app aparecia por um instante com a fonte do sistema e trocava
    depois. Vai no escopo global, sem await, como manda a doc do SDK 57. */
-SplashScreen.preventAutoHideAsync();
-SystemUI.setBackgroundColorAsync(theme.paper);
+void SplashScreen.preventAutoHideAsync().catch(() => console.warn('[boot] splash não pôde ser retido'));
+void SystemUI.setBackgroundColorAsync(theme.paper).catch(() => console.warn('[boot] fundo nativo indisponível'));
 
 
 export default function RootLayout() {
+  const [tentativa, setTentativa] = useState(0);
+  return <PrepararAbertura key={tentativa} tentarNovamente={() => setTentativa(i => i + 1)} />;
+}
+
+export function PrepararAbertura({ tentarNovamente }: { tentarNovamente: () => void }) {
   /* Bloqueia captura de tela. No Android isso liga o FLAG_SECURE, que além de
      impedir o print também apaga a miniatura do app no alternador de tarefas —
      que é onde os saldos vazavam para quem só pegasse o celular na mão. No iOS
@@ -61,10 +66,17 @@ export default function RootLayout() {
      É sempre ligado, como nos apps de banco. Se um dia a pessoa precisar
      printar o próprio orçamento, o caminho é transformar isto num ajuste no
      Perfil — não em remover a proteção. */
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontsError] = useFonts({
     'NeueMachina-Light': require('../assets/fonts/NeueMachina-Light.otf'),
     'NeueMachina-Regular': require('../assets/fonts/NeueMachina-Regular.otf'),
   });
+  const [prazoDasFontesVenceu, setPrazoDasFontesVenceu] = useState(false);
+  useEffect(() => {
+    if (fontsLoaded || fontsError) return;
+    const timer = setTimeout(() => setPrazoDasFontesVenceu(true), 8_000);
+    return () => clearTimeout(timer);
+  }, [fontsLoaded, fontsError]);
+  const falhaDasFontes = !fontsLoaded && (!!fontsError || prazoDasFontesVenceu);
 
   /* Anel de foco do teclado, só na web. Fora do efeito das fontes de
      propósito: não depende delas e precisa valer desde o primeiro render,
@@ -79,15 +91,15 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    if (!fontsLoaded) return;
+    if (!fontsLoaded && !falhaDasFontes) return;
     /* Neue Machina é a ÚNICA fonte do produto: marca, títulos, corpo,
        controles, campos e dados, em toda plataforma. Este comentário já disse
        o contrário ("corpo/controles usam a fonte do sistema"), sobra de uma
        rodada que trocou o corpo pela fonte do sistema achando que Dynamic Type
        exigia isso, e que foi revertida. Texto de fonte customizada escala
        normalmente; não havia troca a fazer. */
-    SplashScreen.hideAsync();
-  }, [fontsLoaded]);
+    void SplashScreen.hideAsync().catch(() => console.warn('[boot] não foi possível encerrar o splash'));
+  }, [fontsLoaded, falhaDasFontes]);
 
   /* `+html.tsx` cobre o export estático, mas o Metro não o injeta no HTML
      inicial durante o desenvolvimento. Manter o Head no layout raiz faz o
@@ -101,6 +113,12 @@ export default function RootLayout() {
       <link rel="apple-touch-icon" href={FAVICON_PNG} />
     </Head>
   ) : null;
+
+  if (falhaDasFontes) {
+    // Sem fonte customizada ou providers: o próprio recurso que falhou não
+    // pode ser necessário para ler o recibo e iniciar outra tentativa.
+    return <RecuperarAbertura mensagem="Não conseguimos preparar a abertura do Grana." tentarNovamente={tentarNovamente} />;
+  }
 
   if (!fontsLoaded) {
     // O splash nativo ainda está por cima; esta view é só o fundo por baixo
@@ -210,8 +228,8 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   );
 }
 
-function RootNavigator() {
-  const { session, isLoading, emRecuperacao } = useSession();
+export function RootNavigator() {
+  const { session, isLoading, emRecuperacao, erroInicializacao, recarregarSessao } = useSession();
   const { estado: estadoAcesso } = useEntitlement();
   const router = useRouter();
   const pathname = usePathname();
@@ -230,7 +248,7 @@ function RootNavigator() {
 
   useEffect(() => {
     const userId = session?.user.id;
-    if (!userId || Platform.OS === 'web' || estadoAcesso?.allowed === false) return;
+    if (!userId || isLoading || emRecuperacao || erroInicializacao || Platform.OS === 'web' || estadoAcesso?.allowed !== true) return;
 
     let encerrado = false;
     const sincronizar = async () => {
@@ -267,13 +285,13 @@ function RootNavigator() {
       appState.remove();
       token?.remove();
     };
-  }, [session?.user.id, estadoAcesso?.allowed]);
+  }, [session?.user.id, estadoAcesso?.allowed, isLoading, emRecuperacao, erroInicializacao]);
 
   /* O widget consegue gravar sem rede, mas a transcrição e a RPC precisam
      dela. O headless mantém o áudio no cache quando a conexão cai; aqui a
      fila é retomada ao abrir o app e a cada volta ao primeiro plano. */
   useEffect(() => {
-    if (!session?.user.id || Platform.OS !== 'android' || estadoAcesso?.allowed === false) return;
+    if (!session?.user.id || isLoading || emRecuperacao || erroInicializacao || Platform.OS !== 'android' || estadoAcesso?.allowed !== true) return;
     let encerrado = false;
     const tentar = () => {
       if (encerrado || AppState.currentState !== 'active') return;
@@ -294,7 +312,7 @@ function RootNavigator() {
       clearInterval(intervaloVoz);
       appState.remove();
     };
-  }, [session?.user.id, estadoAcesso?.allowed]);
+  }, [session?.user.id, estadoAcesso?.allowed, isLoading, emRecuperacao, erroInicializacao]);
 
   /* Link protegido aberto sem sessão vai para o login, não para a página de
      marketing. Sem isto o expo-router caía na landing e o destino sumia. */
@@ -337,7 +355,8 @@ function RootNavigator() {
      desmontava o painel no instante do Entrar e jogava a pessoa na Início. */
   const noAdmin =
     Platform.OS === 'web' && typeof window !== 'undefined' && ehRotaDeAdmin(window.location.pathname);
-  if (!noAdmin && deveSegurarRotas({ carregandoSessao: isLoading, temSessao: !!session, estadoAcesso, landingNaWeb })) {
+  if (erroInicializacao) return <RecuperarAbertura mensagem={erroInicializacao} tentarNovamente={() => void recarregarSessao()} />;
+  if (!noAdmin && deveSegurarRotas({ carregandoSessao: isLoading, temSessao: !!session && !emRecuperacao, estadoAcesso, landingNaWeb })) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.paper, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={theme.ink} />
@@ -353,24 +372,24 @@ function RootNavigator() {
     <View style={{ flex: 1 }}>
       {/* Só na área logada: avisar de atualização antes do login seria
           atrito sem propósito pra quem ainda nem entrou no app. */}
-      {session && !ehCanalPlay() && <UpdateBanner />}
-      {session && <NovidadesModal />}
+      {session && !emRecuperacao && !ehCanalPlay() && <UpdateBanner />}
+      {session && !emRecuperacao && <NovidadesModal />}
       {/* Depois do NovidadesModal na árvore, mas os dois são independentes:
           quando as duas condições valem, quem estiver por cima ganha a vez e o
           outro aparece na próxima abertura. Empilhar dois pop-ups na primeira
           abertura seria pior que atrasar um deles. */}
-      {session && <AvisoFlagModal />}
+      {session && !emRecuperacao && <AvisoFlagModal />}
       {/* Só dispara na web, uma vez por navegador: é o único ponto do fluxo
           de compra em que alguém que acabou de assinar fica sabendo que
           existe aplicativo. Ver components/ConviteAppAndroid.tsx. */}
-      {session && <ConviteAppAndroid />}
+      {session && !emRecuperacao && <ConviteAppAndroid />}
       {/* Toque na notificação do widget de voz: "Desfazer" apaga o que aquela
           fala criou; um lançamento que o widget não salvou sozinho abre a
           revisão com a transcrição pronta. */}
-      {session && <RespostaVozWidget />}
-      {session && <VozesSalvasLocalmente key={session.user.id} />}
+      {session && !emRecuperacao && <RespostaVozWidget />}
+      {session && !emRecuperacao && <VozesSalvasLocalmente key={session.user.id} />}
       {/* Snapshot mínimo e cifrado usado pelos widgets informativos Android. */}
-      <SincronizadorWidgetsHome />
+      {!emRecuperacao && <SincronizadorWidgetsHome />}
       <Stack screenOptions={{ headerShown: false }}>
         {/* O link de recuperação autentica de verdade — sem este guard a
             pessoa cairia direto na Início, logada, com a senha antiga (a que
@@ -418,6 +437,18 @@ function RootNavigator() {
         <Stack.Screen name="privacidade" />
         <Stack.Screen name="exclusao-de-dados" />
       </Stack>
+    </View>
+  );
+}
+
+function RecuperarAbertura({ mensagem, tentarNovamente }: { mensagem: string; tentarNovamente: () => void }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.paper, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <Text accessibilityRole="alert" style={{ color: theme.ink, fontSize: 18, textAlign: 'center', maxWidth: 360 }}>{mensagem}</Text>
+      <Pressable onPress={tentarNovamente} accessibilityRole="button" accessibilityLabel="Tentar abrir novamente"
+        style={{ marginTop: 24, minHeight: 48, padding: 16, borderColor: theme.ink, borderWidth: 1, borderRadius: 12 }}>
+        <Text style={{ color: theme.ink, fontSize: 16 }}>Tentar novamente</Text>
+      </Pressable>
     </View>
   );
 }
