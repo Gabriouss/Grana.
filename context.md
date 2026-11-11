@@ -20024,3 +20024,7 @@ A skill Watch foi checada separadamente: faltam `yt-dlp` e configuração; nenhu
 ### Checkpoint — execução de produto bloqueada por RAM
 
 Root informa RAM livre de 0,735 GiB: produto bloqueado antes de spawn, sem novo resultado de teste. O processo Expo identificado pertence a outro projeto; QEMU Maestri permanece preservado enquanto se aguarda o autor. Nenhum processo foi encerrado. PHr3, três regressões e PDF continuam pendentes conforme último handoff; não declarar PDF verde, commit de código ou CI integral. Este checkpoint documental será preservado em commit local seletivo, sem push; pode receber adendo após desbloqueio. Verificador do vault não executado neste checkpoint por RAM abaixo do piso.
+
+### Arbitragem — preservação local antes dos testes pendentes
+
+Root autorizou Forge a preservar em commits locais por tema e allowlist os trabalhos já preparados, diante da RAM abaixo de 1,5 GiB. PHr3 e PDF devem ser identificados como WIP/NÃO VALIDADO; layouts ficam separados e package em commit próprio, sem novo PDF na CI. Hashes, fontes e focais anteriores permanecem nos seus recortes; não presumir commits até recibo. Gates e bundle continuam pendentes, sem push. Após `final-Forge-rodada.json`, acrescentar os hashes efetivos como adendo. Esta arbitragem não declara CI ou PDF verdes.
