@@ -19879,3 +19879,148 @@ Revisão somente leitura do delta `87f7e953..8ab466cb`: **sem bloqueadores confi
 A redação sobre geração de conta é limitada: o teste cobre tentativa A, troca para B e callback antes de nova tentativa B. O callback Android não transporta token da tentativa; depois de uma tentativa B, não se demonstrou que todo callback antigo seja identificado ou rejeitado. Não há vazamento demonstrado: filtros, dono e cutoff atuais continuam aplicados. O dublê executa `Handler.post` imediatamente, sem provar concorrência real ou todas as ordens de eventos.
 
 Se a enumeração ou processamento de ativos falhar, há recibo visível, mas os ativos não são novamente processados na mesma conexão; conexão viva não comprova replay completo. QA do candidato Android: [ ] foreground após atualização e conexão real; [ ] timeout/erro visível; [ ] ativo autorizado e captura futura real; [ ] revogação, saída e troca de conta; [ ] concorrência/callbacks e integração do binário. Compilação Android completa e CI/A5 seguem pendentes; o CI exit 1 do corte 87 por configuração privada omitida da cópia QA não foi convertido em verde. APK instalado sem o código; causa original e captura real ainda não comprovadas.
+
+### 2026-11-11 — retomada das correções do app, registro em WIP
+
+O autor autorizou a continuidade das correções de 10/11 e designou Ledger como responsável exclusivo por documentação, contexto, vault e canvas nesta rodada. Registros incrementais aguardam entregas confirmadas; não duplicar o trabalho de Beacon nem reler anexos privados. Fontes da rodada anterior: `E:/Grana-temporarios/2026-11-10-retomada/`, especialmente os relatórios de Sentinel, Watchtower e auditorias do app. Os limites e provas de 10/11 permanecem os registrados abaixo; nenhum novo resultado é presumido.
+
+Inventário observado no início: `main` em `cadb101b`, 42 commits à frente de `origin/main`, uma worktree (`E:/GranaPonto`), nenhum stash e somente `.codex-attachments/` não rastreado. Comparação com referência remota local, sem fetch nesta etapa. Sem commit ou push durante o gate; perfis preservados. Nota incremental: `00 - Sessões/2026-11-11 - M1 - Retomada das correções do app.md` no vault e nota homônima no canvas. Sem novo teste, gate, build, deploy ou leitura dos anexos.
+
+### 11/11 — inventário remoto, WIP herdado e coordenação
+
+O root confirmou `git fetch origin` e `git rev-list` de HEAD e `origin/main`: **42 à frente, zero atrás**, em `main` `cadb101b`. Isso complementa o inventário inicial, que usava apenas a referência remota local. O clone Play em `8ab466cb` tem WIP **herdado de 10/11 às 21:29** em `AppLockGate` e `app-lock-recuperacao`; Forge assumiu sua conclusão, sem atribuição de autoria nova do produto. Fonte: fatos confirmados pela coordenação.
+
+O preflight de Sentinel às 08:50 não executou os dois testes por WIP, RAM e cargas; fontes na rodada de 11/11: `relatorio-Sentinel-duas-verificacoes-8ab-085035.md` e respectivo JSON. Não é falha nem aprovação dos testes. A RAM atual foi informada em aproximadamente 0,9 GiB, abaixo do piso de 1,5 GiB. Root perguntou ao autor, por pergunta assíncrona, se pode fechar somente o emulador Android para os testes: resposta **pendente** e nenhum encerramento realizado.
+
+Donos exclusivos informados: Harbor, P1 offline/fila/cache; Prism, P1 modal e captura; Codex PH, boot/sessão/entitlement; Forge, WIP do bloqueio; Sentinel, P1 horário parcial em laço e limite prévio de arquivo. Compass coordena janela e commits. Nenhum resultado novo de correção ou teste, build, deploy ou push é declarado. Commit documental somente após janela e consolidação; autorização de continuidade não autoriza publicar o clone no GitHub. Notas perenes só serão atualizadas quando os bytes de suas fontes mudarem; hipóteses não são fatos.
+
+### Prism — WIP dos dois P1 de aviso e captura
+
+Fonte: `E:/Grana-temporarios/2026-11-11-retomada/relatorio-Prism-avisos-captura.md`, entrega direta de Prism. O pedido cobre fechamento imediato do aviso apesar de falha ou espera de persistência e proteção de captura com padrão seguro, estado confirmado pelo Android, operações serializadas e falha visível. Prism relata WIP no clone em `components/AvisoFlagModal.tsx`, `lib/screen-capture-context.tsx` e testes correspondentes; nenhum commit ou validação ainda. Não atribuir ao aplicativo instalado.
+
+Segundo a leitura de Prism, o modal aguardava a escrita para fechar e não tratava rejeição de leitura; o provider antecipava estado e podia deixar armazenamento impedir a aplicação. Prism também identificou que uma rejeição nativa pode deixar a chave ativa no JS instalado do Expo e impedir nova tentativa efetiva. O WIP propõe dispensa em memória e fechamento imediato, além de confirmação nativa, serialização e recibo de falha na captura. Isso é relato de implementação em andamento, não parecer independente nem resultado de teste.
+
+Prism descartou aguardar persistência para fechar, estado otimista de proteção e reutilização da chave após falha sem limpeza. Preparou seis grupos para aviso e onze para captura, mas **RED/GREEN não foi executado**: aguarda janela Compass. Sem `tsc`, CI integral, compilação ou QA Android. Persistência pendente pode manter a fila da captura aguardando, conforme relatório. Permanecem a verificar toque após fechar, reaparição do aviso crítico e bloqueio/desbloqueio de captura e miniatura. Prism atualizará o relatório após janela, provas e commits locais separados; não alterou documentação.
+
+### Sentinel S1/S2, AppLock e fila — código preparado, sem validação
+
+Fontes: `E:/Grana-temporarios/2026-11-11-retomada/relatorio-Sentinel-S1-S2.md`, `sentinel-S1-S2-preparado.json`, `relatorio-Forge-app-lock.md` e `relatorio-Compass-fila-correcoes.md`, além dos fatos da coordenação. No clone `8ab466cb`, Sentinel informa dois P1 implementados em WIP: S1 normaliza horários parciais e impõe limite finito ao planejamento de notificações; S2 verifica teto de bytes antes da leitura de importação e limita limpeza à cópia própria em cache. Os módulos e testes estão identificados no relatório e seus hashes no JSON. Revisão estática e `git diff --check` exit 0 foram relatados; **nenhum teste, tsc ou suíte foi executado**, nenhum commit criado. RED/GREEN, compatibilidade e QA em aparelho/web seguem pendentes. Não confundir esses focais com os dois testes antigos ainda pendentes do preflight.
+
+Forge confirmou que o WIP herdado de `AppLockGate` e `app-lock-recuperacao` veio do Codex PH, autorizado em 10/11. Pela leitura de Forge do provider real, `preparar()` tem prazo de 5 segundos e recuperação acionável após falha ou timeout; isso não é prova executada nem diagnóstico do aparelho. Forge preservou o gate e preparou casos adicionais de recuperação, sem executá-los ou commitar. QA nativo/TalkBack e gate integral continuam pendentes.
+
+Root mediu 2,241 GiB e concedeu janela curta a Forge para AppLock condicionada a nova validação; medição posterior foi 1,424 GiB, abaixo do piso de 1,5 GiB. **Nenhum teste está autorizado por aquela amostra anterior**: é necessária nova janela e revalidação das condições. O emulador não foi encerrado; a pergunta ao autor sobre fechá-lo continua sem resposta. Não inferir execução a partir da concessão condicional.
+
+Compass entregou a fila consolidada, que distingue correções de itens que exigem prova ou decisão e organiza a posse de arquivos compartilhados. Após os primeiros recortes, Forge assumiu N1/N2 nativos e Prism o isolamento do PDF. Código nativo e PDF estão em WIP conforme coordenação, sem validação declarada; não liberar telefone nem declarar CI verde. A fila não significa que todas as pendências estejam resolvidas. Sem novo build, deploy, push ou commit documental durante testes; fontes e notas perenes aguardam existência e contrato estáveis. Nenhum dado privado foi incluído neste registro.
+
+### 09:05 — limite PH e continuidade mínima
+
+Forge e Compass confirmaram limite da conta Codex PH das 09:05 às 13:02; root não aplicou reset. Perguntas assíncronas ao autor sobre reset e sobre fechar somente o emulador continuam sem resposta, e nenhum programa foi fechado. Sentinel assume consolidação operacional mínima; Prism segue os dois P1 pequenos e isolamento PDF na conta disponível. WIPs permanecem sem verde: nenhum teste desses recortes foi executado neste corte. Preservação em commits locais separados será coordenada após os relatórios de estado; documentação somente nos caminhos de Ledger, sem commit durante testes.
+
+Ordem curta de retomada, donos, comandos pendentes e limites: `E:/Grana-temporarios/2026-11-11-retomada/ORDEM-continuidade-limite-PH.md`. Fontes anteriores continuam identificadas nela; não reauditar nem reler anexos privados. Sem push, build, servidor ou declaração de CI verde.
+
+### Sentinel — handoff de posse e runner, corte 09:07
+
+Fontes: `E:/Grana-temporarios/2026-11-11-retomada/handoff-Sentinel-posse-runner-0907.md` e `sentinel-consolidacao-posse-0907.json`. Sentinel inventariou 36 WIPs por status, caminho, SHA256 e escopo atribuído no clone `8ab466cb`; associação de escopo não comprova autoria dos bytes. A árvore compartilhada não é freeze validado. Sem teste, stage, commit, nova auditoria de diff ou mudança de posse nesse handoff. S1/S2 seguem preparados, sem validação; PDF ainda não consta como entregue no recibo, apesar de Prism o ter assumido.
+
+Às 09:07, RAM medida em 0,938 GiB para piso de 1,5 GiB; trava global de 08/11 observada livre, não adquirida. AppLock é o primeiro focal futuro, com fonte real, watchdog externo, log/exit e hash de entrada, somente após liberação operacional, aquisição atômica da trava e nova medição suficiente. S1/S2 e Prism vêm depois conforme recibos; provas antigas permanecem separadas. Nenhum gate ou CI integral verde.
+
+Limite PH 09:05–13:02 e perguntas ao autor sobre reset e fechamento do emulador seguem sem resposta; processos preservados. Root recebeu o handoff pelo helper. Preservação em commits locais aguarda sinal específico, recorte por dono e conferência; sem push, build ou servidor.
+
+### 13:02 — retomada após reset autorizado
+
+O autor confirmou reset às 13:02. Root retoma o código WIP com os mesmos donos; Sentinel é o único executor de testes, e Compass foi dispensado da arbitragem para evitar fila de mensagens. No corte informado, clone `8ab466cb` com 36 caminhos WIP, sem teste ou commit novo. RAM informada: 1,523 GiB; isso é uma medição pontual, não prova de início ou aprovação de teste. O emulador não foi fechado e a pergunta anterior sobre fechá-lo não teve resposta.
+
+A ordem anterior de preservação WIP torna-se secundária enquanto os testes são finalizados. Scripts de backup incremental estão prontos para depois do freeze; não criar bundle completo de 1 GB por inferência. Sem push do main ou clone: permanecem a restrição sobre commits alheios e a decisão de cópia no Drive. Commit documental local somente ao final e após fetch. Este registro incorpora o recibo informado, sem repetir auditoria nem atribuir resultado novo.
+
+### 13:03 — preflight AppLock e freeze Prism
+
+Fontes: `E:/Grana-temporarios/2026-11-11-retomada/handoff-fila-testes-Sentinel-1303.md`, `recibo-AppLock-130335.json` e `freeze-Prism-preservacao.md`. Sentinel adquiriu a trava global e a liberou; o preflight AppLock parou com exit 3 por RAM 1,4499435 GiB, abaixo de 1,5 GiB. Nenhum filho ou teste iniciou; hashes no recibo são dos fontes observados, não bytes validados. Nenhum processo foi encerrado. AppLock segue primeiro focal, seguido por Prism, S1/S2 e demais grupos conforme handoff; nova execução exige revalidação e trava. Sem CI/A5 antes de freeze final.
+
+Prism congelou explicitamente cinco caminhos de aviso/captura para eventual preservação local não validada, com hashes no recibo. Nenhum teste ou commit; PDF ainda não iniciado. A autorização de preservar aqueles bytes não equivale a teste ou liberação, e a preservação segue secundária à conclusão dos testes conforme ordem vigente. Backup futuro somente incremental sobre a cópia estável `9cafa76c`, sem substituí-la; nenhum bundle foi produzido neste recibo.
+
+### 13:08 — AppLock focal verde, com limites
+
+Retificação: o recibo `resultado-AppLock-Sentinel-1308.md` / `recibo-AppLock-leve-exit-130838.json` foi bloqueado por concorrência e não comprova exit 0. A execução final comprovada em `E:/Grana-temporarios/2026-11-11-retomada/recibo-AppLock-exit-efetivo-130949.json` teve **16 grupos verdes, exit 0**. A primeira execução mostrou 16 OK, mas `runnerExit` veio `null`; repetição justificada corrigiu somente a coleta externa do exit, com produto e asserções intactos. Prova de módulos reais com dublês, não teste Android nem em aparelho. Nenhum commit até este corte; não equivale a CI/A5 verde.
+
+O maestro autorizou Node leve com heap de 128 MiB, RSS de grupo de 300 MiB e RAM livre mínima de 1 GiB; Kotlin, `tsc` e CI mantêm piso de 1,5 GiB. Estes limites são condições de execução, não resultado para os próximos grupos. Próximos recibos vêm de Sentinel e serão registrados sem repetir auditoria.
+
+### Retificação AppLock e Prism — recibos finais
+
+O ponteiro anterior ao recibo 13:08 estava incorreto: aquela tentativa foi bloqueada por concorrência. O resultado válido de AppLock é o recibo `recibo-AppLock-exit-efetivo-130949.json`, exit 0, 16 grupos e fontes inalteradas; permanece a limitação de módulos reais com dublês, sem prova Android/aparelho.
+
+Prism validou os focais de aviso e captura: `prism-focais-recibo.json` concluído, dois REDs exit 1 e dois GREENs exit 0, 17 grupos informados; `recibo-Prism-leve-131007.json` exit 0 e fontes inalteradas. A liberação da trava é confirmada pelo recibo do runner interno; o recibo externo registra `travaPropriaLiberada: false`, portanto não se atribui liberação a ele. Essas provas locais não substituem QA Android nem CI integral. Nenhum commit é inferido.
+
+### Prism — conferência dos focais e freeze mantido
+
+Prism informa ter conferido os dois recibos e quatro logs de Sentinel, conforme `E:/Grana-temporarios/2026-11-11-retomada/relatorio-Prism-avisos-captura.md` atualizado: RED exit 1 em cada módulo real; GREEN aviso 6/6 e captura 11/11; runner exit 0; cinco hashes do freeze intactos; RSS máximo 249/300 MiB. Fontes continuam congeladas. A conferência não inclui CI, QA Android, stage ou commit; PDF não foi iniciado, e Git/package aguardam root. Não se presume distribuição ou validação em aparelho.
+
+### 13:16 — resultados focais Sentinel por grupo
+
+Fonte índice: `E:/Grana-temporarios/2026-11-11-retomada/resultado-fila-Sentinel-1316.md`; recibos individuais `resultado-Ledger-AppLock.md`, `resultado-Ledger-Prism.md`, `resultado-Ledger-S1.md`, `resultado-Ledger-S2.md` e `resultado-Ledger-Harbor.md`, na mesma pasta. Sentinel informa AppLock 16 grupos, Prism 17, S1 e três focais Harbor com 30 grupos verdes, com exits efetivos e provas causais. S2 obteve GREEN exit 0 em janela pesada específica: RAM 3,499 GiB para piso 1,5, heap 256 MiB e RSS 424/600 MiB; fontes e asserções intactas. Compatibilidades E7 e notificações (18) já verdes não foram repetidas.
+
+Sete testes novos foram incluídos em `test:ci`, sem remoções; `diff --check` exit 0 segundo Sentinel. Isso não significa CI integral ou tsc executados, nem QA em aparelho. Sem stage ou commit no corte; PH e nativo Forge dependem de freeze final e comando. Registrar os resultados como focais, sem concluir que a fila inteira foi resolvida.
+
+### Dois cenários causais adicionais — em correção
+
+Root conferiu as fontes atuais e identificou dois cenários ainda **sem GREEN**, sem incidência ou reprodução em aparelho demonstradas:
+
+1. **N1 / Forge:** `seAtual` com `@Synchronized` executa IO sob o monitor de `AvisosConfig`, enquanto `Function definirDono` usa o mesmo monitor sincronicamente na ponte JS. Forge verifica e corrige a regressão, preservando privacidade.
+2. **Assinatura/entitlement / Codex PH:** RPC global e `SDKfetch.ts:83` aguardam `getAccessToken` antes dos headers, permitindo que um Bearer da conta B chegue tardiamente a uma intenção da conta A. PH corrige com header imutável da origem e teste.
+
+São deltas em correção; substituem somente os freezes dessas fatias quando os respectivos donos entregarem novos cortes. Os focais verdes AppLock, Prism, S1, S2 e Harbor permanecem válidos nos recortes já comprovados. Conforme `resultado-fila-Sentinel-1316.md`, S2 tem exit 0 em janela pesada e sete regressões foram adicionadas a `test:ci`; CI integral não foi executado. Sem commit ou publicação neste corte.
+
+### Forge nativos — avisos verde, voz bloqueada por concorrência
+
+Fonte: `E:/Grana-temporarios/2026-11-11-retomada/resultado-Ledger-Forge-nativos.md`, resultado recebido pelo root para encaminhamento ao Forge. Sentinel informa freeze de 20 SHA intacto e teste dos módulos Kotlin reais de avisos com exit 0 e 16 grupos; RAM antes das JVMs 2,767 e 3,070 GiB. Não houve Gradle, portanto o focal não comprova compilação Android completa nem QA em aparelho.
+
+Voz parou antes de iniciar processo por suíte alheia concorrente, não por RAM: 2,037 GiB para piso de 1,5 GiB. A trava própria foi liberada; duas paridades JS seguem pendentes. AppLock verde anterior não foi repetido. Sem stage, commit ou CI integral neste corte; eventual novo freeze das fatias alteradas pela correção N1 continua necessário.
+
+### Forge nativos — focais concluídos
+
+Fonte: `E:/Grana-temporarios/2026-11-11-retomada/resultado-Ledger-Forge-nativos-final.md`, entregue ao root para encaminhamento a Forge. Avisos mantém os 16 grupos verdes anteriores, sem repetição; voz Kotlin passou em 7 grupos com exit 0 e as paridades JS em 13 e 17 grupos, ambas exit 0. Hashes intactos e travas liberadas conforme recibo, que explica os manifestos de 20 fontes antes e 11 agora. A fonte do serviço foi abrangida por paridade, não compilada no runner mínimo: não inferir compilação Android completa.
+
+Um novo focal foi acrescentado ao `test:ci`, totalizando oito regressões novas; `diff --check` exit 0 segundo a fonte. Sem stage, commit, CI integral ou build Android neste corte. Os focais concluídos não substituem novo freeze e prova para eventual delta posterior de N1 em correção.
+
+### N1 — RED causal confirmado, GREEN pendente
+
+Fonte: `E:/Grana-temporarios/2026-11-11-retomada/resultado-Ledger-N1-RED.md`, com recibo `132351` e logs ali referenciados; prova enviada diretamente a Forge e root. O RED causal terminou exit 1 **após compilar**, na asserção de que a ponte `definirDono` espera IO sob o monitor `AvisosConfig`, linha 34. Freeze de nove SHA intacto, RAM das JVMs no piso de pelo menos 1,5 GiB e trava liberada conforme recibo. O verde anterior de 16 grupos de avisos não cobre esse bloqueio; GREEN de N1 depende da correção e de novo freeze de Forge. Demais verdes permanecem nos recortes comprovados; sem stage, commit, CI integral ou build neste corte.
+
+### PHr2 — preflight bloqueado por concorrência
+
+Fonte: `E:/Grana-temporarios/2026-11-11-retomada/resultado-Ledger-PH-r2.md` e recibo `132717` ali referido. Manifesto de 16 SHA conferido, com somente a RPC nova prevista no recorte. Preflight às 13:27 bloqueou por suíte concorrente, apesar de RAM 2,443 GiB acima do piso 1,5; nenhum teste ou asserção PH executou. Trava própria liberada, sem polling, alteração de produto, stage ou CI. Os processos registrados no recibo já estavam ausentes na leitura posterior de contexto; sua autoria não foi inferida. Root recebeu o resultado. Não declarar GREEN PHr2.
+
+### PH — focais parciais, grupo não aprovado integralmente
+
+Fonte: `E:/Grana-temporarios/2026-11-11-retomada/resultado-Ledger-PH-parcial-1332.md`. Sentinel informa exit 0 em 30 grupos novos: RPC 3, providers 9, boot 12 e vínculo 6; oito regressões antigas também exit 0. `sair-da-conta` terminou exit 1 em asserção estática na linha 139; QA não alterou o teste nem produto, e três regressões seguintes não iniciaram. Root recebeu para encaminhar ao PH, cujo terminal não estava conectado a Sentinel. O grupo PH permanece sem aprovação integral.
+
+Quatro focais novos verdes foram incluídos em `test:ci`, junto aos de AppLock/boot/sessão, com `diff --check` exit 0 conforme `recibo-package-PH-focais-verdes.json`. Inclusão não significa execução de CI integral. Sem stage ou commit neste corte; os resultados são limitados aos arquivos e provas do relatório.
+
+### Prism PDF — WIP congelado, sem execução
+
+Fontes: `E:/Grana-temporarios/2026-11-11-retomada/relatorio-PrismPDF.md` e `freeze-PrismPDF.md`. Prism informa quatro caminhos congelados e 24 grupos de teste preparados. A execução permanece pendente exclusivamente com Sentinel; `diff --check` exit 0 não é GREEN. Sem stage, commit ou CI por Prism. Wallet, P2/agregado e fontes alheias foram mantidos segundo o relato. Este WIP é separado dos dois P1 de aviso e captura já verdes; aguardar recibo Sentinel antes de atribuir resultado ao PDF.
+
+### Portabilidade N2 — focal explícito fora da CI
+
+Fonte: `E:/Grana-temporarios/2026-11-11-retomada/resultado-Ledger-portabilidade-N2.md` e `recibo-package-portabilidade-N2.json` com SHA do package. O novo N2 foi removido somente de `test:ci` e disponibilizado em `npm run test:voz-concorrencia-nativa`. O comando exige Java e os JARs já existentes em `~/.gradle`; não faz skip nem download. A execução nativa automática na CI ainda precisa de infraestrutura: **não afirmar que `test:ci` cobre N2**.
+
+O focal N2 anterior com exit 0 permanece válido no seu corte. Onze testes JS novos permanecem na CI e suítes anteriores foram preservadas; `diff --check` exit 0. Nenhum teste foi executado nesta alteração de portabilidade. A referência preexistente a `test:avisos` na CI foi observada e preservada; divergência encaminhada ao root, sem inferir correção ou resultado para ela.
+
+### N1 — GREEN focal após RED causal
+
+Fonte: `E:/Grana-temporarios/2026-11-11-retomada/resultado-Ledger-N1-GREEN.md`, recebido por Forge e root. Quatro comandos terminaram exit 0: causal Kotlin de um caso, recuperação com 16 grupos, ponte com seis e telas com 68. Freeze de 15 SHA intacto; RED causal `132351` preservado, pisos de RAM das JVMs de pelo menos 1,5 GiB e travas liberadas conforme recibo. N2 e AppLock não foram repetidos.
+
+Um novo teste JS entrou em `test:ci`. O causal Kotlin é explícito em `npm run test:avisos-concorrencia-nativa` e exige Java e JARs já existentes; não afirmar que o novo Kotlin está na CI. `diff --check` exit 0; sem stage, commit, CI integral, build Android ou revisão Watchtower neste corte. GREEN focal não demonstra comportamento no aparelho.
+
+### Handoff final Sentinel — execução devolvida a Forge
+
+Fonte: `E:/Grana-temporarios/2026-11-11-retomada/resultado-final-handoff-Sentinel.md`, corte 18:06:54. Sentinel encerrou sua execução e devolveu a fila a Forge, único executor após handoff conforme root. Seus filhos finalizaram e travas próprias foram liberadas; trava global observada ausente às 18:05. Nova execução exige aquisição e medição próprias. Nenhum commit foi criado por Sentinel nesta fila; HEAD então conferido `8ab466cb`.
+
+PH alterou somente o teste estático de saída em r3, sem alterar produto, segundo o handoff; PHr3 e as três regressões que ainda não iniciaram ficam para Forge, sem repetir os 30 grupos novos e oito regressões antigas verdes. PDF continua sem execução: perfil específico ainda requer adaptação do controlador antes dos RED/GREEN indicados no handoff. N1 já tem GREEN focal; demais resultados anteriores permanecem nos respectivos recortes. Nenhum Watchtower independente foi concluído.
+
+Package no corte SHA `320ecb4ef2fe5cd07a58be97076fd9b91ee9839a6546b70e507abf3cfecaaf79`: 12 focais JS novos verdes incluídos em `test:ci`, sem remoção de suíte anterior; PDF ainda não encadeado. N2 e causal Kotlin N1 seguem em comandos nativos explícitos, fora dos novos testes da CI, com pré-requisitos Java/JARs. Referência preexistente `test:avisos` preservada e divergência já relatada. Nenhum gate integral executado ou aprovado por Sentinel. Commits, gate do HEAD real e backup incremental dependem dos resultados seguintes e do freeze; nenhum build, servidor ou push autorizado.
+
+A skill Watch foi checada separadamente: faltam `yt-dlp` e configuração; nenhuma alteração no app. Fechamento documental e eventual commit local aguardam `final-Forge-rodada.json`; não declarar aprovação integral antes desse recibo.
+
+### Checkpoint — execução de produto bloqueada por RAM
+
+Root informa RAM livre de 0,735 GiB: produto bloqueado antes de spawn, sem novo resultado de teste. O processo Expo identificado pertence a outro projeto; QEMU Maestri permanece preservado enquanto se aguarda o autor. Nenhum processo foi encerrado. PHr3, três regressões e PDF continuam pendentes conforme último handoff; não declarar PDF verde, commit de código ou CI integral. Este checkpoint documental será preservado em commit local seletivo, sem push; pode receber adendo após desbloqueio. Verificador do vault não executado neste checkpoint por RAM abaixo do piso.
