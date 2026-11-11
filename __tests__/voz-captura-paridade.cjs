@@ -68,7 +68,10 @@ console.log('\nCaptura: mesmos números do widget');
 
   // V3: o ramo do arquivo curto (ou `stop()` que lançou) publica o recibo
   // "Não ouvi nada" antes de voltar ao repouso, como o botão do app.
-  const ramoCurto = kt.slice(kt.indexOf('if (!arquivoValido || destino == null || id == null) {'), kt.indexOf('if (dono == null || VoiceRetryScheduler.dono(this) != dono)'));
+  const inicioCurto = kt.indexOf('if (!arquivoValido || destino == null || id == null) {');
+  const fimCurto = kt.indexOf('val origem = sessaoDaCaptura', inicioCurto);
+  assert.ok(inicioCurto >= 0 && fimCurto > inicioCurto, 'ramo curto termina antes da guarda de sessão');
+  const ramoCurto = kt.slice(inicioCurto, fimCurto);
   assert.ok(ramoCurto.includes('publicarRecibo(R.string.grana_voice_nao_ouvi_titulo, R.string.grana_voice_nao_ouvi_texto)'), 'o widget precisa do recibo curto');
   assert.ok(ramoCurto.indexOf('publicarRecibo') < ramoCurto.indexOf('finalizar(EstadoWidget.OCIOSO)'));
   ok('o widget também dá o recibo "Não ouvi nada" na gravação curta');

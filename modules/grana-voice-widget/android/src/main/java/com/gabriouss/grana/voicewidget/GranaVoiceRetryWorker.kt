@@ -47,7 +47,8 @@ class GranaVoiceRetryWorker(context: Context, params: WorkerParameters) : Worker
     val requestId = inputData.getString("requestId") ?: return Result.failure()
     if (!requestId.matches(Regex("[A-Za-z0-9_-]{1,128}"))) return Result.failure()
     val userId = inputData.getString("userId") ?: return Result.failure()
-    if (VoiceRetryScheduler.dono(applicationContext) != userId) return Result.success()
+    val origem = VoiceRetryScheduler.Sessao(userId, inputData.getString("geracao").orEmpty())
+    if (!VoiceRetryScheduler.atual(applicationContext, origem)) return Result.success()
     try {
       val pasta = File(applicationContext.filesDir, GranaVoiceCaptureService.PASTA_ORFA)
       val parcial = File(pasta, "$requestId.capturando")
@@ -78,14 +79,14 @@ class GranaVoiceRetryWorker(context: Context, params: WorkerParameters) : Worker
     try {
       main.post {
         try {
-          if (encerrado || isStopped || VoiceRetryScheduler.dono(applicationContext) != userId) {
+          if (encerrado || isStopped || !VoiceRetryScheduler.atual(applicationContext, origem)) {
             concluir(execucaoId, "aguardar_usuario")
             return@post
           }
           val app = applicationContext as ReactApplication
           val host = checkNotNull(app.reactHost) { "ReactHost ausente" }
           fun iniciar(context: ReactContext) {
-            if (encerrado || isStopped || VoiceRetryScheduler.dono(applicationContext) != userId) return
+            if (encerrado || isStopped || !VoiceRetryScheduler.atual(applicationContext, origem)) return
             val dados = Arguments.createMap().apply {
               putString("requestId", requestId)
               putString("userId", userId)
@@ -119,7 +120,7 @@ class GranaVoiceRetryWorker(context: Context, params: WorkerParameters) : Worker
       // A conclusão da tarefa RN sozinha não é ACK: JS precisa confirmar seu desfecho.
       if (!execucao.sinal.await(WATCHDOG_MS, TimeUnit.MILLISECONDS) || isStopped) {
         Log.w("GranaVoz", "retomada sem confirmação no prazo; WorkManager tentará novamente")
-        if (VoiceRetryScheduler.dono(applicationContext) == userId) EstadoWidget.definirDaCaptura(applicationContext, requestId, EstadoWidget.PENDENTE)
+        if (VoiceRetryScheduler.atual(applicationContext, origem)) EstadoWidget.definirDaCaptura(applicationContext, requestId, EstadoWidget.PENDENTE)
         return Result.retry()
       }
       return if (execucao.resultado == "tentar_novamente") Result.retry() else Result.success()

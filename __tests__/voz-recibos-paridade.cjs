@@ -236,7 +236,10 @@ function carregar(arquivo, dubles = {}, globais = {}) {
   assert.doesNotMatch(ramo, /destino\.delete\(\)/, 'o áudio válido não é mais apagado');
   assert.match(ramo, /publicarRecibo\(R\.string\.grana_voice_guardada_titulo, R\.string\.grana_voice_guardada_texto\)/);
   assert.match(ramo, /finalizar\(EstadoWidget\.PENDENTE\)/);
-  assert.match(ramo, /VoiceRetryScheduler\.agendar\(this, id, dono, 0\)/);
+  assert.match(ramo, /VoiceRetryScheduler\.agendar\(this, id, dono, 0, origem\.geracao\)/);
+  const agenda = kt.indexOf('check(VoiceRetryScheduler.agendar(this, novoRequestId, dono, 150_000, origem.geracao))');
+  const abrirGravador = kt.indexOf('if (VoiceRetryScheduler.atual(this, origem)) iniciarGravador(destino, novoRequestId)');
+  assert.ok(agenda >= 0 && abrirGravador > agenda, 'agenda durável e mesma geração precedem abertura do microfone');
   const guardar = kt.slice(kt.indexOf('private fun guardarParaOApp'), kt.indexOf('private fun publicarRecibo'));
   assert.match(guardar, /File\(filesDir, PASTA_ORFA\)/);
   assert.match(guardar, /"\$id\.m4a"/, 'o nome do arquivo é o requestId');

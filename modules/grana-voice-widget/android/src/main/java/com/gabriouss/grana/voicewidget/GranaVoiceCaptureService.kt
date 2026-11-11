@@ -73,6 +73,7 @@ class GranaVoiceCaptureService : Service() {
   private var arquivo: File? = null
   private var requestId: String? = null
   private var donoDaCaptura: String? = null
+  private var sessaoDaCaptura: VoiceRetryScheduler.Sessao? = null
   private var microfoneSilenciado = false
   private var callbackGravacao: AudioManager.AudioRecordingCallback? = null
   /* A captura (data na voz, 30/09/2026): o instante e a data civil local do
@@ -99,7 +100,7 @@ class GranaVoiceCaptureService : Service() {
   private val amostrador = object : Runnable {
     override fun run() {
       val r = recorder ?: return
-      if (VoiceRetryScheduler.dono(this@GranaVoiceCaptureService) != donoDaCaptura) {
+      if (sessaoDaCaptura?.let { VoiceRetryScheduler.atual(this@GranaVoiceCaptureService, it) } != true) {
         abortar("sessao_mudou_durante_captura", EstadoWidget.REPETIR)
         return
       }
@@ -203,6 +204,12 @@ class GranaVoiceCaptureService : Service() {
       return
     }
     donoDaCaptura = dono
+    val origem = VoiceRetryScheduler.sessao(this)
+    if (origem == null || origem.userId != dono) {
+      abortar("sessao_mudou_antes_da_agenda", EstadoWidget.REPETIR)
+      return
+    }
+    sessaoDaCaptura = origem
     microfoneSilenciado = false
 
     /* Continua aqui, além da checagem de `onStartCommand`: a permissão pode
@@ -237,7 +244,7 @@ class GranaVoiceCaptureService : Service() {
     // fechamento do M4A e o handoff já deixou uma retomada no WorkManager.
     Thread {
       try {
-        check(VoiceRetryScheduler.agendar(this, novoRequestId, dono, 150_000)) { "sessão mudou" }
+        check(VoiceRetryScheduler.agendar(this, novoRequestId, dono, 150_000, origem.geracao)) { "sessão mudou" }
         destino.parentFile?.mkdirs()
         // O sufixo .capturando nunca é adotado pela fila JS.
         gravarMetadados(novoRequestId, dono, System.currentTimeMillis(), null, false)
@@ -245,7 +252,7 @@ class GranaVoiceCaptureService : Service() {
           if (requestId != novoRequestId || !EstadoWidget.pertenceACaptura(this, novoRequestId)) return@post
           preparando = false
           if (!destruido) {
-            if (VoiceRetryScheduler.dono(this) == dono) iniciarGravador(destino, novoRequestId)
+            if (VoiceRetryScheduler.atual(this, origem)) iniciarGravador(destino, novoRequestId)
             else abortar("sessao_mudou_antes_da_captura", EstadoWidget.REPETIR)
           }
         }
@@ -366,7 +373,8 @@ class GranaVoiceCaptureService : Service() {
       return
     }
 
-    if (dono == null || VoiceRetryScheduler.dono(this) != dono) {
+    val origem = sessaoDaCaptura
+    if (dono == null || origem == null || !VoiceRetryScheduler.atual(this, origem)) {
       destino.delete()
       finalizar(EstadoWidget.REPETIR)
       return
@@ -384,7 +392,7 @@ class GranaVoiceCaptureService : Service() {
       }
       handler.post {
         if (requestId != id || !EstadoWidget.pertenceACaptura(this, id)) return@post
-        if (VoiceRetryScheduler.dono(this) != dono) {
+        if (!VoiceRetryScheduler.atual(this, origem)) {
           finalizar(EstadoWidget.REPETIR)
           return@post
         }
@@ -405,7 +413,7 @@ class GranaVoiceCaptureService : Service() {
             publicarRecibo(R.string.grana_voice_guardada_titulo, R.string.grana_voice_guardada_texto)
             finalizar(EstadoWidget.PENDENTE)
             Thread {
-              try { VoiceRetryScheduler.agendar(this, id, dono, 0) }
+              try { VoiceRetryScheduler.agendar(this, id, dono, 0, origem.geracao) }
               catch (erroAgenda: Exception) { android.util.Log.e("GranaVoz", "watchdog não pôde ser antecipado", erroAgenda) }
             }.start()
           }

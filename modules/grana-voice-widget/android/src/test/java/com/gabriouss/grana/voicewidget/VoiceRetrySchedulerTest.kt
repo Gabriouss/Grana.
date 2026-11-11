@@ -86,7 +86,8 @@ class VoiceRetrySchedulerTest {
 
   private fun worker(requestId: String, userId: String) = TestWorkerBuilder<GranaVoiceRetryWorker>(
     context = context, executor = SynchronousExecutor(),
-    inputData = workDataOf("requestId" to requestId, "userId" to userId),
+    inputData = workDataOf("requestId" to requestId, "userId" to userId,
+      "geracao" to VoiceRetryScheduler.sessao(context)?.geracao.orEmpty()),
   ).build()
 
   @Test fun workerRecusaCaminhoInvalidoAntesDeLerArquivos() {
