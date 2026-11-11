@@ -73,11 +73,12 @@ type Registro<T> = { userId: string; dados: T; guardadoEm: string };
  */
 const idDoUsuario = idDoUsuarioLocal;
 
-export async function guardarTela<T>(nome: string, dados: T, donoEsperado?: string): Promise<void> {
+export async function guardarTela<T>(nome: string, dados: T, donoEsperado?: string, geracaoEsperada = geracao): Promise<void> {
   try {
     const userId = await idDoUsuario();
     if (!userId) return;
     if (donoEsperado && userId !== donoEsperado) return;
+    if (geracaoEsperada !== geracao) return;
     const registro: Registro<T> = { userId, dados, guardadoEm: new Date().toISOString() };
     await AsyncStorage.setItem(PREFIXO + nome, JSON.stringify(registro));
   } catch {
@@ -97,10 +98,15 @@ export async function guardarTela<T>(nome: string, dados: T, donoEsperado?: stri
  */
 export async function atualizarTelaGuardada<T>(nome: string, mudar: (dados: T) => T): Promise<void> {
   try {
+    const geracaoDaEscrita = geracao;
+    const userId = await idDoUsuario();
+    if (!userId || geracaoDaEscrita !== geracao) return;
     const atrasado = atrasados.get(nome);
-    if (atrasado) atrasado.dados = mudar(atrasado.dados as T);
+    if (atrasado?.userId === userId) atrasado.dados = mudar(atrasado.dados as T);
     const guardado = await lerTela<T>(nome);
-    if (guardado) await guardarTela(nome, mudar(guardado.dados));
+    if (guardado && geracaoDaEscrita === geracao) {
+      await guardarTela(nome, mudar(guardado.dados), userId, geracaoDaEscrita);
+    }
   } catch (erro) {
     console.error('[cache-de-tela] não consegui atualizar o disco depois de uma escrita', nome, erro);
   }
@@ -331,6 +337,11 @@ export function comCacheOffline<A extends unknown[], T>(
       }
     }
 
+    /* O dono é fixado antes da busca, inclusive quando a troca de conta não
+       passa por esquecerTelas. A mesma identidade acompanha a resposta. */
+    const donoDoPedidoP = idDoUsuario().catch(() => null);
+    const donoDoPedido = await donoDoPedidoP;
+
     /* Mapear para um objeto, em vez de deixar rejeitar, é o que permite
        correr contra o prazo sem criar rejeição não tratada quando a resposta
        lenta chega depois de a tela já ter sido servida. */
@@ -348,24 +359,21 @@ export function comCacheOffline<A extends unknown[], T>(
        sessão, que insiste por até ~25 s. A tela esperava os 4 s do prazo e
        depois mais 2 s para saber o dono, ~6 s no spinner (medido em
        `__tests__/cache-de-tela-sessao-travada.cjs`; o Vigil viu 8 a 9 s no
-       emulador). Perguntar o dono JUNTO com o pedido não atrasa o caso comum
-       (sessão válida responde da memória) e, quando a pergunta cai no prazo
-       curto dela, revela que a renovação travou: o pedido também está preso
-       atrás dela, então o disco é servido na hora, e a resposta segue o
-       caminho de resposta atrasada abaixo. */
-    const donoDoPedidoP = idDoUsuario().catch(() => null);
+       emulador). A leitura do dono tem prazo próprio de até 2 s. Se ela
+       revelou uma renovação travada, servir o disco agora evita acrescentar
+       os 4 s da consulta; a resposta segue pelo caminho tardio abaixo. */
     const sessaoTravada = donoDoPedidoP.then(() =>
       sessaoEstaTravada() ? ('prazo' as const) : new Promise<never>(() => {}));
     const primeiro = await Promise.race([pedido, prazo, sessaoTravada]).finally(() => clearTimeout(cortar));
 
     if (primeiro !== 'prazo') return concluir(primeiro);
-    const donoDoPedido = await donoDoPedidoP;
 
     /* Estourou o prazo. Servir o disco só vale se houver disco: sem nada
        guardado, esperar a resposta de verdade continua sendo melhor que
        inventar uma lista vazia, que diria à pessoa que ela não tem
        lançamento nenhum. */
     const guardado = await lerTela<T>(chave);
+    await conferirDonoDoPedido();
     if (!guardado) return concluir(await pedido);
 
     definirModo('lento');
@@ -383,13 +391,13 @@ export function comCacheOffline<A extends unknown[], T>(
         /* Houve escrita (ou troca de conta) depois que o pedido saiu: a
            resposta é do passado. Guardá-la apagaria do disco o que acabou de
            ser gravado e a serviria por 15 s; a tela busca de novo. */
-        if (geracaoDoPedido !== geracao || !donoDoPedido) {
+        if (geracaoDoPedido !== geracao || !donoDoPedido || await idDoUsuario() !== donoDoPedido) {
           avisarDadoNovo();
           return;
         }
         await avisarSeEsvaziou(chave, tardio.dados);
-        await guardarTela(chave, tardio.dados);
-        if (geracaoDoPedido !== geracao) return;
+        await guardarTela(chave, tardio.dados, donoDoPedido, geracaoDoPedido);
+        if (geracaoDoPedido !== geracao || await idDoUsuario() !== donoDoPedido) return;
         atrasados.set(chave, { dados: tardio.dados, em: Date.now(), userId: donoDoPedido });
         avisarDadoNovo();
         return;
@@ -398,22 +406,29 @@ export function comCacheOffline<A extends unknown[], T>(
         console.error('[cache-de-tela] falha permanente depois do prazo', nome, tardio.erro);
         definirModo('falha');
       }
-    });
+    }).catch((erro) => console.error('[cache-de-tela] não consegui publicar resposta atrasada', nome, erro));
     return guardado.dados;
 
+    async function conferirDonoDoPedido(): Promise<void> {
+      if (await idDoUsuario() !== donoDoPedido) throw new Error('A conta mudou. Atualize esta tela na conta atual.');
+    }
+
     async function concluir(desfecho: Desfecho<T>): Promise<T> {
+      await conferirDonoDoPedido();
       if (desfecho.ok) {
         /* Mesma regra da resposta tardia: pedido anterior a uma escrita ou à
            saída da conta não vai para o disco. */
-        if (geracaoDoPedido === geracao) {
+        if (geracaoDoPedido === geracao && donoDoPedido) {
           await avisarSeEsvaziou(chave, desfecho.dados);
-          await guardarTela(chave, desfecho.dados);
+          await guardarTela(chave, desfecho.dados, donoDoPedido, geracaoDoPedido);
         }
+        await conferirDonoDoPedido();
         definirModo(null);
         return desfecho.dados;
       }
       if (!isLikelyNetworkError(desfecho.erro)) throw desfecho.erro;
       const doDisco = await lerTela<T>(chave);
+      await conferirDonoDoPedido();
       /* Sem nada guardado, o erro de rede segue subindo: a tela mostra "não
          consegui carregar", que é a verdade. Fingir lista vazia diria à
          pessoa que ela não tem lançamento nenhum. */
