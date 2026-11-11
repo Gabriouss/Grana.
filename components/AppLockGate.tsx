@@ -20,7 +20,7 @@ export default function AppLockGate({ children }: PropsWithChildren) {
   /* Enquanto `pronto` é false ainda não sabemos se a trava está ligada —
      `bloqueado` começa como false por padrão, então sem isso o conteúdo
      financeiro pisca visível por um frame antes da leitura do AsyncStorage
-     terminar. A cobertura já mostra marca e orientação durante a leitura. */
+     terminar. Cobre com uma tela em branco até saber a resposta. */
   const cobrindo = !pronto || bloqueado;
 
   /* Pede a biometria assim que a tela de bloqueio aparece, sem exigir um toque
@@ -47,10 +47,11 @@ export default function AppLockGate({ children }: PropsWithChildren) {
       </View>
       {cobrindo && (
         <View style={styles.cobertura}>
-          <BrandLogotype width={150} />
-          <Text style={styles.texto}>{pronto ? 'Seus valores estão protegidos.' : 'Conferindo a proteção do app…'}</Text>
-          {erro && <Text style={styles.erro} accessibilityRole="alert" accessibilityLiveRegion="polite">{erro}</Text>}
-          {pronto && (
+          {pronto && bloqueado && (
+            <>
+              <BrandLogotype width={150} />
+              <Text style={styles.texto}>Seus valores estão protegidos.</Text>
+              {erro && <Text style={styles.erro} accessibilityRole="alert" accessibilityLiveRegion="polite">{erro}</Text>}
               <AppPressable
                 style={({ hovered }) => [styles.botao, hovered && { opacity: 0.88 }]}
                 accessibilityRole="button"
@@ -59,8 +60,9 @@ export default function AppLockGate({ children }: PropsWithChildren) {
                 onPress={() => { jaPediu.current = true; void desbloquear(); }}
               >
                 <Ionicons name="finger-print-outline" size={18} color={theme.paper} />
-                <Text style={styles.botaoTexto}>{autenticando ? 'Aguardando confirmação…' : 'Desbloquear'}</Text>
+                <Text style={styles.botaoTexto}>Desbloquear</Text>
               </AppPressable>
+            </>
           )}
         </View>
       )}

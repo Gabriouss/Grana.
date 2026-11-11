@@ -103,9 +103,77 @@ async function caso(nome,fn){try{await fn();total++;console.log('OK '+nome);}cat
     const a=ambiente({salvo:'0'});await a.pronto();assert.equal(a.valor().pronto,true);assert.equal(a.valor().bloqueado,false);
     const w=ambiente({web:true,salvo:'0'});assert.equal(w.valor().pronto,true);await w.pronto();assert.equal(w.chamadas.length,0);
   });
-  if (testarInterface) await caso('fundo inicial tem marca e orientação',async()=>{
-    const a=ambiente({ler:()=>new Promise(()=>{})});const g=a.montar(a.gate.default,{children:'financeiro'}).render();
-    assert.ok(nos(g,n=>n.tipo==='Marca').length);assert.match(texto(g),/Conferindo|proteção/i);
+  if (testarInterface) await caso('cobertura inicial vazia e desbloqueio com rótulo fixo',async()=>{
+    const a=ambiente();
+    const gate=a.montar(a.gate.default,{children:'financeiro'});
+    const inicial=gate.render();
+    const [conteudo,cobertura]=inicial.props.children;
+    assert.equal(conteudo.props.pointerEvents,'none');
+    assert.equal(conteudo.props.accessibilityElementsHidden,true);
+    assert.equal(conteudo.props.importantForAccessibility,'no-hide-descendants');
+    assert.equal(cobertura.props.style.backgroundColor,'#052229');
+    assert.equal(nos(cobertura,n=>['Marca','Text','Botao'].includes(n.tipo)).length,0);
+
+    await a.pronto();
+    const bloqueado=gate.render();
+    assert.equal(nos(bloqueado,n=>n.tipo==='Marca').length,1);
+    assert.equal(nos(bloqueado,n=>n.tipo==='Text'&&texto(n)==='Seus valores estão protegidos.').length,1);
+    const [botao]=nos(bloqueado,n=>n.tipo==='Botao');
+    assert.match(texto(botao),/Desbloquear/);
+    assert.equal(botao.props.disabled,false);
+
+    await flush();
+    const [ocupado]=nos(gate.render(),n=>n.tipo==='Botao');
+    assert.equal(nos(ocupado,n=>n.tipo==='Text').map(texto).join(''),'Desbloquear');
+    assert.equal(ocupado.props.disabled,true);
+    assert.equal(ocupado.props.accessibilityState.busy,true);
+    assert.equal(ocupado.props.accessibilityState.disabled,true);
+    a.concluir({success:true});
+    await flush();
+  });
+  if (testarInterface) for (const [falha,salvo] of [['pendurado','0'],['rejeitado','1']]) await caso(`gate recupera storage ${falha} pelo botão sem expor financeiro`,async()=>{
+    let leituras=0,retomar;
+    const a=ambiente({ler:()=>{
+      leituras++;
+      if(leituras===1)return falha==='pendurado'?new Promise(()=>{}):Promise.reject(Error('storage indisponível'));
+      return new Promise(resolve=>{retomar=resolve;});
+    }});
+    const gate=a.montar(a.gate.default,{children:'financeiro'});
+    assert.equal(nos(gate.render(),n=>['Marca','Text','Botao'].includes(n.tipo)).length,0);
+    if(falha==='pendurado')await a.relogio.avancar(5001);else await a.pronto();
+    assert.equal(a.valor().pronto,true);
+    assert.equal(a.valor().bloqueado,true);
+    assert.ok(a.logs.length);
+    const erro=gate.render();
+    assert.equal(erro.props.children[0].props.pointerEvents,'none');
+    assert.equal(erro.props.children[0].props.accessibilityElementsHidden,true);
+    assert.equal(nos(erro,n=>n.props.accessibilityRole==='alert').length,1);
+    assert.match(texto(erro),/Não consegui conferir a proteção/);
+    const [botao]=nos(erro,n=>n.tipo==='Botao');
+    assert.equal(botao.props.disabled,false);
+    assert.equal(a.chamadas.length,0,'erro de preparação não abre prompt automático');
+    botao.props.onPress();
+    await flush();
+    assert.equal(leituras,2);
+    assert.equal(a.valor().pronto,false);
+    const relendo=gate.render();
+    assert.equal(relendo.props.children[0].props.importantForAccessibility,'no-hide-descendants');
+    assert.equal(nos(relendo,n=>['Marca','Text','Botao'].includes(n.tipo)).length,0);
+    retomar(salvo);await flush();
+    if(salvo==='1'){
+      const aguardando=gate.render();
+      assert.equal(aguardando.props.children[0].props.pointerEvents,'none');
+      assert.equal(nos(aguardando,n=>n.tipo==='Botao')[0].props.accessibilityState.busy,true);
+      assert.equal(a.chamadas.filter(x=>x[0]==='autenticar').length,1);
+      a.concluir({success:true});await flush();
+    }
+    assert.equal(a.valor().bloqueado,false);
+    const aberto=gate.render();
+    assert.equal(aberto.props.children[0].props.pointerEvents,'auto');
+    assert.equal(aberto.props.children[0].props.accessibilityElementsHidden,false);
+    assert.equal(aberto.props.children[1],false);
+    assert.equal(a.chamadas.filter(x=>x[0]==='autenticar').length,salvo==='1'?1:0);
+    assert.equal(a.chamadas.filter(x=>x[0]==='gravar').length,0);
   });
   await caso('storage pendurado termina fechado com recibo e pode retomar',async()=>{
     let pendurado=true;const a=ambiente({ler:()=>pendurado?new Promise(()=>{}):Promise.resolve('0')});
