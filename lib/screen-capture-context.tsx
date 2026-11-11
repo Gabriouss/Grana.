@@ -1,5 +1,5 @@
-import { createContext, use, useCallback, useEffect, useState, type PropsWithChildren } from 'react';
-import { Platform } from 'react-native';
+import { createContext, use, useCallback, useEffect, useRef, useState, type PropsWithChildren } from 'react';
+import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ScreenCapture from 'expo-screen-capture';
 
@@ -22,9 +22,19 @@ import * as ScreenCapture from 'expo-screen-capture';
  */
 
 const CHAVE = 'grana_bloqueio_captura';
+const CHAVE_NATIVA = 'grana-preferencia-captura';
+
+function avisarFalha(etapa: string, mensagem: string) {
+  console.warn(`[ScreenCapture] Falha em ${etapa}.`);
+  try {
+    Alert.alert('Captura de tela', mensagem);
+  } catch {
+    console.warn('[ScreenCapture] Falha ao apresentar aviso.');
+  }
+}
 
 type ScreenCaptureValue = {
-  /** Se o bloqueio está ativo. */
+  /** true somente após confirmação da chamada nativa. */
   bloqueado: boolean;
   /** false na web e no iOS, onde não há como impedir a captura. */
   disponivel: boolean;
@@ -47,35 +57,62 @@ export function useScreenCapture() {
 const DISPONIVEL = Platform.OS === 'android';
 
 export function ScreenCaptureProvider({ children }: PropsWithChildren) {
-  const [bloqueado, setBloqueado] = useState(DISPONIVEL);
+  const [bloqueado, setBloqueado] = useState(false);
+  const confirmado = useRef(false);
+  const fila = useRef(Promise.resolve());
 
   const aplicar = useCallback(async (ativar: boolean) => {
     if (!DISPONIVEL) return;
     try {
-      if (ativar) await ScreenCapture.preventScreenCaptureAsync();
-      else await ScreenCapture.allowScreenCaptureAsync();
+      if (ativar) await ScreenCapture.preventScreenCaptureAsync(CHAVE_NATIVA);
+      else await ScreenCapture.allowScreenCaptureAsync(CHAVE_NATIVA);
+      confirmado.current = ativar;
+      setBloqueado(ativar);
+      return true;
     } catch {
-      // Sem tratamento: falhar aqui não deve derrubar o app.
+      confirmado.current = false;
+      setBloqueado(false);
+      avisarFalha('aplicação nativa', 'Não foi possível confirmar a proteção de captura no Android. Tente ativá-la novamente.');
+      // O Expo marca a chave antes de aguardar o Android; limpe a tentativa falha.
+      if (ativar) {
+        try {
+          await ScreenCapture.allowScreenCaptureAsync(CHAVE_NATIVA);
+        } catch {
+          console.warn('[ScreenCapture] Falha ao limpar tentativa nativa.');
+        }
+      }
+      return false;
     }
   }, []);
 
   useEffect(() => {
-    (async () => {
+    fila.current = fila.current.then(async () => {
       if (!DISPONIVEL) return;
-      const salvo = await AsyncStorage.getItem(CHAVE);
-      // Ausente = nunca configurado = ligado, que é o padrão seguro.
-      const ligado = salvo !== '0';
-      setBloqueado(ligado);
-      await aplicar(ligado);
-    })();
+      // Proteja antes da leitura: armazenamento indisponível não remove o padrão seguro.
+      await aplicar(true);
+      let salvo: string | null = null;
+      try {
+        salvo = await AsyncStorage.getItem(CHAVE);
+      } catch {
+        avisarFalha('leitura local', 'Não foi possível ler sua preferência de captura. O app tentou manter o bloqueio por segurança.');
+      }
+      if (salvo === '0') await aplicar(false);
+    });
   }, [aplicar]);
 
-  const alternar = useCallback(async () => {
-    const novo = !bloqueado;
-    setBloqueado(novo);
-    await AsyncStorage.setItem(CHAVE, novo ? '1' : '0');
-    await aplicar(novo);
-  }, [bloqueado, aplicar]);
+  const alternar = useCallback(() => {
+    fila.current = fila.current.then(async () => {
+      if (!DISPONIVEL) return;
+      const novo = !confirmado.current;
+      if (!await aplicar(novo)) return;
+      try {
+        await AsyncStorage.setItem(CHAVE, novo ? '1' : '0');
+      } catch {
+        avisarFalha('escrita local', 'A mudança foi aplicada no Android, mas não foi salva. Confira a preferência ao abrir o app novamente.');
+      }
+    });
+    return fila.current;
+  }, [aplicar]);
 
   return (
     <ScreenCaptureContext value={{ bloqueado, disponivel: DISPONIVEL, alternar }}>
