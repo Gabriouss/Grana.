@@ -8,7 +8,7 @@ import { theme, radius, spacing, fonts, type, lh, hitSlopPara } from '@/lib/them
 import { parseCsvTextDetalhado, tiposDaFatura } from '@/lib/heuristics';
 import { PERGUNTA_CATEGORIA } from '@/lib/heuristics';
 import { parseOfx, type LancamentoOfx, type OrigemOfx } from '@/lib/ofx-parser';
-import { escolherArquivoDeExtrato } from '@/lib/escolher-arquivo';
+import { escolherArquivoDeExtrato, LIMITE_BYTES_EXTRATO } from '@/lib/escolher-arquivo';
 import { LIMITS } from '@/lib/limits';
 import { formatDateLabel, formatMoney } from '@/lib/format';
 import { addTransactionsBatch, fetchCreditCards } from '@/lib/data';
@@ -139,7 +139,7 @@ export default function ImportarExtratoModal({
       if (r.truncado) {
         Alert.alert(
           'Extrato grande demais',
-          `O arquivo tem ${r.totalNoArquivo} transações e importamos as primeiras ${r.lancamentos.length}. ` +
+          `O arquivo tem ${r.totalNoArquivo} transações e a prévia contém apenas as primeiras ${r.lancamentos.length}. Nada foi salvo ainda. ` +
             'Exporte o restante em outro período e importe em seguida.'
         );
       }
@@ -161,7 +161,7 @@ export default function ImportarExtratoModal({
     if (truncado) {
       Alert.alert(
         'Extrato grande demais',
-        `O arquivo tem ${totalLinhas} linhas e importamos as primeiras ${rows.length}. ` +
+        `O arquivo tem ${totalLinhas} linhas e a prévia contém apenas as primeiras ${rows.length}. Nada foi salvo ainda. ` +
           'Separe o restante em outro arquivo e importe em seguida.'
       );
     }
@@ -179,7 +179,7 @@ export default function ImportarExtratoModal({
   async function abrirSeletor() {
     setLendo(true);
     try {
-      const arquivo = await escolherArquivoDeExtrato();
+      const arquivo = await escolherArquivoDeExtrato({ limiteBytes: LIMITE_BYTES_EXTRATO, limparCopia: true });
       if (!arquivo) return;
       interpretar(arquivo.texto, arquivo.nome);
     } catch (e: any) {

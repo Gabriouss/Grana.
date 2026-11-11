@@ -32,6 +32,16 @@ export type ArquivoEscolhido = {
   texto: string;
 };
 type OpcoesExtrato = { limiteBytes?: number; limparCopia?: boolean };
+export const LIMITE_BYTES_EXTRATO = 10_000_000;
+
+function validarTamanho(tamanho: unknown, limite: number): asserts tamanho is number {
+  if (typeof tamanho !== 'number' || !Number.isSafeInteger(tamanho) || tamanho < 0) {
+    throw new Error('Não foi possível conferir o tamanho do extrato. Exporte o arquivo novamente.');
+  }
+  if (tamanho > limite) {
+    throw new Error(`O extrato ultrapassa o limite de ${limite.toLocaleString('pt-BR')} bytes. Exporte um período menor; nenhum lançamento foi importado.`);
+  }
+}
 
 /** Extensões aceitas, em minúsculas e com o ponto. */
 const EXTENSOES = ['.ofx', '.csv', '.txt', '.qfx'];
@@ -43,6 +53,11 @@ function extensaoAceita(nome: string): boolean {
 
 /** `null` quando a pessoa fecha o seletor sem escolher. */
 export async function escolherArquivoDeExtrato(opcoes: OpcoesExtrato = {}): Promise<ArquivoEscolhido | null> {
+  const limiteBytes = opcoes.limiteBytes ?? LIMITE_BYTES_EXTRATO;
+  if (!Number.isSafeInteger(limiteBytes) || limiteBytes <= 0 || limiteBytes > LIMITE_BYTES_EXTRATO) {
+    throw new Error('Limite de tamanho do extrato inválido.');
+  }
+  opcoes = { ...opcoes, limiteBytes, limparCopia: opcoes.limparCopia ?? true };
   if (Platform.OS === 'web') return escolherNaWeb(opcoes);
   return escolherNoNativo(opcoes);
 }
@@ -78,10 +93,14 @@ function escolherNaWeb(opcoes: OpcoesExtrato): Promise<ArquivoEscolhido | null> 
         return;
       }
       try {
-        if (opcoes.limiteBytes && arquivo.size > opcoes.limiteBytes) throw new Error('Escolha um extrato menor para conferir.');
+        if (!extensaoAceita(arquivo.name)) throw new Error('Escolha um arquivo OFX ou CSV.');
+        validarTamanho(arquivo.size, opcoes.limiteBytes!);
         const bytes = new Uint8Array(await arquivo.arrayBuffer());
+        validarTamanho(bytes.byteLength, opcoes.limiteBytes!);
+        if (bytes.byteLength !== arquivo.size) throw new Error('O extrato está incompleto ou mudou durante a leitura. Exporte e escolha o arquivo novamente.');
         terminar({ nome: arquivo.name, texto: decodificarOfx(bytes) });
       } catch (e) {
+        resolvido = true;
         input.remove();
         window.removeEventListener('focus', aoVoltarFoco);
         reject(e);
@@ -105,15 +124,29 @@ async function escolherNoNativo(opcoes: OpcoesExtrato): Promise<ArquivoEscolhido
   const arquivo = resultado.assets?.[0];
   if (!arquivo) return null;
 
-  const copiaPropria = !!FileSystem.cacheDirectory && arquivo.uri.startsWith(FileSystem.cacheDirectory);
+  // Só o URI devolvido pelo picker nesta chamada, dentro do cache e sem travessia.
+  const cache = FileSystem.cacheDirectory;
+  let copiaPropria = false;
+  try {
+    const uri = decodeURIComponent(arquivo.uri);
+    const pasta = cache && decodeURIComponent(cache).replace(/\/?$/, '/');
+    copiaPropria = !!pasta && uri.startsWith(pasta) && uri.length > pasta.length &&
+      !uri.split('/').some((parte) => parte === '..' || parte === '.') && !/[?#]/.test(uri);
+  } catch { /* URI inválido não autoriza remoção. */ }
   if (opcoes.limparCopia && !copiaPropria) throw new Error('Não foi possível preparar uma cópia local segura do extrato.');
   try {
     if (!extensaoAceita(arquivo.name)) throw new Error('Escolha um arquivo OFX ou CSV. Para PDF ou Excel, exporte o extrato em CSV no banco.');
-    if (opcoes.limiteBytes) {
-      const info = await FileSystem.getInfoAsync(arquivo.uri);
-      if (!info.exists || !('size' in info) || info.size > opcoes.limiteBytes) throw new Error('Escolha um extrato menor para conferir.');
-    }
-    const base64 = await FileSystem.readAsStringAsync(arquivo.uri, { encoding: 'base64' });
+    if (arquivo.size !== undefined) validarTamanho(arquivo.size, opcoes.limiteBytes!);
+    const info = await FileSystem.getInfoAsync(arquivo.uri);
+    if (!info.exists || info.isDirectory || !('size' in info)) throw new Error('Não foi possível conferir o arquivo do extrato. Exporte o arquivo novamente.');
+    validarTamanho(info.size, opcoes.limiteBytes!);
+    const base64 = await FileSystem.readAsStringAsync(arquivo.uri, {
+      encoding: 'base64', position: 0, length: opcoes.limiteBytes! + 1,
+    });
+    // Confere também o corpo devolvido pelo provedor antes de alocar os bytes.
+    const tamanhoLido = base64.length * 3 / 4 - (base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0);
+    validarTamanho(tamanhoLido, opcoes.limiteBytes!);
+    if (tamanhoLido !== info.size) throw new Error('O extrato está incompleto ou mudou durante a leitura. Exporte e escolha o arquivo novamente.');
     return { nome: arquivo.name, texto: decodificarOfx(base64ParaBytes(base64)) };
   } finally {
     if (opcoes.limparCopia && copiaPropria) {
