@@ -20036,3 +20036,63 @@ Fontes: `E:/Grana-temporarios/2026-11-11-retomada/final-Forge-rodada.json` e `al
 Commits relatados: PH lógica `40505101`, layout de abertura separado `621f0709`; Prism aviso `e27fadf1`, captura `c59e5882`, PDF WIP `5251beca`; Harbor fallback `24310153`, cache `f67fdd7d`, fila `a2f67dea`; Sentinel S1 `8e3dfd74`, S2 `1a83b8bc`; layout AppLock separado `423d4237`; Forge N1/N7 `20fb051f`, N2 `7de19e68`; encadeamento CI separado `7ed40986`. Focais verdes anteriores continuam limitados aos respectivos recibos; não se deduz aprovação de HEAD completo, aparelho ou CI. Fonte Service de voz foi conferida por paridade, sem compilação Android completa.
 
 O controlador PDF foi adaptado e verificado sintaticamente segundo o recibo, sem executar PDF. Próxima etapa depende de RAM e da execução dos pendentes, seguida de gate no HEAD efetivo e backup incremental sobre a base estável, sem substituir a cópia anterior. Verificador do vault não executado neste fechamento: RAM livre observada 835360 KiB, abaixo do piso de 1,5 GiB. Sem alteração ou leitura de anexos privados.
+
+### 18:47 — continuidade autorizada e novas fatias
+
+O autor mandou prosseguir às 18:47. Root informa clone limpo em `7ed40986`, RAM 0,987 GiB e trava ausente nesse corte. Forge é o único executor de testes e retoma PHr3 e três regressões somente com a exceção histórica de Node leve: piso de RAM 1,0 GiB, heap 128 MiB, RSS de grupo 300 MiB e watchdog 60 s. A medição informada está abaixo desse piso e não autoriza spawn por si só; PDF e CI mantêm piso de 1,5 GiB. Nenhum resultado novo é inferido.
+
+Novos escritores em fatias disjuntas, sem testes próprios: Prism em `graficos.tsx`/`FlowChart` para três P2; Harbor em `conciliacao-pix` e `conciliacao-pix-servico` para índices/CPU; Sentinel em Granachat/assistente para cancelamento. Baselines/REDs, freezes e relatórios de seis pontos são obrigatórios para cada entrega. Não alterar fontes P1/PDF, `package.json` ou documentação alheia. Gate conjunto aguarda os novos freezes. Sem push, build ou servidor nesta autorização.
+
+### Nova onda — flags e espera por concorrência
+
+Root pactuou com Codex PH uma quarta fatia disjunta: P2 de respostas invertidas em `lib/feature-flags.tsx`, `flags-cache.ts` e respectivos testes. A política comercial/fail-open permanece intacta; auth da primeira rodada continua congelada. As quatro frentes são apenas de escrita, sem execução de testes pelos escritores; seguem as exigências de baseline/RED, freeze e relatório de seis pontos.
+
+Forge aguarda saída dos PIDs concorrentes. Recibo `184953` registrou RAM de 1,574 GiB, suficiente para o piso informado, mas isso não libera execução enquanto houver concorrência. Permitidos um `Wait-Process` de até 30 segundos e um preflight posterior, sem loop ou encerramento de processos alheios. Nenhum teste novo é declarado por este adendo.
+
+### 18:51–18:52 — PH focais verdes e PDF baseline RED
+
+Fontes e logs na rodada `E:/Grana-temporarios/2026-11-11-retomada/`: recibos Forge `PH-r3-pos-espera-185123`, `PH-resiliencia-185206`, `PH-canal-play-185207` e `PH-home-layout-185209`, com seus stdout/stderr. Os quatro terminaram exit 0 e fontes inalteradas: saída 8 checagens, resiliência 6, canal Play 76/76 e home layout 9. RAM informada entre 2,60 e 2,65 GiB e RSS 128–282 MiB. A mensagem WIP NÃO VALIDADO do commit PH `40505101` é histórica da preservação; estes focais foram validados posteriormente, sem converter isso em gate integral ou QA no aparelho.
+
+`recibo-Forge-PrismPDF-RED-185245.json` e logs registram baseline RED real exit 1, 2/24 grupos, incluindo snapshot 999 versus 10 e efeitos após troca de conta; não é falha ambiental. GREEN do código corrigido estava em execução na informação recebida e ainda não é declarado. O gate global continua não iniciado; sem nova conclusão de build, push ou servidor.
+
+### Forge — PH e PDF validados focalmente após commits WIP
+
+Fontes: `E:/Grana-temporarios/2026-11-11-retomada/resultado-Forge-PH-PDF-GREEN.md` e `final-Forge-rodada.json`, com sete recibos, RAM/RSS e logs. Após os commits de preservação, sem amend, PHr3 terminou 8/0, resiliência 6/0, canal 76/0 e home layout 9/0. PDF teve RED causal exit 1 com 22 asserções, GREEN 24/0 e teste de nome exit 0. As 62 fontes e HEAD `7ed40986` estavam intactos conforme Forge; verdes anteriores não foram repetidos. As mensagens WIP dos commits são históricas e não negam essas provas focais posteriores.
+
+PDF continua fora da CI. Nenhum gate integral, revisão independente, push ou build foi executado nesta validação; novos escritores disjuntos continuam em curso. Gate conjunto e bundle dependem dos novos freezes e coordenação do root. Forge não editou documentação; root recebeu o resultado. QA de aparelho e compilação Android completa não são inferidos desses focais.
+
+### PDF verde e quinta fatia P2
+
+Forge confirmou PDF GREEN 24/24 exit 0 no recibo `185323` e compatibilidade de nome exit 0 no `185326`, com RAM 1,88/1,89 GiB, RSS 293/214 MiB e travas liberadas. Todos os focais planejados da primeira onda estão concluídos; gate integral ainda não executado. PDF ainda está fora da CI neste corte: Forge adicionará seu encadeamento e fará commit isolado de package após fetch, sem presumir conclusão antecipada.
+
+Nova fatia P2 de Forge: cancelamento de biometria nativa presa, restrita a `lib/app-lock-context.tsx` e teste, preservando guarda fail-closed, sem sobrepor prompts e sem alterar `AppLockGate`. Freeze deve preceder execução. A onda P2 passa a cinco escritores disjuntos; sem servidor, build, push ou revisão independente nesta autorização. Gate conjunto permanece dependente dos freezes e da coordenação root.
+
+### Prism — gráficos P2 congelado, sem teste executado
+
+Fonte: `E:/Grana-temporarios/2026-11-11-retomada/relatorio-Prism-graficos-P2.md`, com seis pontos, SHA e comandos. Prism relata causas confirmadas no HEAD `7ed40986`, baselines anteriores à edição e WIP congelado em três caminhos; 12 grupos reais estão preparados. Não houve execução Node, tsc ou CI por Prism; apenas `diff --check` exit 0, que não é GREEN. Forge, único executor, foi avisado. PDF, os 17 grupos anteriores, auth, cache, package e documentação alheia foram preservados segundo Prism. Sem stage, commit ou push nesta entrega; aguardar recibo dos focais.
+
+### Harbor — E7 índices congelado, provas pendentes
+
+Fonte: `E:/Grana-temporarios/2026-11-11-retomada/relatorio-Harbor-E7-indices.md`; manifesto `freeze-Harbor-E7-indices.json`, SHA256 `504d6068f8e7be68d5564da854b148411cb249b6d96b95682fd8dd6d58cadcd8`. Harbor entregou ao root e congelou a fatia: `lib/conciliacao-pix.ts` e teste próprio novo; serviço sem alteração, incluído somente no roteiro de teste preparado. Baseline original `7ed40986` foi preservada externamente antes da edição.
+
+Nenhum teste, stage ou commit nessa entrega. Forge é o único executor; contagens e RED/GREEN continuam pendentes. Não atribuir aprovação ou causa no aparelho. Harbor informa que não alterou docs, contexto, vault ou package.
+
+### Mapa Compass e freezes da nova onda
+
+Fonte: `E:/Grana-temporarios/2026-11-11-retomada/mapa-Compass-andamento-1852.md`, corte documental até 18:54:26. Na fila original de 50, Compass conta 17 itens com focal comprovado, seis da nova onda pendentes de prova e 27 sem evidência própria. Contagem se refere ao corte e aos mecanismos da fila, não a aprovação integral ou incidência no aparelho. A fatia de cancelamento P2 de Forge foi acrescentada após esse corte e não altera retroativamente a contagem do mapa.
+
+Atualizações posteriores: Prism gráficos congelou três caminhos (`relatorio-Prism-graficos-P2.md`); Harbor E7, manifesto `freeze-Harbor-E7-indices.json` SHA `504d6068…cadcd8` e relatório respectivo; PH flags, freeze `d3be125b` e `relatorio-CodexPH-flags-geracao-P2.md`, encaminhado pelo root porque PH não conecta a Ledger. São fatias preparadas, sem testes no momento dos respectivos freezes; Forge foi liberado para executá-las com Node 192 MiB, RSS 600 MiB e piso 1,5 GiB. Não confundir esse estado com aprovação.
+
+O mapa informa PDF fora da CI no seu corte histórico; atualização posterior do root confirma commit isolado `2507ace8` de PDF na CI, sem outro produto no HEAD nesse momento. A inclusão não comprova CI integral. Gate conjunto aguarda novos freezes; sem push, build ou servidor.
+
+### Package PDF e freeze Forge AppLock P2
+
+Forge informa que `2507ace8390dcd2cd15b8aee03367733686265db` é commit local isolado de `package.json`, após fetch/comparação 154/92 e `diff --check` exit 0: 13 focais JS verdes encadeados, sem remover suítes anteriores. Hash do package `92345984…` consta em `final-Forge-rodada.json`. PDF tem RED causal e GREEN 24/0 mais nome exit 0 conforme `resultado-Forge-PH-PDF-GREEN.md`; encadeamento não é CI integral executada.
+
+Nova fatia de cancelamento AppLock P2 está preparada e **não executada**: dois arquivos, provider e teste, com `AppLockGate` intacto. Fontes `freeze-Forge-AppLock-P2.json` e `relatorio-Forge-AppLock-P2.md` com seis pontos; baseline RED preservado, oito cenários e compatibilidade dos 16 aguardam sinal do root. Nenhum GREEN P2 é inferido. Sem gate, bundle, revisão independente, push, build, servidor ou edição documental por Forge neste corte.
+
+### Checkpoint P2 — chat preparado e AppLock em refinamento
+
+Fonte: `E:/Grana-temporarios/2026-11-11-retomada/relatorio-Sentinel-chat-cancelamento-P2.md`; manifesto `freeze-Sentinel-chat-cancelamento-P2.json`, SHA abreviado `05d4a39f…d9ac58`. Sentinel relata baseline `7ed40986`, dois originais RED preservados externamente e cinco caminhos de código/testes congelados. O WIP prevê prazo absoluto de 35 segundos para sessão, fetch e corpo, guardas de dono/cancelamento/fechamento e resultado incerto após POST sem retry. Estão preparados 16 e 12 grupos de módulos reais, **zero execução** e `diff --check` exit 0. Fakes legados precisam de pacto antes de adaptação. Sem alterar notificações, importação, PDF, auth, package ou documentação; sem stage ou commit. Forge é o único executor; root recebeu o relato. Não atribuir validação ao WIP.
+
+Freeze de Forge AppLock P2 das 19:04 e `relatorio-Forge-AppLock-P2.md` foram encaminhados; versão pode ser refinada após leitura do SDK. Aguardar recibo final antes de afirmar que passou. O commit de package PDF CI `2507ace8` e demais freezes preparados estão registrados acima; nenhum resultado P2 de produto é inferido neste checkpoint. Verificador do vault pendente para o fechamento, sem executar Node concorrente com Forge: `node scripts/verificar-vault.mjs "G:/Meu Drive/Obsidian/Gabriel/Grana"`. Sem push.
