@@ -60,7 +60,8 @@ function carregar({ plataforma = 'android', disponivel = true, falhaMover = fals
   vm.runInNewContext(codigo, { exports, console, window: { open: () => janela }, require(id) {
     assert.ok(id in deps, 'import simulado: ' + id); return deps[id];
   } });
-  return { gerar: exports.gerarRelatorioPdf, arquivos, chamadas };
+  // Esta suíte isola nome/entrega; a troca de sessão é exercitada em pdf-conta-origem.cjs.
+  return { gerar: dados => exports.gerarRelatorioPdf(dados, { dono: null, demo: true, sinal: new AbortController().signal }), arquivos, chamadas };
 }
 
 (async () => {

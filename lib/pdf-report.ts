@@ -25,6 +25,22 @@ import type { MonthlyWrapped } from './monthly-wrapped';
 import { montarHtml, type DadosRelatorio } from './pdf-report-html';
 export type { DadosRelatorio } from './pdf-report-html';
 
+export type OrigemRelatorioPdf = { dono: string | null; demo: boolean; sinal: AbortSignal };
+
+export class RelatorioPdfCancelado extends Error {
+  constructor() {
+    super('A conta ou a tela mudou durante a exportação.');
+    this.name = 'RelatorioPdfCancelado';
+  }
+}
+
+export function conferirOrigemRelatorio(origem: OrigemRelatorioPdf, transactions: readonly Transaction[], bills: readonly Bill[] = []): void {
+  if (!origem || origem.sinal.aborted || (!origem.demo && (!origem.dono ||
+    transactions.some(t => t.user_id !== origem.dono) || bills.some(b => b.user_id !== origem.dono)))) {
+    throw new RelatorioPdfCancelado();
+  }
+}
+
 function cabecalhoDaFonte(): { base: string; faces: string } {
   if (Platform.OS !== 'web' || typeof document === 'undefined') return { base: '', faces: '' };
   const regras = document.getElementById('expo-generated-fonts')?.textContent ?? '';
@@ -33,8 +49,11 @@ function cabecalhoDaFonte(): { base: string; faces: string } {
   return { base: `<base href="${globalThis.location?.origin ?? ''}/" />`, faces: faces.join('\n') };
 }
 
-export async function gerarRelatorioPdf(dados: DadosRelatorio): Promise<{ uri: string; compartilhado: boolean }> {
+export async function gerarRelatorioPdf(dados: DadosRelatorio, origem: OrigemRelatorioPdf): Promise<{ uri: string; compartilhado: boolean }> {
+  const conferir = () => conferirOrigemRelatorio(origem, dados.transactions, dados.bills);
+  conferir();
   const html = montarHtml(dados, cabecalhoDaFonte());
+  conferir();
 
   /* Web tem caminho próprio porque o shim de web do expo-print IGNORA o HTML:
      `printToFileAsync()` lá é literalmente `window.print()` (ver
@@ -53,43 +72,89 @@ export async function gerarRelatorioPdf(dados: DadosRelatorio): Promise<{ uri: s
     if (!janela) {
       throw new Error('O navegador bloqueou a janela do relatório. Permita pop-ups para este site e tente de novo.');
     }
-    janela.document.open();
-    janela.document.write(html);
-    janela.document.close();
+    const cancelar = () => {
+      janela.onload = null;
+      janela.close();
+    };
+    origem.sinal.addEventListener('abort', cancelar, { once: true });
+    try {
+      conferir();
+      janela.document.open();
+      janela.document.write(html);
+      janela.document.close();
+    } catch (erro) {
+      origem.sinal.removeEventListener('abort', cancelar);
+      cancelar();
+      throw erro;
+    }
     /* `onload` em vez de imprimir na sequência: sem esperar, o Safari abre a
        caixa de impressão com a página ainda em branco. */
     janela.onload = () => {
-      janela.focus();
-      janela.print();
+      try {
+        conferir();
+        janela.focus();
+        conferir();
+        janela.print();
+      } catch {
+        cancelar();
+        console.warn('[pdf-report] impressão cancelada.');
+      } finally {
+        origem.sinal.removeEventListener('abort', cancelar);
+      }
     };
     return { uri: '', compartilhado: true };
   }
 
-  const impresso = await Print.printToFileAsync({ html, base64: false });
-  /* O UUID fica na pasta, não no nome enviado. Cada geração tem sua própria
-     pasta para não substituir um PDF que ainda está sendo compartilhado. Se o
-     arquivo não puder ser movido, o PDF com nome feio ainda é melhor que
-     nenhum PDF: segue com o original, e a falha fica no log. */
-  let uri = impresso.uri;
+  let arquivo: File | undefined;
+  let uriGerada: string | undefined;
+  const limparArquivoProprio = () => {
+    if (!uriGerada) return;
+    try {
+      (arquivo ?? new File(uriGerada)).delete();
+    } catch {
+      console.warn('[pdf-report] falha ao remover arquivo da exportação interrompida.');
+    }
+  };
   try {
-    const arquivo = new File(impresso.uri);
-    const pasta = new Directory(Paths.cache, 'relatorios-grana', arquivo.name.replace(/\.pdf$/i, ''));
-    pasta.create({ intermediates: true });
-    await arquivo.move(new File(pasta, `Grana-relatorio-${dados.periodo ? `${dados.periodo.inicio}-a-${dados.periodo.fim}` : `${dados.ano}-${String(dados.mes + 1).padStart(2, '0')}`}.pdf`));
-    uri = arquivo.uri;
+    conferir();
+    const impresso = await Print.printToFileAsync({ html, base64: false });
+    uriGerada = impresso.uri;
+    arquivo = new File(impresso.uri);
+    conferir();
+    /* O UUID fica na pasta, não no nome enviado. Cada geração tem sua própria
+       pasta para não substituir um PDF que ainda está sendo compartilhado. Se o
+       arquivo não puder ser movido, o PDF com nome feio ainda é melhor que
+       nenhum PDF: segue com o original, e a falha fica no log. */
+    let uri = impresso.uri;
+    try {
+      const pasta = new Directory(Paths.cache, 'relatorios-grana', arquivo.name.replace(/\.pdf$/i, ''));
+      pasta.create({ intermediates: true });
+      await arquivo.move(new File(pasta, `Grana-relatorio-${dados.periodo ? `${dados.periodo.inicio}-a-${dados.periodo.fim}` : `${dados.ano}-${String(dados.mes + 1).padStart(2, '0')}`}.pdf`));
+      uri = arquivo.uri;
+    } catch {
+      console.warn('[pdf-report] nome descritivo não aplicado, usando o arquivo original');
+    }
+    conferir();
+
+    const disponivel = await Sharing.isAvailableAsync();
+    conferir();
+    if (!disponivel) {
+      // O chamador ainda precisa entregar a URI; uma troca nesse intervalo também limpa.
+      origem.sinal.addEventListener('abort', limparArquivoProprio, { once: true });
+      return { uri, compartilhado: false };
+    }
+
+    await Sharing.shareAsync(uri, {
+      mimeType: 'application/pdf',
+      dialogTitle: dados.periodo ? `Relatório Grana. de ${dados.periodo.inicio} a ${dados.periodo.fim}` : `Relatório Grana. de ${MONTH_NAMES[dados.mes]} de ${dados.ano}`,
+      UTI: 'com.adobe.pdf',
+    });
+    conferir();
+    return { uri, compartilhado: true };
   } catch (erro) {
-    console.warn('[pdf-report] nome descritivo não aplicado, usando o arquivo original', erro);
+    // Nunca apague a pasta compartilhada nem arquivos de outra exportação.
+    limparArquivoProprio();
+    throw erro;
   }
-
-  if (!(await Sharing.isAvailableAsync())) {
-    return { uri, compartilhado: false };
-  }
-
-  await Sharing.shareAsync(uri, {
-    mimeType: 'application/pdf',
-    dialogTitle: dados.periodo ? `Relatório Grana. de ${dados.periodo.inicio} a ${dados.periodo.fim}` : `Relatório Grana. de ${MONTH_NAMES[dados.mes]} de ${dados.ano}`,
-    UTI: 'com.adobe.pdf',
-  });
-  return { uri, compartilhado: true };
 }
 
