@@ -11,6 +11,15 @@ export const PREFIXO_ID_HABITO_ALMOCO = 'habito-almoco-';
 export const PREFIXO_ID_HABITO_MEIO_DIA_FINDE = 'habito-meiodia-finde-';
 export const QUANTIDADE_LEMBRETES_HABITO = 7;
 
+export function normalizarHorarioHabito(horario: { hour?: unknown; minute?: unknown } | null | undefined) {
+  const hour = horario?.hour;
+  const minute = horario?.minute;
+  return {
+    hour: typeof hour === 'number' && Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : 20,
+    minute: typeof minute === 'number' && Number.isInteger(minute) && minute >= 0 && minute <= 59 ? minute : 30,
+  };
+}
+
 export type LembreteHabitoPlanejado = {
   id: string;
   quando: Date;
@@ -59,8 +68,15 @@ export function planejarLembretesHabito(opts: {
   janela?: JanelaLembrete;
 }): LembreteHabitoPlanejado[] {
   const quantidade = opts.quantidade ?? QUANTIDADE_LEMBRETES_HABITO;
-  if (quantidade <= 0) return [];
   const janela = opts.janela ?? 'noite';
+  if (!(opts.agora instanceof Date) || !Number.isFinite(opts.agora.getTime()) ||
+      !Number.isInteger(opts.hour) || opts.hour < 0 || opts.hour > 23 ||
+      !Number.isInteger(opts.minute) || opts.minute < 0 || opts.minute > 59 ||
+      !Number.isInteger(quantidade) || quantidade < 0 || quantidade > QUANTIDADE_LEMBRETES_HABITO ||
+      !['noite', 'almoco', 'meio_dia_finde'].includes(janela)) {
+    throw new RangeError('Data, horário, quantidade ou janela de lembretes inválidos.');
+  }
+  if (quantidade === 0) return [];
   const prefixo =
     janela === 'almoco' ? PREFIXO_ID_HABITO_ALMOCO
     : janela === 'meio_dia_finde' ? PREFIXO_ID_HABITO_MEIO_DIA_FINDE
@@ -69,7 +85,8 @@ export function planejarLembretesHabito(opts: {
   const planejados: LembreteHabitoPlanejado[] = [];
   let diasDesdeHoje = 0;
 
-  while (planejados.length < quantidade) {
+  // Até a janela só de fins de semana cabe em sete dias por ocorrência.
+  while (planejados.length < quantidade && diasDesdeHoje <= quantidade * 7) {
     const quando = new Date(
       opts.agora.getFullYear(),
       opts.agora.getMonth(),
@@ -79,6 +96,7 @@ export function planejarLembretesHabito(opts: {
       0,
       0
     );
+    if (!Number.isFinite(quando.getTime())) throw new RangeError('Data do lembrete fora do intervalo permitido.');
 
     const foraDoDiaUtil = janela === 'almoco' && ehFimDeSemana(quando);
     const foraDoFimDeSemana = janela === 'meio_dia_finde' && !ehFimDeSemana(quando);
@@ -93,6 +111,8 @@ export function planejarLembretesHabito(opts: {
 
     diasDesdeHoje += 1;
   }
+
+  if (planejados.length !== quantidade) throw new RangeError('Não foi possível completar a janela de lembretes.');
 
   return planejados;
 }

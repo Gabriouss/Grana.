@@ -8,6 +8,7 @@ import {
   ehIdLembreteHabito,
   ID_HABITO_LEGADO,
   planejarLembretesHabito,
+  normalizarHorarioHabito,
 } from './notification-schedule';
 import { formatMoney } from './format';
 import { dataVencimentoFatura as vencimentoDoCiclo } from './faturaCiclo';
@@ -385,14 +386,15 @@ export async function carregarNotifPrefs(): Promise<NotifPrefs> {
   try {
     const raw = await AsyncStorage.getItem(CHAVE_PREFS);
     if (!raw) return PREFS_PADRAO;
-    return { ...PREFS_PADRAO, ...JSON.parse(raw) };
+    const prefs = JSON.parse(raw);
+    return { ...PREFS_PADRAO, ...prefs, horario: normalizarHorarioHabito(prefs?.horario) };
   } catch {
     return PREFS_PADRAO;
   }
 }
 
 export async function salvarNotifPrefs(prefs: NotifPrefs): Promise<void> {
-  await AsyncStorage.setItem(CHAVE_PREFS, JSON.stringify(prefs));
+  await AsyncStorage.setItem(CHAVE_PREFS, JSON.stringify({ ...prefs, horario: normalizarHorarioHabito(prefs.horario) }));
 }
 
 /* ---- lembrete diário de hábito ---- */
@@ -487,7 +489,8 @@ export async function scheduleDailyHabitReminder(opts: {
     const granted = await requestNotificationPermission();
     if (!granted) return;
 
-    const chaveHorario = `${opts.hour}:${opts.minute}`;
+    const horario = normalizarHorarioHabito(opts);
+    const chaveHorario = `${horario.hour}:${horario.minute}`;
     const horarioAnterior = await AsyncStorage.getItem(CHAVE_HORARIO_HABITO).catch(() => null);
     if (horarioAnterior !== chaveHorario) {
       await cancelarHabitoInterno(Notifications, false);
@@ -497,7 +500,7 @@ export async function scheduleDailyHabitReminder(opts: {
     const agendadosAntes = await habitoAgendados(Notifications);
     const planejados = [
       ...planejarLembretesHabito({
-        agora, hour: opts.hour, minute: opts.minute, jaLancouHoje: opts.jaLancouHoje, janela: 'noite',
+        agora, ...horario, jaLancouHoje: opts.jaLancouHoje, janela: 'noite',
       }).map((p) => ({ ...p, janela: 'noite' as const })),
       // `almocoAtivo` por padrão true — só desliga se explicitamente false.
       // O mesmo toggle liga o meio-dia de sábado/domingo (decisão do autor,
