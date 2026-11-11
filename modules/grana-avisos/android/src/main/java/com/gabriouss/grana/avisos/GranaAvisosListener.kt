@@ -22,40 +22,82 @@ import java.io.File
  * dinheiro. Título e texto nunca vão para o logcat.
  */
 class GranaAvisosListener : NotificationListenerService() {
+  @Volatile private var ligado = false
+  @Volatile private var vivo = true
+  @Volatile private var ciclo = 0L
+  private var catalogoPronto = false // Acessado somente pela fila serial.
+
+  private fun enfileirar(origem: Long = AvisosConfig.revisao, acao: () -> Unit) {
+    executar(this) {
+      AvisosConfig.seAtual(origem) { if (vivo) acao() }
+    }
+  }
+
+  private fun prepararCatalogo() {
+    if (!catalogoPronto) {
+      AvisosConfig.limparLegado(this)
+      diario(this).limparForaDoCatalogo()
+      catalogoPronto = true
+    }
+    diario(this).limparVencidos()
+    AvisosConfig.confirmarLimpeza(this)
+  }
 
   override fun onListenerConnected() {
     /* O que chegou enquanto o serviço estava fora e ainda está na bandeja. O id
        do diário impede a duplicata, e `notificar = false` evita uma rajada. */
-    try {
+    ligado = true
+    val cicloDaConexao = ++ciclo
+    val origem = AvisosConfig.revisao
+    enfileirar(origem) {
+      if (!ligado || cicloDaConexao != ciclo) return@enfileirar
       val recuperarAtivos = conexao.conectar(AvisosConfig.dono(this), AvisosConfig.temAceite(this), acessoConcedido(this))
-      AvisosConfig.limparLegado(this)
-      diario(this).limparForaDoCatalogo()
-      AvisosConfig.confirmarLimpeza(this)
+      prepararCatalogo()
       AvisosConfig.registrarSinal(this, System.currentTimeMillis())
-      if (recuperarAtivos) activeNotifications?.forEach { receber(it, notificar = false) }
-    } catch (erro: Exception) {
-      registrarFalha(erro)
-    } finally {
+      if (recuperarAtivos) handler.post {
+        // Binder só é consultado conectado. Nunca captura ativos em foreground
+        // da Activity ou depois da desconexão/destruição deste serviço.
+        if (ligado && vivo && cicloDaConexao == ciclo && AvisosConfig.revisao == origem) {
+          try {
+            val ativos = activeNotifications.orEmpty()
+            ativos.take(MAX_ATIVOS).chunked(LOTE_ATIVOS).forEach { lote ->
+              enfileirar(origem) {
+                lote.forEach { aviso ->
+                  try { receber(aviso, notificar = false) }
+                  catch (erro: Exception) { registrarFalha(this, erro) }
+                }
+              }
+            }
+            if (ativos.size > MAX_ATIVOS) executar(this) { throw IllegalStateException("replay de avisos excedeu o limite") }
+          } catch (erro: Exception) { executar(this) { throw erro } }
+        }
+      }
       publicarConexao()
     }
   }
 
   override fun onListenerDisconnected() {
+    ligado = false
+    ciclo++
     conexao.desconectar()
-    AvisosConfig.registrarDesconexao(this, System.currentTimeMillis())
+    executar(this) { AvisosConfig.registrarDesconexao(this, System.currentTimeMillis()) }
     recuperarConexao(this)
   }
 
   override fun onDestroy() {
+    vivo = false
+    ligado = false
+    ciclo++
     conexao.desconectar()
     super.onDestroy()
   }
 
   override fun onNotificationPosted(sbn: StatusBarNotification) {
-    try {
+    // Recusa pura e barata antes de ocupar a fila; autorização é relida nela.
+    if (!AvisosFiltro.ehBanco(sbn.packageName) || sbn.packageName == packageName ||
+      sbn.notification.flags and Notification.FLAG_GROUP_SUMMARY != 0) return
+    enfileirar {
       receber(sbn, notificar = true)
-    } catch (erro: Exception) {
-      registrarFalha(erro)
     }
   }
 
@@ -70,6 +112,7 @@ class GranaAvisosListener : NotificationListenerService() {
       depuravel = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0,
     )
     if (destino == AvisosFiltro.Destino.DESCARTAR) return
+    prepararCatalogo()
     val agora = System.currentTimeMillis()
     AvisosConfig.registrarSinal(this, agora)
 
@@ -133,13 +176,9 @@ class GranaAvisosListener : NotificationListenerService() {
   private fun valorEscondido(): Boolean =
     getSharedPreferences(PREFS_DO_WIDGET, Context.MODE_PRIVATE).getBoolean(CHAVE_PRIVACIDADE_DO_WIDGET, true)
 
-  private fun registrarFalha(erro: Exception) {
-    val tipo = erro.javaClass.simpleName
-    Log.w(TAG, "falha ao receber aviso: $tipo")
-    AvisosConfig.registrarFalha(this, tipo, System.currentTimeMillis())
-  }
-
   companion object {
+    private const val MAX_ATIVOS = 256
+    private const val LOTE_ATIVOS = 16
     private const val TAG = "GranaAvisos"
     private const val CANAL = "grana_avisos_conferir"
     private const val ID_NOTIFICACAO = 0x47524156
@@ -148,6 +187,20 @@ class GranaAvisosListener : NotificationListenerService() {
     private val VALOR_EM_REAIS = Regex("""R\$\s?\d[\d.]*(?:,\d{2})?""")
 
     private val handler = Handler(Looper.getMainLooper())
+    internal val fila = FilaAvisos()
+    internal fun executar(context: Context, acao: () -> Unit) {
+      val app = context.applicationContext
+      if (!fila.enviar({ erro -> registrarFalha(app, erro) }, acao)) {
+        Log.w(TAG, "fila de avisos cheia; recibo pendente na fila")
+      }
+    }
+
+    private fun registrarFalha(context: Context, erro: Exception) {
+      val tipo = erro.javaClass.simpleName
+      Log.w(TAG, "falha ao receber aviso: $tipo")
+      try { AvisosConfig.registrarFalha(context, tipo, System.currentTimeMillis()) }
+      catch (falha: Exception) { Log.w(TAG, "falha ao guardar recibo: ${falha.javaClass.simpleName}") }
+    }
     private val observadores = mutableSetOf<() -> Unit>()
     internal val conexao = AvisosConexao(
       agora = SystemClock::elapsedRealtime,
@@ -175,11 +228,17 @@ class GranaAvisosListener : NotificationListenerService() {
 
     internal fun recuperarConexao(context: Context) {
       val app = context.applicationContext
-      // A identidade e a autorização são relidas no main, nunca capturadas pelo chamador JS.
-      handler.post {
+      // Preferências fora do main; só o pedido de binding volta ao looper.
+      executar(app) {
         try {
+          val origem = AvisosConfig.revisao
           conexao.recuperar(AvisosConfig.dono(app), AvisosConfig.temAceite(app), acessoConcedido(app)) {
-            requestRebind(ComponentName(app, GranaAvisosListener::class.java))
+            handler.post {
+              try {
+                if (AvisosConfig.revisao == origem) requestRebind(ComponentName(app, GranaAvisosListener::class.java))
+              }
+              catch (_: Exception) { conexao.falhar("FalhaAoReconectar") }
+            }
           }
         } catch (erro: Exception) {
           Log.w(TAG, "falha ao consultar conexao: ${erro.javaClass.simpleName}")

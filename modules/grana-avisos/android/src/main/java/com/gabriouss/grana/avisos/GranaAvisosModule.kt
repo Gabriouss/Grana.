@@ -30,12 +30,18 @@ class GranaAvisosModule : Module() {
     AvisosConfig.registrarFalha(context, erro.javaClass.simpleName, System.currentTimeMillis())
   }
 
+  private fun <T> configurar(acao: () -> T): T = try { acao() }
+    catch (erro: Exception) { registrarFalha(erro); throw erro }
+
   private fun limparAoRetomar() {
     if (appContext.reactContext == null) return
-    try {
-      prepararCatalogo()
-      GranaAvisosListener.recuperarConexao(context)
-    } catch (erro: Exception) { registrarFalha(erro) }
+    val app = context.applicationContext
+    GranaAvisosListener.executar(app) {
+      try { prepararCatalogo() }
+      catch (erro: Exception) { registrarFalha(erro) }
+    }
+    // Limpeza falhada mantém leitura/replay fechados, mas não impede binding.
+    GranaAvisosListener.recuperarConexao(app)
   }
 
   private val context: Context
@@ -79,19 +85,21 @@ class GranaAvisosModule : Module() {
       estado()
     }
 
-    Function("definirDono") { dono: String? ->
-      if (AvisosConfig.definirDono(context, dono)) {
-        GranaAvisosListener.diario(context).apagarTudo()
+    AsyncFunction("definirDono") { dono: String? -> configurar {
+      synchronized(AvisosConfig) {
+        if (AvisosConfig.definirDono(context, dono)) {
+          GranaAvisosListener.diario(context).apagarTudo()
+        }
+        GranaAvisosListener.conexao.atualizarDono(dono)
       }
-      GranaAvisosListener.conexao.atualizarDono(dono)
-    }
-    Function("garantirListaInicial") { pacotes: List<String> ->
+    } }
+    AsyncFunction("garantirListaInicial") { pacotes: List<String> -> configurar {
       AvisosConfig.garantirListaInicial(context, pacotes, System.currentTimeMillis())
-    }
+    } }
     Function("listarApps") { AvisosConfig.listarApps(context) { null } }
-    Function("definirApp") { pacote: String, ligado: Boolean ->
+    AsyncFunction("definirApp") { pacote: String, ligado: Boolean -> configurar {
       AvisosConfig.definirApp(context, pacote, ligado, System.currentTimeMillis())
-    }
+    } }
 
     AsyncFunction("lerDiario") {
       try { GranaAvisosListener.diario(context).listar() }
@@ -104,14 +112,16 @@ class GranaAvisosModule : Module() {
       } catch (erro: Exception) { registrarFalha(erro); throw erro }
     }
     AsyncFunction("limparTudo") {
-      GranaAvisosListener.diario(context).apagarTudo()
-      AvisosConfig.limpar(context)
+      synchronized(AvisosConfig) {
+        GranaAvisosListener.diario(context).apagarTudo()
+        AvisosConfig.limpar(context)
+      }
     }
 
-    Function("definirAceite") { aceito: Boolean ->
+    AsyncFunction("definirAceite") { aceito: Boolean -> configurar {
       AvisosConfig.definirAceite(context, aceito, System.currentTimeMillis())
       GranaAvisosListener.recuperarConexao(context)
-    }
+    } }
     Function("abrirAcesso") {
       check(AvisosConfig.temAceite(context)) { "aceite obrigatorio" }
       abrir(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))

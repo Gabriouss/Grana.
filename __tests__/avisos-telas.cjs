@@ -5,6 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
 const root = path.join(__dirname, '..');
+const watchdogN1=setTimeout(()=>{console.error('FALHA: tela de avisos pendurada sem conclusao');process.exit(1);},15000);
 let corrente;
 let checagens = 0;
 const ok = (texto) => { checagens++; console.log(`ok ${checagens}: ${texto}`); };
@@ -62,6 +63,8 @@ const nativo = {
   listarAppsAvisos: () => [{ pacote: 'com.nu.production', nome: 'Nubank', ligado: false, contagem: 0 }, { pacote: 'com.whatsapp', nome: 'WhatsApp', ligado: true, contagem: 2 }],
   definirAceiteAvisos: (valor) => { if (erroAceite) throw new Error('disco'); aceiteDoTeste = valor; chamadas.push(['aceite', valor]); },
   definirDonoAvisos() {}, garantirListaInicialAvisos() {},
+  sessaoDosAvisos: () => 0, mesmaSessaoDosAvisos: (origem) => origem === 0,
+  naContaDosAvisos: (_dono, ler) => ler(),
   definirAppAvisos: (...args) => chamadas.push(['app', ...args]),
   abrirAcessoAvisos: () => { if (erroAjustes) throw new Error('ajustes'); chamadas.push(['acesso']); },
   abrirInformacoesDoAppAvisos: () => chamadas.push(['informacoes']),
@@ -571,13 +574,13 @@ async function main() {
   assert.equal(chamadas.length, 0, 'falha ao persistir não abre ajustes');
   assert.match(texto(p.tree), /Não consegui/);
   erroAceite = false;
-  const aceitar = botao(p, 'Aceitar e continuar'); aceitar(); aceitar(); p.render();
+  const aceitar = botao(p, 'Aceitar e continuar'); aceitar(); aceitar(); await p.settle();
   assert.equal(JSON.stringify(chamadas), JSON.stringify([['aceite', true], ['acesso']]), 'aceite gravado antes dos ajustes, uma vez');
   assert.doesNotMatch(texto(p.tree), /WhatsApp|Apps que notificaram|notificações, sem leitura/);
   assert.equal(elementos(p.tree).filter((e) => e.props.onToggle).length, 10, 'só os dez bancos do catálogo');
   const toggle = elementos(p.tree).find((e) => e.props.onToggle);
   toggle.props.onToggle(); assert.equal(chamadas.at(-1)[0], 'app');
-  erroAjustes = true; botao(p, 'Liberar')(); p.render(); botao(p, 'Aceitar e continuar')(); p.render();
+  erroAjustes = true; botao(p, 'Liberar')(); p.render(); botao(p, 'Aceitar e continuar')(); await p.settle();
   assert.match(texto(p.tree), /Não consegui abrir/);
   erroAjustes = false;
   botao(p, 'Agora não')(); p.render();
@@ -1248,6 +1251,84 @@ async function main() {
     stub['react-native'].AppState.addEventListener = originalAppState;
     ok('Perfil recupera ao retomar/atualizar, distingue conexão viva, recebe falha e remove observador sem loop');
   }
+  {
+    const originais = { ...nativo };
+    const pendente = () => { let resolve, reject; const promise = new Promise((a,b) => { resolve=a; reject=b; }); return { promise, resolve, reject }; };
+    try {
+      diario=[];disco.clear();chamadas=[];
+      const dono=pendente(),lista=pendente();
+      nativo.definirDonoAvisos=(id)=>{chamadas.push(['dono',id]);return dono.promise;};
+      nativo.garantirListaInicialAvisos=()=>{chamadas.push(['lista']);return lista.promise;};
+      nativo.lerDiarioAvisos=async()=>{chamadas.push(['ler']);return {itens:[],ilegiveis:0};};
+      const intervalosAnteriores=new Set(intervalos);
+      const conferindo=montar(telas.default,{dono:'fixture-inicio'});
+      await conferindo.settle();
+      assert.deepEqual(chamadas.map(c=>c[0]),['dono']);
+      for(const tick of intervalos)if(!intervalosAnteriores.has(tick))tick();await conferindo.settle();
+      assert.equal(chamadas.filter(c=>c[0]==='ler').length,0,'foreground/intervalo nao le antes de dono confirmado');
+      dono.resolve();await conferindo.settle();
+      assert.deepEqual(chamadas.map(c=>c[0]),['dono','lista']);
+      lista.resolve();await conferindo.settle();
+      assert.deepEqual(chamadas.map(c=>c[0]),['dono','lista','ler']);
+      conferindo.unmount();ok('N1: dono e lista pendurados impedem leitura/intervalo; leitura ocorre na ordem awaited');
+
+      chamadas=[];disco.clear();
+      const antigo=pendente();
+      nativo.definirDonoAvisos=(id)=>{chamadas.push(['dono',id]);return id==='fixture-A'?antigo.promise:Promise.resolve();};
+      nativo.garantirListaInicialAvisos=async()=>{chamadas.push(['lista']);};
+      const mudando=montar(telas.default,{dono:'fixture-A'});await mudando.settle();
+      mudando.render({dono:'fixture-B'});await mudando.settle();
+      antigo.resolve();await mudando.settle();
+      assert.equal(chamadas.filter(c=>c[0]==='lista').length,1,'A cancelado nao continua a lista depois de B');
+      assert.equal(chamadas.filter(c=>c[0]==='ler').length,1,'A cancelado nao inicia sincronizacao');
+      assert.equal(listaAberta(mudando),false);mudando.unmount();
+      ok('N1: troca de dono durante configuracao aborta continuacao antiga sem iniciar lista/leitura');
+
+      chamadas=[];disco.clear();
+      const leituraA=pendente(),leituraB=pendente();let lidas=0;
+      nativo.definirDonoAvisos=async()=>{};nativo.garantirListaInicialAvisos=async()=>{};
+      nativo.lerDiarioAvisos=()=>++lidas===1?leituraA.promise:leituraB.promise;
+      const lendo=montar(telas.default,{dono:'fixture-leitura-A'});await lendo.settle();
+      lendo.render({dono:'fixture-leitura-B'});await lendo.settle();
+      leituraA.resolve({itens:[aviso('Compra no débito de R$ 37,00 em Loja Modelo')],ilegiveis:0});
+      await lendo.settle();await lendo.settle();
+      assert.equal(lidas,2);assert.equal(listaAberta(lendo),false,'resposta A nao desenha itens durante leitura B pendente');
+      leituraB.resolve({itens:[],ilegiveis:0});await lendo.settle();lendo.unmount();
+      assert.equal((await caixa.listarCaixa('fixture-leitura-A')).length,1);
+      assert.equal((await caixa.listarCaixa('fixture-leitura-B')).length,0);
+      ok('N1: leitura antiga conserva caixa do proprio dono e nao publica itens na tela da conta nova');
+
+      chamadas=[];alertas=[];
+      nativo.lerDiarioAvisos=originais.lerDiarioAvisos;
+      nativo.definirDonoAvisos=async()=>{throw Error('fixture persistencia');};
+      const falhou=montar(telas.default,{dono:'fixture-falha'});await falhou.settle();
+      assert.equal(chamadas.length,0);assert.ok(alertas.some(a=>a[1]==='Não consegui iniciar o leitor de avisos'));
+      falhou.unmount();ok('N1: rejeicao assincrona da configuracao deixa recibo e impede leitura');
+
+      Object.assign(nativo,originais);chamadas=[];alertas=[];
+      const aceitando=pendente();
+      nativo.definirAceiteAvisos=(valor)=>{chamadas.push(['aceite',valor]);return aceitando.promise;};
+      const secao=montar(perfil.default,{});await secao.settle();
+      botao(secao,'Liberar')();secao.render();
+      const aceitar=botao(secao,'Aceitar e continuar');const a=aceitar(),b=aceitar();
+      await secao.settle();assert.equal(chamadas.filter(c=>c[0]==='acesso').length,0);
+      assert.equal(chamadas.filter(c=>c[0]==='aceite').length,1);
+      aceitando.reject(Error('fixture persistencia'));await Promise.all([a,b]);await secao.settle();
+      assert.match(texto(secao.tree),/Não consegui abrir os ajustes ou guardar seu aceite/);
+      assert.equal(chamadas.filter(c=>c[0]==='acesso').length,0);secao.unmount();
+      ok('N1: aceite Promise pendente nao abre ajustes, toque duplo faz uma chamada e rejeicao fica visivel');
+
+      Object.assign(nativo,originais);chamadas=[];
+      let versao=0;const depoisDaTroca=pendente();
+      nativo.sessaoDosAvisos=()=>versao;nativo.mesmaSessaoDosAvisos=(v)=>v===versao;
+      nativo.definirAceiteAvisos=()=>depoisDaTroca.promise;
+      const trocou=montar(perfil.default,{});await trocou.settle();
+      botao(trocou,'Liberar')();trocou.render();const aguardando=botao(trocou,'Aceitar e continuar')();
+      versao++;depoisDaTroca.resolve();await aguardando;await trocou.settle();
+      assert.equal(chamadas.filter(c=>c[0]==='acesso').length,0);trocou.unmount();
+      ok('N1: resultado de aceite da conta anterior nao abre ajustes depois da troca');
+    } finally {Object.assign(nativo,originais);}
+  }
   console.log(`\n${checagens} grupos de verificação passaram. Sem rede ou aparelho.`);
 }
-main().catch((e) => { console.error(e); process.exitCode = 1; });
+main().catch((e) => { console.error(e); process.exitCode = 1; }).finally(()=>clearTimeout(watchdogN1));

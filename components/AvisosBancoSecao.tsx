@@ -24,6 +24,8 @@ import {
   type AppQueNotificou,
   type AvisoDoDiario,
   type EstadoAvisos,
+  sessaoDosAvisos,
+  mesmaSessaoDosAvisos,
 } from '@/modules/grana-avisos';
 
 const EXPLICACAO = semViuva('O Android entrega todas as notificações ao serviço. O Grana. só lê as dos bancos ligados abaixo, com seu aceite. Outros apps são descartados sem guardar dados.');
@@ -46,6 +48,7 @@ export default function AvisosBancoSecao() {
   const [falha, setFalha] = useState<string | null>(null);
   const [aceiteAberto, setAceiteAberto] = useState(false);
   const aceiteEmCurso = useRef(false);
+  const viva = useRef(true);
 
   const carregar = useCallback(() => {
     try {
@@ -59,20 +62,24 @@ export default function AvisosBancoSecao() {
   }, []);
 
   useEffect(() => {
+    viva.current = true;
     if (!avisosDisponivel) return;
     carregar();
     const parar = observarEstadoAvisos(setEstado, () => setFalha('Não consegui ler o estado dos avisos.'));
     const evento = AppState.addEventListener('change', (s) => { if (s === 'active') carregar(); });
-    return () => { evento.remove(); parar(); };
+    return () => { viva.current = false; evento.remove(); parar(); };
   }, [carregar]);
 
   if (!avisosDisponivel) return null;
 
-  function alternar(app: Pick<AppQueNotificou, 'pacote' | 'ligado'>) {
+  async function alternar(app: Pick<AppQueNotificou, 'pacote' | 'ligado'>) {
+    const origem = sessaoDosAvisos();
     try {
-      definirAppAvisos(app.pacote, !app.ligado);
+      await definirAppAvisos(app.pacote, !app.ligado);
+      if (!viva.current || !mesmaSessaoDosAvisos(origem)) return;
       carregar();
     } catch (erro) {
+      if (!viva.current || !mesmaSessaoDosAvisos(origem)) return;
       console.error('[avisos] escolha de app falhou', erro instanceof Error ? erro.name : 'erro');
       Alert.alert('Não consegui mudar', 'Tente de novo em instantes.');
     }
@@ -88,24 +95,31 @@ export default function AvisosBancoSecao() {
     setAceiteAberto(true);
   }
 
-  function aceitar() {
+  async function aceitar() {
     if (aceiteEmCurso.current) return;
     aceiteEmCurso.current = true;
+    const origem = sessaoDosAvisos();
     try {
-      definirAceiteAvisos(true);
+      await definirAceiteAvisos(true);
+      if (!viva.current || !mesmaSessaoDosAvisos(origem)) return;
       abrirAcessoAvisos();
       setAceiteAberto(false);
       carregar();
     } catch (erro) {
-      aceiteEmCurso.current = false;
+      if (!viva.current || !mesmaSessaoDosAvisos(origem)) return;
       console.error('[avisos] aceite ou ajustes falharam', erro instanceof Error ? erro.name : 'erro');
       setFalha('Não consegui abrir os ajustes ou guardar seu aceite. Tente de novo.');
-    }
+    } finally { aceiteEmCurso.current = false; }
   }
 
-  function desligar() {
-    try { definirAceiteAvisos(false); carregar(); }
+  async function desligar() {
+    const origem = sessaoDosAvisos();
+    try {
+      await definirAceiteAvisos(false);
+      if (viva.current && mesmaSessaoDosAvisos(origem)) carregar();
+    }
     catch (erro) {
+      if (!viva.current || !mesmaSessaoDosAvisos(origem)) return;
       console.error('[avisos] desligar leitura falhou', erro instanceof Error ? erro.name : 'erro');
       setFalha('Não consegui desligar a leitura. Retire o acesso nas informações do app no Android.');
     }

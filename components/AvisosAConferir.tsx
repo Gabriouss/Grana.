@@ -54,6 +54,9 @@ import {
   definirDonoAvisos,
   garantirListaInicialAvisos,
   lerDiarioAvisos,
+  naContaDosAvisos,
+  sessaoDosAvisos,
+  mesmaSessaoDosAvisos,
 } from '@/modules/grana-avisos';
 
 /**
@@ -182,16 +185,24 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
   const outraJanela = useHaJanelaAberta();
   const pedido = usePedidoDeConferencia();
   const pedidoVisto = useRef(pedidosAgora());
+  const donoAtual = useRef(dono);
+  donoAtual.current = dono;
+  const sessaoAtual = useRef<{ dono: string; viva: boolean; pronta: boolean; geracao: number } | null>(null);
 
   const carregar = useCallback(async () => {
-    if (!avisosDisponivel) return;
+    const sessao = sessaoAtual.current;
+    const vigente = () => !!sessao && sessao.viva && sessao.pronta && sessaoAtual.current === sessao
+      && donoAtual.current === dono && mesmaSessaoDosAvisos(sessao.geracao);
+    if (!avisosDisponivel || !vigente()) return;
     try {
-      const { itens: lidos, ilegiveis, recibos: lidosRecibos } = await sincronizarCaixa(dono);
+      const { itens: lidos, ilegiveis, recibos: lidosRecibos } = await naContaDosAvisos(dono, () => sincronizarCaixa(dono));
+      if (!vigente()) return;
       setItens(lidos);
       publicarPendentes(lidos.length);
       setRecibos(lidosRecibos);
       if (ilegiveis > 0) avisarFalhaDeLeitura(`${ilegiveis} avisos não puderam ser lidos`);
     } catch (e) {
+      if (!vigente()) return;
       console.error('[avisos] não leu o diário', e instanceof Error ? e.name : 'erro');
       avisarFalhaDeLeitura('Não consegui ler os avisos do banco', () => void carregar());
     }
@@ -199,20 +210,34 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
 
   useEffect(() => {
     if (!avisosDisponivel) return;
-    try {
-      definirDonoAvisos(dono);
-      garantirListaInicialAvisos(PACOTES_INICIAIS);
-    } catch (e) {
-      console.error('[avisos] início do leitor falhou', e instanceof Error ? e.name : 'erro');
-      avisarFalhaDeLeitura('Não consegui iniciar o leitor de avisos');
-      return;
+    const sessao = { dono, viva: true, pronta: false, geracao: sessaoDosAvisos() };
+    sessaoAtual.current = sessao;
+    setItens([]); setRecibos([]); setAberta(false); setPediu(false);
+    publicarPendentes(0);
+    const vigente = () => sessao.viva && sessaoAtual.current === sessao && donoAtual.current === dono
+      && mesmaSessaoDosAvisos(sessao.geracao);
+    async function iniciar() {
+      try {
+        const preparando = definirDonoAvisos(dono);
+        sessao.geracao = sessaoDosAvisos();
+        await preparando;
+        if (!vigente()) return;
+        await garantirListaInicialAvisos(PACOTES_INICIAIS);
+        if (!vigente()) return;
+        sessao.pronta = true;
+        await carregar();
+      } catch (e) {
+        if (!vigente()) return;
+        console.error('[avisos] início do leitor falhou', e instanceof Error ? e.name : 'erro');
+        avisarFalhaDeLeitura('Não consegui iniciar o leitor de avisos', () => void iniciar());
+      }
     }
-    void carregar();
+    void iniciar();
     const evento = AppState.addEventListener('change', (estado) => {
       if (estado === 'active') void carregar();
     });
     const intervalo = setInterval(() => { if (AppState.currentState === 'active') void carregar(); }, 15000);
-    return () => { evento.remove(); clearInterval(intervalo); };
+    return () => { sessao.viva = false; sessao.pronta = false; evento.remove(); clearInterval(intervalo); };
   }, [carregar, dono]);
 
   /* Lê a marca da conta. Sem a leitura, não abre sozinha (sem piscar); se falhar, vale como já fechada. */
@@ -271,7 +296,8 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
   const aoMudar = useCallback((lista: ItemAConferir[]) => { setItens(lista); publicarPendentes(lista.length); }, []);
   /* Estável pelo mesmo motivo: `marcarFechada` só muda com o dono. */
   const aoAdiar = useCallback(() => { setAberta(false); marcarFechada(); }, [marcarFechada]);
-  if (!avisosDisponivel) return null;
+  if (!avisosDisponivel || !sessaoAtual.current?.pronta || sessaoAtual.current.dono !== dono
+    || !mesmaSessaoDosAvisos(sessaoAtual.current.geracao)) return null;
   /* Sem pendência, o recibo abre numa janela pequena com "Entendi"; nunca bloco na Início. */
   if (!aberta || itens.length === 0) return <ReciboEmJanela recibos={recibos} aoDispensar={dispensar} bloqueado={bloqueado} />;
   return (

@@ -9,6 +9,12 @@ import org.json.JSONObject
  * Bancos habilitados, dono, aceite explícito e sinais do serviço.
  */
 internal object AvisosConfig {
+  @Volatile internal var revisao = 0L; private set
+
+  /** A fila guarda só a geração, e relê a autorização ao consumir cada item. */
+  @Synchronized internal fun seAtual(origem: Long, acao: () -> Unit) {
+    if (revisao == origem) acao()
+  }
   private const val PREFS = "grana_avisos"
   private const val CHAVE_DONO = "dono"
   private const val CHAVE_LIGADOS = "ligados"
@@ -25,16 +31,17 @@ internal object AvisosConfig {
   fun dono(context: Context): String? = prefs(context).getString(CHAVE_DONO, null)
 
   /** Devolve true quando trocou de conta: quem chama apaga o diário da anterior. */
-  fun definirDono(context: Context, dono: String?): Boolean {
+  @Synchronized fun definirDono(context: Context, dono: String?): Boolean {
     limparLegado(context)
     val anterior = dono(context)
     if (anterior == dono) return false
+    revisao++
     check(prefs(context).edit().putString(CHAVE_DONO, dono).remove(CHAVE_ACEITE).commit()) { "nao gravou o dono" }
     return anterior != null
   }
 
   /** Nada ligado até o JavaScript mandar a lista inicial: falha fechada. */
-  fun garantirListaInicial(context: Context, pacotes: List<String>, agora: Long) {
+  @Synchronized fun garantirListaInicial(context: Context, pacotes: List<String>, agora: Long) {
     limparLegado(context)
     val p = prefs(context)
     if (p.getBoolean(CHAVE_INICIADA, false)) return
@@ -55,8 +62,9 @@ internal object AvisosConfig {
     return if (ligados.has(pacote)) ligados.optLong(pacote) else null
   }
 
-  fun definirApp(context: Context, pacote: String, ligado: Boolean, agora: Long) {
+  @Synchronized fun definirApp(context: Context, pacote: String, ligado: Boolean, agora: Long) {
     require(AvisosFiltro.ehBanco(pacote)) { "app fora do catalogo bancario" }
+    revisao++
     val ligados = lerObjeto(context, CHAVE_LIGADOS)
     if (ligado) ligados.put(pacote, agora) else ligados.remove(pacote)
     check(prefs(context).edit().putString(CHAVE_LIGADOS, ligados.toString()).commit()) { "nao gravou a escolha" }
@@ -73,10 +81,11 @@ internal object AvisosConfig {
 
   fun temAceite(context: Context): Boolean = dono(context) != null && prefs(context).getLong(CHAVE_ACEITE, 0L) > 0L
 
-  fun definirAceite(context: Context, aceito: Boolean, agora: Long) {
+  @Synchronized fun definirAceite(context: Context, aceito: Boolean, agora: Long) {
     require(!aceito || dono(context) != null) { "aceite precisa de conta" }
     // Reabrir os ajustes não revoga o aceite nem corta o replay de avisos já autorizados.
     if (aceito && temAceite(context)) return
+    revisao++
     val editor = prefs(context).edit()
     if (aceito) editor.putLong(CHAVE_ACEITE, agora) else editor.remove(CHAVE_ACEITE)
     check(editor.commit()) { "nao gravou o aceite" }
@@ -128,7 +137,8 @@ internal object AvisosConfig {
     }
   }
 
-  fun limpar(context: Context) {
+  @Synchronized fun limpar(context: Context) {
+    revisao++
     prefs(context).edit().clear().commit()
   }
 }
