@@ -12,10 +12,10 @@ import {
   ehErroPermanente,
   novaChaveIdempotencia,
   getQueue,
+  devolverRevisaoParaFila,
   guardarEmRevisao,
   listarEmRevisao,
   otimistaDoItem,
-  tirarDaRevisao,
   otimistasDaParcela,
   proximaEspera,
   separarPorDono,
@@ -38,10 +38,12 @@ export { FilaCheiaError, listarEmRevisao, resumoDaRevisao, tirarDaRevisao } from
  * entra de novo: devolve o item que está lá, dentro da mesma escrita em série.
  * Chave gerada na hora nunca passa por essa checagem.
  */
-async function guardarNaFila(item: PendingItem, userId: string | null, umaVez = false): Promise<PendingItem> {
+async function guardarNaFila(item: PendingItem, userId: string | null, umaVez = false, preservarDono = false): Promise<PendingItem> {
   let efetivo = item;
   await atualizarFila(async (fila) => {
-    if (!userId || item.userId !== userId || await idDoUsuarioLocal() !== userId) {
+    /* O fallback de um envio já iniciado conserva o dono original mesmo se
+       a sessão mudou. O recibo/cache só são entregues se ele ainda estiver ativo. */
+    if (!userId || item.userId !== userId || (!preservarDono && await idDoUsuarioLocal() !== userId)) {
       throw new Error('Entre na conta original para guardar este registro.');
     }
     const existente = umaVez ? fila.find((i) => i.userId === userId && i.clientRequestId === item.clientRequestId) : undefined;
@@ -55,15 +57,17 @@ async function guardarNaFila(item: PendingItem, userId: string | null, umaVez = 
   return efetivo;
 }
 
-async function chaveJaNaFila(chave: string): Promise<boolean> {
-  return (await getQueue()).some((i) => i.clientRequestId === chave);
+async function chaveJaNaFila(chave: string, userId: string): Promise<boolean> {
+  return (await getQueue()).some((i) => i.userId === userId && i.clientRequestId === chave);
 }
 
 /* Linha real que já voltou do banco com esta chave. Sem rede, é a prova de que o
    envio anterior chegou, mesmo sem marca nenhuma no disco: a fila só poria uma
    cópia otimista ao lado dela. */
-async function linhaGravadaNoCache(chave: string): Promise<Transaction | undefined> {
-  return (await getCachedTransactions())?.find((t) => t.client_request_id === chave);
+async function linhaGravadaNoCache(chave: string, userId: string): Promise<Transaction | undefined> {
+  const lista = await getCachedTransactions();
+  if (await idDoUsuarioLocal() !== userId) return undefined;
+  return lista?.find((t) => t.client_request_id === chave);
 }
 
 const CACHE_KEY = 'grana:cache:transactions';
@@ -119,10 +123,11 @@ export async function getCachedTransactions(): Promise<Transaction[] | null> {
   }
 }
 
-export async function setCachedTransactions(list: Transaction[]): Promise<void> {
+export async function setCachedTransactions(list: Transaction[], donoEsperado?: string): Promise<void> {
   try {
     const userId = await idDoUsuarioLocal();
     if (!userId) return;
+    if (donoEsperado && userId !== donoEsperado) return;
     if (list.some(t => t.user_id && t.user_id !== 'local' && t.user_id !== userId)) return;
     const registro: Registro<Transaction[]> = { userId, dados: list };
     await AsyncStorage.setItem(`${CACHE_KEY}:${userId}`, JSON.stringify(registro));
@@ -234,8 +239,8 @@ export { isLikelyNetworkError } from './cache-de-tela';
  * UI exibir na hora, com um id local (`local-...`) — trocado pela linha real
  * do Supabase assim que `flushPendingQueue` conseguir enviá-lo.
  */
-export async function queuePendingTransaction(input: PendingInput, clientRequestId?: string, chaveDaOrigem = false): Promise<Transaction> {
-  const userId = await idDoUsuarioLocal();
+export async function queuePendingTransaction(input: PendingInput, clientRequestId?: string, chaveDaOrigem = false, donoEsperado?: string): Promise<Transaction> {
+  const userId = donoEsperado ?? await idDoUsuarioLocal();
   const item: PendingItem = {
     localId: novoIdLocal(),
     tipo: 'transacao',
@@ -246,13 +251,14 @@ export async function queuePendingTransaction(input: PendingInput, clientRequest
        (`salvarOuGuardarNoAparelho`), ou uma nova. */
     clientRequestId: clientRequestId ?? novaChaveIdempotencia(),
   };
-  const efetivo = await guardarNaFila(item, userId, chaveDaOrigem);
+  const efetivo = await guardarNaFila(item, userId, chaveDaOrigem, !!donoEsperado);
+  agendarNovaTentativa();
+  await conferirDonoAtual(userId);
 
   const optimistic = otimistaDoItem(efetivo);
   const cached = (await getCachedTransactions()) ?? [];
-  await setCachedTransactions([optimistic, ...cached.filter((t) => t.id !== optimistic.id)]);
+  await setCachedTransactions([optimistic, ...cached.filter((t) => t.id !== optimistic.id)], userId ?? undefined);
   await conferirDonoAtual(userId);
-  agendarNovaTentativa();
 
   return optimistic;
 }
@@ -266,9 +272,10 @@ export async function queuePendingTransaction(input: PendingInput, clientRequest
 export async function queuePendingInstallmentPurchase(
   input: PendingInput,
   clientRequestId?: string,
-  chaveDaOrigem = false
+  chaveDaOrigem = false,
+  donoEsperado?: string
 ): Promise<Transaction[]> {
-  const userId = await idDoUsuarioLocal();
+  const userId = donoEsperado ?? await idDoUsuarioLocal();
   const item: PendingItem = {
     localId: novoIdLocal(),
     tipo: 'parcela',
@@ -277,14 +284,15 @@ export async function queuePendingInstallmentPurchase(
     criadoEm: new Date().toISOString(),
     clientRequestId: clientRequestId ?? novaChaveIdempotencia(),
   };
-  const efetivo = await guardarNaFila(item, userId, chaveDaOrigem);
+  const efetivo = await guardarNaFila(item, userId, chaveDaOrigem, !!donoEsperado);
+  agendarNovaTentativa();
+  await conferirDonoAtual(userId);
 
   const optimistic = otimistasDaParcela(efetivo);
   const idsNovos = new Set(optimistic.map((t) => t.id));
   const cached = (await getCachedTransactions()) ?? [];
-  await setCachedTransactions([...optimistic, ...cached.filter((t) => !idsNovos.has(t.id))]);
+  await setCachedTransactions([...optimistic, ...cached.filter((t) => !idsNovos.has(t.id))], userId ?? undefined);
   await conferirDonoAtual(userId);
-  agendarNovaTentativa();
 
   return optimistic;
 }
@@ -470,31 +478,17 @@ export type DesfechoDaDevolucao = 'salvo' | 'aguardando' | 'recusado';
 /**
  * Devolve à fila um item de "precisa de revisão" e tenta enviá-lo já.
  *
- * Tira da revisão ANTES de pôr na fila: na ordem inversa, uma falha no meio
- * deixaria o item nos dois lugares, e a meta (que não tem chave de
- * idempotência) seria gravada duas vezes. Se a fila recusar (cheia), o item
- * volta para a revisão com o mesmo motivo e o erro sobe para a tela: nada se
- * perde. Mantém o `clientRequestId`: se a primeira tentativa chegou a gravar,
- * o banco reconhece a chave e não duplica.
+ * O núcleo persiste um journal e o destino antes de tirar a origem. Nenhum
+ * envio começa antes de terminar a mudança; uma interrupção é recuperada na
+ * próxima leitura. Preserva a chave e o carimbo de tentativa das metas.
  *
  * Devolve o que aconteceu, para a tela dizer à pessoa, ou `null` se o item já
  * não estava na revisão (outra ação chegou antes).
  */
 export async function devolverDaRevisaoParaFila(localId: string): Promise<DesfechoDaDevolucao | null> {
-  const item = await tirarDaRevisao(localId);
+  const item = await devolverRevisaoParaFila(localId);
   if (!item) return null;
-  const { motivo, revisaoDesde: _desde, ...pendente } = item;
-  const userId = await idDoUsuarioLocal();
-  try {
-    await guardarNaFila(pendente, userId);
-  } catch (erro) {
-    try {
-      await guardarEmRevisao(pendente, motivo);
-    } catch (erroRevisao) {
-      console.error('[offline] item devolvido não coube na fila nem voltou para a revisão', { localId, erro, erroRevisao });
-    }
-    throw erro;
-  }
+  await conferirDonoAtual(item.userId ?? null);
   /* O otimista volta às listas enquanto o envio não termina. */
   marcarLancamentosAlterados();
   avisarDadoNovo();
@@ -598,23 +592,27 @@ export async function salvarOuGuardarNoAparelho(
   input: PendingInput,
   chaveDaOrigem?: string
 ): Promise<{ lancamento: Transaction; guardado: boolean }> {
+  const userId = await idDoUsuarioLocal();
+  if (!userId) throw new Error('Entre na conta original para salvar este registro.');
+  await conferirDonoAtual(userId);
   const chave = chaveDaOrigem ?? novaChaveIdempotencia();
   let resultado: { lancamento: Transaction; guardado: boolean };
   /* Já na fila: a sincronização entrega. Reenviar agora só criaria a corrida com ela. */
-  if (chaveDaOrigem && await chaveJaNaFila(chave)) {
-    resultado = { lancamento: await queuePendingTransaction(input, chave, true), guardado: true };
+  if (chaveDaOrigem && await chaveJaNaFila(chave, userId)) {
+    resultado = { lancamento: await queuePendingTransaction(input, chave, true, userId), guardado: true };
     lancamentoGravado();
     return resultado;
   }
   try {
-    resultado = { lancamento: await addTransaction({ ...input, client_request_id: chave }), guardado: false };
+    resultado = { lancamento: await addTransaction({ ...input, client_request_id: chave }, userId), guardado: false };
   } catch (erro) {
     if (!isLikelyNetworkError(erro)) throw erro;
-    const gravada = chaveDaOrigem ? await linhaGravadaNoCache(chave) : undefined;
+    const gravada = chaveDaOrigem ? await linhaGravadaNoCache(chave, userId) : undefined;
     resultado = gravada
       ? { lancamento: gravada, guardado: false }
-      : { lancamento: await queuePendingTransaction(input, chave, !!chaveDaOrigem), guardado: true };
+      : { lancamento: await queuePendingTransaction(input, chave, !!chaveDaOrigem, userId), guardado: true };
   }
+  await conferirDonoAtual(userId);
   lancamentoGravado();
   return resultado;
 }
@@ -628,22 +626,26 @@ export async function salvarOuGuardarParceladaNoAparelho(
   input: PendingInput,
   chaveDaOrigem?: string
 ): Promise<{ lancamentos: Transaction[]; guardado: boolean }> {
+  const userId = await idDoUsuarioLocal();
+  if (!userId) throw new Error('Entre na conta original para salvar este registro.');
+  await conferirDonoAtual(userId);
   const chave = chaveDaOrigem ?? novaChaveIdempotencia();
   let resultado: { lancamentos: Transaction[]; guardado: boolean };
-  if (chaveDaOrigem && await chaveJaNaFila(chave)) {
-    resultado = { lancamentos: await queuePendingInstallmentPurchase(input, chave, true), guardado: true };
+  if (chaveDaOrigem && await chaveJaNaFila(chave, userId)) {
+    resultado = { lancamentos: await queuePendingInstallmentPurchase(input, chave, true, userId), guardado: true };
     lancamentoGravado();
     return resultado;
   }
   try {
-    resultado = { lancamentos: await enviarParcelaPendente({ ...input, client_request_id: chave }), guardado: false };
+    resultado = { lancamentos: await enviarParcelaPendente({ ...input, client_request_id: chave }, userId), guardado: false };
   } catch (erro) {
     if (!isLikelyNetworkError(erro)) throw erro;
-    const gravada = chaveDaOrigem ? await linhaGravadaNoCache(chave) : undefined;
+    const gravada = chaveDaOrigem ? await linhaGravadaNoCache(chave, userId) : undefined;
     resultado = gravada
       ? { lancamentos: [gravada], guardado: false }
-      : { lancamentos: await queuePendingInstallmentPurchase(input, chave, !!chaveDaOrigem), guardado: true };
+      : { lancamentos: await queuePendingInstallmentPurchase(input, chave, !!chaveDaOrigem, userId), guardado: true };
   }
+  await conferirDonoAtual(userId);
   lancamentoGravado();
   return resultado;
 }
