@@ -5,7 +5,6 @@ import * as Linking from 'expo-linking';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { traduzirErroAuth, type ErroAuth } from './auth-errors';
-import { vincularAssinaturasPendentes } from './assinatura';
 import { removerPushHabitoAntesDeSair } from './push-notifications';
 import { esquecerAcesso } from './entitlement-cache';
 import {
@@ -14,6 +13,10 @@ import {
   marcarSessaoNaoConfirmada,
   PRAZO_DONO_PADRAO_MS,
   sessaoDoCliente,
+  sessaoExigeNovaSenha,
+  concluirRecuperacaoDaSessao,
+  esperarSessaoAte,
+  identidadeDaSessao,
 } from './sessao-offline';
 import { esquecerTelas } from './cache-de-tela';
 import { esquecerLancamentosLocais } from './offline-cache';
@@ -39,13 +42,15 @@ type AuthContextValue = {
    * lembra. O layout raiz usa isto para exigir a troca antes de seguir.
    */
   emRecuperacao: boolean;
-  cancelarRecuperacao: () => void;
+  cancelarRecuperacao: () => Promise<void>;
   /**
    * A sessão em uso foi lida do aparelho porque a renovação do token não teve
    * rede. Continua sendo a conta certa, com os dados certos no cache — só que
    * nada que dependa do servidor vai funcionar até a internet voltar.
    */
   sessaoNaoConfirmada: boolean;
+  erroInicializacao: string | null;
+  recarregarSessao: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -56,7 +61,7 @@ export function useSession() {
     throw new Error('useSession precisa estar dentro de um <SessionProvider />');
   }
   // Modo teste da landing: sessão fictícia, sem token (lib/modo-teste.ts).
-  if (MODO_TESTE) return { ...value, session: SESSAO_TESTE, isLoading: false, emRecuperacao: false, sessaoNaoConfirmada: false };
+  if (MODO_TESTE) return { ...value, session: SESSAO_TESTE, isLoading: false, emRecuperacao: false, sessaoNaoConfirmada: false, erroInicializacao: null };
   return value;
 }
 
@@ -120,15 +125,25 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const [isLoading, setIsLoading] = useState(true);
   const [emRecuperacao, setEmRecuperacao] = useState(false);
   const [sessaoNaoConfirmada, setSessaoNaoConfirmada] = useState(false);
+  const [erroInicializacao, setErroInicializacao] = useState<string | null>(null);
   /* Espelho síncrono do estado acima. O `onAuthStateChange` dispara fora do
      render e precisa decidir na hora se um evento sem sessão deve derrubar a
      sessão do disco — ler o `useState` ali entregaria o valor do render
      anterior. */
   const naoConfirmadaRef = useRef(false);
   const donoDosDiasRef = useRef<string | null>(null);
+  const geracaoRef = useRef(0);
+  const montadoRef = useRef(true);
+  const saindoRef = useRef(false);
+  const recuperacaoRef = useRef(0);
+  const sessaoAtualRef = useRef<Session | null>(null);
 
   const aplicarSessao = useCallback((nova: Session | null, doDisco: boolean) => {
     const dono = nova?.user.id ?? null;
+    if (identidadeDaSessao(nova) !== identidadeDaSessao(sessaoAtualRef.current)) {
+      recuperacaoRef.current++;
+      setEmRecuperacao(false);
+    }
     if (dono !== donoDosDiasRef.current) {
       limparDiasComRegistro();
       donoDosDiasRef.current = dono;
@@ -138,6 +153,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
     marcarSessaoNaoConfirmada(doDisco);
     setSessaoNaoConfirmada(doDisco);
     setSession(nova);
+    sessaoAtualRef.current = nova;
+    if (!nova) setEmRecuperacao(false);
   }, []);
 
   /**
@@ -151,85 +168,116 @@ export function SessionProvider({ children }: PropsWithChildren) {
    * disco significa que a conta continua válida e o que faltou foi internet.
    */
   const resolverAusenciaDeSessao = useCallback(
-    async (motivo: string) => {
-      const guardada = await lerSessaoDoDisco();
+    async (motivo: string, geracao: number, fim: number) => {
+      const guardada = await esperarSessaoAte(() => lerSessaoDoDisco(fim - Date.now(), true), fim);
+      if (!montadoRef.current || saindoRef.current || geracao !== geracaoRef.current) return;
       if (!guardada) {
         aplicarSessao(null, false);
         return;
       }
+      const recuperacao = await esperarSessaoAte(() => sessaoExigeNovaSenha(guardada), fim);
+      if (!montadoRef.current || saindoRef.current || geracao !== geracaoRef.current) return;
       console.warn('[sessao] seguindo com a sessão guardada no aparelho', {
         motivo,
-        venceuEm: guardada.expires_at
+        venceuEm: typeof guardada.expires_at === 'number' && Number.isFinite(new Date(guardada.expires_at * 1000).getTime())
           ? new Date(guardada.expires_at * 1000).toISOString()
           : 'sem prazo registrado',
       });
       aplicarSessao(guardada, true);
+      setEmRecuperacao(recuperacao);
     },
     [aplicarSessao]
   );
 
-  useEffect(() => {
-    let vivo = true;
+  const falhouInicializacao = useCallback((geracao: number) => {
+    if (!montadoRef.current || saindoRef.current || geracao !== geracaoRef.current) return;
+    console.warn('[sessao] abertura não concluída; nova tentativa disponível');
+    setErroInicializacao('Não conseguimos ler sua sessão. Tente novamente.');
+    setIsLoading(false);
+  }, []);
 
-    void (async () => {
-      /* Com prazo (V38, 16/10/2026). Sem rede e com o token de acesso vencido,
-         `getSession()` renova antes de responder e insiste por ~25 s; enquanto
-         isso `isLoading` segurava a árvore de rotas e a abertura a frio ficava
-         só no fundo por ~34 s (visto pelo Vigil no emulador). No prazo, a
-         ausência cai em `resolverAusenciaDeSessao`, que adota a sessão do disco
-         como não confirmada, a mesma saída de quando a renovação falha. A
-         renovação segue sozinha e, se der certo, o TOKEN_REFRESHED do ouvinte
-         abaixo confirma a sessão. O estouro também marca a sessão como travada
-         (`sessaoEstaTravada`), e as telas servem o disco sem esperar a rede. */
+  const recarregarSessao = useCallback(async () => {
+    if (saindoRef.current) return;
+    const geracao = ++geracaoRef.current;
+    const atual = () => montadoRef.current && !saindoRef.current && geracao === geracaoRef.current;
+    const fim = Date.now() + 5_000;
+    setIsLoading(true);
+    setErroInicializacao(null);
+    try {
+      // SDK: 2 s. Disco e restrição de recuperação usam o restante do total.
       const { data, error } = await sessaoDoCliente(PRAZO_DONO_PADRAO_MS).catch(
         (erro: unknown) => ({ data: { session: null }, error: erro })
       );
-      if (!vivo) return;
+      if (!atual()) return;
       if (data.session) {
+        const recuperacao = await esperarSessaoAte(() => sessaoExigeNovaSenha(data.session!), fim);
+        if (!atual()) return;
         aplicarSessao(data.session, false);
-        /* Cobre o caso de a assinatura ter sido comprada (ou renovada) DEPOIS
-           da última vez que a pessoa logou neste aparelho — sem isto, quem
-           abre o app já logado só teria a assinatura vinculada no PRÓXIMO
-           login, que pode nunca acontecer num app que guarda sessão. */
-        void vincularAssinaturasPendentes();
+        setEmRecuperacao(recuperacao);
       } else {
-        await resolverAusenciaDeSessao(
-          error instanceof Error ? error.message : 'getSession devolveu vazio'
-        );
+        await resolverAusenciaDeSessao(error instanceof Error ? error.message : 'getSession devolveu vazio', geracao, fim);
       }
-      if (vivo) setIsLoading(false);
-    })();
+    } catch {
+      falhouInicializacao(geracao);
+    } finally {
+      if (atual()) setIsLoading(false);
+    }
+  }, [aplicarSessao, resolverAusenciaDeSessao, falhouInicializacao]);
+
+  useEffect(() => {
+    let vivo = true;
+    montadoRef.current = true;
+    void recarregarSessao();
 
     const { data: listener } = supabase.auth.onAuthStateChange((evento, newSession) => {
+      if (!vivo || saindoRef.current) return;
+      const geracao = ++geracaoRef.current;
       if (newSession) {
+        const mesmaSessao = identidadeDaSessao(sessaoAtualRef.current) === identidadeDaSessao(newSession);
         /* Qualquer sessão vinda do cliente é sessão confirmada pelo servidor —
            inclusive o TOKEN_REFRESHED que chega sozinho quando a internet
            volta, e que é o que tira o app do modo sem confirmação. */
         aplicarSessao(newSession, false);
+        setErroInicializacao(null);
+        if (!mesmaSessao || evento === 'INITIAL_SESSION' || evento === 'PASSWORD_RECOVERY') {
+          // Não chama auth dentro do callback do SDK. Até a inspeção LOCAL,
+          // a sessão fica atrás da guarda; refresh comum não desmonta rotas.
+          setIsLoading(true);
+          void sessaoExigeNovaSenha(newSession).then(recuperacao => {
+            if (vivo && !saindoRef.current && geracao === geracaoRef.current) {
+              setEmRecuperacao(recuperacao || evento === 'PASSWORD_RECOVERY');
+              setIsLoading(false);
+            }
+          }).catch(() => falhouInicializacao(geracao));
+        } else setIsLoading(false);
       } else if (evento === 'SIGNED_OUT') {
         // Saída deliberada (ou credencial recusada de vez): não há o que salvar.
         aplicarSessao(null, false);
+        setErroInicializacao(null);
       } else {
         /* Evento sem sessão que NÃO é logout: tipicamente o INITIAL_SESSION
            que o cliente emite para cada assinante novo. Sem esta consulta ao
            disco, ele chegaria depois da leitura de cima e apagaria a sessão
            guardada que acabou de ser adotada. */
-        void resolverAusenciaDeSessao(`evento ${evento} sem sessão`);
+        void resolverAusenciaDeSessao(`evento ${evento} sem sessão`, geracao, Date.now() + 5_000).catch(() => falhouInicializacao(geracao)).finally(() => {
+          if (vivo && geracao === geracaoRef.current) setIsLoading(false);
+        });
       }
       /* Na web o cliente do Supabase consome a URL sozinho (detectSessionInUrl)
          e avisa aqui qual e-mail originou a sessão. PASSWORD_RECOVERY é o
          único caso em que estar logado NÃO significa que a pessoa pode seguir
          para o app: ela chegou por um link justamente porque não sabe a senha. */
-      if (evento === 'PASSWORD_RECOVERY') setEmRecuperacao(true);
-      // Vale tanto pro cadastro quanto pro login: os dois emitem SIGNED_IN.
-      if (evento === 'SIGNED_IN') void vincularAssinaturasPendentes();
+      if (evento === 'PASSWORD_RECOVERY') { recuperacaoRef.current++; setEmRecuperacao(true); }
+      if (evento === 'SIGNED_OUT') { recuperacaoRef.current++; setIsLoading(false); }
     });
 
     return () => {
       vivo = false;
+      montadoRef.current = false;
+      geracaoRef.current++;
       listener.subscription.unsubscribe();
     };
-  }, [aplicarSessao, resolverAusenciaDeSessao]);
+  }, [aplicarSessao, resolverAusenciaDeSessao, recarregarSessao, falhouInicializacao]);
 
   /* Trata o retorno do link de confirmação de e-mail (e de qualquer outro
      e-mail de auth — recuperação de senha, magic link) quando o app é aberto
@@ -263,6 +311,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         return;
       }
 
+      if (resultado.recuperacao) setEmRecuperacao(true);
       const { error } = await supabase.auth.exchangeCodeForSession(
         resultado.code,
         resultado.flowId ? { flowId: resultado.flowId } : undefined
@@ -271,7 +320,6 @@ export function SessionProvider({ children }: PropsWithChildren) {
         Alert.alert('Não foi possível entrar', traduzirErroAuth(error)?.mensagem ?? error.message);
         return;
       }
-      if (resultado.recuperacao) setEmRecuperacao(true);
       // Em caso de sucesso, onAuthStateChange (acima) já atualiza `session`
       // sozinho — o Stack.Protected do _layout leva a pessoa pro app.
     }
@@ -288,7 +336,9 @@ export function SessionProvider({ children }: PropsWithChildren) {
     isLoading,
     emRecuperacao,
     sessaoNaoConfirmada,
-    cancelarRecuperacao: () => setEmRecuperacao(false),
+    erroInicializacao,
+    recarregarSessao,
+    cancelarRecuperacao: async () => { await value.signOut(); },
     async signIn(email, password) {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       return { error: traduzirErroAuth(error) };
@@ -300,8 +350,18 @@ export function SessionProvider({ children }: PropsWithChildren) {
       return { error: traduzirErroAuth(error) };
     },
     async definirNovaSenha(senha) {
+      const recuperacao = recuperacaoRef.current;
+      const sessao = sessaoAtualRef.current;
+      if (saindoRef.current || !sessao) return { error: { mensagem: 'Entre novamente para definir sua senha.' } as ErroAuth };
       const { error } = await supabase.auth.updateUser({ password: senha });
-      if (!error) setEmRecuperacao(false);
+      if (!error && sessao && montadoRef.current && !saindoRef.current && recuperacao === recuperacaoRef.current) {
+        await esperarSessaoAte(() => concluirRecuperacaoDaSessao(sessao), Date.now() + 2_000);
+        if (montadoRef.current && !saindoRef.current && recuperacao === recuperacaoRef.current) {
+          geracaoRef.current++;
+          setEmRecuperacao(false);
+          setIsLoading(false);
+        }
+      }
       return { error: traduzirErroAuth(error) };
     },
     async signUp(email, password) {
@@ -325,8 +385,14 @@ export function SessionProvider({ children }: PropsWithChildren) {
     /* A sequência e os prazos moram em lib/sair-da-conta.ts: cada limpeza tem
        prazo próprio e a sessão sai sempre (achado A64, 19/09/2026). */
     async signOut() {
+      if (saindoRef.current) return;
+      saindoRef.current = true;
+      geracaoRef.current++;
+      recuperacaoRef.current++;
+      setIsLoading(true);
+      try {
       await sairDaConta({
-        idDoUsuario: async () => (await supabase.auth.getSession()).data.session?.user.id ?? null,
+        idDoUsuario: async () => donoDosDiasRef.current,
         limparVozesDaConta: async (userId) => {
           const { limparVozesDaConta } = await import('./widget-voz-pendentes');
           await limparVozesDaConta(userId);
@@ -363,6 +429,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
         esquecerSessaoDoDisco,
         aplicarSaida: () => aplicarSessao(null, false),
       });
+      } finally {
+        aplicarSessao(null, false);
+        saindoRef.current = false;
+        if (montadoRef.current) setIsLoading(false);
+      }
     },
   };
 

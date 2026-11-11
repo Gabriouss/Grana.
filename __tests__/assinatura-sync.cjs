@@ -15,6 +15,7 @@ function carregar(dependencias) {
   vm.runInNewContext(js, {
     exports,
     console: { warn() {}, error() {}, log() {} },
+    Date, setTimeout, clearTimeout, AbortController,
     require(id) {
       if (id in dependencias) return dependencias[id];
       throw new Error('Import não simulado: ' + id);
@@ -36,20 +37,23 @@ async function main() {
     },
     './supabase': {
       supabase: {
-        rpc: async (nome) => {
+        rpc: (nome) => {
           chamadas.push(nome);
           const resposta = respostas[nome];
-          if (typeof resposta === 'function') return resposta();
-          return resposta ?? { data: null, error: null };
+          const pedido = Promise.resolve().then(() => typeof resposta === 'function' ? resposta() : resposta ?? { data: null, error: null });
+          pedido.abortSignal = () => pedido;
+          pedido.setHeader = () => pedido;
+          return pedido;
         },
       },
     },
   });
+  const contexto = { dono: 'A', tokenDeAcesso: 'credencial-audit-A', geracao: {}, podeContinuar: () => true, sinal: new AbortController().signal, fim: Date.now() + 12_000 };
 
   respostas = {
     vincular_assinatura_automatica: { data: null, error: { code: 'PGRST202', message: 'RPC ausente' } },
   };
-  let resultado = await api.vincularAssinaturasPendentes();
+  let resultado = await api.vincularAssinaturasPendentes(contexto);
   assert.equal(resultado.houveFalha, true);
   assert.equal(resultado.tokenPendente, false);
   assert.equal(resultado.motivo, 'sincronizacao_email');
@@ -59,14 +63,14 @@ async function main() {
     vincular_assinatura_automatica: { data: null, error: null },
     vincular_assinatura_por_token: { data: true, error: null },
   };
-  resultado = await api.vincularAssinaturasPendentes();
+  resultado = await api.vincularAssinaturasPendentes(contexto);
   assert.equal(resultado.houveFalha, false);
   assert.equal(resultado.tokenPendente, false);
   assert.equal(storage.has(chave), false);
 
   storage.set(chave, 'token-recusado');
   respostas.vincular_assinatura_por_token = { data: false, error: null };
-  resultado = await api.vincularAssinaturasPendentes();
+  resultado = await api.vincularAssinaturasPendentes(contexto);
   assert.equal(resultado.houveFalha, true);
   assert.equal(resultado.tokenPendente, true);
   assert.equal(resultado.motivo, 'token_recusado');

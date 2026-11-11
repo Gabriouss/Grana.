@@ -8,12 +8,12 @@ function montar(teste=false){
  const cache=new Map();
  const store={getItem:async k=>c.disco.get(k)??null,setItem:async(k,v)=>{c.disco.set(k,v);},removeItem:async k=>{c.disco.delete(k);}};
  const mocks={react,'react/jsx-runtime':{jsx:(type,props)=>({type,props})},'react-native':{AppState:{addEventListener:()=>({remove(){}})}},
-  './auth-context':{useSession:()=>({session:c.userId?{user:{id:c.userId}}:null,sessaoNaoConfirmada:false,isLoading:c.loading})},
+  './auth-context':{useSession:()=>({session:c.userId?{user:{id:c.userId},access_token:'credencial-audit'}:null,sessaoNaoConfirmada:false,isLoading:c.loading})},
   './notifications':{sincronizarAvisosAssinatura:async(...a)=>{c.notifs.push(a);}},'./assinatura':{vincularAssinaturasPendentes:async()=>({houveFalha:false})},
-  './offline-cache':{isLikelyNetworkError:e=>e?.code==='NETWORK'},'./supabase':{supabase:{rpc:(name)=>{c.rpc.push(name);return new Promise((resolve,reject)=>c.pending.push({resolve,reject}));}}},
+  './offline-cache':{isLikelyNetworkError:e=>e?.code==='NETWORK'},'./supabase':{supabase:{rpc:(name)=>{c.rpc.push(name);const p=new Promise((resolve,reject)=>c.pending.push({resolve,reject}));p.abortSignal=()=>p;p.setHeader=()=>p;return p;}}},
   './modo-teste':{MODO_TESTE:teste},'./cache-de-tela':{assinarLeituraEsvaziou:()=>()=>{}},'@react-native-async-storage/async-storage':{__esModule:true,default:store}};
  function load(file){file=path.resolve(file);if(cache.has(file))return cache.get(file).exports;const m={exports:{}};cache.set(file,m);const code=ts.transpileModule(fs.readFileSync(file,'utf8'),{fileName:file,compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
-  vm.runInNewContext(code,{module:m,exports:m.exports,require(id){if(id in mocks)return mocks[id];if(id.startsWith('.'))return load(path.resolve(path.dirname(file),id)+'.ts');throw Error('import nao esperado '+id);},Date,Promise,Map,Set,Math,console:{error:(...a)=>c.warnings.push(a),warn:(...a)=>c.warnings.push(a)},setTimeout:()=>1,clearTimeout(){}});return m.exports;}
+  vm.runInNewContext(code,{module:m,exports:m.exports,require(id){if(id in mocks)return mocks[id];if(id.startsWith('.'))return load(path.resolve(path.dirname(file),id)+'.ts');throw Error('import nao esperado '+id);},Date,Promise,Map,Set,Math,AbortController,console:{error:(...a)=>c.warnings.push(a),warn:(...a)=>c.warnings.push(a)},setTimeout:()=>1,clearTimeout(){}});return m.exports;}
  const Provider=load('lib/entitlement-context.tsx').EntitlementProvider;c.seed=estado=>load('lib/entitlement-cache.ts').guardarAcesso('A',estado);
  c.render=()=>{cursor=0;const t=Provider({children:null});while(effects.length)effects.shift()();return t.props.value;};c.flush=async()=>{for(let i=0;i<25;i++)await Promise.resolve();};return c;
 }

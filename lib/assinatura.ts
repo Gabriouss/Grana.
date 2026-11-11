@@ -3,8 +3,7 @@ import { supabase } from './supabase';
 
 /* Guardado quando a pessoa abre o link de ativação (/ativar?token=...) SEM
    estar logada — precisa cadastrar ou entrar primeiro, e o token não pode se
-   perder nessa volta. Consumido por vincularAssinaturasPendentes() assim que
-   a sessão existir (ver lib/auth-context.tsx). */
+   perder nessa volta. Consumido pelo EntitlementProvider após a sessão. */
 const CHAVE_TOKEN_PENDENTE = '@grana_token_ativacao_pendente';
 
 export type ResultadoVinculoAssinatura = {
@@ -33,12 +32,69 @@ export async function guardarTokenAtivacaoPendente(token: string): Promise<void>
  * recibo para mostrar que o acesso ainda precisa ser confirmado. Isso evita
  * que uma compra aprovada pareça simplesmente uma conta sem assinatura.
  */
-export async function vincularAssinaturasPendentes(): Promise<ResultadoVinculoAssinatura> {
+export type ContextoDoVinculo = {
+  /** Capturados da mesma sessão antes de qualquer await. Nunca registrar. */
+  readonly dono: string;
+  readonly tokenDeAcesso: string;
+  /** Identidade opaca de um ciclo da conta, estável entre recargas. */
+  geracao: object;
+  podeContinuar: () => boolean;
+  sinal: AbortSignal;
+  fim: number;
+};
+const vinculosEmVoo = new WeakMap<object, { promessa: Promise<ResultadoVinculoAssinatura>; sinal: AbortSignal; dono: string }>();
+
+/** Uma tentativa por ciclo; o prazo inclui auth, rede e armazenamento. */
+export function vincularAssinaturasPendentes(contexto: ContextoDoVinculo): Promise<ResultadoVinculoAssinatura> {
+  const { dono, tokenDeAcesso } = contexto;
+  const emVoo = vinculosEmVoo.get(contexto.geracao);
+  if (emVoo && emVoo.dono === dono && emVoo.sinal === contexto.sinal && !emVoo.sinal.aborted) return emVoo.promessa;
+  const controle = new AbortController();
+  let encerrado = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const atual = () => !!dono && !!tokenDeAcesso && !encerrado && !controle.signal.aborted && contexto.podeContinuar();
+  const verificar = () => { if (!atual()) throw new Error('vínculo interrompido'); };
+  const rpc = (nome: string, args?: { p_token: string }) => {
+    verificar();
+    // fetchWithAuth aguarda a sessão global antes de completar os headers.
+    // Fixar este header no builder preserva a conta de origem nessa espera.
+    const pedido = supabase.rpc(nome, args).setHeader('Authorization', `Bearer ${tokenDeAcesso}`);
+    return pedido.abortSignal(controle.signal);
+  };
+  let interromper: () => void = () => {};
+  const falha: ResultadoVinculoAssinatura = { houveFalha: true, tokenPendente: true, motivo: 'token_indisponivel' };
+  const trabalho = Promise.resolve().then(() => executarVinculo(rpc, verificar));
+  const interrupcao = new Promise<never>((_, reject) => {
+    interromper = () => { controle.abort(); reject(new Error('vínculo interrompido')); };
+    const ms = contexto.fim - Date.now();
+    timer = setTimeout(interromper, Math.max(0, ms));
+    contexto.sinal.addEventListener('abort', interromper, { once: true });
+    if (contexto.sinal.aborted) interromper();
+  });
+  const promessa = Promise.race([trabalho, interrupcao]).catch(() => {
+    console.warn('[assinatura] vínculo não concluído; nova verificação disponível');
+    return falha;
+  }).finally(() => {
+    encerrado = true;
+    controle.abort();
+    clearTimeout(timer);
+    contexto.sinal.removeEventListener('abort', interromper);
+    if (vinculosEmVoo.get(contexto.geracao)?.promessa === promessa) vinculosEmVoo.delete(contexto.geracao);
+  });
+  vinculosEmVoo.set(contexto.geracao, { promessa, sinal: contexto.sinal, dono });
+  return promessa;
+}
+
+async function executarVinculo(
+  rpc: (nome: string, args?: { p_token: string }) => ReturnType<typeof supabase.rpc>,
+  verificar: () => void,
+): Promise<ResultadoVinculoAssinatura> {
   let houveFalha = false;
   let motivo: ResultadoVinculoAssinatura['motivo'] = null;
 
   try {
-    const { error } = await supabase.rpc('vincular_assinatura_automatica');
+    const { error } = await rpc('vincular_assinatura_automatica');
+    verificar();
     if (error) {
       houveFalha = true;
       motivo = 'sincronizacao_email';
@@ -55,9 +111,12 @@ export async function vincularAssinaturasPendentes(): Promise<ResultadoVinculoAs
     });
   }
 
+  verificar();
+
   let token: string | null = null;
   try {
     token = await AsyncStorage.getItem(CHAVE_TOKEN_PENDENTE);
+    verificar();
   } catch (error) {
     token = null;
     houveFalha = true;
@@ -66,6 +125,7 @@ export async function vincularAssinaturasPendentes(): Promise<ResultadoVinculoAs
       message: error instanceof Error ? error.message : 'erro desconhecido',
     });
   }
+  verificar();
   if (!token) return { houveFalha, tokenPendente: false, motivo };
 
   try {
@@ -79,7 +139,8 @@ export async function vincularAssinaturasPendentes(): Promise<ResultadoVinculoAs
     // não bastava: uma chamada que chegou ao servidor mas voltou `data:
     // false` já era tratada como sucesso e apagava o token, deixando a
     // pessoa sem assinatura vinculada e sem chance de tentar de novo.
-    const { data, error } = await supabase.rpc('vincular_assinatura_por_token', { p_token: token });
+    const { data, error } = await rpc('vincular_assinatura_por_token', { p_token: token });
+    verificar();
     if (error || data !== true) {
       houveFalha = true;
       motivo = 'token_recusado';
@@ -90,7 +151,11 @@ export async function vincularAssinaturasPendentes(): Promise<ResultadoVinculoAs
       });
       return { houveFalha, tokenPendente: true, motivo };
     }
-    await AsyncStorage.removeItem(CHAVE_TOKEN_PENDENTE);
+    // Uma nova ativação pode ter chegado enquanto o servidor respondia.
+    const aindaPendente = await AsyncStorage.getItem(CHAVE_TOKEN_PENDENTE);
+    verificar();
+    if (aindaPendente === token) await AsyncStorage.removeItem(CHAVE_TOKEN_PENDENTE);
+    verificar();
     return { houveFalha, tokenPendente: false, motivo };
   } catch (error) {
     // Falha de transporte — mantém o token guardado para tentar de novo, mas

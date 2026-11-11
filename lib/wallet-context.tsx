@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDemo } from './demo-context';
 import { useSession } from './auth-context';
@@ -10,7 +10,7 @@ import {
   calcularEntradasWallets,
   calcularEntradasComAgregado,
 } from './wallets';
-import { fetchTransactions, fetchSaldosPorCarteira, fetchEntradasPorCarteira } from './data';
+import { fetchSaldosPorCarteira, fetchEntradasPorCarteira } from './data';
 import type { Transaction, Wallet } from './types';
 
 const STORAGE_KEY = '@grana_active_wallet_id';
@@ -59,40 +59,67 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     porCarteira: {},
     total: 0,
   });
+  const dono = isDemoMode ? 'demo' : session?.user.id ?? null;
+  const cicloRef = useRef({ dono, carga: 0, saldo: 0, entrada: 0, selecao: 0, vivo: true });
+  if (cicloRef.current.dono !== dono) cicloRef.current = { dono, carga: 0, saldo: 0, entrada: 0, selecao: 0, vivo: true };
+  const ciclo = cicloRef.current;
+  const donoPublicadoRef = useRef<typeof ciclo | null>(null);
+  const atual = () => cicloRef.current === ciclo && ciclo.vivo;
+  const carteirasAtuais = donoPublicadoRef.current === ciclo ? wallets : [];
+  const selecaoAtual = donoPublicadoRef.current === ciclo ? activeWalletId : 'total';
+  useEffect(() => {
+    ciclo.vivo = true;
+    return () => { ciclo.vivo = false; ciclo.carga++; ciclo.saldo++; ciclo.entrada++; ciclo.selecao++; };
+  }, [ciclo]);
 
   const loadWallets = useCallback(async () => {
+    if (!atual()) return [];
+    const carga = ++ciclo.carga;
     try {
       if (isDemoMode) {
         setWallets(DEMO_WALLETS);
         return DEMO_WALLETS;
       }
+      if (authLoading || !dono) return [];
       const list = await fetchWallets();
+      if (!atual() || carga !== ciclo.carga) return [];
       setWallets(list);
       return list;
     } catch (e) {
       console.warn('Erro ao carregar carteiras no contexto:', e);
       return [];
     } finally {
-      setLoading(false);
+      if (atual() && carga === ciclo.carga) setLoading(false);
     }
-  }, [isDemoMode]);
+  }, [isDemoMode, authLoading, ciclo]);
 
   useEffect(() => {
-    loadWallets();
-  }, [loadWallets]);
+    donoPublicadoRef.current = ciclo;
+    setWallets([]);
+    setSaldos({ porCarteira: {}, total: 0 });
+    setEntradas({ porCarteira: {}, total: 0 });
+    setActiveWalletIdState('total');
+    setLoading(true);
+  }, [ciclo]);
+
+  useEffect(() => { void loadWallets(); }, [loadWallets]);
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
-      if (saved) {
+    if (!dono) return;
+    const selecao = ciclo.selecao;
+    AsyncStorage.getItem(`${STORAGE_KEY}:${dono}`).then((saved) => {
+      if (atual() && ciclo.selecao === selecao && saved) {
         setActiveWalletIdState(saved);
       }
-    });
-  }, []);
+    }).catch(() => console.warn('[carteiras] não foi possível ler a seleção'));
+  }, [ciclo]);
 
   const setActiveWalletId = useCallback((id: string) => {
+    if (!atual() || !dono) return;
+    ciclo.selecao++;
     setActiveWalletIdState(id);
-    AsyncStorage.setItem(STORAGE_KEY, id).catch(() => {});
-  }, []);
+    AsyncStorage.setItem(`${STORAGE_KEY}:${dono}`, id).catch(() => console.warn('[carteiras] não foi possível guardar a seleção'));
+  }, [ciclo]);
 
   /* Se a carteira ativa foi excluída (em outro aparelho, por exemplo), os
      filtros por wallet_id passariam a bater com nada e a tela pareceria
@@ -109,28 +136,30 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, [loading, wallets, activeWalletId, setActiveWalletId]);
 
   const activeWallet = useMemo(() => {
-    if (activeWalletId === 'total') return null;
-    return wallets.find((w) => w.id === activeWalletId) || null;
-  }, [wallets, activeWalletId]);
+    if (selecaoAtual === 'total') return null;
+    return carteirasAtuais.find((w) => w.id === selecaoAtual) || null;
+  }, [wallets, selecaoAtual, ciclo]);
 
   const activeWalletName = useMemo(() => {
-    if (activeWalletId === 'total') return 'Total';
+    if (selecaoAtual === 'total') return 'Total';
     return activeWallet ? activeWallet.name : 'Principal';
-  }, [activeWalletId, activeWallet]);
+  }, [selecaoAtual, activeWallet]);
 
   const activeWalletColor = useMemo(() => {
-    if (activeWalletId === 'total') return '#1fa98d';
+    if (selecaoAtual === 'total') return '#1fa98d';
     return activeWallet ? activeWallet.color : '#1fa98d';
-  }, [activeWalletId, activeWallet]);
+  }, [selecaoAtual, activeWallet]);
 
   /* O modo de exemplo e a sessão offline, que não têm uma RPC confirmada
      disponível, somam percorrendo a lista já carregada em memória. */
   const updateSaldosComTransacoes = useCallback(
     (txs: Transaction[]) => {
+      if (!atual()) return;
+      ciclo.saldo++;
       const calculados = calcularSaldosWallets(wallets, txs);
       setSaldos(calculados);
     },
-    [wallets]
+    [wallets, ciclo]
   );
 
   /**
@@ -141,6 +170,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
    * máximo. Também é barato o bastante para rodar depois de cada alteração.
    */
   const refreshSaldos = useCallback(async (walletsAtualizadas?: Wallet[]) => {
+    if (!atual()) return;
     if (isDemoMode) return;
     /* A Home pode pintar e carregar transações antes de o SessionProvider
        terminar `getSession()`. Chamar a RPC nesse intervalo usa a chave anon
@@ -166,48 +196,55 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
        roda de novo. */
     const baseWallets = walletsAtualizadas ?? wallets;
     if (baseWallets.length === 0) return;
+    const pedido = ++ciclo.saldo;
     try {
       const agregado = await fetchSaldosPorCarteira();
+      if (!atual() || ciclo.saldo !== pedido) return;
       setSaldos(calcularSaldosComAgregado(baseWallets, agregado));
     } catch (e) {
       console.warn('Erro ao carregar saldos:', e);
     }
-  }, [authLoading, isDemoMode, sessaoNaoConfirmada, session, wallets]);
+  }, [authLoading, isDemoMode, sessaoNaoConfirmada, session, wallets, ciclo]);
 
   /* Mesmo par soma-em-memória/soma-no-banco de `updateSaldosComTransacoes` e
      `refreshSaldos`, para o seletor de carteira (regra 20): entradas, não
      saldo, e sem `initial_balance`. */
   const updateEntradasComTransacoes = useCallback(
     (txs: Transaction[]) => {
+      if (!atual()) return;
+      ciclo.entrada++;
       setEntradas(calcularEntradasWallets(wallets, txs));
     },
-    [wallets]
+    [wallets, ciclo]
   );
 
   const refreshEntradas = useCallback(async (walletsAtualizadas?: Wallet[]) => {
+    if (!atual()) return;
     if (isDemoMode) return;
     if (authLoading || !session || sessaoNaoConfirmada) return;
     const baseWallets = walletsAtualizadas ?? wallets;
     if (baseWallets.length === 0) return;
+    const pedido = ++ciclo.entrada;
     try {
       const agregado = await fetchEntradasPorCarteira();
+      if (!atual() || ciclo.entrada !== pedido) return;
       setEntradas(calcularEntradasComAgregado(baseWallets, agregado));
     } catch (e) {
       console.warn('Erro ao carregar entradas por carteira:', e);
     }
-  }, [authLoading, isDemoMode, sessaoNaoConfirmada, session, wallets]);
+  }, [authLoading, isDemoMode, sessaoNaoConfirmada, session, wallets, ciclo]);
 
   return (
     <WalletContext.Provider
       value={{
-        wallets,
-        activeWalletId,
+        wallets: carteirasAtuais,
+        activeWalletId: selecaoAtual,
         activeWallet,
         activeWalletName,
         activeWalletColor,
-        saldos,
-        entradas,
-        loading,
+        saldos: donoPublicadoRef.current === ciclo ? saldos : { porCarteira: {}, total: 0 },
+        entradas: donoPublicadoRef.current === ciclo ? entradas : { porCarteira: {}, total: 0 },
+        loading: donoPublicadoRef.current !== ciclo || loading,
         setActiveWalletId,
         refreshWallets: loadWallets,
         updateSaldosComTransacoes,

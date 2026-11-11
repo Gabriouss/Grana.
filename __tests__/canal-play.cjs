@@ -206,7 +206,7 @@ async function atualizacao(env) {
   conferirAssinar();
   conferirRotas();
   const layout = ler('app/_layout.tsx');
-  conferir('_layout só monta UpdateBanner fora do canal play', /\{session && !ehCanalPlay\(\) && <UpdateBanner \/>\}/.test(layout));
+  conferir('_layout só monta UpdateBanner fora do canal play e da recuperação', /\{session && !emRecuperacao && !ehCanalPlay\(\) && <UpdateBanner \/>\}/.test(layout));
   const faixa = ler('components/FaixaAssinatura.tsx');
   conferir('FaixaAssinatura sai no canal play antes de qualquer link', /if \(ehCanalPlay\(\) \|\| !session/.test(faixa));
   const baixar = ler('app/baixar.tsx');

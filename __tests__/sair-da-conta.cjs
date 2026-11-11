@@ -135,10 +135,32 @@ function etapasQueAnotam(sobrescrever = {}) {
 
   // ── O contexto de autenticação usa este módulo, não uma cópia ──────────
   {
+    // Mesmo SessionProvider real dos focais de isolamento. Só a fronteira
+    // sairDaConta é um dublê com promessa controlada; o módulo real e seus
+    // prazos já foram exercitados nos cenários acima.
+    const { authEnv, session } = require('./providers-isolamento.cjs');
+    const a = authEnv();
+    a.valor(); await a.flush();
+    a.emit('PASSWORD_RECOVERY', session('uid-1')); await a.flush();
+    let terminou = false;
+    const saida = a.valor().signOut().then(() => { terminou = true; });
+    await a.flush();
+    assert.equal(a.saidas(), 1, 'signOut real delega para sairDaConta');
+    assert.equal(terminou, false, 'signOut aguarda a promessa do módulo delegado');
+    assert.equal(a.valor().isLoading, true, 'rotas ficam protegidas durante a limpeza');
+    assert.equal(a.valor().emRecuperacao, true, 'a recuperação permanece protegida até sair');
+    assert.equal(a.valor().session.user.id, 'uid-1', 'a saída ainda está pendente');
+    const repetida = a.valor().signOut(); await a.flush();
+    assert.equal(a.saidas(), 1, 'saída repetida não duplica a delegação');
+    a.saida.resolve(); await Promise.all([saida, repetida]);
+    assert.equal(terminou, true);
+    assert.equal(a.valor().session, null, 'concluir o módulo encerra a sessão');
+    assert.equal(a.valor().emRecuperacao, false);
+    assert.equal(a.valor().isLoading, false);
+    a.p.unmount();
     const ctx = fs.readFileSync(path.join(root, 'lib/auth-context.tsx'), 'utf8');
-    assert.ok(/async signOut\(\) \{\s*await sairDaConta\(\{/.test(ctx), 'signOut delega para sairDaConta');
     assert.ok(!/await removerPushHabitoAntesDeSair\(\)/.test(ctx), 'sem espera direta, sem prazo, pelo token push');
-    ok('o signOut do app passa pelo módulo com prazo (o código anterior esperava o push direto)');
+    ok('signOut real delega uma vez, aguarda o módulo e mantém a proteção até sair');
   }
 
   // ── Sair numa tela não derruba as outras (17/10/2026) ─────────────────

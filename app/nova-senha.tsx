@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSession } from '@/lib/auth-context';
@@ -20,15 +20,21 @@ import BrandLogotype from '@/components/BrandLogotype';
  * segura a navegação em `emRecuperacao` até esta tela concluir.
  */
 export default function NovaSenhaScreen() {
-  const { definirNovaSenha, cancelarRecuperacao, signOut } = useSession();
+  const { definirNovaSenha, cancelarRecuperacao } = useSession();
   const insets = useSafeAreaInsets();
 
   const [senha, setSenha] = useState('');
   const [confirmacao, setConfirmacao] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const cancelandoRef = useRef(false);
+  const [cancelando, setCancelando] = useState(false);
+  const cicloRef = useRef(0);
+  const envioRef = useRef(false);
+  useEffect(() => () => { cicloRef.current++; }, []);
 
   async function handleSalvar() {
+    if (cancelandoRef.current || envioRef.current) return;
     setErro(null);
 
     const problema = validatePassword(senha);
@@ -42,10 +48,15 @@ export default function NovaSenhaScreen() {
     }
 
     setSalvando(true);
+    envioRef.current = true;
+    const ciclo = cicloRef.current;
+    const atual = () => cicloRef.current === ciclo && !cancelandoRef.current;
+    try {
     /* Mesma checagem do cadastro: uma senha que já vazou em outro serviço é
        exatamente a que um ataque de credential stuffing tenta primeiro, e
        trocar uma senha esquecida por uma vazada não melhora nada. */
     const vazamento = await checarSenhaVazada(senha);
+    if (!atual()) return;
     if (vazamento.status === 'vazada') {
       setSalvando(false);
       setErro(mensagemSenhaVazada(vazamento.vezes));
@@ -53,20 +64,38 @@ export default function NovaSenhaScreen() {
     }
 
     const { error } = await definirNovaSenha(senha);
-    setSalvando(false);
+    if (!atual()) return;
     if (error) {
       setErro(error.mensagem);
       return;
     }
     // Sucesso: `emRecuperacao` vira false e o layout raiz libera o app.
+    } catch {
+      console.warn('[recuperacao] não foi possível salvar a senha');
+      if (atual()) setErro('Não conseguimos salvar sua senha. Tente novamente.');
+    } finally {
+      envioRef.current = false;
+      if (atual()) setSalvando(false);
+    }
   }
 
   async function handleCancelar() {
     /* Sair de verdade, e não só esconder a tela: a sessão veio de um link de
        recuperação, então deixá-la de pé daria acesso ao app a quem abriu o
        link sem concluir a troca. */
-    cancelarRecuperacao();
-    await signOut();
+    if (cancelandoRef.current) return;
+    cancelandoRef.current = true;
+    cicloRef.current++;
+    setCancelando(true);
+    try {
+      await cancelarRecuperacao();
+    } catch {
+      console.warn('[recuperacao] saída não concluída');
+      setErro('Não conseguimos sair agora. Tente novamente.');
+    } finally {
+      cancelandoRef.current = false;
+      setCancelando(false);
+    }
   }
 
   return (
@@ -120,7 +149,7 @@ export default function NovaSenhaScreen() {
         <AppPressable
           style={({ hovered }) => [styles.primaryBtn, hovered && { opacity: 0.9 }]}
           onPress={handleSalvar}
-          disabled={salvando}
+          disabled={salvando || cancelando}
         >
           {salvando ? (
             <ActivityIndicator color={theme.paper} />
@@ -129,8 +158,8 @@ export default function NovaSenhaScreen() {
           )}
         </AppPressable>
 
-        <AppPressable onPress={handleCancelar} style={styles.cancelar}>
-          <Text style={styles.cancelarTexto}>Cancelar e sair</Text>
+        <AppPressable onPress={handleCancelar} disabled={cancelando} style={styles.cancelar}>
+          <Text style={styles.cancelarTexto}>{cancelando ? 'Saindo…' : 'Cancelar e sair'}</Text>
         </AppPressable>
       </View>
       </ScrollView>

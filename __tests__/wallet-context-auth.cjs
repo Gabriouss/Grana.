@@ -20,6 +20,7 @@ const react = {
     return typeof tipo === 'function' ? tipo({ ...props, children: children.length === 1 ? children[0] : children }) : null;
   },
   useCallback: (fn) => fn,
+  useRef: (value) => ({ current: value }),
   useContext: () => null,
   useEffect: () => {},
   useMemo: (fn) => fn(),

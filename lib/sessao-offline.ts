@@ -1,6 +1,18 @@
 import type { Session } from '@supabase/supabase-js';
 import { armazenamentoSessao, CHAVE_SESSAO, supabase } from './supabase';
 
+/** O mesmo fim absoluto acompanha todas as etapas de uma abertura. */
+export async function esperarSessaoAte<T>(operacao: () => PromiseLike<T> | T, fim: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    if (Date.now() >= fim) throw new Error('sessão não respondeu no prazo');
+    return await Promise.race([
+      Promise.resolve().then(operacao),
+      new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('sessão não respondeu no prazo')), fim - Date.now()); }),
+    ]);
+  } finally { clearTimeout(timer); }
+}
+
 /**
  * A sessão como ela está gravada no aparelho, mesmo com o token de acesso
  * vencido.
@@ -23,9 +35,9 @@ import { armazenamentoSessao, CHAVE_SESSAO, supabase } from './supabase';
  * Serve para o app saber DE QUEM é o cache que ele já tem no disco e continuar
  * exibindo o que é daquela pessoa — não para liberar nada novo.
  */
-export async function lerSessaoDoDisco(): Promise<Session | null> {
+export async function lerSessaoDoDisco(prazoMs = 2_000, falharSeIndisponivel = false): Promise<Session | null> {
   try {
-    const bruto = await armazenamentoSessao?.getItem(CHAVE_SESSAO);
+    const bruto = await esperarSessaoAte(() => armazenamentoSessao?.getItem(CHAVE_SESSAO), Date.now() + prazoMs);
     if (!bruto) return null;
     const sessao = JSON.parse(bruto) as Partial<Session> | null;
     /* Mesma checagem mínima que o `auth-js` faz antes de aceitar um registro
@@ -37,7 +49,8 @@ export async function lerSessaoDoDisco(): Promise<Session | null> {
       typeof sessao.access_token !== 'string' ||
       typeof sessao.refresh_token !== 'string' ||
       !sessao.user ||
-      typeof sessao.user.id !== 'string'
+      typeof sessao.user.id !== 'string' ||
+      (sessao.expires_at !== undefined && (typeof sessao.expires_at !== 'number' || !Number.isFinite(new Date(sessao.expires_at * 1000).getTime())))
     ) {
       return null;
     }
@@ -47,6 +60,7 @@ export async function lerSessaoDoDisco(): Promise<Session | null> {
        perdida, JSON truncado), a pessoa vai cair no login sem entender por
        quê, e este log é a única pista de que a causa foi o disco. */
     console.warn('[sessao] registro guardado ilegível', (erro as { name?: string })?.name ?? 'erro');
+    if (falharSeIndisponivel) throw erro;
     return null;
   }
 }
@@ -67,6 +81,39 @@ export async function esquecerSessaoDoDisco(): Promise<void> {
   } catch (erro) {
     console.warn('[sessao] não foi possível apagar o registro guardado', (erro as { name?: string })?.name ?? 'erro');
   }
+}
+
+/** Só restringe navegação local; decodificar JWT NÃO valida autorização. */
+function recuperacaoDaSessao(sessao: Session): { id: string; recuperacao: boolean } | null {
+  try {
+    const payload = sessao.access_token.split('.')[1];
+    const claims = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/'))) as {
+      session_id?: string; amr?: { method?: string }[];
+    };
+    if (!claims.session_id || typeof claims.session_id !== 'string') return null;
+    return { id: claims.session_id, recuperacao: Array.isArray(claims.amr) && claims.amr.some(a => a.method === 'recovery') };
+  } catch {
+    return null;
+  }
+}
+
+/** Comparação local, nunca incluída em logs. Refresh conserva session_id. */
+export function identidadeDaSessao(sessao: Session | null): string | null {
+  return sessao ? `${sessao.user.id}:${recuperacaoDaSessao(sessao)?.id ?? sessao.refresh_token}` : null;
+}
+
+export async function sessaoExigeNovaSenha(sessao: Session): Promise<boolean> {
+  const origem = recuperacaoDaSessao(sessao);
+  if (!origem?.recuperacao) return false;
+  // Sessões distintas da mesma conta não compartilham a conclusão da troca.
+  const concluida = await esperarSessaoAte(() => armazenamentoSessao?.getItem(`${CHAVE_SESSAO}:senha-concluida`), Date.now() + 2_000);
+  return concluida !== JSON.stringify([sessao.user.id, origem.id]);
+}
+
+export async function concluirRecuperacaoDaSessao(sessao: Session): Promise<void> {
+  const origem = recuperacaoDaSessao(sessao);
+  if (!origem) return;
+  await armazenamentoSessao?.setItem(`${CHAVE_SESSAO}:senha-concluida`, JSON.stringify([sessao.user.id, origem.id]));
 }
 
 /** O token de acesso desta sessão já venceu? */

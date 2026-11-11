@@ -36,6 +36,18 @@ const EntitlementContext = createContext<EntitlementContextValue | null>(null);
 /* Modo teste da landing: acesso liberado só dentro do teste, que não toca o servidor. */
 const ACESSO_TESTE: EstadoAcesso = { enforced: false, active: true, allowed: true, status: 'teste', access_until: null, grace_until: null };
 
+class PrazoDoAcesso extends Error { constructor() { super('confirmação de acesso não respondeu no prazo'); this.name = 'TimeoutError'; } }
+async function esperarAcessoAte<T>(operacao: () => PromiseLike<T>, fim: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    if (Date.now() >= fim) throw new PrazoDoAcesso();
+    return await Promise.race([
+      Promise.resolve().then(operacao),
+      new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new PrazoDoAcesso()), fim - Date.now()); }),
+    ]);
+  } finally { clearTimeout(timer); }
+}
+
 export function useEntitlement() {
   const value = use(EntitlementContext);
   if (!value) throw new Error('useEntitlement precisa estar dentro de EntitlementProvider');
@@ -44,7 +56,7 @@ export function useEntitlement() {
 }
 
 export function EntitlementProvider({ children }: PropsWithChildren) {
-  const { session, sessaoNaoConfirmada, isLoading: carregandoSessao } = useSession();
+  const { session, sessaoNaoConfirmada, emRecuperacao, isLoading: carregandoSessao } = useSession();
   const [estado, setEstado] = useState<EstadoAcesso | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [modoOffline, setModoOffline] = useState(false);
@@ -60,7 +72,20 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
      é uma janela em que a guarda de `app/_layout.tsx` pode cair e remontar o
      grupo de telas. */
   // No modo teste o acesso vem fixo de `useEntitlement`; o provedor não consulta nada.
-  const userId = MODO_TESTE ? null : session?.user.id ?? null;
+  const userId = MODO_TESTE || carregandoSessao || emRecuperacao ? null : session?.user.id ?? null;
+  const geracaoRef = useRef({ dono: userId, numero: 0, controle: new AbortController() });
+  const donoDoEstadoRef = useRef<typeof geracaoRef.current | null>(null);
+  const gravacaoRef = useRef<Promise<void>>(Promise.resolve());
+  if (geracaoRef.current.dono !== userId) {
+    geracaoRef.current.controle.abort();
+    geracaoRef.current = { dono: userId, numero: 0, controle: new AbortController() };
+  }
+  const ciclo = geracaoRef.current;
+  const estadoDoDono = donoDoEstadoRef.current === ciclo ? estado : null;
+  useEffect(() => {
+    if (ciclo.controle.signal.aborted) ciclo.controle = new AbortController();
+    return () => { ciclo.numero++; ciclo.controle.abort(); };
+  }, [ciclo]);
   const usuarioDosAvisosRef = useRef(userId);
   usuarioDosAvisosRef.current = userId;
   useEffect(() => {
@@ -75,11 +100,25 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
   const naoConfirmadaRef = useRef(sessaoNaoConfirmada);
   naoConfirmadaRef.current = sessaoNaoConfirmada;
   const estadoRef = useRef<EstadoAcesso | null>(null);
-  estadoRef.current = estado;
+  estadoRef.current = estadoDoDono;
+  const sessaoAtualRef = useRef(session);
+  sessaoAtualRef.current = session;
 
   const recarregar = useCallback(async () => {
+    if (geracaoRef.current !== ciclo || ciclo.controle.signal.aborted) return;
+    // Copiar primitivas agora: a sessão global do SDK pode mudar antes mesmo
+    // de React renderizar novamente e invalidar o ciclo.
+    const donoDaOrigem = sessaoAtualRef.current?.user.id;
+    const tokenDaOrigem = sessaoAtualRef.current?.access_token;
+    const numero = ++ciclo.numero;
+    const atual = () => geracaoRef.current === ciclo && ciclo.numero === numero && !ciclo.controle.signal.aborted;
+    const publicar = (novo: EstadoAcesso | null) => {
+      donoDoEstadoRef.current = ciclo;
+      estadoRef.current = novo;
+      setEstado(novo);
+    };
     if (!userId) {
-      setEstado(null);
+      publicar(null);
       setModoOffline(false);
       setSincronizacao({ atencao: false, mensagem: null });
       setCarregando(false);
@@ -92,6 +131,14 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
 
     setCarregando(true);
 
+    const fim = Date.now() + 12_000;
+    const consulta = new AbortController();
+    const interromper = () => consulta.abort();
+    ciclo.controle.signal.addEventListener('abort', interromper, { once: true });
+    let adiantado: EstadoAcesso | null = null;
+    try {
+      if (donoDaOrigem !== userId || !tokenDaOrigem) throw new Error('sessão de origem indisponível');
+
     /* Antes de gastar rede: se já existe palavra do servidor guardada e ela
        ainda vale, ela entra AGORA e a confirmação segue por trás. Sem isto o
        app inteiro ficava numa tela de carregamento até a rede responder — e
@@ -101,15 +148,23 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
        a espera vai ao tempo do sistema operacional, de um minuto para cima.
        Quem paga e abre o app no metrô não pode olhar para um `spinner` desse
        tamanho tendo o acesso guardado a um `AsyncStorage` de distância. */
-    const adiantado = await lerAcessoGuardado(userId);
+    adiantado = await esperarAcessoAte(() => lerAcessoGuardado(userId), Math.min(fim, Date.now() + 1_000)).catch(() => {
+      console.warn('[entitlement] cache indisponível; confirmação pelo servidor');
+      return null;
+    });
+    if (!atual()) return;
     if (adiantado && prazoOfflineAindaVale(adiantado)) {
-      setEstado(adiantado);
+      publicar(adiantado);
       setModoOffline(true);
       setCarregando(false);
     }
 
-    try {
-      const vinculo = await vincularAssinaturasPendentes();
+      const vinculo = await esperarAcessoAte(() => vincularAssinaturasPendentes({
+        dono: userId, tokenDeAcesso: tokenDaOrigem,
+        geracao: ciclo, podeContinuar: () => geracaoRef.current === ciclo,
+        sinal: ciclo.controle.signal, fim,
+      }), fim);
+      if (!atual()) return;
       setSincronizacao({
         atencao: vinculo.houveFalha,
         mensagem: vinculo.houveFalha
@@ -118,15 +173,29 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
             : 'Não conseguimos confirmar sua assinatura agora. Tente verificar novamente em instantes.'
           : null,
       });
-      const { data, error } = await supabase.rpc('obter_estado_acesso');
+      const { data, error } = await esperarAcessoAte(() => {
+        if (!atual()) throw new Error('ciclo de acesso interrompido');
+        return supabase.rpc('obter_estado_acesso').setHeader('Authorization', `Bearer ${tokenDaOrigem}`).abortSignal(consulta.signal);
+      }, fim);
+      if (!atual()) return;
       if (error) throw error;
       const confirmado = data as unknown as EstadoAcesso;
-      setEstado(confirmado);
+      if (!confirmado || typeof confirmado.allowed !== 'boolean' || typeof confirmado.enforced !== 'boolean') throw new Error('resposta de acesso inválida');
+      publicar(confirmado);
       setModoOffline(false);
-      await guardarAcesso(userId, confirmado);
+      // Escritas em voo não são canceláveis no AsyncStorage. Enfileirar impede
+      // a conclusão atrasada de A de sobrescrever uma gravação posterior de B.
+      const gravacao = gravacaoRef.current.then(async () => {
+        if (atual()) await guardarAcesso(userId, confirmado);
+      });
+      gravacaoRef.current = gravacao.catch(() => console.warn('[entitlement] falha ao guardar confirmação'));
+      // Falha/hang de persistência não segura a decisão já confirmada.
+      await esperarAcessoAte(() => gravacao, fim).catch(() => console.warn('[entitlement] confirmação não persistida no prazo'));
+      if (!atual()) return;
       // Só a palavra confirmada do servidor altera a agenda. Cache/falha de rede não reagendam.
       if (usuarioDosAvisosRef.current === userId) void sincronizarAvisosAssinatura(userId, confirmado);
     } catch (error) {
+      if (!atual()) return;
       /* `sessaoNaoConfirmada` entra na mesma conta que a falta de rede porque a
          causa é a mesma: a sessão veio do disco, o token de acesso está
          vencido, e enquanto a renovação não passa o PostgREST responde 401 —
@@ -135,7 +204,7 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
          jogaria na tela de assinatura quem está com a assinatura em dia. Não é
          afrouxamento: o servidor continua recusando tudo, e o acesso exibido
          segue limitado ao prazo que o próprio servidor já havia prometido. */
-      const semRede = isLikelyNetworkError(error) || naoConfirmadaRef.current;
+      const semRede = error instanceof PrazoDoAcesso || isLikelyNetworkError(error) || naoConfirmadaRef.current;
       console.error('[entitlement] não foi possível confirmar o acesso', {
         message: error instanceof Error ? error.message : 'erro desconhecido',
         /* Separar os dois casos é o ponto: falta de rede é temporária e o
@@ -149,9 +218,9 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
          na tela de venda — e o cache de lançamentos e a fila de voz, que
          funcionam offline, ficavam inalcançáveis atrás de um portão que
          exigia estar online para abrir. */
-      const guardado = semRede ? await lerAcessoGuardado(userId) : null;
+      const guardado = semRede ? adiantado : null;
       if (guardado && prazoOfflineAindaVale(guardado)) {
-        setEstado(guardado);
+        publicar(guardado);
         setModoOffline(true);
         setSincronizacao({ atencao: false, mensagem: null });
         return;
@@ -170,12 +239,14 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
           ? null
           : 'Não conseguimos confirmar seu acesso agora. Tente verificar novamente em instantes.',
       });
-      setEstado(proximo);
+      publicar(proximo);
       setModoOffline(manteveAcesso);
     } finally {
-      setCarregando(false);
+      consulta.abort();
+      ciclo.controle.signal.removeEventListener('abort', interromper);
+      if (atual()) setCarregando(false);
     }
-  }, [userId]);
+  }, [ciclo, userId]);
 
   useEffect(() => {
     void recarregar();
@@ -214,11 +285,13 @@ export function EntitlementProvider({ children }: PropsWithChildren) {
     };
   }, [userId]);
   useEffect(() => {
-    vigiaRef.current?.acompanhar(estado);
-  }, [estado]);
+    vigiaRef.current?.acompanhar(estadoDoDono);
+  }, [estadoDoDono]);
 
   return (
-    <EntitlementContext value={{ estado, carregando, sincronizacao, modoOffline, recarregar }}>
+    <EntitlementContext value={{ estado: estadoDoDono, carregando: ciclo !== donoDoEstadoRef.current || carregando,
+      sincronizacao: donoDoEstadoRef.current === ciclo ? sincronizacao : { atencao: false, mensagem: null },
+      modoOffline: donoDoEstadoRef.current === ciclo && modoOffline, recarregar }}>
       {children}
     </EntitlementContext>
   );
