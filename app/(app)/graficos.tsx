@@ -39,18 +39,21 @@ type TabModo = 'geral' | 'despesas' | 'renda';
 type Granularidade = 'anos' | 'meses' | 'periodo';
 
 /** Diferença em meses inteiros entre dois "YYYY-MM-DD", inclusive nas pontas. */
-function mesesEntre(inicioISO: string, fimISO: string): { anoMes: string; label: string }[] {
+function mesesEntre(inicioISO: string, fimISO: string): { anoMes: string; ateAnoMes: string; label: string }[] {
   const [anoIni, mesIni] = inicioISO.split('-').map(Number);
   const [anoFim, mesFim] = fimISO.split('-').map(Number);
   const totalMeses = Math.max((anoFim - anoIni) * 12 + (mesFim - mesIni), 0);
-  const lista: { anoMes: string; label: string }[] = [];
+  const lista: { anoMes: string; ateAnoMes: string; label: string }[] = [];
   // Teto de 24 pontos: um período de anos inteiros não deveria virar uma
   // régua ilegível de dezenas de rótulos espremidos no eixo X.
-  const passo = totalMeses > 24 ? Math.ceil((totalMeses + 1) / 24) : 1;
+  const passo = Math.ceil((totalMeses + 1) / 24);
   for (let i = 0; i <= totalMeses; i += passo) {
     const d = new Date(anoIni, mesIni - 1 + i, 1);
     const anoMes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    lista.push({ anoMes, label: `${MESES_ABREV[d.getMonth()]}/${String(d.getFullYear()).slice(2)}` });
+    const fim = new Date(anoIni, mesIni - 1 + Math.min(i + passo - 1, totalMeses), 1);
+    const ateAnoMes = `${fim.getFullYear()}-${String(fim.getMonth() + 1).padStart(2, '0')}`;
+    const label = `${MESES_ABREV[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`;
+    lista.push({ anoMes, ateAnoMes, label: anoMes === ateAnoMes ? label : `${label} a ${MESES_ABREV[fim.getMonth()]}/${String(fim.getFullYear()).slice(2)}` });
   }
   return lista;
 }
@@ -109,8 +112,16 @@ export default function GraficosScreen() {
   });
   const [periodoFim, setPeriodoFim] = useState(hoje);
   const [pickerAberto, setPickerAberto] = useState<'inicio' | 'fim' | null>(null);
+  const cargaAtual = useRef(0);
+  const filtroCarga = JSON.stringify([isDemoMode, granularidade, periodoInicio, periodoFim]);
+  const ultimoFiltroCarga = useRef(filtroCarga);
+  if (ultimoFiltroCarga.current !== filtroCarga) {
+    ultimoFiltroCarga.current = filtroCarga;
+    cargaAtual.current++;
+  }
 
   const carregarDados = useCallback(async (forcar = false) => {
+    const pedido = ++cargaAtual.current;
     try {
       if (isDemoMode) {
         setTransactions(lancamentosDeExemplo());
@@ -127,20 +138,25 @@ export default function GraficosScreen() {
         : historicoCache.current && !forcar
           ? historicoCache.current
           : await fetchTransactions();
+      if (pedido !== cargaAtual.current) return;
       if (granularidade !== 'periodo') historicoCache.current = data;
       setTransactions(data || []);
       setErroCarga(null);
     } catch (e) {
+      if (pedido !== cargaAtual.current) return;
       console.warn('Erro ao carregar transações para gráficos:', e);
       setErroCarga('Não consegui carregar seus lançamentos. Puxe a tela para tentar de novo.');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (pedido === cargaAtual.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [isDemoMode, granularidade, periodoInicio, periodoFim]);
 
   useEffect(() => {
     carregarDados();
+    return () => { cargaAtual.current++; };
   }, [carregarDados]);
   useRecarregarAoChegarDadoNovo(() => { void carregarDados(true); });
 
@@ -174,10 +190,10 @@ export default function GraficosScreen() {
     let grupos: { chave: string; label: string; inclui: (tx: Transaction) => boolean }[];
 
     if (granularidade === 'periodo') {
-      grupos = mesesEntre(periodoInicio, periodoFim).map(({ anoMes, label }) => ({
+      grupos = mesesEntre(periodoInicio, periodoFim).map(({ anoMes, ateAnoMes, label }) => ({
         chave: anoMes,
         label,
-        inclui: (tx) => tx.occurred_on.startsWith(anoMes),
+        inclui: (tx) => tx.occurred_on.slice(0, 7) >= anoMes && tx.occurred_on.slice(0, 7) <= ateAnoMes,
       }));
     } else if (txsToUse.length === 0) {
       grupos = [];
@@ -209,10 +225,10 @@ export default function GraficosScreen() {
       const anosMeses = txsToUse.map((t) => t.occurred_on.slice(0, 7)).sort();
       const primeiro = anosMeses[0];
       const ultimo = anosMeses[anosMeses.length - 1];
-      grupos = mesesEntre(`${primeiro}-01`, `${ultimo}-01`).map(({ anoMes, label }) => ({
+      grupos = mesesEntre(`${primeiro}-01`, `${ultimo}-01`).map(({ anoMes, ateAnoMes, label }) => ({
         chave: anoMes,
         label,
-        inclui: (tx) => tx.occurred_on.startsWith(anoMes),
+        inclui: (tx) => tx.occurred_on.slice(0, 7) >= anoMes && tx.occurred_on.slice(0, 7) <= ateAnoMes,
       }));
     }
 

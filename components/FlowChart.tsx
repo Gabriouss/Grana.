@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { theme, spacing, type, fonts, graficoLinha } from '@/lib/theme';
@@ -151,12 +151,12 @@ export default function FlowChart({
   const currentYear = year ?? new Date().getFullYear();
   const currentMonth = month ?? new Date().getMonth();
 
-  const buckets = generateBuckets(period, currentYear, currentMonth);
+  const hojeISO = todayISO();
+  const buckets = useMemo(() => generateBuckets(period, currentYear, currentMonth), [period, currentYear, currentMonth, hojeISO]);
   /* A3: abria no ÚLTIMO ponto, que no mês corrente é "29–30/09 · Sem
      movimentação", onze dias à frente de hoje. Abre no período que contém
      hoje; em mês passado ou outro período, nenhum ponto contém hoje e o
      último segue como padrão. */
-  const hojeISO = todayISO();
   const indiceInicial = () => {
     const i = buckets.findIndex((b) => b.matches(hojeISO));
     return i >= 0 ? i : buckets.length - 1;
@@ -169,17 +169,19 @@ export default function FlowChart({
     (_, i) => AXIS_LEFT + (i / (buckets.length - 1 || 1)) * (viewW - AXIS_LEFT - PAD_RIGHT)
   );
 
-  const inTotals = buckets.map((b) =>
-    transactions
-      .filter((t) => t.type === 'in' && b.matches(t.occurred_on))
-      .reduce((sum, t) => sum + Number(t.amount), 0)
-  );
+  const { inTotals, outTotals } = useMemo(() => ({
+    inTotals: buckets.map((b) =>
+      transactions
+        .filter((t) => t.type === 'in' && b.matches(t.occurred_on))
+        .reduce((sum, t) => sum + Number(t.amount), 0)
+    ),
 
-  const outTotals = buckets.map((b) =>
-    transactions
-      .filter((t) => t.type === 'out' && b.matches(t.occurred_on))
-      .reduce((sum, t) => sum + Number(t.amount), 0)
-  );
+    outTotals: buckets.map((b) =>
+      transactions
+        .filter((t) => t.type === 'out' && b.matches(t.occurred_on))
+        .reduce((sum, t) => sum + Number(t.amount), 0)
+    ),
+  }), [transactions, buckets]);
 
   const maxVal = Math.max(...inTotals, ...outTotals, 1);
   /* Sem nenhum lançamento no período, `maxVal` cai no piso de 1 e as cinco
