@@ -118,7 +118,7 @@ async function lerFila(): Promise<PendingItem[]> {
 
 export async function getQueue(): Promise<PendingItem[]> {
   try {
-    return await lerFila();
+    return await emSerie(lerFila);
   } catch (erro) {
     console.error('[fila-pendente] não consegui ler a fila', erro);
     return [];
@@ -127,7 +127,7 @@ export async function getQueue(): Promise<PendingItem[]> {
 
 /** Grava a fila. Falha SOBE: a fila não é cache, é a única cópia do lançamento
     feito sem rede, e quem chama precisa saber que não ficou guardado. */
-export async function setQueue(items: PendingItem[]): Promise<void> {
+async function gravarFila(items: PendingItem[]): Promise<void> {
   try {
     await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(items));
   } catch (erro) {
@@ -137,6 +137,19 @@ export async function setQueue(items: PendingItem[]): Promise<void> {
 }
 
 let escritaEmCurso: Promise<unknown> = Promise.resolve();
+
+function emSerie<T>(operacao: () => Promise<T>): Promise<T> {
+  const proxima = escritaEmCurso.then(async () => {
+    await recuperarMovimento();
+    return operacao();
+  });
+  escritaEmCurso = proxima.catch(() => {});
+  return proxima;
+}
+
+export function setQueue(items: PendingItem[]): Promise<void> {
+  return emSerie(() => gravarFila(items));
+}
 
 /**
  * Lê, muda e grava a fila, UMA mudança por vez.
@@ -148,13 +161,11 @@ let escritaEmCurso: Promise<unknown> = Promise.resolve();
  * aqui, em série.
  */
 export function atualizarFila(mudar: (fila: PendingItem[]) => PendingItem[] | Promise<PendingItem[]>): Promise<PendingItem[]> {
-  const proxima = escritaEmCurso.then(async () => {
+  return emSerie(async () => {
     const nova = await mudar(await lerFila());
-    await setQueue(nova);
+    await gravarFila(nova);
     return nova;
   });
-  escritaEmCurso = proxima.catch(() => {});
-  return proxima;
 }
 
 /**
@@ -429,6 +440,7 @@ export class FilaCheiaError extends Error {
    silêncio: quem o move publica um recibo visível, e a tela pode listar,
    devolver à fila ou descartar por escolha da pessoa. */
 export const REVISAO_KEY = 'grana:queue:precisa-de-revisao';
+const MOVIMENTO_KEY = 'grana:queue:movimento';
 
 export type ItemEmRevisao = PendingItem & {
   motivo: { code: string; message: string };
@@ -438,32 +450,98 @@ export type ItemEmRevisao = PendingItem & {
 async function lerRevisao(): Promise<ItemEmRevisao[]> {
   try {
     const raw = await AsyncStorage.getItem(REVISAO_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const lista = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(lista)) throw new Error('A lista de revisão está ilegível.');
+    return lista;
   } catch (erro) {
     console.error('[fila-pendente] não consegui ler a lista de revisão', erro);
-    return [];
+    throw erro;
   }
 }
 
-export async function guardarEmRevisao(item: PendingItem, erro: unknown): Promise<void> {
-  const e = erro as { code?: unknown; message?: unknown } | null;
-  const lista = await lerRevisao();
-  lista.push({
-    ...item,
-    motivo: { code: String(e?.code ?? ''), message: String(e?.message ?? erro).slice(0, 300) },
-    revisaoDesde: new Date().toISOString(),
+type Movimento = { destino: 'fila' | 'revisao'; fila: PendingItem[]; revisao: ItemEmRevisao[] };
+
+/* O journal só desaparece depois das duas escritas; na retomada, termina a
+   mesma mudança antes de qualquer leitura/envio ou mutação seguinte. */
+async function aplicarMovimento(movimento: Movimento): Promise<void> {
+  const gravarRevisao = () => AsyncStorage.setItem(REVISAO_KEY, JSON.stringify(movimento.revisao));
+  if (movimento.destino === 'fila') {
+    await gravarFila(movimento.fila);
+    await gravarRevisao();
+  } else {
+    await gravarRevisao();
+    await gravarFila(movimento.fila);
+  }
+  await AsyncStorage.removeItem(MOVIMENTO_KEY);
+}
+
+async function recuperarMovimento(): Promise<void> {
+  const raw = await AsyncStorage.getItem(MOVIMENTO_KEY);
+  if (!raw) return;
+  const movimento = JSON.parse(raw) as Movimento;
+  if (!movimento || !['fila', 'revisao'].includes(movimento.destino) ||
+      !Array.isArray(movimento.fila) || !Array.isArray(movimento.revisao)) {
+    throw new Error('Não foi possível recuperar a movimentação da fila. Os registros foram preservados.');
+  }
+  await aplicarMovimento(movimento);
+}
+
+async function mover(movimento: Movimento): Promise<void> {
+  await AsyncStorage.setItem(MOVIMENTO_KEY, JSON.stringify(movimento));
+  await aplicarMovimento(movimento);
+}
+
+function mesmoItem(a: PendingItem, b: PendingItem): boolean {
+  return a.userId === b.userId && (a.localId === b.localId ||
+    !!a.clientRequestId && a.clientRequestId === b.clientRequestId);
+}
+
+export function guardarEmRevisao(item: PendingItem, erro: unknown): Promise<void> {
+  return emSerie(async () => {
+    const e = erro as { code?: unknown; message?: unknown } | null;
+    const lista = await lerRevisao();
+    const revisao = [...lista.filter(i => !mesmoItem(i, item)), {
+      ...item,
+      motivo: { code: String(e?.code ?? ''), message: String(e?.message ?? erro).slice(0, 300) },
+      revisaoDesde: new Date().toISOString(),
+    }];
+    const fila = await lerFila();
+    if (fila.some(i => mesmoItem(i, item))) {
+      await mover({ destino: 'revisao', fila: fila.filter(i => !mesmoItem(i, item)), revisao });
+    } else {
+      await AsyncStorage.setItem(REVISAO_KEY, JSON.stringify(revisao));
+    }
   });
-  /* Sem try: se não der para guardar em revisão, quem chama NÃO pode tirar o
-     item da fila. Perder o item é pior que retentar. */
-  await AsyncStorage.setItem(REVISAO_KEY, JSON.stringify(lista));
 }
 
 /** Itens desta conta que o banco recusou e esperam a pessoa decidir. */
 export async function listarEmRevisao(): Promise<ItemEmRevisao[]> {
-  const userId = await idDoUsuarioLocal();
-  const lista = await lerRevisao();
-  if (!userId || await idDoUsuarioLocal() !== userId) return [];
-  return lista.filter((item) => item.userId === userId);
+  return emSerie(async () => {
+    const userId = await idDoUsuarioLocal();
+    const lista = await lerRevisao();
+    if (!userId || await idDoUsuarioLocal() !== userId) return [];
+    return lista.filter((item) => item.userId === userId);
+  });
+}
+
+/** Destino durável antes de remover a origem, inclusive para metas sem chave. */
+export function devolverRevisaoParaFila(localId: string): Promise<PendingItem | null> {
+  return emSerie(async () => {
+    const userId = await idDoUsuarioLocal();
+    const lista = await lerRevisao();
+    const item = lista.find(i => i.localId === localId && userId && i.userId === userId);
+    if (!item) return null;
+    const fila = await lerFila();
+    if (await idDoUsuarioLocal() !== userId) throw new Error('Entre na conta original para devolver este registro.');
+    const existente = fila.find(i => mesmoItem(i, item));
+    if (!existente && separarPorDono(fila, userId).minhas.length >= TETO_DA_FILA) throw new FilaCheiaError();
+    const { motivo: _motivo, revisaoDesde: _desde, ...pendente } = item;
+    await mover({
+      destino: 'fila', fila: existente ? fila : [...fila, pendente],
+      revisao: lista.filter(i => !mesmoItem(i, item)),
+    });
+    return existente ?? pendente;
+  });
 }
 
 /**
@@ -517,12 +595,14 @@ export function resumoDaRevisao(item: ItemEmRevisao): ResumoDaRevisao {
 
 /** Tira um item da revisão (a tela devolve à fila ou descarta por escolha da pessoa). */
 export async function tirarDaRevisao(localId: string): Promise<ItemEmRevisao | null> {
-  const userId = await idDoUsuarioLocal();
-  const lista = await lerRevisao();
-  if (!userId || await idDoUsuarioLocal() !== userId) return null;
-  const i = lista.findIndex((item) => item.localId === localId && !!userId && item.userId === userId);
-  if (i < 0) return null;
-  const [item] = lista.splice(i, 1);
-  await AsyncStorage.setItem(REVISAO_KEY, JSON.stringify(lista));
-  return item;
+  return emSerie(async () => {
+    const userId = await idDoUsuarioLocal();
+    const lista = await lerRevisao();
+    if (!userId || await idDoUsuarioLocal() !== userId) return null;
+    const i = lista.findIndex((item) => item.localId === localId && !!userId && item.userId === userId);
+    if (i < 0) return null;
+    const [item] = lista.splice(i, 1);
+    await AsyncStorage.setItem(REVISAO_KEY, JSON.stringify(lista));
+    return item;
+  });
 }
