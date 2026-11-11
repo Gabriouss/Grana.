@@ -100,36 +100,136 @@ export function lerExtratoConciliacao(texto: string): LinhaPix[] {
 export function conciliarPix(op: { userId: string; carteiraId: string; principalId: string; linhas: LinhaPix[]; lancamentos: Transaction[] }): ResultadoPix[] {
   const transacoes = op.lancamentos.filter(t => t.user_id === op.userId && (t.wallet_id ?? op.principalId) === op.carteiraId
     && !t.card_id && t.payment_method !== 'credit');
-  const distancia = (a: string, b: string) => Math.abs(Date.parse(diaCivil(a) + 'T00:00:00Z') - Date.parse(diaCivil(b) + 'T00:00:00Z')) / 86_400_000;
+  const dias = new Map<string, number>();
+  const dia = (data: string): number => {
+    let valor = dias.get(data);
+    if (valor === undefined) {
+      valor = Date.parse(diaCivil(data) + 'T00:00:00Z') / 86_400_000;
+      dias.set(data, valor);
+    }
+    return valor;
+  };
+  const distancia = (a: string, b: string) => Math.abs(dia(a) - dia(b));
   const igualValor = (t: Transaction, l: LinhaPix) => Number.isFinite(t.amount) && Math.round(t.amount * 100) === l.centavos && t.type === l.direcao;
   const noCredito = op.lancamentos.filter(t => t.user_id === op.userId && (!!t.card_id || t.payment_method === 'credit'));
+  const chaveValor = (direcao: TxType, centavos: number) => JSON.stringify([direcao, centavos]);
+  type Entrada = { transacao: Transaction; ordem: number };
+  type GrupoValor = { entradas: Entrada[]; porDia?: Map<number, Entrada[]> };
+  function indexarValores(lista: Transaction[]): Map<string, GrupoValor> {
+    const indice = new Map<string, GrupoValor>();
+    lista.forEach((transacao, ordem) => {
+      if (!Number.isFinite(transacao.amount)) return;
+      const chave = chaveValor(transacao.type, Math.round(transacao.amount * 100));
+      let grupo = indice.get(chave);
+      if (!grupo) { grupo = { entradas: [] }; indice.set(chave, grupo); }
+      grupo.entradas.push({ transacao, ordem });
+    });
+    return indice;
+  }
+  function calendario(grupo: GrupoValor): Map<number, Entrada[]> {
+    if (!grupo.porDia) {
+      grupo.porDia = new Map();
+      for (const entrada of grupo.entradas) {
+        const data = dia(entrada.transacao.occurred_on);
+        const lista = grupo.porDia.get(data);
+        if (lista) lista.push(entrada);
+        else grupo.porDia.set(data, [entrada]);
+      }
+    }
+    return grupo.porDia;
+  }
+  const valores = indexarValores(transacoes), valoresCredito = indexarValores(noCredito);
+  const porFitid = new Map<string, Transaction[]>();
+  for (const t of transacoes) if (t.fitid) {
+    const lista = porFitid.get(t.fitid);
+    if (lista) lista.push(t);
+    else porFitid.set(t.fitid, [t]);
+  }
+  const vazios: Transaction[] = [];
+  function pertoDaData(linha: LinhaPix): Transaction[] {
+    const grupo = valores.get(chaveValor(linha.direcao, linha.centavos));
+    if (!grupo) return vazios;
+    const centro = dia(linha.data), indice = calendario(grupo);
+    const listas: Entrada[][] = [];
+    for (let d = centro - 3; d <= centro + 3; d++) {
+      const lista = indice.get(d);
+      if (lista) listas.push(lista);
+    }
+    // Intercalar os sete dias conserva a ordem original sem ordenar por proximidade.
+    const posicoes = listas.map(() => 0), encontrados: Transaction[] = [];
+    for (;;) {
+      let proxima = -1;
+      for (let i = 0; i < listas.length; i++) {
+        if (posicoes[i] < listas[i].length && (proxima < 0 ||
+          listas[i][posicoes[i]].ordem < listas[proxima][posicoes[proxima]].ordem)) proxima = i;
+      }
+      if (proxima < 0) return encontrados;
+      encontrados.push(listas[proxima][posicoes[proxima]++].transacao);
+    }
+  }
+  function haCreditoPerto(linha: LinhaPix): boolean {
+    const grupo = valoresCredito.get(chaveValor(linha.direcao, linha.centavos));
+    if (!grupo) return false;
+    const centro = dia(linha.data), indice = calendario(grupo);
+    for (let d = centro - 3; d <= centro + 3; d++) if (indice.has(d)) return true;
+    return false;
+  }
   // Série recorrente ocupa o mês pela data: mudar o mês faz a série recriar a ocorrência (duplicata). Parcela não é série.
   const serieRecorrente = (t: Transaction) => !((t.installment_total ?? 1) > 1) && (t.recurring === true || !!t.parent_id);
+  type GrupoCandidatos = { candidatos: Transaction[]; porId: boolean; usos: number };
+  const grupos = new Map<string, GrupoCandidatos>();
   const planos = op.linhas.map(linha => {
-    const porId = linha.fitid ? transacoes.filter(t => t.fitid === linha.fitid) : [];
-    const candidatos = porId.length ? porId : transacoes.filter(t => igualValor(t, linha) && distancia(t.occurred_on, linha.data) <= 3);
-    return { linha, candidatos, porId: porId.length > 0 };
+    const identificados = linha.fitid ? porFitid.get(linha.fitid) : undefined;
+    const porId = !!identificados?.length;
+    const chave = porId ? JSON.stringify(['id', linha.fitid]) : JSON.stringify(['valor', linha.direcao, linha.centavos, linha.data]);
+    let grupo = grupos.get(chave);
+    if (!grupo) {
+      grupo = { candidatos: identificados ?? pertoDaData(linha), porId, usos: 0 };
+      grupos.set(chave, grupo);
+    }
+    grupo.usos++;
+    return { linha, candidatos: grupo.candidatos, porId };
   });
   const usados = new Map<string, number>();
   const fortes = new Map<string, number>();
-  for (const p of planos) for (const t of p.candidatos) usados.set(t.id, (usados.get(t.id) ?? 0) + 1);
-  for (const p of planos) if (p.porId) for (const t of p.candidatos) fortes.set(t.id, (fortes.get(t.id) ?? 0) + 1);
+  // O grupo é compartilhado: 3 mil linhas iguais não retêm/percorrem 9 milhões de referências.
+  for (const grupo of grupos.values()) for (const t of grupo.candidatos) {
+    usados.set(t.id, (usados.get(t.id) ?? 0) + grupo.usos);
+    if (grupo.porId) fortes.set(t.id, (fortes.get(t.id) ?? 0) + grupo.usos);
+  }
   const duplicadas = new Map<string, number>();
-  for (const l of op.linhas) duplicadas.set(l.fitid, (duplicadas.get(l.fitid) ?? 0) + 1);
+  const bancos = new Map<string, number>(), referencias = new Map<string, number>();
+  const movimentos = new Map<string, LinhaPix[]>(), estornos = new Map<string, LinhaPix[]>();
+  const chavePar = (id: string, l: LinhaPix, direcao = l.direcao) => JSON.stringify([id, l.centavos, direcao]);
+  for (const l of op.linhas) {
+    duplicadas.set(l.fitid, (duplicadas.get(l.fitid) ?? 0) + 1);
+    if (l.idBanco) bancos.set(l.idBanco, (bancos.get(l.idBanco) ?? 0) + 1);
+    let indice: Map<string, LinhaPix[]> | undefined, chave: string | undefined;
+    if (l.natureza === 'movimento' && l.idBanco) { indice = movimentos; chave = chavePar(l.idBanco, l); }
+    if (l.natureza === 'estorno' && l.idOriginal) {
+      referencias.set(l.idOriginal, (referencias.get(l.idOriginal) ?? 0) + 1);
+      indice = estornos; chave = chavePar(l.idOriginal, l);
+    }
+    if (indice && chave) {
+      const lista = indice.get(chave);
+      if (lista) lista.push(l);
+      else indice.set(chave, [l]);
+    }
+  }
+  const temCandidatos = new Set(planos.filter(p => p.candidatos.length).map(p => p.linha));
   return planos.map(({ linha, candidatos, porId }): ResultadoPix => {
     const resultado = (status: ResultadoPix['status'], motivo: string, alvo?: Transaction): ResultadoPix => ({ linha, candidatos, status, motivo, ...(alvo ? { alvo } : {}) });
     if (!linha.fitid || (duplicadas.get(linha.fitid) ?? 0) > 1) return resultado('revisar', 'Linhas sem identidade única. Confira cada operação.');
-    const par = linha.natureza === 'estorno' && linha.idOriginal
-      ? op.linhas.filter(l => l.idBanco === linha.idOriginal && l.natureza === 'movimento' && l.centavos === linha.centavos && l.direcao !== linha.direcao)
-      : op.linhas.filter(l => !!linha.idBanco && !!l.idOriginal && l.natureza === 'estorno' && l.idOriginal === linha.idBanco && l.centavos === linha.centavos && l.direcao !== linha.direcao);
+    const oposta: TxType = linha.direcao === 'in' ? 'out' : 'in';
+    const par = (linha.natureza === 'estorno' && linha.idOriginal
+      ? movimentos.get(chavePar(linha.idOriginal, linha, oposta))
+      : linha.idBanco ? estornos.get(chavePar(linha.idBanco, linha, oposta)) : undefined) ?? [];
     if (par.length === 1) {
       const original = linha.natureza === 'estorno' ? par[0] : linha;
       const estorno = linha.natureza === 'estorno' ? linha : par[0];
-      const referencias = op.linhas.filter(l => !!l.idOriginal && l.natureza === 'estorno' && l.idOriginal === original.idBanco);
-      if (referencias.length !== 1 || op.linhas.filter(l => !!l.idBanco && l.idBanco === original.idBanco).length !== 1
+      if (referencias.get(original.idBanco!) !== 1 || bancos.get(original.idBanco!) !== 1
         || estorno.data < original.data || (duplicadas.get(par[0].fitid) ?? 0) > 1) return resultado('revisar', 'Vínculo de estorno ambíguo.');
-      const outros = planos.filter(p => p.linha === par[0]);
-      if (candidatos.length || outros.some(p => p.candidatos.length)) return resultado('revisar', 'O original pode estar lançado. Confira o estorno antes de ajustar.');
+      if (candidatos.length || temCandidatos.has(par[0])) return resultado('revisar', 'O original pode estar lançado. Confira o estorno antes de ajustar.');
       return resultado('ignorar', 'Estorno integral vinculado à operação, sem lançamento no app.');
     }
     if (par.length > 1) return resultado('revisar', 'Mais de um vínculo de estorno.');
@@ -138,7 +238,7 @@ export function conciliarPix(op: { userId: string; carteiraId: string; principal
     if (linha.natureza === 'estorno') return resultado('revisar', 'Estorno sem par integral comprovado exige revisão.');
     if (linha.natureza === 'transferencia') return resultado('revisar', 'Confirme a titularidade e use a transferência entre carteiras.');
     if (candidatos.length === 0) {
-      if (noCredito.some(t => igualValor(t, linha) && distancia(t.occurred_on, linha.data) <= 3)) {
+      if (haCreditoPerto(linha)) {
         return resultado('revisar', 'Há uma compra no crédito com este valor. Confira antes de lançar no caixa.');
       }
       return resultado('falta', 'Nenhum lançamento de caixa encontrado.');
