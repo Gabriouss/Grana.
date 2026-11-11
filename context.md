@@ -20096,3 +20096,25 @@ Nova fatia de cancelamento AppLock P2 está preparada e **não executada**: dois
 Fonte: `E:/Grana-temporarios/2026-11-11-retomada/relatorio-Sentinel-chat-cancelamento-P2.md`; manifesto `freeze-Sentinel-chat-cancelamento-P2.json`, SHA abreviado `05d4a39f…d9ac58`. Sentinel relata baseline `7ed40986`, dois originais RED preservados externamente e cinco caminhos de código/testes congelados. O WIP prevê prazo absoluto de 35 segundos para sessão, fetch e corpo, guardas de dono/cancelamento/fechamento e resultado incerto após POST sem retry. Estão preparados 16 e 12 grupos de módulos reais, **zero execução** e `diff --check` exit 0. Fakes legados precisam de pacto antes de adaptação. Sem alterar notificações, importação, PDF, auth, package ou documentação; sem stage ou commit. Forge é o único executor; root recebeu o relato. Não atribuir validação ao WIP.
 
 Freeze de Forge AppLock P2 das 19:04 e `relatorio-Forge-AppLock-P2.md` foram encaminhados; versão pode ser refinada após leitura do SDK. Aguardar recibo final antes de afirmar que passou. O commit de package PDF CI `2507ace8` e demais freezes preparados estão registrados acima; nenhum resultado P2 de produto é inferido neste checkpoint. Verificador do vault pendente para o fechamento, sem executar Node concorrente com Forge: `node scripts/verificar-vault.mjs "G:/Meu Drive/Obsidian/Gabriel/Grana"`. Sem push.
+
+### Prism gráficos P2 — RED/GREEN focal
+
+Fonte atualizada: `E:/Grana-temporarios/2026-11-11-retomada/relatorio-Prism-graficos-P2.md`. Prism conferiu recibos Forge `190940` e `191004` e quatro logs: baseline RED exit 1 com 4/12 grupos e oito asserções causais; GREEN exit 0 com 12/12. Três SHA intactos, RSS 284/600 MiB e trava liberada conforme relato. Prism não alterou fontes ou asserções e não fez stage/commit. Commit da allowlist de três arquivos e package CI separado dependem do root. CI integral e QA em aparelho seguem pendentes; resultado focal não os substitui.
+
+### Forge — gráficos P2 commitado e CI encadeada
+
+Fontes: `E:/Grana-temporarios/2026-11-11-retomada/resultado-Forge-PrismGraficosP2.md` e `final-Forge-rodada.json`. Forge relata RED causal exit 1 com oito asserções e GREEN 12/0, três SHA e duas baselines intactos. Commit local de fonte `04807e6567958456bcb24021b16b9d2f962b24b7` contém três arquivos; `0404c3f6a35b4353b291cf36fd0f5e39628a8f19` contém somente package, incluindo o 14º JS verde sem remover suítes. Recibos e medidas de RAM/RSS/trava estão nas fontes; root e Prism avisados. WIPs alheios preservados.
+
+Sem gate integral, revisão independente, push ou build. AppLock P2 tem nove cenários e compatibilidade de 16 aguardando sinal, sem execução neste corte; não inferir GREEN de uma fatia a partir da outra.
+
+### Próximas fatias — crédito e compatibilidade do chat
+
+Gráficos P2 mantém RED causal exit 1 e GREEN 12/12, recibos `Forge-PrismGraficosP2-RED190940` e `GREEN191004`, fontes inalteradas, RAM informada 2,34 GiB e RSS 298/284 MiB. O package focal foi encadeado após o verde por Forge, já registrado no commit `0404c3f6`; não repetir teste nem confundir com gate integral.
+
+Prism assume o item 42 da fila em `app/(app)/credito.tsx` e testes: preservar recibo financeiro antes de `loadData` secundário, sem repetir RPC. É fatia de escrita; Prism não executa Node ou testes. As demais quatro fatias P2 seguem na fila de Forge como executor. Para o chat, freeze Sentinel `05d4a39f` com 28 casos foi liberado; autorizada adaptação mínima de três compatibilidades antigas fora das cinco fontes congeladas, sem remover asserções. A autorização não comprova execução ou GREEN das compatibilidades.
+
+### 19:16 — E7 e flags P2 com focais verdes
+
+Fontes: recibos JSON Forge na rodada `E:/Grana-temporarios/2026-11-11-retomada/`. Harbor E7 teve seis GREEN exit 0: funcionais `191553`, complexidade `191554`, retenção `191556`, serviço `191557`, compatibilidade matcher `191600` e serviço `191601`; fontes inalteradas, travas liberadas e RSS 188–333 MiB nos recibos. Root informa RED com duas asserções reais e retenção de 3.200 listas v1. PH flags teve RED causal `191637` exit 1 e GREEN `191657` exit 0, 11/11 grupos informados, fontes inalteradas, RSS 249 MiB e trava liberada. Os resultados são focais; nenhum QA Android foi comprovado.
+
+A derivação atual informada é 22/50 itens com focais: 17 do mapa histórico mais três de gráficos, E7 e flags. Não reescrever a contagem do corte histórico. Gráficos está em commits locais `04807e65` e package `0404c3f6`; AppLock, chat, crédito e gate permanecem pendentes neste corte. Sem push.
