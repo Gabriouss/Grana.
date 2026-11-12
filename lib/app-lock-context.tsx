@@ -37,21 +37,96 @@ function noPrazo<T>(promessa: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-/* O prompt é único no módulo nativo, inclusive se a Activity remontar o
-   provider no mesmo runtime. Não deixar um cancelamento antigo fechar um
-   prompt novo: esperar a MESMA promessa nativa, sem repetir o cancelamento. */
-let cancelamentoNativo: Promise<void> | null = null;
-function cancelarNativo(): Promise<void> {
-  if (Platform.OS !== 'android') return Promise.resolve();
-  if (!cancelamentoNativo) {
+type ConfirmacaoNativa = {
+  promessa: ReturnType<typeof LocalAuthentication.authenticateAsync>;
+  pendente: boolean;
+  cancelamento: { promessa: Promise<void>; concluido: boolean } | null;
+};
+
+/* Estado do módulo, inclusive entre remontagens do provider. A confirmação e
+   seu pedido de cancelamento são duas chamadas independentes. Uma Promise
+   pendente não prova que o Android encerrou a outra chamada. */
+let confirmacaoNativa: ConfirmacaoNativa | null = null;
+
+function liberarSeTerminou(alvo: ConfirmacaoNativa) {
+  if (!alvo.pendente && (!alvo.cancelamento || alvo.cancelamento.concluido) && confirmacaoNativa === alvo) {
+    confirmacaoNativa = null;
+  }
+}
+
+function reciboDaAnterior(alvo: ConfirmacaoNativa): string {
+  return alvo.pendente
+    ? 'A confirmação anterior ainda não terminou no aparelho. Termine ou cancele por lá. Se não responder, feche completamente o Grana. e abra de novo.'
+    : 'A confirmação anterior terminou, mas o aparelho não confirmou o cancelamento. Feche completamente o Grana. e abra de novo.';
+}
+
+class ConfirmacaoAnteriorPendente extends Error {
+  constructor(readonly recibo: string) { super('confirmacao_anterior_pendente'); }
+}
+
+function cancelarNativo(alvo: ConfirmacaoNativa | null): Promise<void> {
+  // Uma tentativa velha nunca cancela o prompt que tomou seu lugar.
+  if (!alvo || confirmacaoNativa !== alvo) return Promise.resolve();
+  if (Platform.OS !== 'android') {
+    return noPrazo(alvo.promessa.then(() => undefined, () => undefined), PRAZO_CANCELAMENTO_MS);
+  }
+  if (!alvo.cancelamento) {
     const tarefa = Promise.resolve().then(() => LocalAuthentication.cancelAuthenticate());
-    cancelamentoNativo = tarefa;
+    const cancelamento = { promessa: tarefa, concluido: false };
+    alvo.cancelamento = cancelamento;
     void tarefa.then(
-      () => { if (cancelamentoNativo === tarefa) cancelamentoNativo = null; },
-      () => { if (cancelamentoNativo === tarefa) cancelamentoNativo = null; },
+      () => { cancelamento.concluido = true; liberarSeTerminou(alvo); },
+      () => { cancelamento.concluido = true; liberarSeTerminou(alvo); registrarFalha('o aparelho recusou o cancelamento'); },
     );
   }
-  return noPrazo(cancelamentoNativo, PRAZO_CANCELAMENTO_MS);
+  return noPrazo(Promise.all([
+    alvo.cancelamento.promessa,
+    alvo.promessa.then(() => undefined, () => undefined),
+  ]).then(() => undefined), PRAZO_CANCELAMENTO_MS);
+}
+
+async function aguardarAnterior(): Promise<void> {
+  const anterior = confirmacaoNativa;
+  if (!anterior) return;
+  // Um só prazo total. Rejeições terminadas já têm recibo na tentativa de
+  // origem; não são chamadas nativas que ainda possam executar mais tarde.
+  const chamadas = [anterior.promessa.then(() => undefined, () => undefined)];
+  if (anterior.cancelamento) chamadas.push(anterior.cancelamento.promessa.then(() => undefined, () => undefined));
+  try { await noPrazo(Promise.all(chamadas), PRAZO_CANCELAMENTO_MS); }
+  catch { if (confirmacaoNativa) throw new ConfirmacaoAnteriorPendente(reciboDaAnterior(confirmacaoNativa)); }
+  liberarSeTerminou(anterior);
+  if (confirmacaoNativa) throw new ConfirmacaoAnteriorPendente(reciboDaAnterior(confirmacaoNativa));
+}
+
+function abrirConfirmacao(promptMessage: string): ConfirmacaoNativa {
+  if (confirmacaoNativa) throw new ConfirmacaoAnteriorPendente(reciboDaAnterior(confirmacaoNativa));
+  const alvo: ConfirmacaoNativa = {
+    pendente: true, cancelamento: null,
+    promessa: Promise.resolve().then(() => LocalAuthentication.authenticateAsync({
+      promptMessage, cancelLabel: 'Cancelar', disableDeviceFallback: false,
+    })),
+  };
+  confirmacaoNativa = alvo;
+  void alvo.promessa.then(
+    resultado => {
+      alvo.pendente = false;
+      // Estes erros podem deixar o estado nativo precisando de limpeza.
+      // Registra a barreira ANTES de outra tentativa poder ocupar o módulo.
+      if (confirmacaoNativa === alvo && !resultado.success &&
+        (resultado.error === 'app_cancel' || resultado.error === 'invalid_context')) {
+        void cancelarNativo(alvo).catch(() => registrarFalha('cancelamento da confirmação não respondeu'));
+      }
+      liberarSeTerminou(alvo);
+    },
+    () => {
+      alvo.pendente = false;
+      if (confirmacaoNativa === alvo) {
+        void cancelarNativo(alvo).catch(() => registrarFalha('cancelamento da confirmação não respondeu'));
+      }
+      liberarSeTerminou(alvo);
+    },
+  );
+  return alvo;
 }
 
 function registrarFalha(etapa: string) {
@@ -117,6 +192,7 @@ export function AppLockProvider({ children }: PropsWithChildren) {
   const recuperacao = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tentativa = useRef<{
     promessa: Promise<boolean>;
+    nativa: ConfirmacaoNativa | null;
     terminar: (sucesso: boolean, mensagem?: string) => void;
   } | null>(null);
 
@@ -159,7 +235,12 @@ export function AppLockProvider({ children }: PropsWithChildren) {
     const anterior = tentativa.current;
     if (!anterior) return;
     anterior.terminar(false, mensagem);
-    void cancelarNativo().catch(() => registrarFalha('cancelamento da confirmação não respondeu'));
+    void cancelarNativo(anterior.nativa).catch(() => {
+      registrarFalha('cancelamento da confirmação não respondeu');
+      if (vivo.current && !tentativa.current && anterior.nativa && confirmacaoNativa === anterior.nativa) {
+        setErro(reciboDaAnterior(anterior.nativa));
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -209,6 +290,7 @@ export function AppLockProvider({ children }: PropsWithChildren) {
     const promessa = new Promise<boolean>(resolve => { resolver = resolve; });
     const operacao = {
       promessa,
+      nativa: null as ConfirmacaoNativa | null,
       terminar(sucesso: boolean, mensagem?: string) {
         if (tentativa.current !== operacao) return;
         tentativa.current = null;
@@ -229,24 +311,35 @@ export function AppLockProvider({ children }: PropsWithChildren) {
     }, PRAZO_AUTENTICACAO_MS);
     void (async () => {
       try {
-        if (cancelamentoNativo) await noPrazo(cancelamentoNativo, PRAZO_CANCELAMENTO_MS);
+        await aguardarAnterior();
         if (tentativa.current !== operacao) return;
-        const resultado = await LocalAuthentication.authenticateAsync({
-          promptMessage, cancelLabel: 'Cancelar', disableDeviceFallback: false,
-        });
+        operacao.nativa = abrirConfirmacao(promptMessage);
+        const resultado = await operacao.nativa.promessa;
         if (tentativa.current !== operacao) return;
         if (resultado.success) operacao.terminar(true);
         else {
           registrarFalha('confirmação não foi concluída');
           operacao.terminar(false, 'A confirmação não foi concluída. Toque em Desbloquear para tentar de novo.');
           if (resultado.error === 'app_cancel' || resultado.error === 'invalid_context') {
-            void cancelarNativo().catch(() => registrarFalha('cancelamento da confirmação não respondeu'));
+            void cancelarNativo(operacao.nativa).catch(() => {
+              registrarFalha('cancelamento da confirmação não respondeu');
+              if (vivo.current && !tentativa.current && operacao.nativa && confirmacaoNativa === operacao.nativa) {
+                setErro(reciboDaAnterior(operacao.nativa));
+              }
+            });
           }
         }
-      } catch {
+      } catch (erro) {
         if (tentativa.current !== operacao) return;
         registrarFalha('não foi possível abrir a confirmação');
-        operacao.terminar(false, 'Não consegui abrir a confirmação do aparelho. Toque em Desbloquear para tentar de novo.');
+        operacao.terminar(false, erro instanceof ConfirmacaoAnteriorPendente
+          ? erro.recibo : 'Não consegui abrir a confirmação do aparelho. Toque em Desbloquear para tentar de novo.');
+        if (operacao.nativa) void cancelarNativo(operacao.nativa).catch(() => {
+          registrarFalha('cancelamento da confirmação não respondeu');
+          if (vivo.current && !tentativa.current && operacao.nativa && confirmacaoNativa === operacao.nativa) {
+            setErro(reciboDaAnterior(operacao.nativa));
+          }
+        });
       }
     })();
     return promessa;
