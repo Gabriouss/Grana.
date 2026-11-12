@@ -132,54 +132,117 @@ export type RespostaAssistente = {
   ferramenta: string | null;
 };
 
+/** Um único orçamento inclui sessão, cabeçalhos e leitura do corpo. */
+export const PRAZO_PERGUNTA_MS = 35_000;
+export const AVISO_RESPOSTA_INCERTA = 'Não foi possível confirmar a resposta. O pedido pode ter sido recebido. Confira seus lançamentos antes de enviar novamente.';
+
 /**
  * Envia a pergunta do usuário para a Edge Function e devolve a resposta.
  * Inclui as últimas mensagens como histórico para contexto da conversa.
+ * Os três argumentos originais continuam válidos; o chat também fixa o dono
+ * conhecido antes de esperar a sessão, sem incluir esse dado no payload.
  */
 export async function enviarPergunta(
   mensagem: string,
   historico: { papel: string; texto: string }[] = [],
   signal?: AbortSignal,
+  donoEsperado?: string | null,
 ): Promise<RespostaAssistente> {
-  if (MODO_TESTE) {
-    await new Promise((r) => setTimeout(r, 600));
-    return { resposta: respostaDoTeste(mensagem), ferramenta: null };
-  }
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session?.access_token) {
-    throw new Error('Usuário não autenticado');
-  }
-
-  const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/assistente-financeiro`;
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ mensagem, historico }),
-    signal,
-  });
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    const mensagemErro =
-      body?.mensagem ??
-      (res.status === 429
-        ? 'Muitas perguntas seguidas. Espera um minutinho.'
-        : 'Não consegui pensar nisso agora. Tenta de novo.');
-    throw new Error(mensagemErro);
-  }
-
-  const body = await res.json();
-  return {
-    resposta: textoDoAssistente(body.resposta ?? 'Desculpa, não entendi.'),
-    ferramenta: body.ferramenta ?? null,
+  const fim = Date.now() + PRAZO_PERGUNTA_MS;
+  const controle = new AbortController();
+  let enviou = false;
+  let origem = donoEsperado;
+  let falhaInterrupcao: Error | undefined;
+  let rejeitar!: (erro: Error) => void;
+  let inscricao: { unsubscribe: () => void } | undefined;
+  let atrasoTeste: ReturnType<typeof setTimeout> | undefined;
+  const interrompida = new Promise<never>((_, reject) => { rejeitar = reject; });
+  // O cancelamento pode chegar antes da primeira espera (signal já abortado).
+  interrompida.catch(() => {});
+  const interromper = (motivo: 'cancelada' | 'prazo' | 'conta') => {
+    if (falhaInterrupcao) return;
+    const texto = enviou ? AVISO_RESPOSTA_INCERTA
+      : motivo === 'conta' ? 'A conta mudou. A consulta não foi enviada.'
+      : motivo === 'prazo' ? 'A consulta demorou demais e não foi enviada.'
+      : 'Consulta cancelada antes do envio.';
+    falhaInterrupcao = Object.assign(new Error(texto), {
+      name: motivo === 'prazo' ? 'TimeoutError' : 'AbortError',
+      codigo: `chat_${motivo}`, resultadoRemotoIncerto: enviou,
+    });
+    controle.abort();
+    rejeitar(falhaInterrupcao);
   };
+  const verificar = () => {
+    if (signal?.aborted) interromper('cancelada');
+    if (Date.now() >= fim) interromper('prazo');
+    if (falhaInterrupcao) throw falhaInterrupcao;
+  };
+  const aguardar = async <T,>(operacao: () => PromiseLike<T> | T): Promise<T> => {
+    verificar();
+    const valor = await Promise.race([
+      Promise.resolve().then(() => { verificar(); return operacao(); }), interrompida,
+    ]);
+    verificar();
+    return valor;
+  };
+  const cancelar = () => interromper('cancelada');
+  const prazo = setTimeout(() => interromper('prazo'), Math.max(0, fim - Date.now()));
+  signal?.addEventListener('abort', cancelar, { once: true });
+  try {
+    verificar();
+    if (MODO_TESTE) {
+      await aguardar(() => new Promise<void>(resolve => { atrasoTeste = setTimeout(resolve, 600); }));
+      return { resposta: respostaDoTeste(mensagem), ferramenta: null };
+    }
+    // O evento do SDK invalida o ciclo antes da próxima renderização React.
+    inscricao = supabase.auth.onAuthStateChange((evento, sessao) => {
+      if (evento === 'SIGNED_OUT' ||
+          (origem !== undefined && sessao?.user?.id !== origem) ||
+          (origem === undefined && evento === 'SIGNED_IN')) interromper('conta');
+    }).data.subscription;
+    const { data: { session } } = await aguardar(() => supabase.auth.getSession());
+    if (!session?.access_token) throw new Error('Usuário não autenticado');
+    if (donoEsperado !== undefined && (!donoEsperado || session.user?.id !== donoEsperado)) {
+      interromper('conta');
+      verificar();
+    }
+    origem = session.user?.id;
+    const token = session.access_token;
+    const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/assistente-financeiro`;
+    const res = await aguardar(() => {
+      enviou = true;
+      return fetch(url, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mensagem, historico }), signal: controle.signal,
+      });
+    });
+    // Também protegido quando o fetch já entregou os cabeçalhos e o corpo trava.
+    const body = await aguardar(() => res.json());
+    if (!res.ok) {
+      throw Object.assign(new Error(body?.mensagem ?? (res.status === 429
+        ? 'Muitas perguntas seguidas. Espera um minutinho.'
+        : 'Não consegui pensar nisso agora. Tenta de novo.')), {
+        codigo: 'chat_http', resultadoRemotoIncerto: res.status >= 500,
+      });
+    }
+    return { resposta: textoDoAssistente(body.resposta ?? 'Desculpa, não entendi.'), ferramenta: body.ferramenta ?? null };
+  } catch (erro) {
+    console.warn('[assistente] consulta interrompida', {
+      codigo: falhaInterrupcao ? 'interrupcao' : 'falha', envioIniciado: enviou,
+    });
+    if (falhaInterrupcao) throw falhaInterrupcao;
+    if (enviou && (erro as { codigo?: string })?.codigo !== 'chat_http') {
+      throw Object.assign(new Error(AVISO_RESPOSTA_INCERTA), { resultadoRemotoIncerto: true });
+    }
+    throw erro;
+  } finally {
+    clearTimeout(prazo);
+    clearTimeout(atrasoTeste);
+    signal?.removeEventListener('abort', cancelar);
+    try { inscricao?.unsubscribe(); }
+    catch { console.warn('[assistente] falha ao encerrar observação da sessão'); }
+  }
 }
 
 /* ── Denunciar resposta ───────────────────────────────────────────────────── */

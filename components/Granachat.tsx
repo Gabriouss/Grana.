@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { semViuva } from '@/lib/sem-viuva';
+import { useSession } from '@/lib/auth-context';
 import {
   ActivityIndicator,
   Animated,
@@ -34,6 +35,7 @@ import {
   fetchMensagens,
   enviarPergunta,
   dentroDoPrazo,
+  AVISO_RESPOSTA_INCERTA,
   type MensagemAssistente,
   type MensagemLocal,
 } from '@/lib/assistente';
@@ -75,6 +77,8 @@ export default function Granachat({
       na própria barra. Zero quando não há barra no rodapé. */
   reservaDaBarra?: number;
 }) {
+  const { session } = useSession();
+  const dono = session?.user.id ?? null;
   /* Medir o teclado na mão em vez de usar KeyboardAvoidingView: desde o SDK 54
      o Expo liga edge-to-edge por padrão, e nesse modo o sistema NÃO
      redimensiona a janela — o KAV não tem o que compensar no Android e acaba
@@ -241,13 +245,53 @@ export default function Granachat({
   const manterScrollNoFimRef = useRef(true);
   const inputRef = useRef<TextInput>(null);
   const requisicaoRef = useRef<AbortController | null>(null);
-
-  useEffect(() => () => requisicaoRef.current?.abort(), []);
+  const respostaEmCursoRef = useRef<string | null>(null);
+  const fechamentoSolicitadoRef = useRef(!visivel);
+  const donoDasMensagensRef = useRef(dono);
+  const escopoRef = useRef({ dono, visivel, montado: true, geracao: 0 });
+  if (escopoRef.current.dono !== dono || escopoRef.current.visivel !== visivel) {
+    escopoRef.current = { dono, visivel, montado: true, geracao: escopoRef.current.geracao + 1 };
+  }
+  const mensagensDoDono = donoDasMensagensRef.current === dono ? mensagens : [];
+  const interromperEnvio = useCallback((recibo: boolean) => {
+    const pedido = requisicaoRef.current;
+    if (!pedido) return;
+    const id = respostaEmCursoRef.current;
+    escopoRef.current.geracao += 1;
+    requisicaoRef.current = null;
+    respostaEmCursoRef.current = null;
+    pedido.abort();
+    if (recibo && escopoRef.current.montado) {
+      setEnviando(false);
+      setMensagens(atual => atual.map(m => m.id === id ? {
+        ...m, carregando: false, demorando: false,
+        texto: AVISO_RESPOSTA_INCERTA, erro: AVISO_RESPOSTA_INCERTA,
+      } : m));
+    }
+  }, []);
+  useEffect(() => {
+    fechamentoSolicitadoRef.current = !visivel;
+  }, [visivel]);
+  useEffect(() => {
+    escopoRef.current.montado = true;
+    return () => { escopoRef.current.montado = false; interromperEnvio(false); };
+  }, [interromperEnvio]);
+  useEffect(() => {
+    if (donoDasMensagensRef.current !== dono) {
+      interromperEnvio(false);
+      donoDasMensagensRef.current = dono;
+      setMensagens([]);
+      setTexto('');
+      setDenunciando(null);
+      setEnviando(false);
+    } else if (!visivel) interromperEnvio(true);
+  }, [dono, visivel, interromperEnvio]);
 
   const fechar = useCallback(() => {
-    requisicaoRef.current?.abort();
+    fechamentoSolicitadoRef.current = true;
+    interromperEnvio(true);
     onFechar();
-  }, [onFechar]);
+  }, [onFechar, interromperEnvio]);
 
   /* A conversa é uma View absoluta, não um <Modal> — por isso não herda o
      `onRequestClose` que trataria o Voltar do Android sozinho. Sem isto, o
@@ -314,15 +358,19 @@ export default function Granachat({
   const primeiraCargaRef = useRef(true);
   const enviosRef = useRef(0);
   useEffect(() => {
-    const primeira = primeiraCargaRef.current;
-    if (!primeira && (!visivel || enviando)) return;
+    if (!visivel || !dono) return;
     primeiraCargaRef.current = false;
     let cancelado = false;
+    const geracaoDaCarga = escopoRef.current.geracao;
+    const cargaVigente = () => !cancelado && escopoRef.current.montado &&
+      escopoRef.current.dono === dono && escopoRef.current.visivel &&
+      escopoRef.current.geracao === geracaoDaCarga;
     const enviosNoInicio = enviosRef.current;
+    setCarregando(true);
     (async () => {
       try {
         const dados = await fetchMensagens(50);
-        if (cancelado) return;
+        if (!cargaVigente()) return;
         if (enviosRef.current !== enviosNoInicio) {
           setMensagens((atual) => atual.filter((m) => dentroDoPrazo(m.criado_em)));
           return;
@@ -337,12 +385,12 @@ export default function Granachat({
           }))
         );
       } catch (err) {
-        console.error('[Granachat] erro ao carregar histórico:', err);
+        console.error('[Granachat] histórico indisponível');
         /* Sem rede ao reabrir (V20): preserva o que a tela já mostra, só tira
            o que já venceu, e deixa um recibo visível de que o histórico não
            carregou, em vez de parecer uma conversa nova. Fechar e abrir o
            Granabô com rede volta a ler e o aviso some com a troca da lista. */
-        if (!cancelado) {
+        if (cargaVigente()) {
           const aviso = 'Não consegui carregar o histórico agora. Confira a conexão e abra o Granabô de novo.';
           setMensagens((atual) => [
             ...atual.filter((m) => m.id !== 'falha-historico' && dentroDoPrazo(m.criado_em)),
@@ -350,13 +398,13 @@ export default function Granachat({
           ]);
         }
       } finally {
-        if (!cancelado) setCarregando(false);
+        if (cargaVigente()) setCarregando(false);
       }
     })();
     return () => { cancelado = true; };
     // `enviando` fica de fora de propósito: o fim de um envio não deve recarregar.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visivel]);
+  }, [visivel, dono]);
 
   /* ── Teclado sobe junto com a janela ──────────────────────────────
      Não há o que fazer aqui além de escrever (ou tocar numa sugestão), então
@@ -393,7 +441,9 @@ export default function Granachat({
   /* ── Enviar pergunta ──────────────────────────────────────────────── */
   const enviar = useCallback(async () => {
     const pergunta = texto.trim();
-    if (!pergunta || enviando) return;
+    if (!pergunta || enviando || requisicaoRef.current || !visivel || !dono ||
+        fechamentoSolicitadoRef.current || !escopoRef.current.montado ||
+        !escopoRef.current.visivel || escopoRef.current.dono !== dono || donoDasMensagensRef.current !== dono) return;
 
     setTexto('');
     /* O teclado NÃO desce ao enviar, de propósito. Descer faria o painel
@@ -401,8 +451,8 @@ export default function Granachat({
        o mesmo atrito que abrir com o teclado fechado criava. Chat mantém o
        teclado; quem quer sair toca no X, no fundo ou no botão da barra. */
 
-    const idPergunta = `local-${Date.now()}`;
-    const idResposta = `local-${Date.now() + 1}`;
+    const idPergunta = `local-${Date.now()}-${enviosRef.current}`;
+    const idResposta = `local-${Date.now() + 1}-${enviosRef.current}`;
     manterScrollNoFimRef.current = true;
 
     // Adiciona a pergunta do usuário e um placeholder de "pensando"
@@ -428,8 +478,13 @@ export default function Granachat({
     setEnviando(true);
     const controller = new AbortController();
     requisicaoRef.current = controller;
-    const timeout = setTimeout(() => controller.abort(), 35_000);
+    respostaEmCursoRef.current = idResposta;
+    const geracao = escopoRef.current.geracao;
+    const vigente = () => escopoRef.current.montado && escopoRef.current.visivel &&
+      escopoRef.current.dono === dono && escopoRef.current.geracao === geracao &&
+      requisicaoRef.current === controller;
     const avisoDemora = setTimeout(() => {
+      if (!vigente() || controller.signal.aborted) return;
       setMensagens((prev) => prev.map((m) => (m.id === idResposta ? { ...m, demorando: true } : m)));
     }, 8_000);
 
@@ -440,7 +495,8 @@ export default function Granachat({
         .slice(-10)
         .map((m) => ({ papel: m.papel, texto: m.texto }));
 
-      const resultado = await enviarPergunta(pergunta, historicoParaEnviar, controller.signal);
+      const resultado = await enviarPergunta(pergunta, historicoParaEnviar, controller.signal, dono);
+      if (!vigente() || controller.signal.aborted) return;
 
       setMensagens((prev) =>
         prev.map((m) =>
@@ -456,13 +512,16 @@ export default function Granachat({
         )
       );
     } catch (err) {
+      if (!vigente()) return;
       /* `err.message` cru punha uma exceção Java na bolha do chat — visto em
          vídeo em 11/09/2026: "fetch failed: java.net.UnknownHostException:
          Unable to resolve host 'cjnuzf...supabase.co'". Além de ilegível,
          expunha o endereço do projeto. `mensagemErro` já traduz falha de rede
          e barra despejo de dados; era só não estar sendo usada aqui. */
-      const mensagemErro = controller.signal.aborted
-        ? 'A consulta demorou demais ou foi cancelada. Tente novamente.'
+      const mensagemErro = (err as { resultadoRemotoIncerto?: boolean })?.resultadoRemotoIncerto
+        ? AVISO_RESPOSTA_INCERTA
+        : controller.signal.aborted
+        ? 'Consulta cancelada. Confira seus lançamentos antes de enviar novamente.'
         : traduzirErro(err, 'Algo deu errado. Tenta de novo.');
       setMensagens((prev) =>
         prev.map((m) =>
@@ -478,25 +537,26 @@ export default function Granachat({
         )
       );
     } finally {
-      clearTimeout(timeout);
       clearTimeout(avisoDemora);
+      if (!vigente()) return;
       requisicaoRef.current = null;
+      respostaEmCursoRef.current = null;
       setEnviando(false);
       /* Tocar no botão de enviar desfoca o campo no Android (é um Pressable
          fora dele), e sem devolver o foco a pessoa precisa tocar de novo pra
          fazer a próxima pergunta. Conversa mantém o teclado de pé. */
-      inputRef.current?.focus();
+      if (!controller.signal.aborted) inputRef.current?.focus();
     }
-  }, [texto, enviando, mensagens]);
+  }, [texto, enviando, mensagens, visivel, dono]);
 
   const cancelarEnvio = useCallback(() => {
-    requisicaoRef.current?.abort();
-  }, []);
+    interromperEnvio(true);
+  }, [interromperEnvio]);
 
   /* ── Estado 3D reativo do Granabô ─────────────────────────────────── */
   const [pulsoMascote, setPulsoMascote] = useState(0);
   const [celebrandoResposta, setCelebrandoResposta] = useState(false);
-  const qtdRespostasAssistente = mensagens.filter(
+  const qtdRespostasAssistente = mensagensDoDono.filter(
     (m) => m.papel === 'assistente' && !m.carregando && !m.erro
   ).length;
   const qtdAnteriorRef = useRef(qtdRespostasAssistente);
@@ -523,7 +583,7 @@ export default function Granachat({
         ? 'saudacao'
         : 'repouso';
 
-  const idUltimaAssistente = [...mensagens]
+  const idUltimaAssistente = [...mensagensDoDono]
     .reverse()
     .find((m) => m.papel === 'assistente' && !m.carregando && !m.erro)?.id;
 
@@ -726,7 +786,7 @@ export default function Granachat({
         <FlatList
           ref={flatListRef}
           style={styles.lista}
-          data={mensagens}
+          data={mensagensDoDono}
           renderItem={renderMensagem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={[
@@ -756,7 +816,7 @@ export default function Granachat({
               accessibilityLabel="Mensagem para o Granabô"
               ref={inputRef}
               style={[styles.input, { minHeight: alturaMinimaCampo, maxHeight: alturaMaximaCampo }]}
-              value={texto}
+              value={donoDasMensagensRef.current === dono ? texto : ''}
               onChangeText={setTexto}
               placeholder="Pergunte ao Granabô…"
               placeholderTextColor={theme.inkFaint}
