@@ -20118,3 +20118,19 @@ Prism assume o item 42 da fila em `app/(app)/credito.tsx` e testes: preservar re
 Fontes: recibos JSON Forge na rodada `E:/Grana-temporarios/2026-11-11-retomada/`. Harbor E7 teve seis GREEN exit 0: funcionais `191553`, complexidade `191554`, retenção `191556`, serviço `191557`, compatibilidade matcher `191600` e serviço `191601`; fontes inalteradas, travas liberadas e RSS 188–333 MiB nos recibos. Root informa RED com duas asserções reais e retenção de 3.200 listas v1. PH flags teve RED causal `191637` exit 1 e GREEN `191657` exit 0, 11/11 grupos informados, fontes inalteradas, RSS 249 MiB e trava liberada. Os resultados são focais; nenhum QA Android foi comprovado.
 
 A derivação atual informada é 22/50 itens com focais: 17 do mapa histórico mais três de gráficos, E7 e flags. Não reescrever a contagem do corte histórico. Gráficos está em commits locais `04807e65` e package `0404c3f6`; AppLock, chat, crédito e gate permanecem pendentes neste corte. Sem push.
+
+### E7 e flags — detalhe das dez provas focais
+
+Fontes: `E:/Grana-temporarios/2026-11-11-retomada/resultado-Forge-HarborE7-PHflags-P2.md` e `final-Forge-rodada.json`. Forge relata E7 com dois REDs causais exit 1, quatro GREENs e duas compatibilidades exit 0; retenção caiu de 10,24 milhões de referências para 3.200, preservando 3.200 candidatos e resultado, com 29 casos explícitos e 189 diferenciais. Flags teve RED exit 1 com sete falhas e quatro controles, seguido de GREEN 11/11 exit 0. SHAs intactos, RAM mínima 1,715 GiB, RSS máximo 447 MiB, travas liberadas e ambiente restaurado conforme recibo. Root e donos avisados.
+
+Sem novo commit, CI integral, gate, revisão independente, push, build ou servidor neste corte. AppLock P2 congelado, com nove cenários e compatibilidade 16, ainda não testado e aguardando sinal; não inferir sua aprovação das provas acima.
+
+### Sentinel — compatibilidade do chat P2 preparada
+
+Fontes: `E:/Grana-temporarios/2026-11-11-retomada/relatorio-Sentinel-chat-compat-P2.md` e `freeze-Sentinel-chat-compat-P2.json`, SHA256 `5fa6a78027e773871ffb8a0fe1e57cc93b09515d4c6a8cb9afd9759ebe4ca44d`. Sentinel relata alteração apenas das três compatibilidades autorizadas e helper novo; cinco fontes do freeze `05d4` intactas. `diff --check` exit 0, com zero execução Node/testes, stage ou commit. Comandos e hashes estão no manifesto; resultados permanecem pendentes exclusivamente com Forge. Não declarar GREEN.
+
+### 23:07 — reset e checkpoint da nova onda
+
+Após reset, root confirma HEAD do clone `7ba88ddf` com preservação local seletiva dos focais verdes: E7 `25202abda7e2da40cecb2fa8d867789b7ce5379f`, flags `8bfafa9e1c558bcce707be05c18584e31b8f3988` e package CI isolado `7ba88ddf3885e945cce5957f1c0f0a2716791686`. Conforme `final-Forge-rodada.json` e `resultado-Forge-HarborE7-PHflags-P2.md`, o package encadeia quatro modos E7 testados e flags, sem `--todos`; diferencial 189 fica externo à CI, suítes antigas preservadas. Fetch e diff-check foram feitos por Forge antes de cada commit. Os focais continuam limitados às provas registradas, sem gate integral ou revisão independente.
+
+RAM informada pelo root de 0,674 GiB, trava ausente. AppLock P2, chat e compatibilidade do chat (freeze `5fa6a780`) **não executados**; crédito está incompleto e Prism retoma apenas até freeze. O preflight anterior AppLock v2 parou por RAM 1,283/1,5 GiB sem iniciar Node. Nenhum gate, processo alheio encerrado, push ou build. Root coordena recursos; recibos atuais prevalecem sobre quadros históricos. Este é checkpoint documental, não conclusão da rodada; documentação permanece sob posse de Ledger.
