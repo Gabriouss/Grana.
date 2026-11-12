@@ -87,6 +87,9 @@ import { fonts, radius, spacing, theme, screenRhythm, card as cardTokens, type, 
 import { BANKS, CATEGORIES, type BankInfo, type CreditCard, type CreditCardInvoicePayment, type Transaction } from '@/lib/types';
 import { usePrivacy } from '@/lib/privacy-context';
 import { useDemo } from '@/lib/demo-context';
+import { useSession } from '@/lib/auth-context';
+import { identidadeDaSessao } from '@/lib/sessao-offline';
+import { supabase } from '@/lib/supabase';
 import { useWallet } from '@/lib/wallet-context';
 import { DEMO_CREDIT_CARDS, DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import { lancamentosDeExemplo } from '@/lib/lancamentos-teste';
@@ -121,6 +124,7 @@ export default function CreditoScreen() {
   const falaGuardadaDaRevisao = useRef<string | undefined>(undefined);
   const { hidden, toggle: togglePrivacy } = usePrivacy();
   const { isDemoMode } = useDemo();
+  const { session } = useSession();
   const { activeWalletId, activeWallet, wallets } = useWallet();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
 
@@ -268,6 +272,39 @@ export default function CreditoScreen() {
   const [paySaving, setPaySaving] = useState(false);
 
   const cargaAtualCredito = useRef(0);
+  const pagamentoEmCurso = useRef<number | null>(null);
+  const montadoCredito = useRef(false);
+  const identidade = identidadeDaSessao(session);
+  const contextoCredito = useRef({ tela: identidade, auth: identidade, demo: isDemoMode, geracao: 0 });
+  if (contextoCredito.current.tela !== identidade || contextoCredito.current.demo !== isDemoMode) {
+    contextoCredito.current = { tela: identidade, auth: identidade, demo: isDemoMode, geracao: contextoCredito.current.geracao + 1 };
+    cargaAtualCredito.current++;
+  }
+  useEffect(() => {
+    montadoCredito.current = true;
+    const { data } = supabase.auth.onAuthStateChange((_evento, novaSessao) => {
+      const novaIdentidade = identidadeDaSessao(novaSessao);
+      if (novaIdentidade !== contextoCredito.current.auth) {
+        contextoCredito.current.geracao++;
+        cargaAtualCredito.current++;
+        setPaySaving(false);
+        setPayInvoiceOpen(false);
+        setToastVisible(false);
+      }
+      contextoCredito.current.auth = novaIdentidade;
+    });
+    return () => {
+      montadoCredito.current = false;
+      contextoCredito.current.geracao++;
+      cargaAtualCredito.current++;
+      data.subscription.unsubscribe();
+    };
+  }, []);
+  useEffect(() => {
+    setPaySaving(false);
+    setPayInvoiceOpen(false);
+    setToastVisible(false);
+  }, [identidade, isDemoMode]);
 
   const loadData = useCallback(async () => {
     /* Trocar de mês/cartão, focar a tela de novo ou uma mutação (pagar,
@@ -276,7 +313,8 @@ export default function CreditoScreen() {
        escrever por cima da mais nova em `cards`, `transactions` e
        `invoicePayments` (achado do Codex, 19/09/2026, revisando o código). */
     const minhaCarga = ++cargaAtualCredito.current;
-    const vigente = () => minhaCarga === cargaAtualCredito.current;
+    const geracao = contextoCredito.current.geracao;
+    const vigente = () => montadoCredito.current && minhaCarga === cargaAtualCredito.current && geracao === contextoCredito.current.geracao;
     /* Ligada quando algum mês (ou os pagamentos) não pôde ser lido por falta
        de rede e entrou vazio. Vira aviso na tela, nunca silêncio. */
     let faltouAlgumMes = false;
@@ -323,6 +361,7 @@ export default function CreditoScreen() {
          Agora só os CARTÕES são obrigatórios — sem saber quais cartões
          existem, não há tela. O resto é best-effort: o que veio, entra. */
       const c = await fetchCreditCards();
+      if (!vigente()) return;
 
       const opcional = async <T,>(promessa: Promise<T>, vazio: T): Promise<T> => {
         try {
@@ -399,7 +438,9 @@ export default function CreditoScreen() {
          que NÃO é de rede fica no log e também não apaga a tela: a fatura
          mostrada continua certa, só sem a ocorrência que faltava criar. */
       try {
-        const faltantes = ocorrenciasFaltantes(await fetchRecurrenceContext(), todayISO());
+        const contexto = await fetchRecurrenceContext();
+        if (!vigente()) return;
+        const faltantes = ocorrenciasFaltantes(contexto, todayISO());
         if (faltantes.length > 0) {
           await criarOcorrenciasRecorrentes(faltantes);
           const recarregados = await buscarMeses(false);
@@ -457,7 +498,7 @@ export default function CreditoScreen() {
         setRefreshing(false);
       }
     }
-  }, [isDemoMode, viewYear, viewMonth]);
+  }, [isDemoMode, viewYear, viewMonth, identidade]);
 
   useRecarregarAoChegarDadoNovo(() => { void loadData(); });
   useFocusEffect(
@@ -730,12 +771,20 @@ export default function CreditoScreen() {
   }
 
   async function handlePayInvoice() {
-    if (!selectedCard) return;
+    if (!selectedCard || pagamentoEmCurso.current === contextoCredito.current.geracao || !montadoCredito.current) return;
     const amount = parseAmount(payAmount);
     if (!amount || amount <= 0) {
       Alert.alert('Valor inválido', 'Informe o valor pago da fatura.');
       return;
     }
+    if (!isDemoMode && (!session || selectedCard.user_id !== session.user.id || contextoCredito.current.auth !== identidade)) {
+      Alert.alert('Pagamento não iniciado', 'A conta mudou. Abra a fatura novamente na conta atual.');
+      return;
+    }
+    const geracao = contextoCredito.current.geracao;
+    const vigente = () => montadoCredito.current && geracao === contextoCredito.current.geracao;
+    let recarregar = false;
+    pagamentoEmCurso.current = geracao;
     setPaySaving(true);
     try {
       if (isDemoMode && pagandoRestante && currentInvoicePayment) {
@@ -766,7 +815,13 @@ export default function CreditoScreen() {
           paid_on: payDate,
           wallet_id: payWalletId,
         });
-        await loadData();
+        if (!vigente()) return;
+        if (registro.user_id !== session?.user.id) {
+          Alert.alert('Confira o pagamento', 'A conta mudou. Confira o histórico da conta de origem antes de qualquer novo pagamento.');
+          return;
+        }
+        recarregar = true;
+        setInvoicePayments(prev => [...prev.filter(p => p.id !== registro.id), registro]);
         /* O servidor não soma de novo se outro toque já tinha somado: o valor
            devolvido diz se ESTE pedido entrou. */
         if (Math.round(Number(registro.amount) * 100) !== Math.round((Number(currentInvoicePayment.amount) + amount) * 100)) {
@@ -812,7 +867,13 @@ export default function CreditoScreen() {
           paid_on: payDate,
           wallet_id: payWalletId,
         });
-        await loadData();
+        if (!vigente()) return;
+        if (registro.user_id !== session?.user.id) {
+          Alert.alert('Confira o pagamento', 'A conta mudou. Confira o histórico da conta de origem antes de qualquer novo pagamento.');
+          return;
+        }
+        recarregar = true;
+        setInvoicePayments(prev => [...prev.filter(p => p.id !== registro.id), registro]);
         /* Com a fatura já paga em outro aparelho, o servidor devolve o
            pagamento existente sem lançar nada. Dizer "Fatura paga" ali seria
            mentira. */
@@ -828,9 +889,16 @@ export default function CreditoScreen() {
       triggerToast(quitou ? 'Fatura paga' : 'Pagamento registrado');
       setPayInvoiceOpen(false);
     } catch (e: any) {
-      Alert.alert('Erro ao pagar fatura', e.message);
+      if (vigente()) Alert.alert('Erro ao pagar fatura', e.message);
     } finally {
-      setPaySaving(false);
+      if (pagamentoEmCurso.current === geracao) pagamentoEmCurso.current = null;
+      if (vigente()) {
+        setPaySaving(false);
+        // A RPC já decidiu o pagamento; recorrências/notificações não seguram o recibo.
+        if (recarregar) void loadData().catch(() => {
+          if (vigente()) console.warn('[credito] atualização secundária do pagamento indisponível.');
+        });
+      }
     }
   }
 
