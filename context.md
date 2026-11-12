@@ -20150,3 +20150,13 @@ RAM informada de 0,674 GiB continua impedindo execução. Root perguntou ao auto
 Fontes: `E:/Grana-temporarios/2026-11-11-retomada/relatorio-Forge-preservacao-2307.md`, `fila-Forge-pendentes-2307.json` e `final-Forge-rodada.json`. Forge relata três commits locais candidatos **NÃO VALIDADOS**: AppLock `e1ad3e2a7a9a2792c86280a1ec8b738bfd6bbc36`, chat `0f99f06a8229758f84717738aa54fb5ae32ebc9b` e compatibilidade `2296338a02513f976a3bcd932b447d1bb29fcafc` (HEAD). Houve fetch por commit; remoto `73e31118` inalterado, divergência preservada sem reconciliação. Fontes/freezes/package e bytes de crédito intactos segundo recibo.
 
 Zero preflight ou focal nesta retomada; somente hooks normais Git. Fila de dez comandos e SHA preparada aguarda janela de RAM do root. Os dois arquivos de crédito ficaram fora dos commits e aguardam freeze final/encaminhamento; o freeze WIP aceito anteriormente não equivale a teste ou commit. Sem CI novo, gate, bundle, push, build ou revisão independente. A preservação planejada anterior de três temas fica atualizada por estes três hashes efetivos, incluindo compatibilidade separada e crédito ainda fora.
+
+### Arbitragem WIP — quatro commits preservados, testes pendentes
+
+Fonte: `E:/Grana-temporarios/2026-11-11-retomada/final-Forge-rodada.json` atualizado e recibo de Forge. A preservação local já está concluída e não deve ser repetida ou reescrita: AppLock `e1ad3e2a`, chat `0f99f06a`, compatibilidade `2296338a` e crédito `a40bacdf` (HEAD). A referência posterior a três commits agrupava chat e compatibilidade; o histórico efetivo contém quatro commits por allowlist. Fontes e baseline de crédito reconferidas intactas; árvore limpa conforme Forge. Todos permanecem candidatos WIP não validados.
+
+Crédito RED/GREEN dos 16 grupos foi autorizado no perfil Node 192 MiB, RSS 600 MiB, piso 1,5 GiB e prazo 60 s **somente após novo sinal do root com RAM**. Zero focal, preflight ou CI novo neste recibo; nenhum GREEN implícito. Sem push ou reescrita de histórico.
+
+### Fechamento de preservação — crédito e estado real
+
+Root confirmou por `git status` clone com árvore limpa em `a40bacdf4d7da47504b590499ed72692e0889118`: crédito já commitado como WIP não validado, junto aos commits locais `e1ad3e2a`, `0f99f06a` e `2296338a`; são 24 commits desde `8ab466cb`. Forge corrige campos desatualizados `data`/`arvoreLimpa` do JSON; não tomar o campo antigo como estado atual. RAM informada 0,674/1,5 GiB, resposta do autor sobre fechar o emulador pendente e zero execução nesta retomada das 23:07. Sem GREEN integral, push ou build. Checker do vault permanece pendente para janela sem Node concorrente.
