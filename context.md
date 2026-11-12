@@ -20160,3 +20160,11 @@ Crédito RED/GREEN dos 16 grupos foi autorizado no perfil Node 192 MiB, RSS 600 
 ### Fechamento de preservação — crédito e estado real
 
 Root confirmou por `git status` clone com árvore limpa em `a40bacdf4d7da47504b590499ed72692e0889118`: crédito já commitado como WIP não validado, junto aos commits locais `e1ad3e2a`, `0f99f06a` e `2296338a`; são 24 commits desde `8ab466cb`. Forge corrige campos desatualizados `data`/`arvoreLimpa` do JSON; não tomar o campo antigo como estado atual. RAM informada 0,674/1,5 GiB, resposta do autor sobre fechar o emulador pendente e zero execução nesta retomada das 23:07. Sem GREEN integral, push ou build. Checker do vault permanece pendente para janela sem Node concorrente.
+
+### 12/11 — pausa das correções
+
+O autor pediu: “documente o estado atual das correções. Trabalho pausado por enquanto”. Inventário local nesta pausa: main `5240ce8b`, 50 commits à frente da referência local `origin/main`, apenas `.codex-attachments/` não rastreado; clone Play `a40bacdf` na branch existente `teste/leitura-avisos`, árvore limpa. A comparação é com referência local até novo fetch. Fontes operacionais: `E:/Grana-temporarios/2026-11-11-retomada/final-Forge-rodada.json`, `fila-Forge-pendentes-2307.json` e `fila-Forge-CreditoP2-candidato.json`.
+
+Há 22 itens da fila de 50 com focal comprovado na derivação registrada, não aprovação integral. Gráficos, E7 e flags têm focais verdes e commits locais; AppLock `e1ad3e2a`, chat `0f99f06a`, compatibilidade `2296338a` e crédito `a40bacdf` foram preservados como WIP NÃO VALIDADO. Crédito ainda exige revisão de harness/imports e RED/GREEN; os demais comandos pendentes estão na fila Forge. Gate integral, QA Android, revisão independente e backup incremental aguardam retomada e condições apropriadas. Não houve nova execução nesta documentação; não inferir GREEN integral.
+
+Trabalho pausado por ordem do autor. Não iniciar testes, gate, build, deploy, backup ou publicação durante a pausa. Nenhum push do main ou clone autorizado; anexos privados preservados. Verificador do vault continua pendente para janela adequada: `node scripts/verificar-vault.mjs "G:/Meu Drive/Obsidian/Gabriel/Grana"`.
