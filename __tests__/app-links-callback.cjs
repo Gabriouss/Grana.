@@ -56,6 +56,7 @@ function carregarModulo(dev) {
     exports: api,
     module: { exports: api },
     console,
+    URL,
     __DEV__: dev,
     require: (id) => {
       if (id === 'react') {

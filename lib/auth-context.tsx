@@ -98,20 +98,23 @@ const DOMINIOS_APP_LINK = ['www.granaponto.com.br', 'granaponto.com.br'];
 export function extrairCallbackSeguro(
   url: string
 ): { code: string; recuperacao: boolean; flowId?: string; viaAppLink: boolean } | { erro: string } | null {
-  const parsed = Linking.parse(url);
+  // O parser do Linking decodifica a query novamente e perde a rota se houver "%" literal.
+  const parsed = Linking.parse(url.split(/[?#]/, 1)[0]);
   const schemeNativo = parsed.scheme === SCHEME_NATIVO || (__DEV__ && parsed.scheme === 'exp');
   const viaAppLink = parsed.scheme === 'https' && DOMINIOS_APP_LINK.includes(parsed.hostname ?? '');
   if ((!schemeNativo && !viaAppLink) || parsed.path !== ROTA_CALLBACK) return null;
 
-  const erro = parsed.queryParams?.error_description;
+  const queryParams: Record<string, string> = {};
+  new URL(url).searchParams.forEach((value, key) => { queryParams[key] = value; });
+  const erro = queryParams.error_description;
   if (typeof erro === 'string' && erro) {
-    return { erro: decodeURIComponent(erro.replace(/\+/g, ' ')) };
+    return { erro };
   }
 
-  const code = parsed.queryParams?.code;
+  const code = queryParams.code;
   if (typeof code !== 'string' || code.length < 10 || code.length > 2048) return null;
-  const type = parsed.queryParams?.type;
-  const flowId = parsed.queryParams?.sb_flow_id;
+  const type = queryParams.type;
+  const flowId = queryParams.sb_flow_id;
   return {
     code,
     recuperacao: type === 'recovery',
@@ -287,48 +290,59 @@ export function SessionProvider({ children }: PropsWithChildren) {
      tempo processaria a mesma URL duas vezes. */
   useEffect(() => {
     if (Platform.OS === 'web') return;
+    let ativo = true;
+    const falhouCallback = () => {
+      if (!ativo) return;
+      // A URL e a exceção podem conter códigos de autenticação.
+      console.warn('[sessao] não foi possível concluir o link de acesso');
+      Alert.alert('Não foi possível entrar', 'Não conseguimos abrir este link. Volte para entrar e tente novamente.');
+    };
 
     async function tratarUrl(url: string | null) {
-      if (!url) return;
-      const resultado = extrairCallbackSeguro(url);
-      if (!resultado) return;
+      if (!ativo || !url) return;
+      try {
+        const resultado = extrairCallbackSeguro(url);
+        if (!resultado) return;
 
-      if ('erro' in resultado) {
-        Alert.alert('Não foi possível confirmar', resultado.erro);
-        return;
-      }
+        if ('erro' in resultado) {
+          Alert.alert('Não foi possível confirmar', resultado.erro);
+          return;
+        }
 
-      /* App Link (https://granaponto.com.br/auth/callback) do cadastro feito
-         pela web: o code_verifier do PKCE fica gravado no navegador que
-         chamou signUp, e o app nativo nunca tem acesso a ele — trocar o
-         código por aqui falharia sempre. O e-mail já está confirmado no
-         servidor (é o Supabase que gera esse link só depois da confirmação);
-         só falta avisar a pessoa e mandá-la pro login. Recuperação de senha
-         não entra aqui: continua tentando a troca, porque não é este ajuste
-         que resolve esse caso. */
-      if (resultado.viaAppLink && !resultado.recuperacao) {
-        Alert.alert('E-mail confirmado', 'Entre com seu e-mail e senha');
-        return;
-      }
+        /* App Link (https://granaponto.com.br/auth/callback) do cadastro feito
+           pela web: o code_verifier do PKCE fica gravado no navegador que
+           chamou signUp, e o app nativo nunca tem acesso a ele — trocar o
+           código por aqui falharia sempre. O e-mail já está confirmado no
+           servidor (é o Supabase que gera esse link só depois da confirmação);
+           só falta avisar a pessoa e mandá-la pro login. Recuperação de senha
+           não entra aqui: continua tentando a troca, porque não é este ajuste
+           que resolve esse caso. */
+        if (resultado.viaAppLink && !resultado.recuperacao) {
+          Alert.alert('E-mail confirmado', 'Entre com seu e-mail e senha');
+          return;
+        }
 
-      if (resultado.recuperacao) setEmRecuperacao(true);
-      const { error } = await supabase.auth.exchangeCodeForSession(
-        resultado.code,
-        resultado.flowId ? { flowId: resultado.flowId } : undefined
-      );
-      if (error) {
-        Alert.alert('Não foi possível entrar', traduzirErroAuth(error)?.mensagem ?? error.message);
-        return;
+        if (resultado.recuperacao) setEmRecuperacao(true);
+        const { error } = await supabase.auth.exchangeCodeForSession(
+          resultado.code,
+          resultado.flowId ? { flowId: resultado.flowId } : undefined
+        );
+        if (!ativo) return;
+        if (error) {
+          Alert.alert('Não foi possível entrar', traduzirErroAuth(error)?.mensagem ?? error.message);
+          return;
+        }
+        // onAuthStateChange atualiza a sessão; a tela de callback conclui a navegação.
+      } catch {
+        falhouCallback();
       }
-      // Em caso de sucesso, onAuthStateChange (acima) já atualiza `session`
-      // sozinho — o Stack.Protected do _layout leva a pessoa pro app.
     }
 
     // Abertura a frio: o app nem estava rodando quando o link foi tocado.
-    Linking.getInitialURL().then(tratarUrl);
+    Linking.getInitialURL().then(tratarUrl).catch(falhouCallback);
     // App já aberto em segundo plano quando o link é tocado.
     const sub = Linking.addEventListener('url', ({ url }) => tratarUrl(url));
-    return () => sub.remove();
+    return () => { ativo = false; sub.remove(); };
   }, []);
 
   const value: AuthContextValue = {
