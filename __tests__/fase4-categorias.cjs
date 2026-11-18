@@ -34,6 +34,9 @@ function tela(arquivo, params = {}, simulacao = {}) {
     if (id === 'react/jsx-runtime') return { jsx, jsxs: jsx };
     if (id === 'react-native') return new Proxy({ Platform: { OS: 'web' }, StyleSheet: { create: v => v }, AppState: {} }, { get: (o, k) => o[k] ?? k });
     if (id === 'expo-router') return { useRouter: () => ({ setParams: p => Object.assign(params, p), push() {} }), useLocalSearchParams: () => params, useFocusEffect() {} };
+    if (id === '@/lib/auth-context') return { useSession: () => ({ session: null }) };
+    if (id === '@/lib/sessao-offline') return { identidadeDaSessao: sessao => sessao ? `${sessao.user.id}:${sessao.refresh_token}` : null };
+    if (id === '@/lib/supabase') return { supabase: { auth: { onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }) } } };
     if (id === '@/lib/abertura-por-parametro') return { useAberturaPorParametro: (abrir, fn) => { if (abrir) fn(); } };
     if (id === '@/lib/use-categorias') return { useCategorias: () => ({ resultado, erro: null, carregar() {} }), useVisaoCategorias: () => ({ visao: 'tudo', mudar() {} }) };
     if (id === '@/lib/categorias-cliente') return carregar('lib/categorias-cliente.ts', { './data': {}, './cache-de-tela': {}, './sessao-offline': {} });
