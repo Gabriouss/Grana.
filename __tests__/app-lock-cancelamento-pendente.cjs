@@ -5,6 +5,7 @@ const root=path.resolve(__dirname,'..');
 const rejeicoes=[];process.on('unhandledRejection',e=>rejeicoes.push(e));
 const watchdog=setTimeout(()=>{console.error('FALHA: P2 pendurado sem conclusao');process.exit(1);},8000);
 const flush=async()=>{for(let i=0;i<32;i++)await Promise.resolve();};
+async function concluida(p){let terminou=false;p.then(()=>{terminou=true;},()=>{terminou=true;});await flush();assert.equal(terminou,true,'tentativa deve concluir no prazo avancado, sem esperar watchdog');return p;}
 const pendente=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 function ambiente(){
   let atual,agora=1000,id=0,promptAtual=null;const timers=new Map(),listeners=new Set(),logs=[],auth=[],cancel=[],gravacoes=[];
@@ -68,68 +69,68 @@ let total=0;const falhas=[];
 async function caso(nome,fn){try{await fn();total++;console.log('OK P2 '+nome);}catch(e){falhas.push(nome);console.error('FALHA P2 '+nome+': '+e.message);}}
 (async()=>{
   await caso('duas chamadas pendentes deixam recibo ativo e nao repetem cancelamento/prompt',async()=>{
-    const a=ambiente();await a.pronto();const velha=a.valor().desbloquear();await flush();await a.interromper();assert.equal(await velha,false);await a.tempo.avancar(2001);
+    const a=ambiente();await a.pronto();const velha=a.valor().desbloquear();await flush();await a.interromper();assert.equal(await concluida(velha),false);await a.tempo.avancar(2001);
     fechadoComRecibo(a,/anterior ainda não terminou/);assert.equal(a.auth.length,1);assert.equal(a.cancel.length,1);
-    const nova=a.valor().desbloquear();await flush();await a.tempo.avancar(2001);assert.equal(await nova,false);
+    const nova=a.valor().desbloquear();await flush();await a.tempo.avancar(2001);assert.equal(await concluida(nova),false);
     fechadoComRecibo(a,/feche completamente/);assert.equal(a.auth.length,1);assert.equal(a.cancel.length,1);
   });
   await caso('auth terminou mas cancelamento pendente continua cerca; sucesso antigo nao abre',async()=>{
-    const a=ambiente();await a.pronto();const velha=a.valor().desbloquear();await flush();await a.interromper();assert.equal(await velha,false);
+    const a=ambiente();await a.pronto();const velha=a.valor().desbloquear();await flush();await a.interromper();assert.equal(await concluida(velha),false);
     a.auth[0].resolve({success:true});await flush();await a.tempo.avancar(2001);fechadoComRecibo(a,/terminou, mas.*cancelamento/);
-    const negada=a.valor().desbloquear();await flush();await a.tempo.avancar(2001);assert.equal(await negada,false);assert.equal(a.auth.length,1);
+    const negada=a.valor().desbloquear();await flush();await a.tempo.avancar(2001);assert.equal(await concluida(negada),false);assert.equal(a.auth.length,1);
     a.cancel[0].resolve();await flush();const nova=a.valor().desbloquear(),duplo=a.valor().desbloquear();await flush();assert.equal(a.auth.length,2);assert.equal(a.cancel.length,1);
-    a.auth[1].resolve({success:true});assert.equal(await nova,true);assert.equal(await duplo,true);assert.equal(a.valor().bloqueado,false);
+    a.auth[1].resolve({success:true});assert.equal(await concluida(nova),true);assert.equal(await concluida(duplo),true);assert.equal(a.valor().bloqueado,false);
   });
   await caso('ACK de cancelamento nao e resultado da authenticate ainda pendente',async()=>{
-    const a=ambiente();await a.pronto();const velha=a.valor().desbloquear();await flush();await a.interromper();assert.equal(await velha,false);
-    a.cancel[0].resolve();await flush();const bloqueada=a.valor().desbloquear();await flush();await a.tempo.avancar(2001);assert.equal(await bloqueada,false);
+    const a=ambiente();await a.pronto();const velha=a.valor().desbloquear();await flush();await a.interromper();assert.equal(await concluida(velha),false);
+    a.cancel[0].resolve();await flush();const bloqueada=a.valor().desbloquear();await flush();await a.tempo.avancar(2001);assert.equal(await concluida(bloqueada),false);
     fechadoComRecibo(a,/anterior ainda não terminou/);assert.equal(a.auth.length,1);
-    a.auth[0].resolve({success:false,error:'user_cancel'});await flush();const nova=a.valor().desbloquear();await flush();assert.equal(a.auth.length,2);a.auth[1].resolve({success:true});assert.equal(await nova,true);
+    a.auth[0].resolve({success:false,error:'user_cancel'});await flush();const nova=a.valor().desbloquear();await flush();assert.equal(a.auth.length,2);a.auth[1].resolve({success:true});assert.equal(await concluida(nova),true);
   });
   await caso('cancelamento rejeitado nao abre sobre auth ativa; fim confirmado permite retry',async()=>{
-    const a=ambiente();await a.pronto();const velha=a.valor().desbloquear();await flush();await a.interromper();assert.equal(await velha,false);
-    a.cancel[0].reject(Error('fixture cancelamento'));await flush();const bloqueada=a.valor().desbloquear();await flush();await a.tempo.avancar(2001);assert.equal(await bloqueada,false);
+    const a=ambiente();await a.pronto();const velha=a.valor().desbloquear();await flush();await a.interromper();assert.equal(await concluida(velha),false);
+    a.cancel[0].reject(Error('fixture cancelamento'));await flush();const bloqueada=a.valor().desbloquear();await flush();await a.tempo.avancar(2001);assert.equal(await concluida(bloqueada),false);
     fechadoComRecibo(a,/anterior ainda não terminou/);assert.ok(a.logs.length);assert.equal(a.cancel.length,1);assert.equal(a.auth.length,1);
-    a.auth[0].resolve({success:false,error:'user_cancel'});await flush();const nova=a.valor().desbloquear();await flush();a.auth[1].resolve({success:true});assert.equal(await nova,true);
+    a.auth[0].resolve({success:false,error:'user_cancel'});await flush();const nova=a.valor().desbloquear();await flush();a.auth[1].resolve({success:true});assert.equal(await concluida(nova),true);
   });
   await caso('cerca do modulo sobrevive remontagem e resposta velha nao altera provider novo',async()=>{
-    const a=ambiente();await a.pronto();const velha=a.valor().desbloquear();await flush();await a.remontar();assert.equal(await velha,false);assert.equal(a.cancel.length,1);
-    const negada=a.valor().desbloquear();await flush();await a.tempo.avancar(2001);assert.equal(await negada,false);assert.equal(a.auth.length,1);
+    const a=ambiente();await a.pronto();const velha=a.valor().desbloquear();await flush();await a.remontar();assert.equal(await concluida(velha),false);assert.equal(a.cancel.length,1);
+    const negada=a.valor().desbloquear();await flush();await a.tempo.avancar(2001);assert.equal(await concluida(negada),false);assert.equal(a.auth.length,1);
     a.auth[0].resolve({success:true});await flush();assert.equal(a.valor().bloqueado,true);a.cancel[0].resolve();await flush();
-    const nova=a.valor().desbloquear();await flush();assert.equal(a.auth.length,2);a.auth[1].resolve({success:true});assert.equal(await nova,true);
+    const nova=a.valor().desbloquear();await flush();assert.equal(a.auth.length,2);a.auth[1].resolve({success:true});assert.equal(await concluida(nova),true);
   });
   await caso('termino das duas chamadas durante espera libera so uma nova confirmacao',async()=>{
-    const a=ambiente();await a.pronto();const velha=a.valor().desbloquear();await flush();await a.interromper();assert.equal(await velha,false);
+    const a=ambiente();await a.pronto();const velha=a.valor().desbloquear();await flush();await a.interromper();assert.equal(await concluida(velha),false);
     const nova=a.valor().desbloquear(),duplo=a.valor().desbloquear();await flush();assert.equal(a.auth.length,1);
     a.auth[0].resolve({success:false,error:'user_cancel'});a.cancel[0].resolve();await flush();assert.equal(a.auth.length,2);assert.equal(a.cancel.length,1);
-    a.auth[1].resolve({success:true});assert.equal(await nova,true);assert.equal(await duplo,true);
+    a.auth[1].resolve({success:true});assert.equal(await concluida(nova),true);assert.equal(await concluida(duplo),true);
   });
   await caso('app_cancel faz limpeza cercada antes de permitir proximo prompt',async()=>{
-    const a=ambiente();await a.pronto();const velha=a.valor().desbloquear();await flush();a.auth[0].resolve({success:false,error:'app_cancel'});await flush();assert.equal(await velha,false);
+    const a=ambiente();await a.pronto();const velha=a.valor().desbloquear();await flush();a.auth[0].resolve({success:false,error:'app_cancel'});await flush();assert.equal(await concluida(velha),false);
     assert.equal(a.cancel.length,1);await a.tempo.avancar(2001);fechadoComRecibo(a,/terminou, mas.*cancelamento/);
-    a.cancel[0].resolve();await flush();const nova=a.valor().desbloquear();await flush();assert.equal(a.auth.length,2);a.auth[1].resolve({success:true});assert.equal(await nova,true);
+    a.cancel[0].resolve();await flush();const nova=a.valor().desbloquear();await flush();assert.equal(a.auth.length,2);a.auth[1].resolve({success:true});assert.equal(await concluida(nova),true);
   });
   await caso('rejeicao da authenticate tambem aguarda limpeza confirmada',async()=>{
-    const a=ambiente();await a.pronto();const velha=a.valor().desbloquear();await flush();a.auth[0].reject(Error('fixture Activity'));await flush();assert.equal(await velha,false);
+    const a=ambiente();await a.pronto();const velha=a.valor().desbloquear();await flush();a.auth[0].reject(Error('fixture Activity'));await flush();assert.equal(await concluida(velha),false);
     assert.equal(a.cancel.length,1);await a.tempo.avancar(2001);fechadoComRecibo(a,/terminou, mas.*cancelamento/);
-    a.cancel[0].resolve();await flush();const nova=a.valor().desbloquear();await flush();a.auth[1].resolve({success:true});assert.equal(await nova,true);
+    a.cancel[0].resolve();await flush();const nova=a.valor().desbloquear();await flush();a.auth[1].resolve({success:true});assert.equal(await concluida(nova),true);
   });
   await caso('cancelamento nativo tardio atingiria prompt novo; cerca impede sua abertura',async()=>{
     // Calibra a fronteira adversarial: uma abertura fora do provider seria
     // cancelada pelo pedido velho. Isto valida o dublê; não é QA no aparelho.
-    const fronteira=ambiente();await fronteira.pronto();const antiga=fronteira.valor().desbloquear();await flush();await fronteira.interromper();assert.equal(await antiga,false);
+    const fronteira=ambiente();await fronteira.pronto();const antiga=fronteira.valor().desbloquear();await flush();await fronteira.interromper();assert.equal(await concluida(antiga),false);
     fronteira.auth[0].resolve({success:false,error:'user_cancel'});await flush();
     const semCerca=fronteira.abrirSemCerca();assert.equal(fronteira.cancel[0].executar(),1,'pedido velho consulta e fecha o NOVO prompt ativo');
     assert.equal((await semCerca).success,false);
 
     // Agora o provider real recebe exatamente o mesmo pedido atrasado.
-    const a=ambiente();await a.pronto();const velha=a.valor().desbloquear();await flush();await a.interromper();assert.equal(await velha,false);
+    const a=ambiente();await a.pronto();const velha=a.valor().desbloquear();await flush();await a.interromper();assert.equal(await concluida(velha),false);
     a.auth[0].resolve({success:false,error:'user_cancel'});await flush();
-    const negada=a.valor().desbloquear();await flush();await a.tempo.avancar(2001);assert.equal(await negada,false);
+    const negada=a.valor().desbloquear();await flush();await a.tempo.avancar(2001);assert.equal(await concluida(negada),false);
     fechadoComRecibo(a,/terminou, mas.*cancelamento/);assert.equal(a.auth.length,1);
     assert.equal(a.cancel[0].executar(),null,'nenhum prompt novo existe para o cancelamento velho atingir');
     await flush();const segura=a.valor().desbloquear();await flush();assert.equal(a.auth.length,2);assert.equal(a.cancel.length,1);
-    a.auth[1].resolve({success:true});assert.equal(await segura,true);
+    a.auth[1].resolve({success:true});assert.equal(await concluida(segura),true);
   });
   await new Promise(r=>setImmediate(r));assert.equal(rejeicoes.length,0,'nenhuma rejeicao sem captura');
   console.log(`P2 cancelamento: ${total}/9 grupos; ${falhas.length} falhas`);assert.equal(falhas.length,0,'falhas P2: '+falhas.join(', '));
