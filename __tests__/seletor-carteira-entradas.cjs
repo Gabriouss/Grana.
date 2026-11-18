@@ -36,8 +36,17 @@ const AsyncStorage = {
 const semRede = () => ({ data: null, error: { message: 'TypeError: Network request failed', code: '' } });
 
 const banco = [];
+const autorizacoes = [];
+function observarAuthorization(pedido, tipo, nome, valor) {
+  pedido.headers[nome] = valor;
+  assert.equal(nome, 'Authorization');
+  assert.equal(valor, `Bearer sintetico-${estado.usuario}`);
+  autorizacoes.push([tipo, nome, valor]);
+  return pedido;
+}
 function consulta() {
-  const q = { filtros: [], insercao: null, upsert: false, unico: false };
+  const q = { filtros: [], insercao: null, upsert: false, unico: false, headers: {} };
+  q.setHeader = (nome, valor) => observarAuthorization(q, 'consulta', nome, valor);
   for (const m of ['select', 'order']) q[m] = () => q;
   q.eq = (c, v) => { q.filtros.push((t) => t[c] === v); return q; };
   q.gte = (c, v) => { q.filtros.push((t) => t[c] >= v); return q; };
@@ -66,16 +75,19 @@ function consulta() {
 let linhasEntradas = [];
 const supabase = {
   from: () => consulta(),
-  rpc: async (fn) => {
-    if (fn !== 'entradas_por_carteira') return semRede();
-    return estado.rede ? { data: linhasEntradas, error: null } : semRede();
+  rpc: (fn) => {
+    const pedido = { headers: {},
+      setHeader(nome, valor) { return observarAuthorization(pedido, 'rpc', nome, valor); },
+      then(res, rej) { return Promise.resolve().then(() => fn === 'entradas_por_carteira' && estado.rede ? { data: linhasEntradas, error: null } : semRede()).then(res, rej); },
+    };
+    return pedido;
   },
 };
 
 const dubles = {
   '@react-native-async-storage/async-storage': { __esModule: true, default: AsyncStorage },
   './supabase': { supabase },
-  './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => estado.usuario },
+  './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => estado.usuario, lerSessaoDoDisco: async () => estado.usuario ? { user: { id: estado.usuario }, access_token: `sintetico-${estado.usuario}` } : null },
   './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
   './creditLimitAlert': { checarLimiteCartao: async () => {} },
   './goals': { createGoal: async () => {} },
@@ -157,6 +169,7 @@ const CARTEIRAS = [
     type: 'out', description: 'Notebook', amount: 300, category: 'Compras', color: '#fff',
     occurred_on: '2026-09-20', installments: 3, payment_method: 'credit', card_id: 'cartao-1',
   });
+  igual(autorizacoes, [['consulta', 'Authorization', 'Bearer sintetico-u-1'], ['rpc', 'Authorization', 'Bearer sintetico-u-1']], 'as duas entradas usam a escrita real com Authorization do mesmo dono');
   estado.rede = true; // a leitura da RPC continua precisando de rede; só o queueing acima foi offline
   const comPendente = await data.fetchEntradasPorCarteira();
   ok(comPendente.some((l) => l.wallet_id === 'w-viagem' && l.entradas === 250), 'a entrada pendente entra na soma da carteira certa');
