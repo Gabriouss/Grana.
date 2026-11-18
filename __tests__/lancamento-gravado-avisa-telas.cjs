@@ -43,7 +43,8 @@ const AsyncStorage = {
 const semRede = () => ({ data: null, error: { message: 'TypeError: Network request failed', code: '' } });
 const gravacoes = [];
 function consulta() {
-  const q = { insercao: null };
+  const q = { insercao: null, headers: {} };
+  q.setHeader = (nome, valor) => { q.headers[nome] = valor; assert.equal(nome, 'Authorization'); assert.equal(valor, 'Bearer sintetico-u-1'); return q; };
   for (const m of ['select', 'order', 'gte', 'lte', 'range', 'eq', 'in', 'is', 'not', 'or', 'limit']) q[m] = () => q;
   q.insert = (linha) => { q.insercao = linha; return q; };
   q.upsert = (linha) => { q.insercao = linha; return q; };
@@ -87,7 +88,7 @@ const clearTimeoutControlado = (t) => { if (!t?.parado) clearTimeout(t); };
 const dubles = {
   '@react-native-async-storage/async-storage': { __esModule: true, default: AsyncStorage },
   './supabase': { supabase },
-  './sessao-offline': { idDoUsuarioLocal: async () => 'u-1', sessaoEstaTravada: () => false },
+  './sessao-offline': { idDoUsuarioLocal: async () => 'u-1', sessaoEstaTravada: () => false, lerSessaoDoDisco: async () => ({ user: { id: 'u-1' }, access_token: 'sintetico-u-1' }) },
   './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
   './creditLimitAlert': { checarLimiteCartao: async () => {} },
   './goals': { createGoal: async () => {} },
