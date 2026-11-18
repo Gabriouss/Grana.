@@ -287,9 +287,27 @@ const limpar8 = async () => { while (agendados.length) { agendados.shift().fn();
   estado.recusar.set('Q 0', { code: '22023', message: 'Parcelamento inválido' });
   estado.falharRevisao = true;
   const r3 = await fila.flushPendingQueue();
-  estado.falharRevisao = false;
   igual([r3.synced, r3.remaining, r3.emRevisao], [0, 1, 0], 'revisão indisponível: o item fica na fila');
-  igual(estado.notificacoes.length, 0, 'e não publica recibo de algo que não foi movido');
+  igual(estado.notificacoes, [{ content: {
+    title: 'O Grana. não conseguiu atualizar a fila',
+    body: 'Seus lançamentos guardados estão a salvo, mas o aparelho está sem espaço para atualizar a fila. Libere espaço e abra o app.',
+    data: { origem: 'fila', resultado: 'fila-presa' },
+  }, trigger: null }], 'falha de persistência publica exatamente um recibo genérico de fila presa, sem dado do lançamento');
+  igual(estado.notificacoes.filter(n => n.content.data?.resultado === 'revisar').length, 0, 'nenhum recibo afirma que o item foi movido para revisão');
+  const origemPresa = JSON.parse(disco.get(QUEUE));
+  const journalPreso = JSON.parse(disco.get('grana:queue:movimento'));
+  igual(origemPresa.map(i => [i.localId, i.userId, i.input]), [['local-Q-0', 'u-1', entrada('Q 0')]], 'a origem permanece inteira no disco até a revisão caber');
+  ok(!!origemPresa[0].clientRequestId, 'a origem conserva a chave persistida antes do envio');
+  igual([journalPreso.destino, journalPreso.fila, journalPreso.revisao.map(i => [i.localId, i.userId, i.clientRequestId, i.motivo.code])],
+    ['revisao', [], [['local-Q-0', 'u-1', origemPresa[0].clientRequestId, '22023']]], 'journal conserva o mesmo dono, item, chave e destino pendente');
+  igual(JSON.parse(disco.get('grana:queue:precisa-de-revisao') ?? '[]'), [], 'o destino ainda não foi persistido');
+  igual([gravacoes.map(g => [g.description, g.recusado]), gravadasPorChave.size], [[['Q 0', true]], 0], 'uma tentativa recusada, nenhuma gravação aceita');
+  estado.falharRevisao = false;
+  const recuperada = await fila.flushPendingQueue();
+  igual([recuperada.synced, recuperada.remaining, gravacoes.length], [0, 0, 1], 'recuperar o journal conclui a movimentação sem reenviar o item');
+  igual([JSON.parse(disco.get(QUEUE)), JSON.parse(disco.get('grana:queue:precisa-de-revisao')).map(i => [i.localId, i.clientRequestId]), disco.has('grana:queue:movimento')],
+    [[], [['local-Q-0', origemPresa[0].clientRequestId]], false], 'destino confirmado antes de remover origem e journal, com a chave original');
+  igual(estado.notificacoes.map(n => n.content.data), [{ origem: 'fila', resultado: 'fila-presa' }], 'a recuperação não repete recibo nem inventa outro resultado');
 
   /* Temporário do servidor (sem código de classe 22/23): fica e espera. */
   await limpar();
