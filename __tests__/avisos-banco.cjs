@@ -588,7 +588,7 @@ async function main() {
    o que está no disco, como depois de o Android matar o app. */
 async function retomadaSemDuplicar() {
   const DONO = 'dono-r';
-  const estado = { rede: true, falhas: new Set(), pular: new Map(), rpcs: [], consultasPorChave: 0 };
+  const estado = { rede: true, falhas: new Set(), pular: new Map(), rpcs: [], autorizacoes: [], consultasPorChave: 0 };
   const disco = new Map();
   const banco = [];
   const parceladas = [];
@@ -604,9 +604,17 @@ async function retomadaSemDuplicar() {
     getAllKeys: async () => [...disco.keys()],
   };
   const semRede = () => ({ data: null, error: { message: 'TypeError: Network request failed', code: '' } });
+  function observarHeader(pedido, tipo, nome, valor) {
+    pedido.headers[nome] = valor;
+    assert.equal(nome, 'Authorization');
+    assert.equal(valor, 'Bearer AUDIT-local');
+    estado.autorizacoes.push([tipo, DONO, nome, valor]);
+    return pedido;
+  }
   function consulta() {
-    const q = { filtros: [], linha: null };
-    for (const m of ['select', 'order', 'range', 'setHeader', 'single']) q[m] = () => q;
+    const q = { filtros: [], linha: null, headers: {} };
+    for (const m of ['select', 'order', 'range', 'single']) q[m] = () => q;
+    q.setHeader = (nome, valor) => observarHeader(q, 'consulta', nome, valor);
     q.eq = (c, v) => { q.filtros.push((t) => t[c] === v); return q; };
     q.gte = (c, v) => { q.filtros.push((t) => t[c] >= v); return q; };
     q.lte = (c, v) => { q.filtros.push((t) => t[c] <= v); return q; };
@@ -628,11 +636,17 @@ async function retomadaSemDuplicar() {
   }
   const supabase = {
     from: () => consulta(),
-    rpc: async (_nome, args) => {
+    rpc: (_nome, args) => {
       estado.rpcs.push(_nome);
-      if (!estado.rede) return semRede();
-      if (!parceladas.includes(args.p_client_request_id)) parceladas.push(args.p_client_request_id);
-      return { data: [], error: null };
+      const pedido = { headers: {},
+        setHeader(nome, valor) { return observarHeader(pedido, 'rpc', nome, valor); },
+        then(res, rej) { return Promise.resolve().then(() => {
+          if (!estado.rede) return semRede();
+          if (!parceladas.includes(args.p_client_request_id)) parceladas.push(args.p_client_request_id);
+          return { data: [], error: null };
+        }).then(res, rej); },
+      };
+      return pedido;
     },
   };
   const dubles = {
@@ -680,7 +694,7 @@ async function retomadaSemDuplicar() {
   const simples = { ...base, amount: 40, payment_method: 'debit' };
   const parcelada = { ...base, amount: 300, payment_method: 'credit', card_id: 'c1', bank: 'nubank', installments: 3 };
   const preparar = () => {
-    disco.clear(); banco.length = 0; parceladas.length = 0; estado.falhas.clear(); estado.pular.clear(); estado.rpcs.length = 0; estado.rede = true;
+    disco.clear(); banco.length = 0; parceladas.length = 0; estado.falhas.clear(); estado.pular.clear(); estado.rpcs.length = 0; estado.autorizacoes.length = 0; estado.rede = true;
     disco.set(CAIXA, JSON.stringify({ itens: [item], vistos: {} }));
   };
   const fila = () => JSON.parse(disco.get(FILA) ?? '[]');
@@ -696,6 +710,8 @@ async function retomadaSemDuplicar() {
     await assert.rejects(p.gravar.gravarItem(DONO, item, entrada));
     assert.equal(fila().length, 1);
     assert.equal(naCaixa(), 1);
+    assert.ok(estado.autorizacoes.some(([tipo, dono]) => tipo === (nome === 'parcelada' ? 'rpc' : 'consulta') && dono === DONO), `${nome}: o módulo real autoriza o pedido do dono-r`);
+    assert.deepEqual(estado.autorizacoes.filter(([tipo]) => tipo === 'rpc'), nome === 'parcelada' ? [['rpc', DONO, 'Authorization', 'Bearer AUDIT-local']] : [], `${nome}: RPC autorizada uma vez, sem mascarar erro de rede`);
     estado.falhas.clear();
     assert.equal((await p.gravar.gravarItem(DONO, item, entrada)).guardado, true);
     assert.equal(fila().length, 1, `${nome}: um só na fila`);
