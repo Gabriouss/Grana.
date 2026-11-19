@@ -122,80 +122,90 @@ function adaptador(db, { falhaNoDelete = null } = {}) {
 
 async function preparar() {
   const db = await novoBanco();
-  for (const m of ['20261001120000', '20261001130000', '20261001140000', '20261109230000']) await aplicar(db, m);
-  return db;
+  let pronto = false;
+  try {
+    for (const m of ['20261001120000', '20261001130000', '20261001140000', '20261109230000']) await aplicar(db, m);
+    pronto = true;
+    return db;
+  } finally {
+    if (!pronto) await db.close();
+  }
 }
 const estado = async (db, ids) =>
   (await db.query('select id, parent_id, recurring, occurred_on::text d from public.transactions where id = any($1) order by occurred_on', [ids])).rows;
 
 (async () => {
   const db = await preparar();
-  const u = await novoUsuario(db);
-  const cab = await inserir(db, u, { recurring: true });
-  const datas = ['2026-02-05', '2026-03-05', '2026-04-05', '2026-05-05'];
-  const filhas = [];
-  for (const d of datas) filhas.push(await inserir(db, u, { occurred_on: d, recurring: true, parent_id: cab }));
-  const tocada = { parent_id: cab, occurred_on: '2026-04-05', installment_total: null };
+  try {
+    const u = await novoUsuario(db);
+    const cab = await inserir(db, u, { recurring: true });
+    const datas = ['2026-02-05', '2026-03-05', '2026-04-05', '2026-05-05'];
+    const filhas = [];
+    for (const d of datas) filhas.push(await inserir(db, u, { occurred_on: d, recurring: true, parent_id: cab }));
+    const tocada = { parent_id: cab, occurred_on: '2026-04-05', installment_total: null };
 
-  // 1. Falha NO delete depois de parar: a serie fica parada, nada sai, o erro chega a quem chamou.
-  {
-    const eventos = [];
-    ordem.length = 0;
-    const { supabase, chamadas } = adaptador(db, { falhaNoDelete: { code: '57014', message: 'tempo esgotado' } });
-    const data = carregarData(supabase, u, eventos);
-    await assert.rejects(data.encerrarSerieAPartirDe(tocada), (e) => e.code === '57014', 'o erro do delete sobe, nao e engolido');
-    assert.deepEqual(chamadas, ['update', 'delete'], 'parou a serie e so entao tentou apagar');
-    const cabeca = (await db.query('select recurring, recurrence_skipped_months m from public.transactions where id=$1', [cab])).rows[0];
-    assert.equal(cabeca.recurring, false, 'ESTADO DEIXADO: a serie ficou parada');
-    assert.deepEqual(cabeca.m, [], 'nenhum mes foi marcado, porque nada foi apagado');
-    assert.equal((await estado(db, filhas)).length, 4, 'os meses seguintes continuam la');
-    assert.deepEqual(eventos, [], 'sem sucesso, as telas/widgets nao sao avisados de mudanca');
-    assert.deepEqual(ordem, ['update', 'invalida', 'delete'], 'F3: o UPDATE ja mudou o banco, entao o cache e invalidado ANTES do delete que falhou');
-    ok('F3: falha no delete apos parar invalida o cache (update, invalida, delete)');
-    ok('falha no delete apos parar: erro sobe, serie parada, 4 meses intactos, sem aviso falso de sucesso');
+    // 1. Falha NO delete depois de parar: a serie fica parada, nada sai, o erro chega a quem chamou.
+    {
+      const eventos = [];
+      ordem.length = 0;
+      const { supabase, chamadas } = adaptador(db, { falhaNoDelete: { code: '57014', message: 'tempo esgotado' } });
+      const data = carregarData(supabase, u, eventos);
+      await assert.rejects(data.encerrarSerieAPartirDe(tocada), (e) => e.code === '57014', 'o erro do delete sobe, nao e engolido');
+      assert.deepEqual(chamadas, ['update', 'delete'], 'parou a serie e so entao tentou apagar');
+      const cabeca = (await db.query('select recurring, recurrence_skipped_months m from public.transactions where id=$1', [cab])).rows[0];
+      assert.equal(cabeca.recurring, false, 'ESTADO DEIXADO: a serie ficou parada');
+      assert.deepEqual(cabeca.m, [], 'nenhum mes foi marcado, porque nada foi apagado');
+      assert.equal((await estado(db, filhas)).length, 4, 'os meses seguintes continuam la');
+      assert.deepEqual(eventos, [], 'sem sucesso, as telas/widgets nao sao avisados de mudanca');
+      assert.deepEqual(ordem, ['update', 'invalida', 'delete'], 'F3: o UPDATE ja mudou o banco, entao o cache e invalidado ANTES do delete que falhou');
+      ok('F3: falha no delete apos parar invalida o cache (update, invalida, delete)');
+      ok('falha no delete apos parar: erro sobe, serie parada, 4 meses intactos, sem aviso falso de sucesso');
+    }
+
+    // 2. Repetir o gesto depois da falha conclui o trabalho, e devolve a contagem certa.
+    {
+      const eventos = [];
+      ordem.length = 0;
+      const data = carregarData(adaptador(db).supabase, u, eventos);
+      const n = await data.encerrarSerieAPartirDe(tocada);
+      assert.equal(n, 2, 'a contagem e a de linhas realmente apagadas (abril e maio)');
+      assert.deepEqual(eventos.sort(), ['alterados', 'widgets']);
+      assert.ok(ordem.includes('invalida') && ordem.lastIndexOf('invalida') > ordem.indexOf('delete'), 'F3: no sucesso ainda invalida depois do delete');
+      assert.deepEqual((await estado(db, filhas)).map((r) => r.d), ['2026-02-05', '2026-03-05'], 'os meses anteriores ficam');
+      const m = (await db.query('select recurrence_skipped_months m from public.transactions where id=$1', [cab])).rows[0].m;
+      assert.deepEqual(m, ['2026-04', '2026-05'], 'o gatilho marcou so os meses apagados');
+      ok('repetir apos a falha conclui: devolve 2, preserva o passado, gatilho marca abril e maio');
+    }
+
+    // 3. Idempotencia: encerrar de novo nao apaga nada e devolve 0.
+    {
+      const data = carregarData(adaptador(db).supabase, u, []);
+      assert.equal(await data.encerrarSerieAPartirDe(tocada), 0);
+      assert.equal((await estado(db, filhas)).length, 2);
+      ok('encerrar a serie ja encerrada devolve 0 e nao toca em nada');
+    }
+
+    // 4. Escopo por dono: outro usuario com o mesmo parent_id nao apaga nada (a cabeca nao e dele).
+    {
+      const outro = await novoUsuario(db);
+      const data = carregarData(adaptador(db).supabase, outro, []);
+      const n = await data.encerrarSerieAPartirDe({ parent_id: cab, occurred_on: '2026-01-01', installment_total: null });
+      assert.equal(n, 0, 'o delete e restrito ao dono: nada de A sai');
+      assert.equal((await estado(db, filhas)).length, 2);
+      ok('outro dono chamando com a cabeca alheia nao apaga e nao para nada');
+    }
+
+    // 5. Efeito combinado com a 140000: apagar a origem agora preserva os 2 meses antigos.
+    {
+      await db.query('delete from public.transactions where id=$1', [cab]);
+      const sobra = await estado(db, filhas);
+      assert.equal(sobra.length, 2, 'apagar a origem encerrada nao leva os meses ligados a ela');
+      assert.ok(sobra.every((r) => r.parent_id === null && r.recurring === false));
+      ok('depois de encerrar, apagar a origem deixa os meses antigos como lancamentos comuns');
+    }
+
+  } finally {
+    await db.close();
   }
-
-  // 2. Repetir o gesto depois da falha conclui o trabalho, e devolve a contagem certa.
-  {
-    const eventos = [];
-    ordem.length = 0;
-    const data = carregarData(adaptador(db).supabase, u, eventos);
-    const n = await data.encerrarSerieAPartirDe(tocada);
-    assert.equal(n, 2, 'a contagem e a de linhas realmente apagadas (abril e maio)');
-    assert.deepEqual(eventos.sort(), ['alterados', 'widgets']);
-    assert.ok(ordem.includes('invalida') && ordem.lastIndexOf('invalida') > ordem.indexOf('delete'), 'F3: no sucesso ainda invalida depois do delete');
-    assert.deepEqual((await estado(db, filhas)).map((r) => r.d), ['2026-02-05', '2026-03-05'], 'os meses anteriores ficam');
-    const m = (await db.query('select recurrence_skipped_months m from public.transactions where id=$1', [cab])).rows[0].m;
-    assert.deepEqual(m, ['2026-04', '2026-05'], 'o gatilho marcou so os meses apagados');
-    ok('repetir apos a falha conclui: devolve 2, preserva o passado, gatilho marca abril e maio');
-  }
-
-  // 3. Idempotencia: encerrar de novo nao apaga nada e devolve 0.
-  {
-    const data = carregarData(adaptador(db).supabase, u, []);
-    assert.equal(await data.encerrarSerieAPartirDe(tocada), 0);
-    assert.equal((await estado(db, filhas)).length, 2);
-    ok('encerrar a serie ja encerrada devolve 0 e nao toca em nada');
-  }
-
-  // 4. Escopo por dono: outro usuario com o mesmo parent_id nao apaga nada (a cabeca nao e dele).
-  {
-    const outro = await novoUsuario(db);
-    const data = carregarData(adaptador(db).supabase, outro, []);
-    const n = await data.encerrarSerieAPartirDe({ parent_id: cab, occurred_on: '2026-01-01', installment_total: null });
-    assert.equal(n, 0, 'o delete e restrito ao dono: nada de A sai');
-    assert.equal((await estado(db, filhas)).length, 2);
-    ok('outro dono chamando com a cabeca alheia nao apaga e nao para nada');
-  }
-
-  // 5. Efeito combinado com a 140000: apagar a origem agora preserva os 2 meses antigos.
-  {
-    await db.query('delete from public.transactions where id=$1', [cab]);
-    const sobra = await estado(db, filhas);
-    assert.equal(sobra.length, 2, 'apagar a origem encerrada nao leva os meses ligados a ela');
-    assert.ok(sobra.every((r) => r.parent_id === null && r.recurring === false));
-    ok('depois de encerrar, apagar a origem deixa os meses antigos como lancamentos comuns');
-  }
-
   console.log('\n' + aprovadas + '/' + aprovadas + ' checagens de encerrar-serie-falhas passaram\n');
 })().catch((e) => { console.error('FALHOU: ' + (e.stack || e)); process.exit(1); });

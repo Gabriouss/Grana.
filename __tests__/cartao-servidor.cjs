@@ -29,9 +29,15 @@ async function cartao(db, user) {
 }
 async function preparar(trocas = {}) {
   const db = await novoBanco();
-  await aplicar(db, '20260923230400', trocas['20260923230400'] || []);
-  await aplicar(db, '20260926130000', trocas['20260926130000'] || []);
-  return db;
+  let pronto = false;
+  try {
+    await aplicar(db, '20260923230400', trocas['20260923230400'] || []);
+    await aplicar(db, '20260926130000', trocas['20260926130000'] || []);
+    pronto = true;
+    return db;
+  } finally {
+    if (!pronto) await db.close();
+  }
 }
 
 async function roteiro(db) {
@@ -70,39 +76,47 @@ async function roteiro(db) {
 
 (async () => {
   const real = await preparar();
-  await roteiro(real);
-  ok('INSERT: credito sem cartao (23514 + cartao_obrigatorio), com cartao, entrada no cartao, debito/pix/dinheiro');
+  try {
+    await roteiro(real);
+    ok('INSERT: credito sem cartao (23514 + cartao_obrigatorio), com cartao, entrada no cartao, debito/pix/dinheiro');
 
-  // Continuacao de serie orfa (o cartao foi excluido; a FK pos card_id = null): excecao documentada.
-  {
-    const u = await novoUsuario(real);
-    const cab = await inserir(real, u, { payment_method: 'credit', card_id: await cartao(real, u), recurring: true });
-    await real.query('delete from public.credit_cards where user_id=$1', [u]);
-    assert.equal((await real.query('select card_id from public.transactions where id=$1', [cab])).rows[0].card_id, null, 'a FK zerou o card_id da cabeca');
-    const r = await tentar(() => inserir(real, u, { payment_method: 'credit', occurred_on: '2026-02-05', recurring: true, parent_id: cab }));
-    assert.equal(r.ok, true, 'continuacao de serie orfa passa (excecao da 230400): ' + (r.message || ''));
-    const solto = await tentar(() => inserir(real, u, { payment_method: 'credit', occurred_on: '2026-03-05' }));
-    assert.equal(solto.ok, false, 'a excecao so vale para filha de cabeca orfa, nao para lancamento solto');
-    ok('excecao da serie orfa: filha passa, lancamento solto continua recusado');
+    // Continuacao de serie orfa (o cartao foi excluido; a FK pos card_id = null): excecao documentada.
+    {
+      const u = await novoUsuario(real);
+      const cab = await inserir(real, u, { payment_method: 'credit', card_id: await cartao(real, u), recurring: true });
+      await real.query('delete from public.credit_cards where user_id=$1', [u]);
+      assert.equal((await real.query('select card_id from public.transactions where id=$1', [cab])).rows[0].card_id, null, 'a FK zerou o card_id da cabeca');
+      const r = await tentar(() => inserir(real, u, { payment_method: 'credit', occurred_on: '2026-02-05', recurring: true, parent_id: cab }));
+      assert.equal(r.ok, true, 'continuacao de serie orfa passa (excecao da 230400): ' + (r.message || ''));
+      const solto = await tentar(() => inserir(real, u, { payment_method: 'credit', occurred_on: '2026-03-05' }));
+      assert.equal(solto.ok, false, 'a excecao so vale para filha de cabeca orfa, nao para lancamento solto');
+      ok('excecao da serie orfa: filha passa, lancamento solto continua recusado');
+    }
+
+  } finally {
+    await real.close();
   }
-
   // Legado: o gatilho e so de INSERT. Linhas antigas sem cartao e UPDATEs ficam como estao (limite documentado, nao protecao).
   {
     const db = await novoBanco();
-    const u = await novoUsuario(db);
-    const legado = await inserir(db, u, { payment_method: 'credit' });          // antes das migrations
-    await aplicar(db, '20260923230400');
-    await aplicar(db, '20260926130000');                                          // restricao nasce valida com o legado la
-    let r = await tentar(() => db.query("update public.transactions set description='editada' where id=$1", [legado]));
-    assert.equal(r.ok, true, 'editar a descricao de um legado sem cartao nao e recusado');
-    const avulso = await inserir(db, u, { payment_method: 'pix' });
-    r = await tentar(() => db.query("update public.transactions set payment_method='credit' where id=$1", [avulso]));
-    assert.equal(r.ok, true, 'LIMITE CONHECIDO (Keel B6): UPDATE para credito sem cartao NAO e barrado pelo gatilho de INSERT');
-    const c = await cartao(db, u);
-    r = await tentar(() => db.query("update public.transactions set type='in', card_id=$2 where id=$1", [avulso, c]));
-    assert.equal(r.ok, false, 'UPDATE que vira entrada no cartao e barrado pela restricao');
-    assert.equal(r.code, '23514');
-    ok('legado: UPDATE nao e barrado pelo gatilho (limite documentado); a restricao barra entrada no cartao');
+    try {
+      const u = await novoUsuario(db);
+      const legado = await inserir(db, u, { payment_method: 'credit' });          // antes das migrations
+      await aplicar(db, '20260923230400');
+      await aplicar(db, '20260926130000');                                          // restricao nasce valida com o legado la
+      let r = await tentar(() => db.query("update public.transactions set description='editada' where id=$1", [legado]));
+      assert.equal(r.ok, true, 'editar a descricao de um legado sem cartao nao e recusado');
+      const avulso = await inserir(db, u, { payment_method: 'pix' });
+      r = await tentar(() => db.query("update public.transactions set payment_method='credit' where id=$1", [avulso]));
+      assert.equal(r.ok, true, 'LIMITE CONHECIDO (Keel B6): UPDATE para credito sem cartao NAO e barrado pelo gatilho de INSERT');
+      const c = await cartao(db, u);
+      r = await tentar(() => db.query("update public.transactions set type='in', card_id=$2 where id=$1", [avulso, c]));
+      assert.equal(r.ok, false, 'UPDATE que vira entrada no cartao e barrado pela restricao');
+      assert.equal(r.code, '23514');
+      ok('legado: UPDATE nao e barrado pelo gatilho (limite documentado); a restricao barra entrada no cartao');
+    } finally {
+      await db.close();
+    }
   }
 
   const MUTANTES = [
@@ -112,8 +126,12 @@ async function roteiro(db) {
   ];
   for (const [nome, trocas] of MUTANTES) {
     const db = await preparar(trocas);
-    const r = await tentar(() => roteiro(db));
-    assert.equal(r.ok, false, 'MUTANTE SOBREVIVEU (o teste nao pega): ' + nome);
+    try {
+      const r = await tentar(() => roteiro(db));
+      assert.equal(r.ok, false, 'MUTANTE SOBREVIVEU (o teste nao pega): ' + nome);
+    } finally {
+      await db.close();
+    }
     ok('mutante morto: ' + nome);
   }
   console.log('\n' + aprovadas + '/' + aprovadas + ' checagens de cartao-servidor passaram\n');
