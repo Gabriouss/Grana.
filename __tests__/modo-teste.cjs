@@ -76,6 +76,35 @@ const sup = fs.readFileSync('lib/supabase.ts', 'utf8');
 ok(/fetchComRetentativaDeRelogio\([^)]*\)[^{]*\{\s*(\/\*[\s\S]*?\*\/\s*)?if \(MODO_TESTE\) throw new RedeDesligadaNoTeste\(\);/.test(sup), 'fetch do Supabase recusa tudo no modo teste antes de qualquer pedido');
 const assistente = fs.readFileSync('lib/assistente.ts', 'utf8');
 ok(/fetchMensagens[\s\S]{0,200}if \(MODO_TESTE\) return \[\];/.test(assistente), 'histórico do chat não consulta o servidor no teste');
-ok(/if \(MODO_TESTE\) \{[\s\S]{0,120}respostaDoTeste\(mensagem\)/.test(assistente), 'pergunta ao Granabô responde local no teste, sem a Edge Function');
+function carregarPergunta(modo = t2.modo) {
+  const chamadas = { sdk: 0, rede: 0 };
+  const supabase = new Proxy({}, { get() { chamadas.sdk++; throw new Error('SDK proibido no teste'); } });
+  const exp = {};
+  vm.runInNewContext(transpilar('lib/assistente.ts'), {
+    exports: exp, AbortController, AbortSignal, setTimeout, clearTimeout, Date, console,
+    require(nome) {
+      if (nome === './modo-teste') return modo;
+      if (nome === './assistente-teste') return t2.assist;
+      if (nome === './supabase') return { supabase };
+      throw new Error('Import não previsto: ' + nome);
+    },
+    fetch() { chamadas.rede++; throw new Error('Rede proibida no teste'); },
+  });
+  return { api: exp, chamadas };
+}
 
-console.log(`modo-teste: ${checks} checks; só web em /experimentar, marca por janela, memória compartilhada, aviso à landing, respostas locais OK`);
+(async () => {
+  const local = carregarPergunta();
+  const pergunta = 'quanto gastei com alimentação?';
+  const recebida = await local.api.enviarPergunta(pergunta);
+  eq(recebida.resposta, t2.assist.respostaDoTeste(pergunta), 'enviarPergunta real devolve a resposta local com os lançamentos do teste');
+  eq(recebida.ferramenta, null, 'resposta local não usa ferramenta remota');
+  eq(local.chamadas, { sdk: 0, rede: 0 }, 'pergunta ao Granabô responde local no teste, sem SDK ou Edge Function');
+
+  // Controle: sem o ramo de teste, a mesma fronteira acusa o acesso ao SDK.
+  const semModoTeste = carregarPergunta({ MODO_TESTE: false });
+  await assert.rejects(semModoTeste.api.enviarPergunta(pergunta), /SDK proibido no teste/);
+  checks++;
+  eq(semModoTeste.chamadas, { sdk: 1, rede: 0 }, 'a fronteira SDK não pode passar silenciosamente');
+  console.log(`modo-teste: ${checks} checks; só web em /experimentar, marca por janela, memória compartilhada, aviso à landing, respostas locais OK`);
+})().catch(erro => { console.error(erro); process.exitCode = 1; });
