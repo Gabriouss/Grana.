@@ -36,14 +36,19 @@ type LinhaAppRelease = { version: string; apk_url: string; notes: string | null;
     de atualização disponível e pelo pop-up de novidades — as duas checagens
     rodam juntas ao entrar na área logada, e ler a tabela duas vezes só
     duplicaria a ida à rede sem motivo. */
-async function buscarAppRelease(): Promise<LinhaAppRelease | null> {
-  const { data, error } = await supabase
-    .from('app_release')
-    .select('version, apk_url, notes, apk_expires_at')
-    .eq('id', 1)
-    .maybeSingle();
-  if (error || !data) return null;
-  return data;
+async function buscarAppRelease(): Promise<LinhaAppRelease | null | undefined> {
+  try {
+    const { data, error } = await supabase
+      .from('app_release')
+      .select('version, apk_url, notes, apk_expires_at')
+      .eq('id', 1)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  } catch {
+    console.warn('[atualizacao] não foi possível consultar a versão publicada');
+    return undefined;
+  }
 }
 
 
@@ -102,6 +107,8 @@ export async function verificarNovidades(): Promise<Novidades | null> {
   if (vista === instalada) return null;
 
   const data = await buscarAppRelease();
+  // Falha de consulta não é ausência confirmada: deixa para a próxima abertura.
+  if (data === undefined) return null;
   const itens = data?.notes
     ?.split('\n')
     .map((linha) => linha.trim())
