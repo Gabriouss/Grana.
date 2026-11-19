@@ -481,7 +481,17 @@ checar('o restante só soma se o valor pago for o que a tela viu', /if v_invoice
 
   const primeiroPromiseAll = loadData.slice(loadData.indexOf('await Promise.all(['), loadData.indexOf(']);', loadData.indexOf('await Promise.all([')));
   checar('a busca sem cache não trava as buscas com cache', primeiroPromiseAll.includes('fetchRecurrenceContext'), false);
-  checar('a busca sem cache continua existindo, em separado', /ocorrenciasFaltantes\(await fetchRecurrenceContext\(\), todayISO\(\)\)/.test(loadData), true);
+  const acertoSeparado = [
+    'const contexto = await fetchRecurrenceContext();',
+    'if (!vigente()) return;',
+    'const faltantes = ocorrenciasFaltantes(contexto, todayISO());',
+    'if (faltantes.length > 0) {',
+    'await criarOcorrenciasRecorrentes(faltantes);',
+    'const recarregados = await buscarMeses(false);',
+    'if (!vigente()) return;',
+  ].join('\n');
+  checar('a busca sem cache continua existindo, em separado e vinculada à consulta vigente',
+    loadData.split(/\r?\n/).map(linha => linha.trim()).join('\n').includes(acertoSeparado), true);
   checar('os cartões chegam à tela antes do acerto de recorrências',
     loadData.indexOf('setCards(c)') < loadData.indexOf('fetchRecurrenceContext()'), true);
 
