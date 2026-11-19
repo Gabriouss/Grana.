@@ -64,14 +64,13 @@ export default function ExcluirContaSheet({
     setExcluindo(true);
     setErro(null);
 
-    const { ok, error } = await reauthenticate(senha);
-    if (!ok) {
-      setExcluindo(false);
-      setErro(error ?? 'Não foi possível confirmar sua identidade.');
-      return;
-    }
-
     try {
+      const { ok, error } = await reauthenticate(senha);
+      if (!ok) {
+        setErro(error ?? 'Não foi possível confirmar sua identidade.');
+        return;
+      }
+
       const { completo } = await deleteUserAccount();
       setSenha('');
       await signOut();
@@ -87,6 +86,7 @@ export default function ExcluirContaSheet({
       }
       router.replace('/sign-in');
     } catch (err) {
+      console.warn('[exclusao] exclusão não concluída');
       setErro(mensagemErro(err, 'Não foi possível excluir agora. Tente de novo.'));
     } finally {
       setExcluindo(false);
