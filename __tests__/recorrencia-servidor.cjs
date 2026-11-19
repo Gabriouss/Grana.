@@ -21,8 +21,14 @@ const ok = (r) => { aprovadas++; console.log('  ok  ' + r); };
 
 async function preparar(trocas = {}) {
   const db = await novoBanco();
+  let pronto = false;
+  try {
   for (const m of MIGRATIONS) await aplicar(db, m, trocas[m] || []);
+  pronto = true;
   return db;
+  } finally {
+    if (!pronto) await db.close();
+  }
 }
 const meses = async (db, id) => (await db.query('select recurrence_skipped_months m from public.transactions where id=$1', [id])).rows[0]?.m;
 const contar = async (db, user, where = 'true') =>
@@ -126,7 +132,11 @@ async function roteiro(db) {
 
 (async () => {
   const real = await preparar();
-  await roteiro(real);
+  try {
+    await roteiro(real);
+  } finally {
+    await real.close();
+  }
   ok('roteiro completo no SQL real (7 grupos: marcar mes, lote misto, parcela/avulso, dono, origem encerrada, delete em lote, este e os proximos)');
 
   const MUTANTES = [
@@ -137,8 +147,12 @@ async function roteiro(db) {
   ];
   for (const [nome, trocas] of MUTANTES) {
     const db = await preparar(trocas);
-    const r = await tentar(() => roteiro(db));
-    assert.equal(r.ok, false, 'MUTANTE SOBREVIVEU (o teste nao pega): ' + nome);
+    try {
+      const r = await tentar(() => roteiro(db));
+      assert.equal(r.ok, false, 'MUTANTE SOBREVIVEU (o teste nao pega): ' + nome);
+    } finally {
+      await db.close();
+    }
     ok('mutante morto: ' + nome);
   }
   console.log('\n' + aprovadas + '/' + aprovadas + ' checagens de recorrencia-servidor passaram\n');

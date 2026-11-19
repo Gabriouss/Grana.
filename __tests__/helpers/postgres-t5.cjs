@@ -31,6 +31,8 @@ function migration(nome) {
 async function novoBanco() {
   const { PGlite } = await import('@electric-sql/pglite');
   const db = new PGlite();
+  let pronto = false;
+  try {
   await db.exec(`
     create role anon nologin; create role authenticated nologin; create role service_role nologin;
     create schema auth;
@@ -48,7 +50,11 @@ async function novoBanco() {
   await db.exec(extrair(/create unique index if not exists transactions_user_id_id_uniq\n[^;]*;/, 'indice user_id,id'));
   await db.exec(extrair(/create index if not exists transactions_parent_id_idx[^;]*;/, 'indice parent_id'));
   await db.exec(extrair(/alter table public\.transactions\n\s+add constraint transactions_parent_same_owner_fkey[^;]*;/, 'fk de mesmo dono'));
+  pronto = true;
   return db;
+  } finally {
+    if (!pronto) await db.close();
+  }
 }
 
 async function aplicar(db, nome, trocas = []) {

@@ -31,6 +31,8 @@ const ok = (r) => { aprovadas++; console.log('  ok  ' + r); };
 
 async function preparar(trocas = {}) {
   const db = await novoBanco();
+  let pronto = false;
+  try {
   await db.exec(trecho(/create table if not exists bills \([\s\S]*?\n\);/, 'bills'));
   for (const col of ['recurring', 'paid_transaction_id', 'wallet_id']) {
     await db.exec(trecho(new RegExp('alter table bills add column if not exists ' + col + '[^;]*;'), col));
@@ -43,7 +45,11 @@ async function preparar(trocas = {}) {
   await db.exec('create function public.tem_direito_acesso() returns boolean language sql as $$ select true $$;');
   await db.exec(trecho(/create or replace function public\.somar_meses_data\([\s\S]*?\n\$\$;/, 'somar_meses_data'));
   for (const m of MIGRATIONS) await aplicar(db, m, trocas[m] || []);
+  pronto = true;
   return db;
+  } finally {
+    if (!pronto) await db.close();
+  }
 }
 
 function ferramentas(db, u) {
@@ -286,7 +292,11 @@ async function roteiro(db) {
 
 (async () => {
   const real = await preparar();
-  await roteiro(real);
+  try {
+    await roteiro(real);
+  } finally {
+    await real.close();
+  }
   ok('roteiro completo no SQL real (B3 dia desejado, B6 reabrir preserva editada, B5 saida apagada reabre, B4 edicao sincroniza, controles)');
 
   const MUTANTES = [
@@ -301,8 +311,12 @@ async function roteiro(db) {
   ];
   for (const [nome, trocas] of MUTANTES) {
     const db = await preparar(trocas);
-    const r = await tentar(() => roteiro(db));
-    assert.equal(r.ok, false, 'MUTANTE SOBREVIVEU (o teste nao pega): ' + nome);
+    try {
+      const r = await tentar(() => roteiro(db));
+      assert.equal(r.ok, false, 'MUTANTE SOBREVIVEU (o teste nao pega): ' + nome);
+    } finally {
+      await db.close();
+    }
     ok('mutante morto: ' + nome);
   }
   console.log('\n' + aprovadas + '/' + aprovadas + ' checagens de boletos-servidor passaram\n');
