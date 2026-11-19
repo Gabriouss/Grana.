@@ -315,18 +315,23 @@ conferir('rejeita depósito sem id', parseDeepLink('com.gabriouss.grana://deposi
      e o de outra conta não passa para o próximo login. Voltar ao repouso calado
      continua reprovado, inclusive nos motivos desta lista. */
   const PODE_TENTAR_DE_NOVO = ['"microfone_ocupado"', '"sessao_mudou_durante_captura"',
-    '"sessao_mudou_antes_da_captura"', '"agenda_indisponivel"',
+    '"sessao_mudou_antes_da_captura"', '"sessao_mudou_antes_da_agenda"', '"agenda_indisponivel"',
     '"metadados_indisponiveis"', '"captura_silenciada_pelo_android"'];
   const chamadas = [...servico.matchAll(/(?<!fun )abortar\(([^)]*)\)/g)].map((m) => m[1].trim());
   const comMotivo = chamadas.filter(
     (args) => args !== 'null' && args !== '' && !args.startsWith('motivo:')
   );
   conferir('há abortos com motivo para conferir', comMotivo.length >= 3, chamadas);
-  for (const args of comMotivo) {
+  const temReciboVisivel = (args: string) => {
     const podeRepetir = PODE_TENTAR_DE_NOVO.includes(args.split(',')[0].trim());
+    return args.includes('EstadoWidget.ATENCAO') || (podeRepetir && args.includes('EstadoWidget.REPETIR'));
+  };
+  conferir('motivo desconhecido com REPETIR continua reprovado',
+    !temReciboVisivel('"motivo_desconhecido", EstadoWidget.REPETIR'));
+  for (const args of comMotivo) {
     conferir(
       `abortar(${args}) deixa recibo na tela, em vez de voltar ao repouso`,
-      args.includes('EstadoWidget.ATENCAO') || (podeRepetir && args.includes('EstadoWidget.REPETIR')),
+      temReciboVisivel(args),
       args
     );
   }
