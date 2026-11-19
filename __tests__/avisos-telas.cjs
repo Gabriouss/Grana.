@@ -79,6 +79,7 @@ const salvar = async (entrada, chave) => {
 };
 const stub = {
   react,
+  '@/lib/auth-context': { useSession: () => ({ session: { user: { id: 'dono' } } }) },
   '@/lib/privacy-context': { usePrivacy: () => ({ hidden: privacidadeOculta }) },
   'expo-blur': { BlurView: 'BlurView' },
   'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'Fragment' },
