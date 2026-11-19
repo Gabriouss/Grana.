@@ -105,6 +105,6 @@ function montar(agora, linhasPorConta, contaRef, fonte) {
   const tela = fs.readFileSync(path.join(root, 'components/Granachat.tsx'), 'utf8');
   assert.match(tela, /\.filter\(\(m\) => !m\.carregando && !m\.erro && dentroDoPrazo\(m\.criado_em\)\)/);
   assert.match(tela, /atual\.filter\(\(m\) => dentroDoPrazo\(m\.criado_em\)\)/, 'sem rede, a tela também corta o vencido');
-  assert.match(tela, /\}, \[visivel\]\);\s*\n\s*\n\s*\/\* ── Teclado/);
+  assert.match(tela, /\}, \[visivel, dono\]\);\s*\n\s*\n\s*\/\* ── Teclado/);
   console.log('granachat-prazo: ok');
 })().catch((e) => { console.error(e); process.exit(1); });
