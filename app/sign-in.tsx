@@ -51,9 +51,15 @@ export default function SignIn() {
       return;
     }
     setLoading(true);
-    const { error: signInError } = await signIn(email.trim(), password);
-    setLoading(false);
-    if (signInError) setError(signInError);
+    try {
+      const { error: signInError } = await signIn(email.trim(), password);
+      if (signInError) setError(signInError);
+    } catch {
+      console.warn('[login] entrada não concluída');
+      setError({ mensagem: 'Não conseguimos entrar agora. Tente novamente.' });
+    } finally {
+      setLoading(false);
+    }
   });
 
   return (

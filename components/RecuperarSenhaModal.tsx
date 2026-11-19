@@ -49,13 +49,19 @@ export default function RecuperarSenhaModal({
     }
     setErro(null);
     setEnviando(true);
-    const { error } = await recuperarSenha(alvo);
-    setEnviando(false);
-    if (error) {
-      setErro(error.mensagem);
-      return;
+    try {
+      const { error } = await recuperarSenha(alvo);
+      if (error) {
+        setErro(error.mensagem);
+        return;
+      }
+      setEnviado(true);
+    } catch {
+      console.warn('[recuperacao] envio do link não concluído');
+      setErro('Não conseguimos enviar o link. Tente novamente.');
+    } finally {
+      setEnviando(false);
     }
-    setEnviado(true);
   }
 
   function fechar() {

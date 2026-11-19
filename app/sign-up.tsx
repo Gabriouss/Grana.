@@ -95,29 +95,34 @@ export default function SignUp() {
 
     setLoading(true);
 
-    /* Checagem de senha vazada. Roda depois das validações locais (que são
-       instantâneas) para não gastar uma ida à rede numa senha que já seria
-       recusada de qualquer forma. Se o serviço não responder, `indisponivel`
-       deixa o cadastro seguir — ver o comentário em lib/pwned.ts. */
-    const vazamento = await checarSenhaVazada(password);
-    if (vazamento.status === 'vazada') {
-      setLoading(false);
-      setError(mensagemSenhaVazada(vazamento.vezes));
-      return;
-    }
+    try {
+      /* Checagem de senha vazada. Roda depois das validações locais (que são
+         instantâneas) para não gastar uma ida à rede numa senha que já seria
+         recusada de qualquer forma. Se o serviço não responder, `indisponivel`
+         deixa o cadastro seguir — ver o comentário em lib/pwned.ts. */
+      const vazamento = await checarSenhaVazada(password);
+      if (vazamento.status === 'vazada') {
+        setError(mensagemSenhaVazada(vazamento.vezes));
+        return;
+      }
 
-    const { error: signUpError, needsEmailConfirmation } = await signUp(email.trim(), password);
-    setLoading(false);
-    if (signUpError) {
-      setError(signUpError.mensagem);
-      return;
+      const { error: signUpError, needsEmailConfirmation } = await signUp(email.trim(), password);
+      if (signUpError) {
+        setError(signUpError.mensagem);
+        return;
+      }
+      if (needsEmailConfirmation) {
+        // sem sessão retornada: precisa confirmar o e-mail antes de logar.
+        setConfirmationSentTo(email.trim());
+      }
+      // se não precisar de confirmação, a sessão já foi criada — o listener
+      // em SessionProvider detecta e o Stack.Protected leva pro app sozinho.
+    } catch {
+      console.warn('[cadastro] cadastro não concluído');
+      setError('Não conseguimos concluir o cadastro. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
-    if (needsEmailConfirmation) {
-      // sem sessão retornada: precisa confirmar o e-mail antes de logar.
-      setConfirmationSentTo(email.trim());
-    }
-    // se não precisar de confirmação, a sessão já foi criada — o listener
-    // em SessionProvider detecta e o Stack.Protected leva pro app sozinho.
   });
 
   if (confirmationSentTo) {
