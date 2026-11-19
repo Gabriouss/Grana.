@@ -120,33 +120,39 @@ class GranaVoiceWidgetProvider : AppWidgetProvider() {
     super.onReceive(context, intent)
     if (intent.action != ACAO_TOQUE) return
 
-    EstadoWidget.recuperarCapturaInterrompida(context)
-
-    // O trabalho já está duravelmente agendado. Um toque não abre Activity
-    // nem grava de novo o gasto cujo desfecho ainda não se conhece.
-    if (EstadoWidget.atual(context) in setOf(EstadoWidget.PREPARANDO, EstadoWidget.PROCESSANDO, EstadoWidget.PENDENTE)) return
-
-    val servico = Intent(context, GranaVoiceCaptureService::class.java)
-    if (EstadoWidget.atual(context) == EstadoWidget.OUVINDO) {
-      servico.action = GranaVoiceCaptureService.ACAO_ENCERRAR
-    } else {
-      servico.action = GranaVoiceCaptureService.ACAO_INICIAR
-      // Só o serviço, depois de MediaRecorder.start(), pode dizer "Ouvindo".
-      val requestId = UUID.randomUUID().toString()
-      EstadoWidget.preparar(context, requestId)
-      servico.putExtra("requestId", requestId)
-    }
-
-    /* Iniciar serviço em primeiro plano a partir de um toque em widget é
-       permitido pelo Android mesmo com o app fechado — interação do usuário
-       com um widget está na lista de exceções à restrição de FGS em segundo
-       plano. */
     try {
+      EstadoWidget.recuperarCapturaInterrompida(context)
+
+      // O trabalho já está duravelmente agendado. Um toque não abre Activity
+      // nem grava de novo o gasto cujo desfecho ainda não se conhece.
+      if (EstadoWidget.atual(context) in setOf(EstadoWidget.PREPARANDO, EstadoWidget.PROCESSANDO, EstadoWidget.PENDENTE)) return
+
+      val servico = Intent(context, GranaVoiceCaptureService::class.java)
+      if (EstadoWidget.atual(context) == EstadoWidget.OUVINDO) {
+        servico.action = GranaVoiceCaptureService.ACAO_ENCERRAR
+      } else {
+        servico.action = GranaVoiceCaptureService.ACAO_INICIAR
+        // Só o serviço, depois de MediaRecorder.start(), pode dizer "Ouvindo".
+        val requestId = UUID.randomUUID().toString()
+        EstadoWidget.preparar(context, requestId)
+        servico.putExtra("requestId", requestId)
+      }
+
+      /* Iniciar serviço em primeiro plano a partir de um toque em widget é
+         permitido pelo Android mesmo com o app fechado — interação do usuário
+         com um widget está na lista de exceções à restrição de FGS em segundo
+         plano. */
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(servico)
       else context.startService(servico)
     } catch (erro: Exception) {
       android.util.Log.e("GranaVoz", "não consegui iniciar a captura do widget", erro)
-      EstadoWidget.definir(context, EstadoWidget.REPETIR)
+      // O recibo não pode depender do mesmo storage/desenho que acabou de falhar.
+      try {
+        EstadoWidget.definir(context, EstadoWidget.REPETIR)
+      } catch (falhaDeEstado: Exception) {
+        android.util.Log.e("GranaVoz", "não consegui mostrar a falha no widget", falhaDeEstado)
+      }
+      VoiceCaptureReceipt.publicar(context, R.string.grana_voice_interrompida_titulo, R.string.grana_voice_interrompida_texto)
     }
   }
 
