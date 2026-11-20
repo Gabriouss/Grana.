@@ -314,6 +314,38 @@ export function RootNavigator() {
     };
   }, [session?.user.id, estadoAcesso?.allowed, isLoading, emRecuperacao, erroInicializacao]);
 
+  /* Fila manual salva sem rede (item 35): só Lançamentos a enviava ao abrir, e
+     o timer de nova tentativa morre com o processo. Reiniciado em outra tela,
+     o que estava no disco ficava parado. Dispara ao abrir e a cada volta ao
+     primeiro plano; a espera entre falhas continua sendo a da própria fila. */
+  useEffect(() => {
+    if (!session?.user.id || isLoading || emRecuperacao || erroInicializacao || estadoAcesso?.allowed !== true) return;
+    let encerrado = false;
+    const tentar = () => {
+      if (encerrado) return;
+      void import('@/lib/offline-cache').then(async (fila) => {
+        if (encerrado) return;
+        try {
+          await fila.flushPendingQueue();
+        } catch (erro) {
+          console.error('[offline] retomada da fila pela raiz falhou', erro);
+        }
+        /* A rodada pode ter sido de outra conta (troca A→B no meio): se ainda
+           sobra item desta, arma a próxima tentativa sem repetir agora. */
+        if (!encerrado && await fila.getPendingCount() > 0) fila.agendarNovaTentativa();
+      }).catch((erro) => console.error('[offline] retomada da fila pela raiz falhou', erro));
+    };
+
+    tentar();
+    const appState = AppState.addEventListener('change', (estado) => {
+      if (estado === 'active') tentar();
+    });
+    return () => {
+      encerrado = true;
+      appState.remove();
+    };
+  }, [session?.user.id, estadoAcesso?.allowed, isLoading, emRecuperacao, erroInicializacao]);
+
   /* Link protegido aberto sem sessão vai para o login, não para a página de
      marketing. Sem isto o expo-router caía na landing e o destino sumia. */
   useEffect(() => {
