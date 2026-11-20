@@ -59,6 +59,11 @@ import type { CreditCard } from '@/lib/types';
 
 type LinhaImportavel = LancamentoOfx;
 
+/* Texto acima de LIMITS.pastedText: o parser só lê os registros inteiros antes do corte e não sabe quantos vêm depois (item 37). */
+function avisoDeCorteDeTexto(quantos: number, unidade: string, orientacao: string): string {
+  return `O arquivo passa do tamanho que a prévia lê de uma vez. A prévia contém só as primeiras ${quantos} ${unidade} inteiras; o resto do arquivo ficou de fora. Nada foi salvo ainda. ${orientacao}`;
+}
+
 export default function ImportarExtratoModal({
   visible,
   onClose,
@@ -139,8 +144,10 @@ export default function ImportarExtratoModal({
       if (r.truncado) {
         Alert.alert(
           'Extrato grande demais',
-          `O arquivo tem ${r.totalNoArquivo} transações e a prévia contém apenas as primeiras ${r.lancamentos.length}. Nada foi salvo ainda. ` +
-            'Exporte o restante em outro período e importe em seguida.'
+          r.cortadoPorTamanho
+            ? avisoDeCorteDeTexto(r.lancamentos.length, 'transações', 'Exporte o restante em outro período e importe em seguida.')
+            : `O arquivo tem ${r.totalNoArquivo} transações e a prévia contém apenas as primeiras ${r.lancamentos.length}. Nada foi salvo ainda. ` +
+              'Exporte o restante em outro período e importe em seguida.'
         );
       }
       setOrigem(r.origem);
@@ -150,7 +157,7 @@ export default function ImportarExtratoModal({
       return;
     }
 
-    const { rows, totalLinhas, truncado } = parseCsvTextDetalhado(conteudo);
+    const { rows, totalLinhas, truncado, cortadoPorTamanho } = parseCsvTextDetalhado(conteudo);
     if (rows.length === 0) {
       Alert.alert(
         'Nenhum lançamento identificado',
@@ -161,8 +168,10 @@ export default function ImportarExtratoModal({
     if (truncado) {
       Alert.alert(
         'Extrato grande demais',
-        `O arquivo tem ${totalLinhas} linhas e a prévia contém apenas as primeiras ${rows.length}. Nada foi salvo ainda. ` +
-          'Separe o restante em outro arquivo e importe em seguida.'
+        cortadoPorTamanho
+          ? avisoDeCorteDeTexto(rows.length, 'linhas', 'Separe o restante em outro arquivo e importe em seguida.')
+          : `O arquivo tem ${totalLinhas} linhas e a prévia contém apenas as primeiras ${rows.length}. Nada foi salvo ainda. ` +
+            'Separe o restante em outro arquivo e importe em seguida.'
       );
     }
     setOrigem('conta');

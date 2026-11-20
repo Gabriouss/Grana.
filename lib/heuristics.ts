@@ -1485,15 +1485,19 @@ export type CsvParseResult = {
   totalLinhas: number;
   /** true quando o arquivo passou de LIMITS.csvRows e foi truncado. */
   truncado: boolean;
+  /** true quando o texto passou de LIMITS.pastedText: só as linhas inteiras antes do corte entram, e totalLinhas não conta o resto. */
+  cortadoPorTamanho: boolean;
 };
 
 export function parseCsvTextDetalhado(text: string, separador?: ',' | ';'): CsvParseResult {
-  const vazio: CsvParseResult = { rows: [], totalLinhas: 0, truncado: false };
+  const cortadoPorTamanho = text.length > LIMITS.pastedText;
+  const vazio: CsvParseResult = { rows: [], totalLinhas: 0, truncado: cortadoPorTamanho, cortadoPorTamanho };
 
   /* Corta o texto antes de qualquer processamento. Sem isto, colar um arquivo
      grande já estoura a memória no split, antes mesmo de chegar ao teto de
-     linhas. */
-  const texto = text.length > LIMITS.pastedText ? text.slice(0, LIMITS.pastedText) : text;
+     linhas. O pedaço depois da última quebra pode ser uma linha partida no
+     corte (um valor 123,45 virando 12), então sai inteiro (item 37). */
+  const texto = cortadoPorTamanho ? cortarNaUltimaQuebra(text.slice(0, LIMITS.pastedText)) : text;
 
   const lines = texto.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length === 0) return vazio;
@@ -1580,8 +1584,14 @@ export function parseCsvTextDetalhado(text: string, separador?: ',' | ';'): CsvP
   return {
     rows: results,
     totalLinhas: dataLines.length,
-    truncado: dataLines.length > results.length,
+    truncado: cortadoPorTamanho || dataLines.length > results.length,
+    cortadoPorTamanho,
   };
+}
+
+function cortarNaUltimaQuebra(prefixo: string): string {
+  const fim = prefixo.lastIndexOf('\n');
+  return fim < 0 ? '' : prefixo.slice(0, fim).replace(/\r$/, '');
 }
 
 /**

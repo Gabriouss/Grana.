@@ -55,6 +55,8 @@ export type ResultadoOfx = {
   totalNoArquivo: number;
   /** true quando o teto de linhas cortou parte do arquivo. */
   truncado: boolean;
+  /** true quando o texto passou de LIMITS.pastedText: só os blocos inteiros antes do corte entram, e totalNoArquivo não conta o resto. */
+  cortadoPorTamanho: boolean;
   /** Número da conta ou do cartão, quando o arquivo informa. Só exibição. */
   contaOuCartao: string | null;
   /** Moeda declarada. Serve para avisar quando não é BRL. */
@@ -125,6 +127,7 @@ export function parseOfx(texto: string): ResultadoOfx {
     origem: 'conta',
     totalNoArquivo: 0,
     truncado: false,
+    cortadoPorTamanho: false,
     contaOuCartao: null,
     moeda: null,
   };
@@ -132,7 +135,8 @@ export function parseOfx(texto: string): ResultadoOfx {
 
   /* Corta antes de processar, mesmo motivo do importador de CSV: um arquivo
      gigante estoura a memória no split antes de chegar ao teto de linhas. */
-  const conteudo = texto.length > LIMITS.pastedText ? texto.slice(0, LIMITS.pastedText) : texto;
+  const cortadoPorTamanho = texto.length > LIMITS.pastedText;
+  const conteudo = cortadoPorTamanho ? texto.slice(0, LIMITS.pastedText) : texto;
 
   /* Fatura de cartão usa outra árvore de mensagens que a de conta corrente.
      A diferença importa: uma vira compra no crédito, a outra vira saída de
@@ -145,6 +149,9 @@ export function parseOfx(texto: string): ResultadoOfx {
   /* Cada `<STMTTRN>` é uma transação. O split evita depender de `</STMTTRN>`,
      que alguns emissores omitem. */
   const blocos = conteudo.split(/<STMTTRN>/i).slice(1);
+  /* Com o corte, o último bloco pode ter parado no meio (sem </STMTTRN>, que
+     alguns emissores omitem, não dá para saber): sai inteiro (item 37). */
+  if (cortadoPorTamanho) blocos.pop();
   const totalNoArquivo = blocos.length;
 
   const lancamentos: LancamentoOfx[] = [];
@@ -192,7 +199,8 @@ export function parseOfx(texto: string): ResultadoOfx {
     lancamentos,
     origem,
     totalNoArquivo,
-    truncado: totalNoArquivo > lancamentos.length,
+    truncado: cortadoPorTamanho || totalNoArquivo > lancamentos.length,
+    cortadoPorTamanho,
     contaOuCartao,
     moeda,
   };
