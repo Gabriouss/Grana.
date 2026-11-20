@@ -95,6 +95,9 @@ export default function ImportarExtratoModal({
   const [cartoes, setCartoes] = useState<CreditCard[]>([]);
   const [cartaoId, setCartaoId] = useState<string | null>(null);
   const [escolhendoCategoria, setEscolhendoCategoria] = useState(false);
+  /* Uma intenção por arquivo lido (item 36): linha sem FITID ganha a chave `imp:<intenção>:<posição>`.
+     Reenviar depois de falha no meio usa as mesmas chaves e o banco ignora o que já entrou. */
+  const [intencao, setIntencao] = useState('');
 
   /* Os cartões só importam quando o arquivo é de fatura, mas carregar aqui na
      abertura evita um segundo tempo de espera bem no meio do fluxo. */
@@ -129,6 +132,7 @@ export default function ImportarExtratoModal({
 
   /** Decide o formato pelo conteúdo, nunca pela extensão. */
   function interpretar(conteudo: string, nome: string | null) {
+    setIntencao(Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
     if (/<OFX>/i.test(conteudo)) {
       const r = parseOfx(conteudo);
       if (r.lancamentos.length === 0) {
@@ -265,6 +269,16 @@ export default function ImportarExtratoModal({
     }
     setImportando(true);
     try {
+      /* Chave por linha, calculada na lista inteira antes do filtro de entradas para a posição não mudar
+         entre tentativas. Linha de CSV repetida no mesmo arquivo (dois cafés iguais no dia) ganha `:2`,
+         `:3`: reimportar o arquivo continua reconhecido, e as duas ocorrências legítimas entram. */
+      const vistas = new Map<string, number>();
+      const chaves = new Map(linhasNaOrigem.map((l, i) => {
+        if (!l.fitid) return [l, `imp:${intencao}:${i}`];
+        const n = (vistas.get(l.fitid) ?? 0) + 1;
+        vistas.set(l.fitid, n);
+        return [l, n > 1 && l.fitid.startsWith('csv:') ? `${l.fitid}:${n}` : l.fitid];
+      }));
       const prontos = aImportar.map((l) => ({
         type: l.type,
         description: l.description,
@@ -272,7 +286,7 @@ export default function ImportarExtratoModal({
         category: l.category,
         color: l.color,
         occurred_on: l.occurred_on,
-        fitid: l.fitid,
+        fitid: chaves.get(l) ?? l.fitid,
         // Total is a display-only aggregate. Persist imports in the default
         // wallet instead of creating rows that disappear from a wallet view.
         // Compra no cartão fica na carteira do cartão (P11: a carteira separa os cartões).
@@ -282,11 +296,10 @@ export default function ImportarExtratoModal({
           : {}),
       }));
 
-      /* Só pede para ignorar duplicados quando há FITID para comparar. Num
-         arquivo sem identificador o upsert não teria em que se apoiar. */
+      // Toda linha tem chave agora (do banco, do CSV ou da intenção): o upsert sempre ignora o que já entrou.
       const { inseridos, ignorados } = await addTransactionsBatch(
         prontos,
-        comFitid > 0,
+        true,
         (processados, total) => setProgresso({ processados, total })
       );
 
@@ -298,7 +311,14 @@ export default function ImportarExtratoModal({
       onClose();
       onSuccess();
     } catch (e: any) {
-      Alert.alert('Erro na importação', e.message);
+      /* Lote parcial (item 36): a folha fica aberta com a prévia, para reenviar com as mesmas chaves. */
+      if (e?.name === 'ImportacaoParcialError') {
+        Alert.alert(
+          'Importação interrompida',
+          `${e.inseridos} de ${e.total} lançamentos já foram gravados. Toque em importar de novo para enviar o restante; o que já entrou não se\u00a0repete.`
+        );
+        setProgresso(null);
+      } else Alert.alert('Erro na importação', e.message);
     } finally {
       setImportando(false);
     }

@@ -416,6 +416,15 @@ export async function updateTransaction(id: string, changes: Partial<Transaction
   notificarDadosDosWidgetsAlterados();
 }
 
+/** Importação interrompida depois de gravar parte (item 36). Os lotes anteriores já estão no banco; a
+    tela mostra quantos e oferece reenviar, que com a mesma chave por linha não duplica. */
+export class ImportacaoParcialError extends Error {
+  constructor(readonly causa: unknown, readonly inseridos: number, readonly ignorados: number, readonly processados: number, readonly total: number) {
+    super(`A importação parou depois de ${processados} de ${total} linhas.`);
+    this.name = 'ImportacaoParcialError';
+  }
+}
+
 export async function addTransactionsBatch(
   inputs: Array<{
     type: TxType;
@@ -470,7 +479,9 @@ export async function addTransactionsBatch(
   const TAMANHO_LOTE = 500;
   let inseridos = 0;
   let ignorados = 0;
+  let processados = 0;
 
+  try {
   for (let inicio = 0; inicio < rows.length; inicio += TAMANHO_LOTE) {
     const lote = rows.slice(inicio, inicio + TAMANHO_LOTE);
 
@@ -493,13 +504,20 @@ export async function addTransactionsBatch(
       ignorados += lote.length - inseridosNoLote;
     }
 
-    onProgress?.(Math.min(inicio + TAMANHO_LOTE, rows.length), rows.length);
+    processados = Math.min(inicio + TAMANHO_LOTE, rows.length);
+    onProgress?.(processados, rows.length);
   }
-
-  if (inseridos > 0) {
-    marcarLancamentosAlterados();
-    invalidarRespostasAtrasadas();
-    notificarDadosDosWidgetsAlterados();
+  } catch (erro) {
+    // Nada confirmado: o erro de sempre. Com lote anterior gravado, a tela precisa saber o que já entrou.
+    if (processados === 0) throw erro;
+    throw new ImportacaoParcialError(erro, inseridos, ignorados, processados, rows.length);
+  } finally {
+    /* Também no lote parcial: o que já entrou tem de aparecer nas listas. */
+    if (inseridos > 0) {
+      marcarLancamentosAlterados();
+      invalidarRespostasAtrasadas();
+      notificarDadosDosWidgetsAlterados();
+    }
   }
   return { inseridos, ignorados };
 }
