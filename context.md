@@ -20523,3 +20523,12 @@ Ajuste da ordem de 20/11 (seção "Ajuste 20/11 — item 37 passa do Anvil ao Lu
 6. **Handoff.** Parser e importador passam ao Keel para o item 36, a partir de `dca7ecbc`.
 7. **Sem verificação ainda.** `tsc` do gate final e QA no aparelho da importação.
 8. **Estado.** Fila 41/50 integrados. Item 39 (`f7174826`) registrado acima.
+
+### 20/11 — item 41 integrado no clone (Claude Code, exportação e PDF)
+
+1. **Pedido.** Impressão nativa de PDF: um relatório novo não pode imprimir por cima do anterior, e a espera não pode ficar sem prazo.
+2. **Mudança.** `lib/pdf-report.ts`: o relatório novo espera a impressão nativa anterior, com prazo de 60 s (`PRAZO_FILA_IMPRESSAO_MS`). Estourado o prazo, falha com "O relatório anterior ainda está sendo gerado. Tente de novo em instantes.", mostrada como erro. Arquivos adicionais: `lib/exportar-meus-dados.ts`, `lib/exportar-lancamentos.ts`, `components/BaixarMeusDadosBotao.tsx`, `components/ExportarLancamentosBotao.tsx`; testes `__tests__/exportacao-cancelada.cjs` (novo, o caso de PDF virou dois), `__tests__/exportar-meus-dados-botao.cjs`, `__tests__/exportar-lancamentos-botao.cjs` e `__tests__/pdf-report-nome.cjs` (acréscimo só de setTimeout e clearTimeout reais no contexto do vm, aprovado pelo Supremo, sem tocar asserção).
+3. **Commit.** `7db775c9` (`fix(exportacao): fila de impressao de PDF com prazo`) no clone, base `dca7ecbc`, nove caminhos. Commit do integrador (Quill).
+4. **Verificação.** red41-r2 exit 1 causal, 6 falhas e 2 controles ok; green41-r2 exit 0, 8/8; compatPdfOrigem-r2 e compatPdfNome-r2 exit 0; corte estável. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-ClaudeCode-item41.md`.
+5. **Sem verificação ainda.** `tsc` no gate final; QA no aparelho da exportação e do PDF.
+6. **Estado.** Fila 42/50 integrados. HEAD agora `7db775c9`. Janela concedida ao Sentinel para o item 18 r5; depois, Forge 26 (revalidar o pin contra o novo HEAD).
