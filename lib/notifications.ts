@@ -120,6 +120,48 @@ function idFor(billId: string, etapa: Etapa): string {
   return `conta-${billId}-${etapa}`;
 }
 
+/* ── Desligar os lembretes de contas (item 32, achado do Compass) ─────────
+   Desligar no Perfil esperava quatro consultas ao servidor para saber QUAIS
+   ids cancelar; sem rede, nada era cancelado e o controle dizia "desligado".
+   Agora o desligamento varre a agenda local pelos prefixos determinísticos.
+   E um agendamento que já estava em curso (Contas, Crédito, o próprio Perfil)
+   não repõe o que foi desligado: cada agendamento confere a geração e a
+   preferência antes, e desfaz o que o SDK concluiu depois do desligamento. */
+const RE_ID_CONTA = /^conta-.+-(7d|3d|venc|atraso)$/;
+let geracaoContas = 0;
+
+async function agendarLembreteDeConta(
+  Notifications: typeof NotificationsModule,
+  pedido: NotificationsModule.NotificationRequestInput & { identifier: string },
+  minha: number
+): Promise<boolean> {
+  if (minha !== geracaoContas || !(await carregarNotifPrefs()).lembretesContasAtivo) return false;
+  await Notifications.scheduleNotificationAsync(pedido);
+  if (minha !== geracaoContas) {
+    await Notifications.cancelScheduledNotificationAsync(pedido.identifier).catch(() => {});
+    return false;
+  }
+  return true;
+}
+
+/** Cancela todo lembrete local de conta e de fatura, sem consultar o servidor.
+    Lança se a agenda não puder ser lida ou algum cancelamento falhar, para a
+    tela dar recibo. Devolve quantos foram cancelados. */
+export async function desligarLembretesDeContas(): Promise<number> {
+  geracaoContas++;
+  const Notifications = getNotifications();
+  if (!Notifications) return 0;
+  const agendadas = await agendadorComPrazo(Notifications.getAllScheduledNotificationsAsync(), 'a lista de agendados');
+  const ids = agendadas
+    .map((item) => item.identifier)
+    .filter((id) => RE_ID_CONTA.test(id) || cartaoDoLembreteDeFatura(id) !== null);
+  const falhas = (await Promise.allSettled(
+    ids.map((id) => agendadorComPrazo(Notifications.cancelScheduledNotificationAsync(id), 'o cancelamento do lembrete'))
+  )).filter((r) => r.status === 'rejected');
+  if (falhas.length) throw new Error(`${falhas.length} lembrete(s) de conta não foram cancelados`);
+  return ids.length;
+}
+
 function dataComHora(iso: string, offsetDias: number): Date {
   const [y, m, d] = iso.split('-').map(Number);
   return new Date(y, m - 1, d + offsetDias, 9, 0, 0, 0);
@@ -139,6 +181,7 @@ function dataComHora(iso: string, offsetDias: number): Date {
 export async function scheduleBillReminders(bill: Bill): Promise<void> {
   const Notifications = getNotifications();
   if (!Notifications) return;
+  const minha = geracaoContas;
   await cancelBillReminders(bill.id);
   if (bill.status === 'paid') return;
 
@@ -152,7 +195,7 @@ export async function scheduleBillReminders(bill: Bill): Promise<void> {
     const quando = dataComHora(bill.due_date, offsetDias);
     if (quando.getTime() <= now.getTime()) continue;
     try {
-      await Notifications.scheduleNotificationAsync({
+      if (!(await agendarLembreteDeConta(Notifications, {
         identifier: idFor(bill.id, etapa),
         content: {
           title: titulo,
@@ -164,7 +207,7 @@ export async function scheduleBillReminders(bill: Bill): Promise<void> {
           date: quando,
           channelId: CHANNEL_ID,
         },
-      });
+      }, minha))) return;
     } catch (e) {
       // Ignora erro se agendamento local falhar
     }
@@ -213,6 +256,7 @@ export async function scheduleCardInvoiceReminders(
 ): Promise<void> {
   const Notifications = getNotifications();
   if (!Notifications) return;
+  const minha = geracaoContas;
   await cancelCardInvoiceReminders(card.id, year, month);
   if (amount <= 0) return;
 
@@ -228,7 +272,7 @@ export async function scheduleCardInvoiceReminders(
     quando.setDate(quando.getDate() + offsetDias);
     if (quando.getTime() <= now.getTime()) continue;
     try {
-      await Notifications.scheduleNotificationAsync({
+      if (!(await agendarLembreteDeConta(Notifications, {
         identifier: idForFatura(card.id, year, month, etapa),
         content: {
           title: titulo,
@@ -240,7 +284,7 @@ export async function scheduleCardInvoiceReminders(
           date: quando,
           channelId: CHANNEL_ID,
         },
-      });
+      }, minha))) return;
     } catch (e) {
       // Ignora erro se agendamento local falhar
     }

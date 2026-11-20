@@ -51,9 +51,9 @@ import {
   requestNotificationPermission,
   scheduleDailyHabitReminder,
   scheduleBillReminders,
-  cancelBillReminders,
   scheduleCardInvoiceReminders,
   cancelCardInvoiceReminders,
+  desligarLembretesDeContas,
   type NotifPrefs,
 } from '@/lib/notifications';
 import { todayISO } from '@/lib/format';
@@ -327,7 +327,19 @@ export default function PerfilScreen() {
       }
     }
 
-    if ('lembretesContasAtivo' in mudanca) {
+    /* Desligar não consulta o servidor (item 32): varre a agenda local e
+       impede que um agendamento em curso reponha o que saiu. */
+    if ('lembretesContasAtivo' in mudanca && !novasPrefs.lembretesContasAtivo) {
+      try {
+        await desligarLembretesDeContas();
+      } catch (erro) {
+        console.error('[notificacoes] desligar lembretes de contas falhou', erro);
+        Alert.alert(
+          'Não foi possível desligar todos os lembretes',
+          'Alguns lembretes de contas podem continuar agendados. Tente desligar de novo em instantes.'
+        );
+      }
+    } else if ('lembretesContasAtivo' in mudanca) {
       try {
         const [bills, cards, payments, transacoes] = await Promise.all([
           fetchBills(),
@@ -340,21 +352,16 @@ export default function PerfilScreen() {
            somava pelo mês civil e tratava qualquer pagamento como quitação. */
         const faturas = lembretesDeFatura(transacoes, cards, payments, todayISO());
 
-        if (novasPrefs.lembretesContasAtivo) {
-          const granted = await requestNotificationPermission();
-          if (!granted) return;
-          bills.forEach((bill) => { scheduleBillReminders(bill).catch(() => {}); });
-          faturas.forEach(({ cartao, year, month, restante }) => {
-            if (restante > 0) {
-              scheduleCardInvoiceReminders(cartao, year, month, restante).catch(() => {});
-            } else {
-              cancelCardInvoiceReminders(cartao.id, year, month).catch(() => {});
-            }
-          });
-        } else {
-          bills.forEach((bill) => { cancelBillReminders(bill.id).catch(() => {}); });
-          faturas.forEach(({ cartao, year, month }) => { cancelCardInvoiceReminders(cartao.id, year, month).catch(() => {}); });
-        }
+        const granted = await requestNotificationPermission();
+        if (!granted) return;
+        bills.forEach((bill) => { scheduleBillReminders(bill).catch(() => {}); });
+        faturas.forEach(({ cartao, year, month, restante }) => {
+          if (restante > 0) {
+            scheduleCardInvoiceReminders(cartao, year, month, restante).catch(() => {});
+          } else {
+            cancelCardInvoiceReminders(cartao.id, year, month).catch(() => {});
+          }
+        });
       } catch {
         // Falha graciosa — contas.tsx/credito.tsx reagendam certinho no próximo load
       }
