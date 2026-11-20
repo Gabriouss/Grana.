@@ -17,6 +17,8 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.io.File
+import java.io.FileNotFoundException
+import org.json.JSONException
 import org.json.JSONObject
 
 /** WorkManager mantém o processo; ReactHost inicia JS diretamente, sem FGS ou Activity. */
@@ -53,7 +55,17 @@ class GranaVoiceRetryWorker(context: Context, params: WorkerParameters) : Worker
       val pasta = File(applicationContext.filesDir, GranaVoiceCaptureService.PASTA_ORFA)
       val parcial = File(pasta, "$requestId.capturando")
       if (parcial.exists()) {
-        val meta = JSONObject(File(pasta, "$requestId.json").readText())
+        val metadados = File(pasta, "$requestId.json")
+        val meta = try {
+          JSONObject(metadados.readText())
+        } catch (erro: FileNotFoundException) {
+          // FileNotFoundException também pode indicar falha de acesso: confirme a ausência.
+          if (pasta.list()?.contains(metadados.name) != false) throw erro
+          return encerrarSemMetadados(requestId, origem)
+        } catch (_: JSONException) {
+          // O serviço publica o JSON por rename; o temporário nunca serve como prova de dono.
+          return encerrarSemMetadados(requestId, origem)
+        }
         if (meta.optString("userId") != userId) return Result.success()
         if (!meta.optBoolean("capturaFinalizada", false)) {
           // Áudio cujo stop não foi confirmado nunca vai para a transcrição.
@@ -130,6 +142,32 @@ class GranaVoiceRetryWorker(context: Context, params: WorkerParameters) : Worker
     } finally {
       encerrar()
     }
+  }
+
+  private fun encerrarSemMetadados(requestId: String, origem: VoiceRetryScheduler.Sessao): Result {
+    Log.w("GranaVoz", "captura parcial sem metadados públicos válidos; não será retomada")
+    // Sem prova de dono, mantenha o parcial isolado e não o promova nem o apague.
+    try {
+      val sinalizar = synchronized(EstadoWidget) {
+        synchronized(VoiceRetryScheduler) {
+          val podeSinalizar = VoiceRetryScheduler.atual(applicationContext, origem) &&
+            EstadoWidget.atual(applicationContext) in setOf(
+              EstadoWidget.PREPARANDO, EstadoWidget.OUVINDO, EstadoWidget.PROCESSANDO, EstadoWidget.PENDENTE,
+            ) && EstadoWidget.pertenceACaptura(applicationContext, requestId)
+          if (podeSinalizar) {
+            try { EstadoWidget.definirDaCaptura(applicationContext, requestId, EstadoWidget.REPETIR) }
+            catch (falha: Exception) { Log.e("GranaVoz", "não consegui atualizar o widget após a captura interrompida", falha) }
+          }
+          podeSinalizar
+        }
+      }
+      if (sinalizar) VoiceCaptureReceipt.publicar(
+        applicationContext, R.string.grana_voice_interrompida_titulo, R.string.grana_voice_interrompida_texto,
+      )
+    } catch (falha: Exception) {
+      Log.e("GranaVoz", "não consegui indicar a captura interrompida", falha)
+    }
+    return Result.success()
   }
 
   private fun encerrar() {
