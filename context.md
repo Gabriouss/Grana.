@@ -20550,3 +20550,12 @@ Ajuste da ordem de 20/11 (seção "Ajuste 20/11 — item 37 passa do Anvil ao Lu
 4. **Verificação.** red/baseline exit 1 com 7 casos causais; candidate exit 0, 7/7; compat exit 0 nos quatro testes de push e notificações. Hashes conferidos. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Anvil-item31.md`.
 5. **Sem verificação ainda.** `tsc` do gate final e QA no aparelho.
 6. **Estado.** Fila 44/50 integrados. Próximo do Anvil: 32. Pedido do Sentinel (18 r6-pos40) aguarda confirmação do HEAD `40d11e86`.
+
+### 20/11 — item 32 integrado no clone (Anvil, lembrete de contas)
+
+1. **Pedido.** Desligar o lembrete de contas na tela de perfil, sem deixar o lembrete em notificação ativa.
+2. **Mudança.** `app/(app)/perfil.tsx`, `lib/notifications.ts` e teste novo `__tests__/lembretes-contas-desligar.cjs`.
+3. **Commits.** `b522d2e3` (`fix(lembretes): desliga lembrete de contas no perfil`) com os três caminhos, base `40d11e86`; e `35eb0740` (`test(lembretes): inclui teste de lembrete de contas no test:ci`) com só a linha do `test:ci` em `package.json`.
+4. **Verificação.** RED exit 1 com 4 casos causais em r1 e r2; GREEN r2 exit 0, 5/5; compat exit 0 nos cinco testes. Desvio declarado pelo Anvil: candidate r1 exit 1 por defeito do próprio teste (rejeição simulada sem dono); só o teste mudou, o freeze foi atualizado e RED e GREEN foram refeitos em r2. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Anvil-item32.md`.
+5. **Sem verificação ainda.** `tsc` do gate final e QA no aparelho.
+6. **Estado.** Fila 45/50 integrados. Clone limpo em `35eb0740`. Próximos: 18 r7 (Sentinel), 34 (Keel ou Lumen), 26 (Forge, depois do 18), 50 (Anvil preparou fora do clone; janela por último).
