@@ -20440,3 +20440,10 @@ Codex informa commit local `af5391c8`, clone limpo e commit/Job exit 0 conforme 
 6. **Verificação.** RED causal: 4 falhas e 3 controles. GREEN: 7/7. Três suítes de compatibilidade com exit 0. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-ClaudeCode-item29.md`.
 7. **Sem verificação ainda.** `tsc` fica para o gate final do lote; QA no aparelho pendente (abrir o microfone, sair da tela durante a abertura e confirmar zero gravação e recibo visível).
 8. **Estado.** Fila 32/50 integrados. Próximo do time Claude: item 33, depois 41.
+
+### 20/11 — itens 47 e 48 integrados no clone (Lumen)
+
+1. **Item 47, painel do dia em Desafios.** Commit `9113f875` (`fix(desafios): renderiza painel em lotes`). Sintoma: 2.000 saídas no dia montavam 2.000 Views num ScrollView. Causa: `gastos.linhas.map` sem lote e `gastosDoDia` recalculado a cada render. Arquivo: `components/DesafiosCalendario.tsx` (lote de 20, botão "Ver mais itens (N restantes)", `useMemo`). Teste: `__tests__/desafios-painel-lote.cjs`. Descartado: FlatList aninhada no ScrollView. Verificação: RED causal (montou 2000 de 2000) e GREEN focal exit 0. Relatório: `relatorio-Lumen-item47.md`.
+2. **Item 48, seletor de categorias.** Commit `f39e1bc5` (`fix(categorias): carrega seletor durante semeadura`). Sintoma: o seletor abria vazio até a semeadura terminar. Causa: `fetchCategories` só era chamado depois de `seedDefaultCategories`. Arquivo: `components/CategoryPickerModal.tsx` (busca imediata, nova busca após a semeadura, contador `pedido/aplicada`, cleanup `ativo`). Teste: `__tests__/categorias-seletor-cedo.cjs`. Sem delta em `lib/data.ts`. Descartado: alterar `seedDefaultCategories` em data.ts. Deu errado: RED r1 com SyntaxError no próprio focal (`const exports`), anulado pelo Codex; r2 causal. Verificação: GREEN focal exit 0. Relatório: `relatorio-Lumen-item48.md`.
+3. **Sem verificação ainda.** `tsc` no gate final do lote e QA no aparelho dos dois itens.
+4. **Estado.** Fila 34/50 integrados. Item 49 segue aberto no time Lumen.
