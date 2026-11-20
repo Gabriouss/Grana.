@@ -44,13 +44,13 @@ caso('fontes: carregamento normal mantém árvore e Neue Machina',async()=>{
   const a=layoutEnv();a.c.fonts=[true,null];const p=a.mount(a.mod.PrepararAbertura??a.mod.default,{tentarNovamente(){}});const n=p.render();await flush();assert.equal(nodes(n,v=>v.type==='SessionProvider').length,1);assert.equal(a.c.splash.length,1);p.unmount();
 });
 caso('sessão: storage pendurado esgota total e retry recupera; resultado antigo fica inerte',async()=>{
-  const old=pendente();let ler=()=>old.promise;const a=authEnv({disco:{getItem:()=>ler()}});a.valor();await flush();await a.advance(5_001);
+  const old=pendente();let ler=()=>old.promise;const a=authEnv({disco:{getItem:()=>ler()}});a.valor();await flush();await a.advance(10_001);
   assert.equal(a.valor().isLoading,false);assert.ok(a.valor().erroInicializacao);assert.equal(a.valor().session,null);
   ler=async()=>JSON.stringify(session('B'));await a.valor().recarregarSessao();assert.equal(a.valor().session.user.id,'B');assert.equal(a.valor().erroInicializacao,null);assert.equal(a.valor().sessaoNaoConfirmada,true);
   old.resolve(JSON.stringify(session('A')));await flush();assert.equal(a.valor().session.user.id,'B');a.p.unmount();
 });
 caso('sessão: prazo inclui SDK e disco, data inválida não prende a inicialização',async()=>{
-  const a=authEnv({getSession:()=>new Promise(()=>{}),disco:{getItem:()=>new Promise(()=>{})}});a.valor();await a.advance(5_001);assert.equal(a.valor().isLoading,false);assert.ok(a.valor().erroInicializacao);a.p.unmount();
+  const a=authEnv({getSession:()=>new Promise(()=>{}),disco:{getItem:()=>new Promise(()=>{})}});a.valor();await a.advance(10_001);assert.equal(a.valor().isLoading,false);assert.ok(a.valor().erroInicializacao);a.p.unmount();
   const b=authEnv({disco:{getItem:async()=>JSON.stringify({...session('A'),expires_at:1e300})}});b.valor();await flush();assert.equal(b.valor().isLoading,false);assert.equal(b.valor().session,null);b.p.unmount();
 });
 const recoverySession=(owner,id)=>({...session(owner),access_token:'eyJhbGciOiJIUzI1NiJ9.'+Buffer.from(JSON.stringify({session_id:id,amr:[{method:'recovery',timestamp:1}]})).toString('base64url')+'.signature'});

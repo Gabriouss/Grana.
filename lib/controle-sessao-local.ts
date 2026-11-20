@@ -55,6 +55,8 @@ export function criarControleSessaoLocal(gaveta: GavetaSessao, chave: string) {
   const slot = (g: GeracaoSessao, logica: string) => g.id === 'legado' ? logica : `${chave}:slot:${g.id}:${logica}`;
   const marca = (g: GeracaoSessao) => `${chave}:saida:${g.id}`;
   const fimLocal = () => Date.now() + 2_000;
+  // A leitura a frio atravessa AsyncStorage e SecureStore dentro do total da abertura.
+  const fimLeitura = () => Date.now() + 10_000;
   const corrente = () => ativa ? Promise.resolve(ativa) : inicial;
   const nova = (): GeracaoSessao => {
     const bytes = crypto.getRandomValues(new Uint8Array(16));
@@ -68,7 +70,7 @@ export function criarControleSessaoLocal(gaveta: GavetaSessao, chave: string) {
     if (valor === '1') revogadas.add(g.id);
     return revogadas.has(g.id);
   }
-  async function admite(g: GeracaoSessao, sessao?: Session | null, fim = fimLocal()): Promise<boolean> {
+  async function admite(g: GeracaoSessao, sessao?: Session | null, fim = fimLeitura()): Promise<boolean> {
     if (bloqueada || (await ateSessao(corrente(), fim)).id !== g.id || await revogada(g, fim)) return false;
     if (bloqueada || ativa?.id !== g.id) return false;
     return !sessao || g.identidade === null || g.identidade === identidadeLocal(sessao);
@@ -128,7 +130,7 @@ export function criarControleSessaoLocal(gaveta: GavetaSessao, chave: string) {
     const verificadoresLidos = new Map<string, { chaveFisica: string; valor: string }>();
     return {
       async getItem(key: string): Promise<string | null> {
-        const fim = fimLocal(), g = await ateSessao(origem, fim), nome = logica(key);
+        const fim = fimLeitura(), g = await ateSessao(origem, fim), nome = logica(key);
         if (nome === chave) {
           // Cliente novo ainda sem publicação pode carregar somente o próprio slot.
           if (revogadas.has(g.id) || await revogada(g, fim)) return null;
@@ -192,7 +194,7 @@ export function criarControleSessaoLocal(gaveta: GavetaSessao, chave: string) {
   }
   const leituraAtual: GavetaSessao = {
     async getItem(key) {
-      const fim = fimLocal(), g = await ateSessao(corrente(), fim);
+      const fim = fimLeitura(), g = await ateSessao(corrente(), fim);
       if (!await admite(g, undefined, fim)) return null;
       const valor = await ateSessao(Promise.resolve().then(() => gaveta.getItem(slot(g, key))), fim);
       if (key === chave && valor) {

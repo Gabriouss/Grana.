@@ -139,6 +139,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const saindoRef = useRef(false);
   const recuperacaoRef = useRef(0);
   const sessaoAtualRef = useRef<Session | null>(null);
+  const fimAberturaRef = useRef(0);
 
   const aplicarSessao = useCallback((nova: Session | null, doDisco: boolean, manterGuardaRecuperacao = false) => {
     const dono = nova?.user.id ?? null;
@@ -202,7 +203,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
     if (saindoRef.current) return;
     const geracao = ++geracaoRef.current;
     const atual = () => montadoRef.current && !saindoRef.current && geracao === geracaoRef.current;
-    const fim = Date.now() + 5_000;
+    const fim = Date.now() + 10_000;
+    fimAberturaRef.current = fim;
     setIsLoading(true);
     setErroInicializacao(null);
     try {
@@ -261,7 +263,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
            que o cliente emite para cada assinante novo. Sem esta consulta ao
            disco, ele chegaria depois da leitura de cima e apagaria a sessão
            guardada que acabou de ser adotada. */
-        void resolverAusenciaDeSessao(`evento ${evento} sem sessão`, geracao, Date.now() + 5_000).catch(() => falhouInicializacao(geracao)).finally(() => {
+        const fim = evento === 'INITIAL_SESSION' ? fimAberturaRef.current : Date.now() + 5_000;
+        void resolverAusenciaDeSessao(`evento ${evento} sem sessão`, geracao, fim).catch(() => falhouInicializacao(geracao)).finally(() => {
           if (vivo && geracao === geracaoRef.current) setIsLoading(false);
         });
       }
