@@ -20577,3 +20577,17 @@ Ajuste da ordem de 20/11 (seção "Ajuste 20/11 — item 37 passa do Anvil ao Lu
 4. **Verificação.** red36 exit 1 causal (0/3: erro genérico, alerta errado, 2 de 3 ocorrências legítimas de CSV), green36 exit 0 (3/3), compatCredito, compatEntrada, compatAlterados, compatCorte e compatCategoria exit 0, corte estável, pico de RSS 306 MiB. Hashes do clone conferidos contra o recibo green36 antes do commit. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Keel-item36.md`.
 5. **Sem verificação ainda.** `tsc` (não é etapa do supervisor), aparelho ou emulador, e o índice único `(user_id, fitid)` em produção (o teste usa servidor dublado). O teste novo ficou fora do `test:ci`, porque o `package.json` não estava no freeze; decidir se entra num commit próprio.
 6. **Estado.** Clone limpo em `accaf93f`. Janela 3 concedida ao Forge (26, prova integrada e compat). O freeze integrado dele fixa `ea11c74f` e o supervisor recusa HEAD diferente; nenhum dos insumos foi tocado pelos commits 34 e 36, e o Forge foi orientado a atualizar o HEAD fixado.
+
+### 20/11 — item 26 com prova integrada no clone (Forge, snapshot do widget de resumo)
+
+1. **Pedido.** Fechar o item 26 com prova integrada e compatibilidade no clone. O código de produto já estava em `ea11c74f` (`fix(widget): corrige retry de snapshot do resumo`, dois caminhos Kotlin, blobs iguais ao candidato verde da prova externa).
+2. **Prova externa anterior.** baseline-r2 exit 1 com 10 falhas causais de 16; candidate-r2 exit 0, 16/16, em `7d45f4b6`.
+3. **Prova integrada.** Janela 3 da ordem 20:10. O freeze integrado foi atualizado pelo Forge para o HEAD `accaf93f` (SHA256 `ad704fb8…`), com os 47 insumos intactos. integrado-r1 exit 0, 16/16; compat-r1 exit 0 (widgets 99, receiver 53, reconciliação 536, agenda concorrente verde, item 25 43). Job vazio, trava livre, clone limpo. Manifesto `Forge-item26/FIM-integrado26-accaf93f.json` (SHA256 `30487f10…`). Nada foi reaplicado nem escrito no clone. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Forge-item26.md`.
+4. **Dívida registrada (decisão do Supremo).** O focal e o runner do 26 (`focal-integrado.ps1` e `fixture/*.kt`) continuam FORA do repositório, porque dependem de caminhos externos. O teste do 26 não roda pelo repo. Eles **não** estão commitados; o Lynx anota isso na revisão final.
+5. **Sem verificação ainda.** O caminho real de redimensionamento do widget (o aviso de `getBundleExtra` vem do dublê) fica para QA Android no aparelho.
+
+### 20/11 — linha do `test:ci` do item 36
+
+Commit `a6abe4a3` (`test(importacao): inclui lote parcial da importacao no test:ci`), só `package.json`, uma linha: o `test:ci` passa a terminar em `&& node __tests__/importacao-lote-parcial.cjs`. Montado pelo Keel a partir de `accaf93f:package.json`; o blob da base (`e49070d8`) foi conferido no HEAD antes de copiar, e o diff deu uma linha trocada. O teste focal não foi rodado de novo no commit (o integrador não roda teste); o GREEN está no recibo `supervisor-Keel-item36-green36-r1.json`.
+
+**Estado.** Clone limpo em `a6abe4a3`. Janela 4 concedida ao Sentinel (54), com o head do freeze dele a atualizar de `ea11c74f` para `a6abe4a3`; nenhum insumo dele foi tocado pelos commits desde então. Na fila: Meridian 51 (freeze r2 em `a6abe4a3`, dois commits), Lumen 52 e Anvil 50 por último.
