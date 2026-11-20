@@ -20532,3 +20532,12 @@ Ajuste da ordem de 20/11 (seção "Ajuste 20/11 — item 37 passa do Anvil ao Lu
 4. **Verificação.** red41-r2 exit 1 causal, 6 falhas e 2 controles ok; green41-r2 exit 0, 8/8; compatPdfOrigem-r2 e compatPdfNome-r2 exit 0; corte estável. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-ClaudeCode-item41.md`.
 5. **Sem verificação ainda.** `tsc` no gate final; QA no aparelho da exportação e do PDF.
 6. **Estado.** Fila 42/50 integrados. HEAD agora `7db775c9`. Janela concedida ao Sentinel para o item 18 r5; depois, Forge 26 (revalidar o pin contra o novo HEAD).
+
+### 20/11 — item 40 integrado no clone (Lumen, cache de tela)
+
+1. **Pedido.** Coalescer buscas idênticas em voo por chave e geração, na tela com seis abas: cada aba disparava a sua busca.
+2. **Mudança.** `lib/cache-de-tela.ts` (coalesce buscas idênticas em voo por chave e geração) e teste novo `__tests__/cache-de-tela-coalescencia.cjs`. Paginação, `_layout` e `FaixaOffline` ficaram inalterados.
+3. **Commit.** `83492f77` (`fix(cache): coalesce buscas identicas em voo`) no clone `E:/Grana-temporarios/2026-10-30-teste-avisos/repo`, base `7db775c9`, dois caminhos.
+4. **Verificação.** red40-r1 exit 1 causal (6 buscas no baseline); green40-r1 exit 0 com 16 verificações; compat40atrasadas 16/16; compat40sessao exit 0; compat40dono exit 0 (5 cenários); compat40offline 13/13; corte estável. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Lumen-item40.md`.
+5. **Sem verificação ainda.** `tsc` do gate final e QA no aparelho. Este commit libera o item 34 do Anvil, conforme o Lumen.
+6. **Estado.** Fila 43/50 integrados. Janela do item 31 concedida ao Anvil, sobre o HEAD `83492f77`.
