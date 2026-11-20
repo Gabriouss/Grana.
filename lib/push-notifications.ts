@@ -10,9 +10,30 @@ import {
 } from './notifications';
 import { limparEstadoPush, pushRemotoAtivo, salvarEstadoPush, tokenPushSalvo } from './push-state';
 
-export type ResultadoSincronizacaoPush = 'push' | 'fallback-local' | 'desativado';
+/** `superada`: uma intenção mais nova (outro foreground, outra preferência,
+    outro dono ou a saída da conta) chegou antes; esta não grava nada. */
+export type ResultadoSincronizacaoPush = 'push' | 'fallback-local' | 'desativado' | 'superada';
 
 let filaSincronizacao: Promise<unknown> = Promise.resolve();
+/** Geração da intenção mais recente (item 31, achado S6 do Sentinel). */
+let geracao = 0;
+
+/* Prazo do token do SDK. Pendurado, segurava a fila inteira: novos
+   foregrounds, mudanças do Perfil e a saída da conta ficavam atrás dele, e o
+   fallback local nunca era decidido. Estourado, vale o mesmo caminho de um
+   token que falhou. O token que chegar depois não grava: quem esperava já saiu. */
+const PRAZO_TOKEN_MS = 15_000;
+function comPrazo<T>(trabalho: Promise<T>, ms: number, oQue: string): Promise<T> {
+  let corte: ReturnType<typeof setTimeout> | undefined;
+  trabalho.catch(() => {});
+  const estouro = new Promise<never>((_, rejeitar) => {
+    corte = setTimeout(() => rejeitar(new Error(`${oQue} não respondeu no prazo`)), ms);
+  });
+  return Promise.race([trabalho, estouro]).finally(() => {
+    // O sandbox de push-token-sem-laco não expõe clearTimeout; no app ele sempre existe.
+    if (typeof clearTimeout === 'function') clearTimeout(corte);
+  });
+}
 
 function timezoneDoAparelho(): string {
   try {
@@ -33,9 +54,12 @@ async function removerTokenSalvo(): Promise<void> {
 
 async function sincronizarInterno(
   userId: string,
-  prefs: NotifPrefs
+  prefs: NotifPrefs,
+  minha: number
 ): Promise<ResultadoSincronizacaoPush> {
   if (Platform.OS === 'web') return 'desativado';
+  /* Dois foregrounds seguidos: só a intenção mais nova roda. */
+  if (minha !== geracao) return 'superada';
 
   if (!prefs.lembreteDiarioAtivo) {
     await removerTokenSalvo();
@@ -60,7 +84,10 @@ async function sincronizarInterno(
 
   try {
     const anterior = await tokenPushSalvo();
-    const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    const token = (await comPrazo(Notifications.getExpoPushTokenAsync({ projectId }), PRAZO_TOKEN_MS, 'o token do push')).data;
+    /* Revalida antes do upsert: desligar, trocar de dono ou sair durante o
+       token não pode deixar o servidor com o contexto antigo. */
+    if (minha !== geracao) return 'superada';
     const { error } = await supabase.from('push_tokens').upsert({
       expo_push_token: token,
       user_id: userId,
@@ -95,6 +122,7 @@ async function sincronizarInterno(
        primeiro dia. Falha permanente de configuração não pode se parecer com
        indisponibilidade temporária (mesma lição de lib/voice-operations.ts). */
     console.warn('[push] registro do token falhou; caindo no lembrete local:', e);
+    if (minha !== geracao) return 'superada';
     return jaEstavaAtivo ? 'push' : 'fallback-local';
   }
 }
@@ -103,9 +131,10 @@ export function sincronizarPushHabito(
   userId: string,
   prefs: NotifPrefs
 ): Promise<ResultadoSincronizacaoPush> {
+  const minha = ++geracao;
   const proxima = filaSincronizacao.then(
-    () => sincronizarInterno(userId, prefs),
-    () => sincronizarInterno(userId, prefs)
+    () => sincronizarInterno(userId, prefs, minha),
+    () => sincronizarInterno(userId, prefs, minha)
   );
   filaSincronizacao = proxima.catch(() => {});
   return proxima;
@@ -113,6 +142,7 @@ export function sincronizarPushHabito(
 
 export async function removerPushHabitoAntesDeSair(): Promise<void> {
   if (Platform.OS === 'web') return;
+  geracao++; // Sincronização pendente da conta que sai não grava mais.
   const proxima = filaSincronizacao.then(removerTokenSalvo, removerTokenSalvo);
   filaSincronizacao = proxima.catch(() => {});
   await proxima;

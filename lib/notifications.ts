@@ -402,6 +402,23 @@ export async function salvarNotifPrefs(prefs: NotifPrefs): Promise<void> {
 const CHAVE_HORARIO_HABITO = '@grana_habit_schedule_time';
 let filaHabito: Promise<void> = Promise.resolve();
 
+/* Prazo de cada chamada do agendador do SDK dentro da fila do hábito (item 31,
+   achado S6 do Sentinel). Uma consulta ou um agendamento pendurado segurava a
+   fila, e com ela o cancelamento que a sincronização do push espera. Estourado,
+   vale o mesmo caminho de uma chamada que falhou. */
+const PRAZO_AGENDADOR_MS = 8_000;
+function agendadorComPrazo<T>(trabalho: Promise<T>, oQue: string): Promise<T> {
+  let corte: ReturnType<typeof setTimeout> | undefined;
+  trabalho.catch(() => {});
+  const estouro = new Promise<never>((_, rejeitar) => {
+    corte = setTimeout(() => {
+      console.warn(`[notificacoes] ${oQue} não respondeu no prazo`);
+      rejeitar(new Error(`${oQue} não respondeu no prazo`));
+    }, PRAZO_AGENDADOR_MS);
+  });
+  return Promise.race([trabalho, estouro]).finally(() => clearTimeout(corte));
+}
+
 function enfileirarHabito(operacao: () => Promise<void>): Promise<void> {
   const proxima = filaHabito.then(operacao, operacao);
   filaHabito = proxima.catch(() => {});
@@ -412,7 +429,7 @@ type HabitoAgendado = { id: string; data: Record<string, unknown> | undefined };
 
 async function habitoAgendados(Notifications: typeof NotificationsModule): Promise<HabitoAgendado[]> {
   try {
-    const agendadas = await Notifications.getAllScheduledNotificationsAsync();
+    const agendadas = await agendadorComPrazo(Notifications.getAllScheduledNotificationsAsync(), 'a lista de agendados');
     return agendadas
       .filter((item) => ehIdLembreteHabito(item.identifier))
       .map((item) => ({ id: item.identifier, data: item.content?.data as Record<string, unknown> | undefined }));
@@ -453,7 +470,7 @@ async function cancelarHabitoInterno(
 ): Promise<void> {
   const ids = new Set([ID_HABITO_LEGADO, ...(await idsHabitoAgendados(Notifications))]);
   await Promise.all(
-    [...ids].map((id) => Notifications.cancelScheduledNotificationAsync(id).catch(() => {}))
+    [...ids].map((id) => agendadorComPrazo(Notifications.cancelScheduledNotificationAsync(id), 'o cancelamento do lembrete').catch(() => {}))
   );
   if (limparHorario) await AsyncStorage.removeItem(CHAVE_HORARIO_HABITO).catch(() => {});
 }
@@ -537,7 +554,7 @@ export async function scheduleDailyHabitReminder(opts: {
     await Promise.all(
       existentes
         .filter((id) => !idsDesejados.has(id))
-        .map((id) => Notifications.cancelScheduledNotificationAsync(id).catch(() => {}))
+        .map((id) => agendadorComPrazo(Notifications.cancelScheduledNotificationAsync(id), 'o cancelamento do lembrete').catch(() => {}))
     );
 
     const aindaAgendados = new Set(existentes.filter((id) => idsDesejados.has(id)));
@@ -548,7 +565,7 @@ export async function scheduleDailyHabitReminder(opts: {
       const mensagem = await obterProximaMensagem(contexto, planejado.janela);
 
       try {
-        await Notifications.scheduleNotificationAsync({
+        await agendadorComPrazo(Notifications.scheduleNotificationAsync({
           identifier: planejado.id,
           content: {
             title: mensagem.titulo,
@@ -567,7 +584,7 @@ export async function scheduleDailyHabitReminder(opts: {
             date: planejado.quando,
             channelId: CHANNEL_ID,
           },
-        });
+        }), 'o agendamento do lembrete');
       } catch {
         // A próxima abertura da Home tenta completar a ocorrência que faltou.
       }
