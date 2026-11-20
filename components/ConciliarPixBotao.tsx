@@ -33,6 +33,7 @@ export default function ConciliarPixBotao() {
   const [selecionados, setSelecionados] = useState<string[]>([]), [ignorados, setIgnorados] = useState<string[]>([]);
   const [recibos, setRecibos] = useState<Record<string, ReciboPix>>({});
   const [categoriaId, setCategoriaId] = useState<string | null>(null), [pagina, setPagina] = useState(1);
+  const [lote, setLote] = useState<{ feitos: number; total: number } | null>(null), pararLote = useRef<(() => void) | null>(null);
   const emVoo = useRef(false), atual = useRef<AnalisePix | null>(null), dono = useRef(session?.user.id);
   dono.current = session?.user.id;
   const minhas = wallets.filter(w => w.user_id === session?.user.id);
@@ -40,7 +41,7 @@ export default function ConciliarPixBotao() {
     atual.current?.cancelar(); atual.current = null;
     setAnalise(null); setEscolhas({}); setSelecionados([]); setIgnorados([]); setRecibos({}); setCategoriaId(null); setPagina(1); setOrigem('');
   }
-  useEffect(() => { limpar(); setAberto(false); return () => { atual.current?.cancelar(); }; }, [session?.user.id]);
+  useEffect(() => { limpar(); setAberto(false); return () => { pararLote.current?.(); atual.current?.cancelar(); }; }, [session?.user.id]);
   function fechar() { if (!emVoo.current) { limpar(); setAberto(false); } }
   function abrir() {
     if (isDemoMode) { Alert.alert('Dados de exemplo', 'Volte para seus dados para conferir um extrato.'); return; }
@@ -68,17 +69,24 @@ export default function ConciliarPixBotao() {
     if (emVoo.current || !analise || ids.length === 0) return;
     const userId = session?.user.id;
     emVoo.current = true; setOcupado(true);
+    let soltar = () => {};
+    const parar = new Promise<void>(r => { soltar = r; });
+    pararLote.current = soltar; setLote({ feitos: 0, total: ids.length });
     try {
-      const novos = await confirmarItensPix(analise, ids.map(id => escolhas[id]));
+      // Recibo a cada item (item 39): o que já foi salvo aparece mesmo com a próxima RPC presa.
+      const novos = await confirmarItensPix(analise, ids.map(id => escolhas[id]), { parar, aoRecibo: r => {
+        if (dono.current !== userId) return;
+        setRecibos(antes => ({ ...antes, [r.id]: r })); setLote(l => l && { ...l, feitos: l.feitos + 1 });
+      } });
       if (dono.current !== userId) return;
       setRecibos(antes => ({ ...antes, ...Object.fromEntries(novos.map(r => [r.id, r])) }));
       setSelecionados(antes => antes.filter(id => !novos.some(r => r.id === id && r.status === 'salvo')));
       const salvos = novos.filter(r => r.status === 'salvo').length;
-      Alert.alert('Conferência atualizada', `${salvos} de ${novos.length} itens confirmados. ${salvos < novos.length ? 'Os demais continuam com o motivo na lista.' : 'Os lançamentos já estão na sua conta.'}`);
+      Alert.alert('Conferência atualizada', `${salvos} de ${ids.length} itens confirmados. ${salvos < ids.length ? 'Os demais continuam com o motivo na lista.' : 'Os lançamentos já estão na sua conta.'}`);
     } catch (erro) {
       console.warn('[conciliacao] confirmação não concluída');
       if (dono.current === userId) Alert.alert('Não foi possível confirmar', mensagemErro(erro, 'Confira os itens e tente novamente.'));
-    } finally { emVoo.current = false; setOcupado(false); }
+    } finally { pararLote.current = null; setLote(null); emVoo.current = false; setOcupado(false); }
   }
   function confirmarLote() {
     if (emVoo.current || !analise) return;
@@ -136,6 +144,10 @@ export default function ConciliarPixBotao() {
           <AppPressable style={styles.primario} onPress={confirmarLote} disabled={ocupado || !selecionados.length} accessibilityRole="button" accessibilityLabel="Confirmar selecionados"><Text style={styles.primarioTexto}>Confirmar selecionados ({selecionados.length})</Text></AppPressable>
         </>}
         {ocupado ? <ActivityIndicator color={theme.accent} accessibilityLabel="Conferindo extrato" /> : null}
+        {lote ? <>
+          <Text style={styles.apoio} accessibilityLiveRegion="polite">{`${lote.feitos} de ${lote.total} itens com\u00a0resposta.`}</Text>
+          <AppPressable style={styles.opcao} onPress={() => { pararLote.current?.(); pararLote.current = null; }} accessibilityRole="button" accessibilityLabel="Parar o lote"><Text style={styles.texto}>Parar o lote</Text></AppPressable>
+        </> : null}
         <AppPressable onPress={fechar} disabled={ocupado} style={styles.opcao} accessibilityLabel="Fechar conferência"><Text style={styles.texto}>Fechar</Text></AppPressable>
       </Sheet> : null}
     </AppModal>

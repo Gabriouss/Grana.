@@ -11,6 +11,7 @@ export type AnalisePix = { userId: string; carteiraId: string; resultados: Resul
 export type EscolhaPix = { id: string; categoria: string; cor: string };
 export type ReciboPix = { id: string; status: 'salvo' | 'conflito' | 'erro'; mensagem: string };
 class ErroPix extends Error {}
+const PAROU = Symbol('parou');
 type SessaoAnalise = { token: string; conferir: () => Promise<void> };
 const sessoes = new WeakMap<AnalisePix, SessaoAnalise>();
 const camposSnapshot = ['occurred_on', 'amount', 'type', 'description', 'category', 'color', 'wallet_id', 'card_id', 'payment_method', 'fitid', 'recurring', 'parent_id', 'installment_current', 'installment_total'] as const;
@@ -76,8 +77,11 @@ export async function analisarExtratoPix(op: { userId: string; carteiraId: strin
   }
 }
 
+/** Lote acompanhado (item 39): recibo a cada item e pedido de parada atendido entre itens. */
+export type AcompanharLotePix = { aoRecibo?: (recibo: ReciboPix) => void; parar?: Promise<unknown> };
+
 /** Apenas seleções explícitas elegíveis; cada RPC revalida estado e duplicatas no servidor. */
-export async function confirmarItensPix(analise: AnalisePix, escolhas: EscolhaPix[]): Promise<ReciboPix[]> {
+export async function confirmarItensPix(analise: AnalisePix, escolhas: EscolhaPix[], acompanhar: AcompanharLotePix = {}): Promise<ReciboPix[]> {
   const sessao = sessoes.get(analise);
   if (!sessao) throw new ErroPix('A conferência foi encerrada. Escolha o extrato novamente.');
   if (new Set(escolhas.map(e => e.id)).size !== escolhas.length) throw new ErroPix('O mesmo item foi selecionado mais de uma vez.');
@@ -88,15 +92,27 @@ export async function confirmarItensPix(analise: AnalisePix, escolhas: EscolhaPi
     return { e, r };
   });
   const recibos: ReciboPix[] = [];
+  let parou = false, incerto = false;
+  const pedidoDeParada = acompanhar.parar?.then(() => { parou = true; return PAROU; });
   for (const { e, r } of planos) {
+    if (parou) break;
     try {
       await sessao.conferir();
+      if (parou) break; // pedido chegou durante a conferência: este item nem sai
       const l = r.linha;
-      const { data, error } = await supabase.rpc('confirmar_conciliacao_pix', { p_item: {
+      const chamada = supabase.rpc('confirmar_conciliacao_pix', { p_item: {
         wallet_id: analise.carteiraId, chave: l.fitid, operacao: r.status === 'falta' ? 'novo' : 'data',
         data: l.data, centavos: l.centavos, direcao: l.direcao, descricao: l.descricao, categoria: e.categoria, cor: e.cor,
         alvo_id: r.alvo?.id ?? null, esperado: r.alvo ? snapshot(r.alvo) : null,
       } }).setHeader('Authorization', `Bearer ${sessao.token}`);
+      /* Parar não aborta nem repete a RPC: a chamada em voo pode já ter gravado. O item fica sem confirmação,
+         e a nova tentativa manual leva a mesma chave (`fitid`), que o servidor reconhece. */
+      const resposta = pedidoDeParada ? await Promise.race([chamada, pedidoDeParada]) : await chamada;
+      if (resposta === PAROU) {
+        incerto = true;
+        throw new ErroPix('Você parou antes da resposta. Confira o item antes de tentar de novo; a mesma chave evita lançar duas\u00a0vezes.');
+      }
+      const { data, error } = resposta;
       // Sem conferir() aqui: a resposta já é o fato gravado. Se a sessão mudou, o próximo item do lote é que para.
       if (error) {
         if (error.code === 'PGRST202' || error.code === '42501') throw new ErroPix('A confirmação não está disponível para esta conta. Procure o suporte; o item continua aguardando conferência.');
@@ -109,8 +125,11 @@ export async function confirmarItensPix(analise: AnalisePix, escolhas: EscolhaPi
       console.warn('[conciliacao] item sem confirmação');
       recibos.push({ id: e.id, status: 'erro', mensagem: erro instanceof ErroPix ? erro.message : 'Resultado não confirmado. Confira e tente novamente com a mesma conta.' });
     }
+    try { acompanhar.aoRecibo?.(recibos[recibos.length - 1]); }
+    catch (erro) { console.warn('[conciliacao] recibo parcial não exibido', erro); }
   }
-  if (recibos.some(r => r.status === 'salvo')) {
+  // Item incerto pode ter sido gravado: a tela recarrega como se tivesse.
+  if (incerto || recibos.some(r => r.status === 'salvo')) {
     try { marcarLancamentosAlterados(); invalidarRespostasAtrasadas(); notificarDadosDosWidgetsAlterados(); }
     catch { console.warn('[conciliacao] confirmação salva; tela precisa ser recarregada'); }
   }
