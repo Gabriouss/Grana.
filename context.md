@@ -20429,3 +20429,14 @@ Codex informa commit local `af5391c8`, clone limpo e commit/Job exit 0 conforme 
 4. **Estado.** Nenhum item fechado pelo time Claude até este registro; segue 31/50 integrados e 19 pendentes.
 5. **Ocorrências.** Nenhuma informada até este registro.
 6. **Limites.** Registro feito por Quill (Haiku 5.5), sem testes, build ou alteração de produto.
+
+### 20/11 — item 29 fechado no clone (voz: abertura de microfone abandonada)
+
+1. **Pedido.** Fila do Prism transferida ao time Claude (ordem de 20/11). Linha do Compass: reter o preparo, abandonar a intenção, resolver tarde; zero gravação e zero upload quando o preparo não conclui.
+2. **Sintoma e causa.** Sintoma, provado no módulo real sem aparelho: se a pessoa sai da tela, o app vai para o fundo ou o botão desmonta durante a abertura do microfone, o preparo tardio ainda chega a `record()` e arma o envio; preparo que nunca volta deixa o botão preso sem recibo. Causa: `iniciarGravacao` encadeava permissão, `setAudioModeAsync` e `prepareToRecordAsync` sem conferir a intenção depois de cada `await`, e sem prazo no preparo.
+3. **Arquivos.** `components/VoiceEntryButton.tsx` (contador de intenção por blur, background e unmount; prazo de 20 s só no preparo com recibo "Não consegui abrir o microfone"; preparo abandonado é fechado e o arquivo apagado; `preparoPendente` barra nova abertura com recibo "Microfone ainda ocupado"). Testes: `__tests__/voz-abertura-abandonada.cjs` (novo, 7 cenários no TSX real) e `__tests__/voz-captura-paridade.cjs` (só dublês de `useIsFocused` e `AppState`, nenhuma asserção alterada).
+4. **Commit.** `50c8111c` (`fix(voz): cancela abertura abandonada do microfone`) no clone `E:/Grana-temporarios/2026-10-30-teste-avisos/repo`, branch `teste/leitura-avisos`; o commit é do Codex, conforme a ordem.
+5. **Descartado.** Pacote do Prism (`Prism-item29/item29.patch`), por ser maior que o necessário: corrida do handler, bloqueio "feche e reabra" quando o `stop` falha e rótulo "Abrindo microfone…" (mudança visual, regra 14). Prazo cobrindo também a permissão, por cancelar quem lê o diálogo do sistema.
+6. **Verificação.** RED causal: 4 falhas e 3 controles. GREEN: 7/7. Três suítes de compatibilidade com exit 0. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-ClaudeCode-item29.md`.
+7. **Sem verificação ainda.** `tsc` fica para o gate final do lote; QA no aparelho pendente (abrir o microfone, sair da tela durante a abertura e confirmar zero gravação e recibo visível).
+8. **Estado.** Fila 32/50 integrados. Próximo do time Claude: item 33, depois 41.
