@@ -20541,3 +20541,12 @@ Ajuste da ordem de 20/11 (seção "Ajuste 20/11 — item 37 passa do Anvil ao Lu
 4. **Verificação.** red40-r1 exit 1 causal (6 buscas no baseline); green40-r1 exit 0 com 16 verificações; compat40atrasadas 16/16; compat40sessao exit 0; compat40dono exit 0 (5 cenários); compat40offline 13/13; corte estável. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Lumen-item40.md`.
 5. **Sem verificação ainda.** `tsc` do gate final e QA no aparelho. Este commit libera o item 34 do Anvil, conforme o Lumen.
 6. **Estado.** Fila 43/50 integrados. Janela do item 31 concedida ao Anvil, sobre o HEAD `83492f77`.
+
+### 20/11 — item 31 integrado no clone (Anvil, intenção de notificação pendurada)
+
+1. **Pedido.** Intenção de notificação que fica pendurada não pode travar a fila nem sair sem recibo.
+2. **Mudança.** `lib/push-notifications.ts`, `lib/notifications.ts` e teste novo `__tests__/push-intencao-pendurada.cjs`.
+3. **Commits.** `7368d992` (`fix(push): encerra intencao pendurada de notificacao`) com os três caminhos, base `83492f77`; e `40d11e86` (`test(push): inclui teste de intencao pendurada no test:ci`) com só a linha nova do `test:ci` em `package.json`.
+4. **Verificação.** red/baseline exit 1 com 7 casos causais; candidate exit 0, 7/7; compat exit 0 nos quatro testes de push e notificações. Hashes conferidos. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Anvil-item31.md`.
+5. **Sem verificação ainda.** `tsc` do gate final e QA no aparelho.
+6. **Estado.** Fila 44/50 integrados. Próximo do Anvil: 32. Pedido do Sentinel (18 r6-pos40) aguarda confirmação do HEAD `40d11e86`.
