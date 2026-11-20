@@ -1052,26 +1052,49 @@ export function tentarVozesPendentes(): Promise<ResumoFilaDeFalas> {
   return filaEmExecucao;
 }
 
+/**
+ * Prazo de cada etapa da passada ANTES dos itens (item 30, achado S5 do
+ * Sentinel). O item tem prazo próprio; limpeza, adoção e leitura não tinham,
+ * e uma delas pendurada prendia `filaEmExecucao`: todo disparo seguinte
+ * recebia a mesma promessa, sem recibo. Estourado, quem espera desiste; a
+ * etapa abandonada só termina a própria mutação (idempotente por requestId)
+ * e não chega a enviar nada, porque o envio mora depois do `await` que lançou.
+ */
+const PRAZO_ETAPA_FILA_MS = 10_000;
+function etapaDaFila<T>(trabalho: Promise<T>, etapa: string): Promise<T> {
+  let corte: ReturnType<typeof setTimeout> | undefined;
+  trabalho.catch(() => {});
+  const estouro = new Promise<never>((_, rejeitar) => {
+    corte = setTimeout(() => rejeitar(new Error(`a etapa "${etapa}" da fila de falas não respondeu no prazo`)), PRAZO_ETAPA_FILA_MS);
+  });
+  return Promise.race([trabalho, estouro]).finally(() => clearTimeout(corte));
+}
+
 async function retomarFilaDeFalas(): Promise<ResumoFilaDeFalas> {
   let resumo: ResumoFilaDeFalas = { restantes: 0 };
   try {
-    const [{ listarVozesPendentes, adotarVozesOrfas, apagarAudiosPendentes }, { podeNotificar }, { idDoUsuarioLocal }, { reciboDaFilaNaTela }] = await Promise.all([
+    const [{ listarVozesPendentes, adotarVozesOrfas, apagarAudiosPendentes }, notificacoes, { idDoUsuarioLocal }, { reciboDaFilaNaTela }] = await Promise.all([
       import('./widget-voz-pendentes'),
       import('./widget-voz-notificacoes'),
       import('./sessao-offline'),
       import('./voz-recibos-da-fila'),
     ]);
-    const userId = await idDoUsuarioLocal(PRAZO_DONO_MS);
+    const userId = await etapaDaFila(idDoUsuarioLocal(PRAZO_DONO_MS), 'dono');
     if (!userId) return resumo;
-    await apagarAudiosPendentes().catch((erro) => console.error('[voz] limpeza de áudios concluídos falhou', erro));
+    await etapaDaFila(apagarAudiosPendentes(), 'limpeza').catch((erro) => console.error('[voz] limpeza de áudios concluídos falhou', erro));
     /* Fala que o widget gravou e não conseguiu entregar (V4): entra na fila
-       antes da leitura, para ser processada nesta mesma passada. */
-    await adotarVozesOrfas(userId);
+       antes da leitura, para ser processada nesta mesma passada. Adoção que
+       não responde não impede as falas que já estão na fila; a passada sai
+       com recibo de erro, e a próxima tenta adotar de novo. */
+    const incompleta = await etapaDaFila(adotarVozesOrfas(userId), 'adoção').then(() => false, (erro) => {
+      console.error('[voz] adoção das falas do widget não concluiu; segue com a fila', erro);
+      return true;
+    });
 
-    const notificar = await podeNotificar();
+    const notificar = await podeAvisar(notificacoes);
     let motivo: ResumoFilaDeFalas['motivo'];
     /* Fala em revisão espera a pessoa: não volta ao servidor a cada 30 s. */
-    for (const item of (await listarVozesPendentes()).filter((item) => item.userId === userId && !item.revisao)) {
+    for (const item of (await etapaDaFila(listarVozesPendentes(), 'leitura')).filter((item) => item.userId === userId && !item.revisao)) {
       /* Mantém o item até a tarefa concluir; uma interrupção permite retomada.
          Um item que lança não impede os de trás. */
       try {
@@ -1082,8 +1105,8 @@ async function retomarFilaDeFalas(): Promise<ResumoFilaDeFalas> {
         motivo = 'erro';
       }
     }
-    const restantes = (await listarVozesPendentes()).filter((item) => item.userId === userId && !item.revisao).length;
-    resumo = restantes ? { restantes, motivo: motivo ?? 'erro' } : { restantes: 0 };
+    const restantes = (await etapaDaFila(listarVozesPendentes(), 'leitura final')).filter((item) => item.userId === userId && !item.revisao).length;
+    resumo = restantes ? { restantes, motivo: motivo ?? 'erro' } : incompleta ? { restantes: -1, motivo: 'erro' } : { restantes: 0 };
   } catch (e) {
     // A fila permanece no aparelho; a próxima abertura/retomada tenta de novo.
     console.error('[voz] retomada da fila de falas falhou', e);

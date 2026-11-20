@@ -330,26 +330,45 @@ export async function retomarOperacaoVoz(requestId: string, userId: string, conf
   return (await AsyncStorage.getItem(chave)) ? 'tentar_novamente' : 'aguardar_usuario';
 }
 
+/**
+ * Prazo de cada leitura ANTES do envio (item 30, achado S5 do Sentinel). A
+ * sincronização em curso é entregue a todo disparo; uma leitura do aparelho
+ * pendurada a prendia para sempre, sem recibo. Estourado, a passada termina
+ * com falha e libera o trinco. O envio mora depois do `await` que lançou, então
+ * a resposta tardia da leitura abandonada não envia nada.
+ */
+const PRAZO_ETAPA_SYNC_MS = 10_000;
+class EtapaSemResposta extends Error {}
+function etapa<T>(trabalho: Promise<T>, nome: string): Promise<T> {
+  let corte: ReturnType<typeof setTimeout> | undefined;
+  trabalho.catch(() => {});
+  const estouro = new Promise<never>((_, rejeitar) => {
+    corte = setTimeout(() => rejeitar(new EtapaSemResposta(`a etapa "${nome}" da sincronização de voz não respondeu no prazo`)), PRAZO_ETAPA_SYNC_MS);
+  });
+  return Promise.race([trabalho, estouro]).finally(() => clearTimeout(corte));
+}
+
 async function executarSincronizacao(alvo?: { requestId: string; userId: string; confirmar: ConfirmarRetomada; controle?: ControleRetomadaVoz }): Promise<ResumoSync> {
   let sincronizadas = 0;
   let falhas = 0;
   let mensagem: string | undefined;
   let problemaServico = false;
   const conferir = () => alvo?.controle?.conferir();
+  try {
     conferir();
-    const userId = await idDoUsuarioLocal();
+    const userId = await etapa(idDoUsuarioLocal(), 'dono');
     conferir();
     if (!userId) return { sincronizadas, falhas: 1 };
     if (alvo && alvo.userId !== userId) return { sincronizadas, falhas: 1 };
     /* No máximo `ITENS_POR_RODADA` por sincronização (parecer do Harbor,
        24/09/2026): o resto fica para a próxima. */
-    const chaves = (await AsyncStorage.getAllKeys())
+    const chaves = (await etapa(AsyncStorage.getAllKeys(), 'chaves'))
       .filter((key) => key.startsWith(`grana:voz:operacao:${userId}:`))
       .filter((key) => !alvo || key === `grana:voz:operacao:${userId}:${alvo.requestId}`)
       .slice(0, ITENS_POR_RODADA);
     conferir();
     for (const chave of chaves) {
-      const raw = await AsyncStorage.getItem(chave);
+      const raw = await etapa(AsyncStorage.getItem(chave), 'leitura');
       conferir();
       if (!raw) continue;
       let item: { requestId: string; source: 'app' | 'widget'; payload: PayloadOperacaoVoz; transcricao?: string };
@@ -365,7 +384,7 @@ async function executarSincronizacao(alvo?: { requestId: string; userId: string;
       /* Guarda de troca de conta no meio da fila: se o dono mudou, para. Lê
          pelo aparelho para não confundir "trocou de conta" com "o token
          venceu e não há rede" — o segundo caso deve seguir tentando. */
-      if ((await idDoUsuarioLocal()) !== userId) break;
+      if ((await etapa(idDoUsuarioLocal(), 'dono do item')) !== userId) break;
       conferir();
       try {
         const resultado = await enviarOperacaoVoz(item.requestId, item.source, item.payload, userId, alvo?.controle);
@@ -424,6 +443,12 @@ async function executarSincronizacao(alvo?: { requestId: string; userId: string;
         }
       }
     }
+  } catch (erro) {
+    if (!(erro instanceof EtapaSemResposta)) throw erro;
+    console.error('[voz] sincronização de voz parou numa leitura do aparelho; a fila fica para a próxima', erro);
+    falhas++;
+    mensagem = explicarFalhaDeEnvio(erro);
+  }
   return { sincronizadas, falhas, mensagem, ...(problemaServico ? { problemaServico } : null) };
 }
 
