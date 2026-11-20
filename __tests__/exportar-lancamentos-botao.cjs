@@ -21,7 +21,7 @@ function botao() {
   for(const name of ['AppModal','Sheet','AppPressable','MonthSelector','SegmentedTabs'])imports['./'+name]={__esModule:true,default:name};
   const m={exports:{}};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync('components/ExportarLancamentosBotao.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,
-    {exports:m.exports,module:m,Date,console:{warn(){}},require:id=>{if(!(id in imports))throw Error(id);return imports[id];}});
+    {exports:m.exports,module:m,Date,AbortController,console:{warn(){}},require:id=>{if(!(id in imports))throw Error(id);return imports[id];}});
   c.render=()=>{c.cursor=0;const tree=m.exports.default();for(const fn of c.effects.splice(0))fn();return tree;};
   return c;
 }

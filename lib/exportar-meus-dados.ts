@@ -18,7 +18,14 @@ export type Exportacao = {
   indisponiveis: Indisponivel[];
   parcial: boolean;
 };
-type Opcoes = { agora?: Date; conta?: { id: string | null; email: string | null } };
+type Opcoes = {
+  agora?: Date;
+  conta?: { id: string | null; email: string | null };
+  /** Quem saiu da tela aborta: nenhuma página nova, nenhum arquivo, nenhuma folha de compartilhar tardia. */
+  sinal?: AbortSignal;
+  /** Tabelas já lidas, para a tela mostrar que a cópia longa está andando. */
+  aoProgresso?: (lidas: number, total: number) => void;
+};
 
 class ErroExportacao extends Error {
   constructor(readonly codigo: string, mensagem: string) {
@@ -67,6 +74,7 @@ async function executarExportacao<T>(opcoes: Opcoes, entregar: (e: Exportacao, v
   });
 
   async function conferirSessao() {
+    if (opcoes.sinal?.aborted) interromper('cancelada', 'A cópia foi cancelada.');
     const { data, error } = await supabase.auth.getSession().catch(() =>
       interromper('sessao-nao-confirmada', 'Não foi possível confirmar sua sessão. Verifique a conexão ou solicite ajuda ao suporte.'));
     if (mudou || error || data.session?.user.id !== dono || data.session?.access_token !== token) {
@@ -114,7 +122,8 @@ async function executarExportacao<T>(opcoes: Opcoes, entregar: (e: Exportacao, v
     const dados: Record<string, unknown[]> = {};
     const contagem: Record<string, number> = {};
     const indisponiveis: Indisponivel[] = [];
-    for (const tabela of TABELAS_DO_USUARIO) {
+    for (const [lidas, tabela] of TABELAS_DO_USUARIO.entries()) {
+      opcoes.aoProgresso?.(lidas, TABELAS_DO_USUARIO.length);
       // O schema só permite INSERT do dono em feedbacks; vazio por RLS não comprova ausência.
       if (tabela === 'feedbacks') {
         indisponiveis.push({ tabela, tipo: 'permanente', motivo: 'Feedbacks não estão disponíveis no download direto. Solicite essa parte pelo suporte: suporte@granaponto.com.br.' });

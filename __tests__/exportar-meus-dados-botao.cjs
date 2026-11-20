@@ -9,7 +9,9 @@ function criarBotao(opcoes = {}) {
   const m = { exports: {} };
   const nativo = { ActivityIndicator: 'ActivityIndicator', Text: 'Text', StyleSheet: { create: v => v } };
   const imports = {
-    react: { useState(inicial) { const i = ctx.cursor++; if (!(i in ctx.slots)) ctx.slots[i] = inicial; return [ctx.slots[i], v => { ctx.slots[i] = v; }]; } },
+    react: { useState(inicial) { const i = ctx.cursor++; if (!(i in ctx.slots)) ctx.slots[i] = inicial; return [ctx.slots[i], v => { ctx.slots[i] = v; }]; },
+      useRef(init) { const i = ctx.cursor++; return ctx.slots[i] ?? (ctx.slots[i] = { current: init }); },
+      useEffect() { ctx.cursor++; } },
     'react/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
     'react-native': nativo,
     'expo-linking': { openURL: async u => { if (ctx.falhaLink) throw Error('PRIVADO'); ctx.abertos.push(u); } },
@@ -24,7 +26,7 @@ function criarBotao(opcoes = {}) {
   };
   const codigo = ts.transpileModule(fs.readFileSync('components/BaixarMeusDadosBotao.tsx', 'utf8'), { fileName: 'components/BaixarMeusDadosBotao.tsx',
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
-  vm.runInNewContext(codigo, { module: m, exports: m.exports, console: { warn: (...a) => ctx.logs.push(a) },
+  vm.runInNewContext(codigo, { module: m, exports: m.exports, AbortController, console: { warn: (...a) => ctx.logs.push(a) },
     require: n => { if (!(n in imports)) throw Error(`import não dublado: ${n}`); return imports[n]; } });
   ctx.render = (props = {}) => { ctx.cursor = 0; return m.exports.default(props); };
   return ctx;

@@ -27,7 +27,11 @@ export default function ExportarLancamentosBotao() {
   const emVoo = useRef(false);
   const dono = useRef(session?.user.id);
   dono.current = session?.user.id;
-  useEffect(() => { setAberto(false); }, [session?.user.id]);
+  /* Sair da tela ou trocar de conta cancela o CSV em andamento: sem folha de
+     compartilhar nem aviso tardio da conta anterior. */
+  const operacao = useRef<AbortController | null>(null);
+  useEffect(() => { operacao.current?.abort(); setAberto(false); }, [session?.user.id]);
+  useEffect(() => () => operacao.current?.abort(), []);
   function fechar() { if (!emVoo.current) setAberto(false); }
   function abrir() {
     if (isDemoMode) { Alert.alert('Dados de exemplo', 'Volte para seus dados para exportar os lançamentos.'); return; }
@@ -40,16 +44,18 @@ export default function ExportarLancamentosBotao() {
     const userId = session?.user.id;
     if (!userId || isDemoMode || emVoo.current) return;
     emVoo.current = true;
+    const controlador = new AbortController();
+    operacao.current = controlador;
     setGerando(true);
     try {
-      const resultado = await exportarLancamentosCsv({ userId, carteiraId: carteira,
+      const resultado = await exportarLancamentosCsv({ userId, carteiraId: carteira, sinal: controlador.signal,
         periodo: modo === 'tudo' ? 'tudo' : `${mes.ano}-${String(mes.mes + 1).padStart(2, '0')}` });
-      if (dono.current !== userId) return;
+      if (controlador.signal.aborted || dono.current !== userId) return;
       setAberto(false);
       Alert.alert('CSV preparado', `${resultado.quantidade} lançamentos sincronizados. ${Platform.OS === 'web' ? 'O download foi solicitado.' : 'Use a folha do sistema para escolher onde guardar ou enviar.'}`);
     } catch (erro) {
       console.warn('[csv] ação não concluída');
-      if (dono.current === userId) Alert.alert('Não foi possível exportar', mensagemErro(erro, 'Confira a conexão e tente novamente.'));
+      if (!controlador.signal.aborted && dono.current === userId) Alert.alert('Não foi possível exportar', mensagemErro(erro, 'Confira a conexão e tente novamente.'));
     } finally { emVoo.current = false; setGerando(false); }
   }
   return <>

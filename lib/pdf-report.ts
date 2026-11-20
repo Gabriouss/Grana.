@@ -27,6 +27,25 @@ export type { DadosRelatorio } from './pdf-report-html';
 
 export type OrigemRelatorioPdf = { dono: string | null; demo: boolean; sinal: AbortSignal };
 
+/* `printToFileAsync` não cancela: a impressão abandonada segue no nativo. Uma
+   nova espera ela terminar, para não empilhar documentos em memória, mas só até
+   o prazo: estourou, o relatório falha com erro visível em vez de ficar parado. */
+let impressaoNativa: Promise<void> | null = null;
+export const PRAZO_FILA_IMPRESSAO_MS = 60_000;
+
+async function esperarImpressaoAnterior(): Promise<void> {
+  if (!impressaoNativa) return;
+  let cortar: ReturnType<typeof setTimeout> | undefined;
+  const estouro = new Promise<never>((_, recusar) => {
+    cortar = setTimeout(() => recusar(new Error('O relatório anterior ainda está sendo gerado. Tente de novo em instantes.')), PRAZO_FILA_IMPRESSAO_MS);
+  });
+  try {
+    while (impressaoNativa) await Promise.race([impressaoNativa, estouro]);
+  } finally {
+    clearTimeout(cortar);
+  }
+}
+
 export class RelatorioPdfCancelado extends Error {
   constructor() {
     super('A conta ou a tela mudou durante a exportação.');
@@ -117,7 +136,13 @@ export async function gerarRelatorioPdf(dados: DadosRelatorio, origem: OrigemRel
   };
   try {
     conferir();
-    const impresso = await Print.printToFileAsync({ html, base64: false });
+    await esperarImpressaoAnterior();
+    conferir(); // a tela pode ter saído durante a espera
+    const impressao = Print.printToFileAsync({ html, base64: false });
+    const soltar = () => { if (impressaoNativa === marca) impressaoNativa = null; };
+    const marca: Promise<void> = impressao.then(soltar, soltar);
+    impressaoNativa = marca;
+    const impresso = await impressao;
     uriGerada = impresso.uri;
     arquivo = new File(impresso.uri);
     conferir();

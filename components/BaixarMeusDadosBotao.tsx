@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as Linking from 'expo-linking';
 import { destinoSuporte } from '@/lib/checkout-assinatura';
 import { ActivityIndicator, StyleSheet, Text } from 'react-native';
@@ -27,6 +27,12 @@ import AppPressable from './AppPressable';
 export default function BaixarMeusDadosBotao({ rotulo, acessoBloqueado = false }: { rotulo?: string; acessoBloqueado?: boolean }) {
   const { session } = useSession();
   const [gerando, setGerando] = useState(false);
+  const [progresso, setProgresso] = useState<{ lidas: number; total: number } | null>(null);
+  /* Sair da tela ou trocar de conta cancela a cópia em andamento: nada de
+     arquivo, folha de compartilhar ou aviso tardio da conta anterior. */
+  const operacao = useRef<AbortController | null>(null);
+  useEffect(() => { operacao.current?.abort(); }, [session?.user.id]);
+  useEffect(() => () => operacao.current?.abort(), []);
 
   function solicitarPeloSuporte() {
     Alert.alert('Solicitar seus dados', 'O vencimento não apaga seus dados. O download direto não está disponível com o acesso bloqueado. Solicite uma cópia pelo suporte, sem precisar renovar a assinatura.', [
@@ -43,11 +49,17 @@ export default function BaixarMeusDadosBotao({ rotulo, acessoBloqueado = false }
   async function baixar() {
     if (gerando) return;
     if (acessoBloqueado) { solicitarPeloSuporte(); return; }
+    const controlador = new AbortController();
+    operacao.current = controlador;
     setGerando(true);
+    setProgresso(null);
     try {
       const { nomeArquivo, contagem, indisponiveis, compartilhado } = await exportarMeusDados({
         conta: { id: session?.user.id ?? null, email: session?.user.email ?? null },
+        sinal: controlador.signal,
+        aoProgresso: (lidas, total) => { if (!controlador.signal.aborted) setProgresso({ lidas, total }); },
       });
+      if (controlador.signal.aborted) return;
       const linhas = Object.values(contagem).reduce((soma, n) => soma + n, 0);
 
       if (indisponiveis.length > 0) {
@@ -68,13 +80,18 @@ export default function BaixarMeusDadosBotao({ rotulo, acessoBloqueado = false }
       Alert.alert('Cópia gerada', `${linhas} registros em ${nomeArquivo}.`);
     } catch (erro) {
       console.warn('[dados] download nao concluido');
+      if (controlador.signal.aborted) return;
       if ((erro as { codigo?: string })?.codigo === 'acesso-negado') {
         solicitarPeloSuporte();
         return;
       }
       Alert.alert('Não foi possível gerar a cópia', mensagemErro(erro, 'Tente de novo em instantes.'));
     } finally {
-      setGerando(false);
+      if (operacao.current === controlador) {
+        operacao.current = null;
+        setGerando(false);
+        setProgresso(null);
+      }
     }
   }
 
@@ -92,7 +109,7 @@ export default function BaixarMeusDadosBotao({ rotulo, acessoBloqueado = false }
       ) : (
         <Ionicons name="download-outline" size={16} color={theme.inkSoft} aria-hidden />
       )}
-      <Text style={styles.texto}>{gerando ? 'Preparando seus dados…' : (rotulo ?? (acessoBloqueado ? 'Solicitar meus dados' : 'Baixar meus dados (cópia parcial)'))}</Text>
+      <Text style={styles.texto}>{gerando ? (progresso ? `Preparando seus dados (${progresso.lidas} de ${progresso.total})…` : 'Preparando seus dados…') : (rotulo ?? (acessoBloqueado ? 'Solicitar meus dados' : 'Baixar meus dados (cópia parcial)'))}</Text>
     </AppPressable>
   );
 }

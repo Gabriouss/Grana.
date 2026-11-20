@@ -6,7 +6,8 @@ import type { Transaction, Wallet, CreditCard } from './types';
 
 class ErroCsv extends Error {}
 
-type Opcoes = { userId: string; carteiraId: string; periodo: PeriodoCsv };
+/** `sinal`: quem saiu da tela aborta, sem página nova nem folha de compartilhar tardia. */
+type Opcoes = { userId: string; carteiraId: string; periodo: PeriodoCsv; sinal?: AbortSignal };
 
 /** Cópia consultada no servidor; pendentes locais não são anunciados como sincronizados. */
 export async function exportarLancamentosCsv(opcoes: Opcoes): Promise<{ quantidade: number; nomeArquivo: string }> {
@@ -20,6 +21,7 @@ export async function exportarLancamentosCsv(opcoes: Opcoes): Promise<{ quantida
     if (atual?.user.id !== opcoes.userId || atual?.access_token !== token) mudou = true;
   });
   async function conferirSessao() {
+    if (opcoes.sinal?.aborted) throw new ErroCsv('A exportação foi cancelada.');
     const atual = await supabase.auth.getSession();
     if (mudou || atual.error || atual.data.session?.user.id !== opcoes.userId || atual.data.session?.access_token !== token) {
       throw new ErroCsv('A conta ou a sessão mudou. Peça uma nova exportação.');

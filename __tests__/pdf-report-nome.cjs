@@ -57,7 +57,7 @@ function carregar({ plataforma = 'android', disponivel = true, falhaMover = fals
   const codigo = ts.transpileModule(fonte, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
   }).outputText;
-  vm.runInNewContext(codigo, { exports, console, window: { open: () => janela }, require(id) {
+  vm.runInNewContext(codigo, { exports, console, setTimeout, clearTimeout, window: { open: () => janela }, require(id) {
     assert.ok(id in deps, 'import simulado: ' + id); return deps[id];
   } });
   // Esta suíte isola nome/entrega; a troca de sessão é exercitada em pdf-conta-origem.cjs.
