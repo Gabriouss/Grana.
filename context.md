@@ -20246,3 +20246,168 @@ Root conferiu git log/stat e `recibo-Forge-T13-WIP-commit-154301.json`: Forge pr
 Últimas medições de RAM para testes informadas: 0,87 e depois 1,21 GiB. A pergunta ao autor sobre encerrar outros agentes ociosos continua sem resposta; não inferir aprovação. Root encerrou somente Forge ocioso pelo `/exit`, após preservar seu trabalho; retomada UUID `01a1eee5-b54e-7083-a7f9-330b15d78b13`. Próximo passo: dois focais T13 e aviso, depois sufixo T13 no `b0fdd68d`, somente com RAM >= 1,5 GiB. Fila 26/50, tsc/guarda exit 0 no corte registrado, CI incompleta; QA, backup e checker pendentes. Isto é checkpoint operacional, não pausa do autor.
 
 Ledger observou erro ENOSPC ao gravar e depois ler a nota do vault; sessão do vault e espelho ainda pendentes. Root mediu C: 0,19 GiB e G: 0,18 GiB livres, E: 179 GiB. Nenhum arquivo apagado para liberar espaço. Autor autorizou commit apenas de `context.md` na raiz, após fetch e comparação com `origin/main`; não autorizou push dos 51 commits históricos. Instalador de 14/11 e anexos permanecem fora do stage. Sem Node checker, testes, produto, build ou servidor nesta operação.
+
+### 18/11 — RAM liberada com autorização do autor
+
+O autor autorizou explicitamente encerrar agentes ociosos para liberar RAM. Root inspecionou 19 telas e relata nenhum agente trabalhando na área; encerrou normalmente 14, confirmando retorno ao shell: Lumen, Anvil, Keel, Meridian, Flare, Quill, Lynx, Vigil, Orquestrador Supremo e Ledger por `/exit`; Harbor, Prism, Compass e Sentinel saíram do aviso de atualização por Ctrl+C, sem instalar, e depois da CLI ociosa por `/exit`. Forge, Watchtower e Beacon já estavam no shell e não entram nessa contagem. Despertador/guardião continua rodando, Vigia em shell e root mantido. Nós, conexões, perfis e arquivos preservados; nenhum aplicativo geral fechado. RAM medida pelo root passou de 0,611 para 3,361 GiB.
+
+Somente Forge e Ledger foram retomados pelos UUID exatos, na conta Gabriel e mesmos perfis: Forge Sol medium, Ledger Terra low. Forge recebeu sinal para dois focais e depois sufixo T13 no HEAD `b0fdd68d`, com medição, trava e perfis originais; resultados ainda não comprovados. Sem Node checker, testes ou Git por Ledger durante Forge, sem iniciar outro agente. A falha ENOSPC anterior no vault permanece registrada; nenhuma limpeza foi realizada.
+
+### 18/11 — focais T13 verdes; sufixo CI em execução
+
+Root leu os recibos reais `Forge-T13-validacao-b0fdd68d-155110` (exit 0, 7/7) e `Forge-lancamento-validacao-b0fdd68d-155123` (exit 0, 4/4), com módulos reais e fontes em `b0fdd68d`. Os dois harnesses antes preservados como WIP agora têm prova focal; não reescrever o commit. São compatibilidades de testes, portanto a fila permanece em 26/50 itens focais.
+
+O sufixo T13 iniciou efetivamente no HEAD `b0fdd68d`; root conferiu tela e log parcial `gate-A5-Forge-b0fdd68d-test-ci-T13-r1-watchtower.log`. Passou os dois harnesses e categoria obrigatória; até este corte não havia exit final nem erro. **CI em execução, não CI verde.** Ledger sem Node, checker ou Git enquanto Forge opera. Vault continua indisponível por ENOSPC; nenhuma limpeza.
+
+### 18/11 — sufixo T13 interrompido em fila endurecida
+
+Sufixo CI T13 em `b0fdd68d` terminou exit 1 em `fila-endurecida.cjs:292`: teste esperava zero notificações e observou uma. Os dois focais T13 anteriores continuam verdes; CI permanece incompleta e fila em 26/50. Fontes: `E:/Grana-temporarios/2026-11-18-retomada/gate-A5-Forge-b0fdd68d-test-ci-T13-r1-watchtower.log` e `relatorio-Forge-T13-validacao-sufixo.md`.
+
+Root leu teste e `offline-cache` a partir da linha 510: há recibo genérico `fila-presa`, distinto de `revisar`, para falha de persistência do journal. **Hipótese, ainda não fato:** a expectativa do teste pode ser antiga; nenhum bug de produto foi confirmado. Forge recebeu investigação focal e proposta assertiva apenas no teste: exigir `fila-presa`, zero `revisar` e preservação dos dados. Sem produto, package ou commit até verificação do root; sem Node, checker ou Git por Ledger em concorrência. Não declarar CI verde.
+
+### 18/11 — emulador encerrado e novo sinal para fila
+
+O autor autorizou explicitamente encerrar o emulador. Root identificou `emulator-5554` e qemu PID 39576, RSS 687 MiB. `adb emu kill` falhou com conexão recusada na porta 5554; a verificação imediatamente posterior mostrou adb sem dispositivos e nenhum processo qemu. Portanto o emulador já estava encerrado, sem atribuir o encerramento ao comando falho ou afirmar causa não comprovada. RAM informada pelo root subiu de 1,132 para 1,832 GiB.
+
+No preflight Forge anterior, 15:58:33, RAM 0,590 GiB estava abaixo dos pisos de 1,5 GiB para testes e 0,75 GiB para Git; não houve execução ou commit. HEAD `b0fdd68d`, um teste WIP, patch e checkpoint externos preservados. Root aprovou por leitura a proposta de expectativa `fila-presa` e entregou novo sinal para focal `fila-endurecida`; se verde, commit apenas de teste e sufixo exato a partir dele. O sinal posterior supera somente o bloqueio de recursos anterior e depende de nova medição que permita cada etapa. Focal e commit ainda sem recibo; CI incompleta. Ledger sem Node, checker ou Git durante Forge; vault ENOSPC permanece pendente, sem insistência ou exclusão.
+
+### 18/11 — fila endurecida verde; próxima incompatibilidade de harness
+
+Forge e root comprovaram `fila-endurecida` com 90 checagens e commit test-only `b06c82806f5d5276ec148353cc6e98305d98da1b`, somente `__tests__/fila-endurecida.cjs`, conforme `E:/Grana-temporarios/2026-11-18-retomada/relatorio-Forge-fila-endurecida-final.md`. O sufixo a partir desse corte iniciou e passou journal 20, fila ilegível 11, fila sem duplicata 19, idempotência 21 e entradas carteira 12, mas parou em `seletor-carteira-entradas:150` com `TypeError` para `lerSessaoDoDisco`. Fonte: `gate-A5-Forge-b06c8280-test-ci-fila-r1-watchtower.log` na mesma rodada. T13 e aviso continuam verdes; CI incompleta e fila 26/50.
+
+Root leu o fake de sessão sem essa função e autorizou lote test-only limitado às fronteiras comprovadamente incompatíveis no sufixo restante, preservando `escritaDaConta` real, proteção de dono e asserções. A auditoria anterior de 20 referências a crédito não foi exaustiva para este harness; não inferir cobertura de todas as montagens. Produto e package seguem intactos conforme root. Sem Node, checker ou Git por Ledger durante Forge; sem resultado ou commit antecipado para o novo lote.
+
+### 18/11 — checkpoint do sufixo antes de liberar RAM
+
+Root leu o relato e commit: focal `seletor-carteira-entradas` passou 16 checagens, exit 0; commit test-only `4c4da11f844ca55994e6178f39639f45123cf77e`. O sufixo desde esse corte parou por limite ambiental do supervisor, RSS 1088 MiB acima de 1024 MiB; somente filhos próprios encerrados, corte limpo e trava liberada. Não houve exit natural da CI nem asserção terminal. Último marcador verde: Pix SQL; comando em voo não identificado. Root conferiu que `conciliacao-pix-servidor` usa helper PostgreSQL local; PGlite como causa do RSS é hipótese, não incidência provada. Fontes na rodada 18/11: `relatorio-Forge-seletor-batch-final.md`, resultado Forge e supervisor `4c4da11f`.
+
+Root autorizou próximo perfil Forge: retomar desde `conciliacao-pix-servidor`, incluindo o comando cujo exit não foi comprovado; heap 512 MiB, RSS 1536 MiB, piso 1,75 GiB, prazo 1200 s, trava e nova medição de RAM, sem outros agentes. CI continua incompleta; fila 26/50. Ledger registra e fica ocioso para root encerrar somente este terminal e retomar seu UUID depois, conforme autorização do autor; sem Node, checker, Git, push, build ou servidor nesta etapa.
+
+### 18/11 — compatibilidades de testes e sufixo parser
+
+Ledger retomado pelo UUID e mesmo perfil apenas para documentação; RAM informada pelo root 3,009 GiB. O autor invocou RC, interrompeu antes do retorno e depois cancelou explicitamente. Root confirmou que não houve handoff da conversa atual nem `rc start` ativo; nenhuma reconexão afetou a CI.
+
+Forge e root relatam somente alterações de testes desde `fd60a974`, conferidas pelo root em git diff:
+- `0fc3c3a29f7504659e08bf02cc555b727e8a795b`: harness de avisos com RPC thenable e Authorization; focal `recibo-Forge-avisos-rpc-fronteira-161332.json` verde.
+- `ef9ffe96c3e41cdefd975943aa8f30ba9387db37`: mock `useSession` em avisos-telas; 68 grupos exit 0, recibo `recibo-Forge-avisos-telas-hook-224745.json`. A CI anterior de avisos parara em hook ausente de expo-linking, agora corrigido no harness.
+- `4aaa1ae5bffbee369e1d1fdd56f5a1d719aa1a9a`: regex Granachat exige dependências `[visivel,dono]`; prazo, histórico e cancelamento exit 0, recibos 225213, 225225 e 225236. A execução subsequente passou T5 e parou na regex antiga de crédito.
+- `c97a13ed6e0a5a6203dfd9f03cf3b39b9aa05988`: guarda de crédito exige busca separada, vigência, recorrência e `buscarMeses(false)`; corpus 110/110 exit 0 `recibo-Forge-corpus-credito-guarda-225819.json` e compatibilidade recibo P2 16/16 exit 0 `recibo-Forge-credito-recibo-compat-parser-230009.json`. Commit em `recibo-Forge-corpus-credito-guarda-commit-230027.json`.
+
+Sufixo desde `npm run test:parser` em `c97a13ed` está em execução segundo root, sem exit final comprovado neste corte. A composição de cortes não é CI única no HEAD final; fila permanece 26/50, com 24 itens sem focal; QA, backup e checker pendentes. Sem Node, checker ou Git por Ledger enquanto Forge executa; sem servidor, build ou push. Fontes adicionais: relatórios Forge `avisos-rpc-batch-final`, `avisos-hook-ciclo2-final`, `granachat-guarda-final` e `checkpoint-Forge-parser.json` na rodada 18/11.
+
+Root informa recuperação de espaço: C 54,05 GiB, E 193,36 GiB e G 51,35 GiB livres. O ENOSPC anterior é histórico; não houve limpeza por Ledger. Vault e espelhos podem ser atualizados, sem credenciais. Commit documental na raiz depende de sinal posterior do root.
+
+### 18/11 — parser interrompido na allowlist de widgets
+
+Os cortes `ef9ffe96` (mock de sessão de avisos-telas) e `4aaa1ae5` (guarda Granachat `[visivel,dono]`) têm focais verdes. No sufixo de `4aaa1ae5`, T5 passou e a execução parou na regex antiga de crédito. Em `c97a13ed`, corpus da guarda de crédito passou 110/110 e compatibilidade de recibo 16/16; o parser passou crédito, relatório 31 e Score 23, mas parou em `corpus-widgets-home`: a allowlist exata não inclui `sessao_mudou_antes_da_agenda` com `EstadoWidget.REPETIR`.
+
+Root leu Kotlin na linha 209: a proteção verifica origem nula ou outro usuário antes do microfone e agenda; o estado REPETIR é visível e descarta áudio, análogo aos dois motivos já permitidos. Autorização delimitada ao teste: acrescentar esse único motivo à lista exata e um controle mutante que exija falha para motivo desconhecido com REPETIR. Não alterar Kotlin nem relaxar outros motivos. Forge recebeu focal, commit de um teste e depois parser pai integral com os comandos posteriores; resultados ainda pendentes. CI incompleta e composta por cortes, sem execução única; fila permanece 26/50. Sem Node, checker ou Git por Ledger enquanto Forge opera; sem servidor, build ou push. Fonte: relatos e logs Forge da rodada `E:/Grana-temporarios/2026-11-18-retomada/`, leitura de Kotlin pelo root.
+
+### 18/11 — sufixo concluído e CI inteira autorizada
+
+Root confirma HEAD limpo `ace46bc15219902635c64ee24da8235e100527dc`; último delta somente `modo-teste.cjs`. Guarda regex antiga foi substituída por execução de `enviarPergunta` real: `MODO_TESTE=true`, resposta local exata, ferramenta null, zero SDK/rede; controle com modo false acusa uma chamada SDK. São 26 verificações e compatibilidade de cancelamento 16 verdes. O sufixo exato desde `modo-teste` até o final terminou exit 0 em 9,665 s, perfil heap 512/RSS 1536/piso 1,75 GiB/prazo 1200 s, pico RSS 533 MiB, corte estável e trava livre. Fontes: `E:/Grana-temporarios/2026-11-18-retomada/relatorio-Forge-modo-teste-final.md` e checkpoint correspondente.
+
+Parser pai passou no corte `597755f4`: guarda de widget com motivo exato e controle que reprova motivo desconhecido; Kotlin intacto. As provas até aqui são **compostas por cortes**, não uma CI única. Root confirmou diff `fd60..HEAD` somente em 11 testes, com produto idêntico, e autorizou agora uma execução integral da CI no HEAD `ace46bc1`, Bash e mesmo perfil, após os 11 harnesses corrigidos; não repetir tsc/guarda. Ainda sem recibo dessa execução integral: não inferir exit 0. Se passar, backup incremental no Drive e depois checker, espelhos e commit documental aguardam janela exclusiva e sinal. Sem Node, checker ou Git por Ledger durante a CI. RC cancelado sem handoff pendente confirmado pelo root; fila 26/50, 24 itens restantes e QA pendentes.
+
+### 18/11 — CI única interrompida por caminho truncado
+
+Root confirma RC cancelado. A CI única no HEAD `ace46bc1` terminou naturalmente exit 1 após 415.378 ms: `MODULE_NOT_FOUND` para caminho truncado `granachat-historico-offli`; o arquivo original existe. A cadeia de `package.json` tem 8.945 caracteres; transporte é hipótese de causa, ainda não comprovada. Fonte: `E:/Grana-temporarios/2026-11-18-retomada/relatorio-Forge-ci-unica-final.md` e checkpoint correspondente. HEAD limpo e estável, trava livre conforme root.
+
+Forge prepara execução da cadeia literal por arquivo Bash para evitar argumento longo; nenhuma prova nova é inferida desse preparo. CI não está verde; fila permanece 26/50, QA, backup e checker pendentes. Sem Node, checker, Git ou produto por Ledger; sem repetir históricos ou iniciar agente.
+
+### 18/11 — CI literal por arquivo em andamento
+
+CI integral literal por arquivo está em execução no HEAD `ace46bc1`, conforme root. A cadeia tem 8.945 bytes iguais ao package, SHA-256 `44df666c25a8b8cf59a098cb38e9c8dede328af76d8b298c17b9fb529cf9d1b8`; root revisou o transporte curto e os helpers de lifecycle npm. Log: `E:/Grana-temporarios/2026-11-18-retomada/gate-A5-Forge-ace46bc1-test-ci-ci-arquivo-r1-watchtower.log`. Ainda sem exit: não declarar CI ou `npm run` verdes. Ledger aguarda, sem Node ou Git durante Forge; checker e commit documental somente após sinal de janela exclusiva.
+
+### 18/11 — incidente do supervisor da CI por arquivo
+
+A CI `ci-arquivo-r1` no HEAD limpo `ace46bc1` foi interrompida pelo supervisor após RSS registrado de 1.545 MiB superar o teto de 1.536 MiB; não houve exit natural da CI. O recibo `E:/Grana-temporarios/2026-11-18-retomada/supervisor-Forge-ace46bc1-test-ci-ci-arquivo-r1.json` inclui PID de OneDrive/RuntimeBroker no conjunto. O HashSet histórico não registra CreationDate: **não está comprovado que o RSS contabilizado ou os processos encerrados eram exclusivamente filhos da CI**. Não afirmar encerramento próprio seguro nem identificar dano sem evidência.
+
+A cadeia literal ultrapassou o truncamento anterior até recorrência SQL, mas isso não torna a CI verde. Root suspendeu a reutilização desse supervisor; Forge ficou restrito à preparação de supervisor externo robusto com JobObject e prova sintética, sem CI, Node de produto ou aumento de teto. Backup e checker continuam pendentes. Ledger não executou Node, checker ou Git durante Forge.
+
+### 19/11 — retomada documental e prova sintética anterior
+
+O autor pediu continuar. Forge está revisando o supervisor Job r1 antes de qualquer CI. O recibo anterior `E:/Grana-temporarios/2026-11-18-retomada/recibo-Forge-prova-Job-r1-234100.json` registra prova somente sintética C#, 22 verificações e exit 0; job alvo vazio, sentinela externa presente antes e depois e trava liberada. É prova daquele ensaio, não validação integral do supervisor nem CI nova. Não há nova CI comprovada; permanece o limite do incidente anterior quanto à identificação dos processos contabilizados ou encerrados. Preservado o WIP da raiz. Ledger não executou Git, Node, checker, push ou acesso a servidor nesta retomada; revisão Forge e provas subsequentes aguardam resultado.
+
+### 19/11 — checkpoint Forge: finally do supervisor Job
+
+Root informa ter conferido o clone limpo em `ace46bc1` e os seis hashes do recibo `090443`. No supervisor, o `finally` exige identidade integral com nonce e Job vazio, root encerrado e handles liberados antes de retirar a trava. O recibo informado registra **71/71 verificações sintéticas**, com falhas injetadas e `finally` real. Essa prova não substitui o ensaio do Job nativo novo nem uma CI: ambos permanecem pendentes por RAM. Root mediu 1,154 GiB, abaixo do piso de 1,75 GiB; consultou o autor sobre fechar agentes ociosos e ainda não recebeu sinal. Ledger registra o relato sem repetir as verificações, Git ou checker nesta janela.
+
+### 19/11 — prova nativa e interrupção da CI Job r1
+
+Root informa que a prova nativa `093647` terminou exit 0 com 81 verificações. A CI sob Job r1 iniciou no clone `ace46bc1`, mas foi interrompida pelo erro `Query image of current member`, sem exit natural da CI. Foram comprovados Job vazio, root encerrado, handles e trava liberados e clone limpo, conforme root. Forge corrige o diagnóstico na infraestrutura externa e aguarda prova e r2; não há CI verde comprovada. Ledger registra o relato sem Git, Node ou checker concorrente.
+
+### 19/11 — prova nativa r2 e teto de memória da CI
+
+Root informa prova nativa r2 `093918`, exit 0 e 86 verificações. A CI literal integral r2 iniciou às 09:39:45 no corte `ace46bc1` e foi interrompida no T5 de recorrência SQL pelo teto de RSS: 1.578 MiB registrados para limite de 1.536 MiB; o maior processo do Job era `node.exe`, 1.406 MiB. PGlite como causa não está comprovado. Não houve exit natural da CI. Job vazio, limpeza e trava livre, com corte estável, conforme root. Fonte: `E:/Grana-temporarios/2026-11-18-retomada/supervisor-Forge-ace46bc1-test-ci-ci-job-r2.json`. Forge investiga por leitura; Ledger não executou Node ou Git concorrente. CI integral continua sem aprovação comprovada.
+
+### 19/11 — CI r3 autorizada e iniciada
+
+O autor autorizou explicitamente no Maestri Chat uma CI r3 com teto RSS de 2.048 MiB, piso de RAM livre de 3,5 GiB, heap de 512 MiB e prazo de 1.200 s. Conforme checkpoint Forge de 09:51:42, a execução iniciou no corte `ace46bc1` e estava em andamento nesse momento; seu exit ainda não foi comprovado. Aguardar o resultado antes de declarar CI verde. Ledger registra o relato sem Node, Git ou checker concorrente e sem push.
+
+### 19/11 — CI r3 interrompida no teto autorizado
+
+A única tentativa r3 autorizada iniciou às 09:51:43 com 3,903 GiB livres, passou os testes anteriores de recorrência e cartão T5 e parou às 09:58:54 durante `boletos-servidor`, após pico RSS de 2.053 MiB para teto de 2.048 MiB; maior processo Node: 1.889,8 MiB. Não houve exit natural da CI. Conforme comprovação informada pelo root, Job e root encerrados, handles e trava liberados, corte `ace46bc1` limpo e estável. Fonte: `E:/Grana-temporarios/2026-11-18-retomada/supervisor-Forge-ace46bc1-test-ci-ci-job-r3.json`. Nenhuma nova tentativa nesta autorização; backup condicionado ao gate. Sem Git, push, build ou servidor por Ledger.
+
+### 19/11 — investigação Forge do RSS e patch externo PGlite
+
+Forge relata por leitura que o teste de recorrência cria cinco bancos PGlite sem `close`, e boletos usa um banco real e oito mutantes sem `close`. Isso é uma causa plausível para o RSS observado, ainda sem perfilamento que a comprove. Clone `ace46bc1` permanece intacto conforme root. Foi preparado externamente `E:/Grana-temporarios/2026-11-18-retomada/patch-Forge-PGlite-finally.diff` para fechar cada banco antes do próximo caso, cobrindo falha de preparo inclusive no helper. Root confirmou `git apply --check` exit 0; patch ainda não aplicado e nenhuma nova CI comprovada. Ledger registra o relato sem repetir comandos Git ou testes.
+
+### 19/11 — patch PGlite aplicado como WIP e focais autorizados
+
+Root informa que o patch PGlite `ba601e` foi aplicado somente aos três harnesses no clone `ace46bc1`; permanece WIP sem commit. Forge foi autorizado a executar focais isolados de recorrência e boletos e o caminho de erro de `close`, com teto RSS de 1.536 MiB, piso de RAM livre de 1,75 GiB e heap de 512 MiB, sem CI integral. Recibos ainda pendentes; não inferir resultado. Ledger aguarda sem Node, Git ou checker.
+
+### 19/11 — focais PGlite verdes, CI pendente
+
+Root conferiu os focais isolados: caminho de erro de `close` 19/19, pico RSS 79 MiB; recorrência 5/5, 685 MiB; boletos 9/9, 1.098 MiB. Todos tiveram exit natural 0, corte estável e trava livre. Conforme root, clone em `ace46bc1` com delta somente nos três harnesses e diff check limpo; o delta permanece WIP. São provas de suítes isoladas, não de CI integral, que continua pendente. Ledger aguarda novo sinal sem Git, Node ou checker; sem push, build ou servidor.
+
+### 19/11 — commit local dos harnesses PGlite
+
+Root confirma commit **local** `191dc7bc`, contendo somente os três harnesses PGlite, clone limpo e diff check limpo; remoto conhecido `73e31118` conforme Forge. Os hooks normais passaram. O scanner verificou padrões, mas `.env` não estava legível para comparação de valores, portanto essa comparação não foi comprovada. Os focais isolados registrados acima correspondem ao mesmo delta. Sem push e sem CI integral; Ledger registra o relato sem repetir Git ou testes.
+
+### 19/11 — CI única r4 em andamento
+
+O autor pediu terminar a rodada. Conforme `E:/Grana-temporarios/2026-11-18-retomada/checkpoint-Forge-CI-191dc7bc-job-r4.json`, iniciou a CI única no commit local `191dc7bc`, com teto RSS de 1.536 MiB, piso de RAM livre de 1,75 GiB, heap de 512 MiB e prazo de 1.200 s. Ainda não há resultado comprovado; aguardar exit antes de declarar o gate. A fila permanece em 26/50 focais; os demais itens exigem prova separada, e QA e backup seguem pendentes. Ledger não executa Node, Git ou checker durante a CI.
+
+### 19/11 — CI r4 interrompida e orientação do autor
+
+Root informa que a CI integral r4 em `191dc7bc` passou a recorrência do patch, mas o supervisor a interrompeu em `cartao-servidor` SQL por RSS de 1.573 MiB para teto de 1.536 MiB; maior processo Node: 1.396 MiB. Não houve exit natural da CI. Cleanup concluído, trava livre e corte estável, conforme root. Forge atingiu limite; Anvil, Keel e Vigil também, segundo o relato. O autor esclareceu expressamente: terminar correções e testes e só depois perguntar sobre build. Nenhuma build ou instalação nesta etapa. Ledger registra sem Node ou Git; CI integral continua pendente.
+
+### 19/11 — fila reconciliada e WIP SQL de Harbor
+
+Compass reconciliou a fila de 26/50 focais e os 24 itens restantes em `E:/Grana-temporarios/2026-11-18-retomada/relatorio-Compass-24-pendentes-191dc7bc.md`. Harbor assumiu a escrita SQL; segundo root, WIP somente em `cartao-servidor` e `encerrar-serie-falhas`. Os focais `close` e cartão terminaram exit 0, com RSS de 182 e 869 MiB respectivamente. `encerrar-serie-falhas` ainda não foi executado por RAM e preflight de concorrência; não inferir aprovação. Forge, Anvil, Keel e Vigil foram confirmados sem cota e encerrados normalmente após ficarem ociosos para liberar RAM; Compass também foi encerrado normalmente após o relatório. Sem build. Ledger registra sem Git, Node ou checker.
+
+### 19/11 — harnesses SQL concluídos e próximas frentes
+
+Root informa que Harbor concluiu os focais r4: `close` 139, cartão 6 e encerrar 6 verificações, todos exit 0, com picos RSS de 182, 869 e 672 MiB; r5 repetiu encerrar com pico de 719 MiB. Commit local `980cf75f` contém apenas os dois harnesses, e clone limpo foi verificado pelo root. Aprovação da CI integral continua pendente. Prism recebeu janela exclusiva para os itens 19a/19b; Harbor prepara externamente o item 18 e Sentinel o item 24. Nenhuma build nesta etapa. Ledger registra sem Node ou Git concorrente.
+
+### 19/11 — item 19 com prova focal
+
+Root informa commits locais limpos `c473a3aa` e `1e8d9ea1`: item 19a teve RED com 9 falhas causais e GREEN 22/22; 19b teve RED com 4 falhas causais e GREEN 11/11. Compatibilidades `envio-unico` e `canal-play` passaram 76/76, conforme relato. A fila passa a **27/50 focais**, com 23 itens sem prova focal; CI integral ainda sem prova. Prism recebeu sinal para tentativa se a cota permitir. Sentinel mantém fixture do item 18 e patch nativo do 24 externos, sem execução; Harbor mantém plano externo do item 18. Sem build, push ou servidor. Ledger registra o relato sem repetir testes ou Git.
+
+### 19/11 — CI literal integral verde em 1e8d9ea1
+
+Conforme recibo `E:/Grana-temporarios/2026-11-18-retomada/supervisor-Prism-1e8d9ea1-test-ci-literal-r1.json` informado pelo root, a CI literal integral no corte `1e8d9ea1` terminou com exit natural 0; o log registra `test:ci=0`. Execução de 11:05:31 a 11:14:50, pico RSS de 1.155 MiB para teto de 1.536 MiB, corte limpo, Job vazio e trava livre. O autor informou que a cota foi redefinida e pediu continuar sem refazer. A fila permanece em 27/50 focais, com 23 pendentes de prova separada; o próximo é o item 24, enquanto o 18 tem preparo externo. A CI verde não comprova esses focais nem QA. Sem build, push ou servidor; Ledger registra sem repetir a execução.
+
+### 19/11 — recebimento dos focais externos 24 e 46 e coordenação
+
+Codex informa 27/50 itens integrados e CI integral `test:ci` exit 0 no corte limpo `1e8d9ea1`; a prova pertence àquele corte. Recebidos os relatórios externos de Harbor: item 24, baseline RED 19 falhas em 53 e candidato GREEN 53/53; item 46, baseline RED 17 falhas em 78 e candidato GREEN 76/76. Fontes: `E:/Grana-temporarios/2026-11-18-retomada/relatorio-Harbor-item24-QA-r1.md` e `relatorio-Harbor-item46-QA-r1.md`. São candidatos externos, não integração ou novo gate. As provas usam fronteiras sintéticas e não substituem QA em aparelho.
+
+Nesta rodada Codex reservou a Harbor janela exclusiva de integração do 24, seguida do 46; Watchtower revisa por leitura, Sentinel prepara prova 18/20, Forge prepara 23, Prism reconcilia 29 e Compass coordena dependências. Demais frentes permanecem fora do clone até sua janela; testes seriais. Nenhum resultado posterior, commit ou gate é inferido deste recebimento. Ledger preserva WIP da raiz e não executa Git mutante, Node/checker, build ou alterações de produto e segredos durante a janela.
+### 19/11 — recebimento da integração do item 24
+
+Codex confirma item 24 integrado no commit `f9cc69ae`: focal integrado 53/53 e paridade 13/13, exit 0 (`E:/Grana-temporarios/2026-11-18-retomada/supervisor-Harbor-integracao-item24-r2.json`); commit exit 0 com hooks e checkout limpo (`E:/Grana-temporarios/2026-11-18-retomada/supervisor-Harbor-commit-item24-r2.json`). Fila: 28/50. A primeira tentativa de commit abortou por linhas vazias em três fixtures; correções apenas de espaço no fim. Item 46 continua na janela Harbor. Ordem de lotes: `E:/Grana-temporarios/2026-11-18-retomada/ordem-Compass-lotes-23.md`. Registro do recebimento, sem nova execução por Ledger.
+### 19/11 — recebimento da integração do item 46
+
+Codex informa item 46 integrado em `0a8809bf`: focal 76/76, canal-play 76/76 e download 10/10; recibos `E:/Grana-temporarios/2026-11-18-retomada/supervisor-Harbor-integracao-item46-r1.json` e `supervisor-Harbor-commit-item46-r1.json`. Clone limpo conferido pelo Codex; fila 29/50. A CI integral exit 0 pertence ao corte anterior `1e8d9ea1`, sem novo gate inferido. Cota redefinida; autor pediu continuar sem refazer. Forge retomado pelo UUID no perfil atualmente comprovado e recebeu janela exclusiva do item 23, ainda em execução e sem contagem antecipada. Ledger registra o recebimento sem repetir testes, Node/checker, Git write, build, push ou servidor; WIP e anexos da raiz preservados.
+### 19/11 — recebimento do WIP Forge item 23
+
+Codex conferiu recibos e `E:/Grana-temporarios/2026-11-18-retomada/relatorio-Forge-item23-final.md`: WIP sobre `0a8809bf`, allowlist de 15 caminhos. Baseline-r4 teve 32 falhas causais em 124, exit 1; candidato-r5 124/124, exit 0; compat-r1 exit 0 com 17 captura, 13 recibos e 73 núcleo/efeitos. Adaptação de fronteiras Windows no harness está descrita no relatório. Ainda sem commit; fila 29/50. Root pediu última verificação do ponto em que Worker pode adotar áudio entre fsync, JSON e promoção e do prazo de stop duplicado. Harbor prepara item 18 somente externamente, sem prova ainda. Registro de recebimento; WIP preservado e nenhuma execução por Ledger.
+### 19/11 — checkpoint item 23 integrado
+
+Codex informa commit local `fde2d7b6823795bb5e7210bb2058b6bf64614e28`, checkout limpo e exit natural 0 em `supervisor-Forge-commit-item23-r1.json`; fila 30/50. Resultado final 193/193; compatibilidades captura 17, recibos 13, núcleo 73 e widgets 99. Após revisão, Forge passou a usar retorno explícito de sucesso na publicação e distinguir falha antes da confirmação do JSON de falha de promoção posterior, preservando recuperação. Detalhes e recibos: `E:/Grana-temporarios/2026-11-18-retomada/relatorio-Forge-item23-resultado-publicacao.md`; esse relatório antecede o commit ora informado. Sem QA Android ou CI nova inferidos.
+
+Harbor preparou candidato externo do item 18 com seis fontes e fixture (`relatorio-Harbor-item18-candidato.md`), ainda sem compilação, prova ou integração; não contar. Sentinel recebeu janela do item 20 em `fde2d7b6` com wrapper preparado; em andamento. Ledger registra sem repetir testes ou alterar produto/Git.
+### 19/11 — checkpoint item 20 integrado
+
+Codex informa commit local `af5391c8`, clone limpo e commit/Job exit 0 conforme recibo `Sentinel-item20-integracao` e status root. Baseline: 9 falhas causais em 34; candidato e integrado 34/34; compatibilidade vigia 14/14. Fila 31/50. Item 18 é o próximo, com candidato externo ainda sem prova. A CI única exit 0 permanece vinculada ao corte `1e8d9ea1`; sem build ou push inferidos. Registro por Ledger sem repetir testes.
