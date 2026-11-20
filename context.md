@@ -20512,3 +20512,14 @@ Ajuste da ordem de 20/11 (seção "Ajuste 20/11 — item 37 passa do Anvil ao Lu
 5. **Verificação.** red39-r3 exit 1, 0/3 casos passando (causal); green39-r2 exit 0, 3/3; compatServico, compatBotao, compatGuardas e compatReimportacao exit 0; corte estável. r1 e r2 foram refeitos por defeito do próprio teste (categoria escolhida fora da tela; comparação entre realms do vm); os detalhes estão no relatório. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Keel-item39.md`.
 6. **Sem verificação ainda.** `tsc` no gate final do lote e QA no aparelho. Riscos registrados pelo Keel: rótulo "Parar o lote" (não promete esperar a chamada em curso); mesma chave em paralelo ainda não conferida contra o servidor.
 7. **Estado.** Fila 40/50 integrados. Em janela: Lumen, item 37 (concedida em 20/11, sem FIM ainda).
+
+### 20/11 — item 37 integrado no clone (Lumen, extrato OFX/CSV)
+
+1. **Pedido.** Parte do lote de importação de extrato: linha cortada não pode virar lançamento válido.
+2. **Sintoma e causa.** Uma linha de extrato cortada, como "Mercado cortado", entrava como lançamento válido de R$ 12. O baseline aceitava a linha com 12 no corte.
+3. **Mudança.** `lib/heuristics.ts`, `lib/ofx-parser.ts`, `components/ImportarExtratoModal.tsx`; teste novo `__tests__/extrato-corte-de-texto.cjs`.
+4. **Commit.** `dca7ecbc` (`fix(extrato): corte de texto no limite da descricao`) no clone `E:/Grana-temporarios/2026-10-30-teste-avisos/repo`, base `f7174826`. Commit do integrador (Quill), só com os quatro caminhos do item.
+5. **Verificação.** red37-r1 exit 1 causal; green37-r1 exit 0 com 19 verificações; compat37ofx 27/27, compat37dedup 25/25 e compat37limite exit 0; corte estável em todas. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Lumen-item37.md`.
+6. **Handoff.** Parser e importador passam ao Keel para o item 36, a partir de `dca7ecbc`.
+7. **Sem verificação ainda.** `tsc` do gate final e QA no aparelho da importação.
+8. **Estado.** Fila 41/50 integrados. Item 39 (`f7174826`) registrado acima.
