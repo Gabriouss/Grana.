@@ -20447,3 +20447,13 @@ Codex informa commit local `af5391c8`, clone limpo e commit/Job exit 0 conforme 
 2. **Item 48, seletor de categorias.** Commit `f39e1bc5` (`fix(categorias): carrega seletor durante semeadura`). Sintoma: o seletor abria vazio até a semeadura terminar. Causa: `fetchCategories` só era chamado depois de `seedDefaultCategories`. Arquivo: `components/CategoryPickerModal.tsx` (busca imediata, nova busca após a semeadura, contador `pedido/aplicada`, cleanup `ativo`). Teste: `__tests__/categorias-seletor-cedo.cjs`. Sem delta em `lib/data.ts`. Descartado: alterar `seedDefaultCategories` em data.ts. Deu errado: RED r1 com SyntaxError no próprio focal (`const exports`), anulado pelo Codex; r2 causal. Verificação: GREEN focal exit 0. Relatório: `relatorio-Lumen-item48.md`.
 3. **Sem verificação ainda.** `tsc` no gate final do lote e QA no aparelho dos dois itens.
 4. **Estado.** Fila 34/50 integrados. Item 49 segue aberto no time Lumen.
+
+### 20/11 — item 35 integrado no clone (Keel, fila offline)
+
+1. **Pedido.** Recorte Compass 35: depois de reiniciar o app em outra rota, a fila manual já persistida sobe uma vez quando a rede volta, sem visita a Lançamentos.
+2. **Sintoma e causa.** Lançamento salvo sem rede fica parado no disco depois de reiniciar o app. Só `app/(app)/lancamentos.tsx` chamava `flushPendingQueue` ao carregar; o timer de nova tentativa (`lib/offline-cache.ts`) vive em memória e morre com o processo. Causa confirmada pelo RED, não só pela leitura.
+3. **Mudança.** `app/_layout.tsx`: efeito novo no `RootNavigator`, depois do efeito de voz, com as mesmas guardas de sessão e `allowed === true`. Dispara na montagem e a cada `AppState` `active`; chama `flushPendingQueue()` e, se restar fila, `agendarNovaTentativa()` (sem reagendar se já houver tentativa armada, preservando o backoff). Teste novo: `__tests__/fila-retomada-global.cjs`.
+4. **Commit.** `72281a79` (`fix(offline): retoma fila manual pela raiz do app`) no clone `E:/Grana-temporarios/2026-10-30-teste-avisos/repo`; HEAD de partida `f39e1bc5`. O commit é do Codex, conforme a ordem.
+5. **Verificação.** RED causal; GREEN 5/5; quatro suítes de compatibilidade verdes (boot, gravação, revisão, sem duplicata). `tsc` fica para o gate final do lote. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Keel-item35.md`.
+6. **Sem verificação ainda.** QA no aparelho: reiniciar com fila pendente em outra rota e confirmar o envio ao voltar a rede.
+7. **Estado.** Fila 35/50 integrados. Item 39 é o próximo do Keel (dinheiro, efeitos asseridos).
