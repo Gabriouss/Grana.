@@ -103,6 +103,9 @@ export default function ContasScreen() {
   }
 
   const cargaAtualBoletos = useRef(0);
+  /* Pagar/reabrir em fila por conta: o segundo toque espera a resposta do
+     primeiro, para estado e recibo finais seguirem a ordem dos toques (item 49). */
+  const filaPorConta = useRef(new Map<string, Promise<boolean>>());
 
   const load = useCallback(async () => {
     /* Foco, "dado novo chegou" e o refresh manual podem disparar `load()` de
@@ -364,25 +367,37 @@ export default function ContasScreen() {
     if (newStatus === 'paid') hapticSuccess(); else hapticTap();
     triggerToast(newStatus === 'paid' ? 'Marcando conta como paga…' : 'Reabrindo conta…');
 
-    try {
-      if (newStatus === 'paid') {
-        // payBill já lança a saída correspondente em transactions, na data de hoje.
-        await payBill(bill, todayISO());
-        triggerToast(
-          proximaData
-            ? `Conta paga. Próxima fatura em ${formatDateLabel(proximaData)}`
-            : 'Conta paga. Saída lançada em Lançamentos'
-        );
-      } else {
-        // reopenBill desfaz a saída lançada quando a conta foi paga, se houver.
-        await reopenBill(bill);
-        triggerToast('Conta reaberta');
+    const fila = filaPorConta.current;
+    const vez = (fila.get(bill.id) ?? Promise.resolve(true)).then(async (anteriorOk) => {
+      // Se o toque anterior falhou, o catch dele já devolveu o status: esta intenção cai.
+      if (!anteriorOk) return false;
+      try {
+        if (newStatus === 'paid') {
+          // payBill já lança a saída correspondente em transactions, na data de hoje.
+          await payBill(bill, todayISO());
+          triggerToast(
+            proximaData
+              ? `Conta paga. Próxima fatura em ${formatDateLabel(proximaData)}`
+              : 'Conta paga. Saída lançada em Lançamentos'
+          );
+        } else {
+          // reopenBill desfaz a saída lançada quando a conta foi paga, se houver.
+          await reopenBill(bill);
+          triggerToast('Conta reaberta');
+        }
+        return true;
+      } catch (e: any) {
+        setBills((prev) => prev.map((b) => (b.id === bill.id ? { ...b, status: bill.status } : b)));
+        Alert.alert('Erro ao atualizar', e.message);
+        return false;
       }
-      load();
-    } catch (e: any) {
-      setBills((prev) => prev.map((b) => (b.id === bill.id ? { ...b, status: bill.status } : b)));
-      Alert.alert('Erro ao atualizar', e.message);
-    }
+    });
+    fila.set(bill.id, vez);
+    await vez;
+    // Só o último toque da fila recarrega: um load no meio traria um status intermediário.
+    if (fila.get(bill.id) !== vez) return;
+    fila.delete(bill.id);
+    load();
   }
 
   /* O nome e a confirmação deixam claro que a ação exclui este boleto. */
