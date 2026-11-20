@@ -20411,3 +20411,21 @@ Harbor preparou candidato externo do item 18 com seis fontes e fixture (`relator
 ### 19/11 — checkpoint item 20 integrado
 
 Codex informa commit local `af5391c8`, clone limpo e commit/Job exit 0 conforme recibo `Sentinel-item20-integracao` e status root. Baseline: 9 falhas causais em 34; candidato e integrado 34/34; compatibilidade vigia 14/14. Fila 31/50. Item 18 é o próximo, com candidato externo ainda sem prova. A CI única exit 0 permanece vinculada ao corte `1e8d9ea1`; sem build ou push inferidos. Registro por Ledger sem repetir testes.
+
+### 20/11 — retomada das correções
+
+1. **Pedido.** Retomar as correções conforme a ordem de 20/11 e o checkpoint de 19/11. Ledger é dono exclusivo de context, vault e canvas. Ler a ordem atualizada antes de cada tarefa.
+2. **Estado.** Clone de produto em `E:/Grana-temporarios/2026-10-30-teste-avisos/repo`, branch autorizada `teste/leitura-avisos`, `af5391c8` limpo, 31/50 integrados e 19 pendentes. Segundo Codex, fetch já efetuado e `origin/main...HEAD` 92/187; divergência conhecida, main legado congelado, zero stash e worktree adicional.
+3. **Fontes e responsáveis.** `00-ORDEM-retomada-correcoes.md` nesta rodada e registro de 19/11. Claude prepara 29. Sentinel pega 18 antes de Harbor pegar 35. Forge pega 25. Item 18 tem candidato externo ainda sem prova. Ledger usa GPT-6.2-Sol low, aplicado pelo autor via menu e em substituição a Terra low somente para Ledger.
+4. **Decisões.** Preservar WIP e anexos da raiz. A divergência fica sem merge ou push. Node, checker e Git mutante aguardam janela do Codex. Testes seriais conforme ordem.
+5. **Ocorrências.** Nenhum incidente novo informado neste recebimento.
+6. **Limites.** Estado de Git recebido do Codex. CI literal integral exit 0 continua restrita a `1e8d9ea1`. Nenhum novo gate ou build informado.
+
+### 20/11 — rebalanceamento do time e registro com o Quill
+
+1. **Pedido.** Orquestrador Supremo: mais força no time Claude; o limite do Codex está mais usado; equilibrar. Claude só em Opus 5.5 (complexo) ou Haiku 5.5 (rápido), sem Sonnet; Codex em GPT-6.2-Sol. Fonte: `E:/Grana-temporarios/2026-11-20-retomada/00-ORDEM-retomada-correcoes.md`, seção REBALANCEAMENTO 20/11, que vale acima da divisão anterior.
+2. **Filas.** Time Claude: Claude Code 29 → 33 → 41; Lumen 47 → 48 → 49 (UI, `data.ts` só via Keel); Anvil 30 → 31 → 32 → 37 → 34 → 50 (30 só após o freeze do 18); Keel 35 → 39 → 40 → 36, dono único de `lib/data.ts`; Lynx revisão final única do delta; Quill registro. Time Codex: Sentinel só o 18 (Sol 6.2 high); Forge 25 → 26 (Sol 6.2 high); Harbor libera a fila de dados ao Keel e entrega o preparo do 35; Codex coordena janelas de RAM/teste e é integrador único de Git (`git commit -- <caminhos>` por item); Ledger passa o registro ao Quill.
+3. **Regras vigentes.** RAM livre ~1,1 GiB, abaixo do piso de 1,5 GiB: Node e teste só com janela concedida pelo Codex (TRAVA-RAM), um teste por vez. Item pronto: relatório em `E:/Grana-temporarios/2026-11-20-retomada/relatorio-<agente>-item<N>.md` e aviso de uma linha ao Codex e ao Orquestrador. Sem build, push, Supabase, branch, worktree ou stash.
+4. **Estado.** Nenhum item fechado pelo time Claude até este registro; segue 31/50 integrados e 19 pendentes.
+5. **Ocorrências.** Nenhuma informada até este registro.
+6. **Limites.** Registro feito por Quill (Haiku 5.5), sem testes, build ou alteração de produto.
