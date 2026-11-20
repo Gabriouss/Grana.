@@ -66,7 +66,7 @@ module.exports = async function testarCicloDaSobra() {
     './supabase': { supabase }, './sessao-offline': { idDoUsuarioLocal: async () => usuario },
     './data': { fetchTransactions: async () => [], fetchBills: async () => [], fetchCreditCards: async () => [], fetchCardInvoicePayments: async () => [] },
     './goals': { fetchGoals: async () => [] },
-    '@/modules/grana-voice-widget': { widgetDisponivel: true, atualizarSnapshot: s => snapshots.push(s), garantirUsuario() {}, definirPrivacidade() {}, limparSnapshot() {} },
+    '@/modules/grana-voice-widget': { widgetDisponivel: true, quantidadeInstalada: () => 1, atualizarSnapshot: s => snapshots.push(s), garantirUsuario() {}, definirPrivacidade() {}, limparSnapshot() {} },
   };
   const cache = new Map(); let timerId = 0;
   function real(rel) {
