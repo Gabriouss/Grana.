@@ -20457,3 +20457,17 @@ Codex informa commit local `af5391c8`, clone limpo e commit/Job exit 0 conforme 
 5. **Verificação.** RED causal; GREEN 5/5; quatro suítes de compatibilidade verdes (boot, gravação, revisão, sem duplicata). `tsc` fica para o gate final do lote. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Keel-item35.md`.
 6. **Sem verificação ainda.** QA no aparelho: reiniciar com fila pendente em outra rota e confirmar o envio ao voltar a rede.
 7. **Estado.** Fila 35/50 integrados. Item 39 é o próximo do Keel (dinheiro, efeitos asseridos).
+
+### 20/11 — item 49 integrado no clone (Lumen, pagar e reabrir)
+
+1. **Pedido.** Compass P3 UI/Dados: pagar e reabrir a mesma conta com respostas invertidas; estado e recibo finais têm de bater. Recorte: serializar a intenção por linha no cliente.
+2. **Sintoma e causa.** Dois toques rápidos na mesma conta disparavam `pagar_conta` e `reabrir_conta` em paralelo; a resposta que chegasse por último decidia o recibo ("Conta paga" depois de "Conta reaberta", com estado final em aberto). Causa: `toggleStatus` sem ordem por conta, com `load()` a cada resposta.
+3. **Mudança.** `app/(app)/contas.tsx`: fila por conta (`filaPorConta`, Map id → Promise). Cada toque encadeia a RPC na fila da conta; falha na anterior não cancela a intenção seguinte; `load()` só roda no último da fila.
+4. **Commit.** `57dbae77` (`fix(contas): serializa pagar e reabrir por conta`) no clone `E:/Grana-temporarios/2026-10-30-teste-avisos/repo`.
+5. **Verificação.** RED causal repetido; GREEN com 13 verificações. `tsc` fica para o gate final do lote. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Lumen-item49.md`.
+6. **Sem verificação ainda.** QA no aparelho: dois toques rápidos em uma conta e confirmar o estado e o recibo finais.
+7. **Estado.** Fila 36/50 integrados. Lumen concluiu 47, 48 e 49.
+
+### 20/11 — troca de dono do item 37: Anvil para Lumen
+
+Ajuste da ordem de 20/11 (seção "Ajuste 20/11 — item 37 passa do Anvil ao Lumen"): o item 37 (`lib/heuristics.ts`, `lib/ofx-parser.ts`, `components/ImportarExtratoModal.tsx`) passa ao Lumen, porque os arquivos não cruzam com 30, 31 e 32. Ao fechar o 37, Lumen entrega parser e importador ao Keel para o 36. Anvil fica com 30 → 31 → 32 → 34 → 50. Fora da conta: fallback de data CSV inválida.
