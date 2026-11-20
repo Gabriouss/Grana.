@@ -20471,3 +20471,13 @@ Codex informa commit local `af5391c8`, clone limpo e commit/Job exit 0 conforme 
 ### 20/11 — troca de dono do item 37: Anvil para Lumen
 
 Ajuste da ordem de 20/11 (seção "Ajuste 20/11 — item 37 passa do Anvil ao Lumen"): o item 37 (`lib/heuristics.ts`, `lib/ofx-parser.ts`, `components/ImportarExtratoModal.tsx`) passa ao Lumen, porque os arquivos não cruzam com 30, 31 e 32. Ao fechar o 37, Lumen entrega parser e importador ao Keel para o 36. Anvil fica com 30 → 31 → 32 → 34 → 50. Fora da conta: fallback de data CSV inválida.
+
+### 20/11 — item 33 integrado no clone (Claude Code, OCR)
+
+1. **Pedido.** Compass: o OCR vencido continuava e permitia uma segunda captura. Reter o `recognize`, vencer a UI e tentar outra captura sem aplicar resultado velho nem sobrepor operação nativa.
+2. **Sintoma e causa.** Sintoma, provado no módulo real sem aparelho: depois do prazo de 20 s, a captura seguinte chamava `recognize` com a anterior ainda pendente no nativo. Causa: `fotografarELer` corta a espera no prazo, mas o ML Kit não cancela, e nada no módulo registrava a leitura nativa em andamento.
+3. **Mudança.** `lib/foto-nota-ocr.ts`: `leituraNativa` no módulo. A captura nova espera a leitura pendente, confere se o próprio prazo não venceu e só então lê a própria.
+4. **Commit.** `0ac06a57` (`fix(ocr): evita sobrepor leituras nativas de notas`) no clone `E:/Grana-temporarios/2026-10-30-teste-avisos/repo`; HEAD de partida `57dbae77`. O commit é do Codex, conforme a ordem.
+5. **Verificação.** RED causal; GREEN 4/4; duas compatibilidades verdes. `tsc` fica para o gate final do lote. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-ClaudeCode-item33.md`.
+6. **Sem verificação ainda.** QA no aparelho: duas capturas seguidas com a primeira demorando além de 20 s.
+7. **Estado.** Fila 37/50 integrados. Próximo do time Claude: item 41.
