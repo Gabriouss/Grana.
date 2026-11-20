@@ -20481,3 +20481,13 @@ Ajuste da ordem de 20/11 (seção "Ajuste 20/11 — item 37 passa do Anvil ao Lu
 5. **Verificação.** RED causal; GREEN 4/4; duas compatibilidades verdes. `tsc` fica para o gate final do lote. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-ClaudeCode-item33.md`.
 6. **Sem verificação ainda.** QA no aparelho: duas capturas seguidas com a primeira demorando além de 20 s.
 7. **Estado.** Fila 37/50 integrados. Próximo do time Claude: item 41.
+
+### 20/11 — item 25 integrado no clone (Forge, retry de áudio do widget)
+
+1. **Pedido.** Corrigir o retry permanente de `.capturando` sem JSON no Worker de retry de voz do widget, com RED causal e GREEN no Worker real. O item 26 espera o freeze do 25.
+2. **Sintoma e causa.** Em `GranaVoiceRetryWorker.kt`, a leitura de `<id>.json` depois de achar `<id>.capturando` caía no mesmo catch da falha transitória. JSON ausente ou inválido deixava o áudio PENDENTE e devolvia retry a cada WorkManager.
+3. **Mudança.** O Worker fecha a tentativa com `Result.success()` quando a ausência é corroborada pela listagem do diretório ou o JSON publicado não pode ser interpretado. Mantém o parcial e seus artefatos isolados, sem promoção.
+4. **Commit.** `91263625` (`fix(widget): encerra retry de audio sem metadados`) no clone `E:/Grana-temporarios/2026-10-30-teste-avisos/repo`; base `0ac06a57`. O commit é do Codex, conforme a ordem.
+5. **Verificação.** RED com 19 falhas causais de 43; GREEN 43/43 em JVM com o Worker real, exit 0. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Forge-item25.md`.
+6. **Sem verificação ainda.** QA no aparelho: áudio sem metadados no widget deve sair da fila com recibo visível, sem retry infinito.
+7. **Estado.** Fila 38/50 integrados. Item 26 (Forge) é o próximo do time Codex, depois do freeze do 25.
