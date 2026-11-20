@@ -20491,3 +20491,14 @@ Ajuste da ordem de 20/11 (seção "Ajuste 20/11 — item 37 passa do Anvil ao Lu
 5. **Verificação.** RED com 19 falhas causais de 43; GREEN 43/43 em JVM com o Worker real, exit 0. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Forge-item25.md`.
 6. **Sem verificação ainda.** QA no aparelho: áudio sem metadados no widget deve sair da fila com recibo visível, sem retry infinito.
 7. **Estado.** Fila 38/50 integrados. Item 26 (Forge) é o próximo do time Codex, depois do freeze do 25.
+
+### 20/11 — item 30 integrado no clone (Anvil, dreno de voz)
+
+1. **Pedido.** Compass: com uma etapa pendurada, a faixa do topo e o "Tentar sincronizar" ficavam sem resposta e sem recibo.
+2. **Sintoma e causa.** `tentarVozesPendentes` e `sincronizarOperacoesVoz` entregavam a mesma passada a quem chamava enquanto ela estava em curso. A permissão crua, a limpeza, a adoção de órfãs e as leituras do AsyncStorage antes do item não tinham prazo.
+3. **Mudança.** Prazo de 10 s por etapa antes do item nos dois drenos; permissão pelo `podeAvisar` já existente; passada que não conclui sai com recibo `{restantes:-1, motivo:'erro'}`; resposta tardia não envia. Arquivos: `lib/widget-voz-task.ts`, `lib/voice-operations.ts`, teste novo `__tests__/voz-dreno-etapa-retida.cjs`.
+4. **Descartado.** Prazo sobre a função inteira (o corpo abandonado poderia enviar depois); passar `controle` para `adotarVozesOrfas` (mudaria o erro por arquivo); mudar `widget-voz-pendentes.ts` (não foi preciso).
+5. **Commits.** `d7dbe603` (`fix(voz): encerra etapa pendurada no dreno da fila`) com os três caminhos do item, base `91263625`; e `11d3e546` (`test(voz): inclui dreno de etapa retida no test:voz`) com só a linha nova do `test:voz` em `package.json`, que é compartilhado.
+6. **Verificação.** RED exit 1 com 5 casos causais; GREEN exit 0, 5/5; compatibilidade exit 0 (recibo `supervisor-Anvil-item30-compat-r1.json`). Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Anvil-item30.md`.
+7. **Sem verificação ainda.** `tsc` no gate final do lote e QA no aparelho (etapa travada na faixa do widget deve aparecer com recibo).
+8. **Estado.** Fila 39/50 integrados. Próximos do Anvil: 31, 32, 34, 50.
