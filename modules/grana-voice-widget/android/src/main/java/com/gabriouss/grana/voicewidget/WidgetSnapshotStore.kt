@@ -77,45 +77,98 @@ object WidgetSnapshotStore {
     return gerador.generateKey()
   }
 
+  private var versao = 0L
+  private var sessao = 0L
+  private var donoDefinido = false
+  private var usuarioEsperado: String? = null
+  private val snapshotDoLote = ThreadLocal<Lote>()
+  internal data class Lote(val versao: Long, val snapshot: SnapshotWidgets?)
+  private data class Leitura(val versao: Long, val iv: String?, val payload: String?, val usuario: String?)
+
   fun salvar(context: Context, json: String) {
-    /* Valida antes de substituir o último snapshot bom. */
     val snapshot = interpretar(json) ?: throw IllegalArgumentException("Snapshot de widgets inválido")
+    val origem = synchronized(this) {
+      if (donoDefinido && usuarioEsperado != snapshot.userId) return
+      sessao
+    }
     val cipher = Cipher.getInstance(TRANSFORMACAO).apply { init(Cipher.ENCRYPT_MODE, chave()) }
     val cifrado = cipher.doFinal(json.toByteArray(Charsets.UTF_8))
-    prefs(context).edit()
-      .putString(CHAVE_IV, Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
-      .putString(CHAVE_PAYLOAD, Base64.encodeToString(cifrado, Base64.NO_WRAP))
-      .apply()
-  }
-
-  fun ler(context: Context): SnapshotWidgets? {
-    val preferencias = prefs(context)
-    val iv = preferencias.getString(CHAVE_IV, null) ?: return null
-    val payload = preferencias.getString(CHAVE_PAYLOAD, null) ?: return null
-    return try {
-      val cipher = Cipher.getInstance(TRANSFORMACAO).apply {
-        init(
-          Cipher.DECRYPT_MODE,
-          chave(),
-          GCMParameterSpec(128, Base64.decode(iv, Base64.NO_WRAP)),
-        )
-      }
-      interpretar(String(cipher.doFinal(Base64.decode(payload, Base64.NO_WRAP)), Charsets.UTF_8))
-        ?: run { limpar(context); null }
-    } catch (_: Exception) {
-      /* Backup restaurado sem a chave, payload truncado ou adulterado. */
-      limpar(context)
-      null
+    synchronized(this) {
+      if (origem != sessao) return
+      prefs(context).edit()
+        .putString(CHAVE_IV, Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
+        .putString(CHAVE_PAYLOAD, Base64.encodeToString(cifrado, Base64.NO_WRAP))
+        .apply()
+      versao++
     }
   }
 
-  fun garantirUsuario(context: Context, userId: String) {
-    val anterior = ler(context)?.userId ?: return
-    if (anterior != userId) limpar(context)
+  internal fun lerLote(context: Context): Lote {
+    val leitura = synchronized(this) {
+      val preferencias = prefs(context)
+      Leitura(versao, preferencias.getString(CHAVE_IV, null), preferencias.getString(CHAVE_PAYLOAD, null), usuarioEsperado)
+    }
+    val iv = leitura.iv ?: return Lote(leitura.versao, null)
+    val payload = leitura.payload ?: return Lote(leitura.versao, null)
+    val chaveDeLeitura = try { chave() } catch (erro: Exception) {
+      android.util.Log.w("GranaWidget", "chave temporariamente indispon?vel", erro)
+      return Lote(leitura.versao, null)
+    }
+    val snapshot = try {
+      val cipher = Cipher.getInstance(TRANSFORMACAO).apply {
+        init(Cipher.DECRYPT_MODE, chaveDeLeitura, GCMParameterSpec(128, Base64.decode(iv, Base64.NO_WRAP)))
+      }
+      interpretar(String(cipher.doFinal(Base64.decode(payload, Base64.NO_WRAP)), Charsets.UTF_8))
+    } catch (erro: Exception) {
+      // Keystore temporariamente indisponível: preserve a cópia cifrada.
+      android.util.Log.w("GranaWidget", "não consegui decifrar o snapshot", erro)
+      return Lote(leitura.versao, null)
+    }
+    if (snapshot == null || (leitura.usuario != null && snapshot.userId != leitura.usuario)) {
+      synchronized(this) {
+        if (leitura.versao != versao) return Lote(leitura.versao, null)
+        removerSnapshot(context)
+        return Lote(versao, null)
+      }
+    }
+    return Lote(leitura.versao, snapshot)
   }
 
+  internal fun <T> comLote(lote: Lote, bloco: () -> T): T {
+    snapshotDoLote.set(lote)
+    try { return bloco() } finally { snapshotDoLote.remove() }
+  }
+
+  fun ler(context: Context): SnapshotWidgets? {
+    val lote = snapshotDoLote.get()
+    return if (lote == null) lerLote(context).snapshot else lote.snapshot
+  }
+
+  @Synchronized
+  internal fun loteAtual(lote: Lote): Boolean = lote.versao == versao
+
+  @Synchronized
+  internal fun publicarSeAtual(lote: Lote, publicar: () -> Unit) {
+    if (lote.versao == versao) publicar()
+  }
+
+  @Synchronized
+  fun garantirUsuario(context: Context, userId: String) {
+    if (donoDefinido && usuarioEsperado == userId) return
+    val trocaConfirmada = donoDefinido && usuarioEsperado != null
+    donoDefinido = true
+    usuarioEsperado = userId
+    sessao++
+    if (trocaConfirmada) removerSnapshot(context) else versao++
+    GranaResumoWidgetProvider.neutralizar(context, Lote(versao, null))
+  }
+
+  @Synchronized
   fun definirPrivacidade(context: Context, hidden: Boolean) {
-    prefs(context).edit().putBoolean(CHAVE_PRIVACIDADE, hidden).apply()
+    val preferencias = prefs(context)
+    if (preferencias.contains(CHAVE_PRIVACIDADE) && preferencias.getBoolean(CHAVE_PRIVACIDADE, false) == hidden) return
+    preferencias.edit().putBoolean(CHAVE_PRIVACIDADE, hidden).apply()
+    if (hidden) GranaResumoWidgetProvider.neutralizar(context, Lote(versao, null))
   }
 
   fun privacidade(context: Context, snapshot: SnapshotWidgets?): Boolean {
@@ -127,8 +180,18 @@ object WidgetSnapshotStore {
     }
   }
 
+  @Synchronized
   fun limpar(context: Context) {
+    donoDefinido = true
+    usuarioEsperado = null
+    sessao++
+    removerSnapshot(context)
+    GranaResumoWidgetProvider.neutralizar(context, Lote(versao, null))
+  }
+
+  private fun removerSnapshot(context: Context) {
     prefs(context).edit().remove(CHAVE_IV).remove(CHAVE_PAYLOAD).apply()
+    versao++
   }
 
   private fun numero(objeto: JSONObject, nome: String): Double {
