@@ -68,7 +68,6 @@ export default function DesafiosCalendario({ dias, weekActivity, streak, demo, a
       anteriorDesabilitado={!podeIrParaMesAnterior(mes.ano, mes.mes, hoje)} proximoDesabilitado={!podeIrParaProximoMes(mes.ano, mes.mes, hoje)} />
     {erro ? <AppPressable accessibilityRole="button" onPress={() => setTentativa(t => t + 1)} style={s.navegacao}><Text accessibilityRole="alert" style={s.texto}>{semViuva('Não foi possível carregar o mês. Toque para tentar novamente.')}</Text></AppPressable>
       : !carregado ? <ActivityIndicator color={theme.ink} /> : <View style={s.grupo}>
-        <Text style={s.texto}>{semViuva(calendario.resumo)}</Text>
         {/* Grade de calendário: cabeçalho dos dias da semana e uma casa
             quadrada por dia. Com registro, a casa é cheia; vivido sem
             registro, casa vazia; hoje, contorno claro; futuro, só o número
@@ -82,6 +81,12 @@ export default function DesafiosCalendario({ dias, weekActivity, streak, demo, a
               <Text style={[s.numero, d.registro && s.numeroAtivo, d.futuro && s.numeroFuturo]}>{d.dia}</Text>
             </View></View>
           </AppPressable> : <View key={j} style={s.celula} />)}</View>)}
+        </View>
+        {/* Resumo como legenda da grade (item 52, pedido do autor): a amostra é a
+            mesma casa cheia dos dias com registro, alinhada à borda da grade. */}
+        <View style={s.legenda}>
+          <View style={s.amostra} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden />
+          <Text style={s.texto}>{semViuva(calendario.resumo)}</Text>
         </View>
         {diaEscolhido && <View ref={painelRef} collapsable={false} onLayout={() => { if (painelRef.current) aoPainelMudar?.(painelRef.current); }} accessibilityLiveRegion="polite" style={s.grupo}>
           <View style={s.cabecalho}>
@@ -126,6 +131,9 @@ const s = StyleSheet.create({
   anelEscolhido: { borderColor: theme.accent2 },
   casa: { flex: 1, borderRadius: radius.sm, backgroundColor: menta(0.06), borderWidth: 1.5, borderColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
   casaRegistro: { backgroundColor: theme.accent2 },
+  legenda: { flexDirection: 'row', alignItems: 'center', gap: spacing.icone },
+  // Casa em miniatura: mesmo preenchimento e proporção de canto da casa da grade.
+  amostra: { width: spacing.md, height: spacing.md, borderRadius: spacing.fio, backgroundColor: theme.accent2 },
   casaFutura: { backgroundColor: 'transparent' },
   casaHoje: { borderColor: theme.ink },
   // Sobre a casa clara, o contorno escuro distingue hoje dos outros dias com registro.
