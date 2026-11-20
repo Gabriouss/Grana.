@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AppPressable from './AppPressable';
@@ -15,6 +15,9 @@ import { fonts, radius, spacing, theme, type, lh, touchTarget, card, menta } fro
 import { semViuva } from '@/lib/sem-viuva';
 import type { GamificationState } from '@/lib/gamification';
 
+/** Linhas montadas por vez no painel do dia: um dia importado pode ter milhares de saídas. */
+const LOTE_DO_DIA = 20;
+
 export default function DesafiosCalendario({ dias, weekActivity, streak, demo, aoPainelMudar }: {
   dias: ReadonlySet<string>; weekActivity: GamificationState['weekActivity']; streak: number; demo: boolean;
   /** Avisa quando o painel do dia aparece ou muda de altura, para a tela rolar até ele. */
@@ -27,11 +30,14 @@ export default function DesafiosCalendario({ dias, weekActivity, streak, demo, a
   const [erro, setErro] = useState(false);
   const [tentativa, setTentativa] = useState(0);
   const [diaEscolhido, setDiaEscolhido] = useState<string | null>(null);
+  const [visiveis, setVisiveis] = useState(LOTE_DO_DIA);
   const inicioDoMes = isoLocal(new Date(mes.ano, mes.mes, 1));
   const fimDoMes = isoLocal(new Date(mes.ano, mes.mes + 1, 0));
   const consulta = useCategorias(inicioDoMes, fimDoMes, demo, DEMO_TRANSACTIONS, diaEscolhido !== null);
   // Resultado de outro mês não vale: o hook guarda o último até a nova consulta chegar.
-  const gastos = diaEscolhido && consulta.resultado?.inicio === inicioDoMes ? gastosDoDia(consulta.resultado, diaEscolhido) : null;
+  const gastos = useMemo(() => diaEscolhido && consulta.resultado?.inicio === inicioDoMes ? gastosDoDia(consulta.resultado, diaEscolhido) : null,
+    [consulta.resultado, diaEscolhido, inicioDoMes]);
+  const escolherDia = (dia: string | null) => { setVisiveis(LOTE_DO_DIA); setDiaEscolhido(dia); };
   const atual = mes.ano === hoje.getFullYear() && mes.mes === hoje.getMonth();
   useEffect(() => {
     let ativo = true;
@@ -58,7 +64,7 @@ export default function DesafiosCalendario({ dias, weekActivity, streak, demo, a
       </View>)}</View>
       <Text style={s.texto}>{semViuva(`${streak} ${streak === 1 ? 'dia seguido' : 'dias seguidos'} com registro`)}</Text>
     </View>}
-    <MonthSelector year={mes.ano} month={mes.mes} onChange={(ano, mes) => { setDiaEscolhido(null); setMes({ ano, mes }); }}
+    <MonthSelector year={mes.ano} month={mes.mes} onChange={(ano, mes) => { escolherDia(null); setMes({ ano, mes }); }}
       anteriorDesabilitado={!podeIrParaMesAnterior(mes.ano, mes.mes, hoje)} proximoDesabilitado={!podeIrParaProximoMes(mes.ano, mes.mes, hoje)} />
     {erro ? <AppPressable accessibilityRole="button" onPress={() => setTentativa(t => t + 1)} style={s.navegacao}><Text accessibilityRole="alert" style={s.texto}>{semViuva('Não foi possível carregar o mês. Toque para tentar novamente.')}</Text></AppPressable>
       : !carregado ? <ActivityIndicator color={theme.ink} /> : <View style={s.grupo}>
@@ -71,7 +77,7 @@ export default function DesafiosCalendario({ dias, weekActivity, streak, demo, a
           <View style={s.linha}>{['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => <Text key={d} style={[s.diaSemana, s.coluna]}>{d}</Text>)}</View>
           {calendario.semanas.map((semana, i) => <View key={i} style={[s.linha, s.semana]}>{semana.map((d, j) => d ? <AppPressable key={j} accessibilityRole="button"
             accessibilityLabel={`${d.dia} de ${nome}${d.registro ? ', com registro' : ''}${d.hoje ? ', hoje' : ''}. Ver gastos do dia`}
-            accessibilityState={{ selected: diaEscolhido === d.iso }} onPress={() => setDiaEscolhido(atual => atual === d.iso ? null : d.iso)} style={s.celula}>
+            accessibilityState={{ selected: diaEscolhido === d.iso }} onPress={() => escolherDia(diaEscolhido === d.iso ? null : d.iso)} style={s.celula}>
             <View style={[s.anel, diaEscolhido === d.iso && s.anelEscolhido]}><View style={[s.casa, d.registro && s.casaRegistro, d.futuro && s.casaFutura, d.hoje && s.casaHoje, d.hoje && d.registro && s.casaHojeRegistro]}>
               <Text style={[s.numero, d.registro && s.numeroAtivo, d.futuro && s.numeroFuturo]}>{d.dia}</Text>
             </View></View>
@@ -85,13 +91,16 @@ export default function DesafiosCalendario({ dias, weekActivity, streak, demo, a
           {gastos ? <>
             {consulta.erro && <AppPressable accessibilityRole="button" onPress={() => void consulta.carregar()} style={s.navegacao}><Text accessibilityRole="alert" style={s.texto}>{semViuva('Não foi possível carregar os gastos. Toque para tentar novamente.')}</Text></AppPressable>}
             {gastos.linhas.length === 0 ? <Text style={s.texto}>{semViuva('Nenhum gasto neste dia.')}</Text>
-              : gastos.linhas.map((t, i) => <View key={t.id} style={[s.gasto, i < gastos.linhas.length - 1 && s.gastoDivisor]}>
+              : gastos.linhas.slice(0, visiveis).map((t, i, lote) => <View key={t.id} style={[s.gasto, i < lote.length - 1 && s.gastoDivisor]}>
                 <View style={s.gastoInfo}>
                   <Text style={s.gastoDescricao}>{t.description}</Text>
                   <Text style={s.gastoDetalhe}>{`${t.category} · ${isCreditTx(t) ? 'Crédito' : 'Débito e Pix'}`}</Text>
                 </View>
                 <PrivacyValue><Text style={s.total}>{`− R$ ${formatMoney(Number(t.amount))}`}</Text></PrivacyValue>
               </View>)}
+            {gastos.linhas.length > visiveis && <AppPressable accessibilityRole="button" onPress={() => setVisiveis(v => v + LOTE_DO_DIA)} style={s.navegacao}>
+              <Text style={s.texto}>{semViuva(`Ver mais itens (${gastos.linhas.length - visiveis} restantes)`)}</Text>
+            </AppPressable>}
           </> : consulta.erro ? <AppPressable accessibilityRole="button" onPress={() => void consulta.carregar()} style={s.navegacao}><Text accessibilityRole="alert" style={s.texto}>{semViuva('Não foi possível carregar os gastos. Toque para tentar novamente.')}</Text></AppPressable>
             : <ActivityIndicator color={theme.ink} />}
         </View>}
