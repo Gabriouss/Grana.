@@ -20502,3 +20502,13 @@ Ajuste da ordem de 20/11 (seção "Ajuste 20/11 — item 37 passa do Anvil ao Lu
 6. **Verificação.** RED exit 1 com 5 casos causais; GREEN exit 0, 5/5; compatibilidade exit 0 (recibo `supervisor-Anvil-item30-compat-r1.json`). Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Anvil-item30.md`.
 7. **Sem verificação ainda.** `tsc` no gate final do lote e QA no aparelho (etapa travada na faixa do widget deve aparecer com recibo).
 8. **Estado.** Fila 39/50 integrados. Próximos do Anvil: 31, 32, 34, 50.
+
+### 20/11 — item 39 integrado no clone (Keel, lote de conciliação Pix)
+
+1. **Pedido.** Compass 39 (P2 E7): lote de RPCs prende usuário sem progresso nem saída. Recorte: recibo por item, parada entre itens e preservação da chave da chamada incerta, sem repetir a RPC financeira.
+2. **Sintoma e causa.** Com o lote em curso, o item já salvo não aparecia como confirmado, não havia progresso e o Fechar ficava desabilitado até a última RPC responder. `confirmarItensPix` devolvia os recibos só no fim do laço.
+3. **Mudança.** `lib/conciliacao-pix-servico.ts`, `components/ConciliarPixBotao.tsx` (recibo por item, botão "Parar o lote", parada na troca de conta) e teste novo `__tests__/conciliacao-pix-lote-parada.cjs`.
+4. **Commit.** `f7174826` (`fix(pix): recibo por item e parada no lote de conciliacao`) no clone `E:/Grana-temporarios/2026-10-30-teste-avisos/repo`, base `11d3e546`. Commit do integrador (Quill), só com os três caminhos do item.
+5. **Verificação.** red39-r3 exit 1, 0/3 casos passando (causal); green39-r2 exit 0, 3/3; compatServico, compatBotao, compatGuardas e compatReimportacao exit 0; corte estável. r1 e r2 foram refeitos por defeito do próprio teste (categoria escolhida fora da tela; comparação entre realms do vm); os detalhes estão no relatório. Relatório: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Keel-item39.md`.
+6. **Sem verificação ainda.** `tsc` no gate final do lote e QA no aparelho. Riscos registrados pelo Keel: rótulo "Parar o lote" (não promete esperar a chamada em curso); mesma chave em paralelo ainda não conferida contra o servidor.
+7. **Estado.** Fila 40/50 integrados. Em janela: Lumen, item 37 (concedida em 20/11, sem FIM ainda).
