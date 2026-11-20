@@ -100,6 +100,27 @@ export default function CategoryPickerModal({
     }
     if (isDemoMode || categoriasLocais !== undefined) return;
     setLoading(true);
+    /* A lista sai cedo, do cache, sem esperar getUser e upsert da semeadura
+       (item 48, 20/11/2026: duas respostas lentas deixavam o seletor vazio).
+       Depois da semeadura busca de novo, para a primeira conta e uma padrão
+       nova aparecerem; resposta mais velha nunca sobrescreve a mais nova. */
+    let ativo = true;
+    let aplicada = 0;
+    let pedidas = 0;
+    const buscar = () => {
+      const pedido = ++pedidas;
+      return fetchCategories().then((lista) => {
+        if (!ativo || pedido < aplicada) return;
+        aplicada = pedido;
+        setCustom(lista);
+        // Conta ainda sem semeadura: a primeira lista vem vazia e o carregando continua.
+        if (lista.length > 0 || pedido > 1) setLoading(false);
+      });
+    };
+    const logarBusca = (erro: unknown) => {
+      if (!isLikelyNetworkError(erro)) console.error('[categorias] fetchCategories falhou', erro);
+    };
+    buscar().catch(logarBusca);
     /* Falha em `seedDefaultCategories` não pode ficar muda: RLS negada ou
        erro de servidor faz as 8 categorias padrão nunca existirem para essa
        conta, e antes disso resolvia normalmente como se nada tivesse dado
@@ -109,13 +130,13 @@ export default function CategoryPickerModal({
       .catch((erro) => {
         if (!isLikelyNetworkError(erro)) console.error('[categorias] seedDefaultCategories falhou', erro);
       })
-      .then(() => fetchCategories())
-      .then(setCustom)
+      .then(buscar)
       .catch((erro) => {
-        if (!isLikelyNetworkError(erro)) console.error('[categorias] fetchCategories falhou', erro);
-        setCustom([]);
+        logarBusca(erro);
+        if (ativo && aplicada === 0) setCustom([]);
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (ativo) setLoading(false); });
+    return () => { ativo = false; };
   }, [visible, isDemoMode, categoriasLocais]);
 
   function blockInDemo(): boolean {
