@@ -93,7 +93,7 @@ function conferir(transactions, goals, ctx, esperado) {
     './goals':{fetchGoals:async()=>metas},
     './sobra-do-mes':{...sobraReal,buscarSobraDoMes:async()=>{if(falharSobra)throw Error('offline esperado');return sobra}},
     './widgets-home-snapshot':{...widget,montarSnapshotWidgets:input=>widget.montarSnapshotWidgets({...input,hoje})},
-    '@/modules/grana-voice-widget':{widgetDisponivel:true,atualizarSnapshot:s=>snapshots.push(s),
+    '@/modules/grana-voice-widget':{widgetDisponivel:true,quantidadeInstalada:()=>1,atualizarSnapshot:s=>snapshots.push(s),
       definirPrivacidade:()=>{},garantirUsuario:()=>{},limparSnapshot:()=>{}},
   });
   assert.equal(await sync.sincronizarWidgetsHome('u',false),true);
