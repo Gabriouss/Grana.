@@ -70,6 +70,9 @@ import { theme, radius, spacing, screenRhythm, fonts, type, lh, hitSlopPara } fr
 import { CATEGORIES } from '@/lib/types';
 import { useDemo } from '@/lib/demo-context';
 import { useWallet } from '@/lib/wallet-context';
+import { useSession } from '@/lib/auth-context';
+import { carteiraPrincipalDaSobra, sobraNoSaldoDoMes } from '@/lib/sobra-do-mes';
+import { useSobraDoMes } from '@/lib/use-sobra-do-mes';
 import { DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import { guardarLancamentosDeExemplo, lancamentosDeExemplo } from '@/lib/lancamentos-teste';
 import type { Transaction, TxType } from '@/lib/types';
@@ -146,6 +149,12 @@ export default function LancamentosScreen() {
   const { ehCompacto } = useBreakpoint();
   const { isDemoMode } = useDemo();
   const { activeWalletId, activeWallet, activeWalletName, wallets } = useWallet();
+  /* Sobra confirmada do mês anterior: a MESMA fonte do Livre na Início (autor,
+     20/11/2026), para o "Saldo do mês" daqui fechar com o "Saldo atual". */
+  const { session } = useSession();
+  const userId = session?.user.id;
+  const { hoje: hojeDaSobra, sobraDoMes, carregando: carregandoSobra, erro: erroSobra, semConexao: sobraSemConexao } = useSobraDoMes(userId, !isDemoMode, { usarCacheOffline: true });
+  const carteiraPrincipalId = useMemo(() => carteiraPrincipalDaSobra(wallets, userId), [wallets, userId]);
   const { hidden, toggle: togglePrivacy } = usePrivacy();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -640,10 +649,11 @@ export default function LancamentosScreen() {
      tecla só reexecuta o último. */
   const walletTransactions = useMemo(
     () =>
-      (activeWalletId === 'total' ? transactions : transactions.filter((t) => t.wallet_id === activeWalletId)).filter(
+      // Legado sem carteira pertence à Principal (autor, 08/11/2026), como na Início.
+      (activeWalletId === 'total' ? transactions : transactions.filter((t) => (t.wallet_id ?? carteiraPrincipalId) === activeWalletId)).filter(
         (t) => !isCreditTx(t)
       ),
-    [activeWalletId, transactions]
+    [activeWalletId, transactions, carteiraPrincipalId]
   );
 
   // Transações estritamente do mês selecionado
@@ -672,7 +682,15 @@ export default function LancamentosScreen() {
     }
     return { monthIn: entrada, monthOut: saida };
   }, [transacoesDoResumo]);
-  const monthBalance = monthIn - monthOut;
+  /* "Saldo do mês" = sobra confirmada + entradas − saídas (autor, 20/11/2026).
+     A sobra não vira lançamento: fica fora da lista e do total de Entradas. */
+  const mesSelecionado = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
+  const sobraDoSaldo = sobraNoSaldoDoMes({
+    estado: sobraDoMes, userId, mes: mesSelecionado, mesAtual: hojeDaSobra.slice(0, 7),
+    carteiraId: activeWalletId, principalId: carteiraPrincipalId,
+    filtrado: !!(search.trim() || categoryFilter), carregando: carregandoSobra, erro: erroSobra, semConexao: sobraSemConexao,
+  });
+  const monthBalance = sobraDoSaldo.valor + monthIn - monthOut;
 
   // Categorias presentes no mês selecionado, pro filtro por categoria (cada uma com a cor do próprio lançamento).
   // Nunca depende de categoryFilter: o próximo chip não consulta as linhas do anterior.
@@ -788,7 +806,7 @@ export default function LancamentosScreen() {
           </View>
           <View style={styles.monthSummaryDivider} />
           <View style={styles.monthSummaryCol}>
-            <Text style={styles.monthSummaryLabel}>Saldo</Text>
+            <Text style={styles.monthSummaryLabel}>Saldo do mês</Text>
             <PrivacyValue style={{ alignItems: 'center' }}>
               <Text
                 style={[styles.monthSummaryVal, ehCompacto && styles.monthSummaryValCompacto, { color: monthBalance >= 0 ? theme.ink : theme.down }]}

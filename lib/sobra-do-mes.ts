@@ -65,6 +65,27 @@ export function sobraParaOLivre(
     && Number.isFinite(estado.valor) && estado.valor >= 0 ? estado.valor : 0;
 }
 
+/**
+ * Sobra no "Saldo do mês" de Lançamentos (pedido do autor, 20/11/2026: "precisa
+ * entrar na conta do débito também"). É o MESMO valor de `sobraParaOLivre`, sem
+ * segunda fonte: entra uma vez, só no mês dela, na Principal e no Total. Com
+ * busca ou categoria o resumo soma só as linhas visíveis, e a sobra fica fora.
+ * Sem valor conhecido (erro sem nada guardado no aparelho) o saldo segue com
+ * entradas − saídas, nunca travessão, e a situação diz à tela qual linha
+ * mostrar (Supremo, 20/11/2026).
+ */
+export type SobraNoSaldo = { valor: number; situacao: 'nenhuma' | 'inclui' | 'sem-conexao' | 'indisponivel' };
+
+export function sobraNoSaldoDoMes(f: {
+  estado: EstadoSobra | null; userId: string | null | undefined; mes: string; mesAtual: string;
+  carteiraId: string; principalId: string | null; filtrado: boolean; carregando: boolean; erro: boolean; semConexao: boolean;
+}): SobraNoSaldo {
+  if (f.filtrado || f.mes !== f.mesAtual || !carteiraRecebeSobra(f.carteiraId, f.principalId) || f.carregando) return { valor: 0, situacao: 'nenhuma' };
+  if (f.erro) return { valor: 0, situacao: f.semConexao ? 'sem-conexao' : 'indisponivel' };
+  const valor = sobraParaOLivre(f.estado, f.userId, f.mes, f.carteiraId, f.principalId);
+  return { valor, situacao: valor > 0 ? 'inclui' : 'nenhuma' };
+}
+
 export async function confirmarSobraDoMes(mes: string, valor: number, userId: string): Promise<void> {
   if (!Number.isFinite(valor) || valor < 0) throw new Error('Valor de sobra inválido');
   if (!userId || await idDoUsuarioLocal() !== userId) throw new Error('A conta mudou. Atualize a Início.');

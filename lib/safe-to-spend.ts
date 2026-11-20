@@ -52,6 +52,24 @@ export function rotuloDiasRestantes(dias: number): string {
   return dias === 1 ? '1 dia restante' : `${dias} dias restantes`;
 }
 
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+/** "Inclui sobra de outubro" (autor, 20/11/2026) para a sobra confirmada em
+ *  `mes` ("AAAA-MM"): o nome é o do mês anterior, de onde o dinheiro sobrou.
+ *  Mesmo texto no Livre da Início e no resumo de Lançamentos. */
+export function rotuloDaSobraIncluida(mes: string = chaveDoMes(new Date())): string {
+  return `Inclui sobra de ${mesDaSobra(mes)}`;
+}
+
+/** Sobra sem valor conhecido no aparelho (Supremo, 20/11/2026). */
+export function rotuloDaSobraIndisponivel(mes: string, semConexao: boolean): string {
+  return `Sobra de ${mesDaSobra(mes)} indisponível ${semConexao ? 'sem conexão' : 'agora'}`;
+}
+
+function mesDaSobra(mes: string): string {
+  return MESES[(Number(mes.slice(5, 7)) + 10) % 12];
+}
+
 export function calcularSafeToSpend(
   transactions: Transaction[], goals: Goal[], hoje: Date = new Date(), contexto: ContextoLivre = {},
 ): SafeToSpend {

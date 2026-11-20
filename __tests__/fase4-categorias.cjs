@@ -35,6 +35,8 @@ function tela(arquivo, params = {}, simulacao = {}) {
     if (id === 'react-native') return new Proxy({ Platform: { OS: 'web' }, StyleSheet: { create: v => v }, AppState: {} }, { get: (o, k) => o[k] ?? k });
     if (id === 'expo-router') return { useRouter: () => ({ setParams: p => Object.assign(params, p), push() {} }), useLocalSearchParams: () => params, useFocusEffect() {} };
     if (id === '@/lib/auth-context') return { useSession: () => ({ session: null }) };
+    if (id === '@/lib/use-sobra-do-mes') return { useSobraDoMes: () => ({ hoje: '2026-11-09', sobraDoMes: null, carregando: false, erro: false, semConexao: false }) };
+    if (id === '@/lib/sobra-do-mes') return carregar('lib/sobra-do-mes.ts', { './supabase': { supabase: {} }, './sessao-offline': {} });
     if (id === '@/lib/sessao-offline') return { identidadeDaSessao: sessao => sessao ? `${sessao.user.id}:${sessao.refresh_token}` : null };
     if (id === '@/lib/supabase') return { supabase: { auth: { onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }) } } };
     if (id === '@/lib/abertura-por-parametro') return { useAberturaPorParametro: (abrir, fn) => { if (abrir) fn(); } };
