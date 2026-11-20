@@ -172,9 +172,11 @@ function montarBotao({ tamanho = 50_000, stop = async () => {}, metering = () =>
   };
   const deps = {
     react: reactMod,
+    'expo-router': { useIsFocused: () => true },
     'react-native': {
       ActivityIndicator: 'ActivityIndicator', Text: 'Text', Platform: { OS: 'android' },
       StyleSheet: { create: (x) => x },
+      AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) },
     },
     '@/lib/alerta': { Alert: { alert: (titulo, texto) => { reg.alertas.push(titulo); reg.alertasCompletos.push({ titulo, texto }); } } },
     '@expo/vector-icons/Ionicons': 'Ionicons',

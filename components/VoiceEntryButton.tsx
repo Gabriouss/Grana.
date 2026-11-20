@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { useIsFocused } from 'expo-router';
 import { RECIBOS_VOZ } from '@/lib/voz-recibos';
-import { ActivityIndicator, Platform, StyleSheet, Text, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import { ActivityIndicator, AppState, Platform, StyleSheet, Text, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import { Alert } from '@/lib/alerta';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
@@ -35,6 +36,9 @@ import * as FileSystemLegado from 'expo-file-system/legacy';
 /* `stop()` é local (sem rede): 5s é folga generosa, não um orçamento de
    transcrição. */
 const PRAZO_PARAR_GRAVACAO_MS = 5_000;
+/* `prepareToRecordAsync()` também é local. Sem prazo, um preparo que nunca
+   volta deixava o botão mudo para sempre (item 29). Não mexe nos 20s de fala. */
+const PRAZO_PREPARAR_GRAVACAO_MS = 20_000;
 
 const GRAVACAO_VOZ: RecordingOptions = {
   extension: '.m4a',
@@ -148,9 +152,32 @@ export default function VoiceEntryButton({
      levada com a fala, para "ontem" contar do dia em que ela foi dita. É o
      mesmo par que o widget anota no Kotlin (regra 13). */
   const captura = useRef<{ capturadoEm: number; dataCaptura: string } | null>(null);
+  /* Item 29: abrir o microfone espera permissão, sessão de áudio e preparo.
+     Sair da tela, mandar o app para o fundo ou desmontar no meio disso
+     abandona a abertura (`intencao` muda), e a resposta tardia não grava nem
+     envia. `preparoPendente` segura nova abertura enquanto o gravador ainda
+     está com um preparo antigo em andamento. */
+  const focada = useIsFocused();
+  const emFoco = useRef(focada);
+  emFoco.current = focada;
+  const montado = useRef(true);
+  const intencao = useRef(0);
+  const preparoPendente = useRef(false);
 
   useEffect(() => {
+    if (!focada) intencao.current++;
+  }, [focada]);
+
+  useEffect(() => {
+    montado.current = true;
+    // `inactive` é o diálogo de permissão do iOS; só o fundo abandona.
+    const evento = AppState.addEventListener('change', (estado) => {
+      if (estado === 'background') intencao.current++;
+    });
     return () => {
+      montado.current = false;
+      intencao.current++;
+      evento.remove();
       if (cortePorTempo.current) clearTimeout(cortePorTempo.current);
       if (amostrador.current) clearInterval(amostrador.current);
       pararMonitoramentoCaptura();
@@ -298,12 +325,27 @@ export default function VoiceEntryButton({
     await iniciarGravacao();
   }
 
+  function podeSeguir(minha: number) {
+    return montado.current && emFoco.current && intencao.current === minha && AppState.currentState !== 'background';
+  }
+
   async function iniciarGravacao() {
     if (ocupado.current) return;
+    if (preparoPendente.current) {
+      Alert.alert('Microfone ainda ocupado', 'A abertura anterior ainda não terminou. Tente de novo em instantes; se continuar, feche e reabra o aplicativo.');
+      return;
+    }
+    const minha = ++intencao.current;
+    if (!podeSeguir(minha)) return;
     ocupado.current = true;
+    const abandonar = () => {
+      pararMonitoramentoCaptura();
+      ocupado.current = false;
+    };
 
     try {
       const permissao = await requestRecordingPermissionsAsync();
+      if (!podeSeguir(minha)) return abandonar();
       if (!permissao.granted) {
         ocupado.current = false;
         Alert.alert(
@@ -315,9 +357,31 @@ export default function VoiceEntryButton({
       /* Sem isto o iOS grava em volume baixíssimo (a sessão de áudio fica em
          modo de reprodução) e o Whisper recebe quase silêncio. */
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      if (!podeSeguir(minha)) return abandonar();
       microfoneSilenciado.current = false;
       iniciarMonitoramentoCaptura();
-      await gravador.prepareToRecordAsync();
+      const preparo = gravador.prepareToRecordAsync();
+      preparoPendente.current = true;
+      let prazo: ReturnType<typeof setTimeout> | undefined;
+      const venceu = await Promise.race([
+        preparo.then(() => false),
+        new Promise<boolean>((resolver) => { prazo = setTimeout(() => resolver(true), PRAZO_PREPARAR_GRAVACAO_MS); }),
+      ]).finally(() => clearTimeout(prazo));
+      if (venceu || !podeSeguir(minha)) {
+        intencao.current++;
+        abandonar();
+        // Quando o preparo abandonado voltar, fecha e apaga sem gravar; só então libera nova abertura.
+        void preparo
+          .then(async () => {
+            await gravador.stop();
+            if (gravador.uri) await descartarAudio(gravador.uri);
+          })
+          .catch((e) => console.warn('[voz] abertura abandonada não fechou o gravador', e))
+          .finally(() => { preparoPendente.current = false; });
+        if (venceu && montado.current) Alert.alert('Não consegui abrir o microfone', 'A abertura demorou demais e foi cancelada. Tente de novo em instantes.');
+        return;
+      }
+      preparoPendente.current = false;
       const agora = Date.now();
       captura.current = { capturadoEm: agora, dataCaptura: dataLocal(agora) };
       gravador.record();
@@ -340,9 +404,15 @@ export default function VoiceEntryButton({
         }
         if (amplitude !== null && detector.amostrar(amplitude, Date.now())) void encerrarEEnviar();
       }, INTERVALO_AMOSTRA_MS);
-    } catch {
+    } catch (e) {
+      // Preparo que rejeita já voltou: o gravador não ficou preso.
+      preparoPendente.current = false;
       pararMonitoramentoCaptura();
       ocupado.current = false;
+      if (!podeSeguir(minha)) {
+        console.warn('[voz] abertura abandonada falhou', e);
+        return;
+      }
       setGravando(false);
       Alert.alert(
         'Microfone indisponível',
