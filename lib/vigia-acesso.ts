@@ -52,16 +52,20 @@ const FOLGA_APOS_PRAZO_MS = 2_000;
  * Mesma regra de `tem_assinatura_ativa()`: `access_until`, e `grace_until`
  * só quando o pagamento está pendente (`past_due`).
  */
-export function msAteFimDoAcesso(estado: EstadoParaVigia | null, agora: number): number | null {
+function fimDoAcesso(estado: EstadoParaVigia | null): number | null {
   if (!estado || !estado.allowed || !estado.enforced) return null;
   const datas = [estado.access_until, estado.status === 'past_due' ? estado.grace_until : null]
     .map((d) => (d ? Date.parse(d) : Number.NaN))
     .filter((n) => Number.isFinite(n));
-  if (!datas.length) return null;
-  const ms = Math.max(0, Math.max(...datas) - agora) + FOLGA_APOS_PRAZO_MS;
-  return ms > ATRASO_MAXIMO_MS ? null : ms;
+  return datas.length ? Math.max(...datas) : null;
 }
 
+export function msAteFimDoAcesso(estado: EstadoParaVigia | null, agora: number): number | null {
+  const fim = fimDoAcesso(estado);
+  if (fim === null) return null;
+  const ms = Math.max(0, fim - agora) + FOLGA_APOS_PRAZO_MS;
+  return ms > ATRASO_MAXIMO_MS ? null : ms;
+}
 /**
  * A resposta do servidor é recusa por falta de permissão (`42501`) numa
  * chamada de dados? Leitura bloqueada não chega aqui (o RLS devolve vazio),
@@ -104,11 +108,13 @@ export function criarVigiaDoAcesso(deps: {
   let ultima = agora();
   let temporizador: unknown = null;
   let parado = false;
+  let prazoConsultado: number | null = null;
+  let geracaoPrazo = 0;
 
   function consultar() {
     ultima = agora();
     Promise.resolve()
-      .then(() => deps.recarregar())
+      .then(() => { if (!parado) return deps.recarregar(); })
       .catch((erro) => console.warn('[acesso] reconsulta falhou', (erro as { name?: string })?.name ?? 'erro'));
   }
   function porEvento() {
@@ -120,17 +126,23 @@ export function criarVigiaDoAcesso(deps: {
   const pararNegado = ouvirAcessoNegado(porEvento);
 
   return {
-    /** Reagenda o temporizador do prazo a cada estado novo confirmado. */
+    /** Cada vencimento efetivo provoca uma consulta por timer, mesmo se o servidor o repetir. */
     acompanhar(estado: EstadoParaVigia | null) {
+      const geracao = ++geracaoPrazo;
       if (temporizador !== null) deps.cancelar(temporizador);
       temporizador = null;
       if (parado) return;
+      const fim = fimDoAcesso(estado);
+      if (fim === null || fim === prazoConsultado) return;
       const ms = msAteFimDoAcesso(estado, agora());
       if (ms === null) return;
       temporizador = deps.agendar(() => {
+        if (parado || geracao !== geracaoPrazo) return;
         temporizador = null;
+        // Resposta com o mesmo prazo vencido não deve criar uma consulta a cada 2 s.
+        prazoConsultado = fim;
         // O prazo é exato: pergunta mesmo que outra consulta tenha acabado de acontecer.
-        if (!parado) consultar();
+        consultar();
       }, ms);
     },
     parar() {
