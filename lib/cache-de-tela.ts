@@ -309,6 +309,12 @@ export function comCacheOffline<A extends unknown[], T>(
      decide a forma de `A`. */
   chaveDoArgumento?: (...args: NoInfer<A>) => string
 ): (...args: A) => Promise<T> {
+  /* Item 40 (20/11/2026): seis abas montadas e o tick de 15 s da faixa
+     pediam a mesma chave de novo com a primeira busca ainda em voo (cada
+     histórico completo são várias páginas). Quem chega durante o voo, na
+     mesma geração, espera a mesma busca. Depois de uma escrita a geração
+     muda e a busca anterior não é reaproveitada. */
+  const emVoo = new Map<string, { geracao: number; pedido: Promise<Desfecho<T>> }>();
   return async (...args: A): Promise<T> => {
     const chave = chaveDoArgumento ? `${nome}:${chaveDoArgumento(...args)}` : nome;
 
@@ -345,10 +351,8 @@ export function comCacheOffline<A extends unknown[], T>(
     /* Mapear para um objeto, em vez de deixar rejeitar, é o que permite
        correr contra o prazo sem criar rejeição não tratada quando a resposta
        lenta chega depois de a tela já ter sido servida. */
-    const pedido: Promise<Desfecho<T>> = buscar(...args).then(
-      (dados) => ({ ok: true as const, dados }),
-      (erro) => ({ ok: false as const, erro }),
-    );
+    const emCurso = emVoo.get(chave);
+    const pedido: Promise<Desfecho<T>> = emCurso?.geracao === geracao ? emCurso.pedido : iniciarBusca();
 
     let cortar: ReturnType<typeof setTimeout> | undefined;
     const prazo = new Promise<'prazo'>((resolve) => {
@@ -408,6 +412,19 @@ export function comCacheOffline<A extends unknown[], T>(
       }
     }).catch((erro) => console.error('[cache-de-tela] não consegui publicar resposta atrasada', nome, erro));
     return guardado.dados;
+
+    function iniciarBusca(): Promise<Desfecho<T>> {
+      const registro = {
+        geracao,
+        pedido: buscar(...args).then(
+          (dados): Desfecho<T> => ({ ok: true, dados }),
+          (erro): Desfecho<T> => ({ ok: false, erro }),
+        ),
+      };
+      emVoo.set(chave, registro);
+      void registro.pedido.then(() => { if (emVoo.get(chave) === registro) emVoo.delete(chave); });
+      return registro.pedido;
+    }
 
     async function conferirDonoDoPedido(): Promise<void> {
       if (await idDoUsuario() !== donoDoPedido) throw new Error('A conta mudou. Atualize esta tela na conta atual.');
