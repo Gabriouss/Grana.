@@ -3,10 +3,24 @@ import * as aesjs from 'aes-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { createClient } from '@supabase/supabase-js';
+import { criarClienteSessaoLocal } from './cliente-sessao-local';
 import { AppState, Platform } from 'react-native';
 import { comPrazo } from './fetch-com-prazo';
 import { MODO_TESTE, RedeDesligadaNoTeste } from './modo-teste';
 import { avisarAcessoNegado, respostaNegaAcesso } from './vigia-acesso';
+
+// Namespace reservado para chaves que o SecureStore não aceita literalmente.
+// As chaves legadas da sessão e do PKCE começam com "sb-" e seguem intactas.
+const PREFIXO_CHAVE_SEGURA = 'grana-session-key-v1.';
+function chaveNoSecureStore(chave: string): string {
+  if (/^[\w.-]+$/.test(chave) && !chave.startsWith(PREFIXO_CHAVE_SEGURA)) return chave;
+  let codificada = PREFIXO_CHAVE_SEGURA;
+  // Quatro dígitos por unidade UTF-16 mantêm a codificação injetiva.
+  for (let i = 0; i < chave.length; i++) {
+    codificada += chave.charCodeAt(i).toString(16).padStart(4, '0');
+  }
+  return codificada;
+}
 
 /**
  * expo-secure-store não guarda valores acima de ~2048 bytes, e a sessão do
@@ -23,13 +37,13 @@ class LargeSecureStore {
     const cipher = new aesjs.ModeOfOperation.ctr(encryptionKey, new aesjs.Counter(1));
     const encryptedBytes = cipher.encrypt(aesjs.utils.utf8.toBytes(value));
 
-    await SecureStore.setItemAsync(key, aesjs.utils.hex.fromBytes(encryptionKey));
+    await SecureStore.setItemAsync(chaveNoSecureStore(key), aesjs.utils.hex.fromBytes(encryptionKey));
 
     return aesjs.utils.hex.fromBytes(encryptedBytes);
   }
 
   private async _decrypt(key: string, value: string) {
-    const encryptionKeyHex = await SecureStore.getItemAsync(key);
+    const encryptionKeyHex = await SecureStore.getItemAsync(chaveNoSecureStore(key));
     if (!encryptionKeyHex) {
       return null;
     }
@@ -50,7 +64,7 @@ class LargeSecureStore {
 
   async removeItem(key: string) {
     await AsyncStorage.removeItem(key);
-    await SecureStore.deleteItemAsync(key);
+    await SecureStore.deleteItemAsync(chaveNoSecureStore(key));
   }
 
   async setItem(key: string, value: string) {
@@ -78,7 +92,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
    cliente do Supabase escreve. Sem rede e com o token de acesso vencido,
    `getSession()` devolve `null` mesmo com a sessão intacta no disco — ler o
    registro direto é a única forma de o app continuar de pé. */
-export const armazenamentoSessao =
+const armazenamentoFisicoSessao =
   Platform.OS === 'web' ? globalThis.localStorage : new LargeSecureStore();
 
 /* A mesma chave que o `supabase-js` montaria sozinho: `sb-<primeiro rótulo do
@@ -152,14 +166,14 @@ async function fetchComRetentativaDeRelogio(
   return fetch(input, init);
 }
 
-export const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '', {
+const clienteLocal = criarClienteSessaoLocal(armazenamentoFisicoSessao, CHAVE_SESSAO, (storage, sdkKey, detectarUrl) => createClient(supabaseUrl ?? '', supabaseAnonKey ?? '', {
   /* O prazo fica POR FORA da repetição por relógio: a segunda tentativa cabe
      no mesmo prazo, em vez de somar outro. O auth usa este mesmo fetch, então
      a renovação do token também deixa de poder pendurar para sempre. */
   global: { fetch: comPrazo(fetchComRetentativaDeRelogio) },
   auth: {
-    storage: armazenamentoSessao,
-    storageKey: CHAVE_SESSAO,
+    storage,
+    storageKey: sdkKey,
     autoRefreshToken: true,
     persistSession: true,
     /* PKCE devolve somente um código curto, de uso único e com validade de
@@ -167,9 +181,15 @@ export const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '', {
        um custom scheme; o callback troca o código usando o verifier guardado
        localmente por este cliente. */
     flowType: 'pkce',
-    detectSessionInUrl: Platform.OS === 'web',
+    detectSessionInUrl: Platform.OS === 'web' && detectarUrl,
   },
-});
+}));
+
+export let supabase = clienteLocal.cliente;
+clienteLocal.aoTrocar(cliente => { supabase = cliente; });
+export const armazenamentoSessao = clienteLocal.controle.leituraAtual;
+export const controleSessaoLocal = clienteLocal.controle;
+export const iniciarSaidaLocal = clienteLocal.iniciarSaidaLocal;
 
 /* Supabase só deve tentar renovar o token enquanto o app está em primeiro
    plano — evita chamadas de rede desnecessárias com o app em segundo plano. */

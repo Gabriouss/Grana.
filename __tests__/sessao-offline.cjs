@@ -74,6 +74,18 @@ const supabaseDuble = {
   },
 };
 
+// Fronteira do Supabase: a saída captura a geração e expõe a limpeza do slot local.
+let geracaoSaida = 0;
+function iniciarSaidaLocal() {
+  const origem = ++geracaoSaida;
+  return {
+    atual: () => origem === geracaoSaida,
+    confirmar: async () => {},
+    servidor: async () => {},
+    limpar: async () => { await armazenamentoSessao.removeItem(CHAVE_SESSAO); },
+  };
+}
+
 const avisos = [];
 const consoleDuble = {
   ...console,
@@ -88,7 +100,7 @@ vm.runInNewContext(compilar('lib/sessao-offline.ts'), {
   JSON, Date, String, Object, Error, Promise, setTimeout, clearTimeout,
   require: (nome) => {
     if (nome === './supabase') {
-      return { armazenamentoSessao, CHAVE_SESSAO, supabase: supabaseDuble, __esModule: true };
+      return { armazenamentoSessao, CHAVE_SESSAO, supabase: supabaseDuble, iniciarSaidaLocal, __esModule: true };
     }
     throw new Error(`import inesperado em sessao-offline: ${nome}`);
   },

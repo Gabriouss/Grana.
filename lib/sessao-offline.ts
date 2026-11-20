@@ -1,5 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
-import { armazenamentoSessao, CHAVE_SESSAO, supabase } from './supabase';
+import { armazenamentoSessao, CHAVE_SESSAO, supabase, iniciarSaidaLocal } from './supabase';
 
 /** O mesmo fim absoluto acompanha todas as etapas de uma abertura. */
 export async function esperarSessaoAte<T>(operacao: () => PromiseLike<T> | T, fim: number): Promise<T> {
@@ -76,11 +76,8 @@ export async function lerSessaoDoDisco(prazoMs = 2_000, falharSeIndisponivel = f
  * internet e o app trazer a pessoa de volta na próxima abertura.
  */
 export async function esquecerSessaoDoDisco(): Promise<void> {
-  try {
-    await armazenamentoSessao?.removeItem(CHAVE_SESSAO);
-  } catch (erro) {
-    console.warn('[sessao] não foi possível apagar o registro guardado', (erro as { name?: string })?.name ?? 'erro');
-  }
+  const saida = iniciarSaidaLocal();
+  await saida.limpar();
 }
 
 /** Só restringe navegação local; decodificar JWT NÃO valida autorização. */

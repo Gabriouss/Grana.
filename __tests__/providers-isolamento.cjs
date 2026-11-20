@@ -7,7 +7,17 @@ function authEnv(options={}){
   let listener;const disco=options.disco??{getItem:async()=>null,setItem:async()=>{},removeItem:async()=>{}};
   const saida=pendente(),update=pendente();let saidas=0;
   const auth={getSession:options.getSession??(async()=>({data:{session:null},error:null})),onAuthStateChange:fn=>{listener=fn;return{data:{subscription:{unsubscribe(){}}}};},updateUser:()=>update.promise};
-  const a=ambiente({'react-native':{Platform:{OS:'web'}},'./alerta':{},'expo-linking':{},'./supabase':{supabase:{auth},armazenamentoSessao:disco,CHAVE_SESSAO:'sessao'},
+  let geracaoSaida=0;
+  const iniciarSaidaLocal=sessao=>{
+    const origem=++geracaoSaida;
+    return {
+      atual:()=>origem===geracaoSaida,
+      confirmar:async()=>{},
+      servidor:async()=>{if(sessao)await saida.promise;},
+      limpar:async()=>{await disco.removeItem?.('sessao');},
+    };
+  };
+  const a=ambiente({'react-native':{Platform:{OS:'web'}},'./alerta':{},'expo-linking':{},'./supabase':{supabase:{auth},armazenamentoSessao:disco,CHAVE_SESSAO:'sessao',iniciarSaidaLocal},
     './auth-errors':{traduzirErroAuth:e=>e},'./assinatura':{vincularAssinaturasPendentes:async()=>({houveFalha:false})},'./push-notifications':{},
     './entitlement-cache':{},'./cache-de-tela':{},'./offline-cache':{},'./widgets-home-sync':{},'./data':{limparDiasComRegistro(){}},
     './sair-da-conta':{sairDaConta:async etapas=>{saidas++;await saida.promise;etapas.aplicarSaida();}},'./modo-teste':{MODO_TESTE:false}});
@@ -42,7 +52,7 @@ function entitlementEnv(options={}){
   const store={getItem:options.getItem??(async k=>c.disco.get(k)??null),setItem:options.setItem??(async(k,v)=>{c.writes.push(JSON.parse(v).userId);c.disco.set(k,v);})};
   const a=ambiente({'./auth-context':{useSession:()=>({session:c.userId?session(c.userId):null,isLoading:false,sessaoNaoConfirmada:false})},
     './assinatura':{vincularAssinaturasPendentes:options.vincular??(async()=>({houveFalha:false}))},'./offline-cache':{isLikelyNetworkError:e=>e?.name==='TypeError'},
-    './supabase':{supabase:{rpc:()=>{const d=pendente();c.rpc.push(d);d.promise.setHeader=()=>d.promise;d.promise.abortSignal=s=>{d.signal=s;return d.promise;};return d.promise;}}},'./modo-teste':{MODO_TESTE:false},
+    './supabase':{supabase:{auth:{getSession:async()=>({data:{session:c.userId?session(c.userId):null},error:null})},rpc:()=>{const d=pendente();c.rpc.push(d);d.promise.setHeader=()=>d.promise;d.promise.abortSignal=s=>{d.signal=s;return d.promise;};return d.promise;}}},'./modo-teste':{MODO_TESTE:false},
     './notifications':{sincronizarAvisosAssinatura:async(...v)=>c.notifs.push(v)},'react-native':{AppState:{addEventListener:()=>({remove(){}})}},
     './cache-de-tela':{assinarLeituraEsvaziou:()=>()=>{}},'@react-native-async-storage/async-storage':{__esModule:true,default:store}});
   const p=a.mount(a.load('lib/entitlement-context.tsx').EntitlementProvider);

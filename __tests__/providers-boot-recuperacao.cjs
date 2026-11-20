@@ -19,6 +19,7 @@ function layoutEnv(options={}){
     '@/lib/entitlement-context':{EntitlementProvider:'EntitlementProvider',useEntitlement:options.entitlement??(()=>({estado:null}))},
     '@/lib/faixa-topo':{FaixaTopoProvider:'FaixaTopoProvider'},'@/lib/app-lock-context':{AppLockProvider:'AppLockProvider'},'@/lib/screen-capture-context':{ScreenCaptureProvider:'ScreenCaptureProvider'},'@/lib/canal':{ehCanalPlay:()=>true},
     '@/lib/notifications':{carregarNotifPrefs:async()=>{c.protegidos++;return{lembreteDiarioAtivo:false};}},'@/lib/push-notifications':{sincronizarPushHabito:async()=> 'registrado',observarTrocaDeTokenPush:()=>null},'@/lib/contexto-lembrete':{},
+    './supabase':{supabase:{auth:{getSession:async()=>({data:{session:options.auth?.().session??null},error:null})}},CHAVE_SESSAO:'sessao'},
     '@react-native-async-storage/async-storage':{__esModule:true,default:{}},
     '../assets/fonts/NeueMachina-Light.otf':1,'../assets/fonts/NeueMachina-Regular.otf':2,
   };

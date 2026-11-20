@@ -36,6 +36,7 @@ vm.runInNewContext(
     console: { ...console, warn: (...args) => avisos.push(args.join(' ')) },
     // Serve com e sem `esModuleInterop`: o dublê responde no topo e em `default`.
     require: (nome) => {
+      if (nome === './sessao-offline') return { idDoUsuarioLocal: async () => 'user-1' };
       if (nome !== '@react-native-async-storage/async-storage') throw new Error(`import inesperado: ${nome}`);
       return { ...dubleStorage, default: dubleStorage, __esModule: true };
     },

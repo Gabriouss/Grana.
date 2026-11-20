@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { EstadoAcesso } from './entitlement-context';
+import { idDoUsuarioLocal } from './sessao-offline';
 
 const CHAVE = 'grana:cache:estado-acesso';
 
@@ -33,11 +34,13 @@ export async function guardarAcesso(userId: string, estado: EstadoAcesso): Promi
 /** Devolve o estado guardado, e só se pertencer a esta conta. */
 export async function lerAcessoGuardado(userId: string): Promise<EstadoAcesso | null> {
   try {
+    if (await idDoUsuarioLocal() !== userId) return null;
     const bruto = await AsyncStorage.getItem(CHAVE);
     if (!bruto) return null;
     const registro = JSON.parse(bruto) as Guardado | null;
     // Trocar de conta no mesmo aparelho não pode herdar o acesso da anterior.
     if (!registro || registro.userId !== userId) return null;
+    if (await idDoUsuarioLocal() !== userId) return null;
     return registro.estado ?? null;
   } catch (erro) {
     console.warn('[entitlement] cache de acesso ilegível', (erro as { name?: string })?.name ?? 'erro');

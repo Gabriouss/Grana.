@@ -3,12 +3,11 @@ import { Platform } from 'react-native';
 import { Alert } from './alerta';
 import * as Linking from 'expo-linking';
 import type { Session } from '@supabase/supabase-js';
-import { supabase } from './supabase';
+import { supabase, iniciarSaidaLocal } from './supabase';
 import { traduzirErroAuth, type ErroAuth } from './auth-errors';
 import { removerPushHabitoAntesDeSair } from './push-notifications';
 import { esquecerAcesso } from './entitlement-cache';
 import {
-  esquecerSessaoDoDisco,
   lerSessaoDoDisco,
   marcarSessaoNaoConfirmada,
   PRAZO_DONO_PADRAO_MS,
@@ -141,11 +140,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const recuperacaoRef = useRef(0);
   const sessaoAtualRef = useRef<Session | null>(null);
 
-  const aplicarSessao = useCallback((nova: Session | null, doDisco: boolean) => {
+  const aplicarSessao = useCallback((nova: Session | null, doDisco: boolean, manterGuardaRecuperacao = false) => {
     const dono = nova?.user.id ?? null;
     if (identidadeDaSessao(nova) !== identidadeDaSessao(sessaoAtualRef.current)) {
       recuperacaoRef.current++;
-      setEmRecuperacao(false);
+      if (!manterGuardaRecuperacao) setEmRecuperacao(false);
     }
     if (dono !== donoDosDiasRef.current) {
       limparDiasComRegistro();
@@ -157,7 +156,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
     setSessaoNaoConfirmada(doDisco);
     setSession(nova);
     sessaoAtualRef.current = nova;
-    if (!nova) setEmRecuperacao(false);
+    if (!nova && !manterGuardaRecuperacao) setEmRecuperacao(false);
   }, []);
 
   /**
@@ -354,6 +353,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
     recarregarSessao,
     cancelarRecuperacao: async () => { await value.signOut(); },
     async signIn(email, password) {
+      saindoRef.current = false;
+      geracaoRef.current++;
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       return { error: traduzirErroAuth(error) };
     },
@@ -379,6 +380,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
       return { error: traduzirErroAuth(error) };
     },
     async signUp(email, password) {
+      saindoRef.current = false;
+      geracaoRef.current++;
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -399,14 +402,19 @@ export function SessionProvider({ children }: PropsWithChildren) {
     /* A sequência e os prazos moram em lib/sair-da-conta.ts: cada limpeza tem
        prazo próprio e a sessão sai sempre (achado A64, 19/09/2026). */
     async signOut() {
-      if (saindoRef.current) return;
+      if (!montadoRef.current || saindoRef.current) return;
+      const donoSaida = sessaoAtualRef.current?.user.id ?? donoDosDiasRef.current;
+      const saida = iniciarSaidaLocal(sessaoAtualRef.current);
       saindoRef.current = true;
-      geracaoRef.current++;
+      const geracaoSaida = ++geracaoRef.current;
       recuperacaoRef.current++;
       setIsLoading(true);
+      // Revoga a sessão já; a guarda da recuperação só termina no finally desta saída.
+      aplicarSessao(null, false, true);
+      const aindaDestaSaida = () => geracaoSaida === geracaoRef.current && saida.atual();
       try {
       await sairDaConta({
-        idDoUsuario: async () => donoDosDiasRef.current,
+        idDoUsuario: async () => donoSaida,
         limparVozesDaConta: async (userId) => {
           const { limparVozesDaConta } = await import('./widget-voz-pendentes');
           await limparVozesDaConta(userId);
@@ -432,21 +440,17 @@ export function SessionProvider({ children }: PropsWithChildren) {
         esquecerTelas,
         esquecerLancamentosLocais,
         removerPush: removerPushHabitoAntesDeSair,
-        signOutNoServidor: async () => {
-          /* Só esta sessão. Sem escopo, o supabase-js usa 'global' e revoga
-             TODAS as sessões da conta: sair na web derrubava o celular
-             (log de auth, 16/10/2026: /logout da web e depois
-             refresh_token_not_found no app). */
-          const { error } = await supabase.auth.signOut({ scope: 'local' });
-          if (error) throw error;
-        },
-        esquecerSessaoDoDisco,
-        aplicarSaida: () => aplicarSessao(null, false),
+        // Cliente e slot capturados antes de qualquer await da limpeza.
+        signOutNoServidor: saida.servidor,
+        esquecerSessaoDoDisco: saida.limpar,
+        aplicarSaida: () => { if (aindaDestaSaida()) aplicarSessao(null, false, true); },
       });
       } finally {
-        aplicarSessao(null, false);
-        saindoRef.current = false;
-        if (montadoRef.current) setIsLoading(false);
+        if (aindaDestaSaida()) {
+          aplicarSessao(null, false);
+          saindoRef.current = false;
+          if (montadoRef.current) setIsLoading(false);
+        }
       }
     },
   };
