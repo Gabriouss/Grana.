@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { theme, radius, spacing, card as cardTokens, fonts, type, lh } from '@/lib/theme';
 import { formatBRL, formatBRLSaldo, formatBRLSubtraido, formatMoney } from '@/lib/format';
-import { rotuloDiasRestantes } from '@/lib/safe-to-spend';
+import { rotuloDaSobraIncluida, rotuloDiasRestantes } from '@/lib/safe-to-spend';
 import type { SafeToSpend } from '@/lib/projections';
 import type { Arquetipo } from '@/lib/diagnostico';
 import PrivacyValue from './PrivacyValue';
@@ -23,7 +23,7 @@ export default function SafeToSpendCard({
   indisponivel?: boolean;
   carregando?: boolean;
 }) {
-  const { livrePorDia, livreTotal, saldoAtual, entradasPrevistas, reservadoEmMetas, diasRestantes, semSaldo } = data;
+  const { livrePorDia, livreTotal, saldoAtual, sobraConfirmada, entradasPrevistas, reservadoEmMetas, diasRestantes, semSaldo } = data;
 
   return (
     <View style={styles.card}>
@@ -59,6 +59,14 @@ export default function SafeToSpendCard({
           <Text style={styles.rowKey}>Saldo atual</Text>
           <PrivacyValue><Text style={styles.rowVal}>{formatBRLSaldo(saldoAtual)}</Text></PrivacyValue>
         </View>
+        {/* A sobra confirmada já está no Saldo atual; a linha mostra de onde
+            vem a diferença para o Saldo do mês sem ela (autor, 20/11/2026). */}
+        {sobraConfirmada > 0 && (
+          <View style={styles.row}>
+            <Text style={styles.rowKey}>{rotuloDaSobraIncluida()}</Text>
+            <PrivacyValue><Text style={styles.rowVal}>{formatBRL(sobraConfirmada)}</Text></PrivacyValue>
+          </View>
+        )}
         {/* Entradas com data ainda neste mês já contam no Livre (autor,
             07/11/2026), e o Saldo atual só as soma no dia delas. A linha
             aparece só quando existe, para a conta visível fechar. */}

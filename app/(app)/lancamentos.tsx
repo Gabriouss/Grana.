@@ -73,6 +73,7 @@ import { useWallet } from '@/lib/wallet-context';
 import { useSession } from '@/lib/auth-context';
 import { carteiraPrincipalDaSobra, sobraNoSaldoDoMes } from '@/lib/sobra-do-mes';
 import { useSobraDoMes } from '@/lib/use-sobra-do-mes';
+import { rotuloDaSobraIncluida, rotuloDaSobraIndisponivel } from '@/lib/safe-to-spend';
 import { DEMO_TRANSACTIONS } from '@/lib/demo-data';
 import { guardarLancamentosDeExemplo, lancamentosDeExemplo } from '@/lib/lancamentos-teste';
 import type { Transaction, TxType } from '@/lib/types';
@@ -786,7 +787,8 @@ export default function LancamentosScreen() {
           <Text style={styles.monthSummaryLabel}>Gastos na categoria</Text>
           <PrivacyValue><Text style={[styles.monthSummaryVal, { color: theme.down }]}>{consultaCategoria.resultado ? formatBRL(monthOut) : 'Indisponível agora'}</Text></PrivacyValue>
         </View> : <>
-        <View style={styles.monthSummaryCard}>
+        <View style={[styles.monthSummaryCard, styles.monthSummaryPilha]}>
+        <View style={styles.monthSummaryLinha}>
           <View style={styles.monthSummaryCol}>
             <Text style={styles.monthSummaryLabel}>Entradas</Text>
             <PrivacyValue style={{ alignItems: 'center' }}>
@@ -818,6 +820,22 @@ export default function LancamentosScreen() {
               </Text>
             </PrivacyValue>
           </View>
+        </View>
+        {/* A sobra entra no Saldo do mês sem ser lançamento; esta linha fecha a
+            conta visível (autor, 20/11/2026), no mesmo texto do Livre. Sem
+            valor conhecido, diz que a sobra ficou de fora (Supremo, 20/11). */}
+        {!loading && sobraDoSaldo.situacao !== 'nenhuma' && (
+          <View style={styles.monthSummarySobra}>
+            <Text style={styles.monthSummarySobraTexto}>
+              {sobraDoSaldo.situacao === 'inclui'
+                ? rotuloDaSobraIncluida(mesSelecionado)
+                : rotuloDaSobraIndisponivel(mesSelecionado, sobraDoSaldo.situacao === 'sem-conexao')}
+            </Text>
+            {sobraDoSaldo.situacao === 'inclui' && (
+              <PrivacyValue><Text style={styles.monthSummarySobraTexto}>{formatBRL(sobraDoSaldo.valor)}</Text></PrivacyValue>
+            )}
+          </View>
+        )}
         </View>
         </>}
 
@@ -1004,6 +1022,14 @@ const styles = StyleSheet.create({
      tela pequena. */
   monthSummaryValCompacto: { fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio') },
   monthSummaryDivider: { width: 1, height: 24, backgroundColor: theme.rule },
+  /* Com a linha da sobra o cartão vira pilha: as três colunas numa fileira e,
+     abaixo, a sobra separada por um fio (autor, 20/11/2026). */
+  monthSummaryPilha: { flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', gap: spacing.xs },
+  monthSummaryLinha: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  monthSummarySobra: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.xs,
+    paddingTop: spacing.xs, borderTopWidth: 1, borderTopColor: theme.rule },
+  monthSummarySobraTexto: { color: theme.inkFaint, fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio'),
+    fontVariant: ['tabular-nums'], fontFamily: fonts.light },
   dateQuickRow: { flexDirection: 'row', gap: spacing.icone, marginTop: spacing.fio },
   dateQuickChip: {
     flex: 1,
