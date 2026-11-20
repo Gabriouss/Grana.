@@ -33,6 +33,9 @@ export const PRAZO_LEITURA_MS = 20_000;
 
 type Reconhecedor = typeof import('@react-native-ml-kit/text-recognition').default;
 let carregando: Promise<Reconhecedor | null> | null = null;
+/* Leitura nativa em andamento, inclusive a que já perdeu o prazo: o ML Kit não
+   cancela, então a próxima captura espera por ela em vez de ler por cima (item 33). */
+let leituraNativa: Promise<void> | null = null;
 
 /**
  * Carrega o módulo nativo, uma vez. A tela chama isto ao abrir a câmera, para o
@@ -165,7 +168,13 @@ export async function fotografarELer(
     }
     fotoTirada = uri;
     try {
-      return await lerTotalDaFoto(uri);
+      while (leituraNativa) await leituraNativa;
+      if (encerrado) return { ok: false, motivo: 'falhou' };
+      const leitura = lerTotalDaFoto(uri);
+      const soltar = () => { if (leituraNativa === marca) leituraNativa = null; };
+      const marca: Promise<void> = leitura.then(soltar, soltar);
+      leituraNativa = marca;
+      return await leitura;
     } finally {
       void apagarFoto(uri);
     }
