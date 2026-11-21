@@ -20668,3 +20668,14 @@ Cada toque na notificação de voz passa a ser tratado uma vez só. Commit local
 Verificação do Anvil: baseline exit 1 causal (6 falhas por duplicidade, controle corpo + Desfazer passou); candidate exit 0; compatibilidade 4/4 exit 0 (voz-recibos-bandeja, voz-recibos-paridade, janela-unica-paridade, paridade-entrada-cartao-granabo-voz); `tsc --noEmit` exit 0. Não verificado: QA no aparelho. Anvil segue no gate final. Fonte: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Anvil-item50-2026-11-21.md`. Pendentes do lote: gate final, revisão única, prints 51/52/53, QA no aparelho.
 
 **Adendo 21/11, hash do relatório do Sentinel (sem mudança técnica).** Divergência fechada pelo Supremo. O Sentinel reeditou `relatorio-Sentinel-tsc.md` depois de enviar `08a1864d…`, para incluir a correção de autoria da linha 20 (commit criado pelo integrador Codex, conferido pelo Anvil). Hash vigente, conferido nesta escrita: `b5d215e50c77503865a07d49bebb03d8333610bcdd9ad662db9fdf11ee3ad0e9`, arquivo carimbado 21/11 08:23:05. O `7836b896…` lido antes foi um estado intermediário do mesmo arquivo. Nenhum número, commit ou conclusão técnica mudou.
+
+### 21/11 manhã — gate final r1 no clone: test:ci vermelho por dublê ausente do item 18
+
+HEAD `2267fcb8` (`teste/leitura-avisos`), árvore limpa, logs em `E:/Grana-temporarios/2026-11-20-retomada/Anvil-gate-final/`. `npx tsc --noEmit` exit 0. `npm run test:parser` exit 0 (2042/2042 guardas do design system, 95/95 notas de release, 83/83 em sincronia). `npm run test:ci`: r1 no cmd.exe exit 1 sem rodar teste ("Linha de comando muito longa"); r2 com o bash do Git exit 1 em `__tests__/fetch-com-prazo.cjs`.
+
+1. **Sintoma.** O `fetch-com-prazo.cjs` exige dublê para cada import dos módulos que carrega e para no `require` de `./cliente-sessao-local`.
+2. **Causa, confirmada no código pelo Supremo.** O commit `7d45f4b6` (item 18, 20/11) fez `lib/supabase.ts` importar `./cliente-sessao-local`, e o mapa de dublês do teste nunca recebeu esse módulo.
+3. **Alcance.** O `test:ci` encadeia com `&&`: nenhum teste depois de `fetch-com-prazo.cjs` rodou nesta passada (entre eles conciliacao-pix*, voz-recibos-bandeja, janela-unica-*, sobra-do-mes e sessao-gaveta-lenta). Não há recibo de `test:ci` completo depois de `7d45f4b6`.
+4. **Encaminhamento.** Anvil corrige só os dublês em `__tests__/`, carregando o `lib/cliente-sessao-local.ts` real com dublês dos imports dele, RED/GREEN sem afrouxar asserção, commit próprio dos caminhos de teste. Ordem: `00-ORDEM-Anvil-gate-dubles-2026-11-21.md`.
+5. **Ponto para a revisão final (Anvil, item 50).** Falha ao abrir a revisão a partir da notificação de voz deixa só log, sem recibo visível ao usuário (regra 9). Avaliar na revisão única se pede notificação ou tela. Fonte: `relatorio-Anvil-item50-2026-11-21.md`, ponto em aberto.
+6. **Sem verificação.** Testes do `test:ci` posteriores ao `fetch-com-prazo.cjs`, aparelho. Fonte: `relatorio-Anvil-gate-final-2026-11-21.md`.
