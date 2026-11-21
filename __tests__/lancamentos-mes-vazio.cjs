@@ -29,6 +29,9 @@ assert.match(textoDaListaVazia(false, false), /ainda/); assert.match(textoDaList
 ok('conta sem nenhum lancamento mantem "ainda ... primeiro"');
 assert.match(textoDaListaVazia(true, true), /filtro/); assert.match(textoDaListaVazia(true, false), /filtro/);
 ok('filtro ativo vence o historico');
+for (const [f, h] of [[false, true], [false, false], [true, true]]) assert.match(textoDaListaVazia(f, h), / \S+$/, 'ultima palavra presa a anterior (51-B, regra 29)');
+assert.ok(/Sem saldo dispon.vel este m.s\\u00a0ainda\./.test(ler('components/SafeToSpendCard.tsx')), 'Livre sem saldo: "ainda." presa a "mes" (51-C)');
+ok('sem viuva no vazio de Lancamentos e no Livre sem saldo (51-B, 51-C)');
 
 const tela = ler('app/(app)/lancamentos.tsx');
 const dados = ler('lib/data.ts');

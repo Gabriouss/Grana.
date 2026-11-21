@@ -44,7 +44,8 @@ export default function SafeToSpendCard({
         importantForAccessibility={carregando || indisponivel ? 'no-hide-descendants' : 'auto'}>
 
       {semSaldo ? (
-        <Text style={styles.zeroText}>Sem saldo disponível este mês ainda.</Text>
+        /* \u00a0: "ainda." ficava sozinha em fonte 1,3 (51-C, regra 29). */
+        <Text style={styles.zeroText}>{'Sem saldo disponível este mês\u00a0ainda.'}</Text>
       ) : (
         <PrivacyValue>
           <Text style={styles.headline}>
