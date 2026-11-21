@@ -20767,3 +20767,25 @@ Fonte: `relatorio-Vigil-reverificacao-2026-11-21.md` (sha256 `2c285730…`, 11:0
 4. **Fora do escopo, baixo, não investigado.** Na abertura, o console mostra uma vez "[inicio] lembrete de hábito falhou … A consulta de dias foi invalidada". Vem do `.catch` do agendamento do lembrete em `app/(app)/index.tsx:500`, relido nesta escrita: `fetchDiasDeAtividade()` dentro de `carregarNotifPrefs().then(...)`. **Hipótese do Supremo, não confirmada:** a invalidação dos dias na troca de conta (`ad97de5c`, C-01) derruba o primeiro agendamento, e o efeito roda de novo no próximo foco da Início. Ninguém conferiu se o lembrete acaba agendado.
 5. **Lacuna no recibo do gate do Lumen.** `Lumen-gate/` não grava o código de saída. Os zeros de tsc, parser e test:ci no `9d5b69d4` valem como relatados pelo Lumen. Os logs só confirmam o conteúdo: 83/83, 4/4, 3/3 e 9/9.
 6. **Pendências.** A linha "Inclui sobra de <mês>" do 51, com sobra AUDIT, depende de decisão do autor, porque grava dado na conta de teste em produção. Falta o QA no aparelho físico, e build só com pedido explícito do autor. Nada de build, push ou Supabase.
+
+### 21/11 tarde — pedidos do autor vistos no Expo Go e divisão entre Lumen e Keel
+
+O autor abriu no celular o clone `9d5b69d4` pelo Expo Go (Metro LAN do Vigil, que fica rodando no clone). Conferido nesta escrita: HEAD `9d5b69d4`, árvore limpa. Pedidos, com a frase do autor como veio pelo Supremo:
+
+1. **Sobra do mês passado:** "a forma como a informação do saldo restante do mês passado está sendo exibida ficou muito feia". A crítica vale para a linha "Inclui sobra de <mês>" no cartão de resumo de Lançamentos e no cartão Livre da Início. Pela ordem, no print o valor sai com desenho de algarismo e peso diferentes do texto ao lado, e a linha centralizada solta destoa das três colunas. Esta é a primeira vez que a linha aparece para alguém: ela dependia de sobra confirmada, que o Vigil não tinha gravado.
+2. **Selo "oculto":** "a TAG de oculto que pedi para remover não foi removida". O selo está em `app/(app)/index.tsx:1700` (`{hidden && <Text style={styles.demoFlag}>oculto</Text>}`), relido nesta escrita, ao lado do selo "exemplo" do modo demo, que fica. Não achei no `context.md` o registro do pedido anterior de remoção, então a data e a origem dele não foram conferidas.
+
+**Quem executa.** O autor pediu ao Codex. Informado pelo Supremo: Gabriel Codex e a conta AAA estão com 2% do limite semanal e o Codex PH não está logado, então o autor escolheu o time Claude.
+- **Lumen**, integrador, pela `00-ORDEM-Lumen-pedidos-autor-2026-11-21-tarde.md`:
+  - redesenhar a linha da sobra com os estilos que o cartão já usa, sem texto novo e respeitando valores ocultos;
+  - remover o selo "oculto" da Início e de outras telas, mantendo o "exemplo";
+  - resolver as pendências visuais 51-B, 51-C, o Mural partindo palavra em 1,3 e o nit do 52.
+  - **O autor aprova o visual antes do commit**, por prints de antes e depois em fonte 1,0 e 1,3 na pasta `Lumen-pedidos-autor/`. Cada mudança de tela vai em commit próprio, e os logs do gate passam a gravar o exit.
+- **Keel**, pela `00-ORDEM-Keel-pendencias-logica-2026-11-21.md`:
+  - causa do erro do lembrete de hábito em `index.tsx:500`, com RED e GREEN e a decisão entre falha temporária e permanente;
+  - L5, religar os lembretes de contas em `perfil.tsx` com recibo em janela flutuante e log;
+  - comparação exata de pacote no `scripts/emulador.cjs estado`;
+  - runner do `test:ci` que rode no Windows a mesma cadeia de hoje, com a prova de que a lista é idêntica.
+  - O Keel trabalha só lendo o código e prepara o WIP fora do clone (`Keel-pendencias/wip`) até o Lumen liberar a janela.
+
+Nada feito ainda, nada verificado. Sem build, push ou Supabase.
