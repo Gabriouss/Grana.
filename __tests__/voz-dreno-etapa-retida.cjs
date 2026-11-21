@@ -68,13 +68,21 @@ const AsyncStorage = {
 };
 const disco = new Map();
 let orfasExistem = false;
+/** Arquivos que o widget guardou em voz-orfa/ (só o caso da órfã os usa). */
+const arquivosOrfas = new Set();
+const PASTA_ORFA = 'file:///files/voz-orfa/';
 const fsDuble = {
   documentDirectory: 'file:///files/',
   makeDirectoryAsync: async () => {},
   copyAsync: async ({ from, to }) => { disco.set(to, disco.get(from)); },
-  deleteAsync: async (uri) => { disco.delete(uri); },
-  getInfoAsync: async (uri) => ({ exists: orfasExistem && /voz-orfa\/$/.test(uri) }),
-  readDirectoryAsync: () => talvezReter('adocao', async () => []),
+  deleteAsync: async (uri) => { disco.delete(uri); arquivosOrfas.delete(uri); },
+  getInfoAsync: async (uri) => ({ exists: (orfasExistem && /voz-orfa\/$/.test(uri)) || arquivosOrfas.has(uri) }),
+  readAsStringAsync: async (uri) => {
+    assert.ok(disco.has(uri), 'leitura de arquivo inexistente: ' + uri);
+    return disco.get(uri);
+  },
+  readDirectoryAsync: () => talvezReter('adocao', async () => [...arquivosOrfas]
+    .filter((uri) => uri.startsWith(PASTA_ORFA)).map((uri) => uri.slice(PASTA_ORFA.length))),
 };
 
 const chamadasRpc = [];
@@ -231,6 +239,31 @@ async function casoFalas(etapa, preparar) {
     const resumo = await casoFalas('leitura-fila');
     assert.deepEqual({ ...resumo }, { restantes: -1, motivo: 'erro' }, 'sem ler a fila, a passada termina com recibo de erro');
     ok('leitura da fila pendurada: desfecho de erro, sem envio; o passe seguinte sobe cada fala uma vez');
+  });
+
+  /* Antes era conferido pelo TEXTO da tarefa, em voz-recibos-paridade.cjs.
+     Executado: a fala que o widget guardou sem entregar (V4) entra na fila
+     ANTES da leitura, então sobe nesta mesma passada, uma vez. Se a leitura
+     viesse antes da adoção, a fala só entraria na leitura final: resumo com
+     1 restante e nenhum envio. */
+  await caso('órfã do widget sobe na MESMA passada', async () => {
+    const id = 'orfa-mesma-passada';
+    const audio = PASTA_ORFA + id + '.m4a';
+    const metadados = PASTA_ORFA + id + '.json';
+    const agora = new Date();
+    const hoje = [agora.getFullYear(), String(agora.getMonth() + 1).padStart(2, '0'), String(agora.getDate()).padStart(2, '0')].join('-');
+    disco.set(audio, 'AUDIO');
+    disco.set(metadados, JSON.stringify({ userId: 'u-1', source: 'widget', capturadoEm: agora.getTime(), dataCaptura: hoje }));
+    arquivosOrfas.add(audio);
+    arquivosOrfas.add(metadados);
+    orfasExistem = true;
+    transcricoes['file:///files/voz-pendente/' + id + '.m4a'] = { ok: true, transcript: 'Mercado R$ 120 no débito.' };
+    const resumo = await comLimite(tarefa.tentarVozesPendentes(), 'órfã');
+    assert.equal(rpcsDe(id), 1, 'a fala adotada chega ao banco nesta mesma passada (adoção antes da leitura)');
+    assert.deepEqual({ ...resumo }, { restantes: 0 }, 'e a passada termina sem restante');
+    assert.equal(arquivosOrfas.size, 0, 'o áudio e o .json saem de voz-orfa/ depois da adoção');
+    assert.deepEqual((await fila.listarVozesPendentes()).filter((i) => i.requestId === id), [], 'e a fala não fica na fila');
+    ok('órfã do widget: adotada antes da leitura, sobe na mesma passada, uma vez');
   });
 
   for (const etapa of ['chaves', 'leitura-operacao']) {

@@ -221,43 +221,56 @@ function carregar(arquivo, dubles = {}, globais = {}) {
   }
   passou('dono ausente/ilegível/diferente preserva original sem adoção; data ruim com dono fica aproximada');
 
-  const tarefa = fs.readFileSync(path.join(root, 'lib/widget-voz-task.ts'), 'utf8');
-  const retomada = tarefa.slice(tarefa.indexOf('async function retomarFilaDeFalas'));
-  assert.ok(retomada.indexOf('await adotarVozesOrfas(userId)') > 0
-    && retomada.indexOf('await adotarVozesOrfas(userId)') < retomada.indexOf('listarVozesPendentes()).filter'),
-    'a retomada da fila adota as falas guardadas antes de ler a fila');
-  passou('a retomada da fila (ao abrir o app) adota antes de processar');
+  /* "A retomada da fila adota antes de ler" era conferida aqui pelo TEXTO de
+     lib/widget-voz-task.ts, e quebrou quando o item 30 (d7dbe603) passou a
+     envolver cada etapa num prazo, sem mudar a ordem. Agora é EXECUTADA, com
+     os módulos reais da tarefa, da fila e das operações, em
+     __tests__/voz-dreno-etapa-retida.cjs ("órfã do widget sobe na MESMA
+     passada"): a fala adotada precisa chegar ao banco na própria passada. */
 
-  // Kotlin: persiste antes da ponte; a recusa preserva o watchdog e o áudio.
-  const entrega = kt.slice(kt.indexOf('private fun encerrarEEntregar'), kt.indexOf('private fun interromperPorSilenciamento'));
-  assert.ok(entrega.indexOf('guardarParaOApp(destino, id, dono, inicio, dataDaFala)') < entrega.indexOf('startService(ponte)'));
-  assert.ok(entrega.indexOf('startService(ponte)') < entrega.indexOf('finalizar(null)'));
-  const ramo = entrega.slice(entrega.indexOf('catch (erro: Exception)'), entrega.indexOf('} else {'));
-  assert.doesNotMatch(ramo, /destino\.delete\(\)/, 'o áudio válido não é mais apagado');
+  // Guardas de fonte; a execução está na suíte nativa de CaptureService.
+  const trecho = (fonte, inicio, fim) => {
+    const a = fonte.indexOf(inicio);
+    const b = fonte.indexOf(fim, a + inicio.length);
+    assert.ok(a >= 0 && b > a, 'trecho ausente: ' + inicio + ' → ' + fim);
+    return fonte.slice(a, b);
+  };
+  const antes = (fonte, primeiro, segundo, mensagem) => {
+    const a = fonte.indexOf(primeiro);
+    assert.ok(a >= 0 && fonte.indexOf(segundo, a + primeiro.length) > a, mensagem);
+  };
+  const entrega = trecho(kt.replace(/\r\n/g, '\n'), 'private fun encerrarEEntregar', 'private fun interromperPorSilenciamento');
+  antes(entrega, 'persistida = guardarParaOApp(destino, id, dono, inicio, dataDaFala)',
+    'if (persistida && File(File(filesDir, PASTA_ORFA), "$id.m4a").isFile)',
+    'só uma publicação com áudio presente permite começar a entrega');
+  antes(entrega, 'if (persistida && File(File(filesDir, PASTA_ORFA), "$id.m4a").isFile)',
+    'startService(ponte)', 'journal e áudio publicados antes da ponte');
+  antes(entrega, 'startService(ponte)', 'finalizar(null)', 'só finaliza com sucesso depois da ponte');
+  const ramo = trecho(entrega, 'catch (erro: Exception) {\n            android.util.Log.w("GranaVoz", "ponte imediata recusada', '} else {');
+  assert.doesNotMatch(ramo, /\bdelete\(|limparArquivos\(/, 'o áudio válido permanece recuperável');
   assert.match(ramo, /publicarRecibo\(R\.string\.grana_voice_guardada_titulo, R\.string\.grana_voice_guardada_texto\)/);
   assert.match(ramo, /finalizar\(EstadoWidget\.PENDENTE\)/);
   assert.match(ramo, /VoiceRetryScheduler\.agendar\(this, id, dono, 0, origem\.geracao\)/);
-  const agenda = kt.indexOf('check(VoiceRetryScheduler.agendar(this, novoRequestId, dono, 150_000, origem.geracao))');
-  const abrirGravador = kt.indexOf('if (VoiceRetryScheduler.atual(this, origem)) iniciarGravador(destino, novoRequestId)');
-  assert.ok(agenda >= 0 && abrirGravador > agenda, 'agenda durável e mesma geração precedem abertura do microfone');
-  const guardar = kt.slice(kt.indexOf('private fun guardarParaOApp'), kt.indexOf('private fun publicarRecibo'));
+  antes(kt, 'check(VoiceRetryScheduler.agendar(this, novoRequestId, dono, 150_000, origem.geracao))',
+    'if (VoiceRetryScheduler.atual(this, origem)) iniciarGravador(destino, novoRequestId)',
+    'agenda durável e mesma geração precedem abertura do microfone');
+  const guardar = trecho(kt, 'private fun guardarParaOApp', 'private fun gravarMetadados');
   assert.match(guardar, /File\(filesDir, PASTA_ORFA\)/);
   assert.match(guardar, /"\$id\.m4a"/, 'o nome do arquivo é o requestId');
-  passou('Kotlin: journal antes da ponte imediata; recusa preserva áudio/watchdog, avisa e mantém pendente');
+  passou('Kotlin: journal e áudio antes da ponte; recusa preserva áudio/watchdog, avisa e mantém pendente');
 
-  /* Data na voz (F1): conferência de FONTE do Kotlin, não execução. O que o
-     JavaScript faz com o .json e com os extras está executado acima e em
-     voz-data-paridade.cjs; a escrita real no aparelho depende do APK (QA do
-     Vigil/Sentinel), e não está validada por este teste. */
   assert.match(kt, /capturadoEm = System\.currentTimeMillis\(\)\s*\n\s*dataCaptura = SimpleDateFormat\("yyyy-MM-dd", Locale\.US\)\.format\(Date\(capturadoEm\)\)/,
     'o início da captura é anotado junto com o requestId');
-  assert.ok(guardar.indexOf('gravarMetadados(id, userId, inicio, dataDaFala, true)') < guardar.indexOf('"$id.m4a"'), 'o journal final é escrito antes de mover o áudio');
-  assert.match(guardar, /saida\.fd\.sync\(\)/);
-  const ponte = kt.slice(kt.indexOf('val ponte = Intent'), kt.indexOf('startService(ponte)'));
+  antes(guardar, 'if (!gravarMetadados(id, userId, inicio, dataDaFala, true, intencao)) return false',
+    'arquivoGravado.renameTo(alvo)', 'publicação do JSON final precede a movimentação do áudio');
+  const journal = trecho(kt, 'private fun gravarMetadados', 'private fun publicarRecibo');
+  antes(journal, 'saida.fd.sync()', 'temporario.renameTo(File(pasta, "$id.json"))', 'o JSON temporário é sincronizado antes da troca');
+  const ponte = trecho(entrega, 'val ponte = Intent', 'startService(ponte)');
   assert.match(ponte, /putExtra\("capturadoEm", inicio\.toDouble\(\)\)/);
   assert.match(ponte, /putExtra\("dataCaptura", dataDaFala\)/);
   assert.match(ponte, /putExtra\("userId", dono\)/);
-  passou('Kotlin (fonte; a execução depende do APK): captura anotada no início, extras na ponte e .json antes do áudio');
+  passou('Kotlin (fonte): captura anotada no início, extras na ponte e JSON sincronizado antes do áudio');
+
 
   console.log(`\n${ok}/${ok} checagens de paridade dos recibos de voz passaram\n`);
 })().catch((e) => { console.error(e); process.exit(1); });
