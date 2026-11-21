@@ -133,6 +133,25 @@ function registrarFalha(etapa: string) {
   console.error(`[bloqueio] ${etapa}`);
 }
 
+/* Desfechos que são escolha da pessoa ou interrupção do sistema, não falha
+   (regra 9; o autor viu a tela vermelha do console ao trocar para o widget de
+   voz, 21/11/2026). Lido no expo-local-authentication 57.0.2 instalado:
+   - Android (LocalAuthenticationModule.kt:307): ERROR_CANCELED, que o sistema
+     manda quando o app sai da frente, vira 'user_cancel', junto com o botão
+     Cancelar; 'app_cancel' (:205) é uma confirmação anterior ainda aberta.
+   - iOS (LocalAuthenticationModule.swift:136-144): 'system_cancel' (app em
+     segundo plano), 'app_cancel', 'user_cancel' e 'user_fallback'.
+   O resto ('not_enrolled', 'not_available', 'lockout', 'passcode_not_set',
+   'no_space', 'timeout', 'unable_to_process', 'authentication_failed',
+   'invalid_context', 'unknown') continua como falha, com console.error. Nos
+   dois casos a tela de bloqueio mostra o mesmo recibo de antes. */
+const INTERRUPCOES = new Set<string>(['user_cancel', 'system_cancel', 'app_cancel', 'user_fallback']);
+
+function registrarDesfecho(erro: string | undefined) {
+  if (erro && INTERRUPCOES.has(erro)) console.warn(`[bloqueio] confirmação interrompida (${erro})`);
+  else registrarFalha(`confirmação não foi concluída (${erro ?? 'sem código'})`);
+}
+
 type AppLockValue = {
   /** Se a trava está ligada nas preferências. */
   ativo: boolean;
@@ -318,7 +337,7 @@ export function AppLockProvider({ children }: PropsWithChildren) {
         if (tentativa.current !== operacao) return;
         if (resultado.success) operacao.terminar(true);
         else {
-          registrarFalha('confirmação não foi concluída');
+          registrarDesfecho(resultado.error);
           operacao.terminar(false, 'A confirmação não foi concluída. Toque em Desbloquear para tentar de novo.');
           if (resultado.error === 'app_cancel' || resultado.error === 'invalid_context') {
             void cancelarNativo(operacao.nativa).catch(() => {

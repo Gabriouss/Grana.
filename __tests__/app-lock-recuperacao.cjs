@@ -14,7 +14,7 @@ process.on('unhandledRejection', e => rejeicoes.push(e));
 const flush = async () => { for (let i = 0; i < 16; i++) await Promise.resolve(); };
 function ambiente(opcoes = {}) {
   let agora = 1000, proximo = 1, atual;
-  const timers = new Map(), listeners = new Set(), logs = [], chamadas = [];
+  const timers = new Map(), listeners = new Set(), logs = [], chamadas = [], erros = [], avisos = [];
   let nativo = null;
   const relogio = {
     setTimeout(fn, ms) { const id = proximo++; timers.set(id, { fn, em: agora + ms }); return id; },
@@ -64,7 +64,7 @@ function ambiente(opcoes = {}) {
     vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(raiz,rel),'utf8'),{
       compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX},
     }).outputText,{exports,require:id=>{assert.ok(id in imports,`import inesperado ${id}`);return imports[id]},
-      console:{error:(...v)=>logs.push(v),warn:(...v)=>logs.push(v)},Date:class extends Date {static now(){return agora;}},
+      console:{error:(...v)=>{logs.push(v);erros.push(v.join(" "))},warn:(...v)=>{logs.push(v);avisos.push(v.join(" "))}},Date:class extends Date {static now(){return agora;}},
       setTimeout:relogio.setTimeout,clearTimeout:relogio.clearTimeout}, {filename:rel});
     return exports;
   }
@@ -89,7 +89,7 @@ function ambiente(opcoes = {}) {
   const gate=carregar('components/AppLockGate.tsx',{'@/lib/app-lock-context':{useAppLock:valor},'@expo/vector-icons/Ionicons':'Icon','@/lib/theme':tema,'./AppPressable':'Botao','./BrandLogotype':'Marca'});
   const modal=carregar('components/AppModal.tsx',{'@/lib/app-lock-context':{useAppLock:valor},'@/lib/motion':{useReducedMotion:()=>false},'@/lib/breakpoints':{useSheetFlutuante:()=>({})},'@/lib/janelas-abertas':registro,
     'react-native-safe-area-context':{SafeAreaProvider:'SafeArea',useSafeAreaInsets:()=>({top:0,bottom:0,left:0,right:0})}});
-  return {valor,provider,gate,modal,registro,montar,relogio,chamadas,logs,
+  return {valor,provider,gate,modal,registro,montar,relogio,chamadas,logs,erros,avisos,
     async pronto(){await flush();valor();},
     async estado(s){AppState.currentState=s;for(const f of [...listeners])f(s);await flush();valor();},
     concluir(r){const resolve=nativo;nativo=null;resolve?.(r);},
@@ -189,6 +189,26 @@ async function caso(nome,fn){try{await fn();total++;console.log('OK '+nome);}cat
     await a.valor().desbloquear();assert.equal(a.valor().bloqueado,true);assert.ok(a.valor().erro);
     if (testarInterface) { const g=a.montar(a.gate.default,{children:'financeiro'}).render();assert.ok(nos(g,n=>n.props.accessibilityRole==='alert').length); }
   });
+  /* 21/11/2026: o autor viu a tela vermelha do console ao trocar para o widget
+     de voz. Cancelar, sair do app ou outra confirmação aberta é interrupção:
+     aviso, nunca console.error. Falha real continua erro. Recibo igual. */
+  for (const codigo of ['user_cancel','system_cancel','app_cancel','user_fallback']) {
+    await caso('interrupção '+codigo+' não chama console.error e mantém o recibo',async()=>{
+      const a=ambiente({autenticar:async()=>({success:false,error:codigo})});await a.pronto();
+      await a.valor().desbloquear();assert.equal(a.valor().bloqueado,true);
+      assert.match(a.valor().erro??'',/não foi concluída/);
+      assert.deepEqual(a.erros,[],'console.error em '+codigo);
+      assert.ok(a.avisos.some(x=>x.includes(codigo)),'aviso sem o código');
+    });
+  }
+  for (const codigo of ['lockout','not_enrolled','not_available','authentication_failed','unknown',undefined]) {
+    await caso('falha real '+codigo+' continua em console.error com recibo',async()=>{
+      const a=ambiente({autenticar:async()=>({success:false,error:codigo})});await a.pronto();
+      await a.valor().desbloquear();assert.equal(a.valor().bloqueado,true);
+      assert.match(a.valor().erro??'',/não foi concluída/);
+      assert.ok(a.erros.some(x=>x.includes('não foi concluída')),'falha real sem console.error');
+    });
+  }
   await caso('rejeição biométrica não escapa e libera tentativa',async()=>{
     const a=ambiente({autenticar:async()=>{throw Error('Activity perdida')}});await a.pronto();
     assert.equal(await a.valor().desbloquear(),false);assert.ok(a.valor().erro);assert.equal(a.valor().autenticando,false);

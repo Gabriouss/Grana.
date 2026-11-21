@@ -47,7 +47,7 @@ function ambiente(){
     const parsed=ts.transpileModule(fs.readFileSync(file,'utf8'),{reportDiagnostics:true,compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}});
     assert.equal((parsed.diagnostics||[]).filter(x=>x.category===ts.DiagnosticCategory.Error).length,0);
     vm.runInNewContext(parsed.outputText,{exports,require:n=>{assert.ok(n in imports,'import nao previsto '+n);return imports[n];},
-      console:{error:(...a)=>logs.push(a)},Date:class extends Date{static now(){return agora;}},setTimeout:tempo.setTimeout,clearTimeout:tempo.clearTimeout},{filename:rel});return exports;
+      console:{error:(...a)=>logs.push(a),warn:(...a)=>logs.push(a)},Date:class extends Date{static now(){return agora;}},setTimeout:tempo.setTimeout,clearTimeout:tempo.clearTimeout},{filename:rel});return exports;
   }
   function montar(fn){const c={i:0,slots:[],effects:[]};return {render(){atual=c;c.i=0;c.effects=[];const tree=fn({children:'financeiro'});c.effects.forEach(f=>f());return tree;},desmontar(){c.slots.forEach(s=>s?.limpar?.());}};}
   const mod=carregar('lib/app-lock-context.tsx');let provider=montar(mod.AppLockProvider);provider.render();
