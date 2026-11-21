@@ -219,3 +219,4 @@ node __tests__/graficos-estilo-linha.cjs
 node __tests__/inicio-sem-selo-oculto.cjs
 node __tests__/desafios-mural-fonte-grande.cjs
 node __tests__/rodar-test-ci.cjs
+node __tests__/lembrete-habito-dias-invalidados.cjs

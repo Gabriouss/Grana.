@@ -1241,10 +1241,20 @@ export function limparDiasComRegistro(): void {
   geracaoDias++;
   diasDeMesFechado.clear();
 }
-async function conferirDonoDosDias(userId: string, geracao: number): Promise<void> {
-  if (await idDoUsuarioLocal() !== userId || geracao !== geracaoDias) {
-    throw new Error('A consulta de dias foi invalidada. A conta mudou ou os registros foram atualizados.');
+/** Resposta de dias descartada em voo. `conta`: a sessão mudou, e quem vale é a
+    carga da conta nova. `registros`: um dado mudou no meio (gravação, fila
+    offline, sinal dos widgets), e repetir a consulta já lê o estado novo. */
+export class ConsultaDeDiasInvalidada extends Error {
+  readonly motivo: 'conta' | 'registros';
+  constructor(motivo: 'conta' | 'registros') {
+    super('A consulta de dias foi invalidada. A conta mudou ou os registros foram atualizados.');
+    this.name = 'ConsultaDeDiasInvalidada';
+    this.motivo = motivo;
   }
+}
+async function conferirDonoDosDias(userId: string, geracao: number): Promise<void> {
+  if (await idDoUsuarioLocal() !== userId) throw new ConsultaDeDiasInvalidada('conta');
+  if (geracao !== geracaoDias) throw new ConsultaDeDiasInvalidada('registros');
 }
 // O sinal cobre gravação, edição, exclusão e voz; a versão cobre a fila offline.
 // A inscrição fica na primeira consulta para evitar ciclos de import.

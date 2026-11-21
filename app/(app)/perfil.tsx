@@ -59,6 +59,7 @@ import {
 import { todayISO } from '@/lib/format';
 import { lembretesDeFatura } from '@/lib/creditoFaturas';
 import { contextoDoLembrete } from '@/lib/contexto-lembrete';
+import { diasParaOLembrete } from '@/lib/lembrete-habito-dias';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import { carregarPerfil, nomeDeExibicao, removerFoto, salvarFoto, salvarNome, LIMITE_NOME, type Perfil } from '@/lib/profile';
 import { carregarDiagnostico, diagnosticoDosMetadados, type DiagnosticoCarregado } from '@/lib/diagnostico';
@@ -317,7 +318,9 @@ export default function PerfilScreen() {
           : 'fallback-local';
         if (resultado === 'fallback-local' && novasPrefs.lembreteDiarioAtivo) {
           const transacoes = await fetchTransactions({ sinceDays: 35 });
-          await scheduleDailyHabitReminder({ ...novasPrefs.horario, ...contextoDoLembrete(transacoes, new Date(), await fetchDiasDeAtividade()), almocoAtivo: novasPrefs.almocoAtivo });
+          // Descarte em voo (conta ou dado mudou) não é falha de rede; a próxima carga da Início reagenda.
+          const dias = await diasParaOLembrete(fetchDiasDeAtividade);
+          if (dias) await scheduleDailyHabitReminder({ ...novasPrefs.horario, ...contextoDoLembrete(transacoes, new Date(), dias), almocoAtivo: novasPrefs.almocoAtivo });
         }
       } catch {
         Alert.alert(

@@ -87,6 +87,7 @@ import FotoNotaModal from '@/components/FotoNotaModal';
 import MonthlyWrappedModal from '@/components/MonthlyWrappedModal';
 import { carregarNotifPrefs, scheduleDailyHabitReminder, cancelDailyHabitReminder } from '@/lib/notifications';
 import { contextoDoLembrete } from '@/lib/contexto-lembrete';
+import { diasParaOLembrete } from '@/lib/lembrete-habito-dias';
 import {
   gerarMonthlyWrapped,
   marcarWrappedVisto,
@@ -496,7 +497,10 @@ export default function InicioScreen() {
           cancelDailyHabitReminder().catch(() => {});
           return;
         }
-        await scheduleDailyHabitReminder({ ...prefs.horario, ...contextoDoLembrete(tx, new Date(), await fetchDiasDeAtividade()), almocoAtivo: prefs.almocoAtivo });
+        // Consulta descartada em voo não é falha: ver lib/lembrete-habito-dias.ts.
+        const dias = await diasParaOLembrete(fetchDiasDeAtividade, vigente);
+        if (!dias) return;
+        await scheduleDailyHabitReminder({ ...prefs.horario, ...contextoDoLembrete(tx, new Date(), dias), almocoAtivo: prefs.almocoAtivo });
       }).catch(erro => console.error('[inicio] lembrete de hábito falhou', erro));
 
       let cofrinhosConferidos = false;
