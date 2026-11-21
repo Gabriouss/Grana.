@@ -20679,3 +20679,11 @@ HEAD `2267fcb8` (`teste/leitura-avisos`), árvore limpa, logs em `E:/Grana-tempo
 4. **Encaminhamento.** Anvil corrige só os dublês em `__tests__/`, carregando o `lib/cliente-sessao-local.ts` real com dublês dos imports dele, RED/GREEN sem afrouxar asserção, commit próprio dos caminhos de teste. Ordem: `00-ORDEM-Anvil-gate-dubles-2026-11-21.md`.
 5. **Ponto para a revisão final (Anvil, item 50).** Falha ao abrir a revisão a partir da notificação de voz deixa só log, sem recibo visível ao usuário (regra 9). Avaliar na revisão única se pede notificação ou tela. Fonte: `relatorio-Anvil-item50-2026-11-21.md`, ponto em aberto.
 6. **Sem verificação.** Testes do `test:ci` posteriores ao `fetch-com-prazo.cjs`, aparelho. Fonte: `relatorio-Anvil-gate-final-2026-11-21.md`.
+
+### 21/11 manhã — gate final r2: dublês do item 18 corrigidos, test:ci para em sair-da-conta
+
+1. **Dublês.** Commit local `99142b29` (`test(ci): inclui o cliente da sessao local nos dubles do supabase (item 18)`), pai `2267fcb8`, só `__tests__/fetch-com-prazo.cjs`: o teste carrega o `lib/cliente-sessao-local.ts` real e passa ao controle o mesmo global `crypto` que já dava ao `supabase.ts` (falha da mesma classe, `crypto is not defined` em `controle-sessao-local.ts:64`). Dos testes citados, só esse executa `lib/supabase.ts`. RED no `2267fcb8` exit 1 (`Import não simulado ... ./cliente-sessao-local`); GREEN exit 0, 37 checagens OK. Logs em `Anvil-gate-final/`.
+2. **Nova falha, test:ci r3 exit 1.** `__tests__/sair-da-conta.cjs:152` espera a sessão viva durante o `signOut` pendente; `lib/auth-context.tsx:414-415`, desde o item 18 (`7d45f4b6`), zera a sessão no início. Isolado, o teste repete a falha; `providers-isolamento.cjs` isolado dá exit 0.
+3. **Conflito de contrato, sem decisão.** Limpar a sessão na hora (o teste muda) ou manter até o fim da saída (o `auth-context` regrediu) é decisão de produto e de segurança da saída. Anvil faz só diagnóstico, pela ordem `00-ORDEM-Anvil-sair-da-conta-2026-11-21.md`.
+4. **Descartado.** Afrouxar ou trocar a asserção da linha 152.
+5. **Sem verificação.** tsc e test:parser não refeitos no `99142b29` (mudança só em `__tests__/`); testes do test:ci depois de `sair-da-conta.cjs`; aparelho. Fonte: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Anvil-gate-final-r2-2026-11-21.md`.
