@@ -106,12 +106,17 @@ function LineAreaChart({
             ) : null}
           </View>
           {modo === 'ambos' ? (
-            <PrivacyValue>
-              <View style={styles.selectedValores}>
+            /* Um PrivacyValue por <Text>: com valores ocultos ele troca os
+               children do filho único pela máscara, e uma <View> no lugar do
+               <Text> ficaria com texto solto (achado 53-A, 21/11/2026). */
+            <View style={styles.selectedValores}>
+              <PrivacyValue>
                 <Text style={[styles.selectedTotal, { color: theme.up }]}>+ R$ {formatMoney(selectedCol.entradas ?? 0)}</Text>
+              </PrivacyValue>
+              <PrivacyValue>
                 <Text style={[styles.selectedTotal, { color: theme.down }]}>− R$ {formatMoney(selectedCol.saidas ?? 0)}</Text>
-              </View>
-            </PrivacyValue>
+              </PrivacyValue>
+            </View>
           ) : (
             <PrivacyValue>
               <Text style={[styles.selectedTotal, { color: corDaSerie }]}>R$ {formatMoney(selectedCol.total)}</Text>
