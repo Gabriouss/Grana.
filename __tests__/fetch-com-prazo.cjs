@@ -144,7 +144,16 @@ async function principal() {
   const disco = new Map();
   const cofre = new Map();
   const vigiaMod = carregar('lib/vigia-acesso.ts', {});
+  /* Desde o item 18 (7d45f4b6) o lib/supabase.ts monta o cliente pela fábrica
+     da sessão local. Entram os módulos REAIS (regra 9); os três só têm import
+     de tipo fora de si, então não pedem dublê. O controle gera o id da
+     geração com `crypto`, o mesmo global que o supabase.ts já recebe. */
+  const clienteSessaoMod = carregar('lib/cliente-sessao-local.ts', {
+    './alerta': carregar('lib/alerta.ts', {}),
+    './controle-sessao-local': carregar('lib/controle-sessao-local.ts', {}, { crypto: globalThis.crypto }),
+  });
   const sb = carregar('lib/supabase.ts', {
+    './cliente-sessao-local': clienteSessaoMod,
     'react-native-get-random-values': {},
     'aes-js': require('aes-js'),
     '@react-native-async-storage/async-storage': {
