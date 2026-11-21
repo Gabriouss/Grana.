@@ -20731,3 +20731,5 @@ Revisão só de leitura sobre a rodada no clone (HEAD `8b74dd3a`). Pontos obriga
 ### 21/11 manhã — coalescência do item 34 no test:ci, clone liberado aos prints
 
 Commit local `106d59af` (`test(ci): inclui widgets-home-sync-coalescencia no test:ci (L1, item 34)`), pai `f0958a6c`, só a linha `test:ci` do `package.json`. Conferido nesta escrita: commit no clone e árvore limpa. Informado pelo Supremo, sem relatório próprio desta etapa: o focal dá 23/23 e o `test:ci` inteiro, pela string exata do `package.json` via `.sh`, sai com exit 0. Clone liberado; Vigil faz os prints de 51, 52 e 53 no HEAD `106d59af` (`00-ORDEM-Vigil-prints-51-52-53-2026-11-21.md`). Nada verificado no aparelho.
+
+**Adendo 21/11, recibo do `106d59af`.** Os números deixam de ser só informados: `Anvil-L1-L2/L5-coalescencia.log` termina em "widgets-home-sync-coalescencia: 23 verificações ok" e `Anvil-L1-L2/L5-test-ci.log` em "test:ci exit=0", com `categorias-seletor-cedo` (10) e a coalescência (23) no fim da cadeia.
