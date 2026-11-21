@@ -109,6 +109,13 @@ function montar(props) {
   await falha.botao('Confirmar').props.onPress();
   const alerta = achar(falha.render(), (x) => x.props.accessibilityRole === 'alert')[0];
   ok(alerta && /Não consegui salvar/.test(texto(alerta)), 'falha ao salvar deixa recibo visível');
+  /* T4 (21/11/2026): RPC ausente no servidor (PGRST202) diz isso, sem culpar a conexão. */
+  const semRpc = Object.assign(new Error('O servidor ainda não está pronto para guardar a sobra. Tente de novo mais tarde.'), { name: 'SobraServidorDesatualizado' });
+  const desatualizado = montar({ pode: true, sugestao: 0, onConfirmar: async () => { throw semRpc; }, onAgoraNao: () => {} });
+  await desatualizado.botao('Confirmar').props.onPress();
+  const alertaServidor = achar(desatualizado.render(), (x) => x.props.accessibilityRole === 'alert')[0];
+  ok(alertaServidor && /servidor ainda não está pronto/.test(texto(alertaServidor)) && !/conexão/.test(texto(alertaServidor)),
+    'servidor sem a RPC: recibo próprio, visível, sem culpar a conexão');
   console.error = erroOriginal;
 
   /* Janela flutuante: abre com a Início em foco e sem outra janela, nunca por

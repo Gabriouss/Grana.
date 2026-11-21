@@ -78,7 +78,11 @@ export default function PerguntaSobraDoMes({
       await onConfirmar(numero);
     } catch (e) {
       console.error('[inicio] confirmar sobra falhou', e);
-      setErro('Não consegui salvar. Confira a conexão e tente de novo.');
+      /* Servidor ainda sem a sobra como lançamento: o recibo diz isso, em vez
+         de culpar a conexão (lib/sobra-do-mes.ts, SobraServidorDesatualizado). */
+      setErro(e instanceof Error && e.name === 'SobraServidorDesatualizado'
+        ? e.message
+        : 'Não consegui salvar. Confira a conexão e tente de novo.');
     } finally {
       setSalvando(false);
     }
