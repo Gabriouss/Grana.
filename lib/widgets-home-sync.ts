@@ -53,7 +53,10 @@ export function sincronizarWidgetsHome(userId: string, privacyHidden: boolean): 
   if (voo && voo.userId === userId && voo.geracao === geracao) {
     const atual = voo;
     atual.hidden = privacyHidden;
-    return (atual.seguinte ??= atual.promessa.then(() => sincronizarWidgetsHome(userId, atual.hidden)));
+    /* L1 (21/11): a limpeza da saída pode chegar antes da repetição; aí ela
+       desiste em vez de readotar a conta que saiu. */
+    return (atual.seguinte ??= atual.promessa.then(() =>
+      geracao === atual.geracao && usuarioAtual === userId ? sincronizarWidgetsHome(userId, atual.hidden) : false));
   }
   const geracaoDestaBusca = geracao;
   const numeroDestaBusca = ++numeroDaBusca;

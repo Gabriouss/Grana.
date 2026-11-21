@@ -119,6 +119,30 @@ function montar() {
     m.responder(m.lotes[2], 'de-novo'); await nova;
   }
 
+  // 5. L1 (revisão do Lynx, 21/11): evento em voo vira a repetição encadeada; a
+  //    limpeza da saída chega antes dela. A repetição NÃO pode readotar a conta
+  //    que saiu: zero dono, privacidade, busca ou snapshot depois da limpeza.
+  {
+    const m = montar();
+    m.instalados.livre = 1;
+    const primeira = m.api.sincronizarWidgetsHome('usuario-a', false); await tick();
+    const repeticao = m.api.sincronizarWidgetsHome('usuario-a', false); await tick();
+    check(m.lotes.length === 1, 'evento em voo fica como repetição');
+    m.api.limparSnapshotWidgets();
+    const depoisDaLimpeza = m.ponte.length;
+    m.responder(m.lotes[0], 'tardio'); await tick();
+    check(await primeira === false, 'busca em voo da conta que saiu não publica');
+    // Chamadas conferidas ANTES de esperar a repetição: no defeito ela abre uma busca nova que nunca volta.
+    const vazou = m.ponte.slice(depoisDaLimpeza);
+    check(vazou.length === 0, `nada chega à ponte depois da limpeza (${JSON.stringify(vazou)})`);
+    check(m.lotes.length === 1, `nenhuma busca nova para a conta que saiu (${m.lotes.length} lotes)`);
+    check(await repeticao === false, 'repetição encadeada desiste depois da limpeza');
+    // A conta seguinte continua sincronizando normalmente.
+    const deB = m.api.sincronizarWidgetsHome('usuario-b', false); await tick();
+    m.responder(m.lotes[1], 'de-b');
+    check(await deB === true && m.publicados().at(-1).userId === 'usuario-b', 'conta seguinte publica o próprio dado');
+  }
+
   concluido = true;
   console.log(`widgets-home-sync-coalescencia: ${checks} verificações ok`);
 })().catch((e) => { console.error(e); process.exit(1); });
