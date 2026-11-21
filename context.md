@@ -20660,3 +20660,9 @@ Clone `teste/leitura-avisos` em `dc890e43`, árvore limpa, nada publicado. Fecha
 4. **Fontes.** `relatorio-Sentinel-tsc.md` e `relatorio-Anvil-tsc-2026-11-21.md`, na pasta `E:/Grana-temporarios/2026-11-20-retomada`. O sha256 do relatório do Sentinel informado ao registro (`08a1864d…`) não confere com o arquivo atual, que dá `7836b896d4f3260b…` nesta escrita; o arquivo pode ter sido alterado depois do hash informado. Divergência aberta para o Supremo.
 5. **Decisão.** A base do clone fica mantida; `origin/main` não entra na branch de teste.
 6. **Pendente e sem verificação.** Item 50, gate final no HEAD (`tsc`, `test:parser`, `test:ci`), revisão única, prints dos itens 51, 52 e 53, e QA no aparelho. Nada publicado.
+
+### 21/11 manhã — item 50 integrado no clone (Anvil, toque na notificação de voz)
+
+Cada toque na notificação de voz passa a ser tratado uma vez só. Commit local `2267fcb8` (`fix(voz): trata cada toque na notificacao de voz uma vez so (item 50)`) no clone `teste/leitura-avisos`, pai `43855298`, só `components/RespostaVozWidget.tsx` e `__tests__/voz-resposta-notificacao-uma-vez.cjs` (novo). Freeze refixado de `40d11e86` para `43855298`, original guardado em `Anvil-item50/freeze-item50.base-40d11e86.json.bak`.
+
+Verificação do Anvil: baseline exit 1 causal (6 falhas por duplicidade, controle corpo + Desfazer passou); candidate exit 0; compatibilidade 4/4 exit 0 (voz-recibos-bandeja, voz-recibos-paridade, janela-unica-paridade, paridade-entrada-cartao-granabo-voz); `tsc --noEmit` exit 0. Não verificado: QA no aparelho. Anvil segue no gate final. Fonte: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Anvil-item50-2026-11-21.md`. Pendentes do lote: gate final, revisão única, prints 51/52/53, QA no aparelho.
