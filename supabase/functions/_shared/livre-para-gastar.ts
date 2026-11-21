@@ -9,7 +9,10 @@ export type ContextoLivre = {
   payments?: Array<{ card_id: string; year: number; month: number; amount: number | string; paid_on?: string }>;
   /** Sobra do mês anterior CONFIRMADA pela pessoa para o mês de `hojeISO`
    *  (tabela `sobra_do_mes`). Ausente = zero: nunca se libera valor que a
-   *  pessoa não confirmou (autor, 07/11/2026). */
+   *  pessoa não confirmou (autor, 07/11/2026). Desde 21/11/2026 a sobra
+   *  confirmada vira lançamento de entrada no dia 1 e já conta pelos
+   *  lançamentos: aqui entra só a sobra LEGADA, linha de cliente antigo ainda
+   *  não convertida (`valor` > 0 e `convertida` falso). Nunca as duas. */
   sobraConfirmada?: number | string | null;
 };
 

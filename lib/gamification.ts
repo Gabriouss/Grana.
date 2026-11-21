@@ -7,6 +7,7 @@ import { algumMesCompleto, diasComRegistro } from './desafios-calendario';
 export { diasComRegistro };
 import type { Bill, Budget, Transaction } from './types';
 import type { GamificationHistoricalSummary } from './data';
+import { ehLancamentoDeSobra } from './sobra-lancamento';
 
 export type MasteryLevel = {
   level: number;
@@ -357,11 +358,14 @@ export function evaluateBadges(
   dias?: ReadonlySet<string>,
   agora: Date = new Date()
 ): Badge[] {
-  const totalTxCount = historical?.transaction_count ?? transactions.length;
-  const inTxCount = historical?.income_count ?? transactions.filter((t) => t.type === 'in').length;
+  /* Sobra do mês anterior fica fora das conquistas (P4, 21/11/2026), como no
+     resumo do servidor (get_gamification_summary). */
+  const semSobra = transactions.filter((t) => !ehLancamentoDeSobra(t));
+  const totalTxCount = historical?.transaction_count ?? semSobra.length;
+  const inTxCount = historical?.income_count ?? semSobra.filter((t) => t.type === 'in').length;
   const outTxCount = historical?.expense_count ?? transactions.filter((t) => t.type === 'out').length;
   const paidBillsCount = historical?.paid_bill_count ?? bills.filter((b) => b.status === 'paid').length;
-  const incomeTotal = historical?.income_total ?? transactions.filter((t) => t.type === 'in').reduce((s, t) => s + Number(t.amount), 0);
+  const incomeTotal = historical?.income_total ?? semSobra.filter((t) => t.type === 'in').reduce((s, t) => s + Number(t.amount), 0);
   const expenseCategoryCount = historical?.expense_category_count
     ?? new Set(transactions.filter((t) => t.type === 'out').map((t) => t.category)).size;
   const hasBudgets = budgets.length >= 3;

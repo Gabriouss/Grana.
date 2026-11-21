@@ -223,3 +223,4 @@ node __tests__/lembrete-habito-dias-invalidados.cjs
 node __tests__/religar-lembretes-contas.cjs
 node __tests__/emulador-pacote-instalado.cjs
 node __tests__/sobra-lancamento-servidor.cjs
+node __tests__/sobra-lancamento-cliente.cjs

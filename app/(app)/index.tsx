@@ -47,7 +47,7 @@ import { confirmarExclusaoDeLancamento, conferirContaPaga } from '@/lib/excluir-
 import { carregarLayoutHomeEmEtapas, layoutPadrao, salvarLayoutHome, type HomeBlockConfig } from '@/lib/home-layout';
 import { createGoal, deleteGoal, depositToGoal, fetchGamification, fetchGoals, updateGoal } from '@/lib/goals';
 import { calcularSafeToSpend, projetarComprometimentoFuturo, sugerirEvolucaoArquetipo } from '@/lib/projections';
-import { carteiraPrincipalDaSobra, carteiraRecebeSobra, sobraParaOLivre } from '@/lib/sobra-do-mes';
+import { carteiraPrincipalDaSobra, carteiraRecebeSobra, sobraLancadaNoMes, sobraParaOLivre } from '@/lib/sobra-do-mes';
 import { useSobraDoMes } from '@/lib/use-sobra-do-mes';
 import { sugerirSobraDoMesAnterior } from '@/lib/safe-to-spend';
 import { notificarDadosDosWidgetsAlterados } from '@/lib/widgets-home-events';
@@ -266,8 +266,13 @@ export default function InicioScreen() {
   const userId = session?.user.id;
   const inicioEmFoco = useIsFocused();
   const avisosNaFrente = useAvisosNaFrente();
+  /* `load` nasce abaixo; a sobra chama a versão atual depois de lançar. */
+  const loadRef = useRef<(() => Promise<void>) | null>(null);
   const { hoje: hojeDaSobra, sobraDoMes, sobraAdiada, carregando: carregandoSobra, erro: erroSobra,
-    adiar: adiarSobra, confirmar: confirmarSobra, recarregar: recarregarSobra } = useSobraDoMes(userId, !isDemoMode);
+    adiar: adiarSobra, confirmar: confirmarSobra, recarregar: recarregarSobra } = useSobraDoMes(userId, !isDemoMode, {
+      // A sobra virou lançamento: a lista e o Livre precisam dele (carga completa).
+      aoLancar: () => { void loadRef.current?.(); },
+    });
   useEffect(() => {
     if (!userId) {
       onboardingDismissedForUser.current = null;
@@ -554,6 +559,7 @@ export default function InicioScreen() {
       }
     }
   }, [isDemoMode]);
+  loadRef.current = load;
 
   /* Atalhos por deep link (grana://add-tx, safe-to-spend). O
      roteamento acontece em app/(app)/_layout.tsx, que empurra a ação para cá
@@ -725,10 +731,14 @@ export default function InicioScreen() {
   /* "Saldo atual" e "Livre para gastar" só do mês vigente, sem saldo
      inicial e sem boleto pendente (regra 20 do AGENTS.md). O recorte do mês é
      feito dentro de `calcularSafeToSpend`, a mesma função dos widgets. */
-  const safeToSpend = useMemo(
-    () => calcularSafeToSpend(lancamentosDaCarteira(transactions, creditCards, activeWalletId, carteiraPrincipalId), walletGoals, new Date(`${hojeDaSobra}T12:00:00`), { cards: creditCards, payments: invoicePayments ?? [], sobraConfirmada: sobraParaOLivre(sobraDoMes, userId, hojeDaSobra.slice(0, 7), activeWalletId, carteiraPrincipalId) }),
-    [transactions, creditCards, activeWalletId, walletGoals, invoicePayments, sobraDoMes, userId, hojeDaSobra, carteiraPrincipalId]
-  );
+  /* A sobra lançada já está em `transactions`; por fora entra só a legada
+     (linha de cliente antigo ainda não convertida). A linha "Inclui sobra" do
+     card soma as duas para mostrar quanto do saldo veio do mês passado. */
+  const safeToSpend = useMemo(() => {
+    const r = calcularSafeToSpend(lancamentosDaCarteira(transactions, creditCards, activeWalletId, carteiraPrincipalId), walletGoals, new Date(`${hojeDaSobra}T12:00:00`), { cards: creditCards, payments: invoicePayments ?? [], sobraConfirmada: sobraParaOLivre(sobraDoMes, userId, hojeDaSobra.slice(0, 7), activeWalletId, carteiraPrincipalId) });
+    const lancada = sobraLancadaNoMes(sobraDoMes, lancamentosDaCarteira(transactions, creditCards, activeWalletId, carteiraPrincipalId), userId, hojeDaSobra.slice(0, 7));
+    return lancada > 0 ? { ...r, sobraConfirmada: Math.round((r.sobraConfirmada + lancada) * 100) / 100 } : r;
+  }, [transactions, creditCards, activeWalletId, walletGoals, invoicePayments, sobraDoMes, userId, hojeDaSobra, carteiraPrincipalId]);
   // O núcleo resolve séries e ciclos com o histórico completo antes de filtrar a carteira.
   const comprometimentoFuturo = useMemo(
     () => invoicePayments === null ? [] : projetarComprometimentoFuturo(transactions, bills, 6, new Date(), {

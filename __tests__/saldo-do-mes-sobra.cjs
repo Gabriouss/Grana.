@@ -173,7 +173,9 @@ async function main() {
   igual(c(comCache.monthBalance), 26476, 'sem rede com cache: Saldo do mês igual ao online');
   igual(comCache.situacao, 'inclui', 'sem rede com cache: linha "Inclui sobra"');
   // 7b. Mesmo disco e mesma falha de rede, pelo caminho REAL da Início: o Livre segue indisponível.
-  igual(inic.chamadaDoHook?.length, 2, 'Início chama o hook sem usarCacheOffline');
+  /* 21/11/2026: a Início passa `aoLancar` (recarrega a lista quando a sobra vira
+     lançamento); o que importa aqui continua sendo NÃO pedir o cache offline. */
+  igual(!inic.chamadaDoHook?.[2] || !/usarCacheOffline/.test(inic.chamadaDoHook[2]), true, 'Início chama o hook sem usarCacheOffline');
   assert.ok(lanc.chamadaDoHook?.some((a) => /usarCacheOffline:\s*true/.test(a)), 'Lançamentos pede a sobra guardada'); checks++;
   const inicioOffline = await abrirHook(inic.chamadaDoHook[2] ? eval(`(${inic.chamadaDoHook[2]})`) : {});
   igual(inicioOffline.erro, true, 'Início offline com sobra guardada: erro, como hoje');
@@ -189,6 +191,12 @@ async function main() {
   cenario.disco = new Map([['grana:cache:tela:sobra-do-mes', JSON.stringify({ userId: 'u', guardadoEm: '2026-10-20T00:00:00Z',
     dados: { ...confirmada, mes: '2026-10' } })]]);
   igual((await abrirHook()).erro, true, 'cache de outubro não vale em novembro');
+  /* T7 (21/11/2026): a chave v1 guardava `valor X` do modelo antigo. Sem rede,
+     ela somaria X por fora além do lançamento; a chave v2 a ignora. */
+  cenario.disco = new Map([['grana:cache:tela:sobra-do-mes', JSON.stringify({ userId: 'u', guardadoEm: '2026-11-19T00:00:00Z', dados: confirmada })]]);
+  const soV1 = await abrirHook();
+  igual(soV1.erro, true, 'T7 cache v1 (modelo antigo) é ignorado sem rede');
+  igual(lancamentos('total', doHook(soV1)).situacao, 'sem-conexao', 'T7 cache v1 não soma a sobra por fora');
   cenario.disco = new Map([['grana:cache:tela:sobra-do-mes', JSON.stringify({ userId: 'u', guardadoEm: '2026-11-19T00:00:00Z', dados: confirmada })]]);
   cenario.resposta = async () => ({ data: null, error: { code: '42501', message: 'permission denied for table sobra_do_mes' } });
   const permanente = await abrirHook();

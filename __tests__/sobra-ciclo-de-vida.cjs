@@ -44,16 +44,22 @@ module.exports = async function testarCicloDaSobra() {
       if (foco) ctx.efeitos.push(() => { slot.limpar = fn(); });
     }
   }
-  const supabase = { from(tabela) {
+  /* 21/11/2026: confirmar chama a RPC confirmar_sobra_do_mes (a sobra vira
+     lançamento). O upsert antigo fica dublado só para provar que ninguém o chama. */
+  const upserts = []; let txSeq = 0;
+  const supabase = {
+    rpc(nome, args) {
+      return new Promise(resolve => {
+        const fim = () => resolve({ data: { estado: 'convertida', mes: args.p_mes, transaction_id: args.p_valor === null || args.p_valor > 0 ? 'tx-' + (++txSeq) : null }, error: null });
+        escritas.push({ nome, args, usuario, resolve: fim }); if (!gravarLento) fim();
+      });
+    },
+    from(tabela) {
     const filtro = {};
     const q = {
       select() { return q; }, eq(k, v) { filtro[k] = v; return q; },
       maybeSingle() { return new Promise(resolve => consultas.push({ tabela, filtro, resolve })); },
-      upsert(linha) {
-        return new Promise(resolve => {
-          escritas.push({ linha, resolve }); if (!gravarLento) resolve({ error: null });
-        });
-      },
+      upsert(linha) { upserts.push(linha); return Promise.resolve({ error: null }); },
     }; return q;
   } };
   const stubs = {
@@ -85,16 +91,16 @@ module.exports = async function testarCicloDaSobra() {
   }
   const hook = real('lib/use-sobra-do-mes.ts').useSobraDoMes;
   const servico = real('lib/sobra-do-mes.ts');
-  const ctx = { slots: [], cursor: 0, efeitos: [] }; let resultado;
+  const ctx = { slots: [], cursor: 0, efeitos: [] }; let resultado; let opcoesHook;
   function render() {
     corrente = ctx; ctx.cursor = 0;
-    resultado = hook(usuario, true); ctx.efeitos.splice(0).forEach(fn => fn()); return resultado;
+    resultado = hook(usuario, true, opcoesHook); ctx.efeitos.splice(0).forEach(fn => fn()); return resultado;
   }
   const tick = () => new Promise(resolve => setImmediate(resolve));
   async function consultar(valor = null) {
     await tick(); const q = consultas.shift(); assert.ok(q, 'consulta real aconteceu');
     assert.equal(q.filtro.user_id, usuario); assert.equal(q.filtro.mes, instante.slice(0, 7));
-    q.resolve({ data: valor === null ? null : { valor }, error: null }); await tick(); return render();
+    q.resolve({ data: valor === null ? null : typeof valor === 'object' ? valor : { valor }, error: null }); await tick(); return render();
   }
   const valor = () => servico.sobraParaOLivre(resultado.sobraDoMes, usuario, resultado.hoje.slice(0, 7));
   const retomar = () => eventos.forEach(fn => fn('active'));
@@ -130,10 +136,15 @@ module.exports = async function testarCicloDaSobra() {
   adiarCapturado(); anteriorAoToque.resolve({ data: null, error: null }); await tick(); render();
   assert.equal(resultado.sobraAdiada, true);
 
-  // Confirmação corrente realmente escreve no dono/mês certos.
-  await resultado.confirmar(80); render(); assert.equal(valor(), 80);
-  assert.equal(escritas.at(-1).linha.user_id, 'B'); assert.equal(escritas.at(-1).linha.mes, '2026-11');
-  retomar(); await consultar(80); assert.equal(valor(), 80);
+  // Confirmação corrente chama a RPC uma vez, no dono/mês certos, e a sobra vira lançamento.
+  await resultado.confirmar(80); render();
+  assert.equal(escritas.length, 1, 'uma chamada à RPC');
+  assert.equal(escritas.at(-1).nome, 'confirmar_sobra_do_mes'); assert.equal(escritas.at(-1).usuario, 'B');
+  assert.equal(escritas.at(-1).args.p_mes, '2026-11'); assert.equal(escritas.at(-1).args.p_valor, 80);
+  assert.equal(valor(), 0, 'confirmada vira lançamento: nada entra por fora');
+  assert.equal(resultado.sobraDoMes.transactionId, 'tx-1'); assert.equal(resultado.sobraDoMes.convertida, true);
+  retomar(); await consultar({ valor: 0, convertida: true, transaction_id: 'tx-1' }); assert.equal(valor(), 0);
+  assert.equal(resultado.sobraDoMes.estado, 'confirmada', 'linha respondida: a pergunta não volta');
   retomar(); await tick(); const leituraNovembro = consultas.shift();
   instante = '2026-12-01T00:00:01-03:00'; render();
   assert.equal(valor(), 0, 'novembro nunca financia dezembro, mesmo antes da releitura');
@@ -154,7 +165,7 @@ module.exports = async function testarCicloDaSobra() {
   // Uma gravação já enviada pode terminar, mas nunca publicar estado na nova conta/mês.
   gravarLento = true; const lenta = resultado.confirmar(50); const rejeitada = assert.rejects(lenta, /conta ou o mês mudou/);
   await tick(); usuario = 'D'; render(); await consultar();
-  escritas.at(-1).resolve({ error: null }); await rejeitada; render();
+  escritas.at(-1).resolve(); await rejeitada; render();
   assert.equal(valor(), 0); assert.equal(resultado.sobraDoMes.userId, 'D');
 
   // Limpeza de foco invalida leituras que terminam depois de sair da tela.
@@ -176,6 +187,25 @@ module.exports = async function testarCicloDaSobra() {
   qB.resolve({ data: null, error: null }); assert.equal(await widgetB, true);
   qA.resolve({ data: { valor: 900 }, error: null }); assert.equal(await widgetA, false);
   assert.equal(snapshots.at(-1).userId, 'B'); assert.equal(snapshots.length, 2);
+  assert.equal(upserts.length, 0, 'nenhum upsert antigo em sobra_do_mes');
+
+  // T3 (21/11/2026): linha legada gravada por cliente antigo depois da migration.
+  // O hook converte uma vez, avisa quem tem a lista e não entra em laço.
+  let lancou = 0; opcoesHook = { aoLancar: () => { lancou++; } }; gravarLento = false;
+  usuario = 'E'; instante = '2026-11-10T12:00:00-03:00'; foco = true; render();
+  const antesDaConversao = escritas.length;
+  await consultar({ valor: 50, convertida: false, transaction_id: null });
+  assert.equal(valor(), 50, 'legada conta X uma vez pela via antiga até converter');
+  await tick(); await tick();
+  assert.equal(escritas.length, antesDaConversao + 1, 'legada: uma chamada de conversão');
+  assert.equal(escritas.at(-1).nome, 'confirmar_sobra_do_mes'); assert.equal(escritas.at(-1).args.p_valor, null);
+  assert.equal(lancou, 1, 'conversão avisa quem tem a lista de lançamentos');
+  render(); await consultar({ valor: 0, convertida: true, transaction_id: 'tx-c' });
+  assert.equal(valor(), 0, 'depois de converter: nada por fora');
+  retomar(); await consultar({ valor: 50, convertida: false, transaction_id: null }); await tick(); await tick();
+  assert.equal(escritas.length, antesDaConversao + 1, 'sem laço: não tenta de novo na mesma montagem');
+  assert.equal(upserts.length, 0, 'conversão também sem upsert antigo');
+  desfocar();
   console.log('sobra-ciclo-de-vida: módulos reais, dia/foco/foreground, novembro-dezembro, usuário, leituras/escritas atrasadas e widget ok');
   } finally {
     clearTimeout(watchdog);

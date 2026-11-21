@@ -4,6 +4,7 @@ import { creditoSemCartao, isCreditTx } from './transaction-rules';
 import { isoLocal } from './format';
 import { cicloDoLancamento, lancamentosDaCarteira } from './creditoFaturas';
 import { dataVencimentoFatura } from './faturaCiclo';
+import { ehLancamentoDeSobra } from './sobra-lancamento';
 
 export { calcularSafeToSpend, calcularSaldoAtual } from './safe-to-spend';
 export type { SafeToSpend } from './safe-to-spend';
@@ -183,7 +184,8 @@ export function sugerirEvolucaoArquetipo(
       const d = new Date(t.occurred_on + 'T00:00:00');
       return d.getFullYear() === ano && d.getMonth() === mes;
     });
-    const totalIn = doMes.filter((t) => t.type === 'in').reduce((s, t) => s + Number(t.amount), 0);
+    // Sobra do mês anterior não é renda (P4, 21/11/2026): fora da média de receitas.
+    const totalIn = doMes.filter((t) => t.type === 'in' && !ehLancamentoDeSobra(t)).reduce((s, t) => s + Number(t.amount), 0);
     const totalOut = doMes.filter((t) => t.type === 'out').reduce((s, t) => s + Number(t.amount), 0);
     return { totalIn, totalOut };
   });
