@@ -44,6 +44,21 @@ async function referenciaDaFalaGuardada(requestId: string): Promise<ReferenciaDa
   }
 }
 
+/* Consumo idempotente por sessão (item 50, achado S10 do Sentinel). O getter
+   da última resposta e o listener vivo podem entregar o MESMO toque, e uma
+   remontagem relê o getter: sem chave de consumo, a revisão abria duas vezes e
+   o Desfazer rodava duas vezes. A chave é a notificação mais a ação, então o
+   corpo e o "Desfazer" do mesmo recibo continuam sendo toques distintos. Fica
+   no módulo para sobreviver à remontagem; entre aberturas do app, quem impede
+   a releitura é `clearLastNotificationResponse`. */
+const respostasConsumidas = new Set<string>();
+function consumirResposta(resposta: NotificationsModule.NotificationResponse): boolean {
+  const chave = `${resposta.notification.request.identifier}|${resposta.actionIdentifier}`;
+  if (respostasConsumidas.has(chave)) return false;
+  respostasConsumidas.add(chave);
+  return true;
+}
+
 export default function RespostaVozWidget() {
   const router = useRouter();
 
@@ -250,14 +265,26 @@ export default function RespostaVozWidget() {
     /* Duas fontes, e as duas importam: `getLastNotificationResponseAsync`
        cobre o app ABERTO PELA notificação (o listener não existia na hora do
        toque), e o listener cobre o app já rodando. */
+    /* Consome antes de qualquer espera, para as duas fontes não passarem
+       juntas; a falha do tratador (abrir a revisão, desfazer) deixa log em vez
+       de virar rejeição sem dono. */
+    const tratarUmaVez = (resposta: NotificationsModule.NotificationResponse) => {
+      if (!consumirResposta(resposta)) return;
+      try {
+        Notifications.clearLastNotificationResponse();
+      } catch (erro) {
+        console.warn('[voz] última resposta da notificação não foi limpa', erro);
+      }
+      tratar(resposta).catch((erro) => console.error('[voz] toque na notificação não foi tratado', erro));
+    };
     let vivo = true;
     Notifications.getLastNotificationResponseAsync()
       .then((resposta) => {
-        if (vivo && resposta) tratar(resposta);
+        if (vivo && resposta) tratarUmaVez(resposta);
       })
-      .catch(() => {});
+      .catch((erro) => console.error('[voz] última resposta da notificação não foi lida', erro));
 
-    const inscricao = Notifications.addNotificationResponseReceivedListener(tratar);
+    const inscricao = Notifications.addNotificationResponseReceivedListener(tratarUmaVez);
     return () => {
       vivo = false;
       inscricao.remove();
