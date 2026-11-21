@@ -1,52 +1,39 @@
 import { memo, useState } from 'react';
-import { ActivityIndicator, LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
-import { theme, radius, spacing, type, fonts, graficoLinha } from '@/lib/theme';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { theme, radius, spacing, type, fonts } from '@/lib/theme';
 import { formatMoney } from '@/lib/format';
-import AppPressable from './AppPressable';
 import PrivacyValue from './PrivacyValue';
 import { usePrivacy } from '@/lib/privacy-context';
 import type { BarColumn } from './StackedBarChart';
-import { visibleChartLabels } from '@/lib/chart-labels';
+import { serieEntradas, serieSaidas, useLinhaFluxo, type SerieLinha } from './LinhaFluxo';
 
-/* Rótulo compacto do eixo Y ("R$ 3 mil" em vez de "R$ 3.000,00") — o valor
-   cheio já aparece no cabeçalho de seleção e nas fatias abaixo; aqui, ao
-   lado de 4-5 linhas-guia, o formato completo brigaria por espaço com o
-   próprio desenho. */
-function formatEixo(n: number): string {
-  if (n === 0) return 'R$ 0';
-  if (n >= 1000) {
-    const mil = n / 1000;
-    return `R$ ${(mil % 1 === 0 ? mil.toFixed(0) : mil.toFixed(1)).replace('.', ',')} mil`;
-  }
-  return `R$ ${Math.round(n)}`;
-}
+/** Coluna da tela Gráficos. `entradas` e `saidas` separam o total quando a
+    aba mostra as duas linhas (Geral). */
+export type LinhaColumn = BarColumn & { entradas?: number; saidas?: number };
 
-/* Passo "redondo" pra cima (1/2/5 × potência de 10) — sem isso as linhas-guia
-   caem em valores como "R$ 1.847" em vez de "R$ 2 mil". */
-function passoRedondo(maxValor: number, divisoes: number): number {
-  if (maxValor <= 0) return 1;
-  const bruto = maxValor / divisoes;
-  const pot = Math.pow(10, Math.floor(Math.log10(bruto)));
-  const norm = bruto / pot;
-  const passo = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
-  return passo * pot;
-}
+/** O que a aba desenha: só saídas (Despesas), só entradas (Renda) ou as duas
+    linhas, como o "Ambos" da Início (Geral, decisão do autor de 20/11/2026). */
+export type ModoLinha = 'saidas' | 'entradas' | 'ambos';
 
+/* Desenho idêntico ao gráfico da Início (item 53): o mesmo `useLinhaFluxo`
+   de `LinhaFluxo.tsx`, com as mesmas cores por sentido. Entradas em
+   `theme.up`, contínua, com degradê; saídas em `theme.down`, tracejada. Esta
+   tela continua dona das colunas, do cabeçalho do ponto tocado e da
+   composição por categoria logo abaixo. */
 function LineAreaChart({
   columns,
+  modo = 'saidas',
   height = 240,
   width,
   carregando = false,
   erro = null,
 }: {
-  columns: BarColumn[];
+  columns: LinhaColumn[];
+  modo?: ModoLinha;
   height?: number;
-  /** Largura já calculada pela tela (mesmo padrão do `size` do PieChart).
-      Quando informada, pula a medição por `onLayout` — que, dentro do
-      ScrollView largo da versão web, fica presa na primeira medição
-      (estreita) e nunca acompanha o card real, deixando o gráfico "colado"
-      à esquerda de um card muito mais largo. */
+  /** Largura já calculada pela tela. Quando informada, pula a medição por
+      `onLayout`, que dentro do ScrollView largo da versão web fica presa na
+      primeira medição (estreita) e deixa o gráfico colado à esquerda. */
   width?: number;
   /** A tela ainda está buscando os lançamentos. Sem isto, `columns` vazio
       durante a carga desenhava "Sem dados suficientes para o período", uma
@@ -56,18 +43,39 @@ function LineAreaChart({
       por falta de lançamento, e o texto precisa dizer qual dos dois é. */
   erro?: string | null;
 }) {
-  const [medida, setMedida] = useState(320);
   const { hidden } = usePrivacy();
-  const containerWidth = width ?? medida;
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(
-    columns.length > 0 ? columns.length - 1 : null
-  );
+  const [selecionado, setSelecionado] = useState<number>(columns.length > 0 ? columns.length - 1 : 0);
 
-  function handleLayout(e: LayoutChangeEvent) {
-    if (width !== undefined) return;
-    const w = e.nativeEvent.layout.width;
-    if (w > 0) setMedida(w);
-  }
+  const entradas = columns.map((c) => (modo === 'ambos' ? c.entradas ?? 0 : c.total));
+  const saidas = columns.map((c) => (modo === 'ambos' ? c.saidas ?? 0 : c.total));
+  const series: SerieLinha[] =
+    modo === 'ambos'
+      ? [serieEntradas(entradas), serieSaidas(saidas)]
+      : modo === 'entradas'
+      ? [serieEntradas(entradas)]
+      : [serieSaidas(saidas)];
+  const corDaSerie = modo === 'entradas' ? theme.up : theme.down;
+
+  /* Chamado antes do retorno de vazio: a ordem dos hooks não pode depender
+     de haver coluna. */
+  const desenho = useLinhaFluxo({
+    series,
+    selecionado,
+    onSelecionar: setSelecionado,
+    rotuloInicio: columns[0]?.label ?? '',
+    rotuloFim: columns[columns.length - 1]?.label ?? '',
+    rotuloToque: (i) => {
+      const c = columns[i];
+      if (hidden) return `${c?.label ?? ''}: ${modo === 'ambos' ? 'valores ocultos' : 'valor oculto'}`;
+      return modo === 'ambos'
+        ? `${c?.label ?? ''}: entradas R$ ${formatMoney(c?.entradas ?? 0)}, saídas R$ ${formatMoney(c?.saidas ?? 0)}`
+        : `${c?.label ?? ''}: R$ ${formatMoney(c?.total ?? 0)}`;
+    },
+    assinatura: JSON.stringify([modo, columns.map((c) => [c.label, c.total, c.entradas, c.saidas])]),
+    idDegrade: 'graficosAreaFill',
+    largura: width,
+    altura: height,
+  });
 
   if (!columns || columns.length === 0) {
     /* Mesmo contêiner e mesma altura nos três casos, para o conteúdo abaixo
@@ -85,64 +93,10 @@ function LineAreaChart({
     );
   }
 
-  /* A33: com tudo zerado, teto 1 gerava linhas 0, 0, 1, 1, 1 depois do
-     arredondamento. Um eixo de 0 a 4 mantém cinco rótulos distintos sem
-     inventar movimentação nos pontos, que continuam todos no zero. */
-  const maiorTotal = Math.max(...columns.map((c) => c.total), 0);
-  const maxTotalBruto = maiorTotal === 0 ? 4 : maiorTotal;
-  const passo = passoRedondo(maxTotalBruto, 4);
-  const maxEixo = Math.max(Math.ceil(maxTotalBruto / passo) * passo, passo);
-  const gridLines = [0, 1, 2, 3, 4].map((i) => (maxEixo / 4) * i);
-
-  /* O último rótulo do eixo X ("Ago/26" etc.) é centralizado (textAnchor
-     "middle") sobre o último ponto, que fica exatamente na borda direita do
-     desenho — metade do texto sempre cairia fora do Svg sem essa folga. */
-  const padRight = 26;
-  /* 112px reserva espaço pro rótulo mais largo do eixo Y, tipo "R$ 11,5 mil"
-     (~80px em Neue Machina 13px), MAIS uma folga visível até o início do
-     desenho — com 88px o texto encostava quase direto na linha/grade,
-     sem respiro nenhum entre o número e o gráfico.
-     No modo privacidade não há rótulo de eixo Y nenhum pra caber ali: manter
-     os 112px deixava um vão morto ocupando quase um terço da largura num
-     celular, com a curva espremida à direita. Mas não cai a zero — o PRIMEIRO
-     rótulo do eixo X também é centralizado sobre o primeiro ponto, então
-     precisa da mesma folga que `padRight` reserva pro último; com 4px ele
-     saía cortado ("i/26" em vez de "Mai/26"). */
-  const padLeft = hidden ? padRight : 112;
-  const padTop = 16;
-  const padBottom = 34;
-  const plotWidth = Math.max(containerWidth - padLeft - padRight, 40);
-  const plotHeight = Math.max(height - padTop - padBottom, 40);
-
-  const pontos = columns.map((col, i) => {
-    const x = columns.length === 1
-      ? padLeft + plotWidth / 2
-      : padLeft + (plotWidth * i) / (columns.length - 1);
-    const y = padTop + plotHeight - (col.total / maxEixo) * plotHeight;
-    return { x, y, col };
-  });
-
-  /* Linha reta entre os baldes — a curva monótona anterior nunca "estourava"
-     acima dos pontos vizinhos, mas ainda interpolava um crescimento gradual
-     ao longo do segmento inteiro entre um balde zerado e um balde com
-     valor. Com a maioria dos meses tendo só 1 balde real (o dia do salário)
-     cercado de zeros, isso desenhava uma "colina" suave que nenhum
-     lançamento sustentava. Reta mostra o degrau como ele é — e mantém este
-     gráfico igual ao de FlowChart.tsx (Início), que passou pela mesma troca
-     pelo mesmo motivo. */
-  function caminhoReto(pts: typeof pontos): string {
-    if (pts.length === 0) return '';
-    return pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
-  }
-
-  const linhaPath = caminhoReto(pontos);
-  const baseY = padTop + plotHeight;
-  const areaPath = `${linhaPath} L${pontos[pontos.length - 1].x},${baseY} L${pontos[0].x},${baseY} Z`;
-
-  const selectedCol = selectedIndex !== null ? columns[selectedIndex] : null;
+  const selectedCol = columns[Math.min(selecionado, columns.length - 1)];
 
   return (
-    <View style={styles.container} onLayout={handleLayout}>
+    <View style={styles.container}>
       {selectedCol && (
         <View style={styles.selectionHeader}>
           <View>
@@ -151,124 +105,22 @@ function LineAreaChart({
               <Text style={styles.selectedSublabel}>{selectedCol.sublabel}</Text>
             ) : null}
           </View>
-          <PrivacyValue>
-            <Text style={styles.selectedTotal}>R$ {formatMoney(selectedCol.total)}</Text>
-          </PrivacyValue>
+          {modo === 'ambos' ? (
+            <PrivacyValue>
+              <View style={styles.selectedValores}>
+                <Text style={[styles.selectedTotal, { color: theme.up }]}>+ R$ {formatMoney(selectedCol.entradas ?? 0)}</Text>
+                <Text style={[styles.selectedTotal, { color: theme.down }]}>− R$ {formatMoney(selectedCol.saidas ?? 0)}</Text>
+              </View>
+            </PrivacyValue>
+          ) : (
+            <PrivacyValue>
+              <Text style={[styles.selectedTotal, { color: corDaSerie }]}>R$ {formatMoney(selectedCol.total)}</Text>
+            </PrivacyValue>
+          )}
         </View>
       )}
 
-      <View style={{ height, width: '100%' }}>
-        <Svg width={containerWidth} height={height}>
-          <Defs>
-            <LinearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={theme.accent2} stopOpacity={graficoLinha.opacidadeTopoDegrade} />
-              <Stop offset="1" stopColor={theme.accent2} stopOpacity={0} />
-            </LinearGradient>
-          </Defs>
-
-          {gridLines.map((val, i) => {
-            const y = padTop + plotHeight - (val / maxEixo) * plotHeight;
-            return (
-              <G key={`grid-${i}`}>
-                <Line
-                  x1={padLeft}
-                  y1={y}
-                  x2={containerWidth - padRight}
-                  y2={y}
-                  stroke={theme.rule}
-                  strokeWidth={1}
-                  opacity={graficoLinha.opacidadeGrade}
-                />
-                {/* Ancorado no início (não no fim) e todos na mesma
-                    coordenada x: rótulos com "end" ficavam com a borda
-                    esquerda em zigue-zague, cada um numa posição diferente
-                    conforme o comprimento do próprio texto — pedido
-                    explícito pra alinhar à esquerda, igual ao cabeçalho de
-                    seleção acima. */}
-                {/* Some no modo privacidade junto com os valores: uma escala
-                    que vai até R$ 8 mil entrega quase tanto quanto o número
-                    escondido. Mesma regra do eixo de FlowChart. */}
-                <SvgText
-                  x={0}
-                  y={y + 3}
-                  fill={theme.inkFaint}
-                  fontSize={type.legenda}
-                  fontFamily={fonts.light}
-                  textAnchor="start"
-                >
-                  {hidden ? '' : formatEixo(val)}
-                </SvgText>
-              </G>
-            );
-          })}
-
-          <Path d={areaPath} fill="url(#areaFill)" />
-          <Path d={linhaPath} stroke={theme.accent2} strokeWidth={graficoLinha.espessura} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-
-          {/* Marcador cheio, como o da Início: o tocado cresce, os outros
-              ficam um pouco apagados. */}
-          {pontos.map(({ x, y }, i) => {
-            const isSelected = selectedIndex === i;
-            return (
-              <Circle
-                key={`pt-${i}`}
-                cx={x}
-                cy={y}
-                r={isSelected ? graficoLinha.raioPontoSelecionado : graficoLinha.raioPonto}
-                fill={theme.accent2}
-                opacity={isSelected ? 1 : graficoLinha.opacidadePonto}
-              />
-            );
-          })}
-
-          {visibleChartLabels(columns.length, plotWidth, Math.max(64, ...columns.map(c => c.label.length * type.legenda * 0.65 + 12))).map((i) => (
-            <SvgText
-              key={`label-${i}`}
-              x={pontos[i].x}
-              y={height - 10}
-              fill={selectedIndex === i ? theme.accent2 : theme.inkFaint}
-              fontSize={type.legenda}
-              fontFamily={selectedIndex === i ? fonts.regular : fonts.light}
-              textAnchor="middle"
-            >
-              {columns[i].label}
-            </SvgText>
-          ))}
-        </Svg>
-
-        {/* Áreas de toque — uma faixa vertical por ponto, com o limite entre
-            duas faixas exatamente no meio dos dois pontos vizinhos (não uma
-            divisão igual do card em N fatias). Os pontos NÃO são espaçados
-            uniformemente pela largura toda: `padLeft` reserva espaço à
-            esquerda pro rótulo do eixo Y, então uma divisão igual jogava o
-            centro de cada faixa fora do ponto real — tocar bem em cima de
-            um ponto selecionava o vizinho. */}
-        <View style={StyleSheet.absoluteFill}>
-          {pontos.map((p, idx) => {
-            const anterior = pontos[idx - 1];
-            const proximo = pontos[idx + 1];
-            const inicio = anterior ? (anterior.x + p.x) / 2 : 0;
-            const fim = proximo ? (p.x + proximo.x) / 2 : containerWidth;
-            return (
-              <AppPressable
-                key={`touch-${idx}`}
-                style={{ position: 'absolute', left: inicio, width: fim - inicio, top: 0, bottom: 0 }}
-                onPress={() => setSelectedIndex(idx)}
-                /* Faixa de toque vazia por cima do SVG: sem rótulo o leitor
-                   de tela anuncia só "botão" uma vez por coluna. Ver a mesma
-                   correção em FlowChart. */
-                accessibilityRole="button"
-                accessibilityState={{ selected: selectedIndex === idx }}
-                accessibilityLabel={
-                  hidden
-                    ? `${columns[idx]?.label ?? ''}: valor oculto`
-                    : `${columns[idx]?.label ?? ''}: R$ ${formatMoney(columns[idx]?.total ?? 0)}`
-                }
-              />
-            );
-          })}
-        </View>
-      </View>
+      {desenho}
 
       {selectedCol && selectedCol.segments.length > 0 && (
         <View style={styles.breakdownList}>
@@ -324,8 +176,9 @@ const styles = StyleSheet.create({
   selectedSublabel: {
     color: theme.inkFaint,
     fontSize: type.nota, fontFamily: fonts.light },
+  selectedValores: { alignItems: 'flex-end' },
   selectedTotal: {
-    color: theme.accent2,
+    color: theme.down,
     fontSize: type.titulo, fontFamily: fonts.regular, fontVariant: ['tabular-nums'] },
   breakdownList: {
     gap: 6,

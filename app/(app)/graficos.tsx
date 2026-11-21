@@ -15,8 +15,7 @@ import ScreenHeader from '@/components/ScreenHeader';
 import FaixaOffline, { useRecarregarAoChegarDadoNovo } from '@/components/FaixaOffline';
 import HeaderAction from '@/components/HeaderAction';
 import AppPressable from '@/components/AppPressable';
-import { type BarColumn } from '@/components/StackedBarChart';
-import LineAreaChart from '@/components/LineAreaChart';
+import LineAreaChart, { type LinhaColumn } from '@/components/LineAreaChart';
 import PieChart, { type PieSlice } from '@/components/PieChart';
 import DatePickerModal from '@/components/DatePickerModal';
 import SegmentedTabs from '@/components/SegmentedTabs';
@@ -178,7 +177,7 @@ export default function GraficosScreen() {
   }, [transactions, activeWalletId, granularidade, periodoInicio, periodoFim]);
 
   // Agrupamento Ano a Ano ou Mês a Mês
-  const barColumns: BarColumn[] = useMemo(() => {
+  const barColumns: LinhaColumn[] = useMemo(() => {
     if (filteredTransactions.length === 0) return [];
 
     const targetType = tabModo === 'renda' ? 'in' : 'out';
@@ -252,11 +251,16 @@ export default function GraficosScreen() {
         .sort((a, b) => b.amount - a.amount);
 
       const total = segments.reduce((acc, s) => acc + s.amount, 0);
+      /* Na aba Geral o gráfico desenha as duas linhas, como o "Ambos" da
+         Início; o total continua sendo a soma, que o resumo abaixo usa. */
+      const soma = (tipo: 'in' | 'out') => txsMes.filter((t) => t.type === tipo).reduce((acc, t) => acc + Number(t.amount || 0), 0);
 
       return {
         label,
         sublabel: chave,
         total,
+        entradas: soma('in'),
+        saidas: soma('out'),
         segments,
       };
     });
@@ -379,6 +383,7 @@ export default function GraficosScreen() {
             categoria da coluna selecionada logo abaixo. */}
         <LineAreaChart
           columns={barColumns}
+          modo={tabModo === 'geral' ? 'ambos' : tabModo === 'renda' ? 'entradas' : 'saidas'}
           height={240}
           width={larguraGrafico}
           carregando={loading && transactions.length === 0}
