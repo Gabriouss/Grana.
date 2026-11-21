@@ -20789,3 +20789,20 @@ O autor abriu no celular o clone `9d5b69d4` pelo Expo Go (Metro LAN do Vigil, qu
   - O Keel trabalha só lendo o código e prepara o WIP fora do clone (`Keel-pendencias/wip`) até o Lumen liberar a janela.
 
 Nada feito ainda, nada verificado. Sem build, push ou Supabase.
+
+### 21/11 tarde — decisão do autor: sobra vira lançamento de verdade (muda a regra 20); commits visuais do Lumen
+
+**Decisão do autor**, vista no Expo Go e repassada pelo Supremo, sobre a linha "Inclui sobra de <mês>" no resumo de Lançamentos: "Horrível, tira isso daí e coloca como um lançamento na lista de lançamentos". Perguntado, ele escolheu **"Lançamento de verdade"**: a sobra confirmada vira receita gravada no banco, editável e apagável como qualquer outra. A linha "Inclui sobra" no Livre da Início fica. Com isso cai o "não vira receita, não aparece em lançamentos" da regra 20 e da `ordem-keel-livre.md`. A regra 20 do `AGENTS.md` ganhou esse adendo, com a implementação marcada como pendente.
+
+- **Nada implementado.** Pela `00-ORDEM-Meridian-plano-sobra-lancamento-2026-11-21.md`, o Meridian faz só o plano (`PLANO-sobra-lancamento-2026-11-21.md`), lendo o clone, sem commit e sem escrever no Supabase. O plano volta ao autor antes de qualquer código. **Risco central:** o app novo (clone de teste, Play) e o app antigo (`main`) usam o mesmo Supabase. Um lançamento de sobra gravado pelo novo aparece no antigo, que já soma a sobra à parte, e quem usa os dois veria a sobra contada duas vezes. O plano precisa responder como evitar isso e qual é o pior caso. Precisa também responder o que acontece com as sobras já confirmadas, com a pergunta do mês ao editar ou apagar, e com o Granabô no servidor.
+- **Em curso, sem commit:** o Lumen tira a linha do resumo de Lançamentos agora. Na leitura deste registro, o clone tinha `app/(app)/lancamentos.tsx` e `components/SafeToSpendCard.tsx` modificados e não commitados. Isso inclui o redesenho anterior da sobra, que não chegou a ser aprovado.
+
+**Commits do Lumen** (`relatorio-Lumen-pedidos-autor-2026-11-21.md`, sha256 `56ca2702…`), conferidos em cadeia sobre `9d5b69d4`, cada um com o próprio assunto (regra 14):
+1. **`84b8cee0`, selo "oculto" removido da Início.** Mudaram `app/(app)/index.tsx` e `components/ScreenHeader.tsx`; o selo "exemplo" do modo demo fica. Nenhuma outra tela tinha o selo. Trava nova `inicio-sem-selo-oculto.cjs` no `test:ci`, com RED no `9d5b69d4`. **Não existia registro do pedido anterior de remoção, e o selo estava lá desde o primeiro commit, também no `main`.** O `main` continua com o selo.
+2. **`b01ae29c`, viúvas 51-B e 51-C.** `\u00a0` antes da última palavra em `lib/lancamentos-vazio.ts` e em `components/SafeToSpendCard.tsx:48`, com o escape visível conferido por byte. Trava em `lancamentos-mes-vazio.cjs`. Descartado: `semViuva()` na renderização, que exigiria mexer em três dublês.
+3. **`23bc1e02`, Mural sem partir palavra em 1,3** (`components/BadgeCard.tsx`). O selo de estado passou a encolher até 0,55. O `semViuva` agora só entra em títulos de três palavras ou mais. Limite: um título de duas palavras pode ficar com uma palavra por linha. Teste novo `desafios-mural-fonte-grande.cjs`.
+4. **`a490fac5`, quadrado da legenda do 52.** Causa confirmada: recuo de 3,5 dp pelo anel de seleção. A borda virou a constante `BORDA_ANEL`, usada também no recuo da legenda, sem medida copiada.
+
+**Gate no `a490fac5`** (`Lumen-pedidos-autor/`): os logs agora gravam o exit. Conferido: tsc EXIT 0, test:parser EXIT 0 (83/83) e test:ci via `.sh` EXIT 0. O gate rodou com o redesenho da sobra ainda na árvore, registrado em `HEAD.txt`. Deram errado no caminho: o Edit e o Write gravaram o caractere invisível em vez do `\u00a0` três vezes, e o `tsc` rodou em paralelo com o `test:ci`, contra a ordem. Nada visto no emulador (por causa da RAM) nem no aparelho.
+
+**Keel:** o WIP das quatro pendências de lógica está pronto fora do clone (`Keel-pendencias/PLANO-DA-JANELA.md`, base `b01ae29c`, patches conferidos com `git apply --check`, ordem 4, 1, 2, 3). Ele espera a janela. Nada de build, push ou Supabase.
