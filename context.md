@@ -20627,3 +20627,27 @@ Commit `a6abe4a3` (`test(importacao): inclui lote parcial da importacao no test:
 4. **Outra falha achada na varredura, sem dono definido no momento.** `__tests__/voz-recibos-paridade.cjs`, que está no `package.json`, falha no HEAD por outra causa: a asserção de texto sobre `lib/widget-voz-task.ts` ("a retomada da fila adota as falas guardadas antes de ler a fila"). O 34 não toca esse arquivo. **Hipótese, não confirmada:** o último commit nesse arquivo é `d7dbe603` (item 30, Anvil). O Supremo pôs o Anvil para investigar antes do 50.
 5. **`test:ci`.** Commit `bd18ffbe` (`test(ci): inclui sobra no saldo do mes e gaveta lenta da sessao no test:ci (itens 51 e 54)`), só `package.json`, linha 74: entram `node __tests__/saldo-do-mes-sobra.cjs` e `node __tests__/sessao-gaveta-lenta.cjs` no fim. Montado pelo Meridian sobre a base `7389603d…`, conferida no HEAD antes de copiar; JSON válido.
 6. **Estado.** Clone limpo em `bd18ffbe`. Janela 7 com o Lumen (52); o freeze dele fixava `ea11c74f` e nenhum caminho vigiado foi tocado desde então. Fila do Supremo: Claude Code 53, Anvil com o `voz-recibos-paridade`, e por último Anvil 50.
+
+### 20/11 — item 52 integrado e passagem ao Codex
+
+O resumo de dias com registro aparecia solto acima da grade de Desafios. Agora funciona como legenda abaixo da grade, alinhada à esquerda, com amostra da casa preenchida oculta do leitor de tela. O cabeçalho compartilhado foi mantido para preservar espaço. Quill informa commit local `76102c867488220bdb84899eb5763fa36a8cd713` sobre `bd18ffbe`, só `components/DesafiosCalendario.tsx`.
+
+Focal externo `Lumen-item52/focal-52.cjs`: RED exit 1 causal, GREEN exit 0 (4 verificações), lote e vocabulário exit 0. Ponte 40/43 na rodada inicial. Dois testes Kotlin barrados pelo piso de RAM passaram isolados, fora do Job. A falha de `voz-recibos-paridade` antecede o item 52 e segue com Forge. Prints antes/depois, QA no aparelho e tsc aguardam verificação.
+
+Fontes na rodada `E:/Grana-temporarios/2026-11-20-retomada`: `relatorio-Lumen-item52.md` e `PASSAGEM-Quill-para-Codex-integrador.md`. Codex assume integração. Ledger assume os registros após o checkpoint documental `8f51b67c`.
+
+### 20/11 — item 53 integrado
+
+A tela Gráficos recebeu o estilo da linha do gráfico do Início. Commits locais `62b55938` (layout) e `e947ef8e` (testes), com árvore limpa conforme Codex. RED causal exit 1 (2/8), GREEN 8/8, compatP2 12/12 e guarda de design 2042/2042.
+
+O `tsc` terminou com exit 2 e 65 erros em `lib/`, fora dos caminhos alterados. A origem permanece sem comprovação na base. Validação visual pendente. Recibos: `E:/Grana-temporarios/2026-11-20-retomada/FIM-ClaudeCode-item53.md`.
+
+### 20/11 — provas de voz e paridade corrigidas pelo Forge
+
+Codex informa commit local `dc890e43`, clone limpo no fechamento. Só `__tests__/voz-recibos-paridade.cjs` e `__tests__/voz-dreno-etapa-retida.cjs`. A asserção textual antiga rejeitava o wrapper de etapa introduzido no item 30. A prova comportamental usa o dreno real para exigir que a fala adotada chegue à gravação exatamente uma vez na mesma passada. As guardas de fonte Kotlin foram atualizadas para o item 23.
+
+Janela 9 sobre `e947ef8e`: baseline e mutante exit 1 por causas esperadas, GREEN paridade 12/12 e dreno 6/6, cinco suítes de compatibilidade exit 0. O mutante reordenado fez zero gravações na primeira passada. QA físico e CI integral ficam fora desse resultado. Fonte: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Forge-voz-recibos-paridade.md`.
+
+### 20/11 noite — checkpoint do Orquestrador Supremo (Codex sem limite até 21/11 01:11)
+
+Clone `teste/leitura-avisos` em `dc890e43`, árvore limpa, nada publicado. Fechados à noite: 34, 36, 26 (prova integrada), 54, 51, regressão do 34, 52, 53 e voz-recibos-paridade. Falta: (1) `tsc` com 65 erros do cliente Supabase tipado `never` (hipótese: tipagem de `lib/cliente-sessao-local.ts`, item 18; correção do Sentinel NÃO verificada, retirada do clone com backup em `E:/Grana-temporarios/2026-11-20-retomada/Sentinel-tsc/retirada-supremo-2026-11-20/`); (2) item 50 do Anvil, pronto fora do clone; (3) gate final (`tsc`, `test:parser`, `test:ci`); (4) revisão final única; (5) prints de 51, 52 e 53; (6) QA no aparelho e build só com pedido do autor. Detalhe em `E:/Grana-temporarios/2026-11-20-retomada/00-CHECKPOINT-2026-11-20-noite.md`.
