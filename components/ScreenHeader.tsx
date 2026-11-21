@@ -23,7 +23,7 @@ export default function ScreenHeader({
 }: {
   left?: ReactNode;
   eyebrow?: string;
-  /** Selos curtos ("exemplo", "oculto") ao lado do eyebrow — ex.: modo demo na Início. */
+  /** Selos curtos (hoje só "exemplo") ao lado do eyebrow — ex.: modo demo na Início. */
   eyebrowBadges?: ReactNode;
   title: string;
   saudacaoCompacta?: boolean;

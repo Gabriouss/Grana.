@@ -1694,12 +1694,9 @@ export default function InicioScreen() {
           rolar junto com o conteúdo, para reforçar a identidade visual. */}
       <ScreenHeader
         eyebrow="Início"
-        eyebrowBadges={
-          <>
-            {isDemoMode && !MODO_TESTE && <Text style={styles.demoFlag}>exemplo</Text>}
-            {hidden && <Text style={styles.demoFlag}>oculto</Text>}
-          </>
-        }
+        /* Sem o selo "oculto" (autor, 21/11/2026, pediu a remoção): o olho
+           cortado no cabeçalho já diz que os valores estão ocultos. */
+        eyebrowBadges={isDemoMode && !MODO_TESTE ? <Text style={styles.demoFlag}>exemplo</Text> : undefined}
         title={saudacaoDoDia(nomeExibicao)}
         saudacaoCompacta
         left={
@@ -2145,7 +2142,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, backgroundColor: theme.paper, alignItems: 'center', justifyContent: 'center' },
   demoFlag: {
     /* Era `fontFamily: 'monospace'` — a única violação da Only-Font Rule em
-       todo o repositório, e VIVA: estes são os badges "exemplo" e "oculto" do
+       todo o repositório, e VIVA: este é o badge "exemplo" (antes também "oculto") do
        cabeçalho da Início. A largura tabular da monoespaçada não fazia falta
        aqui: são duas palavras fixas, não número que atualiza.
 
