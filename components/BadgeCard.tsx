@@ -37,14 +37,26 @@ export default function BadgeCard({ badge, onPress }: Props) {
           />
         </View>
         <View style={styles.badgeStatus}>
-          <Text style={[styles.statusText, unlocked ? styles.statusUnlocked : styles.statusLocked]}>
+          {/* Uma linha, encolhendo: em fonte 1,3 o selo não comporta
+              "Conquistado" (102 dp, Neue Machina Regular) e o Android partia a
+              palavra ("Conquistad / o"). Achado do Vigil, 21/11/2026. */}
+          <Text
+            style={[styles.statusText, unlocked ? styles.statusUnlocked : styles.statusLocked]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.55}
+          >
             {unlocked ? 'Conquistado' : `${Math.round(progress * 100)}% concluído`}
           </Text>
         </View>
       </View>
 
+      {/* `semViuva` só a partir de três palavras: num título de duas, unir as
+          duas cria um bloco inquebrável mais largo que a coluna em fonte 1,3
+          ("Primeiro Registro", 168 dp), e o Android partia a palavra
+          ("Primeiro Regis / tro"). Achado do Vigil, 21/11/2026. */}
       <Text style={[styles.title, !unlocked && styles.titleLocked]}>
-        {semViuva(title)}
+        {title.trim().split(/\s+/).length >= 3 ? semViuva(title) : title}
       </Text>
 
       <Text style={styles.description}>
