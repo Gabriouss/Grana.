@@ -191,9 +191,13 @@ export function useLinhaFluxo({
       </Svg>
 
       {/* O modo privacidade esconde também a escala: um eixo que vai até
-          R$ 8 mil entrega quase tanto quanto o número escondido. */}
+          R$ 8 mil entrega quase tanto quanto o número escondido.
+          O rótulo encolhe em vez de cortar (achado 53-B, 21/11/2026). A coluna
+          do eixo tem AXIS_LEFT - 8 = 70 dp; medido com a Neue Machina Light,
+          "R$ 11,9 mil" pede 89 dp em fonte do sistema 1,3 e "R$ 999,9 mil"
+          107 dp (razão 0,66). */}
       {gridLines.map(({ y, valor }, i) => (
-        <Text key={`ylabel-${i}`} style={[styles.axisLabel, { top: y - 8 }]} numberOfLines={1}>
+        <Text key={`ylabel-${i}`} style={[styles.axisLabel, { top: y - 8 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>
           {hidden || semMovimentacao ? '' : formatEixo(valor)}
         </Text>
       ))}

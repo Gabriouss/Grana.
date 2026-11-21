@@ -126,6 +126,21 @@ caso('modo privacidade some com a escala e com os valores do toque', () => {
   assert.ok(p.rotulos.filter(r => r[1] !== null).every(r => r[0] === ''));
   assert.ok(p.toques.every(t => /valores ocultos$/.test(t)));
 });
+caso('eixo Y encolhe em vez de cortar com fonte grande (53-B), igual nas duas telas', () => {
+  const eixo = tree => nos(tree, n => n.tipo === 'Text' && estilo(n.props.style).top !== undefined && estilo(n.props.style).width !== undefined);
+  const a = ambiente();
+  const telas = { Graficos: a.montar(a.carregar('components/LineAreaChart.tsx').default, { columns: colunas, modo: 'ambos', width: 300, height: 160 }), Inicio: a.montar(a.carregar('components/FlowChart.tsx').default, ENTRADA_INICIO) };
+  for (const [tela, tree] of Object.entries(telas)) {
+    const rotulos = eixo(tree);
+    assert.equal(rotulos.length, 5, tela + ': cinco rótulos no eixo Y');
+    for (const r of rotulos) {
+      assert.equal(r.props.numberOfLines, 1, tela);
+      assert.equal(r.props.adjustsFontSizeToFit, true, tela + ': rótulo do eixo corta em vez de encolher');
+      // "R$ 999,9 mil" em 1,3 pede 107 dp numa coluna de 70: razão 0,66.
+      assert.ok(r.props.minimumFontScale <= 0.66, tela + ': minimumFontScale ' + r.props.minimumFontScale);
+    }
+  }
+});
 caso('vazio, carregando e erro continuam no mesmo contêiner', () => {
   const a = ambiente(), C = a.carregar('components/LineAreaChart.tsx').default;
   assert.equal(nos(a.montar(C, { columns: [], carregando: true }), n => n.tipo === 'ActivityIndicator').length, 1);
