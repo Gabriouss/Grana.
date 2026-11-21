@@ -24,3 +24,13 @@ for (const rotulo of ['Entradas', 'Saídas', 'Saldo do mês']) {
 }
 console.log(`ResumoRotuloUmaLinha ${3 - falhas}/3`);
 process.exitCode = falhas ? 1 : 0;
+
+// Autor, 21/11/2026 ("Horrível, tira isso daí"): o resumo de Lançamentos fica
+// só com Entradas, Saídas e Saldo do mês, sem a linha "Inclui sobra". A linha
+// do Livre na Início continua (SafeToSpendCard).
+try {
+  assert.ok(!/rotuloDaSobraIncluida|rotuloDaSobraIndisponivel|monthSummarySobra/.test(fonte), 'linha da sobra voltou ao resumo de Lançamentos');
+  const livre = fs.readFileSync(path.join(__dirname, '..', 'components', 'SafeToSpendCard.tsx'), 'utf8');
+  assert.match(livre, /styles\.rowKeyDetalhe\]\}>\{rotuloDaSobraIncluida\(\)\}/, 'Livre: linha da sobra recuada sob Saldo atual');
+  console.log('ResumoRotuloUmaLinha OK resumo sem linha da sobra; Livre mantém a sua');
+} catch (e) { process.exitCode = 1; console.error('ResumoRotuloUmaLinha FALHA ' + e.message); }
