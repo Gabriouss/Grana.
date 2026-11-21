@@ -258,8 +258,32 @@ export default function RespostaVozWidget() {
         router.push('/(app)/');
         return;
       }
-      await abrirFala(texto, undefined, dados.resultado === 'revisar' && dados.referencia
-        ? { referencia: dados.referencia, aproximada: dados.aproximada !== false } : undefined);
+      const ref = dados.resultado === 'revisar' && dados.referencia
+        ? { referencia: dados.referencia, aproximada: dados.aproximada !== false } : undefined;
+      try {
+        await abrirFala(texto, undefined, ref);
+      } catch (erro) {
+        /* L2 (21/11, regra 9): o toque já foi consumido e a notificação saiu
+           da bandeja; sem recibo, a fala se perdia. O log segue no chamador. */
+        avisarRevisaoNaoAbriu(texto, ref);
+        throw erro;
+      }
+    }
+
+    function avisarRevisaoNaoAbriu(texto: string, ref?: ReferenciaDaFala) {
+      try {
+        Alert.alert('Não consegui abrir a revisão', `Nada foi salvo ainda. Você disse: "${texto}".`, [
+          { text: 'Agora não', style: 'cancel' },
+          { text: 'Tentar de novo', onPress: () => {
+            abrirFala(texto, undefined, ref).catch((erro) => {
+              console.error('[voz] revisão da fala não abriu de novo', erro);
+              avisarRevisaoNaoAbriu(texto, ref);
+            });
+          } },
+        ]);
+      } catch (erro) {
+        console.error('[voz] recibo da revisão que não abriu não apareceu', erro);
+      }
     }
 
     /* Duas fontes, e as duas importam: `getLastNotificationResponseAsync`

@@ -31,7 +31,7 @@ process.on('unhandledRejection', (erro) => { semDono.push(String(erro?.message ?
 
 const DEFAULT = 'expo.modules.notifications.actions.DEFAULT';
 function montar() {
-  const e = { pushes: [], desfeitos: [], ouvintes: [], ultima: null, limpezas: 0, erros: [], destinoFalha: false };
+  const e = { pushes: [], desfeitos: [], ouvintes: [], ultima: null, limpezas: 0, erros: [], destinoFalha: false, alertas: [] };
   const Notifications = {
     getLastNotificationResponseAsync: async () => e.ultima,
     addNotificationResponseReceivedListener: (f) => { e.ouvintes.push(f); return { remove: () => { e.ouvintes = e.ouvintes.filter((g) => g !== f); } }; },
@@ -43,7 +43,7 @@ function montar() {
     react: { useEffect: (fn) => { const l = fn(); if (typeof l === 'function') limpezasDoEfeito.push(l); } },
     'react-native': { AppState: { addEventListener: () => ({ remove() {} }) }, Platform: { OS: 'android' } },
     'expo-router': { useRouter: () => router },
-    '@/lib/alerta': { Alert: { alert: () => {} } },
+    '@/lib/alerta': { Alert: { alert: (titulo, texto, botoes) => { e.alertas.push({ titulo, texto, botoes: botoes ?? [] }); } } },
     '@/lib/data': { deleteBill: async () => {}, deleteTransaction: async () => {} },
     '@/lib/destino-da-fala-referencias': { destinoDaFalaComReferencias: async () => { if (e.destinoFalha) throw new Error('destino indisponível (simulado)'); return 'inicio'; } },
     '@/lib/notifications': { getNotifications: () => Notifications },
@@ -135,6 +135,29 @@ async function caso(nome, corpo) {
     assert.equal(semDono.length, antes, 'a falha de abertura não vira rejeição sem dono');
     assert.ok(e.erros.some((x) => /toque na notificação não foi tratado/.test(x)), 'e deixa log');
     ok('falha ao abrir a revisão pelo getter deixa log, sem rejeição sem dono');
+  });
+
+  /* L2 (revisão do Lynx, 21/11; regra 9): a revisão que não abre deixa recibo
+     visível, uma vez, com a fala; "Tentar de novo" abre a MESMA fala. */
+  await caso('revisão que não abre deixa recibo e segunda chance', async ({ e, montar, tocar }) => {
+    e.destinoFalha = true;
+    const r = resposta('voz-req-recibo', { origem: 'voz', resultado: 'revisar', transcricao: 'Gás R$ 120' });
+    e.ultima = r;
+    montar();
+    await espera();
+    tocar(r);
+    await espera();
+    assert.equal(e.alertas.length, 1, 'um recibo só, mesmo com getter e listener');
+    assert.ok(e.alertas[0].texto.includes('Gás R$ 120'), 'o recibo mostra a fala');
+    assert.equal(e.pushes.length, 0, 'nada abriu ainda');
+    const tentar = e.alertas[0].botoes.find((b) => b.text === 'Tentar de novo');
+    assert.ok(tentar, 'o recibo oferece Tentar de novo');
+    e.destinoFalha = false;
+    tentar.onPress();
+    await espera();
+    assert.equal(e.pushes.length, 1, 'Tentar de novo abre a revisão uma vez');
+    assert.equal(e.pushes[0].params.colarTexto, 'Gás R$ 120', 'com a mesma fala');
+    ok('revisão que não abre deixa recibo uma vez e Tentar de novo abre a mesma fala');
   });
 
   await caso('corpo e Desfazer do mesmo recibo são toques distintos', async ({ e, montar, tocar }) => {
