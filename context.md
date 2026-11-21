@@ -20872,3 +20872,16 @@ Fonte: `relatorio-Keel-pendencias-2026-11-21.md` (sha256 `ae52ae0e…`, 13:51). 
 - O Claude Code diagnostica o "Não entendi" do widget de voz, a partir dos vídeos do autor com a fala "Uber 8,91 crédito C6".
 
 Nada de build, push ou Supabase.
+
+### 21/11 tarde — console.error do bloqueio ao alternar app e widget (Lumen, `1cf2352a`)
+
+Fonte: `relatorio-Lumen-bloqueio-2026-11-21.md` (sha256 `90a5160a…`, 14:07), ordem `00-ORDEM-Lumen-bloqueio-console-2026-11-21.md`. Conferido nesta escrita: o `1cf2352a` tem como pai o `f65cecd4` e mexe em `lib/app-lock-context.tsx`, `__tests__/app-lock-recuperacao.cjs` e `__tests__/app-lock-cancelamento-pendente.cjs`. Árvore limpa.
+
+1. **Pedido.** Às 13:55, no Expo Go do clone, o autor viu a tela vermelha de Console Error "[bloqueio] confirmação não foi concluída" ao alternar entre o app e o widget de voz. A mensagem vem de `lib/app-lock-context.tsx:133` (`registrarFalha`), chamada em `:321`. Print: `9fc76f56-image.png`.
+2. **Sintoma e causa.** O sintoma é a tela vermelha do modo dev para um desfecho que não é falha. A causa é que todo `success: false` ia para `console.error`, sem olhar o código. O Lumen leu o `expo-local-authentication` 57.0.2 instalado. No Android, a saída do app (`ERROR_CANCELED`) e o botão Cancelar chegam juntos como `user_cancel`. No iOS, o app em segundo plano chega como `system_cancel`.
+3. **Correção.** `user_cancel`, `system_cancel`, `app_cancel` e `user_fallback` viraram `console.warn` com o código. `lockout`, `not_enrolled`, `not_available`, `authentication_failed`, `timeout`, `unknown`, `invalid_context` e o caso sem código continuam em `console.error`, agora com o código na mensagem. O recibo na tela ficou igual nos dois casos.
+4. **Descartado.** Silenciar de vez, porque a regra 9 pede log. Tratar `timeout` e `invalid_context` como interrupção. **Limite:** no Android, Cancelar e a saída do app não se distinguem, e os dois viram aviso.
+5. **Deu errado no caminho.** O dublê de console do `app-lock-cancelamento-pendente.cjs` não tinha `warn`. O aviso lançava exceção, o fluxo caía no `catch` e o teste seguia verde pelo caminho errado. O Lumen acrescentou o `warn`, sem tirar nenhuma asserção, e o teste agora passa pelo caminho real, com 9/9.
+6. **Verificação.** Dez casos novos com o módulo real em `app-lock-recuperacao.cjs --interface`, que já estava no `test:ci`. Segundo o Lumen, deram RED com o arquivo do `f65cecd4` (4 falhas) e GREEN no commit (26/26). `tsc` 0, relatado pelo Lumen. O `test:ci` foi conferido no log: `Lumen-bloqueio/test-ci.log` termina com "test:ci: 222 comandos passaram." e "EXIT 0", rodado pelo runner novo. **Não verificado no aparelho.** Para conferir, basta repetir o gesto: abrir a biometria e ir ao widget, e esperar um aviso ou nada no lugar da tela vermelha.
+
+**Em curso, sem conclusão: divergência entre o app e o widget na voz (regra 13).** No terceiro vídeo do autor, às 13:51, o botão "Lançar por voz" do app aceitou a mesma fala que o widget tinha recusado com "Não entendi" ("Uber 8,91 crédito C6"). O lançamento ficou "guardado no aparelho", sem sincronizar. O Claude Code está diagnosticando. Ainda não há causa: o que se tem até aqui é sintoma, informado pelo Supremo. Nada de build, push ou Supabase.
