@@ -827,6 +827,15 @@ Regras permanentes para qualquer sessão que abrir este repositório:
       não acumula para o mês seguinte, quando a pergunta é feita novamente.
       A persistência prevista é no servidor por usuário e mês, com RLS e
       compatibilidade com o cliente antigo; migration nova não aplicada.
+      **Decisão do autor de 21/11/2026, que substitui o "não vira receita, não
+      aparece em lançamentos" acima:** vendo a linha "Inclui sobra" no resumo de
+      Lançamentos, ele disse "Horrível, tira isso daí e coloca como um lançamento
+      na lista de lançamentos" e, perguntado, escolheu "Lançamento de verdade":
+      a sobra confirmada vira receita gravada no banco, editável e apagável. A
+      linha "Inclui sobra" no Livre da Início fica. **Implementação pendente:**
+      o plano (`00-ORDEM-Meridian-plano-sobra-lancamento-2026-11-21.md`) volta ao
+      autor antes de qualquer código, e o app de hoje (`main`) usa o mesmo
+      Supabase, então a sobra não pode contar duas vezes para quem tem os dois.
     - Todas as entradas do mês vigente contam desde o dia 1, inclusive as de
       data futura. Saídas do mês vigente, inclusive futuras, descontam.
     - Compra no crédito e fatura não paga não reduzem o Livre. O pagamento da
