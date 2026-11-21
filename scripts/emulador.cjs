@@ -98,13 +98,21 @@ const achar = (nos, texto) => nos.filter((n) => n.texto && n.texto.toLowerCase()
 const tocarEm = (n) => adbQuieto('shell', 'input', 'tap', String(n.x), String(n.y));
 const espera = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 
+/* `pm list packages` devolve uma linha "package:<nome>" por app. Comparar por
+   substring dava "sim" para com.gabriouss.grana com só o
+   com.gabriouss.grana.sentinelqa instalado, e `abrir dev` falhava em seguida. */
+const APK_DEV = 'com.gabriouss.grana';
+function pacoteInstalado(lista, pacote) {
+  return String(lista).split(/\r?\n/).some((linha) => linha.trim() === `package:${pacote}`);
+}
+
 function estado() {
   const dispositivos = adb('devices').split('\n').slice(1).filter((l) => /\tdevice/.test(l));
   console.log(dispositivos.length ? `emulador: ${dispositivos.map((l) => l.split('\t')[0]).join(', ')}` : 'emulador: NENHUM (abra o Pixel_8 no Android Studio)');
   if (!dispositivos.length) return;
   const pacotes = adb('shell', 'pm', 'list', 'packages');
-  console.log(`Expo Go instalado: ${/host\.exp\.exponent/.test(pacotes) ? 'sim' : 'nao'}`);
-  console.log(`APK de desenvolvimento (com.gabriouss.grana) instalado: ${/com\.gabriouss\.grana/.test(pacotes) ? 'sim' : 'nao'}`);
+  console.log(`Expo Go instalado: ${pacoteInstalado(pacotes, 'host.exp.exponent') ? 'sim' : 'nao'}`);
+  console.log(`APK de desenvolvimento (${APK_DEV}) instalado: ${pacoteInstalado(pacotes, APK_DEV) ? 'sim' : 'nao'}`);
   const foco = /mCurrentFocus=.*? ([\w.]+)\//.exec(adb('shell', 'dumpsys', 'window')) ;
   console.log(`app em primeiro plano: ${foco ? foco[1] : 'desconhecido'}`);
   const reverso = adb('reverse', '--list');
@@ -122,7 +130,10 @@ function abrir(alvo) {
   if (alvo === 'go') {
     adbQuieto('shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', 'exp://localhost:8081', 'host.exp.exponent');
   } else if (alvo === 'dev') {
-    adbQuieto('shell', 'monkey', '-p', 'com.gabriouss.grana', '-c', 'android.intent.category.LAUNCHER', '1');
+    if (!pacoteInstalado(adb('shell', 'pm', 'list', 'packages'), APK_DEV)) {
+      throw new Error(`APK de desenvolvimento (${APK_DEV}) não está instalado neste emulador; veja docs/operar-o-app-no-emulador.md`);
+    }
+    adbQuieto('shell', 'monkey', '-p', APK_DEV, '-c', 'android.intent.category.LAUNCHER', '1');
   } else {
     throw new Error('use: abrir go | abrir dev');
   }
@@ -196,7 +207,7 @@ function main() {
   }
 }
 
-module.exports = { lerNos };
+module.exports = { lerNos, pacoteInstalado };
 
 if (require.main === module) {
   try {
