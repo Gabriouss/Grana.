@@ -20839,3 +20839,36 @@ Fonte: `PLANO-sobra-lancamento-2026-11-21.md` (Meridian, sha256 `65a039c4…`, 1
 - revisão do Lynx no fim, sobre o delta, como o plano sugere.
 
 A migration é só arquivo. Quem aplica é o Supremo, com o ok do autor (regra 11). Build só com pedido do autor. **A regra 20 do `AGENTS.md` com o desenho aprovado será atualizada quando o Keel entregar, não antes.** Até lá vale o adendo de 21/11, `aff3e9ab`. Nada implementado ainda.
+
+### 21/11 tarde — Keel fecha as quatro pendências de lógica
+
+Fonte: `relatorio-Keel-pendencias-2026-11-21.md` (sha256 `ae52ae0e…`, 13:51). Provas em `Keel-pendencias/provas/`. O Keel preparou o WIP fora do clone sobre `b01ae29c` e aplicou na janela sobre `0ab0da89`. Conferido nesta escrita: quatro commits em cadeia, cada um com o próprio assunto, e a árvore limpa no HEAD `f65cecd4`.
+
+1. **`20231d62`, runner do `test:ci`.** Arquivos: `package.json`, `scripts/rodar-test-ci.cjs`, `scripts/test-ci.lista` e `__tests__/rodar-test-ci.cjs`.
+   - O `test:ci` passou a ser `node scripts/rodar-test-ci.cjs`, conferido no `package.json:74`. O runner lê a lista e para no primeiro erro, com o exit correto. **Com isso, `npm run test:ci` volta a rodar no Windows.**
+   - Prova `item4-identidade-janela.log`: a lista dá "IDENTICA" à cadeia antiga do HEAD da janela, com 218 comandos na mesma ordem, inclusive `--interface`, `npm run test:avisos`, `npm run test:parser` e `npx tsx`. Depois da prova entraram quatro linhas no fim: o teste do runner e os três testes novos. No total são 222 comandos.
+   - Descartados: lista em JSON, pior para conflito entre agentes, e partir em vários scripts npm, que continuariam crescendo.
+2. **`d48921fa`, lembrete de hábito.** Arquivos: `lib/data.ts`, o novo `lib/lembrete-habito-dias.ts`, `app/(app)/index.tsx`, `app/(app)/perfil.tsx` e o teste `__tests__/lembrete-habito-dias-invalidados.cjs`.
+   - **Causa confirmada e reproduzida com o `lib/data.ts` real.** A hipótese do Supremo estava certa, mas o gatilho é mais amplo do que a troca de conta. `prepararCacheDeDias` liga `limparDiasComRegistro` a todo `notificarDadosDosWidgetsAlterados`, que dispara ao gravar lançamento, meta e boleto. Liga também à versão dos lançamentos que a fila offline sobe ao sincronizar, o que é comum logo na abertura. Qual desses gatilhos aconteceu no celular do autor não foi identificado.
+   - **Correção.** A classe `ConsultaDeDiasInvalidada` ganhou o `motivo` `'conta'` ou `'registros'`. Pela regra 9: `registros` é temporário e repete até 3 vezes. `conta`, carga superada ou teto esgotado desistem com `console.warn`, e a próxima carga completa reagenda. Qualquer outro erro continua `console.error`.
+   - Focal RED no `0ab0da89` e GREEN com 16 verificações. Compatibilidade verde em `desafios-calendario`, `sair-da-conta`, `abertura-fria-token-vencido` e `lembretes-habito-handler`.
+   - Descartados: afrouxar o descarte no `data.ts`, que o C-01 proíbe para não misturar contas, e tirar o sinal dos widgets da invalidação dos dias. Boleto e meta não mudam o dia com registro, então esse sinal é **dívida registrada** de outra ordem.
+3. **`b5754972`, L5 religar lembretes de contas.** Arquivos: o novo `lib/religar-lembretes-contas.ts`, `app/(app)/perfil.tsx` e o teste `__tests__/religar-lembretes-contas.cjs`.
+   - `religarLembretesDeContas` espera tudo com `allSettled` e devolve `ok`, `indisponivel`, `sem-permissao` ou `falhou`. Em `falhou`, o Perfil faz `console.error` e abre uma janela flutuante (`Alert.alert`): "Não foi possível religar todos os lembretes / Confira sua conexão e tente de novo. Os lembretes também voltam quando você abre Contas ou Crédito." Em `sem-permissao`, faz `console.warn` e abre a janela "Notificações bloqueadas / Para receber os lembretes de contas, permita as notificações do app nas configurações do aparelho." **Os textos foram aprovados pelo autor em 21/11**, informado pelo Supremo.
+   - RED no `0ab0da89` e GREEN com 12 verificações, que afirmam quais agendamentos aconteceram. Compatibilidade verde em `lembretes-contas-desligar`, `perfil-decisoes-19-09`, `modais-regressao` e `janelas-abertas`.
+   - **Dívida registrada:** `scheduleBillReminders` e `scheduleCardInvoiceReminders` (`lib/notifications.ts`) ainda engolem por dentro a falha de cada etapa do SDK, e Contas e Crédito ainda usam `.catch(() => {})`. Mudar isso afetaria três telas.
+4. **`f65cecd4`, `scripts/emulador.cjs`.** O `estado` passou a comparar o pacote pelo nome exato. Descartado o `pm list packages <filtro>`, cujo filtro também é por substring. Teste `__tests__/emulador-pacote-instalado.cjs`, RED e GREEN.
+
+**Deu errado no caminho:** o script de troca leu a entrada sem UTF-8 e gravou acento corrompido no Perfil do WIP. O Keel refez a partir da base antes de gerar os patches e passou a preservar o fim de linha misto dos arquivos. Também a troca da linha do `package.json` por texto não casou por causa do escape `\u0026`, e foi refeita por linha, com o JSON conferido válido.
+
+**Gate no `f65cecd4`**, conferido nos logs, cada um com o exit gravado: `gate-tsc.log` com "HEAD f65cecd4" e exit=0; `gate-test-parser.log` com 83/83 e exit=0; `gate-test-ci.log` com "test:ci: 222 comandos passaram." e exit=0, **já pelo `npm run test:ci`**. Esse gate cobre também o `e6b102f1` e o `0ab0da89` do Lumen. **Nada testado no aparelho.**
+
+**Outros fatos, informados pelo Supremo:**
+- Com o ok do autor, o Supremo fechou o Flare e o Meridian por falta de RAM.
+- O Metro LAN do Vigil agora roda destacado (PID 27844).
+
+**Em curso:**
+- O Keel executa a sobra como lançamento, pela `00-ORDEM-Keel-sobra-lancamento-2026-11-21.md`.
+- O Claude Code diagnostica o "Não entendi" do widget de voz, a partir dos vídeos do autor com a fala "Uber 8,91 crédito C6".
+
+Nada de build, push ou Supabase.
