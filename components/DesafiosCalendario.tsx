@@ -112,6 +112,12 @@ export default function DesafiosCalendario({ dias, weekActivity, streak, demo, a
       </View>}
   </View>;
 }
+/* Recuo da casa dentro da célula: o vão e a borda do anel de seleção. A
+   amostra da legenda usa o mesmo recuo para começar na borda da primeira
+   casa, e não na da célula (nit do item 52, 21/11/2026). */
+const BORDA_ANEL = 1.5;
+const RECUO_CASA = spacing.fio + BORDA_ANEL;
+
 const s = StyleSheet.create({
   card: { padding: card.padding, borderRadius: card.radius, borderWidth: card.borderWidth, borderColor: theme.rule, backgroundColor: theme.paperRaised, gap: spacing.md },
   titulo: { color: theme.ink, fontFamily: fonts.regular, fontSize: type.corpo, lineHeight: lh(type.corpo, 'corpo') },
@@ -127,11 +133,11 @@ const s = StyleSheet.create({
   diaSemana: { textAlign: 'center', color: theme.inkFaint, fontFamily: fonts.regular, fontSize: type.legenda, lineHeight: lh(type.legenda, 'apoio') },
   celula: { flex: 1, minWidth: 0, minHeight: touchTarget },
   // Anel fora da casa, com um vão sobre o fundo do cartão; sempre reservado para a grade não pular.
-  anel: { flex: 1, padding: spacing.fio, borderRadius: radius.sm, borderWidth: 1.5, borderColor: 'transparent' },
+  anel: { flex: 1, padding: spacing.fio, borderRadius: radius.sm, borderWidth: BORDA_ANEL, borderColor: 'transparent' },
   anelEscolhido: { borderColor: theme.accent2 },
   casa: { flex: 1, borderRadius: radius.sm, backgroundColor: menta(0.06), borderWidth: 1.5, borderColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
   casaRegistro: { backgroundColor: theme.accent2 },
-  legenda: { flexDirection: 'row', alignItems: 'center', gap: spacing.icone },
+  legenda: { flexDirection: 'row', alignItems: 'center', gap: spacing.icone, paddingLeft: RECUO_CASA },
   // Casa em miniatura: mesmo preenchimento e proporção de canto da casa da grade.
   amostra: { width: spacing.md, height: spacing.md, borderRadius: spacing.fio, backgroundColor: theme.accent2 },
   casaFutura: { backgroundColor: 'transparent' },

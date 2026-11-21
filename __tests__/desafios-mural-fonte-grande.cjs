@@ -67,3 +67,15 @@ caso('título de três palavras ou mais continua sem viúva', () => {
 });
 console.log(`MuralFonteGrande ${3 - falhas}/3`);
 process.exitCode = falhas ? 1 : 0;
+
+// Nit do item 52: a amostra da legenda começa na borda da primeira casa, não
+// na da célula. O recuo vem da mesma constante do anel, sem medida copiada.
+{
+  const cal = fs.readFileSync(path.join(raiz, 'components/DesafiosCalendario.tsx'), 'utf8');
+  try {
+    assert.match(cal, /anel: \{[^}]*padding: spacing\.fio[^}]*borderWidth: BORDA_ANEL/, 'anel usa BORDA_ANEL');
+    assert.match(cal, /RECUO_CASA = spacing\.fio \+ BORDA_ANEL/);
+    assert.match(cal, /legenda: \{[^}]*paddingLeft: RECUO_CASA/, 'legenda recuada até a casa');
+    console.log('MuralFonteGrande OK legenda alinhada à primeira casa');
+  } catch (e) { process.exitCode = 1; console.error('MuralFonteGrande FALHA legenda: ' + e.message); }
+}
