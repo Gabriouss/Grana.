@@ -20705,3 +20705,16 @@ HEAD `2267fcb8` (`teste/leitura-avisos`), árvore limpa, logs em `E:/Grana-tempo
 4. **Pendência.** `__tests__/categorias-seletor-cedo.cjs` (cobre o item 48, exit 0 com 10 verificações à mão) não está em nenhum script do `package.json`. Recomendação do Anvil: incluir no `test:ci` em commit próprio, com o dono do item 48.
 5. **Próximo.** Revisão final única do Lynx, pela ordem `00-ORDEM-Lynx-revisao-final-2026-11-21.md`. Inclui o ponto do item 50 (falha ao abrir a revisão sem recibo visível, regra 9).
 6. **Sem verificação.** Aparelho e passada visual dos itens 51, 52 e 53. Nada publicado: sem push, build ou Supabase. Fonte: `relatorio-Anvil-gate-final-r3-2026-11-21.md`.
+
+### 21/11 manhã — revisão final única do Lynx
+
+Revisão só de leitura sobre a rodada no clone (HEAD `8b74dd3a`). Pontos obrigatórios todos ok, inclusive a decisão B (rotas seguras com `isLoading`, `app/_layout.tsx:391`). Achados L1 e L2 conferidos no código pelo Supremo e procedentes.
+
+1. **L1, corrigir antes da build.** `lib/widgets-home-sync.ts:56` (item 34, `1028468e`): a repetição encadeada do sincronizador volta a rodar para a conta que saiu depois de `limparSnapshotWidgets()`, se houver evento durante a busca no momento da saída. Janela estreita; a causa é do 34, não da decisão B (existiria também com A).
+2. **L2, corrigir antes da build.** `components/RespostaVozWidget.tsx:270-278` (item 50, `2267fcb8`): falha ao abrir a revisão pela notificação de voz perde a fala, sem recibo visível nem segunda chance (regra 9). O tratamento idempotente por notificação e ação está correto.
+3. **L3, registrar.** `components/ConciliarPixBotao.tsx:147-150` (`f7174826`, Pix): o commit acrescentou linha de progresso e botão novos na folha sem dizer que mexeu na tela (regra 14). Os commits `layout(...)` `62b55938`, `76102c86` e `eed2680e` estão separados.
+4. **L4, registrar.** `__tests__/categorias-seletor-cedo.cjs` fora de todo script; Anvil inclui no `test:ci`.
+5. **L5, registrar.** `app/(app)/perfil.tsx`, ramo `lembretesContasAtivo`: ao religar lembretes, `.catch(() => {})` de `scheduleBillReminders` e `scheduleCardInvoiceReminders` e o `catch {}` "Falha graciosa" seguem sem log (regra 9). Defeito anterior ao delta da rodada.
+6. **L6, registrar.** Item 54: a abertura com a gaveta morta leva até 10 s antes do recibo (antes 5 s). Foi pedido e está documentado; conferir no QA do aparelho.
+
+**Encaminhamento.** Anvil corrige L1, L2 e L4 pela ordem `00-ORDEM-Anvil-L1-L2-2026-11-21.md`. **Sem verificação:** aparelho e Expo Go para todos os itens, inclusive L1 e L2; se a fala "revisar" do widget tem cópia durável fora da notificação (L2). Fonte: `E:/Grana-temporarios/2026-11-20-retomada/relatorio-Lynx-revisao-final-2026-11-21.md`.
