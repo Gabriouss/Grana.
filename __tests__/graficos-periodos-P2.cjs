@@ -61,7 +61,7 @@ function ambiente(opts = {}) {
         if (id in mods) return mods[id];
         if (id.startsWith('@/components/')) return id.slice(id.lastIndexOf('/') + 1);
         const relativo = id.startsWith('@/lib/') ? id.slice(2) : id.startsWith('.') ? path.join(path.dirname(rel), id).replaceAll('\\', '/') : null;
-        assert.ok(relativo, 'import inesperado ' + id); return carregar(relativo + '.ts');
+        assert.ok(relativo, 'import inesperado ' + id); return carregar(fs.existsSync(path.join(raiz, relativo + '.ts')) ? relativo + '.ts' : relativo + '.tsx');
       } }, { filename: rel });
     return exports;
   }
