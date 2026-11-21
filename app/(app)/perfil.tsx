@@ -54,12 +54,14 @@ import {
   scheduleCardInvoiceReminders,
   cancelCardInvoiceReminders,
   desligarLembretesDeContas,
+  getNotifications,
   type NotifPrefs,
 } from '@/lib/notifications';
 import { todayISO } from '@/lib/format';
 import { lembretesDeFatura } from '@/lib/creditoFaturas';
 import { contextoDoLembrete } from '@/lib/contexto-lembrete';
 import { diasParaOLembrete } from '@/lib/lembrete-habito-dias';
+import { religarLembretesDeContas } from '@/lib/religar-lembretes-contas';
 import SegmentedTabs from '@/components/SegmentedTabs';
 import { carregarPerfil, nomeDeExibicao, removerFoto, salvarFoto, salvarNome, LIMITE_NOME, type Perfil } from '@/lib/profile';
 import { carregarDiagnostico, diagnosticoDosMetadados, type DiagnosticoCarregado } from '@/lib/diagnostico';
@@ -343,30 +345,39 @@ export default function PerfilScreen() {
         );
       }
     } else if ('lembretesContasAtivo' in mudanca) {
-      try {
-        const [bills, cards, payments, transacoes] = await Promise.all([
-          fetchBills(),
-          fetchCreditCards(),
-          fetchCardInvoicePayments(),
-          fetchTransactions({ sinceDays: 35 }),
-        ]);
-        /* Mesma conta da tela de Crédito: fatura pelo ciclo de cada cartão, e
-           lembrete enquanto faltar pagar alguma coisa. Até 16/09/2026 isto
-           somava pelo mês civil e tratava qualquer pagamento como quitação. */
-        const faturas = lembretesDeFatura(transacoes, cards, payments, todayISO());
-
-        const granted = await requestNotificationPermission();
-        if (!granted) return;
-        bills.forEach((bill) => { scheduleBillReminders(bill).catch(() => {}); });
-        faturas.forEach(({ cartao, year, month, restante }) => {
-          if (restante > 0) {
-            scheduleCardInvoiceReminders(cartao, year, month, restante).catch(() => {});
-          } else {
-            cancelCardInvoiceReminders(cartao.id, year, month).catch(() => {});
-          }
-        });
-      } catch {
-        // Falha graciosa — contas.tsx/credito.tsx reagendam certinho no próximo load
+      /* Religar espera todo agendamento e dá recibo (L5): até 21/11/2026 cada
+         falha era engolida e o controle ficava ligado sem lembrete nenhum. */
+      const desfecho = await religarLembretesDeContas({
+        suportado: () => getNotifications() !== null,
+        buscar: async () => {
+          const [bills, cards, payments, transacoes] = await Promise.all([
+            fetchBills(),
+            fetchCreditCards(),
+            fetchCardInvoicePayments(),
+            fetchTransactions({ sinceDays: 35 }),
+          ]);
+          /* Mesma conta da tela de Crédito: fatura pelo ciclo de cada cartão, e
+             lembrete enquanto faltar pagar alguma coisa. Até 16/09/2026 isto
+             somava pelo mês civil e tratava qualquer pagamento como quitação. */
+          return { contas: bills, faturas: lembretesDeFatura(transacoes, cards, payments, todayISO()) };
+        },
+        pedirPermissao: requestNotificationPermission,
+        agendarConta: scheduleBillReminders,
+        agendarFatura: scheduleCardInvoiceReminders,
+        cancelarFatura: cancelCardInvoiceReminders,
+      });
+      if (desfecho.situacao === 'falhou') {
+        console.error('[notificacoes] religar lembretes de contas falhou', desfecho.falhas, desfecho.erro);
+        Alert.alert(
+          'Não foi possível religar todos os lembretes',
+          'Confira sua conexão e tente de novo. Os lembretes também voltam quando você abre Contas ou Crédito.'
+        );
+      } else if (desfecho.situacao === 'sem-permissao') {
+        console.warn('[notificacoes] religar lembretes de contas: permissão de notificação negada');
+        Alert.alert(
+          'Notificações bloqueadas',
+          'Para receber os lembretes de contas, permita as notificações do app nas configurações do aparelho.'
+        );
       }
     }
   }

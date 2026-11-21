@@ -220,3 +220,4 @@ node __tests__/inicio-sem-selo-oculto.cjs
 node __tests__/desafios-mural-fonte-grande.cjs
 node __tests__/rodar-test-ci.cjs
 node __tests__/lembrete-habito-dias-invalidados.cjs
+node __tests__/religar-lembretes-contas.cjs
