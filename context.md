@@ -20812,3 +20812,30 @@ Nada feito ainda, nada verificado. Sem build, push ou Supabase.
 - **`0ab0da89`**, pai `e6b102f1`: `app/(app)/lancamentos.tsx` e a trava `__tests__/lancamentos-resumo-rotulo-uma-linha.cjs`. A linha "Inclui sobra" sai do resumo de Lançamentos. **O cálculo não mudou:** o Saldo do mês ainda inclui a sobra, sem nenhuma linha que diga isso, até a sobra virar lançamento pelo plano do Meridian. O redesenho anterior da linha no resumo foi descartado com ela.
 - **Verificação, como informada pelo Supremo:** tsc 0 e testes focais verdes. Os logs focais não foram conferidos aqui. O `test:ci` inteiro não foi refeito nesses dois commits e fica para o gate do Keel. Nada foi visto no aparelho.
 - **Keel em curso.** O clone foi entregue ao Keel em `0ab0da89`, que aplica as quatro pendências de lógica e roda o gate. Na leitura deste adendo, a árvore já tinha o item 4 aplicado e não commitado: `package.json`, `scripts/rodar-test-ci.cjs`, `scripts/test-ci.lista` e `__tests__/rodar-test-ci.cjs`.
+
+### 21/11 tarde — plano da sobra como lançamento aprovado pelo autor
+
+Fonte: `PLANO-sobra-lancamento-2026-11-21.md` (Meridian, sha256 `65a039c4…`, 13:42), lido nesta escrita. A aprovação e as respostas do autor vieram pelo Supremo.
+
+**Decisões do autor (21/11):**
+- **P1:** categoria própria "Sobra do mês", com uma cor que já exista na paleta.
+- **P2:** o lançamento entra no dia 1 do mês da sobra.
+- **P3:** apagar o lançamento **não** faz a pergunta voltar naquele mês.
+- **P4:** a sobra fica **fora** da média de receitas e das conquistas. Conta no Livre, no Saldo e na lista.
+- **P5:** o Granabô fica sem deploy. Pelo plano, a conta sai certa sem ele, e o deploy fica opcional só para a frase da sobra.
+
+**Desenho aprovado:**
+- **Gravação.** A RPC `confirmar_sobra_do_mes` grava a entrada no dia 1, na carteira Principal padrão do dono (`is_default`, nunca pelo nome). Em seguida põe em `sobra_do_mes` `valor = 0`, o `transaction_id` do lançamento e `convertida = true`. A gravação é idempotente: entre dois aparelhos ou num clique duplo, nada é gravado de novo. Com `p_valor = 0`, só marca a linha como convertida e não cria lançamento.
+- **Gatilho.** O gatilho de carimbo, estendido, impede regravar valor numa linha já convertida. Ele não restaura `transaction_id`, para o `on delete set null` continuar apagando o lançamento sem violar a chave estrangeira; o teste T8 cobre isso.
+- **Cálculo.** O núcleo passa a contar a sobra só como lançamento. O parâmetro `sobraConfirmada` vira "sobra legada não convertida". Um `sobraLancadaNoMes` separado alimenta só a linha "Inclui sobra" do Livre.
+- **Conversão das sobras antigas.** A migration converte, de forma idempotente, as sobras já confirmadas (`valor > 0 and convertida = false`). Antes, o Supremo faz uma contagem só de leitura, sem valores. O SQL de volta é escrito junto.
+- **Convivência com o `main`.** O plano afirma que o APK 1.10.12 do `main` não lê `sobra_do_mes`. Conferido nesta escrita: o preparo da 1.10.12 é `c4951f29` (`app.json` com 1.10.12), e o código da sobra no `main` (`cd7edb8c`) não é ancestral dele. Não conferi que a versão instalada nos aparelhos de hoje seja a 1.10.12.
+- **Pior caso declarado no plano:** sem dupla contagem gravada no servidor. O app antigo do clone pode mostrar a sobra duas vezes até o próximo foco da Início.
+
+**Execução.** Fica com o Keel, **depois** das quatro pendências de lógica, pela `00-ORDEM-Keel-sobra-lancamento-2026-11-21.md`, em Opus 5.5 medium:
+- os testes T1 a T9, RED e GREEN, com módulos reais e afirmações sobre as chamadas;
+- recibo visível quando a RPC ainda não existir (PGRST202), que é o que o app do clone vai mostrar até a migration ser aplicada;
+- três tipos de commit separados: migration com teste SQL, lógica do cliente e mudança de tela;
+- revisão do Lynx no fim, sobre o delta, como o plano sugere.
+
+A migration é só arquivo. Quem aplica é o Supremo, com o ok do autor (regra 11). Build só com pedido do autor. **A regra 20 do `AGENTS.md` com o desenho aprovado será atualizada quando o Keel entregar, não antes.** Até lá vale o adendo de 21/11, `aff3e9ab`. Nada implementado ainda.
