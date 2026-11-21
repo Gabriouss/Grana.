@@ -149,7 +149,11 @@ function etapasQueAnotam(sobrescrever = {}) {
     assert.equal(terminou, false, 'signOut aguarda a promessa do módulo delegado');
     assert.equal(a.valor().isLoading, true, 'rotas ficam protegidas durante a limpeza');
     assert.equal(a.valor().emRecuperacao, true, 'a recuperação permanece protegida até sair');
-    assert.equal(a.valor().session.user.id, 'uid-1', 'a saída ainda está pendente');
+    /* Contrato do item 18 (7d45f4b6): a sessão do contexto sai no início da
+       saída, junto com o bloqueio do SDK (iniciarSaidaLocal). Mantê-la até o
+       fim deixava o widget da tela inicial regravar o saldo da conta que
+       saía, depois de limparWidgets. A proteção continua no isLoading acima. */
+    assert.equal(a.valor().session, null, 'a sessão sai do contexto já no início da saída');
     const repetida = a.valor().signOut(); await a.flush();
     assert.equal(a.saidas(), 1, 'saída repetida não duplica a delegação');
     a.saida.resolve(); await Promise.all([saida, repetida]);
@@ -168,7 +172,18 @@ function etapasQueAnotam(sobrescrever = {}) {
      o autor saiu na web às 22h52 UTC de 16/10 e o celular caiu em
      refresh_token_not_found. Todo `auth.signOut(` do app e do painel é local. */
   {
-    for (const arquivo of ['lib/auth-context.tsx', 'lib/data.ts', 'components/admin/PainelAdmin.web.tsx']) {
+    /* Desde o item 18 (7d45f4b6) o auth-context não chama auth.signOut: a
+       saída do servidor é admin.signOut(token, 'local') no cliente da sessão
+       local, capturado antes das limpezas. */
+    {
+      const ctx = fs.readFileSync(path.join(root, 'lib/auth-context.tsx'), 'utf8');
+      assert.ok(!/auth\.signOut\(/.test(ctx), 'lib/auth-context.tsx não chama auth.signOut direto');
+      const cliente = fs.readFileSync(path.join(root, 'lib/cliente-sessao-local.ts'), 'utf8');
+      const admin = cliente.match(/admin\.signOut\([^)]*\)/g) ?? [];
+      assert.ok(admin.length > 0, 'lib/cliente-sessao-local.ts ainda chama admin.signOut');
+      for (const c of admin) assert.match(c, /,\s*'local'\)/, `lib/cliente-sessao-local.ts: ${c} sem escopo local`);
+    }
+    for (const arquivo of ['lib/data.ts', 'components/admin/PainelAdmin.web.tsx']) {
       const fonte = fs.readFileSync(path.join(root, arquivo), 'utf8');
       const chamadas = fonte.match(/auth\.signOut\([^)]*\)/g) ?? [];
       assert.ok(chamadas.length > 0, `${arquivo} ainda chama auth.signOut`);
