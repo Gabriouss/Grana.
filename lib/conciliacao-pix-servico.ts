@@ -93,7 +93,7 @@ export async function confirmarItensPix(analise: AnalisePix, escolhas: EscolhaPi
   });
   const recibos: ReciboPix[] = [];
   let parou = false, incerto = false;
-  const pedidoDeParada = acompanhar.parar?.then(() => { parou = true; return PAROU; });
+  const pedidoDeParada = acompanhar.parar?.then<typeof PAROU>(() => { parou = true; return PAROU; });
   for (const { e, r } of planos) {
     if (parou) break;
     try {

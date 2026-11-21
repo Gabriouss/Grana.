@@ -1,25 +1,24 @@
-import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
-import { createClient } from '@supabase/supabase-js';
+import type { AuthChangeEvent, Session, SupabaseClient } from '@supabase/supabase-js';
 import { Alert } from './alerta';
 import { ateSessao, criarControleSessaoLocal, type GavetaSessao, type GeracaoSessao } from './controle-sessao-local';
 
-type Cliente = ReturnType<typeof createClient>;
-type Ouvinte = Parameters<Cliente['auth']['onAuthStateChange']>[0];
+type Cliente = Pick<SupabaseClient, 'auth' | 'removeAllChannels'>;
+type Ouvinte = (evento: AuthChangeEvent, sessao: Session | null) => void | Promise<void>;
 type Entrada = 'signInWithPassword' | 'signUp' | 'exchangeCodeForSession';
 type RespostaEntrada = { data: { session: Session | null }; error: unknown };
 
 /** Export continua sendo o cliente REAL; troca preserva assinantes pela ponte. */
-export function criarClienteSessaoLocal(
+export function criarClienteSessaoLocal<ClienteDaFabrica extends Cliente>(
   gaveta: GavetaSessao,
   chave: string,
-  fabrica: (storage: GavetaSessao, sdkKey: string, detectarUrl: boolean) => Cliente,
+  fabrica: (storage: GavetaSessao, sdkKey: string, detectarUrl: boolean) => ClienteDaFabrica,
 ) {
   const controle = criarControleSessaoLocal(gaveta, chave);
   const ouvintes = new Set<Ouvinte>();
   let proximoOuvinte = 0;
-  let avisarTroca = (_cliente: Cliente) => {};
+  let avisarTroca = (_cliente: ClienteDaFabrica) => {};
   type Instancia = {
-    sdk: Cliente; origem: Promise<GeracaoSessao>; ponte: { unsubscribe(): void };
+    sdk: ClienteDaFabrica; origem: Promise<GeracaoSessao>; ponte: { unsubscribe(): void };
     originais: Record<Entrada, (...args: unknown[]) => Promise<RespostaEntrada>>;
     resetSenha: Cliente['auth']['resetPasswordForEmail'];
     evento: AuthChangeEvent; auto: boolean; numero: number; publicacaoAuto?: Promise<void>;
@@ -196,6 +195,6 @@ export function criarClienteSessaoLocal(
   vigente = construir(auto ? Promise.resolve(controle.nova()) : controle.inicial, auto, auto ? controle.iniciarEntrada() : 0);
   return {
     get cliente() { return vigente.sdk; }, controle, iniciarSaidaLocal,
-    aoTrocar(ouvir: (cliente: Cliente) => void) { avisarTroca = ouvir; },
+    aoTrocar(ouvir: (cliente: ClienteDaFabrica) => void) { avisarTroca = ouvir; },
   };
 }
