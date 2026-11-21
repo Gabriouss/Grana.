@@ -645,7 +645,9 @@ async function main() {
   }
   const seletorNormal = montar(seletor, { visible: true, onClose() {}, tipo: 'out' });
   await seletorNormal.settle();
-  assert.deepEqual(chamadas.map((c) => c[0]), ['seedDefaultCategories', 'fetchCategories']);
+  /* Desde f39e1bc5 (item 48) o seletor busca do cache antes da semeadura e
+     busca de novo depois dela; coberto em __tests__/categorias-seletor-cedo.cjs. */
+  assert.deepEqual(chamadas.map((c) => c[0]), ['fetchCategories', 'seedDefaultCategories', 'fetchCategories']);
   assert.match(texto(seletorNormal.tree), /Criar categoria/);
   ok('modo normal do seletor mantém a semeadura, consulta e criação existentes');
   /* Forma identificada: o que a tela mostra e o que grava */
