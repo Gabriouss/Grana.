@@ -790,7 +790,7 @@ export default function LancamentosScreen() {
         <View style={[styles.monthSummaryCard, styles.monthSummaryPilha]}>
         <View style={styles.monthSummaryLinha}>
           <View style={styles.monthSummaryCol}>
-            <Text style={styles.monthSummaryLabel}>Entradas</Text>
+            <Text style={styles.monthSummaryLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>Entradas</Text>
             <PrivacyValue style={{ alignItems: 'center' }}>
               <Text style={[styles.monthSummaryVal, ehCompacto && styles.monthSummaryValCompacto, { color: theme.up }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                 {loading ? '—' : formatBRL(monthIn, monthIn === 0 ? undefined : '+')}
@@ -799,7 +799,7 @@ export default function LancamentosScreen() {
           </View>
           <View style={styles.monthSummaryDivider} />
           <View style={styles.monthSummaryCol}>
-            <Text style={styles.monthSummaryLabel}>Saídas</Text>
+            <Text style={styles.monthSummaryLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>Saídas</Text>
             <PrivacyValue style={{ alignItems: 'center' }}>
               <Text style={[styles.monthSummaryVal, ehCompacto && styles.monthSummaryValCompacto, { color: theme.down }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                 {loading ? '—' : formatBRL(monthOut, monthOut === 0 ? undefined : '−')}
@@ -808,7 +808,7 @@ export default function LancamentosScreen() {
           </View>
           <View style={styles.monthSummaryDivider} />
           <View style={styles.monthSummaryCol}>
-            <Text style={styles.monthSummaryLabel}>Saldo do mês</Text>
+            <Text style={styles.monthSummaryLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>Saldo do mês</Text>
             <PrivacyValue style={{ alignItems: 'center' }}>
               <Text
                 style={[styles.monthSummaryVal, ehCompacto && styles.monthSummaryValCompacto, { color: monthBalance >= 0 ? theme.ink : theme.down }]}
@@ -1006,6 +1006,10 @@ const styles = StyleSheet.create({
      às outras até os valores se encostarem). O padding garante que, mesmo no
      limite, sobre respiro antes do divisor. */
   monthSummaryCol: { flex: 1, minWidth: 0, alignItems: 'center', paddingHorizontal: spacing.xs },
+  /* Rótulo em uma linha só, encolhendo se faltar coluna (achado 51-A, 21/11/2026).
+     Medido com a Neue Machina Light: em fonte do sistema 1,3, "Saldo do mês" pede
+     115 dp e a coluna tem 109 dp a 411 dp de tela e 92 dp a 360 dp. Quebrando,
+     "mês" ficava viúva (regra 29) e o valor descia em relação aos vizinhos. */
   monthSummaryLabel: { color: theme.inkFaint, fontSize: type.legenda,
   lineHeight: lh(type.legenda, 'apoio'), marginBottom: spacing.fio, letterSpacing: 0.5, fontFamily: fonts.light },
   /* `type.nota` e não `type.apoio`: são TRÊS quantias lado a lado numa tela
