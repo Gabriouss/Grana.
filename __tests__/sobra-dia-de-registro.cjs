@@ -1,12 +1,13 @@
 /*
  * A8 (decisão do autor, 22/11/2026): confirmar a sobra NÃO conta como dia de
- * registro na sequência, no "Mês completo" e no Score. Um lançamento comum no
- * mesmo dia continua contando, e a sobra recategorizada também (marca do P4).
+ * registro na sequência, no "Mês completo", no Score nem no "Y de N dias" da
+ * retrospectiva (R3). Um lançamento comum no mesmo dia continua contando, e a
+ * sobra recategorizada também (marca do P4).
  *
  *   node __tests__/sobra-dia-de-registro.cjs
  *
  * Código REAL de todos os caminhos: lib/format, gamification, lembrete,
- * consulta de dias de lib/data.ts, push no servidor e Granabô. O banco dublado
+ * consulta de dias de lib/data.ts, retrospectiva, push no servidor e Granabô. O banco dublado
  * só devolve as colunas pedidas no `select`. A RPC SQL fica em
  * sobra-lancamento-servidor.cjs.
  */
@@ -35,6 +36,7 @@ function supabaseFalso() {
         eq: () => q, in: () => q, order: () => q, range: () => q,
         gte(c, v) { filtros.push((t) => String(t[c]) >= v); return q; },
         lt(c, v) { filtros.push((t) => String(t[c]) < v); return q; },
+        lte(c, v) { filtros.push((t) => String(t[c]) <= v); return q; },
         then(res, rej) {
           const linhas = (tabela === 'transactions' ? banco : []).filter((t) => filtros.every((f) => f(t)));
           return Promise.resolve({ data: linhas.map((t) => Object.fromEntries(colunas.map((c) => [c, t[c]]))), error: null }).then(res, rej);
@@ -60,6 +62,7 @@ function real(rel) {
   vm.runInNewContext(js(ler(rel)), { exports, Date: Relogio, Intl, console, setTimeout, clearTimeout,
     require(id) {
       if (rel === 'lib/data.ts' && id in dublesDoData) return dublesDoData[id];
+      if (rel === 'lib/monthly-wrapped.ts' && id === './supabase') return { supabase: supabaseFalso() };
       if (rel === 'lib/data.ts' && SO_DUBLE.includes(id)) return inerte;
       if (id.startsWith('.')) return real(path.posix.join(path.posix.dirname(rel), id.endsWith('.ts') ? id : id + '.ts'));
       if (id.startsWith('@/')) return real(id.slice(2) + '.ts');
@@ -148,6 +151,36 @@ const casos = [
     const comSobra = [...outubro, sobra('2026-10-07', { occurred_on: '2026-10-01' })];
     ok(!completo(comSobra), 'Mês completo: a sobra não preenche o dia que faltava');
     ok(completo([...comSobra, tx('2026-10-07')]), 'Mês completo: um lançamento comum no mesmo dia preenche');
+  }
+  // R3: a retrospectiva conta o dia do extrato; a sobra do dia 1 não é um deles.
+  {
+    const dezembro = () => new Relogio('2026-12-03T12:00:00-03:00');
+    const { gerarMonthlyWrapped } = real('lib/monthly-wrapped.ts');
+    const caso = trechos(granabo, (n, ast) => ts.isCaseClause(n) && n.expression.getText(ast) === "'retrospectivaDoMes'" && n.getText(ast).includes('diasComRegistro'))[0];
+    const retro = {};
+    vm.runInNewContext(js(`exports.f = async function () { switch ('retrospectivaDoMes') { ${caso} } };`), {
+      exports: retro, supabase: supabaseFalso(), Date, Intl, userId: 'u', pad: (n) => String(n).padStart(2, '0'),
+      hojeLocal: dezembro, formatarBRL: (n) => n.toFixed(2),
+      ehCompraNoCredito: (t) => t.payment_method === 'credit' || !!t.card_id,
+      ehLancamentoDeSobra: (...a) => real('supabase/functions/_shared/sobra-lancamento.ts').ehLancamentoDeSobra(...a),
+    });
+    for (const [nome, lista, dias] of [
+      ['uma saída', [tx('2026-11-20')], 1],
+      ['uma saída e a sobra', [tx('2026-11-20'), sobra('2026-11-22')], 1],
+      ['só a sobra', [sobra('2026-11-22')], 0],
+      ['sobra e um lançamento comum no dia 1', [tx('2026-11-01'), sobra('2026-11-22')], 1],
+      ['sobra recategorizada', [tx('2026-11-20'), sobra('2026-11-22', { category: 'Outros' })], 2],
+      ['saída com o nome da categoria', [tx('2026-11-20'), sobra('2026-11-22', { type: 'out' })], 2],
+    ]) {
+      const entradas = lista.filter((t) => t.type === 'in').reduce((s, t) => s + t.amount, 0);
+      const w = gerarMonthlyWrapped(lista, [], [], 0, dezembro());
+      ok(w.diasComRegistro === dias, `retrospectiva, ${nome}: ${dias} de 30 dias (veio ${w.diasComRegistro})`);
+      ok(w.entradas === entradas, `retrospectiva, ${nome}: o dinheiro segue nas entradas`);
+      banco = lista;
+      const texto = await retro.f();
+      ok(texto.includes(`um lançamento: ${dias} de 30`), `retrospectiva do Granabô, ${nome}: ${dias} de 30 dias`);
+      ok(texto.includes(`Entradas: R$ ${entradas.toFixed(2)}`), `retrospectiva do Granabô, ${nome}: o dinheiro segue nas entradas`);
+    }
   }
   // Linha sem created_at cai no dia do extrato, e a marca vale igual.
   {

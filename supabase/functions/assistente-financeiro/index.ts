@@ -2086,7 +2086,8 @@ async function executarFerramenta(
       const comprometidoFixo = recorrentes + valorBoletos;
       const saldo = entradas - saidas;
       const taxaPoupanca = entradas > 0 ? (saldo / entradas) * 100 : null;
-      const diasComRegistro = new Set(doMes.map((t) => t.occurred_on)).size;
+      /* Confirmar a sobra não é registrar (A8), como em lib/monthly-wrapped.ts. */
+      const diasComRegistro = new Set(doMes.filter((t) => !ehLancamentoDeSobra(t)).map((t) => t.occurred_on)).size;
       const label = new Date(ano, mes, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
       const comparativo = saidasMesAnterior === null

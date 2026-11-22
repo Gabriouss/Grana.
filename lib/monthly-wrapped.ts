@@ -11,7 +11,7 @@ import { apurarGastosCategoria } from './gastos-categoria';
 import type { Bill, Budget, Transaction, Goal } from './types';
 import { calcularLevelState, type LevelState } from './gamification-infinite';
 import { supabase } from './supabase';
-import { isCreditTx } from './transaction-rules';
+import { ehLancamentoDeSobra, isCreditTx } from './transaction-rules';
 
 /* user_metadata do Supabase Auth, não AsyncStorage — mesmo motivo do
    lib/home-layout.ts: era guardado só no aparelho, e a flag de "já visto"
@@ -195,7 +195,8 @@ export function gerarMonthlyWrapped(
     valorBoletosPagos: valorBoletos,
     saidasMesAnterior,
     comprometidoFixo: recorrentes + valorBoletos,
-    diasComRegistro: new Set(doMes.map((t) => t.occurred_on)).size,
+    /* Confirmar a sobra não é registrar (A8). O dinheiro dela segue nas entradas. */
+    diasComRegistro: new Set(doMes.filter((t) => !ehLancamentoDeSobra(t)).map((t) => t.occurred_on)).size,
     diasNoMes: new Date(ano, mes + 1, 0).getDate(),
     level: calcularLevelState(lifetimeXp),
     metasConcluidas: goals.filter(g => Number(g.current_amount) >= Number(g.target_amount)).length,
