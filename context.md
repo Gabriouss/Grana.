@@ -21009,3 +21009,13 @@ Fonte: `recibo-supremo-pareceres-sobra-r2-excluir.md`, com os pareceres `relator
 - **Sobra r2: aprovada com ressalvas.** R1, R2, R3 e R5 conferidos e em ordem para o Keel (`00-ORDEM-Keel-sobra-r3-2026-11-22.md`), depois da renovação r2. R4 ("Retrato completo" do Score) espera o autor. **Migration não aplicada.** Não publicar Edge Function a partir do clone.
 - **Exclusão de conta: aprovada, pode ir sozinha.** Script `aplicar-excluir-conta/aplicar.cjs`, testado em PGlite nos quatro caminhos e simulado em produção só em leitura. **Não aplicada:** espera o ok do autor e o modo manual.
 - **Dívida registrada.** `delete-account` não é atômica.
+
+### 22/11 — renovação Cakto r2: parecer do Lynx e guia de aplicação (ordem do Quill)
+
+Fonte: `relatorio-Lynx-revisao-renovacao-r2-2026-11-22.md` e `anexos-Keel-renovacao-cakto/r2/LEIA.md`, na rodada `E:/Grana-temporarios/2026-11-22-retomada`.
+
+- **Renovação r2.** O SQL foi **aprovado pelo Lynx**, sem r3, com a tolerância de 3 dias contados do vencimento. **NÃO aplicado**: espera as pré-checagens, o ok do autor e o modo manual.
+- **Patch do expurgo de `webhook_events`.** O código foi aprovado. A publicação precisa de ok próprio, depois dos pontos P1 a P5 do parecer. Exige commit em `origin/main`, e a `main` local está mais de 100 commits à frente: decisão do autor. Não publicado.
+- **Corte manual de acesso.** Passa a exigir mudar `status` e `last_event_at` depois da migration. Sem `last_event_at`, um `approved` atrasado desfaz o corte. O guia `LEIA.md` foi corrigido nesse ponto.
+- **Guia corrigido (só o `LEIA.md` da pasta `r2`).** Três ajustes: o bloco de corte; o caso de conta excluída com expurgo e reenvio do `approved` (a assinatura volta com o e-mail e o livro grava com vínculo, reproduzido pelo Lynx); e a leitura da mensagem `expurgo NÃO feito` no timeout, que quer dizer **não confirmado**. O caminho do patch passou a ser `Lynx-provas/renovacao-r2/expurgo-webhook-sem-linha-a-toa.patch`.
+- **Sobra.** Keel em curso nas ressalvas R1, R2, R3 e R5.
