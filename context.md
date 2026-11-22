@@ -21001,3 +21001,11 @@ Fonte: `recibo-supremo-entrega-keel-sobra.md`, com o relatório `relatorio-Keel-
 - **Funções da sobra em produção.** As quatro funções que a sobra redefine estão em produção iguais ao repositório.
 - **Não publicados agora.** `assistente-financeiro` e `enviar-lembretes-habito` mudaram no clone, mas não serão publicados nesta etapa.
 - **Aberto para o autor.** O "Retrato completo" do Score ainda conta a sobra como "tem entrada".
+
+### 22/11 — pareceres da tarde: sobra r2 e exclusão de conta (recibo do Supremo)
+
+Fonte: `recibo-supremo-pareceres-sobra-r2-excluir.md`, com os pareceres `relatorio-Lynx-revisao-sobra-r2-2026-11-22.md` e `relatorio-Lynx-revisao-excluir-conta-2026-11-22.md`, na rodada `E:/Grana-temporarios/2026-11-22-retomada`.
+
+- **Sobra r2: aprovada com ressalvas.** R1, R2, R3 e R5 conferidos e em ordem para o Keel (`00-ORDEM-Keel-sobra-r3-2026-11-22.md`), depois da renovação r2. R4 ("Retrato completo" do Score) espera o autor. **Migration não aplicada.** Não publicar Edge Function a partir do clone.
+- **Exclusão de conta: aprovada, pode ir sozinha.** Script `aplicar-excluir-conta/aplicar.cjs`, testado em PGlite nos quatro caminhos e simulado em produção só em leitura. **Não aplicada:** espera o ok do autor e o modo manual.
+- **Dívida registrada.** `delete-account` não é atômica.
