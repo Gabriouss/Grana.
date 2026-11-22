@@ -31,7 +31,7 @@ type Fonte = {
     `lancamentos`: a lista que a tela mostra (ausente enquanto carrega, ou se
     ela é de outro mês). Com ela, a sobra e a lista nunca se desencontram em
     silêncio (A3 a A5, 22/11/2026), decidido no MESMO render da lista:
-    - legada já presente na lista como lançamento: não soma por fora;
+    - legada já presente na lista como lançamento, mesmo editado: não soma por fora;
     - ligada ausente e X conhecido desta montagem: X segue por fora até a lista
       voltar do servidor numa recarga pedida depois da conversão (R1); se ela
       vier sem o lançamento, ele foi movido ou apagado, e X sai;
@@ -172,8 +172,10 @@ export function useSobraDoMes(
   if (lancamentos && sobraDoMes?.estado === 'confirmada') {
     const { transactionId, valor } = sobraDoMes;
     if (sobraDoMes.convertida !== true && valor > 0) {
-      const jaLancada = lancamentos.find(t => ehLancamentoDeSobra(t)
-        && t.occurred_on === `${sobraDoMes!.mes}-01` && Math.abs(Number(t.amount) - valor) < 0.005);
+      const dia1 = `${sobraDoMes.mes}-01`;
+      const noDia1 = lancamentos.filter(t => ehLancamentoDeSobra(t) && t.occurred_on === dia1);
+      /* R2: o valor só desempata. Um só no dia 1 é o lançamento, mesmo editado. */
+      const jaLancada = noDia1.find(t => Math.abs(Number(t.amount) - valor) < 0.005) ?? (noDia1.length === 1 ? noDia1[0] : undefined);
       if (jaLancada) sobraDoMes = { ...sobraDoMes, valor: 0, convertida: true, transactionId: jaLancada.id };
     } else if (transactionId) {
       if (lancamentos.some(t => t.id === transactionId)) vistoNaLista.current = transactionId;

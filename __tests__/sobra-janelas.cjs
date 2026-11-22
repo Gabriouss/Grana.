@@ -1,7 +1,7 @@
 /*
  * Nenhuma janela em que a sobra some sem aviso, nem conta duas vezes
  * (A3, A4 e A5 do parecer do Lynx, 22/11/2026), nem um X retido que não
- * existe mais (R1).
+ * existe mais (R1), nem a sobra editada contada duas vezes (R2).
  *
  *   node __tests__/sobra-janelas.cjs
  *
@@ -444,6 +444,40 @@ function porta() { let abrir; const p = new Promise((r) => { abrir = r; }); retu
     m.linha = CONVERTIDA; // o ligado não existe na lista inteira do servidor
     await m.refocar();
     ok(m.ultimo().indisponivel && perto(m.ultimo().saldo, 1000), 'R1 Início: sem X fantasma, Livre avisa');
+  }
+
+  // R2: lista já com o lançamento editado e sobra ainda lida como legada.
+  for (const tela of ['inicio', 'lancamentos']) {
+    for (const valor of [80, 300]) {
+      const m = montar({ tela, linha: ANTES_DA_MIGRATION });
+      await m.abrir(); m.quadros.length = 0;
+      m.noServidor = [salario, { ...lancada, amount: valor }];
+      await m.load(); await tick();
+      const umaVez = () => m.quadros.length > 0 && m.quadros.filter((q) => q.lido && !q.oculto).every((q) => perto(q.saldo, 1000 + valor));
+      ok(umaVez() && !m.ultimo().oculto, `R2 ${tela}, editada para ${valor}: conta uma vez`);
+      if (tela === 'inicio') ok(perto(m.ultimo().inclui, valor), `R2 Início, editada para ${valor}: "Inclui sobra" mostra o editado`);
+      m.linha = CONVERTIDA;
+      await m.refocar();
+      ok(umaVez(), `R2 ${tela}, editada para ${valor}: depois de reler, igual`);
+    }
+  }
+  for (const [nome, lista, saldo] of [
+    ['dois no dia 1, um com o valor: casa pelo valor', [salario, { ...lancada, id: 'outro', amount: 40 }, lancada], 1000 + 40 + X],
+    ['dois no dia 1, nenhum com o valor: não adivinha', [salario, { ...lancada, id: 'a', amount: 40 }, { ...lancada, id: 'b', amount: 50 }], 1000 + 90 + X],
+    ['outro dia não casa', [salario, { ...lancada, amount: 80, occurred_on: '2026-11-09' }], 1000 + 80 + X],
+    ['outra categoria não casa', [salario, { ...lancada, amount: 80, category: 'Outros' }], 1000 + 80 + X],
+    ['saída não casa', [salario, { ...lancada, amount: 80, type: 'out' }], 1000 - 80 + X],
+  ]) {
+    const m = montar({ tela: 'lancamentos', linha: ANTES_DA_MIGRATION, lista });
+    await m.abrir();
+    ok(perto(m.ultimo().saldo, saldo), `R2 ${nome} (${m.ultimo().saldo})`);
+  }
+  {
+    /* Lançamento manual na mesma categoria e dia: a conversão segue e os dois contam. */
+    const manual = { ...lancada, id: 'manual', amount: 40 };
+    const m = montar({ tela: 'lancamentos', linha: LEGADA, lista: [salario, manual] });
+    await m.abrir();
+    ok(perto(m.ultimo().saldo, 1000 + 40 + X) && m.linha === CONVERTIDA, 'R2 coincidência manual: converte e conta os dois');
   }
 
   // Casos legítimos não viram aviso.
