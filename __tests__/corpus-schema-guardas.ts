@@ -191,14 +191,29 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
   const inicioMemoria = sql.indexOf('create extension if not exists pg_trgm');
   const inicioCotas = sql.indexOf('create table if not exists public.ai_usage_counters');
   const fimCotas = sql.indexOf('-- Invariante: Total é somente uma visão, nunca um destino de dados');
-  /* A8 (22/11/2026): a seção é a migration de 04/09 com UMA função trocada pela
-     redefinição de 21/11 (a sobra do mês não é dia de registro). O resto da
-     seção, e a função inteira, seguem comparados por igualdade. */
+  /* A8 (22/11/2026): a seção é a migration de 04/09 com UMA linha a mais em
+     contextos_push_habito (a sobra do mês não é dia de registro). O esperado
+     não sai da migration de 21/11, que ainda é editável (R5): é o trecho de
+     04/09 mais a linha literal abaixo. Schema e migration são comparados com
+     ele, e nenhuma outra instrução dos dois pode tocar a função. */
+  const JANELA_0409 = 'and t.occurred_on >= current_date - 45';
+  const LINHA_A8 = "and not (t.type = 'in' and t.category = 'Sobra do mês')";
   const migrationSobra = readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '20261121120000_sobra_vira_lancamento.sql'), 'utf8');
   const trechoContextos = (fonte: string) =>
     normalizarSql(fonte.match(/create or replace function public\.contextos_push_habito\([\s\S]*?to service_role;/)?.[0] ?? '<ausente>');
+  const contextosEsperado = trechoContextos(migrationPush).replace(JANELA_0409, () => `${JANELA_0409} ${LINHA_A8}`);
   const pushEsperado = migrationAPartirDe(migrationPush, 'create table if not exists public.push_tokens')
-    .replace(trechoContextos(migrationPush), () => trechoContextos(migrationSobra));
+    .replace(trechoContextos(migrationPush), () => contextosEsperado);
+  /* Três: create, revoke e grant, os do trecho. */
+  const soOTrecho = (fonte: string) => normalizarSql(fonte).toLowerCase().split('contextos_push_habito').length - 1 === 3;
+  checar(
+    'contextos_push_habito em 21/11 = 04/09 + só a linha literal do A8',
+    trechoContextos(migrationSobra) === contextosEsperado && soOTrecho(migrationSobra)
+  );
+  checar(
+    'nenhuma outra instrução do schema toca contextos_push_habito',
+    soOTrecho(sql)
+  );
   checar(
     'a seção de push do schema = 04/09 + contexto sem a sobra de 21/11 (A8)',
     inicioPush >= 0 && inicioJanelas > inicioPush
