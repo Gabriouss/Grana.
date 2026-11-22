@@ -20885,3 +20885,46 @@ Fonte: `relatorio-Lumen-bloqueio-2026-11-21.md` (sha256 `90a5160a…`, 14:07), o
 6. **Verificação.** Dez casos novos com o módulo real em `app-lock-recuperacao.cjs --interface`, que já estava no `test:ci`. Segundo o Lumen, deram RED com o arquivo do `f65cecd4` (4 falhas) e GREEN no commit (26/26). `tsc` 0, relatado pelo Lumen. O `test:ci` foi conferido no log: `Lumen-bloqueio/test-ci.log` termina com "test:ci: 222 comandos passaram." e "EXIT 0", rodado pelo runner novo. **Não verificado no aparelho.** Para conferir, basta repetir o gesto: abrir a biometria e ir ao widget, e esperar um aviso ou nada no lugar da tela vermelha.
 
 **Em curso, sem conclusão: divergência entre o app e o widget na voz (regra 13).** No terceiro vídeo do autor, às 13:51, o botão "Lançar por voz" do app aceitou a mesma fala que o widget tinha recusado com "Não entendi" ("Uber 8,91 crédito C6"). O lançamento ficou "guardado no aparelho", sem sincronizar. O Claude Code está diagnosticando. Ainda não há causa: o que se tem até aqui é sintoma, informado pelo Supremo. Nada de build, push ou Supabase.
+
+### 22/11 — registro de abertura: cortesia, sobra como lançamento, voz e time
+
+Fontes: `recibo-supremo-cortesia.md` (vale sobre o de abertura no que divergir), `recibo-supremo-abertura.md` (seção Retomada), `relatorio-Keel-sobra-lancamento-2026-11-21.md` e `relatorio-ClaudeCode-voz-widget-2026-11-21.md`. Registro feito pelo Quill (Documentation and Vault, time Claude), pela ordem `00-ORDEM-Quill-registro-abertura-2026-11-22.md` do Orquestrador Supremo, na rodada `E:/Grana-temporarios/2026-11-22-retomada`.
+
+**Fato: cortesia vitalícia aplicada em produção (22/11).** Pedido do autor: dar acesso vitalício à conta pessoal dele, que foi usada para testar o gateway de pagamento. Sintoma: a conta ficou sem acesso porque a compra de teste na Cakto venceu em 21/11 às 20:41 (hora local) e não havia linha de cortesia. Mudança em produção: uma linha nova em `subscriptions`, criada pela função `conceder_acesso_cortesia` (provider interno, plano `cortesia`, status `active`, acesso até 2099-12-31 23:59:59 UTC). Nenhum deploy, migration ou commit. O identificador da conta não entra no repositório nem no vault.
+- Descartado: estender o prazo da linha da Cakto, que contaria como venda e cairia com reembolso; mexer na compra de teste.
+- O que deu errado: a primeira consulta a `webhook_events` usou coluna inexistente (`created_at`, em vez de `updated_at`). Foi só leitura e foi refeita. O pedido ficou parado até a saída do auto mode, pela regra de aplicar só em modo manual.
+- Verificado: em produção, `tem_direito_acesso` devolve verdadeiro para a conta; releitura confirma acesso até 2099; formato igual ao das outras cortesias, que agora são 11. Em PGlite: resiste a atraso, cancelamento, reembolso e chargeback da compra de teste.
+- **Não verificado:** login no app com a conta; estado da recorrência no painel da Cakto. No banco, a compra de 22/10 segue `active`, recorrente, sem evento de renovação ou cancelamento. **A cortesia não interrompe a cobrança**: quem decide sobre a cobrança é o autor, no painel da Cakto.
+
+**Fato: sobra do mês como lançamento, não revisada, migration não aplicada.** Três commits no clone `E:\Grana-temporarios\2026-10-30-teste-avisos\repo`, branch `teste/leitura-avisos`, sobre `f65cecd4`:
+- `1d945d98`: migration `supabase/migrations/20261121120000_sobra_vira_lancamento.sql` e SQL de volta em `supabase/volta/`, fora de `migrations/`, para a CLI não aplicar. Teste com PGlite.
+- `1e2190df`: lógica do cliente (`lib/sobra-do-mes.ts`, `lib/use-sobra-do-mes.ts`, `lib/sobra-lancamento.ts`, `lib/projections.ts`, `lib/gamification.ts`).
+- `21837b60`: tela. Só o texto do recibo na janela da sobra.
+
+Os logs do gate do Keel têm exit 0 (tsc, test:parser e test:ci). Ressalva: o relatório do Keel ficou com `GATE_PLACEHOLDER` no HEAD, e o número de 224 comandos vem do recibo do Supremo, não do relatório. Nada disso foi revisado por outro agente e nada está no `main`. Não empurrado.
+- Produção: Postgres 17.6, o que atende ao PG 15+ exigido pela chave composta da migration (informado pelo recibo do Supremo). Contagem de leitura: 1 linha em `sobra_do_mes`, 1 a converter.
+- Enquanto a migration não for aplicada, o app do clone mostra o recibo "O servidor ainda não está pronto para guardar a sobra. Tente de novo mais tarde." e não cai no `upsert` antigo.
+- A regra 20 do `AGENTS.md` **não foi atualizada** nesta rodada, por ordem. Até lá, vale o adendo de 21/11 (`aff3e9ab`).
+- **Não verificado:** aparelho e Expo Go; Granabô publicado (sem deploy, P5); aparência da categoria "Sobra do mês" em filtros, gráficos, CSV e PDF; janela antiga, que pode mostrar o X duas vezes até o próximo foco da Início; instante sem a sobra logo depois de confirmar.
+- Dívida: `schema.sql` ainda tem `get_gamification_summary` sem a exclusão do P4. Reaplicar o `schema.sql` desfaz esse ajuste.
+- Pergunta ao autor, pendente: aceite do texto do recibo; a cor `#74a17c` serve, mesmo sendo a de "Saúde"?
+
+**Adendo ao "em curso" de 21/11 (voz, widget "Não entendi").** A linha "Em curso, sem conclusão" e a frase "O Claude Code está diagnosticando" ficam substituídas por isto: **o diagnóstico foi concluído sem causa provada.**
+- Fato: nas duas tentativas do widget filmadas, o servidor respondeu 200 com texto (13:44:34, 20 caracteres; 13:45:04, 22 caracteres). A função `processar-lancamento-voz` está na versão 28, com `updated_at` de 09/11, e o log do servidor não guarda o texto de propósito.
+- Fato: a decisão "Não entendi" acontece no aparelho, depois que o texto chega. Nenhuma correção da rodada (`af5391c8..HEAD` no clone) mexe nesse ponto. O servidor não é o culpado.
+- Hipótese H1: o Groq devolveu uma grafia incomum, sem valor legível pelo `guessAmountFromText` (por exemplo "8-91"). Não confirmada, porque o texto não é logado.
+- Hipótese H2: o APK instalado não é a 1.10.12 testada, ou o Hermes do processo headless avalia de outro jeito alguma regex. Contra: o botão do app, no mesmo núcleo, aceitou a mesma fala às 13:51.
+- Hipótese H3: falha na leitura do corpo da resposta no processo headless (`lib/voz.ts`), deixando `transcript` vazio. Não confirmada.
+- Versão instalada: não comprovada. Sem adb autorizado, não há logcat.
+- Faixa "1 lançamento guardado no aparelho": é defeito de recibo, não de dado. Nada ficou preso. A recarga da faixa pode ter chegado atrasada. Não provado.
+- Sinal intermitente: às 13:53:13 uma fala pelo widget foi gravada e desfeita 4,7 s depois. Não confirmado com o autor.
+- Para fechar a causa: logcat filtrado por `[voz`, com adb autorizado, ou o `[voz:diag]` de uma build dev. Qualquer correção no cliente exige build, com o pedido explícito do autor (regra 4 e regra 22). A correção de parte de servidor exige deploy com o ok do autor.
+
+**Decisão do autor, 22/11: só o time Claude trabalha.** Frase do autor: "Somente time claude trabalha. Antes de iniciar o trabalho, configure os terminais buscando resultado e otimização de tokens." Terminais: Lynx em Opus 5.5 medium, revisando `f65cecd4..21837b60`; Quill em Haiku 5.5, só nesta sessão; os demais parados.
+
+**Em aberto, em ordem:**
+1. Revisão do Lynx em `f65cecd4..21837b60`.
+2. Registro da regra 20 do `AGENTS.md`, depois da revisão.
+3. Migration da sobra: só com o ok do autor e a contagem de leitura do Supremo. Não aplicada.
+4. Build: só com pedido explícito do autor.
+5. Limpeza: `Keel-sobra/wip/node_modules` e `Keel-sobra/base/node_modules` são junções para o `node_modules` do clone. Remover com `cmd /c rmdir`. `rm -rf` apagaria o `node_modules` do clone.
