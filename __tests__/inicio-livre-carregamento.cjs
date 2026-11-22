@@ -71,7 +71,7 @@ function scenario(failCore = { on: false }) {
   }
   const load = compile(`exports.load = ${callback.getText(ast)};`, 'load.tsx', env).load;
   function render() {
-    const scope = { ...states, SafeToSpendCard, safeToSpend: data, arquetipoSugerido: null, carregandoSobra: false, erroSobra: false,
+    const scope = { ...states, SafeToSpendCard, safeToSpend: data, arquetipoSugerido: null, carregandoSobra: false, erroSobra: false, sobraForaDaLista: null,
       View: 'View', Text: 'Text', styles: {}, comprometimentoFuturo: [{ total: 10 }],
       FutureTimelineChart: () => jsx('Text', { children: 'PROJECAO 10' }), spacing: token };
     const cardTree = compile(`exports.tree = ${card.getText(ast)};`, 'card-use.tsx', scope).tree;
