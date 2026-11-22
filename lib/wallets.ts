@@ -3,6 +3,7 @@ import { atualizarTelaGuardada, comCacheOffline } from './cache-de-tela';
 import { idDoUsuarioLocal } from './sessao-offline';
 import type { Transaction, Wallet } from './types';
 import { isCreditTx } from './format';
+import { ehLancamentoDeSobra } from './sobra-lancamento';
 
 /* Sem rede, a lista vem do disco de `comCacheOffline('carteiras')`, que é o
    que a voz no app e no widget usa (`fetchWallets`). Até 26/09/2026 havia um
@@ -233,7 +234,8 @@ export function calcularEntradasComAgregado(
 
 /** Mesma conta de `calcularEntradasComAgregado`, em memória — modo de
     exemplo e sessão sem confirmação, que não têm RPC confirmada disponível
-    (ver `updateSaldosComTransacoes`). */
+    (ver `updateSaldosComTransacoes`). A sobra do mês não muda o seletor
+    nem acumula (regra 20), como na RPC. */
 export function calcularEntradasWallets(
   wallets: Wallet[],
   transactions: Transaction[]
@@ -246,7 +248,7 @@ export function calcularEntradasWallets(
   let total = 0;
 
   transactions.forEach((tx) => {
-    if (tx.type !== 'in' || isCreditTx(tx)) return;
+    if (tx.type !== 'in' || isCreditTx(tx) || ehLancamentoDeSobra(tx)) return;
     const valor = Number(tx.amount || 0);
     const targetWalletId = tx.wallet_id || (defaultWallet ? defaultWallet.id : null);
     if (targetWalletId && porCarteira[targetWalletId] !== undefined) {

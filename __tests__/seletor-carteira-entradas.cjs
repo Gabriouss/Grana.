@@ -151,6 +151,13 @@ const CARTEIRAS = [
   const emMemoria = wallets.calcularEntradasWallets(CARTEIRAS, TX);
   igual(emMemoria.porCarteira, { 'w-principal': 140, 'w-viagem': 50 }, 'soma em memória bate com a regra da RPC');
   igual(emMemoria.total, 190, 'total em memória ignora saída e estorno no cartão, e nunca soma saldo inicial');
+  /* A2 (22/11/2026): a sobra lançada não muda o seletor nem acumula, como na RPC. */
+  const comSobras = wallets.calcularEntradasWallets(CARTEIRAS, [...TX,
+    { id: 's1', type: 'in', amount: 300, category: 'Sobra do mês', wallet_id: 'w-principal' },
+    { id: 's2', type: 'in', amount: 200, category: 'Sobra do mês', wallet_id: null },
+    { id: 's3', type: 'in', amount: 7, category: 'Outros', description: 'Sobra de outubro', wallet_id: 'w-viagem' }]);
+  igual(comSobras.porCarteira, { 'w-principal': 140, 'w-viagem': 57 }, 'A2: sobra fora do seletor; recategorizada conta');
+  igual(comSobras.total, 197, 'A2: a sobra não acumula no total');
 
   /* ── fetchEntradasPorCarteira: RPC + fila offline, com rede ──────────── */
   linhasEntradas = [{ wallet_id: 'w-principal', entradas: 1000 }];

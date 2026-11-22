@@ -74,6 +74,13 @@ export function sincronizarWidgetsHome(userId: string, privacyHidden: boolean): 
         usuarioAtual !== userId ||
         numeroDestaBusca !== numeroDaBusca || mes !== mesLocalDaSobra()
       ) return false;
+      /* Sobra nova com lista velha (A3, 22/11/2026): segura o snapshot, como nas
+         outras falhas de fonte, em vez de publicar o Livre sem ela. */
+      const ligado = sobra?.estado === 'confirmada' ? sobra.transactionId : null;
+      if (ligado && !transactions.some((t) => t.id === ligado)) {
+        console.warn('[widgets-home] sobra mais nova que os lancamentos; snapshot mantido');
+        return false;
+      }
       const hoje = new Date();
       atualizarSnapshot(montarSnapshotWidgets({ userId, transactions, bills, goals, cards, payments, sobraConfirmada: sobraParaOLivre(sobra, userId, mesLocalDaSobra(hoje)), privacyHidden, hoje }));
       return true;

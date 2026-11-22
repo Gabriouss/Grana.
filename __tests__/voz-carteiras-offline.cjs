@@ -43,6 +43,7 @@ vm.runInNewContext(compilar('lib/cache-de-tela.ts'), {
   require: id => { assert.ok(id in deps, id); return deps[id]; },
 });
 deps['./cache-de-tela'] = cacheDeTela;
+deps['./sobra-lancamento'] = require('./_carregar-ts.cjs').carregar('lib/sobra-lancamento.ts');
 const exportsVoz = {};
 vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/wallets.ts', 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },

@@ -128,13 +128,21 @@ export function sobraLancadaNoMes(
  * mostrar (Supremo, 20/11/2026). Desde 21/11 só a sobra legada passa por aqui:
  * a lançada já está nas entradas do mês.
  */
-export type SobraNoSaldo = { valor: number; situacao: 'nenhuma' | 'inclui' | 'sem-conexao' | 'indisponivel' };
+export type SobraNoSaldo = { valor: number; situacao: 'nenhuma' | 'inclui' | 'sem-conexao' | 'indisponivel' | 'atualizando' };
+
+/** O lançamento ligado não está na lista da tela (use-sobra-do-mes, 22/11/2026). */
+export type SobraForaDaLista = 'conferindo' | 'ausente' | null;
 
 export function sobraNoSaldoDoMes(f: {
   estado: EstadoSobra | null; userId: string | null | undefined; mes: string; mesAtual: string;
   carteiraId: string; principalId: string | null; filtrado: boolean; carregando: boolean; erro: boolean; semConexao: boolean;
+  foraDaLista?: SobraForaDaLista; listaOffline?: boolean;
 }): SobraNoSaldo {
-  if (f.filtrado || f.mes !== f.mesAtual || !carteiraRecebeSobra(f.carteiraId, f.principalId) || f.carregando) return { valor: 0, situacao: 'nenhuma' };
+  if (f.filtrado || f.mes !== f.mesAtual || !carteiraRecebeSobra(f.carteiraId, f.principalId)) return { valor: 0, situacao: 'nenhuma' };
+  /* A5: sem o ligado na lista o Saldo omite X, e diz isso. Com a lista atual, ele
+     só mudou de mês: nada a avisar. */
+  if (f.foraDaLista === 'conferindo') return { valor: 0, situacao: f.listaOffline ? 'sem-conexao' : 'atualizando' };
+  if (f.foraDaLista === 'ausente' && f.listaOffline) return { valor: 0, situacao: 'sem-conexao' };
   if (f.erro) return { valor: 0, situacao: f.semConexao ? 'sem-conexao' : 'indisponivel' };
   const valor = sobraParaOLivre(f.estado, f.userId, f.mes, f.carteiraId, f.principalId);
   return { valor, situacao: valor > 0 ? 'inclui' : 'nenhuma' };

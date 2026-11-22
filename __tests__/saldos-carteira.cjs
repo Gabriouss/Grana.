@@ -47,6 +47,7 @@ const { calcularSaldosComAgregado } = carregar('lib/wallets.ts', {
   // Este corpus só exercita a aritmética; a identificação local tem corpus próprio.
   './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => null },
   '@react-native-async-storage/async-storage': { __esModule: true, default: {} },
+  './sobra-lancamento': require('./_carregar-ts.cjs').carregar('lib/sobra-lancamento.ts'),
   './demo-data': { DEMO_WALLETS: [] },
   './format': { isCreditTx: (t) => t.payment_method === 'credit' },
 });

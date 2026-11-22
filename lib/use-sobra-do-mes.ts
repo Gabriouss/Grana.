@@ -5,6 +5,9 @@ import { todayISO } from './format';
 import { buscarSobraDoMes, confirmarSobraDoMes, converterSobraLegada, sobraPrecisaConverter, type EstadoSobra } from './sobra-do-mes';
 import { adiarSobraAteAmanha, sobraAdiadaHoje } from './sobra-adiada';
 import { guardarTela, invalidarRespostasAtrasadas, isLikelyNetworkError, lerTela } from './cache-de-tela';
+import { ehLancamentoDeSobra } from './sobra-lancamento';
+import type { SobraForaDaLista } from './sobra-do-mes';
+import type { Transaction } from './types';
 
 /* Sobra CONFIRMADA guardada no aparelho (Supremo, 20/11/2026). Só quem pede
    `usarCacheOffline` (o Saldo do mês de Lançamentos) a lê sem rede, e só do
@@ -18,14 +21,25 @@ const CHAVE_DO_DISCO = 'sobra-do-mes-v2';
 type Fonte = {
   userId: string; dia: string; sobra: EstadoSobra | null;
   adiada: boolean | null; carregando: boolean; erro: boolean; semConexao: boolean;
+  leitura: number;
 };
 
 /** Estado da pergunta e do cálculo compartilha dono/mês, foco e relógio local.
-    `aoLancar`: a sobra virou lançamento (confirmação ou conversão); quem tem a
-    lista de lançamentos recarrega. */
+    `aoLancar`: a sobra virou lançamento (confirmação ou conversão) ou a lista
+    ficou para trás; quem tem a lista recarrega e devolve a promessa da carga.
+
+    `lancamentos`: a lista que a tela mostra (ausente enquanto carrega, ou se
+    ela é de outro mês). Com ela, a sobra e a lista nunca se desencontram em
+    silêncio (A3 a A5, 22/11/2026), decidido no MESMO render da lista:
+    - legada já presente na lista como lançamento: não soma por fora;
+    - ligada ausente e X conhecido desta montagem: X segue por fora até chegar;
+    - ligada ausente e X desconhecido: `sobraForaDaLista`, e a tela avisa. */
 export function useSobraDoMes(
   userId: string | undefined, habilitada: boolean,
-  { usarCacheOffline = false, aoLancar }: { usarCacheOffline?: boolean; aoLancar?: () => void } = {},
+  { usarCacheOffline = false, aoLancar, lancamentos }: {
+    usarCacheOffline?: boolean; aoLancar?: () => unknown;
+    lancamentos?: readonly Pick<Transaction, 'id' | 'type' | 'amount' | 'category' | 'occurred_on'>[];
+  } = {},
 ) {
   const [fonte, setFonte] = useState<Fonte | null>(null);
   const [, setDia] = useState(todayISO);
@@ -38,6 +52,31 @@ export function useSobraDoMes(
   /* Uma tentativa de conversão por conta e mês nesta montagem: sem laço se o
      servidor recusar, e a próxima abertura tenta de novo. */
   const conversaoTentada = useRef<string | null>(null);
+  const [recarregando, setRecarregando] = useState(false);
+  const recargas = useRef(0);
+  const recargaEmCurso = useRef(false);
+  const recargaTentada = useRef<string | null>(null);
+  /* Última legada desta montagem: o X que segue valendo até a lista trazer o lançamento. */
+  const retida = useRef<{ chave: string; valor: number } | null>(null);
+  const lida = useRef<{ chave: string; sobra: EstadoSobra } | null>(null);
+  /* Ligado que a lista já mostrou: se sair dela, foi apagado ou movido. */
+  const vistoNaLista = useRef<string | null>(null);
+  const recarregarLista = useCallback(async () => {
+    const vez = ++recargas.current;
+    recargaEmCurso.current = true;
+    setRecarregando(true);
+    invalidarRespostasAtrasadas();
+    try {
+      await aoLancarRef.current?.();
+    } catch (erro) {
+      console.error('[sobra-do-mes] recarregar os lançamentos falhou', erro);
+    } finally {
+      if (vez === recargas.current) {
+        recargaEmCurso.current = false;
+        setRecarregando(false);
+      }
+    }
+  }, []);
   const hoje = todayISO();
   const mes = hoje.slice(0, 7);
 
@@ -51,8 +90,7 @@ export function useSobraDoMes(
       conversaoTentada.current = chave;
       try {
         if (await converterSobraLegada(sobra.mes, userId!) === 'convertida' && ativo && dono.current === userId) {
-          invalidarRespostasAtrasadas();
-          aoLancarRef.current?.();
+          void recarregarLista();
           setRevisao(n => n + 1);
         }
       } catch (erro) {
@@ -60,17 +98,33 @@ export function useSobraDoMes(
         console.warn('[sobra-do-mes] converter a sobra legada falhou; segue pelo modelo antigo', erro);
       }
     }
+    /* Guarda X e diz se a sobra perdeu o lançamento (apagado em outro lugar):
+       sem id não há o que procurar na lista, então ela precisa ser relida. */
+    function anotarLeitura(sobra: EstadoSobra): boolean {
+      const chave = `${userId}:${sobra.mes}`;
+      const antes = lida.current?.chave === chave ? lida.current.sobra : null;
+      lida.current = { chave, sobra };
+      if (sobra.estado !== 'confirmada') return false;
+      if (sobra.convertida !== true && sobra.valor > 0) retida.current = { chave, valor: sobra.valor };
+      return sobra.convertida === true && !sobra.transactionId && antes?.estado === 'confirmada'
+        && (!!antes.transactionId || antes.valor > 0);
+    }
     async function atualizar() {
       const tentativa = ++geracao.current;
       const dia = todayISO();
       setDia(dia);
-      setFonte({ userId: userId!, dia, sobra: null, adiada: null, carregando: true, erro: false, semConexao: false });
+      /* Relendo, a confirmada do mesmo dono e dia continua: o Saldo não perde X no foco. */
+      setFonte(antes => antes?.userId === userId && antes?.dia === dia && antes.sobra?.estado === 'confirmada'
+        ? { ...antes, adiada: null, carregando: true, erro: false, semConexao: false }
+        : { userId: userId!, dia, sobra: null, adiada: null, carregando: true, erro: false, semConexao: false, leitura: tentativa });
       try {
         const [sobra, adiada] = await Promise.all([
           buscarSobraDoMes(dia.slice(0, 7), userId!), sobraAdiadaHoje(userId!, dia),
         ]);
         if (ativo && tentativa === geracao.current && dono.current === userId && dia === todayISO()) {
-          setFonte({ userId: userId!, dia, sobra, adiada, carregando: false, erro: false, semConexao: false });
+          const perdeuLancamento = anotarLeitura(sobra);
+          setFonte({ userId: userId!, dia, sobra, adiada, carregando: false, erro: false, semConexao: false, leitura: tentativa });
+          if (perdeuLancamento) void recarregarLista();
           if (sobra.estado === 'confirmada') void guardarTela(CHAVE_DO_DISCO, sobra, userId);
           void converterSePreciso(sobra);
         }
@@ -80,9 +134,10 @@ export function useSobraDoMes(
         const guardada = semConexao && usarCacheOffline ? (await lerTela<EstadoSobra>(CHAVE_DO_DISCO))?.dados : undefined;
         const doDisco = guardada?.estado === 'confirmada' && guardada.userId === userId && guardada.mes === dia.slice(0, 7) ? guardada : null;
         if (ativo && tentativa === geracao.current && dono.current === userId && dia === todayISO()) {
+          if (doDisco) anotarLeitura(doDisco);
           setFonte(doDisco
-            ? { userId: userId!, dia, sobra: doDisco, adiada: null, carregando: false, erro: false, semConexao: true }
-            : { userId: userId!, dia, sobra: null, adiada: null, carregando: false, erro: true, semConexao });
+            ? { userId: userId!, dia, sobra: doDisco, adiada: null, carregando: false, erro: false, semConexao: true, leitura: tentativa }
+            : { userId: userId!, dia, sobra: null, adiada: null, carregando: false, erro: true, semConexao, leitura: tentativa });
         }
       }
     }
@@ -99,9 +154,37 @@ export function useSobraDoMes(
       else geracao.current += 1;
     });
     return () => { ativo = false; geracao.current += 1; evento.remove(); clearTimeout(timer); };
-  }, [userId, habilitada, revisao, usarCacheOffline]));
+  }, [userId, habilitada, revisao, usarCacheOffline, recarregarLista]));
 
   const vigente = habilitada && fonte && fonte.userId === userId && fonte.dia === hoje ? fonte : null;
+  let sobraDoMes = vigente?.sobra ?? null;
+  let ligadoAusente: string | null = null;
+  let temX = false;
+  if (lancamentos && sobraDoMes?.estado === 'confirmada') {
+    const { transactionId, valor } = sobraDoMes;
+    if (sobraDoMes.convertida !== true && valor > 0) {
+      const jaLancada = lancamentos.find(t => ehLancamentoDeSobra(t)
+        && t.occurred_on === `${sobraDoMes!.mes}-01` && Math.abs(Number(t.amount) - valor) < 0.005);
+      if (jaLancada) sobraDoMes = { ...sobraDoMes, valor: 0, convertida: true, transactionId: jaLancada.id };
+    } else if (transactionId) {
+      if (lancamentos.some(t => t.id === transactionId)) vistoNaLista.current = transactionId;
+      else if (vistoNaLista.current !== transactionId) {
+        ligadoAusente = `${transactionId}:${vigente!.leitura}`;
+        if (retida.current?.chave === `${userId}:${sobraDoMes.mes}`) {
+          temX = true;
+          sobraDoMes = { ...sobraDoMes, valor: retida.current.valor, convertida: false };
+        }
+      }
+    }
+  }
+  /* Uma recarga por leitura: sem laço se a lista voltar sem o lançamento. */
+  useFocusEffect(useCallback(() => {
+    if (!ligadoAusente || recargaTentada.current === ligadoAusente) return;
+    recargaTentada.current = ligadoAusente;
+    if (!recargaEmCurso.current) void recarregarLista();
+  }, [ligadoAusente, recarregarLista]));
+  const sobraForaDaLista: SobraForaDaLista = !ligadoAusente || temX ? null
+    : recarregando || recargaTentada.current !== ligadoAusente ? 'conferindo' : 'ausente';
   function adiar() {
     if (!userId || !vigente || dono.current !== userId || hoje !== todayISO()) return;
     geracao.current += 1;
@@ -113,19 +196,19 @@ export function useSobraDoMes(
       || dono.current !== userId || hoje !== todayISO()) throw new Error('A conta ou o mês mudou. Atualize a Início.');
     const tentativa = ++geracao.current;
     const { transactionId } = await confirmarSobraDoMes(mes, valor, userId);
-    if (transactionId) invalidarRespostasAtrasadas();
     /* Gravado no servidor: a lista de lançamentos precisa do lançamento novo
        mesmo se a tela mudou de conta ou de mês no meio. */
-    aoLancarRef.current?.();
+    void recarregarLista();
     if (tentativa !== geracao.current || dono.current !== userId || hoje !== todayISO()) {
       throw new Error('A conta ou o mês mudou. Atualize a Início.');
     }
     const confirmada: EstadoSobra = { estado: 'confirmada', mes, userId, valor: 0, convertida: true, transactionId };
-    setFonte({ ...vigente, sobra: confirmada });
+    lida.current = { chave: `${userId}:${mes}`, sobra: confirmada };
+    setFonte({ ...vigente, sobra: confirmada, leitura: tentativa });
     void guardarTela(CHAVE_DO_DISCO, confirmada, userId);
   }
   return {
-    hoje, sobraDoMes: vigente?.sobra ?? null, sobraAdiada: vigente?.adiada ?? null,
+    hoje, sobraDoMes, sobraForaDaLista, sobraAdiada: vigente?.adiada ?? null,
     carregando: habilitada && !!userId && (!vigente || vigente.carregando),
     erro: vigente?.erro ?? false, semConexao: vigente?.semConexao ?? false, adiar, confirmar, recarregar: () => setRevisao(n => n + 1),
   };
