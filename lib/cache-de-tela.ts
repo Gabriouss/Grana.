@@ -277,6 +277,28 @@ export function invalidarRespostasAtrasadas(): void {
   atrasados.clear();
 }
 
+/* Origem da lista (R1 da sobra, 22/11/2026): o buscador resolve igual com o
+   servidor e com o disco, então "a recarga deu certo" só se sabe por aqui.
+   Guarda a geração do pedido, na lista e na última linha, que continua lá
+   quando a fila junta pendentes na frente. O que vem do disco nunca é marcado. */
+const doServidor = new WeakMap<object, number>();
+
+function marcarDoServidor(dados: unknown, geracaoDoPedido: number): void {
+  if (!Array.isArray(dados)) return;
+  for (const alvo of [dados, dados[dados.length - 1]]) {
+    if (alvo && typeof alvo === 'object') doServidor.set(alvo, geracaoDoPedido);
+  }
+}
+
+export function geracaoDasLeituras(): number {
+  return geracao;
+}
+
+/** A lista veio do servidor, por pedido feito na geração `marco` ou depois? */
+export function veioDoServidorDesde(lista: readonly object[], marco: number): boolean {
+  return [lista, lista[lista.length - 1]].some((alvo) => !!alvo && (doServidor.get(alvo) ?? -1) >= marco);
+}
+
 /**
  * Envolve um buscador para que ele grave o que trouxe e devolva o guardado
  * quando a REDE falhar.
@@ -402,6 +424,7 @@ export function comCacheOffline<A extends unknown[], T>(
         await avisarSeEsvaziou(chave, tardio.dados);
         await guardarTela(chave, tardio.dados, donoDoPedido, geracaoDoPedido);
         if (geracaoDoPedido !== geracao || await idDoUsuario() !== donoDoPedido) return;
+        marcarDoServidor(tardio.dados, geracaoDoPedido);
         atrasados.set(chave, { dados: tardio.dados, em: Date.now(), userId: donoDoPedido });
         avisarDadoNovo();
         return;
@@ -441,6 +464,7 @@ export function comCacheOffline<A extends unknown[], T>(
         }
         await conferirDonoDoPedido();
         definirModo(null);
+        marcarDoServidor(desfecho.dados, geracaoDoPedido);
         return desfecho.dados;
       }
       if (!isLikelyNetworkError(desfecho.erro)) throw desfecho.erro;

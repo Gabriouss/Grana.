@@ -4,7 +4,7 @@ import { useFocusEffect } from 'expo-router';
 import { todayISO } from './format';
 import { buscarSobraDoMes, confirmarSobraDoMes, converterSobraLegada, sobraPrecisaConverter, type EstadoSobra } from './sobra-do-mes';
 import { adiarSobraAteAmanha, sobraAdiadaHoje } from './sobra-adiada';
-import { guardarTela, invalidarRespostasAtrasadas, isLikelyNetworkError, lerTela } from './cache-de-tela';
+import { geracaoDasLeituras, guardarTela, invalidarRespostasAtrasadas, isLikelyNetworkError, lerTela, veioDoServidorDesde } from './cache-de-tela';
 import { ehLancamentoDeSobra } from './sobra-lancamento';
 import type { SobraForaDaLista } from './sobra-do-mes';
 import type { Transaction } from './types';
@@ -32,7 +32,9 @@ type Fonte = {
     ela é de outro mês). Com ela, a sobra e a lista nunca se desencontram em
     silêncio (A3 a A5, 22/11/2026), decidido no MESMO render da lista:
     - legada já presente na lista como lançamento: não soma por fora;
-    - ligada ausente e X conhecido desta montagem: X segue por fora até chegar;
+    - ligada ausente e X conhecido desta montagem: X segue por fora até a lista
+      voltar do servidor numa recarga pedida depois da conversão (R1); se ela
+      vier sem o lançamento, ele foi movido ou apagado, e X sai;
     - ligada ausente e X desconhecido: `sobraForaDaLista`, e a tela avisa. */
 export function useSobraDoMes(
   userId: string | undefined, habilitada: boolean,
@@ -56,8 +58,9 @@ export function useSobraDoMes(
   const recargas = useRef(0);
   const recargaEmCurso = useRef(false);
   const recargaTentada = useRef<string | null>(null);
-  /* Última legada desta montagem: o X que segue valendo até a lista trazer o lançamento. */
-  const retida = useRef<{ chave: string; valor: number } | null>(null);
+  /* Última legada desta montagem. `desde`: geração da primeira recarga pedida
+     depois da conversão; lista do servidor dessa geração em diante aposenta o X. */
+  const retida = useRef<{ chave: string; valor: number; desde?: number } | null>(null);
   const lida = useRef<{ chave: string; sobra: EstadoSobra } | null>(null);
   /* Ligado que a lista já mostrou: se sair dela, foi apagado ou movido. */
   const vistoNaLista = useRef<string | null>(null);
@@ -66,6 +69,7 @@ export function useSobraDoMes(
     recargaEmCurso.current = true;
     setRecarregando(true);
     invalidarRespostasAtrasadas();
+    if (retida.current) retida.current.desde ??= geracaoDasLeituras();
     try {
       await aoLancarRef.current?.();
     } catch (erro) {
@@ -160,6 +164,11 @@ export function useSobraDoMes(
   let sobraDoMes = vigente?.sobra ?? null;
   let ligadoAusente: string | null = null;
   let temX = false;
+  /* Sem a lista do mês (outro mês na tela), a carga que chegar não prova nada sobre a sobra. */
+  if (!lancamentos && retida.current?.desde !== undefined) {
+    retida.current.desde = undefined;
+    recargaTentada.current = null;
+  }
   if (lancamentos && sobraDoMes?.estado === 'confirmada') {
     const { transactionId, valor } = sobraDoMes;
     if (sobraDoMes.convertida !== true && valor > 0) {
@@ -170,9 +179,13 @@ export function useSobraDoMes(
       if (lancamentos.some(t => t.id === transactionId)) vistoNaLista.current = transactionId;
       else if (vistoNaLista.current !== transactionId) {
         ligadoAusente = `${transactionId}:${vigente!.leitura}`;
-        if (retida.current?.chave === `${userId}:${sobraDoMes.mes}`) {
-          temX = true;
-          sobraDoMes = { ...sobraDoMes, valor: retida.current.valor, convertida: false };
+        const x = retida.current;
+        if (x?.chave === `${userId}:${sobraDoMes.mes}`) {
+          if (x.desde !== undefined && veioDoServidorDesde(lancamentos, x.desde)) retida.current = null;
+          else {
+            temX = true;
+            sobraDoMes = { ...sobraDoMes, valor: x.valor, convertida: false };
+          }
         }
       }
     }
@@ -181,7 +194,8 @@ export function useSobraDoMes(
   useFocusEffect(useCallback(() => {
     if (!ligadoAusente || recargaTentada.current === ligadoAusente) return;
     recargaTentada.current = ligadoAusente;
-    if (!recargaEmCurso.current) void recarregarLista();
+    /* Em curso só serve se o X já tem marco; senão ela saiu antes de o mês voltar à tela. */
+    if (!recargaEmCurso.current || (retida.current && retida.current.desde === undefined)) void recarregarLista();
   }, [ligadoAusente, recarregarLista]));
   const sobraForaDaLista: SobraForaDaLista = !ligadoAusente || temX ? null
     : recarregando || recargaTentada.current !== ligadoAusente ? 'conferindo' : 'ausente';

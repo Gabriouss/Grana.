@@ -1,12 +1,14 @@
 /*
  * Nenhuma janela em que a sobra some sem aviso, nem conta duas vezes
- * (A3, A4 e A5 do parecer do Lynx, 22/11/2026).
+ * (A3, A4 e A5 do parecer do Lynx, 22/11/2026), nem um X retido que não
+ * existe mais (R1).
  *
  *   node __tests__/sobra-janelas.cjs
  *
  * Hook, serviço, cache e cálculo REAIS, e as expressões REAIS das duas telas
- * (chamada do hook, estados do cartão do Livre, Saldo do mês e faixa). Só
- * React, rede, disco e a carga da lista são dublês. Guarda CADA quadro: o que
+ * (chamada do hook, estados do cartão do Livre, Saldo do mês e faixa). A lista
+ * vem dos buscadores REAIS de lib/data.ts. Só React, rede, disco, fila e o
+ * `load` em volta do buscador são dublês. Guarda CADA quadro: o que
  * importa é o valor enquanto muda, não só o final.
  */
 process.env.TZ = 'America/Sao_Paulo';
@@ -65,7 +67,7 @@ const CONVERTIDA = { valor: 0, convertida: true, transaction_id: 'tx' };
 /* Uma tela montada: estado próprio de lista, carga com porta e quadros. */
 function montar({ tela, linha = LEGADA, lista = [salario], noServidor = lista, rede = true, disco = new Map(), mes = 10 }) {
   const m = { linha, noServidor, rede, quadros: [], cargas: 0, transactions: [], loading: true, offline: false, foco: true, mes,
-    portaSobra: null, portaLista: null, cargaFalha: false, erroNaSobra: null };
+    portaSobra: null, portaLista: null, cargaFalha: false, erroNaSobra: null, pendentes: [] };
   const slots = [];
   let cursor = 0, efeitos = [], sujo = false, montado = false;
   const agendar = () => { if (!montado || sujo) return; sujo = true; queueMicrotask(() => { sujo = false; render(); }); };
@@ -86,7 +88,20 @@ function montar({ tela, linha = LEGADA, lista = [salario], noServidor = lista, r
   }
   const semRede = () => ({ data: null, error: { message: 'TypeError: Network request failed' } });
   const supabase = {
-    from() {
+    from(tabela) {
+      if (tabela === 'transactions') {
+        const filtros = [];
+        const q = { select: () => q, order: () => q, range: () => q,
+          gte(c, v) { filtros.push((t) => t[c] >= v); return q; },
+          lte(c, v) { filtros.push((t) => t[c] <= v); return q; },
+          async then(res, rej) {
+            await m.portaLista;
+            const r = !m.rede ? semRede() : m.cargaFalha ? { data: null, error: { code: '42501', message: 'recusado' } }
+              : { data: m.noServidor.filter((t) => filtros.every((f) => f(t))), error: null };
+            return Promise.resolve(r).then(res, rej);
+          } };
+        return q;
+      }
       const q = { select: () => q, eq: () => q, async maybeSingle() {
         await m.portaSobra;
         if (m.erroNaSobra) return { data: null, error: m.erroNaSobra };
@@ -113,12 +128,19 @@ function montar({ tela, linha = LEGADA, lista = [salario], noServidor = lista, r
     './supabase': { supabase }, './sessao-offline': { idDoUsuarioLocal: async () => 'u', sessaoEstaTravada: () => false },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
   };
+  /* Só do que lib/data.ts importa e a leitura da lista não usa. */
+  const doData = {
+    './fila-pendente': { juntarPendentes: async (l) => (m.pendentes.length ? [...m.pendentes, ...l] : l), entradasPendentesPorCarteira: async () => [] },
+    './voz-pendente-na-lista': { juntarVozPendente: async (l) => l },
+    './creditLimitAlert': {}, './widgets-home-events': { notificarDadosDosWidgetsAlterados() {}, observarDadosDosWidgets: () => () => {} },
+  };
   const modulos = new Map();
   function real(rel) {
     if (modulos.has(rel)) return modulos.get(rel);
     const exports = {}; modulos.set(rel, exports);
     vm.runInNewContext(js(ler(rel)), { exports, Date: Relogio, console: { error() {}, warn() {}, log() {} }, setTimeout: () => 0, clearTimeout() {},
       require(id) {
+        if (rel === 'lib/data.ts' && id in doData) return doData[id];
         if (id in stubs) return stubs[id];
         if (id.startsWith('@/')) return real(id.slice(2) + '.ts');
         if (id.startsWith('.')) return real(path.posix.join(path.posix.dirname(rel), id + '.ts'));
@@ -132,15 +154,24 @@ function montar({ tela, linha = LEGADA, lista = [salario], noServidor = lista, r
   const financeiro = real('lib/safe-to-spend.ts');
   const credito = real('lib/creditoFaturas.ts');
   const { casaComBusca } = real('lib/filtro-compras.ts');
+  const dados = real('lib/data.ts');
 
   let carga = 0;
   async function load() {
     const minha = ++carga; m.cargas++;
-    await m.portaLista;
-    if (minha !== carga) return;
-    /* Como as telas: sem rede ou com falha fica o que já havia, e a faixa acende. */
-    if (!m.rede || m.cargaFalha) { m.offline = true; m.loading = false; render(); return; }
-    m.transactions = m.noServidor; m.offline = false; m.loading = false; render();
+    try {
+      const dois = String(m.mes + 1).padStart(2, '0');
+      const lista = await (tela === 'inicio' ? dados.fetchTransactions()
+        : dados.fetchTransactionsDoPeriodo(`2026-${dois}-01`, `2026-${dois}-${new Date(2026, m.mes + 1, 0).getDate()}`));
+      if (minha !== carga) return;
+      /* Como as telas: o que o buscador devolve vira a lista, venha do servidor ou do disco. */
+      m.transactions = lista; m.offline = false;
+    } catch {
+      /* Como as telas: sem disco fica o que já havia, e a faixa acende. */
+      if (minha !== carga) return;
+      m.offline = true;
+    }
+    m.loading = false; render();
   }
   function ambiente() {
     return { ...sobra, ...format, ...financeiro, ...credito, casaComBusca, Date: Relogio, String, useMemo: (f) => f(), useState: (v) => [v], userId: 'u',
@@ -330,6 +361,91 @@ function porta() { let abrir; const p = new Promise((r) => { abrir = r; }); retu
     p.abrir(); await tick();
     ok(!m.ultimo().aviso && perto(m.ultimo().saldo, 1000 + X), 'A5 lista chegou: X e sem aviso');
   }
+  // R1: o X retido vale só até a lista voltar do servidor sem o lançamento.
+  const semLigado = (m) => perto(m.ultimo().saldo, m.ultimo().entradas) && !m.ultimo().aviso;
+  const comRetido = (m) => perto(m.ultimo().saldo, m.ultimo().entradas + X);
+  const antesDeConverter = async (extra) => {
+    const m = montar({ tela: 'lancamentos', linha: ANTES_DA_MIGRATION, ...extra });
+    await m.abrir();
+    await m.load(); await tick(); // o disco da lista fica com o que havia
+    return m;
+  };
+  for (const [nome, extra] of [['com salário', {}], ['mês vazio', { lista: [] }]]) {
+    const m = await antesDeConverter(extra);
+    m.linha = CONVERTIDA; // convertida e movida para dezembro em outro aparelho
+    const cargas = m.cargas;
+    await m.refocar();
+    ok(semLigado(m), `R1 movido, ${nome}: a primeira recarga com sucesso solta X`);
+    for (let i = 0; i < 3; i++) { await m.refocar(); await m.load(); await tick(); }
+    ok(semLigado(m) && m.cargas <= cargas + 7, `R1 movido, ${nome}: 3 focos depois segue sem X e sem laço (${m.cargas - cargas})`);
+    m.rede = false; await m.load(); await tick();
+    ok(perto(m.ultimo().saldo, m.ultimo().entradas), `R1 movido, ${nome}: lista do disco depois não ressuscita X`);
+  }
+  {
+    const m = await antesDeConverter();
+    m.pendentes = [{ ...salario, id: 'local-1', type: 'out', amount: 5 }];
+    m.linha = CONVERTIDA;
+    await m.refocar();
+    ok(perto(m.ultimo().saldo, m.ultimo().entradas - 5), 'R1 com pendente na fila: a recarga com sucesso solta X');
+  }
+  {
+    const m = await antesDeConverter();
+    m.linha = CONVERTIDA; m.cargaFalha = true;
+    await m.refocar();
+    ok(comRetido(m), 'R1 recarga com erro: X segue');
+    m.cargaFalha = false;
+    await m.refocar();
+    ok(semLigado(m), 'R1 a tentativa seguinte, com sucesso: solta X');
+  }
+  {
+    const m = await antesDeConverter();
+    m.linha = CONVERTIDA;
+    const p = porta(); m.portaLista = p.p;
+    await m.refocar();
+    m.rede = false; p.abrir(); await tick();
+    ok(comRetido(m) && !m.offline, 'R1 recarga servida do disco não é sucesso: X segue');
+    m.rede = true; await m.load(); await tick();
+    ok(semLigado(m), 'R1 qualquer carga do servidor depois disso solta X');
+  }
+  {
+    const m = await antesDeConverter();
+    m.linha = CONVERTIDA;
+    const p = porta(); m.portaLista = p.p;
+    await m.refocar();
+    const outra = m.load();
+    p.abrir(); await outra; await tick();
+    ok(semLigado(m), 'R1 recarga atropelada por outra carga: a que venceu solta X');
+  }
+  {
+    const m = await antesDeConverter();
+    const p = porta(); m.portaLista = p.p;
+    const velha = m.load(); // saiu antes da conversão
+    m.linha = CONVERTIDA; m.noServidor = [salario, lancada];
+    await m.refocar();
+    ok(semJanelaLanc(m), 'R1 carga anterior à conversão não solta X');
+    p.abrir(); await velha; await tick();
+    ok(semJanelaLanc(m) && perto(m.ultimo().entradas, 1000 + X), 'R1 carga anterior à conversão: termina no lançamento');
+  }
+  {
+    const m = await antesDeConverter();
+    m.linha = CONVERTIDA; m.cargaFalha = true;
+    await m.refocar(); // pediu a recarga e falhou
+    m.cargaFalha = false; m.mes = 9; m.render();
+    await m.load(); await tick();
+    const p = porta(); m.portaLista = p.p;
+    m.mes = 10; m.render(); await tick();
+    ok(comRetido(m), 'R1 a lista de outubro não solta o X de novembro');
+    p.abrir(); await tick();
+    ok(semLigado(m), 'R1 de volta a novembro: a recarga solta X');
+  }
+  {
+    const m = montar({ tela: 'inicio', linha: ANTES_DA_MIGRATION });
+    await m.abrir();
+    m.linha = CONVERTIDA; // o ligado não existe na lista inteira do servidor
+    await m.refocar();
+    ok(m.ultimo().indisponivel && perto(m.ultimo().saldo, 1000), 'R1 Início: sem X fantasma, Livre avisa');
+  }
+
   // Casos legítimos não viram aviso.
   {
     const m = montar({ tela: 'lancamentos', linha: CONVERTIDA, lista: [salario], noServidor: [salario] });
