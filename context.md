@@ -21019,3 +21019,14 @@ Fonte: `relatorio-Lynx-revisao-renovacao-r2-2026-11-22.md` e `anexos-Keel-renova
 - **Corte manual de acesso.** Passa a exigir mudar `status` e `last_event_at` depois da migration. Sem `last_event_at`, um `approved` atrasado desfaz o corte. O guia `LEIA.md` foi corrigido nesse ponto.
 - **Guia corrigido (só o `LEIA.md` da pasta `r2`).** Três ajustes: o bloco de corte; o caso de conta excluída com expurgo e reenvio do `approved` (a assinatura volta com o e-mail e o livro grava com vínculo, reproduzido pelo Lynx); e a leitura da mensagem `expurgo NÃO feito` no timeout, que quer dizer **não confirmado**. O caminho do patch passou a ser `Lynx-provas/renovacao-r2/expurgo-webhook-sem-linha-a-toa.patch`.
 - **Sobra.** Keel em curso nas ressalvas R1, R2, R3 e R5.
+
+### 22/11 — registro das 17h: limite, sobra r3, renovação r2 e exclusão de conta (ordem do Quill)
+
+Fonte: `00-ORDEM-Quill-registro-1700-2026-11-22.md`, com os limites de `00-LIMITES-PERMANENTES.md`, na rodada `E:/Grana-temporarios/2026-11-22-retomada`.
+
+- **Limite de 5 h.** A conta Claude bateu às 13:06 e a rodada ficou parada até 16:01.
+- **Sobra r3.** R1, R2, R3 e R5 em `8a1bf543..b8ec6e24`, gate com exit 0 (226 comandos), conferido nos logs. Revisão final do Lynx em curso. Duas suítes fora do `test:ci` já estavam vermelhas no clone.
+- **Renovação r2.** Pré-checagens do Supremo em produção OK: funções iguais e 0 linhas afetadas. Os 2 cancelamentos sem par do A9b coexistem com as 2 únicas linhas Cakto, ambas já `canceled`. Script `aplicar-renovacao/aplicar.cjs` testado nos quatro caminhos e simulado. **NÃO aplicado.**
+- **Exclusão de conta.** Script pronto e simulado de novo. **NÃO aplicado.**
+- **Incidente.** O Keel leu de novo um cache do harness às 12:55, porque o Supremo limpou o contexto dele sem repetir a proibição. Foi só leitura, e a saída eram notas do fichário. Corrigido com `00-LIMITES-PERMANENTES.md`, citado em toda ordem.
+- **Verificação.** Só registro: `context.md`, vault e a nota de sessão de hoje. Sem push, build, deploy, Supabase, branch, worktree ou stash.
