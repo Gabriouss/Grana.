@@ -20990,3 +20990,14 @@ Fonte: `recibo-supremo-renovacao-reprovada.md`, na rodada `E:/Grana-temporarios/
 - **Sem urgência.** Leitura de hoje em produção: 0 pagantes reabririam, 0 assinaturas Cakto `active`, 0 `past_due`.
 - **Defeito novo, separado (LGPD).** O expurgo de `webhook_events` (`cakto-webhook/index.ts:154`) nunca é enviado: 19 linhas com mais de 30 dias. A retenção prometida não está sendo cumprida. Patch em preparo, sem deploy.
 - **Permissão recusada.** O Keel pediu para ler um cache fora do projeto; o Supremo recusou e ele seguiu pelo repositório.
+
+### 22/11 — entrega do Keel: correções da sobra e exclusão de conta (recibo do Supremo)
+
+Fonte: `recibo-supremo-entrega-keel-sobra.md`, com o relatório `relatorio-Keel-correcoes-sobra-2026-11-22.md`, na rodada `E:/Grana-temporarios/2026-11-22-retomada`.
+
+- **Sobra, correções A1 a A8.** Entregues em `21837b60..8a1bf543`, 7 commits locais no clone `teste/leitura-avisos`. Cor nova `#b0f7d4`. Gate com exit 0 nos três logs (226 comandos no `test:ci`), conferido pelo Supremo nos logs. **Revisão do Lynx em curso.** Nada aplicado, sem push, migration não aplicada.
+- **Exclusão de conta com duas carteiras (P1).** Migration preparada fora dos repositórios, com prova de 130 checagens e 0 falhas. Hoje a falha deixa a conta pela metade: saem avatar, vínculo de cobrança e autoria do feedback, e ficam login e dados financeiros (provado localmente).
+- **Produção, só leitura pelo Supremo.** 0 contas vivas com vínculo de cobrança encerrado. O marcador só existe para quem tem assinatura, então isso não prova que a falha nunca aconteceu. 2 contas com mais de uma carteira. A função de exclusão é igual à revisada.
+- **Funções da sobra em produção.** As quatro funções que a sobra redefine estão em produção iguais ao repositório.
+- **Não publicados agora.** `assistente-financeiro` e `enviar-lembretes-habito` mudaram no clone, mas não serão publicados nesta etapa.
+- **Aberto para o autor.** O "Retrato completo" do Score ainda conta a sobra como "tem entrada".
