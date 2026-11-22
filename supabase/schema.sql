@@ -49,6 +49,7 @@ create index if not exists bills_user_id_due_date_idx
 
 -- Resumo cumulativo usado por Desafios. SECURITY INVOKER mantém a RLS ativa;
 -- o filtro explícito por auth.uid() evita qualquer agregado entre locatários.
+-- A sobra do mês fica fora (migration 20261121120000, decisão P4).
 create or replace function public.get_gamification_summary()
 returns table (
   transaction_count bigint,
@@ -64,10 +65,13 @@ security invoker
 set search_path = ''
 as $$
   select
-    (select count(*) from public.transactions t where t.user_id = (select auth.uid())),
-    (select count(*) from public.transactions t where t.user_id = (select auth.uid()) and t.type = 'in'),
+    (select count(*) from public.transactions t where t.user_id = (select auth.uid())
+       and not (t.type = 'in' and t.category = 'Sobra do mês')),
+    (select count(*) from public.transactions t where t.user_id = (select auth.uid()) and t.type = 'in'
+       and t.category <> 'Sobra do mês'),
     (select count(*) from public.transactions t where t.user_id = (select auth.uid()) and t.type = 'out'),
-    (select coalesce(sum(t.amount), 0) from public.transactions t where t.user_id = (select auth.uid()) and t.type = 'in'),
+    (select coalesce(sum(t.amount), 0) from public.transactions t where t.user_id = (select auth.uid()) and t.type = 'in'
+       and t.category <> 'Sobra do mês'),
     (select count(distinct t.category) from public.transactions t where t.user_id = (select auth.uid()) and t.type = 'out'),
     (select count(*) from public.bills b where b.user_id = (select auth.uid()) and b.status = 'paid');
 $$;
@@ -3615,7 +3619,8 @@ grant execute on function public.saldos_por_carteira() to authenticated;
 
 -- Total de entradas por carteira, de todo o período (regra 20, 25/09/2026):
 -- migration 20260925000000_entradas_por_carteira.sql. É o número do seletor
--- de carteira, que deixou de mostrar saldo.
+-- de carteira, que deixou de mostrar saldo. A sobra do mês fica fora e não
+-- acumula (migration 20261121120000).
 create or replace function public.entradas_por_carteira()
 returns table (wallet_id uuid, entradas numeric)
 language plpgsql
@@ -3637,12 +3642,13 @@ begin
     and t.type = 'in'
     and coalesce(t.payment_method, '') <> 'credit'
     and t.card_id is null
+    and t.category <> 'Sobra do mês'
   group by t.wallet_id;
 end;
 $$;
 
 comment on function public.entradas_por_carteira() is
-  'Total de entradas de caixa por carteira, de todo o período (sem saídas, sem estorno no cartão). Rótulo do seletor de carteira; não é saldo (regra 20).';
+  'Total de entradas de caixa por carteira, de todo o período (sem saídas, sem estorno no cartão, sem sobra do mês). Rótulo do seletor de carteira; não é saldo (regra 20).';
 
 revoke all on function public.entradas_por_carteira() from public, anon;
 grant execute on function public.entradas_por_carteira() to authenticated;

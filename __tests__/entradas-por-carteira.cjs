@@ -33,8 +33,11 @@ ok(/revoke all on function public\.entradas_por_carteira\(\) from public, anon;/
 ok(/grant execute on function public\.entradas_por_carteira\(\) to authenticated;/.test(sql), 'concede a authenticated');
 ok((migration.match(/\$\$/g) ?? []).length % 2 === 0, 'delimitadores $$ pareados');
 
-const bloco = migration.slice(migration.indexOf('create or replace function public.entradas_por_carteira()')).trimEnd();
-ok(schema.includes(bloco), 'schema.sql traz o mesmo bloco da migration, byte a byte');
+/* Desde 22/11/2026 a última definição é a de 20261121120000 (sem a sobra do mês). */
+const ultima = ler('supabase/migrations/20261121120000_sobra_vira_lancamento.sql');
+const bloco = ultima.match(/create or replace function public\.entradas_por_carteira\(\)[\s\S]*?grant execute on function public\.entradas_por_carteira\(\) to authenticated;/)[0];
+ok(schema.includes(bloco), 'schema.sql traz o bloco da última migration, byte a byte');
+ok(/and t\.category <> 'Sobra do mês'/.test(bloco), 'a sobra do mês fica fora do seletor (regra 20)');
 ok((schema.match(/create or replace function public\.entradas_por_carteira\(/g) ?? []).length === 1, 'schema.sql tem uma definição só');
 
 console.log(`entradas-por-carteira: ${passou} checagens OK`);

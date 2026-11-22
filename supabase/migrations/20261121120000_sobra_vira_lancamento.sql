@@ -12,6 +12,11 @@
 -- Cliente antigo que lê `valor` passa a somar 0 e vê o lançamento como entrada
 -- comum: conta uma vez. O gatilho impede que um cliente antigo com estado velho
 -- regrave um valor numa linha convertida (somaria duas vezes).
+--
+-- Uma transação só: espera no máximo 5 s por trava e aborta inteira se a soma
+-- convertida diferir da soma legada. Quem aplica manda o arquivo num lote só.
+begin;
+set local lock_timeout = '5s';
 
 -- 1. Ligação com o lançamento. A chave composta garante o mesmo dono; apagar o
 --    lançamento zera só `transaction_id` (a linha continua respondida, P3).
@@ -116,7 +121,7 @@ begin
       (user_id, type, description, amount, category, color, occurred_on, recurring,
        parent_id, payment_method, card_id, wallet_id, client_request_id)
     values
-      (v_uid, 'in', public.sobra_do_mes_descricao(p_mes), v_valor, 'Sobra do mês', '#74a17c',
+      (v_uid, 'in', public.sobra_do_mes_descricao(p_mes), v_valor, 'Sobra do mês', '#b0f7d4',
        to_date(p_mes || '-01', 'YYYY-MM-DD'), false, null, null, null, v_carteira,
        md5('sobra-do-mes:' || v_uid::text || ':' || p_mes)::uuid)
     returning id into v_tx;
@@ -140,7 +145,12 @@ declare
   r record;
   v_carteira uuid;
   v_tx uuid;
+  v_ids uuid[] := '{}';
+  v_legada numeric;
+  v_convertida numeric;
 begin
+  select coalesce(sum(valor), 0) into v_legada
+    from public.sobra_do_mes where valor > 0 and not convertida;
   for r in select s.user_id, s.mes, s.valor from public.sobra_do_mes s
             where s.valor > 0 and not s.convertida
             order by s.user_id, s.mes
@@ -153,13 +163,22 @@ begin
       (user_id, type, description, amount, category, color, occurred_on, recurring,
        parent_id, payment_method, card_id, wallet_id, client_request_id)
     values
-      (r.user_id, 'in', public.sobra_do_mes_descricao(r.mes), r.valor, 'Sobra do mês', '#74a17c',
+      (r.user_id, 'in', public.sobra_do_mes_descricao(r.mes), r.valor, 'Sobra do mês', '#b0f7d4',
        to_date(r.mes || '-01', 'YYYY-MM-DD'), false, null, null, null, v_carteira,
        md5('sobra-do-mes:' || r.user_id::text || ':' || r.mes)::uuid)
     returning id into v_tx;
     update public.sobra_do_mes set valor = 0, transaction_id = v_tx, convertida = true
      where user_id = r.user_id and mes = r.mes;
+    v_ids := v_ids || v_tx;
   end loop;
+  -- Confere o que ficou GRAVADO e ligado, e não o que se mandou gravar.
+  select coalesce(sum(t.amount), 0) into v_convertida
+    from public.transactions t
+    join public.sobra_do_mes s on s.user_id = t.user_id and s.transaction_id = t.id
+   where t.id = any(v_ids) and t.type = 'in';
+  if v_convertida <> v_legada then
+    raise exception 'migration abortada: a soma convertida difere da soma legada; nada foi gravado';
+  end if;
   update public.sobra_do_mes set convertida = true where valor = 0 and not convertida;
 end $$;
 
@@ -195,3 +214,40 @@ as $$
 $$;
 revoke all on function public.get_gamification_summary() from public, anon;
 grant execute on function public.get_gamification_summary() to authenticated, service_role;
+
+-- 7. A sobra não muda o seletor de carteira nem acumula (regra 20). Vale para o
+--    APK e a web de hoje, que chamam esta mesma função. Mesma marca do item 6;
+--    o cliente espelha em `calcularEntradasWallets`.
+create or replace function public.entradas_por_carteira()
+returns table (wallet_id uuid, entradas numeric)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := (select auth.uid());
+begin
+  if v_user is null or not public.tem_direito_acesso() then
+    raise exception 'Acesso não autorizado' using errcode = '42501';
+  end if;
+
+  return query
+  select t.wallet_id, sum(t.amount)::numeric as entradas
+  from public.transactions t
+  where t.user_id = v_user
+    and t.type = 'in'
+    and coalesce(t.payment_method, '') <> 'credit'
+    and t.card_id is null
+    and t.category <> 'Sobra do mês'
+  group by t.wallet_id;
+end;
+$$;
+
+comment on function public.entradas_por_carteira() is
+  'Total de entradas de caixa por carteira, de todo o período (sem saídas, sem estorno no cartão, sem sobra do mês). Rótulo do seletor de carteira; não é saldo (regra 20).';
+
+revoke all on function public.entradas_por_carteira() from public, anon;
+grant execute on function public.entradas_por_carteira() to authenticated;
+
+commit;

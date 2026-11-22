@@ -10,21 +10,49 @@
  * tem_direito_acesso() (controlado por app.acesso) e uma `bills` mínima para
  * o resumo de conquistas. Afirma QUANTOS lançamentos existem depois de cada
  * chamada. Inclui um mutante do gatilho (restaurar transaction_id) para provar
- * que o teste de apagar o pega.
+ * que o teste de apagar o pega. A ida e volta, o seletor e a transação ficam
+ * em helpers/sobra-ida-e-volta.cjs, executado aqui.
  */
-const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { novoBanco, aplicar, migration, novoUsuario, tentar } = require('./helpers/postgres-t5.cjs');
+const idaEVolta = require('./helpers/sobra-ida-e-volta.cjs');
 
-const watchdog = setTimeout(() => { console.error('sobra-lancamento-servidor: não concluiu'); process.exit(1); }, 60000);
+const watchdog = setTimeout(() => { console.error('sobra-lancamento-servidor: não concluiu'); process.exit(1); }, 180000);
 const raiz = path.join(__dirname, '..');
 const schema = fs.readFileSync(path.join(raiz, 'supabase', 'schema.sql'), 'utf8').replace(/\r\n/g, '\n');
 const trecho = (re, nome) => { const m = schema.match(re); if (!m) throw new Error('schema.sql sem ' + nome); return m[0]; };
-let checagens = 0;
-const ok = (c, nome) => { assert.ok(c, nome); checagens++; console.log('  ok  ' + nome); };
+let checagens = 0, falhas = 0;
+/* Não para na primeira: o RED mostra todos os achados de uma vez. */
+const ok = (c, nome) => { if (c) { checagens++; console.log('  ok  ' + nome); } else { falhas++; console.error('  FALHA  ' + nome); } };
+const COR = '#b0f7d4'; // escolha de 22/11/2026, medida contra as nove cores padrão
+/* `get_gamification_summary` anterior a esta migration (b34be610): é o estado a que a volta retorna. */
+const GAMIFICACAO_ANTES = `create or replace function public.get_gamification_summary()
+returns table (
+  transaction_count bigint,
+  income_count bigint,
+  expense_count bigint,
+  income_total numeric,
+  expense_category_count bigint,
+  paid_bill_count bigint
+)
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select
+    (select count(*) from public.transactions t where t.user_id = (select auth.uid())),
+    (select count(*) from public.transactions t where t.user_id = (select auth.uid()) and t.type = 'in'),
+    (select count(*) from public.transactions t where t.user_id = (select auth.uid()) and t.type = 'out'),
+    (select coalesce(sum(t.amount), 0) from public.transactions t where t.user_id = (select auth.uid()) and t.type = 'in'),
+    (select count(distinct t.category) from public.transactions t where t.user_id = (select auth.uid()) and t.type = 'out'),
+    (select count(*) from public.bills b where b.user_id = (select auth.uid()) and b.status = 'paid');
+$$;
+revoke all on function public.get_gamification_summary() from public, anon;
+grant execute on function public.get_gamification_summary() to authenticated, service_role;`;
 
-async function preparar({ mutante = false, antes } = {}) {
+async function preparar({ mutante = false, antes, migrar = true } = {}) {
   const db = await novoBanco();
   await db.exec(`
     grant usage on schema auth to authenticated;
@@ -45,7 +73,10 @@ async function preparar({ mutante = false, antes } = {}) {
   await db.exec(trecho(/create policy "transactions: dono com acesso"[\s\S]*?\);\n/, 'policy de transactions'));
   await db.exec(trecho(/revoke insert on public\.transactions from authenticated;[\s\S]*?on public\.transactions to authenticated;\nrevoke update[\s\S]*?on public\.transactions to authenticated;/, 'permissões de coluna'));
   await db.exec(migration('20261107120000'));
+  await db.exec(migration('20260925000000'));
+  await db.exec(GAMIFICACAO_ANTES);
   if (antes) await antes(db);
+  if (!migrar) return db;
   const trocas = mutante ? [['new.convertida := true;', 'new.convertida := true;\n    new.transaction_id := old.transaction_id;']] : [];
   await aplicar(db, '20261121120000', trocas);
   return db;
@@ -79,7 +110,7 @@ async function principal() {
       const [l] = await lancs(db, legadoA);
       const s = await sobra(db, legadoA, '2026-11');
       ok(l && l.amount === 266.31 && l.type === 'in' && l.dia === '2026-11-01', 'conversão: sobra legada vira entrada de R$ 266,31 no dia 1');
-      ok(l.description === 'Sobra de outubro' && l.color === '#74a17c' && l.wallet_id === db.principalA, 'conversão: "Sobra de outubro", cor da paleta, Principal pelo is_default');
+      ok(l.description === 'Sobra de outubro' && l.color === COR && l.wallet_id === db.principalA, 'conversão: "Sobra de outubro", cor da paleta, Principal pelo is_default');
       ok(l.payment_method === null && l.card_id === null && l.recurring === false, 'conversão: fora do crédito e sem recorrência');
       ok(s.valor === 0 && s.convertida === true && s.transaction_id === l.id, 'conversão: linha fica valor 0, convertida e ligada');
       const [sp] = await lancs(db, legadoSemPadrao);
@@ -186,6 +217,8 @@ async function principal() {
       ok(!r.ok || s.transaction_id !== null, 'mutante (gatilho restaura transaction_id): ligação fica pendurada, e a checagem de apagar acima o pega');
     } finally { await m.close(); }
   }
-  console.log(`\nsobra-lancamento-servidor: ${checagens} checagens ok`);
+  await idaEVolta({ ok, preparar, como, rpc, carteira, lancs, sobra, trecho });
+  if (falhas) process.exitCode = 1;
+  console.log(`\nsobra-lancamento-servidor: ${checagens} checagens ok, ${falhas} falhas`);
 }
 principal().then(() => clearTimeout(watchdog), (e) => { clearTimeout(watchdog); console.error(e); process.exitCode = 1; });
