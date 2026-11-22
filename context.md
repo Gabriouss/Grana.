@@ -20979,3 +20979,14 @@ Fonte: `recibo-supremo-cancelamento-cakto.md`, na rodada `E:/Grana-temporarios/2
 - **Deu errado.** Nada no cancelamento.
 - **Estado.** Decisão 2 (tolerância de 3 dias) **não aplicada**: espera parecer do Lynx e modo manual. Decisão 3 (sobra fora da sequência e do Score) repassada ao Keel, em curso.
 - **Pendente.** Conferir em produção, em leitura, a linha de cancelamento e a cortesia; a decisão 2 só vai ao ar com o ok do Lynx e do Supremo.
+
+### 22/11 — renovação Cakto reprovada no parecer do Lynx (recibo do Supremo)
+
+Fonte: `recibo-supremo-renovacao-reprovada.md`, na rodada `E:/Grana-temporarios/2026-11-22-retomada`; parecer em `relatorio-Lynx-revisao-renovacao-2026-11-22.md`.
+
+- **Lynx reprovou a proposta de renovação.** Nada aplicado. A opção A (3 dias contados do vencimento, aprovada pelo autor) continua de pé. A implementação volta ao Keel (`00-ORDEM-Keel-renovacao-r2-2026-11-22.md`), depois da sobra.
+- **Achados conferidos pelo Supremo no SQL:** (1) cancelado podia voltar a ativo; (2) a carência encolhia; (3) o prazo offline encolhia. (4) Em produção, as seis funções existem com `anon` sem execute, então não há exposição hoje; a guarda entra mesmo assim.
+- **Ensaio descartado.** O ensaio sugerido pelo Keel gravaria de verdade, por causa do `commit` interno. Não foi rodado.
+- **Sem urgência.** Leitura de hoje em produção: 0 pagantes reabririam, 0 assinaturas Cakto `active`, 0 `past_due`.
+- **Defeito novo, separado (LGPD).** O expurgo de `webhook_events` (`cakto-webhook/index.ts:154`) nunca é enviado: 19 linhas com mais de 30 dias. A retenção prometida não está sendo cumprida. Patch em preparo, sem deploy.
+- **Permissão recusada.** O Keel pediu para ler um cache fora do projeto; o Supremo recusou e ele seguiu pelo repositório.
