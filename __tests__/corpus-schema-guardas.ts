@@ -191,10 +191,18 @@ checar('o arquivo tem funções para inspecionar', funcoes.length > 20, `encontr
   const inicioMemoria = sql.indexOf('create extension if not exists pg_trgm');
   const inicioCotas = sql.indexOf('create table if not exists public.ai_usage_counters');
   const fimCotas = sql.indexOf('-- Invariante: Total é somente uma visão, nunca um destino de dados');
+  /* A8 (22/11/2026): a seção é a migration de 04/09 com UMA função trocada pela
+     redefinição de 21/11 (a sobra do mês não é dia de registro). O resto da
+     seção, e a função inteira, seguem comparados por igualdade. */
+  const migrationSobra = readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '20261121120000_sobra_vira_lancamento.sql'), 'utf8');
+  const trechoContextos = (fonte: string) =>
+    normalizarSql(fonte.match(/create or replace function public\.contextos_push_habito\([\s\S]*?to service_role;/)?.[0] ?? '<ausente>');
+  const pushEsperado = migrationAPartirDe(migrationPush, 'create table if not exists public.push_tokens')
+    .replace(trechoContextos(migrationPush), () => trechoContextos(migrationSobra));
   checar(
-    'a migration do push permanece idêntica ao baseline do schema',
+    'a seção de push do schema = 04/09 + contexto sem a sobra de 21/11 (A8)',
     inicioPush >= 0 && inicioJanelas > inicioPush
-      && normalizarSql(sql.slice(inicioPush, inicioJanelas)) === migrationAPartirDe(migrationPush, 'create table if not exists public.push_tokens')
+      && normalizarSql(sql.slice(inicioPush, inicioJanelas)) === pushEsperado
   );
   checar(
     'a migration das janelas de notificação permanece idêntica ao baseline do schema',
