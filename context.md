@@ -21055,3 +21055,16 @@ Fonte: `recibo-supremo-ram-metro-1715.md`, na rodada `E:/Grana-temporarios/2026-
 - **Desvio da ordem.** A ordem mandava não subir mais nada abaixo de 1 GiB, e o segundo Expo subiu. Motivo ainda não informado pelo Vigil.
 - **Não verificado.** Se o Metro ativo tem as `EXPO_PUBLIC_*` (o clone não tem `.env`). Encerrar as árvores depende do autor.
 - **Commit:** só `context.md`, sem push.
+
+### 22/11 — desfecho do QA no emulador: bloqueado antes do login (recibo do Supremo, 17h17)
+
+Fonte: `recibo-supremo-qa-desfecho-1717.md`, com `relatorio-Vigil-emulador-2026-11-22.md`, na rodada `E:/Grana-temporarios/2026-11-22-retomada`. Continua `recibo-supremo-ram-metro-1715.md`.
+
+- **Resultado: BLOQUEADO antes do login, 0 de 9 itens verificados.** As correções de 21 e 22/11 seguem sem conferência em tela.
+- **Fatos.** O segundo Expo registrou `EADDRINUSE` às 17:15 e não existe mais; compatível com saída própria por porta ocupada, mas a saída não foi observada. O Vigil declara que não repetiu nem contornou a recusa. O primeiro segue vivo (cmd 7936, node 26268, porta 8081), intocado desde a recusa. O Vigil declara que o subiu sem `EXPO_PUBLIC_*`.
+- **Emulador desligado** pelo Vigil, passo da ordem. RAM livre de 0,96 para 2,56 GiB.
+- **Hipótese, não comprovada.** O Vigil atribui "Failed to download remote update" à falta de `EXPO_PUBLIC_*`. Só que o `adb reverse` da 8081 e o status do Metro estavam ok quando o Supremo mediu. Primeiro bundle lento com pouca RAM é outra hipótese.
+- **Deu errado.** A ordem do Supremo a um agente em Haiku citou o modo de subir o Metro por referência, sem comando exato nem espera pelo primeiro bundle. O Vigil subiu sem as variáveis e em duplicidade.
+- **Para repetir.** O autor fechar a janela do Expo ou autorizar o encerramento; RAM com folga antes do emulador; comando único de subida na ordem, só com `EXPO_PUBLIC_*` no processo, sem copiar `.env`.
+- **Nada aplicado em produção.**
+- **Commit:** só `context.md`, sem push.
