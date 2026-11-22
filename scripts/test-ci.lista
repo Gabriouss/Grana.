@@ -225,3 +225,4 @@ node __tests__/emulador-pacote-instalado.cjs
 node __tests__/sobra-lancamento-servidor.cjs
 node __tests__/sobra-lancamento-cliente.cjs
 node __tests__/sobra-janelas.cjs
+node __tests__/sobra-dia-de-registro.cjs

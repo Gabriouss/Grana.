@@ -22,7 +22,7 @@ const dinheiro = async (db) => JSON.stringify([
 /* O que a migration mexe no catálogo: a volta tem de devolver igual. */
 const catalogo = async (db) => ({
   funcoes: await linhas(db, `select p.proname, pg_get_functiondef(p.oid) def, p.proacl::text acl, obj_description(p.oid) obs from pg_proc p
-    where p.pronamespace = 'public'::regnamespace and p.proname ~ '(sobra|entradas_por_carteira|get_gamification_summary)' order by 1`),
+    where p.pronamespace = 'public'::regnamespace and p.proname ~ '(sobra|entradas_por_carteira|get_gamification_summary|contextos_push_habito)' order by 1`),
   colunas: await linhas(db, "select column_name, data_type from information_schema.columns where table_name = 'sobra_do_mes' order by 1"),
   restricoes: await linhas(db, "select conname, pg_get_constraintdef(oid) def from pg_constraint where conrelid = 'public.sobra_do_mes'::regclass order by 1"),
   indices: await linhas(db, "select indexname from pg_indexes where tablename = 'sobra_do_mes' order by 1"),
@@ -72,6 +72,27 @@ module.exports = async function idaEVolta({ ok, preparar, como, rpc, carteira, l
         await db.exec(trecho(new RegExp(`create or replace function public\\.${nome}\\(\\)[\\s\\S]*?\\n\\$\\$;`), nome));
         ok(await def() === daMigration, `A6 reaplicar o schema.sql não desfaz ${nome}`);
       }
+    } finally { await db.close(); }
+  }
+
+  // A8: a RPC de dias do push não conta a sobra.
+  {
+    const db = await preparar();
+    try {
+      const u = await novoUsuario(db);
+      const [{ hoje, ontem }] = await linhas(db, "select current_date::text hoje, (current_date - 1)::text ontem");
+      const por = (dia, tipo, categoria) => db.query("insert into public.transactions (user_id,type,description,amount,category,occurred_on) values ($1,$2,'AUDIT',5,$3,$4)", [u, tipo, categoria, dia]);
+      const dias = async () => (await linhas(db, 'select array_to_json(datas_recentes)::text d from public.contextos_push_habito(array[$1]::uuid[])', [u]))[0].d;
+      await por(hoje, 'in', 'Sobra do mês');
+      ok(await dias() === '[]', 'A8 RPC do push: só a sobra não é dia de registro, e a conta segue no resultado');
+      await por(ontem, 'out', 'Sobra do mês');
+      ok(await dias() === JSON.stringify([ontem]), 'A8 RPC do push: saída com o mesmo nome conta');
+      await por(hoje, 'out', 'Alimentação');
+      ok(await dias() === JSON.stringify([hoje, ontem]), 'A8 RPC do push: lançamento comum no mesmo dia conta');
+      const def = async () => (await linhas(db, "select pg_get_functiondef('public.contextos_push_habito(uuid[])'::regprocedure) d"))[0].d;
+      const daMigration = await def();
+      await db.exec(trecho(/create or replace function public\.contextos_push_habito[\s\S]*?\n\$\$;/, 'contextos_push_habito'));
+      ok(await def() === daMigration, 'A6/A8 reaplicar o schema.sql não desfaz contextos_push_habito');
     } finally { await db.close(); }
   }
 

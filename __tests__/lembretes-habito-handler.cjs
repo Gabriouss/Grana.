@@ -40,7 +40,10 @@ function carregarModulo(arquivo, globais = {}) {
 }
 
 const catalogo = carregarModulo('lib/notification-catalog.ts');
-const pushHabit = carregarModulo('supabase/functions/_shared/push-habit.ts');
+const marcaDaSobra = carregarModulo('supabase/functions/_shared/sobra-lancamento.ts');
+const pushHabit = carregarModulo('supabase/functions/_shared/push-habit.ts', {
+  require(id) { if (id === './sobra-lancamento.ts') return marcaDaSobra; throw new Error(`Import não simulado em push-habit: ${id}`); },
+});
 const seguranca = carregarModulo('supabase/functions/_shared/seguranca.ts');
 
 /* Palavras de dia no texto contra o dia em que a mensagem pode sair. */

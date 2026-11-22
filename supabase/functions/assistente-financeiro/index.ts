@@ -1,3 +1,4 @@
+import { ehLancamentoDeSobra } from '../_shared/sobra-lancamento.ts';
 import { lerCorpoLimitado } from '../_shared/request-body.ts';
 // Grana. — Granabô, assistente financeiro com IA
 //
@@ -1960,7 +1961,9 @@ async function executarFerramenta(
       const bills = (billsResult.data ?? []) as Array<{ status: string }>;
 
       const dataDoRegistro = (t: TxLeve) => (t.created_at ? isoSaoPaulo(new Date(t.created_at)) : t.occurred_on);
-      const datasComRegistro = new Set(transacoes.map(dataDoRegistro));
+      /* Confirmar a sobra não é registrar (A8), como em diasComRegistro do app. */
+      const registros = transacoes.filter((t) => !ehLancamentoDeSobra(t));
+      const datasComRegistro = new Set(registros.map(dataDoRegistro));
 
       // Sequência: mesmo algoritmo de calculateStreakAndWeek. Anda dia a dia
       // em UTC puro a partir do dia-calendário já resolvido em São Paulo —
@@ -1988,7 +1991,7 @@ async function executarFerramenta(
       });
       const prefixoDoMes = `${currentYear}-${pad(currentMonth + 1)}`;
       const diasComRegistroNoMes = new Set(
-        transacoes.map(dataDoRegistro).filter((d) => d.startsWith(prefixoDoMes))
+        registros.map(dataDoRegistro).filter((d) => d.startsWith(prefixoDoMes))
       ).size;
 
       const consistencyPts = Math.min(300, streak * 20);

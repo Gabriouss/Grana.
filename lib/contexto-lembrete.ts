@@ -1,4 +1,5 @@
 import { calculateStreakAndWeek } from './gamification';
+import { ehLancamentoDeSobra } from './sobra-lancamento';
 import { isoLocal } from './format';
 import type { Transaction } from './types';
 
@@ -32,6 +33,7 @@ export function contextoDoLembrete(transacoes: Transaction[], agora: Date = new 
   const hoje = isoLocal(agora);
   let ultima: string | null = null;
   for (const t of transacoes) {
+    if (ehLancamentoDeSobra(t)) continue; // A8
     const dia = t.created_at ? isoLocal(new Date(t.created_at)) : t.occurred_on;
     if (!dia || dia > hoje) continue;
     if (!ultima || dia > ultima) ultima = dia;

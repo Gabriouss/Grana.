@@ -103,7 +103,7 @@ async function todosOsTokensAtivos(): Promise<PushToken[]> {
   }
 }
 
-type LinhaAtividade = { user_id: string; created_at: string | null; occurred_on: string | null };
+type LinhaAtividade = { user_id: string; created_at: string | null; occurred_on: string | null; type: string | null; category: string | null };
 
 /** Janela de leitura da atividade. A sequência maior que isso sai truncada no
     texto do lembrete; o RPC antigo (`contextos_push_habito`) usava 45 dias. */
@@ -122,7 +122,7 @@ async function atividadeDosUsuarios(userIds: string[], agora: Date): Promise<Map
   for (let inicio = 0; ; inicio += 1000) {
     const { data, error } = await supabase
       .from('transactions')
-      .select('user_id,created_at,occurred_on')
+      .select('user_id,created_at,occurred_on,type,category')
       .in('user_id', userIds)
       .gte('created_at', desde)
       .order('id')

@@ -1,5 +1,13 @@
 import type { Transaction } from './types';
 
+/* A marca do lançamento de sobra (P4 e A8). Mora aqui porque `format` a usa;
+   quem trata de sobra importa de `sobra-lancamento`, que a explica. */
+export const CATEGORIA_SOBRA = 'Sobra do mês';
+
+export function ehLancamentoDeSobra(t: { type?: string | null; category?: string | null }): boolean {
+  return t.type === 'in' && t.category === CATEGORIA_SOBRA;
+}
+
 /**
  * Lançamento no crédito nunca grava sem cartão (decisão do autor,
  * 23/09/2026: "o lançamento não é feito até que isso ocorra"). Vale para toda

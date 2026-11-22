@@ -1218,13 +1218,14 @@ export async function fetchTransactionsDoPeriodo(inicioISO: string, fimISO: stri
    Fonte única de sequência, "Constância no mês" e calendário: o dia LOCAL de
    `created_at`. NÃO filtra por `occurred_on`: um lançamento de data antiga
    registrado hoje conta como hoje. Traz só duas colunas, nunca a linha toda. */
-type LinhaDeRegistro = { created_at: string | null; occurred_on: string };
+/* `type` e `category` são a marca da sobra, que não conta como registro (A8). */
+type LinhaDeRegistro = { created_at: string | null; occurred_on: string; type?: string; category?: string };
 
 async function buscar_linhasDeRegistro(inicioISO: string, fimISO: string): Promise<LinhaDeRegistro[]> {
   return buscarTodasAsPaginas<LinhaDeRegistro>((de, ate) =>
     supabase
       .from('transactions')
-      .select('created_at, occurred_on')
+      .select('created_at, occurred_on, type, category')
       .gte('created_at', inicioISO)
       .lt('created_at', fimISO)
       .order('created_at', { ascending: false })

@@ -1,3 +1,5 @@
+import { ehLancamentoDeSobra } from './sobra-lancamento.ts';
+
 export type MomentoLocal = {
   data: string;
   minutosDoDia: number;
@@ -65,11 +67,12 @@ function numeroDoDia(data: string): number {
  * hoje, criada semanas atrás, não é.
  */
 export function diasDeAtividade(
-  linhas: Array<{ created_at?: string | null; occurred_on?: string | null }>,
+  linhas: Array<{ created_at?: string | null; occurred_on?: string | null; type?: string | null; category?: string | null }>,
   timezone: string,
 ): string[] {
   const dias = new Set<string>();
   for (const t of linhas) {
+    if (ehLancamentoDeSobra(t)) continue;
     const dia = t.created_at ? momentoNaZona(new Date(t.created_at), timezone)?.data : t.occurred_on;
     if (dia) dias.add(dia);
   }

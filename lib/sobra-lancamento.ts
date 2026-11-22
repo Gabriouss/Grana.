@@ -4,16 +4,13 @@
    `confirmar_sobra_do_mes`, migration 20261121120000). Ela conta no Livre, no
    Saldo, na lista, nos gráficos, no CSV e no PDF, como qualquer entrada, mas
    fica FORA da média de receitas das projeções e das conquistas: é dinheiro
-   que veio do mês anterior, não renda nova.
+   que veio do mês anterior, não renda nova. E confirmar não é dia de
+   registro (A8, 22/11/2026): sequência, Mês completo, Score e lembretes.
 
    A marca é a mesma no servidor (`get_gamification_summary`): entrada nessa
    categoria. Recategorizar faz dela uma entrada comum, por escolha da pessoa. */
 
-export const CATEGORIA_SOBRA = 'Sobra do mês';
+export { CATEGORIA_SOBRA, ehLancamentoDeSobra } from './transaction-rules';
 /* Da PALETTE_30, que nenhuma categoria padrão usa (22/11/2026). ΔE contra Saúde:
    25,5 normal, 25,3 deuteranopia e 26,2 protanopia. A mesma cor está na RPC. */
 export const COR_SOBRA = '#b0f7d4';
-
-export function ehLancamentoDeSobra(t: { type: string; category?: string | null }): boolean {
-  return t.type === 'in' && t.category === CATEGORIA_SOBRA;
-}

@@ -3983,6 +3983,7 @@ revoke all on public.push_habit_deliveries from anon, authenticated;
 
 -- O contexto vem em lote para a function não fazer uma consulta por usuário.
 -- Só service_role pode chamar: as datas financeiras não são expostas pelo RPC.
+-- A sobra do mês não é dia de registro (migration 20261121120000, A8).
 create or replace function public.contextos_push_habito(p_user_ids uuid[])
 returns table (usuario_id uuid, datas_recentes date[])
 language sql
@@ -3999,6 +4000,7 @@ as $$
   left join public.transactions t
     on t.user_id = ids.usuario_id
    and t.occurred_on >= current_date - 45
+   and not (t.type = 'in' and t.category = 'Sobra do mês')
   group by ids.usuario_id;
 $$;
 

@@ -75,6 +75,7 @@ async function preparar({ mutante = false, antes, migrar = true } = {}) {
   await db.exec(migration('20261107120000'));
   await db.exec(migration('20260925000000'));
   await db.exec(GAMIFICACAO_ANTES);
+  await db.exec(migration('20260904190000').match(/create or replace function public\.contextos_push_habito[\s\S]*?to service_role;/)[0]);
   if (antes) await antes(db);
   if (!migrar) return db;
   const trocas = mutante ? [['new.convertida := true;', 'new.convertida := true;\n    new.transaction_id := old.transaction_id;']] : [];

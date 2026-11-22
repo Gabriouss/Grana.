@@ -1,3 +1,5 @@
+import { ehLancamentoDeSobra } from './transaction-rules';
+
 export { isCreditTx } from './transaction-rules';
 
 export function formatMoney(n: number): string {
@@ -281,10 +283,11 @@ export function deslocarMes(ano: number, mes: number, delta: number): { ano: num
  * é o dia seguinte.
  */
 export function diasComRegistro(
-  transacoes: ReadonlyArray<{ created_at?: string | null; occurred_on?: string | null }>
+  transacoes: ReadonlyArray<{ created_at?: string | null; occurred_on?: string | null; type?: string | null; category?: string | null }>
 ): Set<string> {
   const dias = new Set<string>();
   for (const t of transacoes) {
+    if (ehLancamentoDeSobra(t)) continue; // confirmar a sobra não é registrar (A8)
     const dia = t.created_at ? isoLocal(new Date(t.created_at)) : t.occurred_on;
     if (dia) dias.add(dia);
   }

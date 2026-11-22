@@ -146,4 +146,26 @@ comment on function public.entradas_por_carteira() is
 revoke all on function public.entradas_por_carteira() from public, anon;
 grant execute on function public.entradas_por_carteira() to authenticated;
 
+create or replace function public.contextos_push_habito(p_user_ids uuid[])
+returns table (usuario_id uuid, datas_recentes date[])
+language sql
+stable
+set search_path = ''
+as $$
+  select ids.usuario_id,
+         coalesce(
+           array_agg(distinct t.occurred_on order by t.occurred_on desc)
+             filter (where t.occurred_on is not null),
+           '{}'::date[]
+         ) as datas_recentes
+  from unnest(p_user_ids) as ids(usuario_id)
+  left join public.transactions t
+    on t.user_id = ids.usuario_id
+   and t.occurred_on >= current_date - 45
+  group by ids.usuario_id;
+$$;
+
+revoke all on function public.contextos_push_habito(uuid[]) from public, anon, authenticated;
+grant execute on function public.contextos_push_habito(uuid[]) to service_role;
+
 commit;
