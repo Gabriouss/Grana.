@@ -20966,3 +20966,16 @@ Fonte: `00-ORDEM-Quill-registro-pareceres-2026-11-22.md` e os relatórios `relat
 2. Autor decide sobre a recorrência da compra de teste (antes de 23/11 06:25) e sobre os quatro pontos da tolerância da Cakto.
 3. Migration da sobra e migration da tolerância: só com o ok do autor, nunca em lote sem leitura prévia.
 4. Build: só com pedido explícito do autor.
+
+### 22/11 — recorrência de teste cancelada na Cakto (recibo do Supremo)
+
+Fonte: `recibo-supremo-cancelamento-cakto.md`, na rodada `E:/Grana-temporarios/2026-11-22-retomada`.
+
+- **Pedido do autor.** Às três perguntas do Supremo, o autor respondeu "1 - Sim / 3 - Sim / 2 - Sim": (1) cancelar a recorrência da compra de teste; (2) tolerância de 3 dias, contada do vencimento, na renovação Cakto atrasada; (3) a sobra não conta como dia de registro na sequência nem no Score.
+- **Sintoma e causa.** A compra de teste de 22/10 seguia `late` na Cakto, com cobrança marcada para 23/11 06:25. A cortesia não interrompe cobrança, por isso a recorrência precisava ser cancelada na Cakto.
+- **Feito.** Cancelamento só dessa assinatura, às 11:48:37, pelo script `cortesia/cancelar-recorrencia.cjs`: HTTP 200 e releitura `canceled`, sem próxima cobrança. Sem reembolso.
+- **Webhook.** Informado pelo Supremo: o evento `canceled` da Cakto chegou e foi processado em produção, e a cortesia seguiu intacta. Não conferido por mim nesta escrita.
+- **Descartado.** Deixar cobrar para observar a primeira renovação real.
+- **Deu errado.** Nada no cancelamento.
+- **Estado.** Decisão 2 (tolerância de 3 dias) **não aplicada**: espera parecer do Lynx e modo manual. Decisão 3 (sobra fora da sequência e do Score) repassada ao Keel, em curso.
+- **Pendente.** Conferir em produção, em leitura, a linha de cancelamento e a cortesia; a decisão 2 só vai ao ar com o ok do Lynx e do Supremo.
