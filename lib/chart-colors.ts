@@ -1,5 +1,6 @@
 import type { PieSlice } from '@/components/PieChart';
 import { CATEGORIES } from '@/lib/types';
+import { CATEGORIA_SOBRA, COR_SOBRA } from '@/lib/sobra-lancamento';
 
 /**
  * Cores de categoria dos gráficos, e o agrupamento das fatias pequenas.
@@ -60,6 +61,8 @@ function hashSlot(nome: string): number {
 /** Cor de uma categoria dentro de um gráfico. */
 export function corDaCategoria(nome: string): string {
   if (nome === 'Outros') return NEUTRO;
+  /* Pelo hash cairia na cor de Saúde. Fica fora de PALETA para não mudar o slot das personalizadas. */
+  if (nome === CATEGORIA_SOBRA) return COR_SOBRA;
   const fixo = SLOT_FIXO[nome];
   return PALETA[fixo !== undefined ? fixo : hashSlot(nome)];
 }

@@ -55,7 +55,7 @@ const base = [
   { id: 't3', type: 'out', amount: 90, category: 'Transporte', occurred_on: '2026-11-04', wallet_id: O, created_at: '2026-11-04T12:00:00Z' },
   { id: 't4', type: 'in', amount: 200, category: 'Outros', occurred_on: '2026-11-02', wallet_id: O, created_at: '2026-11-02T12:00:00Z' },
 ];
-const lancSobra = { id: 'tx-sobra', type: 'in', amount: X, category: 'Sobra do mês', color: '#74a17c', description: 'Sobra de outubro', occurred_on: '2026-11-01', wallet_id: P, payment_method: null, card_id: null, created_at: '2026-11-07T12:00:00Z' };
+const lancSobra = { id: 'tx-sobra', type: 'in', amount: X, category: 'Sobra do mês', color: '#b0f7d4', description: 'Sobra de outubro', occurred_on: '2026-11-01', wallet_id: P, payment_method: null, card_id: null, created_at: '2026-11-07T12:00:00Z' };
 const legada = { estado: 'confirmada', mes: '2026-11', userId: U, valor: X, convertida: false, transactionId: null };
 const convertida = { estado: 'confirmada', mes: '2026-11', userId: U, valor: 0, convertida: true, transactionId: 'tx-sobra' };
 
@@ -142,6 +142,22 @@ for (const dia of ['2026-11-01', '2026-11-07', '2026-11-15', '2026-11-30']) {
     'P4 projeções: a sobra não muda a média de renda nem a sugestão');
   const nomes = (lista) => gam.evaluateBadges(lista, [], [], 0, undefined, [], new Set(), hoje).filter((b) => b.unlocked).map((b) => b.id).sort();
   igual(nomes([lancSobra]), nomes([]), 'P4 conquistas: uma sobra sozinha não desbloqueia conquista de receita nem de contagem');
+}
+
+// Cor (autor, 22/11/2026): da paleta, nenhuma categoria padrão usa, separada de Saúde nos gráficos.
+{
+  const cores = real('lib/chart-colors.ts', dublesSobra);
+  const marca = real('lib/sobra-lancamento.ts');
+  const padrao = real('lib/types.ts').CATEGORIES;
+  const paleta = fs.readFileSync(path.join(root, 'lib/theme.ts'), 'utf8').split('export const PALETTE_30 = [')[1].split('];')[0].match(/#[0-9a-f]{6}/g);
+  const sql = fs.readFileSync(path.join(root, 'supabase/migrations/20261121120000_sobra_vira_lancamento.sql'), 'utf8');
+  const noSql = [...sql.matchAll(/'Sobra do mês', '(#[0-9a-f]{6})'/g)].map((m) => m[1]);
+  ok(paleta.includes(marca.COR_SOBRA), 'cor da sobra já existe na paleta');
+  ok(!padrao.some((c) => c.color === marca.COR_SOBRA), 'cor da sobra: nenhuma categoria padrão usa');
+  ok(noSql.length === 2 && noSql.every((c) => c === marca.COR_SOBRA), 'cor da sobra igual na RPC e na conversão');
+  ok(cores.corDaCategoria('Sobra do mês') === marca.COR_SOBRA, 'gráfico pinta a sobra com a cor dela');
+  const [f1, f2] = cores.prepararFatias([{ name: 'Sobra do mês', value: 2, color: '#000000' }, { name: 'Saúde', value: 1, color: '#000000' }]);
+  ok(f1.color !== f2.color, 'sobra e Saúde com cores diferentes no mesmo gráfico');
 }
 
 console.log(`\nsobra-lancamento-cliente: ${checagens} checagens ok`);

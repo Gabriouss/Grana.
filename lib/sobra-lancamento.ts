@@ -10,8 +10,9 @@
    categoria. Recategorizar faz dela uma entrada comum, por escolha da pessoa. */
 
 export const CATEGORIA_SOBRA = 'Sobra do mês';
-/* Cor que `corDaCategoria('Sobra do mês')` dá nos gráficos, da paleta existente. */
-export const COR_SOBRA = '#74a17c';
+/* Da PALETTE_30, que nenhuma categoria padrão usa (22/11/2026). ΔE contra Saúde:
+   25,5 normal, 25,3 deuteranopia e 26,2 protanopia. A mesma cor está na RPC. */
+export const COR_SOBRA = '#b0f7d4';
 
 export function ehLancamentoDeSobra(t: { type: string; category?: string | null }): boolean {
   return t.type === 'in' && t.category === CATEGORIA_SOBRA;

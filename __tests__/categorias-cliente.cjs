@@ -49,7 +49,7 @@ async function main() {
   check(core.acimaDoTeto(10001, 100) === 1, 'excesso de um centavo exato');
   const abaixo = core.linhaDoTeto({ tudo: 8000 }, 100);
   check(abaixo.gasto === 80 && abaixo.percentual === 80 && !abaixo.excedido, 'abaixo do teto preserva valor e proporção');
-  const charts = carregar('lib/chart-colors.ts', { '@/lib/types': carregar('lib/types.ts') });
+  const charts = carregar('lib/chart-colors.ts', { '@/lib/types': carregar('lib/types.ts'), '@/lib/sobra-lancamento': carregar('lib/sobra-lancamento.ts') });
   const fatia = (name, value) => ({ name, value, color: 'cor original' });
   const originais = [fatia('Transporte', 70), fatia('Moradia', 50), fatia('Alimentação', 30), fatia('Lazer', 18), fatia('Outros', 22), fatia('Assinaturas', 6), fatia('Saúde', 4)];
   const fatias = charts.prepararFatias(originais);
