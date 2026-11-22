@@ -21030,3 +21030,16 @@ Fonte: `00-ORDEM-Quill-registro-1700-2026-11-22.md`, com os limites de `00-LIMIT
 - **Exclusão de conta.** Script pronto e simulado de novo. **NÃO aplicado.**
 - **Incidente.** O Keel leu de novo um cache do harness às 12:55, porque o Supremo limpou o contexto dele sem repetir a proibição. Foi só leitura, e a saída eram notas do fichário. Corrigido com `00-LIMITES-PERMANENTES.md`, citado em toda ordem.
 - **Verificação.** Só registro: `context.md`, vault e a nota de sessão de hoje. Sem push, build, deploy, Supabase, branch, worktree ou stash.
+
+### 22/11 — Lynx aprova a sobra r3 (ordem do Supremo)
+
+Fonte: `relatorio-Lynx-revisao-sobra-r3-2026-11-22.md`, na rodada `E:/Grana-temporarios/2026-11-22-retomada`. Intervalo `8a1bf543..b8ec6e24`.
+
+- **Aprovada.** R1 (1266 virou 1000), R2 (1346 virou 1080), R3 (retrospectiva) e R5 (mutantes "AMBOS" agora reprovam; controle 82/82) fechados, sem regressão encontrada. Só as 3 sondas r2 rodadas pelo Lynx, exit 0; o gate não foi repetido, mas os 3 logs foram lidos (exit 0 em `b8ec6e24`).
+- **N1, baixo, não bloqueia.** `cache-de-tela.ts:288` com `fila-pendente.ts:26`: sobra convertida e movida, mês sem outra linha no servidor, e um pendente preso na fila (`[...pendentes, ...[]]` perde a marca; o X fantasma fica até a fila subir). O teste `sobra-janelas.cjs:386` só cobre lista com salário. Corrigir no próximo lote que tocar a sobra.
+- **Teste defasado, não regressão.** `assinatura-entitlement.cjs`, linha 25: `7d45f4b6` pôs a guarda de dono em `entitlement-cache.ts:37,43`, e o dublê de `./supabase` não tem `auth` nem `armazenamentoSessao`; falta dublar `./sessao-offline`, como em `entitlement-offline.cjs:39`.
+- **Hipótese, não fato.** `entitlement-context.tsx:151` espera o cache 1 s, e a guarda de dono pode levar 2 s; se `getSession` demorar numa abertura sem rede, o assinante pode cair em acesso negado. Não verificado. Pedido ao Vigil: abrir sem rede com token vencido.
+- **Não verificado:** aparelho, `load` real com React, produção, Granabô executado, `assinatura-entitlement` (não rodado pelo Lynx).
+- **Time.** Lynx e Keel fechados para liberar RAM. Vigil em Haiku 5.5, na reverificacao do emulador, em curso.
+- **Nada aplicado.** Migration segue pedindo o ok do autor e a lista do parecer r2. Funções não se publicam desta branch.
+- **Commit:** só `context.md`, sem push.
