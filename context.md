@@ -21043,3 +21043,15 @@ Fonte: `relatorio-Lynx-revisao-sobra-r3-2026-11-22.md`, na rodada `E:/Grana-temp
 - **Time.** Lynx e Keel fechados para liberar RAM. Vigil em Haiku 5.5, na reverificacao do emulador, em curso.
 - **Nada aplicado.** Migration segue pedindo o ok do autor e a lista do parecer r2. Funções não se publicam desta branch.
 - **Commit:** só `context.md`, sem push.
+
+### 22/11 — RAM baixa e bloqueio no QA do emulador (recibo do Supremo, 17h15)
+
+Fonte: `recibo-supremo-ram-metro-1715.md`, na rodada `E:/Grana-temporarios/2026-11-22-retomada`. Adendo: `00-ADENDO-Vigil-bloqueio-metro-2026-11-22.md`.
+
+- **Sintoma.** RAM livre em 0,39 GiB às 17:12, oscilando até 0,78 GiB às 17:15; commit livre em torno de 20 GiB.
+- **Causa medida.** Emulador com 3,3 GiB, somado a Firefox (1,9), Claude (1,4) e outros. Contribuiu uma segunda árvore do Expo, subida às 17:14 com a de 17:12 ainda iniciando (cerca de 160 MB). A causa do peso total é medida; a relação exata entre as duas árvores e a RAM não foi isolada.
+- **Bloqueio.** O Vigil tentou `Stop-Process -Force` nas duas árvores do Expo; o auto mode recusou como ação destrutiva. As duas seguem vivas; a de 17:12 escuta a 8081 (PID 26268).
+- **Descartado.** O Supremo encerrar os processos no lugar do Vigil (contornaria a recusa) e fechar processo de outro agente por memória.
+- **Desvio da ordem.** A ordem mandava não subir mais nada abaixo de 1 GiB, e o segundo Expo subiu. Motivo ainda não informado pelo Vigil.
+- **Não verificado.** Se o Metro ativo tem as `EXPO_PUBLIC_*` (o clone não tem `.env`). Encerrar as árvores depende do autor.
+- **Commit:** só `context.md`, sem push.
