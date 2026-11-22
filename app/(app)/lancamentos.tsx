@@ -153,7 +153,6 @@ export default function LancamentosScreen() {
      20/11/2026), para o "Saldo do mês" daqui fechar com o "Saldo atual". */
   const { session } = useSession();
   const userId = session?.user.id;
-  const { hoje: hojeDaSobra, sobraDoMes, carregando: carregandoSobra, erro: erroSobra, semConexao: sobraSemConexao } = useSobraDoMes(userId, !isDemoMode, { usarCacheOffline: true });
   const carteiraPrincipalId = useMemo(() => carteiraPrincipalDaSobra(wallets, userId), [wallets, userId]);
   const { hidden, toggle: togglePrivacy } = usePrivacy();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
@@ -190,6 +189,15 @@ export default function LancamentosScreen() {
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
+  /* A lista é só do mês visível: fora do mês atual ela não diz nada sobre a sobra.
+     `load` nasce abaixo; a sobra chama a versão atual depois de lançar (A4). */
+  const loadRef = useRef<(() => Promise<void>) | null>(null);
+  const vendoMesAtual = selectedYear === now.getFullYear() && selectedMonth === now.getMonth();
+  const { hoje: hojeDaSobra, sobraDoMes, sobraForaDaLista, carregando: carregandoSobra, erro: erroSobra, semConexao: sobraSemConexao } = useSobraDoMes(userId, !isDemoMode, {
+    usarCacheOffline: true,
+    aoLancar: () => loadRef.current?.(),
+    lancamentos: loading || !vendoMesAtual ? undefined : transactions,
+  });
 
 
   // New / Edit Transaction Modal
@@ -358,6 +366,7 @@ export default function LancamentosScreen() {
       }
     }
   }, [isDemoMode, inicioDoMes, fimDoMes, guardarNoCache]);
+  loadRef.current = load;
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
   useRecarregarAoChegarDadoNovo(() => { void load(); });
@@ -682,14 +691,21 @@ export default function LancamentosScreen() {
     }
     return { monthIn: entrada, monthOut: saida };
   }, [transacoesDoResumo]);
-  /* "Saldo do mês" = sobra confirmada + entradas − saídas (autor, 20/11/2026).
-     A sobra não vira lançamento: fica fora da lista e do total de Entradas. */
+  /* "Saldo do mês" = entradas − saídas. A sobra lançada já está nas Entradas;
+     por fora entra só a que a lista ainda não traz (legada, ou convertida com
+     a lista a caminho). Sem valor conhecido, a faixa avisa (A5). */
   const mesSelecionado = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
   const sobraDoSaldo = sobraNoSaldoDoMes({
     estado: sobraDoMes, userId, mes: mesSelecionado, mesAtual: hojeDaSobra.slice(0, 7),
     carteiraId: activeWalletId, principalId: carteiraPrincipalId,
     filtrado: !!(search.trim() || categoryFilter), carregando: carregandoSobra, erro: erroSobra, semConexao: sobraSemConexao,
+    foraDaLista: sobraForaDaLista, listaOffline: offline,
   });
+  /* Na faixa que a tela já tem, com os textos dela: o resumo segue com as três colunas. */
+  const avisoDaSobra = loading || modoCategoria ? null
+    : sobraDoSaldo.situacao === 'sem-conexao' ? 'sem-rede'
+      : sobraDoSaldo.situacao === 'indisponivel' ? 'falha'
+        : sobraDoSaldo.situacao === 'atualizando' ? 'lento' : null;
   const monthBalance = sobraDoSaldo.valor + monthIn - monthOut;
 
   // Categorias presentes no mês selecionado, pro filtro por categoria (cada uma com a cor do próprio lançamento).
@@ -752,12 +768,12 @@ export default function LancamentosScreen() {
           não dentro dele. O cabeçalho é só eyebrow + título + ações — mesmo
           arranjo de Crédito, que é o padrão das telas. */}
       <View style={[styles.filtrosWrap, colunaLista]}>
-        {(offline || pendingCount > 0) && (
+        {(offline || avisoDaSobra || pendingCount > 0) && (
           <View style={styles.offlineBanner}>
             <Ionicons name="cloud-offline-outline" size={13} color={theme.inkFaint} />
             <Text style={styles.offlineBannerText} numberOfLines={2}>
-              {offline
-                ? textoDaFaixaOffline(motivoOffline)
+              {offline || avisoDaSobra
+                ? textoDaFaixaOffline(offline ? motivoOffline : avisoDaSobra)
                 : `${pendingCount} lançamento${pendingCount > 1 ? 's' : ''} aguardando conexão para sincronizar`}
             </Text>
           </View>

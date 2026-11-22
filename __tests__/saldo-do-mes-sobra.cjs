@@ -105,7 +105,7 @@ const pendente = { userId: 'u', mes: '2026-11', estado: 'pendente' };
 function lancamentos(activeWalletId, extras = {}) {
   const env = { ...sobra, ...format, ...filtro, String, useMemo: (f) => f(), wallets, userId: 'u', activeWalletId, transactions,
     modoCategoria: false, consultaCategoria: { resultado: null }, categoryFilter: null, search: '', selectedYear: 2026, selectedMonth: 10,
-    sobraDoMes: confirmada, carregandoSobra: false, erroSobra: false, sobraSemConexao: false, hojeDaSobra: '2026-11-20', ...extras };
+    sobraDoMes: confirmada, carregandoSobra: false, erroSobra: false, sobraSemConexao: false, hojeDaSobra: '2026-11-20', sobraForaDaLista: null, offline: false, ...extras };
   const r = avaliar(lanc, ['carteiraPrincipalId', 'walletTransactions', 'monthTransactions', 'transacoesDoResumo', '{ monthIn, monthOut }',
     'mesSelecionado', 'sobraDoSaldo', 'monthBalance'], '{ monthIn, monthOut, monthBalance, walletTransactions, sobraDoSaldo: typeof sobraDoSaldo === "undefined" ? undefined : sobraDoSaldo }', env);
   r.sobra = r.sobraDoSaldo?.valor ?? 0; r.situacao = r.sobraDoSaldo?.situacao;
@@ -177,9 +177,10 @@ async function main() {
      lançamento); o que importa aqui continua sendo NÃO pedir o cache offline. */
   igual(!inic.chamadaDoHook?.[2] || !/usarCacheOffline/.test(inic.chamadaDoHook[2]), true, 'Início chama o hook sem usarCacheOffline');
   assert.ok(lanc.chamadaDoHook?.some((a) => /usarCacheOffline:\s*true/.test(a)), 'Lançamentos pede a sobra guardada'); checks++;
-  const inicioOffline = await abrirHook(inic.chamadaDoHook[2] ? eval(`(${inic.chamadaDoHook[2]})`) : {});
+  const inicioOffline = await abrirHook(inic.chamadaDoHook[2]
+    ? vm.runInNewContext(`(${inic.chamadaDoHook[2]})`, { loading: false, transactions, loadRef: { current: null } }) : {});
   igual(inicioOffline.erro, true, 'Início offline com sobra guardada: erro, como hoje');
-  igual(vm.runInNewContext(inic.indisponivel, { fontesLivreDisponiveis: true, erroSobra: inicioOffline.erro }), true,
+  igual(vm.runInNewContext(inic.indisponivel, { fontesLivreDisponiveis: true, erroSobra: inicioOffline.erro, sobraForaDaLista: inicioOffline.sobraForaDaLista }), true,
     'Livre da Início offline continua indisponível mesmo com sobra guardada');
   // 8. Hook real: sem cache, cache de outro mês, ou erro que não é de rede.
   cenario.disco = new Map();

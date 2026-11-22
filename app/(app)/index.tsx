@@ -268,10 +268,11 @@ export default function InicioScreen() {
   const avisosNaFrente = useAvisosNaFrente();
   /* `load` nasce abaixo; a sobra chama a versão atual depois de lançar. */
   const loadRef = useRef<(() => Promise<void>) | null>(null);
-  const { hoje: hojeDaSobra, sobraDoMes, sobraAdiada, carregando: carregandoSobra, erro: erroSobra,
+  const { hoje: hojeDaSobra, sobraDoMes, sobraForaDaLista, sobraAdiada, carregando: carregandoSobra, erro: erroSobra,
     adiar: adiarSobra, confirmar: confirmarSobra, recarregar: recarregarSobra } = useSobraDoMes(userId, !isDemoMode, {
       // A sobra virou lançamento: a lista e o Livre precisam dele (carga completa).
-      aoLancar: () => { void loadRef.current?.(); },
+      aoLancar: () => loadRef.current?.(),
+      lancamentos: loading ? undefined : transactions,
     });
   useEffect(() => {
     if (!userId) {
@@ -1284,7 +1285,7 @@ export default function InicioScreen() {
         }}
         collapsable={false}
       >
-        <SafeToSpendCard carregando={carregandoFontesLivre || carregandoSobra} indisponivel={!fontesLivreDisponiveis || erroSobra} data={safeToSpend} sugestaoArquetipo={arquetipoSugerido} />
+        <SafeToSpendCard carregando={carregandoFontesLivre || carregandoSobra || sobraForaDaLista === 'conferindo'} indisponivel={!fontesLivreDisponiveis || erroSobra || sobraForaDaLista === 'ausente'} data={safeToSpend} sugestaoArquetipo={arquetipoSugerido} />
       </View>
     ),
     cofrinhos: () => (
