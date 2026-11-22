@@ -20928,3 +20928,41 @@ Os logs do gate do Keel têm exit 0 (tsc, test:parser e test:ci). Ressalva: o re
 3. Migration da sobra: só com o ok do autor e a contagem de leitura do Supremo. Não aplicada.
 4. Build: só com pedido explícito do autor.
 5. Limpeza: `Keel-sobra/wip/node_modules` e `Keel-sobra/base/node_modules` são junções para o `node_modules` do clone. Remover com `cmd /c rmdir`. `rm -rf` apagaria o `node_modules` do clone.
+
+### 22/11 — adendo: pareceres, time e renovação da Cakto
+
+Fonte: `00-ORDEM-Quill-registro-pareceres-2026-11-22.md` e os relatórios `relatorio-Lynx-revisao-sobra-2026-11-22.md` e `relatorio-Keel-renovacao-cakto-2026-11-22.md`, na rodada `E:/Grana-temporarios/2026-11-22-retomada`.
+
+**Time.** Por pedido do autor ("Derruba os terminais ociosos e volta aí ao trabalho" e "pode derrubar o time codex também, só claude vai trabalhar"), foram fechados por comando de saída os nove terminais Codex (orquestrador e oito), Antigravity, Claude Code, Meridian, Anvil, Flare, Lumen e Vigil. Ficaram Keel, Lynx e Quill. Memória livre foi de 0,6 para 5,6 GiB. Vale nesta rodada.
+
+**Fato: a sobra foi REPROVADA na revisão do Lynx** (`f65cecd4..21837b60`). Não aplicar a migration. Bloqueio `1cf2352a` aprovado. Os achados foram conferidos pelo Supremo e o Keel está corrigindo.
+- **A1 (crítico, provado):** o SQL de volta zera toda sobra convertida e apaga o lançamento. O UPDATE roda com o gatilho novo ativo, que força `valor := 0`, e a restauração vem só depois do DELETE. Cenário: converter 50 e rodar a volta leva a `valor 0` e zero lançamentos.
+- **A1b (alto, provado):** mesmo reordenada, a volta destrói edição e gravação concorrente. Uma saída de 50 vira +50 de sobra; uma série perde os outros meses pelo `on delete cascade`.
+- **A2 (alto, provado):** a sobra entra no seletor de carteira e acumula. Em `entradas_por_carteira`, 5000 de entradas viram 5300 na migration e 5500 no mês seguinte, sem dinheiro novo. A regra 20 diz que a sobra não muda o seletor.
+- **A3 a A8:** ressalvas de médio e baixo risco. A3: a sobra some da tela no foco. A4: converter em Lançamentos tira o X do Saldo. A6: reaplicar o `schema.sql` desfaz o P4. A7: a migration não tem `begin/commit`. A8: confirmar a sobra ainda conta como dia de registro no Score (decisão do autor).
+
+**Fato: a web publicada usa a sobra.** O bundle `index-90b1ca83…js`, baixado em 22/11, tem `select('valor')` e `upsert` em `sobra_do_mes` e não tem a RPC nova. A premissa do plano caiu. Não foi provado o commit exato do deploy. O APK 1.10.12 (`c4951f29`) não lê a tabela e vê a sobra como entrada comum.
+
+**Decisões do autor, 22/11:** recibo da sobra aprovado (o texto novo é aceito) e cor diferente da de Saúde. O Keel prepara a cor e o recibo na correção.
+
+**Fato: P1, possível alto, anterior à sobra.** Excluir conta com duas carteiras pode falhar com "Usuário sem carteira Principal", com e sem a migration `20260915190000`, quando a Principal sai primeiro na cascata. Provado só no PGlite. Confirmar a definição em produção e abrir tarefa própria. Nada aplicado.
+
+**Renovação da Cakto (Keel).** Relatório `relatorio-Keel-renovacao-cakto-2026-11-22.md`.
+- **Fato no código:** o acesso acaba no segundo de `access_until`. A carência só existe com `past_due`, e `past_due` só nasce de evento `late`. Sem evento, zero tolerância. O adaptador só conhece os eventos `subscription_canceled` e `purchase_refused` (e `subscription_renewed` com a data nova). Os demais eventos da documentação da Cakto (`subscription_late`, `subscription_late_recovered`, `subscription_renewal_refused`, `subscription_paused`, `subscription_resumed`) respondem 200 `ignored`, sem RPC, sem linha e sem log. Por isso `webhook_events` vazio não prova que a Cakto não avisou.
+- **Furos reproduzidos:** `late` depois de cancelamento, reembolso ou chargeback devolve até 3 dias; cada `late` renova a carência; encerramento com data anterior ao `late` vira `outdated` e mantém a carência.
+- **Hipótese, sem prova:** a Cakto enviou `subscription_late` em 21/11 e o evento foi descartado. Confirmar pelo histórico de entregas do webhook. "Nem tentou cobrar" não está provado; conferir `billing-cycles/{id}/attempts`.
+- **Correção proposta, opção A (recomendada):** tolerância derivada no banco de 72 h para recorrente `active`, e prazo efetivo em `obter_estado_acesso`. Muda seis funções e cria duas. Não depende de evento, vale no APK 1.10.12 e não precisa de backfill. Limite: encerramento que não chegue até nós ganha até 72 h; offline na hora do vencimento segue bloqueado; o painel administrativo mostra vencido até ser ajustado.
+- **Prova:** no clone do Keel (`anexos-Keel-renovacao-cakto/`), o SQL real com módulos reais dá 18/29 hoje e 29/29 com a proposta. A volta restaura definições e ACL idênticas. Nada aplicado, nenhum deploy, nenhum build.
+- **Decisões pendentes do autor:** (1) dias de carência, recomendado 3; (2) carência contada do vencimento, e não de cada recusa; (3) pausada e reembolso solicitado, manter ou cortar o acesso; (4) autorizar a migration e, depois, a etapa 2 com deploy.
+- **Urgente, antes de 23/11 06:25:** (a) a cortesia não para a recorrência, e a Cakto deve tentar cobrar a conta de teste do autor. O autor decide se cancela ou deixa cobrar para observar a primeira renovação. (b) O webhook da Cakto expurga eventos com mais de 30 dias no próximo evento aceito, inclusive o `approved` de 22/10. Cópia local em `copia-webhook-events/` (3 linhas, só leitura, conteúdo não transcrito aqui).
+- **Recorrência da compra de teste do autor:** segue viva na Cakto, com tentativa em 23/11 06:25. Não foi cancelada; espera o autor.
+
+**Incidente do Supremo.** Uma espera deixou 12 processos `tail` órfãos; foram encerrados por ele.
+
+**Não verificado nesta rodada:** Supabase em produção (nada consultado nesta rodada), Granabô publicado, aparelho e Expo Go, corrida com duas conexões, aparência da categoria "Sobra do mês". O Lynx não rodou test:ci, parser nem tsc; usou os logs do Keel.
+
+**Em aberto, em ordem:**
+1. Keel corrige A1, A1b, A2 e A7, com ida e volta no PGlite; A3 e A4 antes de entregar o cliente.
+2. Autor decide sobre a recorrência da compra de teste (antes de 23/11 06:25) e sobre os quatro pontos da tolerância da Cakto.
+3. Migration da sobra e migration da tolerância: só com o ok do autor, nunca em lote sem leitura prévia.
+4. Build: só com pedido explícito do autor.
