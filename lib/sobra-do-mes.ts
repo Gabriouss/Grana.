@@ -47,11 +47,18 @@ export function tabelaDaSobraAusente(erro: { code?: string } | null | undefined)
 
 type LinhaSobra = { valor: number | string; transaction_id?: string | null; convertida?: boolean | null };
 
+let avisouModeloAntigo = false;
+
 async function lerLinha(mes: string, userId: string) {
   const r = await supabase.from('sobra_do_mes').select('valor, transaction_id, convertida').eq('mes', mes).eq('user_id', userId).maybeSingle();
   if (!r.error || !COLUNA_AUSENTE.has(r.error.code ?? '')) return r;
-  /* Antes da migration o modelo antigo continua valendo inteiro: lê só o valor. */
-  console.warn('[sobra-do-mes] servidor sem as colunas da sobra como lançamento; lendo o modelo antigo');
+  /* Antes da migration o modelo antigo continua valendo inteiro: lê só o valor.
+     É estado esperado, não falha: registra uma vez por sessão, sem o alerta
+     amarelo do console.warn a cada carga da Início (autor, 23/11/2026). */
+  if (!avisouModeloAntigo) {
+    avisouModeloAntigo = true;
+    console.log('[sobra-do-mes] servidor sem as colunas da sobra como lançamento; lendo o modelo antigo');
+  }
   return supabase.from('sobra_do_mes').select('valor').eq('mes', mes).eq('user_id', userId).maybeSingle();
 }
 
