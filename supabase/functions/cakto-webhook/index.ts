@@ -26,6 +26,9 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const CAKTO_WEBHOOK_SECRET = Deno.env.get('CAKTO_WEBHOOK_SECRET') ?? '';
 const MAX_BODY_BYTES = 64 * 1024;
+const EXPURGO_TIMEOUT_MS = 10_000;
+
+declare const EdgeRuntime: { waitUntil(tarefa: Promise<unknown>): void };
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -43,6 +46,28 @@ function resposta(body: Record<string, unknown>, status: number): Response {
 /** Falha que a Cakto NÃO vai reenviar: precisa ser achável no log depois. */
 function perdaIrrecuperavel(motivo: string, detalhe: Record<string, unknown>): void {
   console.error('[cakto-webhook] EVENTO PERDIDO, sem reenvio pelo provedor', { motivo, ...detalhe });
+}
+
+/** Retenção de 30 dias de `webhook_events`. O supabase-js só envia a chamada
+ *  quando ela é aguardada. O log não leva a mensagem, que pode repetir dado. */
+async function expurgarEventos(): Promise<void> {
+  try {
+    const { error, status } = await supabase
+      .rpc('expurgar_eventos_webhook')
+      .abortSignal(AbortSignal.timeout(EXPURGO_TIMEOUT_MS));
+    if (error) console.error('[cakto-webhook] expurgo NÃO feito', { code: error.code, status });
+  } catch (e) {
+    console.error('[cakto-webhook] expurgo NÃO feito', { erro: e instanceof Error ? e.name : 'desconhecido' });
+  }
+}
+
+/** Termina depois da resposta e nunca a derruba: a Cakto não espera o expurgo. */
+function agendarExpurgo(): void {
+  try {
+    EdgeRuntime.waitUntil(expurgarEventos());
+  } catch (e) {
+    console.error('[cakto-webhook] expurgo sem garantia de terminar', { erro: e instanceof Error ? e.name : 'desconhecido' });
+  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -151,6 +176,6 @@ Deno.serve(async (req: Request) => {
     return resposta({ error: 'subscription_not_found' }, 409);
   }
 
-  void supabase.rpc('expurgar_eventos_webhook');
+  agendarExpurgo();
   return resposta({ received: true, result: data }, 200);
 });
