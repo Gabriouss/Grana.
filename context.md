@@ -21109,3 +21109,12 @@ Fonte: relatórios e recibos de 23/11 na rodada `E:/Grana-temporarios/2026-11-22
 - **Produção em 23/11:** exclusão de conta corrigida, renovação Cakto com 3 dias de tolerância, `cakto-webhook` v20 com o expurgo.
 - **Próxima rodada, em ordem:** (1) conferir o expurgo de `webhook_events` no primeiro evento da Cakto; (2) build da linha da Play, só com pedido do autor; (3) migration da sobra como lançamento junto do deploy do Granabô (R4 e fatia); (4) a ressalva N1 e os achados A2 a A4 do QA, sem confiabilidade suficiente, para reconferir no aparelho.
 - **Limite.** A conta Claude estava em 86% do limite semanal, que volta em 27/11 às 4h.
+
+### 23/11 — três migrations pendentes aplicadas em produção (Supremo, modo manual)
+
+- **Pedido do autor:** "aplique todas as migrations que precisam ser aplicadas. Ativei o manual mode". Ele escolheu as três pendentes, inclusive a cota mensal, que o Supremo marcou como não recomendada.
+- **Inventário só de leitura:** 243 objetos de todas as migrations do `main` e do clone foram comparados com o catálogo de produção. Faltavam três. `pular_mes_da_recorrencia` está ausente de propósito (`20261001130000`). As guardas da E7 já estavam no ar.
+- **Aplicadas com ensaio (rollback), commit e releitura `ok`:** `20261023210000_admin_ajustes_prova_local` (0 pedidos), `20261109100000_granabo_cota_mensal` (200 por mês, sem os 120 por dia) e `20261121120000_sobra_vira_lancamento` (do clone `9efd55f1`; 1 linha convertida em lançamento).
+- **Efeito aceito:** o Granabô v61 não conhece o motivo `mes`. A pergunta 201 do mês é recusada com a mensagem de "muitas perguntas seguidas". Corrige ao publicar o Granabô, ainda não feito.
+- **Volta e recibo:** `E:/Grana-temporarios/2026-11-23-migrations/` (`recibo-supremo-migrations-2026-11-23.md`, backups das funções e da linha da sobra), e o `.volta.sql` da sobra no clone.
+- **Não verificado:** o lançamento da sobra no aparelho (app de hoje e da Play), a recusa 200/201 com conta fictícia e o Granabô depois da mudança.
