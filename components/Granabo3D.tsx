@@ -319,22 +319,6 @@ export default function Granabo3D({
       ]}
       pointerEvents="none"
     >
-      {/* Halo luminoso menta de fundo no modo hero */}
-      {variante === 'hero' && (
-        <Animated.View
-          style={[
-            styles.haloHero,
-            {
-              width: tamanho * 1.18,
-              height: tamanho * 1.18,
-              borderRadius: (tamanho * 1.18) / 2,
-              opacity: flutuacao.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0.9] }),
-              transform: [{ scale: flutuacao.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1.05] }) }],
-            },
-          ]}
-        />
-      )}
-
       {/* Esfera 3D com núcleo escuro e iluminação Cycles */}
       <Animated.View
         style={[
@@ -407,14 +391,6 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  haloHero: {
-    position: 'absolute',
-    top: 2,
-    backgroundColor: menta(0.1),
-    borderWidth: 1,
-    borderColor: menta(0.22),
-    ...({ boxShadow: sombras.abaCentral } as any),
   },
   esferaWrap: {
     alignItems: 'center',
