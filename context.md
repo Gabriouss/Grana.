@@ -21068,3 +21068,27 @@ Fonte: `recibo-supremo-qa-desfecho-1717.md`, com `relatorio-Vigil-emulador-2026-
 - **Para repetir.** O autor fechar a janela do Expo ou autorizar o encerramento; RAM com folga antes do emulador; comando único de subida na ordem, só com `EXPO_PUBLIC_*` no processo, sem copiar `.env`.
 - **Nada aplicado em produção.**
 - **Commit:** só `context.md`, sem push.
+
+### 23/11 — correções, aplicações em produção e QA (recibo do Supremo)
+
+Fonte: relatórios e recibos de 23/11 na rodada `E:/Grana-temporarios/2026-11-22-retomada` (`relatorio-Vigil-qa-2026-11-23.md`, `relatorio-Keel-n1-2026-11-23.md`, `relatorio-Keel-score-2026-11-23.md`, `relatorio-Lynx-revisao-n1-r4-2026-11-23.md`, `precheck-expurgo/`, `aplicar-excluir-conta/`, `aplicar-renovacao/`). Registro único, feito pelo Quill (Documentation and Vault), pela ordem do Orquestrador Supremo.
+
+- **Pedido do autor.** "volte para as correções", "não trave em decisões que dependem só de mim", "não repita o trabalho já feito", "verifique o que está acontecendo, porque está demorando muito". Depois: "vai macho, faz tudo. Resolve" e "prossiga".
+- **Sintoma e causa da demora de 22/11.** Sintoma: sessão lenta e pouco progresso. Causas medidas: 11 commits só de registro; três rodadas de revisão da sobra; limite de 5 h das 13:06 às 16:01; QA de 0 de 9; migrations prontas paradas. Mudança de método: um agente por vez, revisão única no fim, um registro no fechamento.
+- **Decisões do autor em 23/11.** Aplicar a exclusão de conta; aplicar a renovação r2; tirar a sobra do "tem entrada" (R4) e da fatia "com categoria" do Retrato; publicar o `main`.
+- **Produção (Supremo, modo manual).**
+  1. `aplicar-excluir-conta/aplicar.cjs --aplicar`: ensaio ok, releitura corrigida, dono e ACL iguais.
+  2. `aplicar-renovacao/aplicar.cjs --aplicar`: 3 dias de tolerância, 0 linhas afetadas.
+  3. Push do `main` `73e31118..60fef3f2` (107 commits) e `60fef3f2..1ddef5cc` (expurgo), pela URL do origin. A trava `pushurl` BLOQUEADO continua. Gate local verde, 0 segredos, CI do GitHub `success` nos dois.
+  4. `cakto-webhook` v19 → v20 a partir de `1ddef5cc`, com `verify_jwt=false` e GET 405. Pré-checagens P1–P4 (`precheck-expurgo.cjs`); 20 linhas antigas e o pacote v19 salvos em `precheck-expurgo/`.
+- **Clone `teste/leitura-avisos` (sem push).** `13f5b44e` N1; `4b1e3213` teste de assinatura; `d5e39a95` R4 (Lynx: aprovado com ressalva de cobertura); `c56514ef` fatia com categoria; `776650ca` N1 na Início; `aa25a8bd` expurgo na Play; `a9544401` A1 Desafios. Gate verde em `a9544401` (logs em `Keel-provas/score/`). Itens 1 e 4 sem revisão do Lynx, por limite semanal em 86%.
+- **QA (`relatorio-Vigil-qa-2026-11-23.md`).** 9 de 11 OK; itens 5 e 7 não verificáveis. Causa do bloqueio de 22/11: tela antiga do snapshot do Expo Go. A1 corrigido em `a9544401`. A2, A3 e A4 sem confiabilidade suficiente.
+- **Ferramentas usadas no lugar do previsto.** A CLI do Supabase não estava no projeto: foi usado `supabase@2.120.0` por npx. O `deno` foi obtido por `npx --no-install deno`.
+- **O que deu errado.** A ordem ao Lynx ficou digitada sem Enter por cerca de 30 min. A CLI do Supabase não estava no projeto.
+- **Processos.** Autor autorizou encerrar. 9 sessões Codex e 6 sessões Claude paradas foram fechadas; RAM livre de 1,9 para 6,0 GiB.
+- **Não verificado.**
+  - O expurgo de `webhook_events` só roda no próximo evento da Cakto: **não verificado em produção**.
+  - Build da linha da Play: pendente, só com pedido explícito do autor.
+  - Migration da sobra como lançamento: pendente.
+  - Deploy do Granabô com R4 e fatia: só junto da sobra.
+- **Commit:** só `context.md`, sem push.
