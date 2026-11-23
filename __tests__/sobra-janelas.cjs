@@ -67,7 +67,12 @@ const CONVERTIDA = { valor: 0, convertida: true, transaction_id: 'tx' };
 /* Uma tela montada: estado próprio de lista, carga com porta e quadros. */
 function montar({ tela, linha = LEGADA, lista = [salario], noServidor = lista, rede = true, disco = new Map(), mes = 10 }) {
   const m = { linha, noServidor, rede, quadros: [], cargas: 0, transactions: [], loading: true, offline: false, foco: true, mes,
-    portaSobra: null, portaLista: null, cargaFalha: false, erroNaSobra: null, pendentes: [] };
+    portaSobra: null, portaLista: null, cargaFalha: false, erroNaSobra: null };
+  /* Fila e falas de voz no disco, lidas pelos módulos REAIS (N1, 23/11/2026). */
+  m.naFila = (amount) => disco.set('grana:queue:transactions-pendentes', JSON.stringify([{ localId: 'local-1', userId: 'u', criadoEm: '2026-11-07T12:00:00Z',
+    input: { type: 'out', description: 'pendente', amount, category: 'Outros', color: '#fff', occurred_on: '2026-11-06', wallet_id: 'p' } }]));
+  m.vozNaFila = (amount) => disco.set('grana:voz:operacao:u:v1', JSON.stringify({ requestId: 'v1', criadoEm: '2026-11-07T12:00:00Z',
+    payload: { kind: 'transaction', type: 'out', description: 'fala', amount, category: 'Outros', color: '#fff', occurred_on: '2026-11-06', wallet_id: 'p' } }));
   const slots = [];
   let cursor = 0, efeitos = [], sujo = false, montado = false;
   const agendar = () => { if (!montado || sujo) return; sujo = true; queueMicrotask(() => { sujo = false; render(); }); };
@@ -124,14 +129,13 @@ function montar({ tela, linha = LEGADA, lista = [salario], noServidor = lista, r
     '@react-native-async-storage/async-storage': { __esModule: true, default: {
       getItem: async (k) => disco.get(k) ?? null, setItem: async (k, v) => { disco.set(k, v); },
       removeItem: async (k) => { disco.delete(k); }, getAllKeys: async () => [...disco.keys()], multiRemove: async () => {},
+      multiGet: async (ks) => ks.map((k) => [k, disco.get(k) ?? null]),
     } },
     './supabase': { supabase }, './sessao-offline': { idDoUsuarioLocal: async () => 'u', sessaoEstaTravada: () => false },
     './widgets-home-events': { notificarDadosDosWidgetsAlterados() {} },
   };
   /* Só do que lib/data.ts importa e a leitura da lista não usa. */
   const doData = {
-    './fila-pendente': { juntarPendentes: async (l) => (m.pendentes.length ? [...m.pendentes, ...l] : l), entradasPendentesPorCarteira: async () => [] },
-    './voz-pendente-na-lista': { juntarVozPendente: async (l) => l },
     './creditLimitAlert': {}, './widgets-home-events': { notificarDadosDosWidgetsAlterados() {}, observarDadosDosWidgets: () => () => {} },
   };
   const modulos = new Map();
@@ -381,12 +385,17 @@ function porta() { let abrir; const p = new Promise((r) => { abrir = r; }); retu
     m.rede = false; await m.load(); await tick();
     ok(perto(m.ultimo().saldo, m.ultimo().entradas), `R1 movido, ${nome}: lista do disco depois não ressuscita X`);
   }
-  {
-    const m = await antesDeConverter();
-    m.pendentes = [{ ...salario, id: 'local-1', type: 'out', amount: 5 }];
-    m.linha = CONVERTIDA;
-    await m.refocar();
-    ok(perto(m.ultimo().saldo, m.ultimo().entradas - 5), 'R1 com pendente na fila: a recarga com sucesso solta X');
+  /* N1: mês sem outra linha no servidor e pendente preso na fila; a lista
+     devolvida não tem linha do servidor nenhuma, e a origem precisa seguir. */
+  for (const [nome, extra] of [['com salário', {}], ['mês vazio', { lista: [] }]]) {
+    for (const [onde, por] of [['fila', (m) => m.naFila(5)], ['voz', (m) => m.vozNaFila(5)], ['fila e voz', (m) => { m.naFila(5); m.vozNaFila(0); }]]) {
+      const m = await antesDeConverter(extra);
+      por(m);
+      m.linha = CONVERTIDA;
+      await m.refocar();
+      ok(perto(m.ultimo().saldo, m.ultimo().entradas - 5) && m.transactions.some((t) => t.id.startsWith('local-')),
+        `R1 com pendente na ${onde}, ${nome}: a recarga com sucesso solta X (${m.ultimo().saldo})`);
+    }
   }
   {
     const m = await antesDeConverter();

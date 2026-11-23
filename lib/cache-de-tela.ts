@@ -290,6 +290,15 @@ function marcarDoServidor(dados: unknown, geracaoDoPedido: number): void {
   }
 }
 
+/* N1 (23/11/2026): quem junta pendentes devolve um array novo. Com a lista do
+   servidor vazia não sobra última linha marcada, e a origem se perdia: o X
+   retido ficava até a fila subir. Quem junta passa a marca adiante por aqui. */
+export function herdarOrigem<T extends object>(de: object, para: T): T {
+  const marca = doServidor.get(de);
+  if (marca !== undefined && para !== de) doServidor.set(para, Math.max(marca, doServidor.get(para) ?? -1));
+  return para;
+}
+
 export function geracaoDasLeituras(): number {
   return geracao;
 }

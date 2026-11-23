@@ -139,7 +139,7 @@ caso('carga real pagina todas as fontes sem ocultar paga, raiz antiga ou parcela
   }, rpc() { throw Error('RPC proibida nesta leitura'); } };
   const data = carregar('lib/data.ts', {
     './supabase': { supabase },
-    './cache-de-tela': { comCacheOffline: (_nome, buscar) => buscar },
+    './cache-de-tela': { comCacheOffline: (_nome, buscar) => buscar, herdarOrigem: (_de, para) => para },
     './sessao-offline': { idDoUsuarioLocal: async () => 'AUDIT' },
     './creditLimitAlert': {}, './widgets-home-events': {}, './lancamentos-alterados': {},
     './fila-pendente': { juntarPendentes: async t => t },

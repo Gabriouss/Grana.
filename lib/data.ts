@@ -1,6 +1,6 @@
 import type { EscritaDaConta } from './escrita-da-conta';
 import { supabase } from './supabase';
-import { atualizarTelaGuardada, comCacheOffline, invalidarRespostasAtrasadas, lerTela } from './cache-de-tela';
+import { atualizarTelaGuardada, comCacheOffline, herdarOrigem, invalidarRespostasAtrasadas, lerTela } from './cache-de-tela';
 import { idDoUsuarioLocal } from './sessao-offline';
 
 /* Até 26/09/2026 cartões e categorias passavam por uma `referenciaLocal`, um
@@ -1209,10 +1209,13 @@ async function buscarSeriesPelaChave(chaves: string[]): Promise<{ id: string; cl
    resposta. Ver `juntarPendentes`. As falas de voz guardadas entram do
    mesmo jeito (`juntarVozPendente`, decisão do autor de 24/09/2026). */
 export async function fetchTransactions(...args: Parameters<typeof buscar_fetchTransactions>): Promise<Transaction[]> {
-  return juntarVozPendente(await juntarPendentes(await fetchTransactionsComCache(...args), undefined, undefined, undefined, buscarSeriesPelaChave));
+  const base = await fetchTransactionsComCache(...args);
+  return herdarOrigem(base, await juntarVozPendente(await juntarPendentes(base, undefined, undefined, undefined, buscarSeriesPelaChave)));
 }
 export async function fetchTransactionsDoPeriodo(inicioISO: string, fimISO: string): Promise<Transaction[]> {
-  return juntarVozPendente(await juntarPendentes(await fetchTransactionsDoPeriodoComCache(inicioISO, fimISO), inicioISO, fimISO, undefined, buscarSeriesPelaChave), inicioISO, fimISO);
+  const base = await fetchTransactionsDoPeriodoComCache(inicioISO, fimISO);
+  /* N1: a origem da lista (servidor ou disco) segue no array com os pendentes. */
+  return herdarOrigem(base, await juntarVozPendente(await juntarPendentes(base, inicioISO, fimISO, undefined, buscarSeriesPelaChave), inicioISO, fimISO));
 }
 /* ── Dias com registro (Desafios, fase 2) ────────────────────────────────────
    Fonte única de sequência, "Constância no mês" e calendário: o dia LOCAL de
