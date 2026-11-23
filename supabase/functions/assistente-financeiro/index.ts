@@ -2001,8 +2001,10 @@ async function executarFerramenta(
       /* R4: a sobra não é "tem entrada", como em lib/gamification.ts. */
       const temEntrada = monthTx.some((t) => t.type === 'in' && !ehLancamentoDeSobra(t));
       const temSaida = monthTx.some((t) => t.type === 'out');
-      const comCategoria = monthTx.filter((t) => t.category && t.category !== 'Outros').length;
-      const fatiaCategorizada = monthTx.length > 0 ? comCategoria / monthTx.length : 0;
+      /* E nem pesa na fatia com categoria (autor, 23/11/2026): fica fora da conta. */
+      const registrosDoRetrato = monthTx.filter((t) => !ehLancamentoDeSobra(t));
+      const comCategoria = registrosDoRetrato.filter((t) => t.category && t.category !== 'Outros').length;
+      const fatiaCategorizada = registrosDoRetrato.length > 0 ? comCategoria / registrosDoRetrato.length : 0;
       const retratoPts = Math.round((temEntrada ? 70 : 0) + (temSaida ? 70 : 0) + fatiaCategorizada * 60);
 
       // `contasResolvidas` é sempre 0 neste recorte (só bills 'due' chegam
