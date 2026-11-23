@@ -21092,3 +21092,10 @@ Fonte: relatórios e recibos de 23/11 na rodada `E:/Grana-temporarios/2026-11-22
   - Migration da sobra como lançamento: pendente.
   - Deploy do Granabô com R4 e fatia: só junto da sobra.
 - **Commit:** só `context.md`, sem push.
+
+### 23/11 — ajustes vistos pelo autor no Expo Go (Supremo)
+
+- **Pedido.** O autor abriu a Início pelo Metro do clone (`a9544401`) e apontou: "'inclui sobra...' no bloco de livre para gastar está desalinhado" e o alerta amarelo `[sobra-do-mes] servidor sem as colunas da sobra como lançamento`.
+- **Alinhamento (`e6e82fac`, layout em commit próprio).** O recuo de `spacing.sm` da linha "Inclui sobra" (`components/SafeToSpendCard.tsx`, vindo de `e6b102f1`, 21/11) saiu; `__tests__/lancamentos-resumo-rotulo-uma-linha.cjs` passou a travar o alinhamento.
+- **Alerta (`eba36c0f`).** Não era falha: sem a migration da sobra, a leitura cai no modelo antigo, que é correto. O `console.warn` virou `console.log` uma vez por sessão em `lib/sobra-do-mes.ts`. tsc 0 e as cinco suítes que carregam o módulo com exit 0.
+- **Não verificado.** A tela depois da mudança no aparelho do autor. Clone sem push.
