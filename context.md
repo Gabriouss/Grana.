@@ -21118,3 +21118,10 @@ Fonte: relatórios e recibos de 23/11 na rodada `E:/Grana-temporarios/2026-11-22
 - **Efeito aceito:** o Granabô v61 não conhece o motivo `mes`. A pergunta 201 do mês é recusada com a mensagem de "muitas perguntas seguidas". Corrige ao publicar o Granabô, ainda não feito.
 - **Volta e recibo:** `E:/Grana-temporarios/2026-11-23-migrations/` (`recibo-supremo-migrations-2026-11-23.md`, backups das funções e da linha da sobra), e o `.volta.sql` da sobra no clone.
 - **Não verificado:** o lançamento da sobra no aparelho (app de hoje e da Play), a recusa 200/201 com conta fictícia e o Granabô depois da mudança.
+
+### 23/11 — build pessoal de teste `88650717` (Supremo)
+
+- **Pedido do autor:** "Podemos disparar uma nova build de teste para instalar apenas no meu celular?" e, depois, "dispara".
+- **Build:** `88650717-ccf1-476e-99e8-7dd87f40c241`, do clone `teste/leitura-avisos` em `9efd55f1`, perfil `development`, versão 1.10.12. Quem usa o app de hoje não recebe aviso. É a 1ª da semana e a 12ª do mês (de 15). Script: `E:/Grana-temporarios/2026-11-23-build/disparar-build.cjs`, adaptado da `build-83eb54ca`. O clone continuou limpo.
+- **Descartado:** rodar o gate integral no `9efd55f1`. O autor achou demorado ("pra que tudo isso?"). O último gate integral verde é o de `a9544401`; os três commits seguintes (`e6e82fac`, `eba36c0f`, `9efd55f1`) têm tsc 0 e as suítes focais verdes. O `test:ci` integral não rodou neles.
+- **Memória:** 0,8 GiB livres no disparo. O limite do script baixou de 1,5 para 0,8 GiB.
