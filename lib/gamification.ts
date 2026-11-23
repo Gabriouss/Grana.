@@ -246,7 +246,8 @@ export function calculateScoreBreakdown(
   /* Fator 3: retrato completo (até 200 pts). Mede se o registro conta a
      história inteira: entrada e saída, e categoria escolhida em vez de deixar
      tudo cair no genérico. É comportamento, não resultado. */
-  const temEntrada = monthTx.some((t) => t.type === "in");
+  /* R4 (autor, 23/11/2026): confirmar a sobra não é registrar o que entra. */
+  const temEntrada = monthTx.some((t) => t.type === "in" && !ehLancamentoDeSobra(t));
   const temSaida = monthTx.some((t) => t.type === "out");
   const comCategoria = monthTx.filter((t) => t.category && t.category !== "Outros").length;
   const fatiaCategorizada = monthTx.length > 0 ? comCategoria / monthTx.length : 0;

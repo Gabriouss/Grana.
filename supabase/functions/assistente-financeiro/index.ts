@@ -1998,7 +1998,8 @@ async function executarFerramenta(
       const fatiaDeDias = Math.min(1, diasComRegistroNoMes / diasDecorridos);
       const constanciaPts = Math.round(fatiaDeDias * 300);
 
-      const temEntrada = monthTx.some((t) => t.type === 'in');
+      /* R4: a sobra não é "tem entrada", como em lib/gamification.ts. */
+      const temEntrada = monthTx.some((t) => t.type === 'in' && !ehLancamentoDeSobra(t));
       const temSaida = monthTx.some((t) => t.type === 'out');
       const comCategoria = monthTx.filter((t) => t.category && t.category !== 'Outros').length;
       const fatiaCategorizada = monthTx.length > 0 ? comCategoria / monthTx.length : 0;

@@ -182,6 +182,29 @@ const casos = [
       ok(texto.includes(`Entradas: R$ ${entradas.toFixed(2)}`), `retrospectiva do Granabô, ${nome}: o dinheiro segue nas entradas`);
     }
   }
+  // R4 (autor, 23/11/2026): a sobra não é "tem entrada" no Retrato completo.
+  {
+    const retrato = (lista) => gam.calculateScoreBreakdown(lista, [], [], 0, agora).factors.find((f) => f.label === 'Retrato completo');
+    const doGranabo = async (lista) => { banco = lista; return Number((await score.f()).match(/Score Grana do usuário: (\d+)/)[1]); };
+    const saida = tx('2026-11-20');
+    const entrada = tx('2026-11-21', { type: 'in', category: 'Salário' });
+    for (const [nome, com, sem] of [
+      ['só saída e a sobra', [saida, sobra('2026-11-22')], [saida]],
+      ['entrada comum e a sobra', [saida, entrada, sobra('2026-11-22')], [saida, entrada]],
+    ]) {
+      /* Só a fatia com categoria muda (a sobra tem categoria escolhida); os 70 de entrada não. */
+      const fatia = (l) => l.filter((t) => t.category !== 'Outros').length / l.length;
+      const esperado = Math.round(60 * fatia(com)) - Math.round(60 * fatia(sem));
+      const a = retrato(com), b = retrato(sem);
+      ok(a.points - b.points === esperado && a.description.startsWith(b.description.includes('entra') ? 'Registrar também' : ''),
+        `R4 Retrato, ${nome}: a sobra não vale os 70 de entrada (${b.points} -> ${a.points})`);
+      const [ga, gb] = [await doGranabo(com), await doGranabo(sem)];
+      ok(ga - gb === esperado, `R4 Granabô, ${nome}: a sobra não vale os 70 de entrada (${gb} -> ${ga})`);
+    }
+    const recat = [saida, sobra('2026-11-20', { category: 'Salário' })]; // criada no dia da saída: só o Retrato muda
+    ok(retrato(recat).points - retrato([saida]).points === 70, 'R4 sobra recategorizada: volta a ser entrada');
+    ok(await doGranabo(recat) - await doGranabo([saida]) === 70, 'R4 Granabô, sobra recategorizada: volta a ser entrada');
+  }
   // Linha sem created_at cai no dia do extrato, e a marca vale igual.
   {
     const semCriado = sobra('2026-11-22', { created_at: null });
