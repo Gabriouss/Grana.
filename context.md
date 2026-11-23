@@ -21100,3 +21100,12 @@ Fonte: relatórios e recibos de 23/11 na rodada `E:/Grana-temporarios/2026-11-22
 - **Alerta (`eba36c0f`).** Não era falha: sem a migration da sobra, a leitura cai no modelo antigo, que é correto. O `console.warn` virou `console.log` uma vez por sessão em `lib/sobra-do-mes.ts`. tsc 0 e as cinco suítes que carregam o módulo com exit 0.
 - **Não verificado.** A tela depois da mudança no aparelho do autor. Clone sem push.
 - **Halo do Granabô (`9efd55f1`, clone, layout em commit próprio).** Pedido do autor: "Remove esse círculo de trás do Granabô". Saiu o `haloHero` de `components/Granabo3D.tsx` (fundo menta, borda e brilho da variante `hero`, usada só no estado vazio do Granachat). tsc 0, `granabo-3d-chat` 28/0, `granabo-flutuante-web` exit 0. O `main` (app de hoje) ainda tem o halo: só muda lá com pedido do autor. Não visto no aparelho depois da mudança.
+- **Metro encerrado por memória.** O Claude Code encerrou o Metro do autor (porta 8081) por memória crítica do PC, com a sessão ociosa. Não foi religado.
+
+### 23/11 — fechamento da rodada (Supremo)
+
+- **Pedido do autor:** "Documenta tudo e encerra essa rodada de trabalho".
+- **Estado no fim.** `main` publicado e igual ao `origin/main`; sem branch, worktree ou stash. Clone `teste/leitura-avisos` em `9efd55f1`, árvore limpa, com os commits de 23/11 da linha da Play (`13f5b44e` a `9efd55f1`), sem push. Agentes Claude e Codex fechados; emulador e Metro desligados.
+- **Produção em 23/11:** exclusão de conta corrigida, renovação Cakto com 3 dias de tolerância, `cakto-webhook` v20 com o expurgo.
+- **Próxima rodada, em ordem:** (1) conferir o expurgo de `webhook_events` no primeiro evento da Cakto; (2) build da linha da Play, só com pedido do autor; (3) migration da sobra como lançamento junto do deploy do Granabô (R4 e fatia); (4) a ressalva N1 e os achados A2 a A4 do QA, sem confiabilidade suficiente, para reconferir no aparelho.
+- **Limite.** A conta Claude estava em 86% do limite semanal, que volta em 27/11 às 4h.
