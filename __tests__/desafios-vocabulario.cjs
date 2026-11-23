@@ -53,7 +53,7 @@ const data = {
   fetchDiasComRegistro: async () => new Set(['2026-11-01']), registrarConquistas: async () => {},
 };
 const mocks = {
-  react: { useState: initial => { const i = index++; if (!(i in values)) values[i] = typeof initial === 'function' ? initial() : initial; return [values[i], v => { values[i] = typeof v === 'function' ? v(values[i]) : v; }]; }, useMemo: f => f(), useCallback: f => { callbacks.push(f); return f; }, useRef: v => ({ current: v }), useEffect: () => {} },
+  react: { useState: initial => { const i = index++; if (!(i in values)) values[i] = typeof initial === 'function' ? initial() : initial; return [values[i], v => { values[i] = typeof v === 'function' ? v(values[i]) : v; }]; }, useMemo: f => f(), useCallback: f => { callbacks.push(f); return f; }, useRef: v => { const i = index++; if (!(i in values)) values[i] = { current: v }; return values[i]; }, useEffect: () => {} },
   'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'Fragment' },
   'react-native': { Text: 'Text', View: 'View', ScrollView: 'ScrollView', RefreshControl: 'RefreshControl', StyleSheet: { create: x => x }, ActivityIndicator: 'ActivityIndicator' },
   'expo-router': { useRouter: () => ({ push: r => routes.push(r) }), useFocusEffect: () => {} },
@@ -207,6 +207,44 @@ async function main() {
   linhas = [{ created_at: '2025-09-03T12:00:00-03:00', occurred_on: '2020-01-01' }];
   versao.marcarLancamentosAlterados();
   ok((await dataExports.fetchDiasComRegistro(2025, 8)).has('2025-09-03') && consultas === 3, 'fila offline invalida pela versão compartilhada');
+  // A1 do QA (23/11/2026): consulta de dias invalidada é descarte, não falha.
+  // Tela real, erro real de lib/data.ts e repetição real de lib/lembrete-habito-dias.ts.
+  {
+    const { ConsultaDeDiasInvalidada } = dataExports;
+    const original = { error: console.error, warn: console.warn };
+    const erros = [];
+    console.error = (...a) => erros.push(a.map(String).join(' '));
+    console.warn = () => {};
+    const ERRO = 'Não foi possível atualizar seus desafios.';
+    const carregarTela = async () => { index = 0; callbacks = []; Tela(); await callbacks.find(f => f.constructor.name === 'AsyncFunction')(); index = 0; return text(Tela()).replaceAll(' ', ' '); };
+    const diasBons = data.fetchDiasDeAtividade;
+    try {
+      values = []; states.length = 0;
+      await carregarTela(); // carga boa: a tela tem dados
+      const antes = states.length;
+      for (const motivo of ['registros', 'conta']) {
+        data.fetchDiasDeAtividade = async () => { throw new ConsultaDeDiasInvalidada(motivo); };
+        const tela = await carregarTela();
+        ok(!erros.length, `A1 ${motivo}: sem console.error (${erros[0] ?? ''})`);
+        ok(!tela.includes(ERRO), `A1 ${motivo}: sem texto de erro na tela`);
+        ok(states.length === antes && !tela.includes('Carregando seus desafios'), `A1 ${motivo}: mantém os dados anteriores`);
+      }
+      let vezes = 0;
+      data.fetchDiasDeAtividade = async () => { if (++vezes === 1) throw new ConsultaDeDiasInvalidada('registros'); return new Set(['2026-11-02']); };
+      await carregarTela();
+      ok(vezes === 2 && states.at(-1)[5].dias.has('2026-11-02') && !erros.length, 'A1 invalidada uma vez: repete e mostra os dias novos');
+      values = []; erros.length = 0;
+      data.fetchDiasDeAtividade = async () => { throw new ConsultaDeDiasInvalidada('conta'); };
+      ok((await carregarTela()).includes(ERRO) && !erros.length, 'A1 sem dados anteriores: recibo na tela, sem console.error');
+      values = []; erros.length = 0; await carregarTela();
+      data.fetchDiasDeAtividade = async () => { throw new Error('rede caiu'); };
+      const tela = await carregarTela();
+      ok(erros.some(e => e.includes('[desafios] carga principal falhou')) && tela.includes(ERRO), 'A1 erro de verdade: segue com log e recibo');
+    } finally {
+      Object.assign(console, original);
+      data.fetchDiasDeAtividade = diasBons;
+    }
+  }
   console.log(`desafios-vocabulario: ${checks} verificações passaram`);
 }
 main().catch(e => { console.error(e); process.exitCode = 1; });

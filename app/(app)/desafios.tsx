@@ -27,6 +27,7 @@ import {
 import { conquistasNovas, diasComRegistro, getGamificationState, type Badge, type BadgeCategory, type GamificationState } from '@/lib/gamification';
 import { fetchGoals } from '@/lib/goals';
 import { formatBRL } from '@/lib/format';
+import { diasParaOLembrete } from '@/lib/lembrete-habito-dias';
 import { semViuva } from '@/lib/sem-viuva';
 import DesafiosPadraoGastos from '@/components/DesafiosPadraoGastos';
 import { calcularPadraoDeGastos, type PadraoDeGastos } from '@/lib/desafios-padrao-gastos';
@@ -82,6 +83,7 @@ export default function DesafiosScreen() {
   const [filter, setFilter] = useState<FilterType>('all');
   const [conquistaNova, setConquistaNova] = useState<Badge | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const temDados = useRef(false);
   const fallbackCache = useRef<{ transactions: Transaction[]; bills: Bill[] } | null>(null);
 
   const loadData = useCallback(async () => {
@@ -115,9 +117,19 @@ export default function DesafiosScreen() {
         fetchConquistas(),
         fetchGoals(),
         fetchCreditCards(),
-        fetchDiasDeAtividade(),
+        /* A1 (QA, 23/11/2026): consulta invalidada é corrida benigna, não falha.
+           Repete o que vale repetir e devolve null quando a carga foi descartada. */
+        diasParaOLembrete(fetchDiasDeAtividade, undefined, (mensagem) => console.warn('[desafios]', mensagem)),
         fetchCardInvoicePayments(),
       ]);
+      if (!diasCarregados) {
+        /* Descartada: fica o que já estava na tela. Sem nada na tela, o recibo
+           é o pedido para atualizar, como numa falha (regra 9). */
+        if (!temDados.current) setLoadError('Não foi possível atualizar seus desafios.');
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
       setDias(diasCarregados);
       const idsDePagamento = new Set(pagamentos.flatMap(p => [p.paid_transaction_id, ...(p.extra_transaction_ids ?? [])].filter((id): id is string => !!id)));
       let gState: GamificationState;
@@ -134,6 +146,7 @@ export default function DesafiosScreen() {
         gState = getGamificationState(fallback.transactions, fallback.bills, bg, undefined, conquistadas, { dias: diasCarregados, consumoCategorias: apurarGastosCategoria(tx, { inicio: inicioConsumo, fim: fimConsumo, idsPagamentos: idsDePagamento }) });
       }
       setState(gState);
+      temDados.current = true;
       setGoals(metas);
       setAcoes({ bills: b, cards: cartoes, tx });
       const hoje = new Date();
