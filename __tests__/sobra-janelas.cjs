@@ -368,8 +368,8 @@ function porta() { let abrir; const p = new Promise((r) => { abrir = r; }); retu
   // R1: o X retido vale só até a lista voltar do servidor sem o lançamento.
   const semLigado = (m) => perto(m.ultimo().saldo, m.ultimo().entradas) && !m.ultimo().aviso;
   const comRetido = (m) => perto(m.ultimo().saldo, m.ultimo().entradas + X);
-  const antesDeConverter = async (extra) => {
-    const m = montar({ tela: 'lancamentos', linha: ANTES_DA_MIGRATION, ...extra });
+  const antesDeConverter = async (extra, tela = 'lancamentos') => {
+    const m = montar({ tela, linha: ANTES_DA_MIGRATION, ...extra });
     await m.abrir();
     await m.load(); await tick(); // o disco da lista fica com o que havia
     return m;
@@ -386,15 +386,20 @@ function porta() { let abrir; const p = new Promise((r) => { abrir = r; }); retu
     ok(perto(m.ultimo().saldo, m.ultimo().entradas), `R1 movido, ${nome}: lista do disco depois não ressuscita X`);
   }
   /* N1: mês sem outra linha no servidor e pendente preso na fila; a lista
-     devolvida não tem linha do servidor nenhuma, e a origem precisa seguir. */
+     devolvida não tem linha do servidor nenhuma, e a origem precisa seguir.
+     Nas duas telas: a Início lê fetchTransactions, Lançamentos o período (ressalva do Lynx, 23/11). */
+  for (const tela of ['lancamentos', 'inicio'])
   for (const [nome, extra] of [['com salário', {}], ['mês vazio', { lista: [] }]]) {
     for (const [onde, por] of [['fila', (m) => m.naFila(5)], ['voz', (m) => m.vozNaFila(5)], ['fila e voz', (m) => { m.naFila(5); m.vozNaFila(0); }]]) {
-      const m = await antesDeConverter(extra);
+      const m = await antesDeConverter(extra, tela);
       por(m);
       m.linha = CONVERTIDA;
       await m.refocar();
-      ok(perto(m.ultimo().saldo, m.ultimo().entradas - 5) && m.transactions.some((t) => t.id.startsWith('local-')),
-        `R1 com pendente na ${onde}, ${nome}: a recarga com sucesso solta X (${m.ultimo().saldo})`);
+      /* A Início não mostra entradas: o saldo é o do mês sem X, e "Inclui sobra" some. */
+      const semX = tela === 'inicio' ? perto(m.ultimo().saldo, (extra.lista ? 0 : 1000) - 5) && !m.ultimo().inclui
+        : perto(m.ultimo().saldo, m.ultimo().entradas - 5);
+      ok(semX && m.transactions.some((t) => t.id.startsWith('local-')),
+        `R1 ${tela}, com pendente na ${onde}, ${nome}: a recarga com sucesso solta X (${m.ultimo().saldo})`);
     }
   }
   {
