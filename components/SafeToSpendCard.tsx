@@ -66,7 +66,7 @@ export default function SafeToSpendCard({
             mais uma parcela somada às outras linhas. */}
         {sobraConfirmada > 0 && (
           <View style={styles.row}>
-            <Text style={[styles.rowKey, styles.rowKeyDetalhe]}>{rotuloDaSobraIncluida()}</Text>
+            <Text style={styles.rowKey}>{rotuloDaSobraIncluida()}</Text>
             <PrivacyValue><Text style={styles.rowVal}>{formatBRL(sobraConfirmada)}</Text></PrivacyValue>
           </View>
         )}
@@ -124,7 +124,6 @@ const styles = StyleSheet.create({
   breakdown: { gap: 4, marginTop: 2 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rowKey: { color: theme.inkFaint, fontSize: type.nota, flex: 1, marginRight: spacing.sm, fontFamily: fonts.light },
-  rowKeyDetalhe: { paddingLeft: spacing.sm },
   rowVal: { color: theme.inkFaint, fontSize: type.nota, fontVariant: ['tabular-nums'], fontFamily: fonts.light },
   rowValStrong: { color: theme.ink},
   hint: { color: theme.accent2, fontSize: type.legenda, lineHeight: lh(type.legenda, 'corpo'), marginTop: 4, fontFamily: fonts.regular },

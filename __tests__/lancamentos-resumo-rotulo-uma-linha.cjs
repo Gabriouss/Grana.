@@ -31,6 +31,7 @@ process.exitCode = falhas ? 1 : 0;
 try {
   assert.ok(!/rotuloDaSobraIncluida|rotuloDaSobraIndisponivel|monthSummarySobra/.test(fonte), 'linha da sobra voltou ao resumo de Lançamentos');
   const livre = fs.readFileSync(path.join(__dirname, '..', 'components', 'SafeToSpendCard.tsx'), 'utf8');
-  assert.match(livre, /styles\.rowKeyDetalhe\]\}>\{rotuloDaSobraIncluida\(\)\}/, 'Livre: linha da sobra recuada sob Saldo atual');
+  assert.match(livre, /style=\{styles\.rowKey\}>\{rotuloDaSobraIncluida\(\)\}/, 'Livre: linha da sobra alinhada com Saldo atual (autor, 23/11/2026)');
+  assert.ok(!/rowKeyDetalhe/.test(livre), 'Livre: recuo da linha da sobra voltou');
   console.log('ResumoRotuloUmaLinha OK resumo sem linha da sobra; Livre mantém a sua');
 } catch (e) { process.exitCode = 1; console.error('ResumoRotuloUmaLinha FALHA ' + e.message); }
