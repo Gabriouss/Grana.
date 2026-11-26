@@ -25,6 +25,7 @@ let APELIDOS = [];
 let apelidosFalham = false;
 const ferramenta = [];
 const revisoes = [];
+const sucessosVoz = [];
 let passou = 0;
 const igual = (a, b, nome) => { assert.deepEqual(a, b, nome); passou++; };
 const ok = (cond, nome) => { assert.ok(cond, nome); passou++; };
@@ -132,48 +133,61 @@ function carregarVm(arquivo, dubles = {}, cache = new Map()) {
   return exports;
 }
 let transcricao = '';
-let tarefa;
+let tarefaHeadless;
 const gravadosVoz = [];
 const reservas = [];
-carregarVm('lib/widget-voz-task.ts', {
+function recibosDaVoz(fonte) {
+  return {
+    podeNotificar: async () => true,
+    notificarRevisao: async (titulo, texto) => { revisoes.push([fonte, titulo, texto]); },
+    notificarFalha: async () => {},
+    notificarPendenteOffline: async () => {},
+    notificarSucesso: async (dados) => { sucessosVoz.push([fonte, dados.tipo, dados.operationId]); },
+    notificarSalvoLocal: async () => {},
+  };
+}
+const recibosApp = recibosDaVoz('app');
+const { executarTarefa } = carregarVm('lib/widget-voz-task.ts', {
   // Preserva as funções novas do núcleo real; só a revisão de valor é simulada.
   './voz-confiabilidade': { ...carregarVm('lib/voz-confiabilidade.ts'), precisaRevisarValorVoz: () => false, transcricaoPareceLancamentoVoz: () => true,
     // A revisão de valor está desligada neste dublê; o valor segue a heurística pura.
     valorDaFalaVoz: (t) => carregarVm('lib/heuristics.ts').guessAmountFromText(t) },
-  'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (nome, factory) => { if (nome === 'GranaVoiceTask') tarefa = factory(); } } },
+  'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: (nome, factory) => { if (nome === 'GranaVoiceTask') tarefaHeadless = factory(); } } },
   './offline-cache': { isLikelyNetworkError: () => false },
   '@/modules/grana-voice-widget': { definirEstado: () => {} },
   './voz': { transcreverAudio: async () => ({ ok: true, transcript: transcricao }) },
-  './widget-voz-notificacoes': {
-    podeNotificar: async () => true, notificarRevisao: async (titulo) => { revisoes.push(titulo); }, notificarFalha: async () => {},
-    notificarPendenteOffline: async () => {}, notificarSucesso: async () => {}, notificarSalvoLocal: async () => {},
-  },
+  './widget-voz-notificacoes': recibosDaVoz('widget'),
   './data': { fetchCreditCards: async () => CARTOES, fetchApelidosCategoria: async () => { if (apelidosFalham) throw new Error('falha simulada'); return APELIDOS.filter((a) => a.chave.startsWith('categoria:')); }, fetchCategories: async () => [] },
   './wallets': { fetchWallets: async () => CARTEIRAS },
   './voice-operations': { desfechoDaOperacaoVoz: require('./desfecho-voz-real.cjs'),
     desfechoDoErroVoz: require('./desfecho-voz-real.cjs').desfechoDoErroVoz,
     ehRecusaCartaoObrigatorio: () => false,
-    registrarOperacaoVoz: async (_id, _fonte, entrada) => { gravadosVoz.push(entrada); return { status: 'committed', ids: ['tx'], operationId: 'op' }; },
+    registrarOperacaoVoz: async (id, fonte, entrada) => { gravadosVoz.push({ id, fonte, entrada }); return { status: 'committed', ids: ['tx'], operationId: 'op' }; },
   },
   './creditLimitAlert': { checarLimiteCartao: async () => {} },
-  './supabase': { supabase: { auth: { getSession: async () => ({ data: { session: { user: { id: 'u-1' } } } }) } } },
+  './supabase': { supabase: { auth: { getUser: async () => ({ data: { user: { id: 'u-1' } } }) } } },
   './sessao-offline': { sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u-1', lerSessaoDoDisco: async () => null },
   './widget-voz-pendentes': {
     adicionarVozPendente: async () => {}, listarVozesPendentes: async () => [], removerVozPendente: async () => {},
     reservarFalaEmAndamento: async (fala) => { reservas.push(fala.requestId); return true; },
     liberarFalaEmAndamento: async () => {},
   },
-  './widgets-home-sync': { sincronizarResumoDosWidgets: async () => {} },
-  '@react-native-async-storage/async-storage': {},
+  './widgets-home-sync': { sincronizarWidgetsHome: async () => {} },
+  '@react-native-async-storage/async-storage': { getItem: async () => null },
   'expo-file-system/legacy': { deleteAsync: async () => {} },
 });
 async function pelaVoz(frase, fonte) {
   transcricao = frase;
   const antes = gravadosVoz.length;
-  await tarefa({ caminho: '/v.m4a', requestId: fonte + '-' + frase, source: fonte });
+  const payload = { caminho: '/v.m4a', requestId: fonte + '-' + frase, source: fonte };
+  if (fonte === 'app') await executarTarefa(payload, recibosApp);
+  else await tarefaHeadless(payload);
   assert.ok(gravadosVoz.length - antes <= 1, 'no máximo uma escrita por fala');
-  const p = gravadosVoz[antes];
-  return p ? resumo(p.payload ?? p) : null;
+  const escrita = gravadosVoz[antes];
+  if (!escrita) return null;
+  assert.equal(escrita.id, payload.requestId, 'preserva a identidade da fala na gravação');
+  assert.equal(escrita.fonte, fonte, 'preserva a origem da fala na gravação');
+  return resumo(escrita.entrada.payload ?? escrita.entrada);
 }
 
 
@@ -193,7 +207,7 @@ async function nasTres(frase) {
   const granabo = gravados.map(resumo)[0] ?? null;
   const app = await pelaVoz(frase, 'app');
   const widget = await pelaVoz(frase, 'widget');
-  return { granabo, app, widget, resposta, ferramenta: ferramenta.join(' | '), revisoes: [...revisoes] };
+  return { granabo, app, widget, resposta, ferramenta: ferramenta.join(' | '), revisoes: revisoes.map(([, titulo]) => titulo) };
 }
 
 (async () => {
@@ -218,6 +232,29 @@ async function nasTres(frase) {
     igual(granabo, esperado, `Granabô, "${frase}"`);
     igual(app, granabo, `voz app = Granabô, "${frase}"`);
     igual(widget, granabo, `voz widget = Granabô, "${frase}"`);
+  }
+
+  /* A palavra inteira valida o palpite "Outros" nas duas entradas da voz. */
+  APELIDOS = [...APELIDOS_DA_PESSOA, { chave: 'categoria:gravura', valor: 'Outros' }];
+  const CASOS_OUTROS = [
+    ['moldura 145 reais, categoria Outros', ['Moldura', 145, 'Outros'], null],
+    ['moldura 145 reais, categoria ÓUTROS.', ['Moldura', 145, 'Outros'], null],
+    ['moldura 145 reais', null, 'Qual categoria?'],
+    ['moldura 145 reais, categoria outrosx', null, 'Qual categoria?'],
+    ['roupa 145 reais', null, 'Qual categoria?'],
+    ['145 reais categoria Outros', null, 'Repita a fala completa'],
+    ['mercado 145 reais, categoria Outros', ['Mercado', 145, 'Alimentação'], null],
+    ['uber 145 reais, categoria Outros', ['Uber', 145, 'Lazer'], null],
+    ['gravura 145 reais', ['Gravura', 145, 'Outros'], null],
+  ];
+  const fontes = ['app', 'widget'];
+  for (const [frase, esperado, pergunta] of CASOS_OUTROS) {
+    revisoes.length = 0;
+    sucessosVoz.length = 0;
+    const resultados = [await pelaVoz(frase, 'app'), await pelaVoz(frase, 'widget')];
+    igual(resultados, [esperado, esperado], `app e widget: decisão de gravar "${frase}"`);
+    igual(revisoes, pergunta ? fontes.map((fonte) => [fonte, pergunta, frase]) : [], `recibos de revisão: "${frase}"`);
+    igual(sucessosVoz, esperado ? fontes.map((fonte) => [fonte, 'transaction', 'op']) : [], `recibos de sucesso: "${frase}"`);
   }
 
   /* Sem apelidos ensinados, "gororoba" não decide nada, nas três. */

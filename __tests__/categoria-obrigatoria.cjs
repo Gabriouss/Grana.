@@ -62,15 +62,10 @@ assert.equal(h.categoriaEscolhida('Projeto Aurora', [{ name: 'Projeto Aurora', c
 assert.equal(h.PERGUNTA_CATEGORIA.titulo, 'Qual categoria?', 'o mesmo título que a voz usa');
 ok('categoriaReconhecida e categoriaEscolhida: sem reconhecimento nem escolha, nenhuma categoria');
 
-/* ── 2. A voz usa a mesma regra ─────────────────────────────────────────── */
-const tarefa = fs.readFileSync(path.join(root, 'lib/widget-voz-task.ts'), 'utf8');
-/* Apelido ensinado que aponta para "Outros" é escolha da pessoa, como categoriaEscolhida('Outros'). */
-/* Desde 15/10 a decisão vem de `decidirCategoria`: categoria null (apelidos ilegíveis e nada dito pelo nome) também pergunta. */
-assert.match(tarefa, /if \(!decisao\.categoria \|\| \(decisao\.categoria\.name === 'Outros' && !categoriaDoApelido\)\) \{\s*await notificacoes\.notificarRevisao\('Qual categoria\?'/,
-  'a voz pergunta "Qual categoria?" no mesmo caso');
-ok('a voz continua perguntando no mesmo caso (mesmo critério)');
+/* A mesma regra na voz é exercitada pelo app e pelo widget reais em
+   __tests__/voz-apelidos-paridade.cjs (test:assistente-aprendizado). */
 
-/* ── 3. Importação: CSV e OFX não inventam "Outros" ─────────────────────── */
+/* ── 2. Importação: CSV e OFX não inventam "Outros" ─────────────────────── */
 {
   const csv = h.parseCsvTextDetalhado('Data;Descrição;Valor\n10/09/2026;Transferência Fulano;-45,00\n11/09/2026;Mercado Extra;-120,00');
   assert.equal(csv.rows.length, 2);
@@ -95,7 +90,7 @@ ok('a voz continua perguntando no mesmo caso (mesmo critério)');
 }
 ok('importação: CSV e OFX sem palpite chegam sem categoria, e a tela pergunta antes de gravar');
 
-/* ── 3b. O aviso da importação concorda com 1 e com N (item 4b, 30/09/2026) ──
+/* ── 2b. O aviso da importação concorda com 1 e com N (item 4b, 30/09/2026) ──
    Com uma linha, a frase dizia "1 lançamento está [...] Escolha a categoria
    deles" (Flare). O texto do Alert é tirado do fonte pela árvore do
    TypeScript (o segundo argumento do Alert dentro de `if (semCategoria > 0)`,
@@ -127,7 +122,7 @@ function avisoSemCategoria(fonte) {
 }
 ok('importação: o aviso "sem categoria" concorda no singular e no plural');
 
-/* ── 4. Formulário comum executado: sem categoria, não grava ─────────────── */
+/* ── 3. Formulário comum executado: sem categoria, não grava ─────────────── */
 {
   const jsx = (type, props) => ({ type, props: props ?? {} });
   const es = (v) => ({ __esModule: true, default: v });
@@ -212,7 +207,7 @@ ok('importação: o aviso "sem categoria" concorda no singular e no plural');
 }
 ok('formulário comum (Início, Lançamentos, Contas, Crédito): sem categoria, pergunta e não grava, nos três modos');
 
-/* ── 5. Nenhuma tela abre com categoria padrão, e os modais perguntam antes ── */
+/* ── 4. Nenhuma tela abre com categoria padrão, e os modais perguntam antes ── */
 {
   const ler = (p) => fs.readFileSync(path.join(root, p), 'utf8');
   for (const [arquivo, funcoes] of [

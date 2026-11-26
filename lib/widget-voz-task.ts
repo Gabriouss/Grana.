@@ -777,18 +777,12 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     return false;
   }
 
-  /* Mesma regra de `categoriaReconhecida` (lib/heuristics.ts), que as outras
-     entradas usam: palpite "Outros" é categoria não reconhecida e pergunta. */
-  /* Apelido ensinado no Granabô vence a palavra-chave, como no chat. Leitura
-     dos apelidos que falhou (`apelidos === null`) só aceita a categoria dita
-     pelo nome; sem ela, a fala vai à mesma revisão. */
-  const decisao = heuristics.decidirCategoria(textoDaCategoria, apelidos, extras);
-  const categoriaDoApelido = decisao.doApelido;
-  if (!decisao.categoria || (decisao.categoria.name === 'Outros' && !categoriaDoApelido)) {
+  /* Em "Outros", a escolha precisa vir da fala ou de um apelido ensinado. */
+  const { categoria, doApelido } = heuristics.decidirCategoria(textoDaCategoria, apelidos, extras);
+  if (!categoria || (categoria.name === 'Outros' && !doApelido && !heuristics.mencionaCategoriaOutros(textoDaCategoria))) {
     await notificacoes.notificarRevisao('Qual categoria?', transcricao.transcript);
     return false;
   }
-  const categoria = decisao.categoria;
   if (/\bparcel(?:as?|ado|ada|ei|ar)\b|\b\d+\s*(?:x|vezes)\b/i.test(texto) && heuristics.parseParcelas(texto) === null) {
     await notificacoes.notificarRevisao('Confirme o parcelamento', transcricao.transcript);
     return false;

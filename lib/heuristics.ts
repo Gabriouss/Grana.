@@ -805,6 +805,11 @@ export function categoriaReconhecida(
   return categoria.name === 'Outros' ? null : categoria;
 }
 
+/** Na voz, a palavra inteira confirma o palpite em "Outros". */
+export function mencionaCategoriaOutros(text: string): boolean {
+  return contemPalavra(normalizarParaBusca(text), 'Outros');
+}
+
 /** A categoria que a pessoa deixou marcada na tela, pelo nome exato, ou
     `null` se nenhuma. "Outros" escolhido de propósito vale. */
 export function categoriaEscolhida(

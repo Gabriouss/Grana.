@@ -54,12 +54,9 @@ export function transcricaoTemNomeInformativo(
     .replace(/\b,?\s*categoria\b.*$/iu, '')
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim();
-  if (!nome) return false;
+  if (!nome || /^(?:pagamento|pix recebido|lan[çc]amento por voz)$/iu.test(nome)) return false;
 
-  const genericos = new Set([
-    'pagamento', 'pix recebido', 'pix', 'credito', 'debito', 'cartao', 'categoria',
-    'dinheiro', 'compra', 'lancamento por voz',
-  ]);
+  const genericos = new Set(['pix', 'credito', 'debito', 'cartao', 'categoria', 'dinheiro', 'compra']);
   if (genericos.has(nome)) return false;
 
   /* The local stage has no card catalog. A reference immediately following a
