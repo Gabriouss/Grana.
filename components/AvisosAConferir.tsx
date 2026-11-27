@@ -5,9 +5,13 @@ import AppModal from './AppModal';
 import AppPressable from './AppPressable';
 import Sheet from './Sheet';
 import PrivacyValue from './PrivacyValue';
-import TransactionSheet, { type ValoresLancamento } from './TransactionSheet';
+import TransactionSheet, { type ModoLancamento, type ValoresLancamento } from './TransactionSheet';
 import { Alert } from '@/lib/alerta';
 import { dispensarRecibo, formasAprendidas, listarCaixa, registrarVencimentoVisto, removerItemDaCaixa, sincronizarCaixa } from '@/lib/avisos-banco/caixa';
+import {
+  assinarRevisoesVoz, confirmarRevisaoVoz, descartarRevisaoVoz, desfazerDescarteVoz, geracaoDaCaixa, listarRevisoesVoz,
+  type DestinoRevisaoVoz, type ItemRevisaoVoz, type ValoresConfirmadosVoz,
+} from '@/lib/avisos-banco/caixa-voz';
 import { pedidosAgora, publicarAvisosNaFrente, publicarPendentes, usePedidoDeConferencia } from '@/lib/avisos-banco/conferencia-aberta';
 import { nomeDoApp, PACOTES_INICIAIS } from '@/lib/avisos-banco/catalogo';
 import {
@@ -86,7 +90,11 @@ const reciboDaGravacao = ({ guardado, jaEstava }: { guardado: boolean; jaEstava:
 const FORMA_ROTULO: Record<FormaDoAviso, string> = { credit: 'Crédito', debit: 'Débito', pix: 'Pix', boleto: 'Boleto' };
 
 /** Texto lido pelo leitor de tela quando a janela abre e a cada item resolvido. */
-export function textoDaContagem(itens: ItemAConferir[]): string {
+export function textoDaContagem(itens: ItemAConferir[], vozes = 0): string {
+  if (vozes) {
+    const total = itens.length + vozes;
+    return total === 1 ? '1 lançamento para conferir' : total + ' lançamentos para conferir';
+  }
   const gastos = itens.every((i) => i.tipo === 'lancamento' && i.direcao === 'out');
   if (itens.length === 1) return gastos ? '1 gasto para conferir' : '1 aviso para conferir';
   return `${itens.length} ${gastos ? 'gastos' : 'avisos'} para conferir`;
@@ -154,6 +162,8 @@ function carteiraPadrao(item: ItemAConferir, dados: DadosDaLista, forma: FormaDo
   return cartao?.wallet_id ?? dados.carteiras.find((w) => w.is_default)?.id ?? dados.carteiras[0]?.id ?? '';
 }
 
+const SEM_VOZ: ItemRevisaoVoz[] = [];
+
 /** Marca por conta: a janela já abriu sozinha e foi fechada neste aparelho. Depois dela, só o sininho abre. */
 const chaveJanelaFechada = (dono: string) => `grana_avisos_janela_fechada:${dono}`;
 
@@ -169,15 +179,28 @@ const chaveJanelaFechada = (dono: string) => `grana_avisos_janela_fechada:${dono
  * derruba, e a revisão de um item é a folha de lançamento por cima dela.
  * Item novo que chegar depois não a reabre: avisa o sininho.
  */
-export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false }: {
+export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false, emFoco = true, destinoVoz, aoConsumirDestinoVoz }: {
   dono: string;
   nomeDoPerfil?: string | null;
   /** Algo que o contador de janelas não vê (ex.: o tutorial) está em primeiro plano. */
   bloqueado?: boolean;
+  emFoco?: boolean;
+  destinoVoz?: DestinoRevisaoVoz | null;
+  aoConsumirDestinoVoz?: (destino: DestinoRevisaoVoz) => void;
 }) {
   const [itens, setItens] = useState<ItemAConferir[]>([]);
   const [recibos, setRecibos] = useState<ReciboDeEstorno[]>([]);
   const [aberta, setAberta] = useState(false);
+  const [voz, setVoz] = useState<{ dono: string; geracao: number; itens: ItemRevisaoVoz[]; destinoConsultado: DestinoRevisaoVoz | null | undefined } | null>(null);
+  const [revisaoDirigida, setRevisaoDirigida] = useState<ItemRevisaoVoz | null>(null);
+  const [ocupadoVoz, setOcupadoVoz] = useState<string | null>(null);
+  const abriuComBanco = useRef(false);
+  const destinoSolicitado = useRef(destinoVoz);
+  destinoSolicitado.current = destinoVoz;
+  const atualizarVoz = useRef<(() => void) | null>(null);
+  const ultimoDestino = useRef<DestinoRevisaoVoz | null>(null);
+  const geracaoVoz = geracaoDaCaixa(dono);
+  const sessaoVoz = useRef<{ dono: string; geracao: number; ocupada: boolean } | null>(null);
   /** null = lendo a marca. Verdadeiro: já abriu e fechou antes, nunca mais abre sozinha. */
   const [jaFechada, setJaFechada] = useState<boolean | null>(null);
   /** O toque no sininho pediu a janela; vale uma vez, na primeira chance de abrir. */
@@ -198,7 +221,6 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
       const { itens: lidos, ilegiveis, recibos: lidosRecibos } = await naContaDosAvisos(dono, () => sincronizarCaixa(dono));
       if (!vigente()) return;
       setItens(lidos);
-      publicarPendentes(lidos.length);
       setRecibos(lidosRecibos);
       if (ilegiveis > 0) avisarFalhaDeLeitura(`${ilegiveis} avisos não puderam ser lidos`);
     } catch (e) {
@@ -213,7 +235,6 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
     const sessao = { dono, viva: true, pronta: false, geracao: sessaoDosAvisos() };
     sessaoAtual.current = sessao;
     setItens([]); setRecibos([]); setAberta(false); setPediu(false);
-    publicarPendentes(0);
     const vigente = () => sessao.viva && sessaoAtual.current === sessao && donoAtual.current === dono
       && mesmaSessaoDosAvisos(sessao.geracao);
     async function iniciar() {
@@ -233,12 +254,61 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
       }
     }
     void iniciar();
-    const evento = AppState.addEventListener('change', (estado) => {
-      if (estado === 'active') void carregar();
-    });
     const intervalo = setInterval(() => { if (AppState.currentState === 'active') void carregar(); }, 15000);
-    return () => { sessao.viva = false; sessao.pronta = false; evento.remove(); clearInterval(intervalo); };
+    return () => { sessao.viva = false; sessao.pronta = false; clearInterval(intervalo); };
   }, [carregar, dono]);
+
+  useEffect(() => {
+    const sessao = { dono, geracao: geracaoVoz, ocupada: false };
+    sessaoVoz.current = sessao;
+    ultimoDestino.current = null;
+    setVoz(null);
+    abriuComBanco.current = false;
+    setAberta(false);
+    setOcupadoVoz(null);
+    setRevisaoDirigida(null);
+    let ultimaLeitura = 0;
+    const vigente = () => sessaoVoz.current === sessao && donoAtual.current === dono && geracaoDaCaixa(dono) === sessao.geracao;
+    async function carregarVoz() {
+      if (!vigente()) return;
+      const leitura = ++ultimaLeitura;
+      const destinoConsultado = destinoSolicitado.current;
+      try {
+        const lidos = await listarRevisoesVoz(dono);
+        if (vigente() && leitura === ultimaLeitura) {
+          setVoz({ dono, geracao: sessao.geracao, itens: lidos.filter((item) => item.dono === dono), destinoConsultado });
+        }
+      } catch (e) {
+        if (!vigente() || leitura !== ultimaLeitura) return;
+        console.error('[avisos] revisões de voz não foram lidas', e instanceof Error ? e.name : 'erro');
+        avisarFalhaDeLeitura('Não consegui ler os lançamentos por voz', () => void carregarVoz(), 'Lançamentos por voz');
+      }
+    }
+    const recarregar = () => {
+      if (!vigente()) {
+        if (sessaoVoz.current === sessao) setVoz(null);
+        return;
+      }
+      void carregarVoz();
+    };
+    atualizarVoz.current = recarregar;
+    const desassinar = assinarRevisoesVoz(dono, recarregar);
+    const evento = AppState.addEventListener('change', (estado) => {
+      if (estado !== 'active') return;
+      void carregar();
+      recarregar();
+    });
+    return () => {
+      sessaoVoz.current = null;
+      atualizarVoz.current = null;
+      desassinar();
+      evento.remove();
+    };
+  }, [dono, carregar, geracaoVoz]);
+
+  useEffect(() => {
+    if (emFoco) atualizarVoz.current?.();
+  }, [destinoVoz, dono, emFoco, geracaoVoz]);
 
   /* Lê a marca da conta. Sem a leitura, não abre sozinha (sem piscar); se falhar, vale como já fechada. */
   useEffect(() => {
@@ -269,22 +339,58 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
 
   useEffect(() => () => { publicarPendentes(0); publicarAvisosNaFrente(false); }, []);
 
-  /* A pergunta da sobra (e qualquer outra janela de pergunta) espera só enquanto a janela está aberta ou ainda vai abrir. Fechada de vez, ela passa. */
-  useEffect(() => {
-    publicarAvisosNaFrente(avisosDisponivel && itens.length > 0 && (aberta || pediu || jaFechada !== true));
-  }, [itens.length, aberta, pediu, jaFechada]);
+  const bancoPronto = avisosDisponivel && !!sessaoAtual.current?.pronta && sessaoAtual.current.dono === dono
+    && mesmaSessaoDosAvisos(sessaoAtual.current.geracao);
+  const vozDaConta = voz?.dono === dono && voz.geracao === geracaoVoz ? voz : null;
+  const itensVoz = vozDaConta?.itens ?? SEM_VOZ;
+  const total = (bancoPronto ? itens.length : 0) + itensVoz.length;
+  const destino = destinoVoz?.dono === dono && destinoVoz !== ultimoDestino.current ? destinoVoz : null;
+  const abrirBanco = bancoPronto && itens.length > 0 && jaFechada === false;
+  const adiantandoBanco = bancoPronto && itens.length > 0 && jaFechada === null;
+  const temAvisosDoBanco = bancoPronto && itens.length > 0;
 
-  /* Abre quando há pendência e o caminho está livre (sozinha só na primeira vez; depois, só a pedido); fecha quando acabou. */
+  useEffect(() => { publicarPendentes(total); }, [total]);
   useEffect(() => {
-    if (!avisosDisponivel) return;
-    if (itens.length === 0) {
-      if (pediu) setPediu(false);
-      if (aberta) { setAberta(false); marcarFechada(); }
+    publicarAvisosNaFrente((total > 0 && (aberta || pediu)) || !!destino || abrirBanco || adiantandoBanco);
+  }, [total, aberta, pediu, destino, abrirBanco, adiantandoBanco]);
+
+  useEffect(() => {
+    if (!destino || !emFoco) return;
+    if (ultimoDestino.current?.dono === dono && ultimoDestino.current.requestId === destino.requestId) {
+      ultimoDestino.current = destino;
+      aoConsumirDestinoVoz?.(destino);
       return;
     }
-    if (aberta || outraJanela || bloqueado) return;
-    if (pediu || jaFechada === false) { setAberta(true); setPediu(false); }
-  }, [itens.length, aberta, pediu, jaFechada, outraJanela, bloqueado, marcarFechada]);
+    if (vozDaConta?.destinoConsultado !== destino || outraJanela || bloqueado || ocupadoVoz) return;
+    ultimoDestino.current = destino;
+    const item = itensVoz.find((i) => i.requestId === destino.requestId);
+    if (item) {
+      setRevisaoDirigida(item);
+      setAberta(true);
+    } else {
+      Alert.alert('Lançamento por voz', 'Este lançamento já saiu da lista de conferência.');
+    }
+    aoConsumirDestinoVoz?.(destino);
+  }, [destino, vozDaConta, dono, emFoco, outraJanela, bloqueado, ocupadoVoz, itensVoz, aoConsumirDestinoVoz]);
+
+  /* A primeira abertura automática continua sendo dos avisos bancários. */
+  useEffect(() => {
+    if (total === 0) {
+      if (pediu) setPediu(false);
+      if (aberta) {
+        setAberta(false);
+        if (abriuComBanco.current) marcarFechada();
+        abriuComBanco.current = false;
+      }
+      return;
+    }
+    if (aberta || !emFoco || outraJanela || bloqueado) return;
+    if (pediu || abrirBanco) { setAberta(true); setPediu(false); }
+  }, [total, aberta, pediu, abrirBanco, emFoco, outraJanela, bloqueado, marcarFechada]);
+
+  useEffect(() => {
+    if (aberta && temAvisosDoBanco) abriuComBanco.current = true;
+  }, [aberta, temAvisosDoBanco]);
 
   const dispensar = (id: string) => {
     setRecibos((antes) => antes.filter((r) => r.id !== id));
@@ -293,37 +399,126 @@ export default function AvisosAConferir({ dono, nomeDoPerfil, bloqueado = false 
   /* Estável de propósito: a lista recarrega quando `aoMudar` muda. Função nova a
      cada desenho virou laço infinito na build 31 (707ade87): JS em 100%, disco
      congestionado e o app inteiro sem carregar. Teste em `avisos-telas.cjs`. */
-  const aoMudar = useCallback((lista: ItemAConferir[]) => { setItens(lista); publicarPendentes(lista.length); }, []);
-  /* Estável pelo mesmo motivo: `marcarFechada` só muda com o dono. */
-  const aoAdiar = useCallback(() => { setAberta(false); marcarFechada(); }, [marcarFechada]);
-  if (!avisosDisponivel || !sessaoAtual.current?.pronta || sessaoAtual.current.dono !== dono
-    || !mesmaSessaoDosAvisos(sessaoAtual.current.geracao)) return null;
-  /* Sem pendência, o recibo abre numa janela pequena com "Entendi"; nunca bloco na Início. */
-  if (!aberta || itens.length === 0) return <ReciboEmJanela recibos={recibos} aoDispensar={dispensar} bloqueado={bloqueado} />;
+  const aoMudar = useCallback((lista: ItemAConferir[]) => { if (donoAtual.current === dono) setItens(lista); }, [dono]);
+  const adiar = useCallback(() => {
+    setAberta(false);
+    if (abriuComBanco.current) marcarFechada();
+    abriuComBanco.current = false;
+  }, [marcarFechada]);
+  const aoAbrirRevisaoDirigida = useCallback(() => setRevisaoDirigida(null), []);
+
+  async function agirNaVoz(item: ItemRevisaoVoz, falha: string, executar: (vigente: () => boolean) => Promise<void>) {
+    const sessao = sessaoVoz.current;
+    const vigente = () => !!sessao && sessaoVoz.current === sessao && sessao.dono === item.dono
+      && donoAtual.current === item.dono && geracaoDaCaixa(item.dono) === sessao.geracao;
+    if (!sessao || !vigente() || sessao.ocupada) return false;
+    sessao.ocupada = true;
+    setOcupadoVoz(item.requestId);
+    try {
+      await executar(vigente);
+      return vigente();
+    } catch (e) {
+      console.error('[avisos] ação na revisão de voz falhou', e instanceof Error ? e.name : 'erro');
+      if (vigente()) Alert.alert(falha, mensagemErro(e));
+      return false;
+    } finally {
+      sessao.ocupada = false;
+      if (vigente()) setOcupadoVoz(null);
+    }
+  }
+
+  function salvarVoz(item: ItemRevisaoVoz, modo: ModoLancamento, valores: ValoresLancamento) {
+    const amount = parseAmount(valores.amount);
+    if (!amount || amount <= 0) {
+      Alert.alert('Informe um valor válido');
+      return Promise.resolve(false);
+    }
+    return agirNaVoz(item, 'Não consegui confirmar o salvamento', async (vigente) => {
+      const alvo = { dono: item.dono, requestId: item.requestId };
+      const confirmados: ValoresConfirmadosVoz = {
+        ...valores,
+        modo,
+        amount,
+        occurred_on: modo === 'boleto' ? '' : valores.occurred_on,
+        vencimento: modo === 'boleto' ? valores.occurred_on : undefined,
+        forma: modo === 'credito' ? 'credit' : modo === 'carteira' ? formaDaCarteira(item.rascunho.forma) : undefined,
+      };
+      const { desfecho } = await confirmarRevisaoVoz(alvo, confirmados);
+      if (vigente()) Alert.alert(RECIBO_DA_VOZ[desfecho]);
+    });
+  }
+
+  function descartarVoz(item: ItemRevisaoVoz) {
+    const sessao = sessaoVoz.current;
+    void agirNaVoz(item, 'Não consegui descartar', async (vigente) => {
+      const alvo = { dono: item.dono, requestId: item.requestId };
+      const recibo = await descartarRevisaoVoz(alvo);
+      if (!vigente()) return;
+      if (!recibo) {
+        Alert.alert('Não consegui descartar', 'Confira o estado deste lançamento no sino.');
+        return;
+      }
+      Alert.alert('Lançamento por voz descartado', undefined, [
+        { text: 'Fechar', style: 'cancel' },
+        { text: 'Desfazer', onPress: () => {
+          if (sessaoVoz.current !== sessao) return;
+          void agirNaVoz(item, 'Não consegui desfazer o descarte', async (aindaVigente) => {
+            const restaurado = await desfazerDescarteVoz(alvo, recibo.idDescarte);
+            if (aindaVigente()) Alert.alert(restaurado ? 'Lançamento de volta no sino' : 'Este descarte não está mais disponível');
+          });
+        } },
+      ]);
+    });
+  }
+
+  if (!aberta || total === 0) {
+    return bancoPronto ? <ReciboEmJanela recibos={recibos} aoDispensar={dispensar} bloqueado={!emFoco || bloqueado || !!destino} /> : null;
+  }
   return (
     <ListaAConferir
+      key={dono + ':' + geracaoVoz}
       dono={dono}
       nomeDoPerfil={nomeDoPerfil}
       recibos={recibos}
       aoDispensarRecibo={dispensar}
-      aoAdiar={aoAdiar}
+      aoAdiar={adiar}
       aoMudar={aoMudar}
+      bancoPronto={bancoPronto}
+      itensBanco={itens}
+      itensVoz={itensVoz}
+      revisaoDirigida={revisaoDirigida?.dono === dono ? revisaoDirigida : null}
+      aoAbrirRevisaoDirigida={aoAbrirRevisaoDirigida}
+      ocupadoVoz={ocupadoVoz}
+      aoSalvarVoz={salvarVoz}
+      aoDescartarVoz={descartarVoz}
     />
   );
 }
 
+const RECIBO_DA_VOZ = {
+  nova: 'Lançamento salvo',
+  pendente: 'Sem conexão. Lançamento salvo no aparelho',
+  ja_lancada: 'Fala já lançada',
+  desfeita: 'Fala já desfeita',
+  ja_usada: 'Fala já usada',
+} as const;
+
 /** Falha de leitura sem barra: um aviso único por mensagem, para não repetir a cada 15 s. */
 const falhasJaAvisadas = new Set<string>();
-function avisarFalhaDeLeitura(mensagem: string, tentarDeNovo?: () => void) {
+function avisarFalhaDeLeitura(mensagem: string, tentarDeNovo?: () => void, titulo = 'Avisos do banco') {
   if (falhasJaAvisadas.has(mensagem)) return;
   falhasJaAvisadas.add(mensagem);
-  Alert.alert('Avisos do banco', mensagem, [
+  Alert.alert(titulo, mensagem, [
     { text: 'Fechar', style: 'cancel', onPress: () => { falhasJaAvisadas.delete(mensagem); } },
     ...(tentarDeNovo ? [{ text: 'Tentar de novo', onPress: () => { falhasJaAvisadas.delete(mensagem); tentarDeNovo(); } }] : []),
   ]);
 }
 
-function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = () => {}, aoAdiar, aoMudar }: {
+function ListaAConferir({
+  dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = () => {}, aoAdiar, aoMudar,
+  bancoPronto = true, itensBanco, itensVoz = SEM_VOZ, revisaoDirigida, aoAbrirRevisaoDirigida,
+  ocupadoVoz, aoSalvarVoz, aoDescartarVoz,
+}: {
   dono: string;
   nomeDoPerfil?: string | null;
   recibos?: ReciboDeEstorno[];
@@ -335,8 +530,17 @@ function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = 
    */
   aoAdiar: () => void;
   aoMudar: (itens: ItemAConferir[]) => void;
+  bancoPronto?: boolean;
+  itensBanco?: ItemAConferir[];
+  itensVoz?: ItemRevisaoVoz[];
+  revisaoDirigida?: ItemRevisaoVoz | null;
+  aoAbrirRevisaoDirigida?: () => void;
+  ocupadoVoz?: string | null;
+  aoSalvarVoz?: (item: ItemRevisaoVoz, modo: ModoLancamento, valores: ValoresLancamento) => Promise<boolean>;
+  aoDescartarVoz?: (item: ItemRevisaoVoz) => void;
 }) {
   const { isDemoMode } = useDemo();
+  const outraJanela = useHaJanelaAberta();
   const [itens, setItens] = useState<ItemAConferir[]>([]);
   const [dados, setDados] = useState<DadosDaLista | null>(null);
   const [textos, setTextos] = useState<Record<string, string>>({});
@@ -344,6 +548,11 @@ function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = 
   const [recibo, setRecibo] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [revisao, setRevisao] = useState<{ item: ItemAConferir; forma: FormaDoAviso } | null>(null);
+  const [vozAberta, setVozAberta] = useState<ItemRevisaoVoz | null>(null);
+  const [modoVoz, setModoVoz] = useState<ModoLancamento | null>(null);
+  const [falhaBanco, setFalhaBanco] = useState(false);
+  const ocupadoNaLista = ocupado !== null || !!ocupadoVoz;
+  const avisosVisiveis = bancoPronto ? itensBanco ?? itens : [];
   /* Já registrados: falta só sair da lista. Não oferecem Confirmar nem Editar. */
   const [jaSalvos, setJaSalvos] = useState<Set<string>>(new Set());
   const [formas, setFormas] = useState<FormasAprendidas>({});
@@ -352,6 +561,7 @@ function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = 
   const concluidos = useRef(new Set<string>());
 
   const recarregarItens = useCallback(async () => {
+    if (!bancoPronto) return [];
     const lista = await listarCaixa(dono);
     const salvos = await itensJaGravados(dono);
     const lembradas = await formasAprendidas(dono);
@@ -360,14 +570,25 @@ function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = 
     setFormas(lembradas);
     aoMudar(lista);
     return lista;
-  }, [aoMudar, dono]);
+  }, [aoMudar, bancoPronto, dono]);
 
-  const carregarTudo = useCallback(async () => {
-    setFalha(null);
+  const carregarBanco = useCallback(async () => {
+    if (!bancoPronto) return;
+    setFalhaBanco(false);
     try {
       await recarregarItens();
       const diario = await lerDiarioAvisos();
       setTextos(Object.fromEntries(diario.itens.map((a) => [a.id, [a.titulo, a.texto].filter(Boolean).join('\n')])));
+    } catch (e) {
+      console.error('[avisos] avisos bancários não foram lidos', e instanceof Error ? e.name : 'erro');
+      setFalhaBanco(true);
+    }
+  }, [bancoPronto, recarregarItens]);
+
+  const carregarTudo = useCallback(async () => {
+    setFalha(null);
+    void carregarBanco();
+    try {
       // T2: abrir e editar só leem o aparelho. A rede fica na confirmação.
       const [carteiras, cartoes, categorias, apelidos, contasAbertas, lancamentos] = await Promise.all([
         lerTela<Wallet[]>('carteiras'),
@@ -391,7 +612,18 @@ function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = 
       console.error('[avisos] referências locais não foram lidas', e instanceof Error ? e.name : 'erro');
       setFalha(mensagemErro(e));
     }
-  }, [recarregarItens]);
+  }, [carregarBanco]);
+
+  const abrirVoz = useCallback((item: ItemRevisaoVoz) => {
+    setVozAberta(item);
+    setModoVoz(item.rascunho.modo ?? null);
+  }, []);
+
+  useEffect(() => {
+    if (!revisaoDirigida || !dados || outraJanela || revisao || vozAberta || ocupadoNaLista) return;
+    if (itensVoz.some((i) => i.requestId === revisaoDirigida.requestId)) abrirVoz(revisaoDirigida);
+    aoAbrirRevisaoDirigida?.();
+  }, [revisaoDirigida, dados, outraJanela, revisao, vozAberta, ocupadoNaLista, itensVoz, abrirVoz, aoAbrirRevisaoDirigida]);
 
   useEffect(() => { void carregarTudo(); }, [carregarTudo]);
 
@@ -604,12 +836,12 @@ function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = 
 
   return <>
     {/* Bloqueante: tocar fora e o Voltar do Android não fazem nada. Só fecha quando o último item é resolvido. */}
-    <AppModal visible={!revisao} transparent semRegistro onRequestClose={() => {}}>
+    <AppModal visible={!revisao && !vozAberta} transparent semRegistro onRequestClose={() => {}}>
       <Sheet centered onClose={() => {}}>
         <View style={styles.cabecalho}>
           <Text style={styles.titulo} accessibilityRole="header">A conferir</Text>
         </View>
-        <Text style={styles.legenda} accessibilityLiveRegion="polite">{textoDaContagem(itens)}</Text>
+        <Text style={styles.legenda} accessibilityLiveRegion="polite">{textoDaContagem(avisosVisiveis, itensVoz.length)}</Text>
         {recibo && <Text style={styles.recibo} accessibilityLiveRegion="polite">{recibo}</Text>}
         <RecibosDeEstorno recibos={recibos} aoDispensar={aoDispensarRecibo} />
         {falha && (
@@ -621,11 +853,26 @@ function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = 
             </View>
           </View>
         )}
+        {falhaBanco && (
+          <View style={styles.cartao}>
+            <Text style={styles.corpo}>Não consegui ler os avisos do banco.</Text>
+            <Botao rotulo="Tentar de novo" onPress={() => void carregarBanco()} desligado={ocupadoNaLista} />
+          </View>
+        )}
         {!dados && !falha && <ActivityIndicator color={theme.ink} style={styles.carregando} />}
         {dados && !dados.carteiras.length && <Text style={styles.corpo}>{semViuva('Abra a Início para carregar suas carteiras antes de confirmar.')}</Text>}
         <View style={styles.lista}>
-          {dados && itens.map((item) => (
-            <View key={item.id} onLayout={() => {
+          {dados && itensVoz.map((item) => (
+            <CartaoDaVoz
+              key={'voz:' + item.requestId}
+              item={item}
+              ocupado={ocupadoNaLista}
+              aoEditar={() => abrirVoz(item)}
+              aoDescartar={() => aoDescartarVoz?.(item)}
+            />
+          ))}
+          {dados && !falhaBanco && avisosVisiveis.map((item) => (
+            <View key={'banco:' + item.id} onLayout={() => {
               if (revisao || !venceHoje(item, Date.now()) || item.vencimentoVisto) return;
               // Este cartao recebeu layout; itens novos na caixa ainda nao foram mostrados.
               void registrarVencimentoVisto(dono, Date.now(), [item.id]).catch((e) => console.warn('[avisos] vencimento visto não gravou', e instanceof Error ? e.name : 'erro'));
@@ -637,7 +884,7 @@ function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = 
                 formas={formas}
                 texto={textos[item.avisoIds[0]]}
                 entreContas={pareceEntreContas(item, nomeDoPerfil)}
-                ocupado={ocupado !== null}
+                ocupado={ocupadoNaLista}
                 aoConfirmar={() => confirmar(item, dados)}
                 aoEditar={() => abrirRevisao(item, dados)}
                 aoDescartar={() => void descartar(item)}
@@ -652,7 +899,7 @@ function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = 
             style={styles.revisarDepois}
             accessibilityRole="button"
             accessibilityHint="Fecha sem descartar nem salvar. Para voltar, toque no botão de lançamentos para conferir."
-            disabled={ocupado !== null}
+            disabled={ocupadoNaLista}
             onPress={aoAdiar}
           >
             <Text style={styles.acao}>Revisar depois</Text>
@@ -660,6 +907,29 @@ function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = 
         )}
       </Sheet>
     </AppModal>
+    {vozAberta && dados && (
+      <TransactionSheet
+        key={'voz:' + vozAberta.requestId}
+        visible
+        onClose={() => { if (!ocupadoNaLista) setVozAberta(null); }}
+        modo={modoVoz}
+        onEscolherModo={setModoVoz}
+        editando={false}
+        inicial={valoresDaVoz(vozAberta, dados)}
+        cartoes={dados.cartoes}
+        carteiras={dados.carteiras}
+        salvando={ocupadoVoz === vozAberta.requestId}
+        onSalvar={async (valores) => {
+          if (modoVoz && await aoSalvarVoz?.(vozAberta, modoVoz, valores)) setVozAberta(null);
+        }}
+        semDataFutura={modoVoz !== 'boleto'}
+        falaOuvida={vozAberta.transcricao}
+        avisoDeOrigem={<Text style={styles.corpo}>{semViuva(vozAberta.titulo)}</Text>}
+        seloDaData="lida da fala"
+        semCarteiraPadrao
+        categoriasLocais={categoriasDaLista(dados)}
+      />
+    )}
     {revisao && dados && (
       <TransactionSheet
         visible
@@ -675,10 +945,7 @@ function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = 
         seloDaData="lida do aviso"
         descricaoPadrao={revisao.item.direcao === 'in' ? 'Entrada' : 'Saída'}
         focoNoValor
-        categoriasLocais={[
-          ...CATEGORIES.map((c) => ({ ...c, is_default: true })),
-          ...dados.extras.filter((c) => !CATEGORIES.some((padrao) => padrao.name === c.name)),
-        ]}
+        categoriasLocais={categoriasDaLista(dados)}
         avisoDeOrigem={<View style={styles.cartao}>
           <PrivacyValue><Text style={styles.corpo}>{textos[revisao.item.avisoIds[0]] ?? 'Texto do aviso indisponível.'}</Text></PrivacyValue>
           {pareceJaLancado(revisao.item, dados.lancamentos) && <Text style={styles.selo}>{semViuva('Parece já lançado. Confira antes de salvar.')}</Text>}
@@ -688,6 +955,53 @@ function ListaAConferir({ dono, nomeDoPerfil, recibos = [], aoDispensarRecibo = 
       />
     )}
   </>;
+}
+
+function formaDaCarteira(forma?: string) {
+  return forma === 'pix' || forma === 'debit' || forma === 'cash' ? forma : undefined;
+}
+
+function categoriasDaLista(dados: DadosDaLista) {
+  return [
+    ...CATEGORIES.map((c) => ({ ...c, is_default: true })),
+    ...dados.extras.filter((c) => !CATEGORIES.some((padrao) => padrao.name === c.name)),
+  ];
+}
+
+function valoresDaVoz({ rascunho }: ItemRevisaoVoz, dados: DadosDaLista): Omit<ValoresLancamento, 'type'> & { type: ValoresLancamento['type'] | null } {
+  const carteiraId = dados.carteiras.find((c) => c.id === rascunho.carteiraId)?.id ?? '';
+  const cartao = dados.cartoes.find((c) => c.id === rascunho.cartaoId && (!carteiraId || carteiraId === c.wallet_id));
+  return {
+    type: rascunho.tipo ?? null,
+    description: rascunho.descricao ?? '',
+    amount: rascunho.valor ? formatMoneyInput(String(Math.round(rascunho.valor * 100))) : '',
+    category: rascunho.categoria?.nome ?? '',
+    color: rascunho.categoria?.cor ?? '',
+    occurred_on: (rascunho.modo === 'boleto' ? rascunho.vencimento : rascunho.data) ?? '',
+    recurring: false,
+    installments: rascunho.parcelas ?? 1,
+    card_id: cartao?.id ?? null,
+    wallet_id: carteiraId,
+  };
+}
+
+function CartaoDaVoz({ item, ocupado, aoEditar, aoDescartar }: {
+  item: ItemRevisaoVoz;
+  ocupado: boolean;
+  aoEditar: () => void;
+  aoDescartar: () => void;
+}) {
+  return (
+    <View style={styles.cartao}>
+      <Text style={styles.legenda}>Lançamento por voz</Text>
+      <Text style={styles.corpo}>{semViuva(item.titulo)}</Text>
+      <PrivacyValue><Text style={styles.corpo}>Ouvi: {item.transcricao}</Text></PrivacyValue>
+      <View style={styles.botoes}>
+        <Botao rotulo="Descartar" onPress={aoDescartar} desligado={ocupado} />
+        <Botao rotulo="Conferir" onPress={aoEditar} desligado={ocupado} destaque />
+      </View>
+    </View>
+  );
 }
 
 /** Frase do estorno quando não há um lançamento certo para desfazer. Só "Entendi", que tira da lista. */

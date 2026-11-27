@@ -32,6 +32,7 @@ import FaixaOffline, { useRecarregarAoChegarDadoNovo } from '@/components/FaixaO
 import FaixaAssinatura from '@/components/FaixaAssinatura';
 import LancamentosEmRevisao from '@/components/LancamentosEmRevisao';
 import AvisosAConferir from '@/components/AvisosAConferir';
+import type { DestinoRevisaoVoz } from '@/lib/avisos-banco/caixa-voz';
 import { useAvisosNaFrente } from '@/lib/avisos-banco/conferencia-aberta';
 import AtalhoDeAvisos from '@/components/AtalhoDeAvisos';
 import { versaoDosLancamentos } from '@/lib/lancamentos-alterados';
@@ -567,14 +568,35 @@ export default function InicioScreen() {
      como query param; aqui só executamos. Os params são limpos logo em
      seguida com replace — sem isso, voltar para a Home reabriria o mesmo
      modal, porque a rota continuaria carregando o parâmetro. */
+  const [destinoVoz, setDestinoVoz] = useState<DestinoRevisaoVoz | null>(null);
+  const donoDaRevisao = session?.user.id;
   const params = useLocalSearchParams<{
     acao?: string; amount?: string; desc?: string; type?: string; category?: string;
     colarTexto?: string;
     falaGuardada?: string;
+    revisaoVozDono?: string;
+    revisaoVozRequestId?: string;
     referencia?: string;
     aproximada?: string;
     goalId?: string;
   }>();
+
+  useEffect(() => {
+    const { revisaoVozDono, revisaoVozRequestId } = params;
+    if (!inicioEmFoco || !donoDaRevisao || (!revisaoVozDono && !revisaoVozRequestId)) return;
+    if (revisaoVozDono === donoDaRevisao && typeof revisaoVozRequestId === 'string' && revisaoVozRequestId.trim()) {
+      setDestinoVoz({ dono: donoDaRevisao, requestId: revisaoVozRequestId });
+    }
+    router.setParams({ revisaoVozDono: undefined, revisaoVozRequestId: undefined });
+  }, [donoDaRevisao, inicioEmFoco, params.revisaoVozDono, params.revisaoVozRequestId, router]);
+
+  useEffect(() => {
+    setDestinoVoz((atual) => atual?.dono === donoDaRevisao ? atual : null);
+  }, [donoDaRevisao]);
+
+  const consumirDestinoVoz = useCallback((destino: DestinoRevisaoVoz) => {
+    setDestinoVoz((atual) => atual === destino ? null : atual);
+  }, []);
 
   /* Fala vinda do widget que o próprio widget se recusou a salvar sozinho
      (sem valor, categoria incerta): abre a mesma revisão do botão de voz, com
@@ -1631,6 +1653,9 @@ export default function InicioScreen() {
         <VoiceEntryButton
           label="Lançar por voz"
           onSaved={() => { void load(); }}
+          onRevisaoNoSino={(destino) => {
+            if (destino.dono === donoDaRevisao) setDestinoVoz(destino);
+          }}
           textStyle={[styles.smartActionText, atalhosCompactos && styles.smartActionTextCompacto]}
           /* Mesmo padrão dos outros três atalhos (autor, 18/10/2026): a voz
              segue na primeira posição, sem destaque próprio. */
@@ -1746,7 +1771,8 @@ export default function InicioScreen() {
       />
       <FaixaOffline estilo={[colunaConteudo, { marginTop: spacing.sm }]} />
       {!isDemoMode && session?.user.id && <AvisosAConferir key={session.user.id} dono={session.user.id}
-        nomeDoPerfil={nomeExibicao} bloqueado={tourOpen} />}
+        nomeDoPerfil={nomeExibicao} bloqueado={tourOpen} emFoco={inicioEmFoco}
+        destinoVoz={destinoVoz} aoConsumirDestinoVoz={consumirDestinoVoz} />}
       <LancamentosEmRevisao
         estilo={[colunaConteudo, { marginTop: spacing.sm }]}
         aberta={revisaoAberta}

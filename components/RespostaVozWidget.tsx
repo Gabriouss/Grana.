@@ -3,6 +3,7 @@ import { AppState, Platform } from 'react-native';
 import type * as NotificationsModule from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { Alert } from '@/lib/alerta';
+import { useSession } from '@/lib/auth-context';
 import { deleteBill, deleteTransaction } from '@/lib/data';
 import { destinoDaFalaComReferencias } from '@/lib/destino-da-fala-referencias';
 import { getNotifications } from '@/lib/notifications';
@@ -61,6 +62,8 @@ function consumirResposta(resposta: NotificationsModule.NotificationResponse): b
 
 export default function RespostaVozWidget() {
   const router = useRouter();
+  const { session } = useSession();
+  const donoAtual = session?.user.id;
 
   /* A mesma decisão do botão de voz da Início (`destinoDaFala`), com as
      MESMAS carteiras e cartões (achado V2, 26/09/2026): entrada com intenção
@@ -206,6 +209,7 @@ export default function RespostaVozWidget() {
        módulo de verdade. */
     const Notifications = getNotifications();
     if (!Notifications) return;
+    const actionPadrao = Notifications.DEFAULT_ACTION_IDENTIFIER;
 
     async function tratar(resposta: NotificationsModule.NotificationResponse) {
       const dados = resposta.notification.request.content.data as unknown as DadosNotifVoz | { origem: 'fila'; resultado: 'revisar' } | undefined;
@@ -217,6 +221,23 @@ export default function RespostaVozWidget() {
         return;
       }
       if (!dados || dados.origem !== 'voz') return;
+      if (dados.resultado === 'conferir') {
+        if (resposta.actionIdentifier !== actionPadrao
+          || !donoAtual || dados.dono !== donoAtual
+          || typeof dados.requestId !== 'string' || !dados.requestId.trim()) return;
+        try {
+          router.navigate({
+            pathname: '/(app)/',
+            params: { revisaoVozDono: dados.dono, revisaoVozRequestId: dados.requestId },
+          });
+        } catch (erro) {
+          Alert.alert('Não consegui abrir a conferência', 'Toque no sino da Início para encontrar o lançamento.');
+          throw erro;
+        }
+        tirarDaBandeja(resposta.notification.request.identifier).catch((erro) =>
+          console.warn('[voz] recibo da conferência não saiu da bandeja', erro instanceof Error ? erro.name : 'erro'));
+        return;
+      }
       /* O recibo já cumpriu o papel ao ser tocado. O toque no corpo fecha a
          notificação sozinho, mas o botão "Desfazer" não, e o "Salvo" ficava
          na bandeja depois de desfeito (B5, 27/09/2026). */
@@ -313,7 +334,7 @@ export default function RespostaVozWidget() {
       vivo = false;
       inscricao.remove();
     };
-  }, [router]);
+  }, [router, donoAtual]);
 
   return null;
 }

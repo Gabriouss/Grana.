@@ -42,12 +42,21 @@ export type ValoresLancamento = {
   wallet_id: string;
 };
 
+export type ModoLancamento = 'carteira' | 'credito' | 'boleto';
+
+const MODOS_PARA_CONFERIR = [
+  { modo: 'carteira', rotulo: 'Lançamento' },
+  { modo: 'credito', rotulo: 'Crédito' },
+  { modo: 'boleto', rotulo: 'Boleto' },
+] as const;
+
 type Props = {
   visible: boolean;
   onClose: () => void;
-  modo: 'carteira' | 'credito' | 'boleto';
+  modo: ModoLancamento | null;
+  onEscolherModo?: (modo: ModoLancamento) => void;
   editando: boolean;
-  inicial: ValoresLancamento;
+  inicial: Omit<ValoresLancamento, 'type'> & { type: TxType | null };
   /** Obrigatório no modo crédito: cartões entre os quais escolher. */
   cartoes?: CreditCard[];
   carteiras: Wallet[];
@@ -101,6 +110,7 @@ export default function TransactionSheet({
   visible,
   onClose,
   modo,
+  onEscolherModo,
   editando,
   inicial,
   cartoes = [],
@@ -121,7 +131,7 @@ export default function TransactionSheet({
   categoriasLocais,
   ocultarCarteira = false,
 }: Props) {
-  const [type, setType] = useState<TxType>(inicial.type);
+  const [type, setType] = useState<TxType | null>(inicial.type);
   const [desc, setDesc] = useState(inicial.description);
   const [amount, setAmount] = useState(inicial.amount);
   const [category, setCategory] = useState(inicial.category);
@@ -176,7 +186,7 @@ export default function TransactionSheet({
 
   /* Parcelamento só existe no fluxo de compra no crédito. Pix, débito e boleto
      entram como um único lançamento; editar uma linha também nunca cria série. */
-  const podeParcelar = modo === 'credito' && !editando && type === 'out' && !recurring;
+  const podeParcelar = modo === 'credito' && !editando && !recurring && (type === 'out' || !!onEscolherModo);
 
   const titulo = editando
     ? ehBoleto
@@ -188,7 +198,7 @@ export default function TransactionSheet({
         ? 'Lançar compra no crédito'
         : type === 'in'
           ? 'Nova entrada'
-          : 'Nova saída';
+          : type === 'out' ? 'Nova saída' : 'Conferir lançamento';
 
   function escolherData(iso: string) {
     setOccurredOn(iso);
@@ -197,6 +207,11 @@ export default function TransactionSheet({
   }
 
   function salvar() {
+    const tipoConfirmado = ehCredito || ehBoleto || somenteSaida ? 'out' : type;
+    if (!modo || !tipoConfirmado) {
+      setFormError(!modo ? 'Escolha o tipo de lançamento.' : 'Escolha se foi uma saída ou uma entrada.');
+      return;
+    }
     const descricao = desc.trim() || descricaoPadrao?.trim() || '';
     const valor = parseAmount(amount);
     if (!descricao) {
@@ -230,7 +245,7 @@ export default function TransactionSheet({
     }
     setFormError(null);
     onSalvar({
-      type: ehCredito || ehBoleto || somenteSaida ? 'out' : type,
+      type: tipoConfirmado,
       description: descricao,
       amount,
       category,
@@ -269,8 +284,33 @@ export default function TransactionSheet({
 
           {avisoDeOrigem}
 
+          {onEscolherModo && (
+            <View style={styles.typeRow}>
+              {MODOS_PARA_CONFERIR.map(({ modo: opcao, rotulo }) => (
+                <AppPressable
+                  key={opcao}
+                  onPress={() => {
+                    if (opcao !== modo && (opcao === 'boleto' || ehBoleto)) {
+                      setOccurredOn('');
+                      setDataEscolhida(true);
+                    }
+                    setFormError(null);
+                    onEscolherModo(opcao);
+                  }}
+                  style={[styles.typeBtn, styles.modoBtn, modo === opcao && styles.typeBtnOut]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: modo === opcao, disabled: salvando }}
+                  disabled={salvando}
+                  accessibilityLabel={'Tipo de lançamento: ' + rotulo}
+                >
+                  <Text style={[styles.typeText, styles.modoTexto, modo === opcao && styles.typeTextOn]}>{rotulo}</Text>
+                </AppPressable>
+              ))}
+            </View>
+          )}
+
           {/* No crédito não existe "entrada": uma fatura só acumula gastos. */}
-          {!ehCredito && !ehBoleto && !somenteSaida && (
+          {modo === 'carteira' && !somenteSaida && (
             <View style={styles.typeRow}>
               <AppPressable
                 onPress={() => setType('out')}
@@ -426,7 +466,7 @@ export default function TransactionSheet({
             {!!dica && <Text style={styles.installmentHint}>{dica}</Text>}
           </View>
 
-          {!installment && (
+          {(!installment || (!!onEscolherModo && !ehCredito)) && (
             <View style={styles.fieldRow}>
               <Text style={styles.fieldKey}>{ehCredito ? 'Cobrança recorrente' : 'Repetir mensalmente'}</Text>
               <ToggleSwitch
@@ -526,7 +566,7 @@ export default function TransactionSheet({
       <CategoryPickerModal
         visible={catPickerOpen}
         categoriasLocais={categoriasLocais}
-        tipo={somenteSaida ? 'out' : type}
+        tipo={somenteSaida ? 'out' : (type ?? undefined)}
         currentCategory={category}
         onSelectCategory={({ name, color }) => {
           setCategory(name);
@@ -560,6 +600,8 @@ const styles = StyleSheet.create({
   acaoSecundariaAlvo: { minHeight: touchTarget, alignItems: 'center', justifyContent: 'center' },
   typeRow: { flexDirection: 'row', gap: spacing.xs },
   typeBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius.sm, backgroundColor: theme.paper },
+  modoBtn: { minHeight: touchTarget, justifyContent: 'center' },
+  modoTexto: { textAlign: 'center' },
   typeBtnOut: { backgroundColor: theme.saidaFundo, borderWidth: 1, borderColor: theme.saidaBorda },
   typeBtnIn: { backgroundColor: theme.entradaFundo, borderWidth: 1, borderColor: theme.entradaBorda },
   typeText: { color: theme.inkFaint, fontSize: type.nota, fontFamily: fonts.light },

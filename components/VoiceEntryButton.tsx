@@ -22,6 +22,7 @@ import AppPressable from './AppPressable';
 import AppDialog from './AppDialog';
 import { randomUUID } from 'expo-crypto';
 import { executarTarefa } from '@/lib/widget-voz-task';
+import type { DestinoRevisaoVoz } from '@/lib/avisos-banco/caixa-voz';
 import { dataLocal, type ReferenciaDaFala } from '@/lib/data-da-fala';
 import { File } from 'expo-file-system';
 import * as FileSystemLegado from 'expo-file-system/legacy';
@@ -124,6 +125,7 @@ function tamanhoDoAudio(uri: string): number | null {
  */
 export default function VoiceEntryButton({
   onTranscribed,
+  onRevisaoNoSino,
   onSaved,
   label,
   style,
@@ -134,6 +136,7 @@ export default function VoiceEntryButton({
 }: {
   /** `ref`: a data da captura, que a revisão usa para ler a data dita. */
   onTranscribed: (text: string, ref?: ReferenciaDaFala) => void;
+  onRevisaoNoSino?: (destino: DestinoRevisaoVoz) => void;
   onSaved?: () => void;
   /** Com rótulo, vira uma pílula (ex: ao lado de "Colar comprovante" no Início). Sem rótulo, vira só o ícone (ex: cabeçalho de Lançamentos). */
   label?: string;
@@ -267,7 +270,7 @@ export default function VoiceEntryButton({
       }
       /* Mesma execução do widget, com o mesmo prazo de rede (lib/voz.ts).
          Este adaptador só apresenta o recibo na tela. */
-      await executarTarefa({ caminho: uri, requestId: randomUUID(), source: 'app', ...captura.current }, {
+      const resultado = await executarTarefa({ caminho: uri, requestId: randomUUID(), source: 'app', ...captura.current }, {
         podeNotificar: async () => true,
         notificarRevisao: async (titulo, texto, ref) => {
           const recibo = RECIBOS_VOZ.revisao(titulo, texto);
@@ -297,6 +300,9 @@ export default function VoiceEntryButton({
         notificarSalvoLocal: async () => { Alert.alert(RECIBOS_VOZ.salvoLocal.titulo, RECIBOS_VOZ.salvoLocal.texto); },
         notificarPendenteOffline: async () => { Alert.alert(RECIBOS_VOZ.pendenteOffline.titulo, RECIBOS_VOZ.pendenteOffline.texto); },
       });
+      if (resultado?.guardada === false && resultado.revisaoNoSino) {
+        onRevisaoNoSino?.(resultado.revisaoNoSino);
+      }
     } catch (e: any) {
       if (__DEV__) console.warn('[voz:diag] botao lancou', e?.name, String(e?.message ?? e));
       if (e instanceof PrazoDoMicrofoneEsgotado) {

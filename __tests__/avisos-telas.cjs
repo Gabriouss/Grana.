@@ -77,6 +77,46 @@ const salvar = async (entrada, chave) => {
   await new Promise((r) => setImmediate(r));
   return { guardado: false };
 };
+const revisoesVoz = new Map();
+const ouvintesVoz = new Map();
+const geracoesVoz = new Map();
+const descartesVoz = new Map();
+let falhaVoz = false;
+function publicarVoz(dono, itens) {
+  revisoesVoz.set(dono, itens);
+  for (const fn of ouvintesVoz.get(dono) ?? []) fn();
+}
+const caixaVoz = {
+  geracaoDaCaixa: (dono) => geracoesVoz.get(dono) ?? 0,
+  listarRevisoesVoz: async (dono) => revisoesVoz.get(dono) ?? [],
+  assinarRevisoesVoz(dono, fn) {
+    const ouvintes = ouvintesVoz.get(dono) ?? new Set();
+    ouvintesVoz.set(dono, ouvintes);
+    ouvintes.add(fn);
+    return () => ouvintes.delete(fn);
+  },
+  async confirmarRevisaoVoz(alvo, valores) {
+    chamadas.push(['confirmar-voz', alvo, valores]);
+    if (falhaVoz) throw new Error('Disco indisponível');
+    publicarVoz(alvo.dono, revisoesVoz.get(alvo.dono).filter(i => i.requestId !== alvo.requestId));
+    return { desfecho: 'nova' };
+  },
+  async descartarRevisaoVoz(alvo) {
+    chamadas.push(['descartar-voz', alvo]);
+    const itens = revisoesVoz.get(alvo.dono);
+    const item = itens.find(i => i.requestId === alvo.requestId);
+    descartesVoz.set('d1', item);
+    publicarVoz(alvo.dono, itens.filter(i => i !== item));
+    return { idDescarte: 'd1' };
+  },
+  async desfazerDescarteVoz(alvo, idDescarte) {
+    chamadas.push(['desfazer-voz', alvo, idDescarte]);
+    const item = descartesVoz.get(idDescarte);
+    if (!item || item.dono !== alvo.dono || item.requestId !== alvo.requestId) return false;
+    publicarVoz(alvo.dono, [...revisoesVoz.get(alvo.dono), item]);
+    return true;
+  },
+};
 const stub = {
   react,
   '@/lib/auth-context': { useSession: () => ({ session: { user: { id: 'dono' } } }) },
@@ -110,6 +150,7 @@ const stub = {
       disco.set(k, v);
     }, removeItem: async (k) => { disco.delete(k); } },
   '@/modules/grana-avisos': nativo,
+  '@/lib/avisos-banco/caixa-voz': caixaVoz,
   '@/lib/cache-de-tela': { lerTela: async (chave) => { if (erroReferencias) throw new Error('referencias indisponiveis'); return chave in dadosLocais ? { dados: dadosLocais[chave] } : null; } },
   '@/lib/data': Object.fromEntries(['seedDefaultCategories', 'fetchCategories', 'addCategory', 'updateCategory', 'deleteCategory']
     .map((nome) => [nome, () => { chamadas.push(['rede-proibida', nome]); throw new Error(`Rede proibida: ${nome}`); }])),
@@ -139,7 +180,7 @@ function carregar(relativo) {
   if (cache.has(arquivo)) return cache.get(arquivo);
   let fonte = fs.readFileSync(arquivo, 'utf8');
   // Expõe só ao harness os componentes privados, sem alterar seus handlers.
-  if (arquivo.endsWith('AvisosAConferir.tsx')) fonte += '\nexport { ListaAConferir, CartaoDoAviso, CartaoDoEstorno, RecibosDeEstorno, ReciboEmJanela };';
+  if (arquivo.endsWith('AvisosAConferir.tsx')) fonte += '\nexport { ListaAConferir, CartaoDoAviso, CartaoDoEstorno, RecibosDeEstorno, ReciboEmJanela, CartaoDaVoz };';
   if (arquivo.endsWith('AvisosBancoSecao.tsx')) fonte += '\nexport { DiarioDoTeste };';
   const resultado = ts.transpileModule(fonte, { reportDiagnostics: true, compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true,
@@ -1137,6 +1178,13 @@ async function main() {
     assert.equal(atalho.tree.props.accessibilityLabel, '1 lançamento para conferir');
     assert.equal(atalho.tree.props.icon, 'notifications-outline');
     assert.equal(conferencia.rotuloDoAtalho(3), '3 lançamentos para conferir');
+    nativo.avisosDisponivel = false;
+    try {
+      atalho.render();
+      assert.equal(atalho.tree?.props.label, '1', 'com pendencia local o sino independe do leitor bancario');
+    } finally {
+      nativo.avisosDisponivel = true;
+    }
 
     /* Depois do "Revisar depois" a janela fecha; o toque no atalho a abre de novo, sem descartar nada. */
     elementos(janela.tree).find((e) => e.type === telas.ListaAConferir).props.aoAdiar();
@@ -1331,6 +1379,209 @@ async function main() {
       assert.equal(chamadas.filter(c=>c[0]==='acesso').length,0);trocou.unmount();
       ok('N1: resultado de aceite da conta anterior nao abre ajustes depois da troca');
     } finally {Object.assign(nativo,originais);}
+  }
+
+  {
+    const conferencia = carregar('lib/avisos-banco/conferencia-aberta.ts');
+    const ladoVoz = (janela) => elementos(janela.tree).find(e => e.type === telas.ListaAConferir);
+    const folhaVoz = (lista) => elementos(lista.tree).find(e => e.type === TransactionSheet);
+    const chave = { dono: 'dono', requestId: 'captura-voz' };
+    const outraChave = { dono: 'outra-conta', requestId: chave.requestId };
+    const voz = {
+      ...chave, origem: 'voz', fonte: 'widget', quando: Date.now(), titulo: 'Qual categoria?',
+      transcricao: 'Papelaria cento e quarenta e cinco reais',
+      rascunho: { modo: 'carteira', tipo: 'out', descricao: 'Papelaria', valor: 145, data: '2026-10-10', forma: 'pix', carteiraId: 'w' },
+    };
+    const pronta = { ...voz.rascunho, categoria: { nome: 'Outros', cor: '#000000' } };
+    disco.clear(); diario = []; chamadas = []; alertas = [];
+    dadosLocais = { carteiras: [carteira], cartoes: [{ id: 'c', name: 'Cartão Modelo', wallet_id: 'w' }] };
+    nativo.avisosDisponivel = false;
+    const janela = montar(telas.default, { dono: 'dono', destinoVoz: outraChave });
+    publicarVoz('dono', [voz]);
+    publicarVoz('outra-conta', [{ ...voz, ...outraChave, transcricao: 'Fala de outra conta' }]);
+    await janela.settle(); await janela.settle();
+    assert.equal(conferencia.pendentesAgora(), 1);
+    assert.equal(ladoVoz(janela), undefined, 'só o toque abre o item de voz do widget');
+    assert.equal(alertas.length, 0, 'destino de outra conta não exibe recibo nem abre');
+
+    const consumidos = [];
+    const props = { dono: 'dono', destinoVoz: chave, aoConsumirDestinoVoz: (destino) => consumidos.push(destino) };
+    janela.render({ ...props, bloqueado: true }); await janela.settle();
+    assert.equal(ladoVoz(janela), undefined);
+    janela.render(props); await janela.settle(); await janela.settle();
+    assert.deepEqual(consumidos, [chave]);
+    janela.render({ ...props, destinoVoz: { ...chave } }); await janela.settle();
+    assert.deepEqual(consumidos, [chave, chave], 'uma segunda entrega é consumida sem reabrir a folha');
+    const lista = montar(telas.ListaAConferir, ladoVoz(janela).props);
+    await lista.settle(); await lista.settle();
+    const reabrir = () => {
+      const card = elementos(lista.tree).find(e => e.type === telas.CartaoDaVoz);
+      assert.ok(card, 'linha de voz na mesma lista');
+      const cartao = telas.CartaoDaVoz(card.props);
+      assert.match(texto(cartao), /Lançamento por voz/);
+      assert.match(texto(cartao), /Ouvi:\s+Papelaria/);
+      elementos(cartao).find(e => e.props.rotulo === 'Conferir').props.onPress();
+      lista.render();
+    };
+    assert.equal(folhaVoz(lista).props.falaOuvida, voz.transcricao);
+    assert.equal(folhaVoz(lista).props.inicial.amount, '145,00');
+    assert.equal(folhaVoz(lista).props.inicial.category, '');
+    assert.equal(folhaVoz(lista).props.inicial.wallet_id, 'w');
+    folhaVoz(lista).props.onClose();
+    await janela.settle();
+    lista.render(ladoVoz(janela).props);
+    assert.equal(folhaVoz(lista), undefined, 'fechar o formulário volta à lista');
+    assert.equal(conferencia.pendentesAgora(), 1);
+    assert.equal(chamadas.length, 0, 'abrir e fechar não grava nem descarta');
+    reabrir();
+
+    const formar = require('./sheet-real.cjs')({
+      ...stub,
+      './AppModal': './AppModal',
+      './AppPressable': './AppPressable',
+      './Sheet': './Sheet',
+      '@/lib/format': carregar('lib/format.ts'),
+      '@/lib/limits': carregar('lib/limits.ts'),
+      '@/lib/heuristics': carregar('lib/heuristics.ts'),
+    });
+    publicarVoz('dono', [{ ...voz, rascunho: pronta }]);
+    await janela.settle(); lista.render(ladoVoz(janela).props);
+    folhaVoz(lista).props.onClose(); lista.render(); reabrir();
+    const acionarSalvar = (folha) => {
+      for (let i = 0; i < 2; i++) formar.default(folha.props);
+      const renderizado = formar.default(folha.props);
+      const salvar = elementos(renderizado).find(e => e.props.onPress && /^Salvar /u.test(texto(e)));
+      assert.ok(salvar, 'Salvar do TransactionSheet real');
+      return salvar.props.onPress;
+    };
+    const salvarReal = acionarSalvar(folhaVoz(lista));
+    falhaVoz = true;
+    salvarReal(); salvarReal(); await lista.settle();
+    assert.equal(chamadas.filter(c => c[0] === 'confirmar-voz').length, 1, 'toque duplo faz uma confirmação por vez');
+    assert.equal(alertas.at(-1)[0], 'Não consegui confirmar o salvamento');
+    assert.ok(folhaVoz(lista), 'falha mantém o formulário aberto');
+    assert.equal(conferencia.pendentesAgora(), 1);
+    const [, alvo, valores] = chamadas.at(-1);
+    assert.deepEqual({ ...alvo }, chave);
+    assert.equal(valores.amount, 145);
+    assert.equal(valores.forma, 'pix');
+    assert.equal(valores.category, 'Outros');
+    falhaVoz = false;
+    salvarReal(); await lista.settle(); await janela.settle();
+    assert.equal(folhaVoz(lista), undefined);
+    assert.equal(conferencia.pendentesAgora(), 0);
+    assert.equal(alertas.at(-1)[0], 'Lançamento salvo');
+    assert.notEqual(disco.get('grana_avisos_janela_fechada:dono'), '1', 'voz sozinha não usa a abertura automática do banco');
+    lista.unmount(); janela.unmount();
+    ok('sino de voz sem leitor, destino por dono, fechar preserva, e Salvar real entrega apenas uma confirmação por vez');
+
+    for (const cenario of [
+      { modo: 'credito', campos: { cartaoId: 'c', parcelas: 3 }, forma: 'credit', data: pronta.data, parcelas: 3, cartao: 'c' },
+      { modo: 'boleto', campos: { vencimento: '2027-01-10' }, forma: undefined, data: '2027-01-10', parcelas: 1, cartao: null },
+    ]) {
+      chamadas = [];
+      const alvo = { dono: 'dono', requestId: cenario.modo };
+      const rascunho = { ...pronta, ...cenario.campos, modo: cenario.modo, forma: cenario.forma };
+      publicarVoz('dono', [{ ...voz, ...alvo, rascunho }]);
+      const edicao = montar(telas.default, { dono: 'dono', destinoVoz: alvo });
+      await edicao.settle(); await edicao.settle();
+      const listaEdicao = montar(telas.ListaAConferir, ladoVoz(edicao).props);
+      await listaEdicao.settle(); await listaEdicao.settle();
+      const folha = folhaVoz(listaEdicao);
+      assert.equal(folha.props.modo, cenario.modo);
+      assert.equal(folha.props.semDataFutura, cenario.modo !== 'boleto', 'boleto usa vencimento, inclusive futuro');
+      formar.reset();
+      acionarSalvar(folha)();
+      await listaEdicao.settle();
+      assert.equal(chamadas.length, 1);
+      const [acao, identidade, valores] = chamadas[0];
+      assert.equal(acao, 'confirmar-voz');
+      assert.deepEqual({ ...identidade }, alvo);
+      assert.equal(valores.modo, cenario.modo);
+      assert.equal(valores.amount, 145);
+      assert.equal(valores.occurred_on, cenario.modo === 'boleto' ? '' : cenario.data);
+      assert.equal(valores.vencimento, cenario.modo === 'boleto' ? cenario.data : undefined);
+      assert.equal(valores.installments, cenario.parcelas);
+      assert.equal(valores.card_id, cenario.cartao);
+      assert.equal(valores.forma, cenario.forma);
+      listaEdicao.unmount(); edicao.unmount();
+    }
+    ok('Salvar real entrega parcelas e cartão para crédito, e vencimento próprio para boleto');
+
+    const faltando = { ...chave, requestId: 'incompleto' };
+    publicarVoz('dono', [{ ...voz, ...faltando, rascunho: { descricao: 'Papelaria' } }]);
+    const incompleta = montar(telas.default, { dono: 'dono', destinoVoz: faltando });
+    await incompleta.settle(); await incompleta.settle();
+    const listaIncompleta = montar(telas.ListaAConferir, ladoVoz(incompleta).props);
+    await listaIncompleta.settle(); await listaIncompleta.settle();
+    const folhaIncompleta = folhaVoz(listaIncompleta);
+    assert.equal(folhaIncompleta.props.modo, null);
+    assert.equal(folhaIncompleta.props.inicial.type, null);
+    assert.equal(folhaIncompleta.props.inicial.wallet_id, '');
+    assert.equal(folhaIncompleta.props.inicial.occurred_on, '');
+    assert.equal(folhaIncompleta.props.inicial.amount, '');
+    chamadas = [];
+    formar.reset();
+    acionarSalvar(folhaIncompleta)();
+    assert.match(texto(formar.default(folhaIncompleta.props)), /Escolha o tipo de lançamento/);
+    assert.deepEqual(chamadas, []);
+    listaIncompleta.unmount(); incompleta.unmount();
+    ok('dados ausentes chegam em branco e o formulário exige escolher o tipo');
+
+    const segundaVoz = { ...voz, requestId: 'outra-captura' };
+    publicarVoz('dono', [segundaVoz]);
+    const descartando = montar(telas.default, { dono: 'dono', destinoVoz: chave });
+    await descartando.settle(); await descartando.settle();
+    assert.match(alertas.at(-1)[1], /já saiu da lista/);
+    conferencia.pedirConferencia();
+    for (let i = 0; i < 3; i++) await descartando.settle();
+    const listaDescarte = montar(telas.ListaAConferir, ladoVoz(descartando).props);
+    await listaDescarte.settle();
+    const cartao = telas.CartaoDaVoz(elementos(listaDescarte.tree).find(e => e.type === telas.CartaoDaVoz).props);
+    elementos(cartao).find(e => e.props.rotulo === 'Descartar').props.onPress();
+    await descartando.settle(); await descartando.settle();
+    assert.equal(conferencia.pendentesAgora(), 0);
+    const [recibo, , botoes] = alertas.at(-1);
+    assert.equal(recibo, 'Lançamento por voz descartado');
+    botoes.find(b => b.text === 'Desfazer').onPress();
+    await descartando.settle(); await descartando.settle();
+    assert.equal(conferencia.pendentesAgora(), 1);
+    assert.equal(ladoVoz(descartando), undefined, 'o desfazer restaura o sino sem abrir a janela');
+    assert.equal(chamadas.filter(c => c[0] === 'confirmar-voz').length, 0, 'descarte e desfazer não confirmam gravação');
+    const desfazeres = chamadas.filter(c => c[0] === 'desfazer-voz').length;
+    geracoesVoz.set('dono', 1);
+    publicarVoz('dono', []);
+    await descartando.settle(); await descartando.settle();
+    botoes.find(b => b.text === 'Desfazer').onPress();
+    await descartando.settle();
+    assert.equal(chamadas.filter(c => c[0] === 'desfazer-voz').length, desfazeres, 'um recibo antigo não desfaz depois de sair e entrar na mesma conta');
+    assert.equal(conferencia.pendentesAgora(), 0);
+    listaDescarte.unmount(); descartando.unmount();
+    publicarVoz('dono', [segundaVoz]); nativo.avisosDisponivel = true;
+    diario = [aviso('Compra no débito de R$ 31,00 em Mercado Modelo')];
+    const mista = montar(telas.default, { dono: 'dono' }); await mista.settle(); await mista.settle();
+    assert.equal(conferencia.pendentesAgora(), 2);
+    const listaMista = montar(telas.ListaAConferir, ladoVoz(mista).props); await listaMista.settle();
+    assert.equal(elementos(listaMista.tree).filter(e => e.type === telas.CartaoDaVoz).length, 1);
+    assert.equal(elementos(listaMista.tree).filter(e => e.type === telas.CartaoDoAviso).length, 1);
+    assert.match(texto(listaMista.tree), /2 lançamentos para conferir/);
+    listaMista.unmount(); mista.unmount();
+
+    erroDiario = true;
+    const semDiario = montar(telas.default, { dono: 'dono', destinoVoz: { dono: 'dono', requestId: segundaVoz.requestId } });
+    try {
+      await semDiario.settle(); await semDiario.settle();
+      const listaSemDiario = montar(telas.ListaAConferir, ladoVoz(semDiario).props);
+      await listaSemDiario.settle(); await listaSemDiario.settle();
+      assert.ok(folhaVoz(listaSemDiario), 'a falha do diário não torna indisponível o formulário da voz');
+      assert.equal(folhaVoz(listaSemDiario).props.falaOuvida, segundaVoz.transcricao);
+      listaSemDiario.unmount();
+    } finally {
+      erroDiario = false;
+      semDiario.unmount();
+    }
+    revisoesVoz.clear(); descartesVoz.clear(); geracoesVoz.clear();
+    ok('descarte deixa recibo com Desfazer, restaura contagem e lista mistura banco e voz');
   }
   console.log(`\n${checagens} grupos de verificação passaram. Sem rede ou aparelho.`);
 }

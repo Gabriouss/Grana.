@@ -136,7 +136,7 @@ console.log('\nCaptura: o detector');
 
 }
 // ── 2. O botão real ────────────────────────────────────────────────────────
-function montarBotao({ tamanho = 50_000, stop = async () => {}, metering = () => -160, tarefaReal, aoCapturar, aoRevisar, silenciada = () => false } = {}) {
+function montarBotao({ tamanho = 50_000, stop = async () => {}, metering = () => -160, tarefaReal, aoCapturar, aoRevisar, aoRevisaoNoSino, silenciada = () => false } = {}) {
   const reg = { tarefas: [], alertas: [], alertasCompletos: [], apagados: [], gravando: false, adaptador: null };
   let relogio = 1_000_000;
   const timers = [];
@@ -220,7 +220,7 @@ function montarBotao({ tamanho = 50_000, stop = async () => {}, metering = () =>
 
   function render() {
     posicao = 0;
-    const arvore = VoiceEntryButton({ onTranscribed: aoRevisar ?? (() => {}), label: 'Voz' });
+    const arvore = VoiceEntryButton({ onTranscribed: aoRevisar ?? (() => {}), onRevisaoNoSino: aoRevisaoNoSino, label: 'Voz' });
     const achar = (no) => {
       if (!no || typeof no !== 'object') return null;
       if (no.type === AppPressable) return no;
@@ -345,14 +345,12 @@ process.exitCode = 1;
     assert.deepEqual(b.reg.apagados, [], 'quem apaga a gravação boa é o núcleo, depois de usar');
     ok('gravação normal segue para o núcleo');
 
-    /* V1 (26/09/2026): o mesmo desfecho, o mesmo texto nas duas entradas. O
-       adaptador que o botão REAL entrega ao núcleo contra o módulo REAL de
-       notificações do widget. Só a notificação de revisão acrescenta a
-       instrução de ação da superfície ("Toque para revisar."). */
+    /* O botão real e a bandeja preservam os recibos do lançamento direto.
+       A revisão do widget anuncia o mesmo destino que o núcleo entrega ao app. */
     const publicadas = [];
     const notif = carregar('lib/widget-voz-notificacoes.ts', {
       './notifications': { getNotifications: () => ({
-        scheduleNotificationAsync: async ({ content }) => { publicadas.push({ titulo: content.title, texto: content.body }); },
+        scheduleNotificationAsync: async ({ content }) => { publicadas.push({ titulo: content.title, texto: content.body, data: content.data }); },
         setNotificationChannelAsync: async () => {}, setNotificationCategoryAsync: async () => {},
         getPermissionsAsync: async () => ({ granted: true }), AndroidImportance: { HIGH: 4, DEFAULT: 3 },
       }) },
@@ -364,7 +362,6 @@ process.exitCode = 1;
     const ultimaDoWidget = () => publicadas[publicadas.length - 1];
     const antes = [];
     const casos = [
-      ['revisão', () => app.notificarRevisao('Qual cartão?', 'uber 25 no crédito'), () => notif.notificarRevisao('Qual cartão?', 'uber 25 no crédito'), ' ' + recibos.ACAO_DA_NOTIFICACAO.revisao],
       ['sucesso', () => app.notificarSucesso({ titulo: 'Almoço · R$ 38,50', texto: 'Alimentação · Pix', operationId: 'op' }), () => notif.notificarSucesso({ titulo: 'Almoço · R$ 38,50', texto: 'Alimentação · Pix', tipo: 'transaction', ids: ['t1'], operationId: 'op' }), ''],
       ['salvo no aparelho', () => app.notificarSalvoLocal(), () => notif.notificarSalvoLocal(), ''],
       ['aguardando conexão', () => app.notificarPendenteOffline(), () => notif.notificarPendenteOffline(), ''],
@@ -375,15 +372,33 @@ process.exitCode = 1;
       const a = ultimaDoApp();
       const w = ultimaDoWidget();
       assert.equal(a.titulo, w.titulo, nome + ': título igual');
-      if (nome === 'revisão') {
-        assert.equal(w.texto, recibos.RECIBOS_VOZ.repetir('Qual cartão?', 'uber 25 no crédito').texto);
-        assert.match(a.texto, /Confira os dados antes de salvar/);
-        assert.doesNotMatch(w.texto, /Abra|abrir|Toque para revisar/);
-      } else assert.equal(a.texto + acao, w.texto, nome + ': corpo igual');
+      assert.equal(a.texto + acao, w.texto, nome + ': corpo igual');
       assert.doesNotMatch(a.titulo + a.texto + w.texto, /[—–]/, nome + ': sem travessão');
       antes.push(nome);
     }
-    ok('mesmo desfecho e título; revisão do widget pede nova fala, demais recibos mantêm o corpo');
+    ok('app e widget preservam os mesmos recibos de lançamento direto e de espera');
+
+    const destinos = [];
+    const telasLegadas = [];
+    const destino = { dono: 'usuario-fixture', requestId: 'req-1' };
+    const botao = montarBotao({
+      aoRevisar: (...args) => telasLegadas.push(args),
+      aoRevisaoNoSino: (alvo) => destinos.push(alvo),
+      tarefaReal: async () => ({ guardada: false, revisaoNoSino: destino }),
+    });
+    await botao.tocar();
+    await botao.tocar();
+    assert.deepEqual(destinos, [destino]);
+    assert.deepEqual(telasLegadas, []);
+    assert.deepEqual(botao.reg.alertas, []);
+
+    await notif.notificarConferenciaVoz('Qual categoria?', 'Papelaria 145 reais', destino);
+    const publicado = ultimaDoWidget();
+    assert.equal(publicado.titulo, 'Qual categoria?');
+    assert.match(publicado.texto, /Ouvi: "Papelaria 145 reais".*no sino/);
+    assert.doesNotMatch(publicado.texto, /Nada foi lançado|microfone|[\u2014\u2013]/u);
+    assert.deepEqual(JSON.parse(JSON.stringify(publicado.data)), { origem: 'voz', resultado: 'conferir', ...destino });
+    ok('app abre o alvo persistido e o widget publica o mesmo alvo para conferir no sino');
   }
 
   console.log('\n' + aprovadas + '/' + aprovadas + ' checagens da captura de voz passaram — 0 falhas\n');

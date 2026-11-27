@@ -31,18 +31,23 @@ process.on('unhandledRejection', (erro) => { semDono.push(String(erro?.message ?
 
 const DEFAULT = 'expo.modules.notifications.actions.DEFAULT';
 function montar() {
-  const e = { pushes: [], desfeitos: [], ouvintes: [], ultima: null, limpezas: 0, erros: [], destinoFalha: false, alertas: [] };
+  const e = { dono: 'dono1', pushes: [], idasAoSino: [], desfeitos: [], ouvintes: [], ultima: null, limpezas: 0, erros: [], destinoFalha: false, alertas: [] };
   const Notifications = {
+    DEFAULT_ACTION_IDENTIFIER: DEFAULT,
     getLastNotificationResponseAsync: async () => e.ultima,
     addNotificationResponseReceivedListener: (f) => { e.ouvintes.push(f); return { remove: () => { e.ouvintes = e.ouvintes.filter((g) => g !== f); } }; },
     clearLastNotificationResponse: () => { e.limpezas++; e.ultima = null; },
   };
-  const router = { push: (rota) => { e.pushes.push(JSON.parse(JSON.stringify(rota))); } };
+  const router = {
+    push: (rota) => { e.pushes.push(JSON.parse(JSON.stringify(rota))); },
+    navigate: (rota) => { e.idasAoSino.push(JSON.parse(JSON.stringify(rota))); },
+  };
   let limpezasDoEfeito = [];
   const dubles = {
     react: { useEffect: (fn) => { const l = fn(); if (typeof l === 'function') limpezasDoEfeito.push(l); } },
     'react-native': { AppState: { addEventListener: () => ({ remove() {} }) }, Platform: { OS: 'android' } },
     'expo-router': { useRouter: () => router },
+    '@/lib/auth-context': { useSession: () => ({ session: e.dono ? { user: { id: e.dono } } : null }) },
     '@/lib/alerta': { Alert: { alert: (titulo, texto, botoes) => { e.alertas.push({ titulo, texto, botoes: botoes ?? [] }); } } },
     '@/lib/data': { deleteBill: async () => {}, deleteTransaction: async () => {} },
     '@/lib/destino-da-fala-referencias': { destinoDaFalaComReferencias: async () => { if (e.destinoFalha) throw new Error('destino indisponível (simulado)'); return 'inicio'; } },
@@ -94,6 +99,39 @@ async function caso(nome, corpo) {
       ok(`revisão de fala do ${source}: getter e listener abrem a revisão uma vez`);
     });
   }
+
+  await caso('sino na abertura fria e no app aberto', async ({ e, montar, tocar }) => {
+    const dados = { origem: 'voz', resultado: 'conferir', dono: 'dono1', requestId: 'pedido-1', transcricao: 'texto não deve ir à rota' };
+    const fria = resposta('sino-frio', dados);
+    e.ultima = fria;
+    montar();
+    tocar(fria);
+    await espera();
+    const quente = resposta('sino-quente', { ...dados, requestId: 'pedido-2' });
+    tocar(quente);
+    tocar(quente);
+    await espera();
+    assert.deepEqual(e.idasAoSino, ['pedido-1', 'pedido-2'].map((requestId) => ({
+      pathname: '/(app)/',
+      params: { revisaoVozDono: 'dono1', revisaoVozRequestId: requestId },
+    })));
+    assert.deepEqual(e.pushes, []);
+    assert.deepEqual(e.desfeitos, []);
+    ok('toques frio e quente levam só dono e requestId ao sino, uma vez por notificação');
+  });
+
+  await caso('sino ignora outro dono e payload incompleto', async ({ e, montar, tocar }) => {
+    const dados = { origem: 'voz', resultado: 'conferir', dono: 'dono1', requestId: 'pedido-1' };
+    montar();
+    tocar(resposta('outra-conta', { ...dados, dono: 'dono2' }));
+    tocar(resposta('sem-id', { ...dados, requestId: ' ' }));
+    tocar(resposta('outra-acao', dados, 'desfazer'));
+    await espera();
+    assert.deepEqual(e.idasAoSino, []);
+    assert.deepEqual(e.pushes, []);
+    assert.deepEqual(e.desfeitos, []);
+    ok('outro dono, id ausente ou ação diferente de tocar o corpo nunca abrem o sino');
+  });
 
   await caso('Desfazer pelos dois canais', async ({ e, montar, tocar }) => {
     const r = resposta('voz-req-salvo', { origem: 'voz', resultado: 'salvo', tipo: 'transaction', ids: ['t1'], operationId: 'op-1' }, 'desfazer');
