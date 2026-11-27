@@ -221,13 +221,16 @@ Regras permanentes para qualquer sessão que abrir este repositório:
    um caminho novo, copie o acervo antes de começar, em vez de recomeçar do
    zero.
 
-10. **Todo trabalho vive numa linha só: a branch local única, que rastreia
-    `origin/main`. Não crie branch. Não crie worktree. Não deixe stash.**
-    O nome dela varia por cópia — era `master` nos clones antigos e é `main`
-    no clone de `E:\GranaPonto` —, mas a regra é a mesma: uma só.
-    O autor não acompanha branches — ele mesmo diz que é leigo em git — e
-    depende de que o que foi feito esteja publicado, não guardado em algum
-    lugar que só um agente sabe achar.
+10. **Duas linhas de trabalho, e só duas: `main` e `play-store`. Nenhuma outra branch, nenhum worktree, nenhum stash.** Decisão do autor em 27/11/2026, que substitui a "linha só" de 09/09/2026.
+
+    - **`main`** é o app de quem usa hoje (APK distribuído pelas Releases). Recebe só correção para esses usuários.
+    - **`play-store`** é a versão que vai para a Google Play e se tornará a principal quando publicada. Nasceu da `main` em `53b7c1bd` e carrega a leitura de avisos do banco, que não funciona em APK instalado fora da loja porque o Android bloqueia a leitura de notificações. Trabalho de Play acontece nela, no clone `E:\Grana-temporarios\2026-10-30-teste-avisos\repo` (M1).
+    - **Nunca merge, em nenhum sentido.** Correção útil aos dois lados passa por `git cherry-pick` do commit específico, escolhido a dedo, e só se não depender da leitura de avisos nem mudar a instalação do APK. Quem leva diz no commit de destino de onde veio (`cherry-pick de <hash>`).
+    - **Push das duas é do Orquestrador Supremo**, depois da varredura de segredos do intervalo inteiro. CI e publicação de APK só disparam na `main`; a `play-store` não gera build sozinha, e build continua só com pedido explícito (regras 4 e 22).
+    - **`.env` nunca entra no git, e credencial nunca entra no código do app** (regra 15). O repositório é público, e as duas branches também.
+    - Continuam valendo o inventário no início da sessão (`git branch -vv`, `git worktree list`, `git stash list`, agora esperando `main` e `play-store`), o "nunca termine com trabalho não commitado" e o "confira se a tarefa já não está sendo feita".
+
+    Histórico da regra anterior, revista em 27/11/2026.
 
     Em 09/09/2026 o inventário do repositório mostrava, ao mesmo tempo:
 
@@ -247,26 +250,6 @@ Regras permanentes para qualquer sessão que abrir este repositório:
 
     Nada disso apareceu sozinho: cada item foi criado por uma sessão que
     achou que estava sendo organizada, e nenhuma voltou para limpar.
-
-    Na prática, em toda sessão:
-
-    - **Comece com o inventário e RELATE ao autor**, antes de escrever código:
-      `git branch -vv`, `git worktree list`, `git stash list`. Qualquer coisa
-      que não seja `master` é dívida — diga qual é, se tem trabalho exclusivo
-      (`git log --oneline origin/main..<branch>`) e proponha resolver ou
-      descartar. Não decida sozinho apagar: só o autor sabe o que ainda quer.
-    - **Se uma ferramenta criar worktree sozinha** (subagente com isolamento),
-      a sessão que o criou o remove antes de terminar (`git worktree remove`).
-      Worktree é andaime, não entrega.
-    - **Nunca termine com trabalho não commitado.** Se ficou pela metade,
-      commite pela metade e diga isso na mensagem — a regra 3 existe pra isso.
-    - **Antes de começar tarefa grande, confira se ela já não está sendo
-      feita**: leia o `context.md` e o inventário acima. Duas sessões no mesmo
-      plano é o defeito mais caro deste repositório, e já aconteceu com o
-      Bloco 3 dos interruptores remotos e com a família de widgets.
-
-    A única exceção é branch pedida explicitamente pelo autor nesta sessão —
-    e nesse caso ela é mesclada ou descartada antes de a sessão acabar.
 
 11. **Publicar uma Edge Function SOBRESCREVE a produção inteira. Se houver
     código lá que não está aqui, o deploy apaga — em silêncio.** É o perigo
