@@ -1234,6 +1234,7 @@ if (Platform.OS === 'android') {
 
 type PayloadRetomada = { requestId: string; userId: string; execucaoId: string };
 type ResultadoRetomada = 'concluida' | 'tentar_novamente' | 'aguardar_usuario';
+type SinalizacaoRetomada = { indicarFalha?: () => void };
 
 /** Mesmo recibo financeiro para a sincronização pelo app e pelo Worker.
  * A limpeza vem antes do recibo em tela, pois concluirVozRevisada apaga o
@@ -1287,7 +1288,8 @@ export async function executarRetomadaVoz(payload: PayloadRetomada): Promise<voi
   };
   let corte: ReturnType<typeof setTimeout> | undefined;
   let resultado: ResultadoRetomada = 'tentar_novamente';
-  const trabalho = processarRetomadaVoz(payload, controle);
+  const sinalizacao: SinalizacaoRetomada = {};
+  const trabalho = processarRetomadaVoz(payload, controle, sinalizacao);
   trabalho.catch(() => {});
   const teto = new Promise<never>((_, rejeitar) => {
     corte = setTimeout(() => { cancelamento.abort(); rejeitar(new Error('Prazo total da retomada de voz.')); }, Math.max(1, controle.fim - Date.now()));
@@ -1296,6 +1298,11 @@ export async function executarRetomadaVoz(payload: PayloadRetomada): Promise<voi
     resultado = await Promise.race([trabalho, teto]);
   } catch (erro) {
     console.error('[voz] retomada automática não concluiu', payload.requestId, erro);
+    try {
+      sinalizacao.indicarFalha?.();
+    } catch (erroEstado) {
+      console.warn('[voz] widget não pôde indicar a falha da retomada', erroEstado);
+    }
   } finally {
     cancelamento.abort();
     clearTimeout(corte);
@@ -1310,7 +1317,9 @@ export async function executarRetomadaVoz(payload: PayloadRetomada): Promise<voi
   }
 }
 
-async function processarRetomadaVoz(payload: PayloadRetomada, controle: ControleRetomadaVoz): Promise<ResultadoRetomada> {
+async function processarRetomadaVoz(
+  payload: PayloadRetomada, controle: ControleRetomadaVoz, sinalizacao: SinalizacaoRetomada,
+): Promise<ResultadoRetomada> {
     controle.conferir();
     const nativo = await import('@/modules/grana-voice-widget');
     const definirEstado = (estado: import('@/modules/grana-voice-widget').EstadoWidgetVoz) => {
@@ -1324,6 +1333,8 @@ async function processarRetomadaVoz(payload: PayloadRetomada, controle: Controle
       return 'aguardar_usuario';
     }
     controle.conferir();
+    // O bridge verifica dono e pedido. O recibo também precisa sair quando o prazo já acabou.
+    sinalizacao.indicarFalha = () => { nativo.definirEstadoDaRetomada(payload.requestId, payload.userId, 'atencao'); };
     const notificacoes = daFala(await import('./widget-voz-notificacoes'), payload.requestId);
     const podeNotificar = await podeAvisar(notificacoes);
     controle.conferir();

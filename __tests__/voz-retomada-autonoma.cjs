@@ -278,12 +278,15 @@ if (require.main === module) (async () => {
 
   // WT03: o teto nasce antes da adoção e a continuação tardia não escreve.
   m = ambiente(); m.e.acelerarPrazo = true;
+  m.e.requestNativo = 'prazo'; m.e.estado = 'processando';
   let destravar;
   m.e.travarPasta = new Promise((resolve) => { destravar = resolve; });
   m.arquivos.set('file:///docs/voz-orfa/prazo.m4a', 'audio');
   m.arquivos.set('file:///docs/voz-orfa/prazo.json', JSON.stringify({ userId: 'a', dataCaptura: '2026-10-27', capturadoEm: m.e.agora }));
   await m.worker('prazo');
   igual(m.e.acks.at(-1), ['exec-prazo', 'tentar_novamente'], 'adoção pendurada encerra com ACK de retry');
+  igual(m.e.estado, 'atencao', 'Worker expirado oferece ação visível sem cancelar a agenda');
+  igual(m.e.estados, ['atencao'], 'somente a intenção no widget muda de estado');
   ok(m.e.prazos.includes(107000) && m.e.prazos.includes(5000), '107s de trabalho mais margem5s para ACK');
   destravar(); await new Promise((r) => setTimeout(r, 15));
   igual(m.e.envios + m.e.chamadas.length, 0, 'adoção liberada após abandono não chega à rede');
@@ -293,13 +296,27 @@ if (require.main === module) (async () => {
   m = ambiente(); m.arquivos.set('file:///captura.m4a', 'audio');
   await m.real('widget-voz-pendentes').adicionarVozPendente({ caminho: 'file:///captura.m4a', requestId: 'reconhecedor-tardio', userId: 'a', source: 'widget' });
   m.e.acelerarPrazo = true;
+  m.e.requestNativo = 'reconhecedor-tardio'; m.e.estado = 'pendente';
   let liberarReconhecedor;
   m.e.travarReconhecimento = new Promise((resolve) => { liberarReconhecedor = resolve; });
   await m.worker('reconhecedor-tardio');
   igual(m.e.acks.at(-1), ['exec-reconhecedor-tardio', 'tentar_novamente'], 'reconhecedor pendurado cabe no teto compartilhado');
+  igual(m.e.estado, 'atencao', 'o prazo do Worker também tira o widget de pendente');
   liberarReconhecedor(null); await new Promise((r) => setTimeout(r, 15));
   igual(m.e.envios + m.e.chamadas.length, 0, 'reconhecedor liberado após cancelamento não inicia fallback pago nem RPC');
   ok(m.disco.get('grana:queue:widget-voz-pendente-v1').includes('reconhecedor-tardio'), 'cancelamento conserva fala para tentativa nova');
+
+  for (const [pedido, donoNativo] of [['outro-pedido', 'a'], ['adocao-retida', 'b'], ['adocao-retida', 'a']]) {
+    m = ambiente();
+    m.e.requestNativo = pedido; m.e.donoNativo = donoNativo; m.e.estado = 'processando';
+    m.arquivos.set('file:///docs/voz-orfa/adocao-retida.m4a', 'audio');
+    m.deps['expo-file-system/legacy'].readDirectoryAsync = async () => { throw Error('disco indisponível'); };
+    await m.worker('adocao-retida');
+    igual(m.e.acks.at(-1), ['exec-adocao-retida', 'tentar_novamente'], 'erro de disco preserva agenda');
+    const corresponde = pedido === 'adocao-retida' && donoNativo === 'a';
+    igual(m.e.estado, corresponde ? 'atencao' : 'processando', 'erro de disco respeita pedido e dono nativos');
+    igual(m.e.envios + m.e.chamadas.length, 0, 'erro de disco não chega à rede');
+  }
 
   // WT04: falha de serviço é ação de suporte, nunca nova fala ou falta de rede.
   m = ambiente(); m.e.rede = false;
