@@ -199,13 +199,14 @@ function uriDe(caminho: string): string {
  */
 async function reservarSemConcorrencia(vez: Vez, item: Omit<VozPendente, 'criadoEm' | 'emAndamentoDesde' | 'origem'> & { criadoEm?: number }): Promise<boolean> {
   if (concluidas.has(item.requestId)) return false;
-  const itens = await ler();
+  const itens = await ler(!!vez.controle, vez.controle);
   if (itens.some((existente) => existente.requestId === item.requestId)) return false;
   const fs = await import('expo-file-system/legacy');
   const pasta = `${fs.documentDirectory}voz-pendente/`;
   await fs.makeDirectoryAsync(pasta, { intermediates: true });
   const destino = `${pasta}${item.requestId}.m4a`;
   const origem = uriDe(item.caminho);
+  vez.controle?.conferir();
   await fs.copyAsync({ from: origem, to: destino });
   itens.push({ ...item, caminho: destino, origem, criadoEm: item.criadoEm ?? Date.now(), emAndamentoDesde: Date.now() });
   try { await gravarNaVez(vez, itens); }
@@ -224,10 +225,10 @@ async function reservarSemConcorrencia(vez: Vez, item: Omit<VozPendente, 'criado
  * de verdade fica.
  */
 async function liberarSemConcorrencia(vez: Vez, requestId: string): Promise<void> {
-  const itens = await ler();
-  const item = itens.find((i) => i.requestId === requestId);
+  const itens = await ler(!!vez.controle, vez.controle);
+  const item = itens.find((i) => i.requestId === requestId && (!vez.controle?.userId || i.userId === vez.controle.userId));
   if (!item || typeof item.emAndamentoDesde !== 'number') return;
-  await gravarNaVez(vez, itens.filter((i) => i.requestId !== requestId));
+  await gravarNaVez(vez, itens.filter((i) => i !== item));
   await apagarAudio(item.caminho);
 }
 
@@ -581,12 +582,13 @@ async function limparSemConcorrencia(vez: Vez, userId: string): Promise<void> {
 /** Os argumentos de uma mutação, sem a vez, que é `naVez` quem entrega. */
 type SemVez<F> = F extends (vez: Vez, ...resto: infer R) => unknown ? R : never;
 
-export const reservarFalaEmAndamento = async (...args: SemVez<typeof reservarSemConcorrencia>) => {
-  const reservada = await naVez((vez) => reservarSemConcorrencia(vez, ...args));
-  if (reservada) await programar(args[0].requestId, args[0].userId, PRAZO_RESERVA_MS);
+export const reservarFalaEmAndamento = async (item: SemVez<typeof reservarSemConcorrencia>[0], controle?: ControleRetomadaVoz) => {
+  const reservada = await naVez((vez) => reservarSemConcorrencia(vez, item), controle);
+  controle?.conferir();
+  if (reservada) await programar(item.requestId, item.userId, PRAZO_RESERVA_MS);
   return reservada;
 };
-export const liberarFalaEmAndamento = (...args: SemVez<typeof liberarSemConcorrencia>) => naVez((vez) => liberarSemConcorrencia(vez, ...args));
+export const liberarFalaEmAndamento = (requestId: string, controle?: ControleRetomadaVoz) => naVez((vez) => liberarSemConcorrencia(vez, requestId), controle);
 export const adicionarVozPendente = async (item: SemVez<typeof adicionarSemConcorrencia>[0], controle?: ControleRetomadaVoz) => {
   await naVez((vez) => adicionarSemConcorrencia(vez, item), controle);
   controle?.conferir();

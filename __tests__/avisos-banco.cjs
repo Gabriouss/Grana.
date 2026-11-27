@@ -529,12 +529,13 @@ async function main() {
   await sairDaConta({
     idDoUsuario: async () => null,
     limparVozesDaConta: async () => {},
-    limparAvisosDoBanco: async (u) => { limpos.push(u); },
+    limparAvisosDoBanco: async () => { limpos.push('leitor'); },
+    limparCaixaDeAvisos: async () => { limpos.push('caixa'); },
     limparWidgets: () => {},
     esquecerAcesso: async () => {}, esquecerTelas: async () => {}, esquecerLancamentosLocais: async () => {},
     removerPush: async () => {}, signOutNoServidor: async () => {}, esquecerSessaoDoDisco: async () => {}, aplicarSaida: () => {},
   }, 50);
-  assert.deepEqual(limpos, [null]);
+  assert.deepEqual(limpos, ['leitor'], 'sem dono conhecido, não apaga a caixa de ninguém');
   ok('sair da conta limpa os avisos');
 
   /* Travas do módulo nativo, lidas nos fontes reais */

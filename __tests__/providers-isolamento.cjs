@@ -20,7 +20,7 @@ function authEnv(options={}){
   const a=ambiente({'react-native':{Platform:{OS:'web'}},'./alerta':{},'expo-linking':{},'./supabase':{supabase:{auth},armazenamentoSessao:disco,CHAVE_SESSAO:'sessao',iniciarSaidaLocal},
     './auth-errors':{traduzirErroAuth:e=>e},'./assinatura':{vincularAssinaturasPendentes:async()=>({houveFalha:false})},'./push-notifications':{},
     './entitlement-cache':{},'./cache-de-tela':{},'./offline-cache':{},'./widgets-home-sync':{},'./data':{limparDiasComRegistro(){}},
-    './sair-da-conta':{sairDaConta:async etapas=>{saidas++;await saida.promise;etapas.aplicarSaida();}},'./modo-teste':{MODO_TESTE:false}});
+    './sair-da-conta':{sairDaConta:async etapas=>{saidas++;await saida.promise;etapas.aplicarSaida();}},'./modo-teste':{MODO_TESTE:false}, ...options.modulos});
   const p=a.mount(a.load('lib/auth-context.tsx').SessionProvider);
   return {...a,valor:()=>p.render().props.value,emit:(e,s)=>listener(e,s),p,saida,update,saidas:()=>saidas};
 }

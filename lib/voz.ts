@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import { fetch as expoFetch } from 'expo/fetch';
 import { File } from 'expo-file-system';
 import { tokenDeAcessoLocal } from './sessao-offline';
+import { RECIBOS_VOZ } from './voz-recibos';
 import type { ControleRetomadaVoz } from './voz-retomada';
 
 type OpcoesAudioVoz = { mimeType?: string; nomeArquivo?: string; tamanhoBytes?: number; userId?: string; controle?: ControleRetomadaVoz };
@@ -36,6 +37,10 @@ export type CodigoErroVoz =
   | 'formato_invalido'
   | 'muitas_tentativas'
   | 'sem_provedor'
+  | 'caixa_voz_indisponivel'
+  | 'caixa_voz_sem_copia'
+  | 'prazo_voz_guardada'
+  | 'prazo_voz_sem_indice'
   | 'nao_entendi'
   | 'erro_interno'
   | 'sem_rede'
@@ -51,7 +56,7 @@ export type CodigoErroVoz =
       cliente; o servidor nunca manda. */
   | 'desfeita';
 
-export type ResultadoVoz = { ok: true; transcript: string } | { ok: false; codigo: CodigoErroVoz };
+export type ResultadoVoz = { ok: true; transcript: string; apenasRevisao?: true } | { ok: false; codigo: CodigoErroVoz };
 
 const CODIGOS_CONHECIDOS: CodigoErroVoz[] = [
   'nao_autenticado', 'audio_ausente', 'audio_grande', 'formato_invalido',
@@ -249,17 +254,17 @@ export async function transcreverAudio(
      o áudio real, ou o áudio. A defesa vale em qualquer dos casos: o servidor
      ouve o mesmo áudio, dentro do MESMO prazo, e a frase nunca vira "ouvido".
      Vale para o botão do app e para o widget, que passam por aqui (regra 13). */
-  if (local) {
-    const { transcricaoPareceLancamentoVoz, transcricaoTemNomeInformativo } = await import('./voz-confiabilidade');
-    if (transcricaoPareceLancamentoVoz(local) && transcricaoTemNomeInformativo(local)) {
-      return { ok: true, transcript: local };
-    }
-    console.warn('[voz] reconhecimento local sem nome aproveitavel; tentando o servidor');
+  if (!local) return transcreverNoServidor(uri, opts, deadline);
+  const confiabilidade = await import('./voz-confiabilidade');
+  if (confiabilidade.transcricaoPareceLancamentoVoz(local) && confiabilidade.transcricaoTemNomeInformativo(local)) {
+    return { ok: true, transcript: local };
   }
-  /* Se o servidor também falha, a FALHA dele é o resultado, nunca o texto do
-     aparelho que não presta: rede ausente ou prazo viram fila (a fala espera
-     com o áudio e volta ao servidor), e não "Ouvi: ..." com frase inventada. */
-  return transcreverNoServidor(uri, opts, deadline);
+  console.warn('[voz] reconhecimento local sem nome aproveitavel; tentando o servidor');
+  const servidor = await transcreverNoServidor(uri, opts, deadline);
+  if (!servidor.ok && servidor.codigo === 'nao_entendi' && confiabilidade.transcricaoServeParaRevisaoVoz(local)) {
+    return { ok: true, transcript: local, apenasRevisao: true };
+  }
+  return servidor;
 }
 
 async function transcreverNoServidor(
@@ -309,6 +314,13 @@ async function transcreverNoServidor(
 /** Título e texto prontos pra um Alert ou pra uma notificação do widget. */
 export function mensagemDeErroVoz(codigo: CodigoErroVoz): { titulo: string; texto: string } {
   switch (codigo) {
+    case 'caixa_voz_indisponivel':
+      return RECIBOS_VOZ.caixaIndisponivel;
+    case 'caixa_voz_sem_copia':
+      return RECIBOS_VOZ.caixaIndisponivelSemCopia;
+    case 'prazo_voz_guardada':
+    case 'prazo_voz_sem_indice':
+      return RECIBOS_VOZ.prazoDaTarefa(codigo === 'prazo_voz_guardada');
     case 'nao_entendi':
       return {
         titulo: 'Não entendi',

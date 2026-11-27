@@ -422,13 +422,13 @@ export function SessionProvider({ children }: PropsWithChildren) {
           const { limparVozesDaConta } = await import('./widget-voz-pendentes');
           await limparVozesDaConta(userId);
         },
-        limparAvisosDoBanco: async (userId) => {
+        limparAvisosDoBanco: async () => {
           const { limparTudoAvisos } = await import('@/modules/grana-avisos');
           await limparTudoAvisos();
-          if (userId) {
-            const { limparCaixa } = await import('./avisos-banco/caixa');
-            await limparCaixa(userId);
-          }
+        },
+        limparCaixaDeAvisos: async (userId) => {
+          const { limparCaixa } = await import('./avisos-banco/caixa');
+          await limparCaixa(userId);
         },
         /* Some da tela inicial antes de a sessão ser removida: nenhuma conta
            seguinte pode herdar o saldo, boleto ou cofrinho da anterior. */

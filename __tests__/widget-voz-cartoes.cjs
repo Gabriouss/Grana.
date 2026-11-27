@@ -1,9 +1,11 @@
 require('./helpers/falha-com-duble-incompleto.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
+const path = require('node:path');
 const assert = require('node:assert/strict');
 const ts = require('typescript');
 let task, permission = true, cards = [], matched = null, saved = [], revisions = [], cleaned = 0, pending = [];
+const armazenamento = new Map();
 const deps = {
   './voz-confiabilidade': {
     precisaRevisarValorVoz: () => false,
@@ -15,11 +17,12 @@ const deps = {
   '@/modules/grana-voice-widget': { definirEstado: () => {} },
   './voz': { transcreverAudio: async () => ({ ok: true, transcript: 'mercado 32 no crédito' }) },
   './widget-voz-notificacoes': { podeNotificar: async () => permission,
-    notificarRevisao: async (titulo) => { revisions.push(titulo); }, notificarFalha: async () => { throw new Error('Falha inesperada'); }, notificarPendenteOffline: async () => { revisions.push('Lançamento aguardando conexão'); }, notificarSucesso: async () => {} },
+    notificarConferenciaVoz: async (titulo) => { revisions.push(titulo); }, notificarFalha: async () => { throw new Error('Falha inesperada'); }, notificarPendenteOffline: async () => { revisions.push('Lançamento aguardando conexão'); }, notificarSucesso: async () => {} },
   /* O dublê acompanha o que a tarefa chama: sem `descricaoDoLancamento` (16/09/2026)
      a tarefa quebrava e toda fala caía em "Não consegui salvar". */
   './heuristics': { guessAmountFromText: () => 32, guessCategoryFromText: () => ({ name: 'Alimentação', color: '#fff' }),
     guessTypeFromText: () => 'out', descricaoDoLancamento: () => 'mercado', semNomeDaCategoria: (nome) => nome, ehIntencaoBoleto: () => false,
+    tipoMencionadoNaFala: () => undefined, parseFormaPagamento: () => 'credit',
     textoDaCategoria: (t) => t, decidirCategoria: () => ({ categoria: { name: 'Alimentação', color: '#fff' }, doApelido: false }),
     ehIntencaoCredito: () => true, matchCardByText: () => matched, matchWalletByText: () => null,
     /* Tipo 'out' acima: compra, então não é entrada com intenção de crédito. */
@@ -42,7 +45,13 @@ const deps = {
   './widget-voz-pendentes': { adicionarVozPendente: async (item) => { pending.push(item); }, listarVozesPendentes: async () => pending, removerVozPendente: async () => {}, reservarFalaEmAndamento: async () => false, liberarFalaEmAndamento: async () => {} },
   /* A reserva devolve false de propósito: este teste trava o caminho SEM reserva (sem dono local ou reserva que falhou),
      em que o áudio da captura fica preservado. O caminho com reserva é do widget-voz-segundo-plano.cjs. */
-  './widgets-home-sync': {}, '@react-native-async-storage/async-storage': {},
+  './widgets-home-sync': {}, '@react-native-async-storage/async-storage': {
+    __esModule: true,
+    default: {
+      getItem: async (chave) => armazenamento.get(chave) ?? null,
+      setItem: async (chave, valor) => armazenamento.set(chave, valor),
+    },
+  },
   'expo-file-system/legacy': { deleteAsync: async () => { cleaned++; } },
 };
 /* Use the real confidence guard; the rest of this test keeps controlled
@@ -56,6 +65,7 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/voz-confiabilidade.ts
     ? { ...deps['./heuristics'], normalizarTexto: (texto) => String(texto).normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase() }
     : (() => { throw new Error(`import not stubbed in voice reliability: ${id}`); })(),
 });
+deps['./voz-confiabilidade'].transcricaoServeParaRevisaoVoz = confiabilidadeReal.transcricaoServeParaRevisaoVoz;
 deps['./voz-confiabilidade'].transcricaoTemNomeInformativo = confiabilidadeReal.transcricaoTemNomeInformativo;
 deps['./voz-confiabilidade'].textoVozSemDicaDeCategoria = confiabilidadeReal.textoVozSemDicaDeCategoria;
 const operacoesReais = require('./desfecho-voz-real.cjs');
@@ -63,13 +73,34 @@ Object.assign(deps['./voice-operations'], {
   desfechoDoErroVoz: operacoesReais.desfechoDoErroVoz,
   ehRecusaCartaoObrigatorio: operacoesReais.ehRecusaCartaoObrigatorio,
 });
-vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/widget-voz-task.ts', 'utf8'), {
-  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-}).outputText, { exports: {}, require: (id) => { if (id in require('./modulos-puros-reais.cjs')) return require('./modulos-puros-reais.cjs')[id]; if (!(id in deps)) throw new Error(id); return deps[id]; }, console, setTimeout, clearTimeout });
+const puros = require('./modulos-puros-reais.cjs');
+const cache = new Map();
+function carregar(arquivo) {
+  if (cache.has(arquivo)) return cache.get(arquivo);
+  const exports = {};
+  cache.set(arquivo, exports);
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync(arquivo, 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText, { exports, AbortController, console, setTimeout, clearTimeout, require(id) {
+    if (id in puros) return puros[id];
+    if (id in deps) return deps[id];
+    if (id.startsWith('.')) {
+      const relativo = path.posix.join(path.posix.dirname(arquivo), id);
+      const diretoDeLib = './' + path.posix.relative('lib', relativo);
+      if (diretoDeLib in deps) return deps[diretoDeLib];
+      return carregar(relativo + '.ts');
+    }
+    throw Error('Import sem dublê: ' + id);
+  } }, { filename: arquivo });
+  return exports;
+}
+carregar('lib/widget-voz-task.ts');
 (async () => {
   cards = [{ id: 'c6', name: 'QA C6', wallet_id: 'wallet' }, { id: 'nubank', name: 'QA Nubank', wallet_id: 'wallet' }];
   await task({ caminho: '/qa.m4a', requestId: '1' });
   assert.equal(saved.length, 0); assert.deepEqual(revisions, ['Qual cartão?']);
+  const caixa = carregar('lib/avisos-banco/caixa-voz.ts');
+  assert.equal((await caixa.listarRevisoesVoz('qa-user'))[0].titulo, 'Qual cartão?');
   matched = cards[1]; await task({ caminho: '/qa.m4a', requestId: '2' });
   assert.equal(saved[0].card_id, 'nubank'); assert.equal(saved[0].amount, 32);
   cards = [cards[0]]; matched = null; await task({ caminho: '/qa.m4a', requestId: '3' });
@@ -84,17 +115,12 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/widget-voz-task.ts', 
   assert.equal(saved.length, 2);
   assert.equal(cleaned, 3, 'audio preservado em vez de apagado quando falta permissao');
   assert.equal(pending.length, 1, 'a fala sem permissao vai para a fila de pendentes');
-  permission = true;
-  permission = false;
   await task({ caminho: '/voz-pendente/app.m4a', requestId: 'app-sem-permissao', source: 'app' });
   assert.equal(cleaned, 3, 'retomada do app sem notificações conserva o áudio');
   permission = true;
   deps['./voz'].transcreverAudio = async () => ({ ok: false, codigo: 'sem_rede' });
   await task({ caminho: '/qa-offline.m4a', requestId: '5' });
-  /* Duas entradas agora, não uma: a primeira veio da permissão negada, que
-     desde 11/09/2026 preserva o áudio em vez de apagá-lo, e esta é a do
-     offline. A asserção olha a última para não depender da ordem. */
-  assert.equal(pending.length, 2);
+  assert.deepEqual(pending.map((item) => item.requestId), ['4', 'app-sem-permissao', '5']);
   assert.equal(pending[pending.length - 1].userId, 'qa-user');
   assert.equal(cleaned, 3, 'áudio offline fica preservado para a fila');
   console.log('OK tarefa real: cartão ambíguo vai à revisão; cartão citado é usado; único cartão funciona; sem notificação não grava; áudio offline fica na fila; erros não apagam o áudio pendente.');

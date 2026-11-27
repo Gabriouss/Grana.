@@ -852,6 +852,12 @@ const MARCADORES_ENTRADA = [
   'restituicao', 'resgatei',
 ];
 
+export function tipoMencionadoNaFala(text: string): TxType | undefined {
+  const alvo = normalizarParaBusca(text);
+  if (MARCADORES_SAIDA.some((h) => contemPalavra(alvo, h))) return 'out';
+  if (MARCADORES_ENTRADA.some((h) => contemPalavra(alvo, h))) return 'in';
+}
+
 export function guessTypeFromText(text: string): TxType {
   const alvo = normalizarParaBusca(text);
   if (MARCADORES_SAIDA.some((h) => contemPalavra(alvo, h))) return 'out';

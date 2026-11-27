@@ -144,7 +144,12 @@ function carregar(arquivo) {
     Promise, JSON, Object, Array, String, Number, Error, TypeError, RegExp, Set, Map, Math, Date, setTimeout, clearTimeout, AbortController,
     require(id) {
       if (id in dubles) return dubles[id];
-      if (id.startsWith('./')) return carregar(path.join(path.dirname(arquivo), id.slice(2) + '.ts'));
+      if (id.startsWith('.')) {
+        const relativo = path.join(path.dirname(arquivo), id);
+        const diretoDeLib = './' + path.relative('lib', relativo).split(path.sep).join('/');
+        if (diretoDeLib in dubles) return dubles[diretoDeLib];
+        return carregar(relativo + '.ts');
+      }
       throw new Error(`import não simulado em ${arquivo}: ${id}`);
     },
   }, { filename: arquivo });

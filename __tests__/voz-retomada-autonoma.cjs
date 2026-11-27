@@ -48,7 +48,7 @@ function ambiente(persistido = {}) {
   };
   const notificacoes = {
     podeNotificar: async () => true,
-    notificarRevisao: async (...a) => { e.avisos.push(['revisao', ...a]); },
+    notificarConferenciaVoz: async (...a) => { e.avisos.push(['revisao', ...a]); },
     notificarFalha: async (...a) => { if (e.falharRecibo) throw Error('recibo indisponível'); e.avisos.push(['falha', ...a]); },
     notificarSucesso: async (...a) => { if (e.falharRecibo) throw Error('recibo indisponível'); e.avisos.push(['sucesso', ...a]); },
     notificarPendenteOffline: async (...a) => { e.avisos.push(['audio', ...a]); },
@@ -100,7 +100,16 @@ function ambiente(persistido = {}) {
       Date: Relogio, JSON, Object, Array, Map, Set, Promise, Number, String, RegExp, Math, Error, TypeError, Intl, Uint8Array, AbortController,
       setTimeout: (fn, ms) => { (e.prazos ||= []).push(ms); return setTimeout(fn, e.acelerarPrazo && ms >= 100000 ? 5 : ms); }, clearTimeout, FormData: class { append() {} }, __DEV__: false,
       process: { env: { EXPO_PUBLIC_SUPABASE_URL: 'https://example.invalid' } },
-      require: (id) => { if (id in deps) return deps[id]; if (id.startsWith('./')) return real(id.slice(2)); throw Error('import sem dublê: ' + arquivo + ' ' + id); },
+      require: (id) => {
+        if (id in deps) return deps[id];
+        if (id.startsWith('.')) {
+          const alvo = path.posix.join(path.posix.dirname(arquivo), id);
+          const diretoDeLib = './' + path.posix.relative('lib', alvo);
+          if (diretoDeLib in deps) return deps[diretoDeLib];
+          return real(alvo + '.ts');
+        }
+        throw Error('import sem dublê: ' + arquivo + ' ' + id);
+      },
     }, { filename: arquivo });
     return exports;
   }
@@ -182,7 +191,10 @@ if (require.main === module) (async () => {
     await m.real('widget-voz-pendentes').adicionarVozPendente({ caminho: 'file:///captura.m4a', requestId: 'incompleta', userId: 'a', source });
     await m.worker('incompleta');
     igual(m.banco.size, 0, source + ' não inventa valor para fala incompleta');
-    if (source === 'widget') ok(m.e.estados.includes('repetir'), source + ' pede nova fala no widget');
+    ok(!m.e.estados.includes('repetir'), source + ' preserva a fala sem pedir repetição');
+    const [item] = await m.real('avisos-banco/caixa-voz').listarRevisoesVoz('a');
+    igual([item.requestId, item.fonte, item.transcricao, item.rascunho.valor],
+      ['incompleta', source, 'mercado', null], 'Worker entrega o que ouviu no sino');
     igual(m.e.acks.at(-1), ['exec-incompleta', 'aguardar_usuario'], source + ' revisão sai da retomada automática');
     await m.worker('incompleta');
     igual(m.banco.size, 0, 'Worker repetido não tenta salvar fala ambígua');

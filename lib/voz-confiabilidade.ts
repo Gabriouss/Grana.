@@ -14,13 +14,17 @@ import {
  * ruído; sem esta barreira, um ano ou outro número incidental virava valor.
  */
 export function transcricaoPareceLancamentoVoz(texto: string): boolean {
+  return transcricaoServeParaRevisaoVoz(texto) && guessAmountFromText(normalizarTexto(texto)) > 0;
+}
+
+export function transcricaoServeParaRevisaoVoz(texto: string): boolean {
   const original = texto.trim();
   if (!original) return false;
   const t = normalizarTexto(original);
   if (/\b(?:https?:\/\/|www\.|\w+\.(?:com|com\.br|net|org|io))\b/i.test(original)) return false;
   if (/\b(?:obrigad[oa]\s+por\s+assistir|inscreva-se|legendas?\s+(?:pela|por)|acesse\s+o\s+site|todos\s+os\s+direitos\s+reservados)\b/i.test(t)) return false;
-  const valor = guessAmountFromText(t);
-  return Number.isFinite(valor) && valor > 0;
+  const palavras = t.match(/[\p{L}\p{N}]+/gu) ?? [];
+  return palavras.length > 0 && (palavras.length <= 3 || !transcricaoForaDeContexto(original));
 }
 
 /**
@@ -100,7 +104,7 @@ export function transcricaoForaDeContexto(texto: string): boolean {
   const valor = guessAmountFromText(t);
   if (Number.isFinite(valor) && valor > 0) return false;
   if (guessCategoryFromText(t).name !== 'Outros') return false;
-  return !/(?:gast|pag(?:u|ar|o|a)|compr|receb|ganh|transfer|pix|debito|credito|cartao|boleto|conta|parcel|fatura|salario|dinheiro|reais|real|lanc|despesa|renda|vendi|caiu)/i
+  return !/\b(?:gast|pag(?:u|ar|o|a)|compr|receb|ganh|transfer|pix|debito|credito|cartao|boleto|conta|parcel|fatura|salario|dinheiro|reais|real|lanc|despesa|renda|vendi|caiu)/i
     .test(t.normalize('NFD').replace(/[̀-ͯ]/g, ''));
 }
 

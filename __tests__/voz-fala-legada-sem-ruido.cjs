@@ -129,7 +129,12 @@ function carregar(arquivo) {
     Promise, JSON, Object, Array, String, Number, Error, TypeError, RegExp, Set, Map, Math, Date, setTimeout, clearTimeout, AbortController,
     require(id) {
       if (id in dubles) return dubles[id];
-      if (id.startsWith('./')) return carregar(path.join(path.dirname(arquivo), id.slice(2) + '.ts'));
+      if (id.startsWith('.')) {
+        const relativo = path.join(path.dirname(arquivo), id);
+        const diretoDeLib = './' + path.relative('lib', relativo).split(path.sep).join('/');
+        if (diretoDeLib in dubles) return dubles[diretoDeLib];
+        return carregar(relativo + '.ts');
+      }
       throw new Error(`import não simulado em ${arquivo}: ${id}`);
     },
   }, { filename: arquivo });
@@ -201,7 +206,7 @@ async function guardarEmRevisao(requestId, transcricao) {
 
   /* Caminho real da tarefa: o MESMO "." e o MESMO "roupa", origem app e widget. */
   for (const source of ['app', 'widget']) {
-    /* "roupa" sem valor ja era barrada na origem (`processar`) nas duas entradas: o recibo sai sem "Ouvi", igual para app e widget. */
+    const caixa = carregar('lib/avisos-banco/caixa-voz.ts');
     for (const fala of ['.', 'roupa']) {
       const requestId = `req-task-${source}-${fala === '.' ? 'ponto' : fala}`;
       const origem = 'file:///cache/' + requestId + '.m4a';
@@ -210,12 +215,20 @@ async function guardarEmRevisao(requestId, transcricao) {
       transcricoes['file:///files/voz-pendente/' + requestId + '.m4a'] = { ok: true, transcript: fala };
       await tarefa.tentarVozesPendentes();
       const r = await abrirRecibo(requestId);
-      assert.ok(r, `${source}/${fala}: a tarefa deixa recibo`);
-      assert.equal(r.transcricao, undefined, `${source}/${fala}: transcricao do recibo`);
-      assert.ok((await fila.listarVozesPendentes()).some((i) => i.requestId === requestId && i.revisao), `${source}/${fala}: fica na fila, em revisao`);
+      const revisao = (await caixa.listarRevisoesVoz('u-1')).find((item) => item.requestId === requestId);
+      if (fala === '.') {
+        assert.equal(r?.titulo, 'Erro audio_ausente', source + ': silêncio tem recibo');
+        assert.equal(r.transcricao, undefined);
+        assert.equal(revisao, undefined);
+      } else {
+        assert.equal(revisao?.transcricao, fala, source + ': descrição útil chega ao sino');
+        assert.equal(revisao.titulo, 'Não encontrei o valor');
+        assert.equal(r, undefined);
+      }
+      assert.equal((await fila.listarVozesPendentes()).some((i) => i.requestId === requestId), false);
     }
   }
-  ok('tarefa (app e widget): "." e "roupa" dao o mesmo recibo e a mesma revisao guardada');
+  ok('tarefa nas duas entradas: silêncio deixa recibo e descrição útil vai para a revisão no sino');
 
   console.log(`
 ${checagens} checagens, 0 falhas`);

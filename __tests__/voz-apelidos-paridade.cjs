@@ -123,8 +123,10 @@ function carregarVm(arquivo, dubles = {}, cache = new Map()) {
     setTimeout, clearTimeout, AbortController,
     require: (id) => {
       if (id in dubles) return dubles[id];
-      if (id.startsWith('./')) {
-        const alvo = path.join(path.dirname(arquivo), id.slice(2) + '.ts');
+      if (id.startsWith('.')) {
+        const alvo = path.join(path.dirname(arquivo), id + '.ts');
+        const diretoDeLib = './' + path.relative('lib', alvo).slice(0, -3).split(path.sep).join('/');
+        if (diretoDeLib in dubles) return dubles[diretoDeLib];
         if (fs.existsSync(path.join(root, alvo))) return carregarVm(alvo, dubles, cache);
       }
       throw new Error('import nao simulado em ' + arquivo + ': ' + id);
@@ -136,10 +138,11 @@ let transcricao = '';
 let tarefaHeadless;
 const gravadosVoz = [];
 const reservas = [];
+let captura = 0;
 function recibosDaVoz(fonte) {
   return {
     podeNotificar: async () => true,
-    notificarRevisao: async (titulo, texto) => { revisoes.push([fonte, titulo, texto]); },
+    notificarConferenciaVoz: async () => {},
     notificarFalha: async () => {},
     notificarPendenteOffline: async () => {},
     notificarSucesso: async (dados) => { sucessosVoz.push([fonte, dados.tipo, dados.operationId]); },
@@ -147,7 +150,9 @@ function recibosDaVoz(fonte) {
   };
 }
 const recibosApp = recibosDaVoz('app');
-const { executarTarefa } = carregarVm('lib/widget-voz-task.ts', {
+const discoVoz = new Map();
+const cacheVoz = new Map();
+const bordasVoz = {
   // Preserva as funções novas do núcleo real; só a revisão de valor é simulada.
   './voz-confiabilidade': { ...carregarVm('lib/voz-confiabilidade.ts'), precisaRevisarValorVoz: () => false, transcricaoPareceLancamentoVoz: () => true,
     // A revisão de valor está desligada neste dublê; o valor segue a heurística pura.
@@ -173,15 +178,22 @@ const { executarTarefa } = carregarVm('lib/widget-voz-task.ts', {
     liberarFalaEmAndamento: async () => {},
   },
   './widgets-home-sync': { sincronizarWidgetsHome: async () => {} },
-  '@react-native-async-storage/async-storage': { getItem: async () => null },
+  '@react-native-async-storage/async-storage': {
+    getItem: async (key) => discoVoz.get(key) ?? null,
+    setItem: async (key, valor) => { discoVoz.set(key, valor); },
+  },
   'expo-file-system/legacy': { deleteAsync: async () => {} },
-});
+};
+const { executarTarefa } = carregarVm('lib/widget-voz-task.ts', bordasVoz, cacheVoz);
+const { listarRevisoesVoz } = carregarVm('lib/avisos-banco/caixa-voz.ts', bordasVoz, cacheVoz);
 async function pelaVoz(frase, fonte) {
   transcricao = frase;
   const antes = gravadosVoz.length;
-  const payload = { caminho: '/v.m4a', requestId: fonte + '-' + frase, source: fonte };
+  const payload = { caminho: '/v.m4a', requestId: fonte + '-' + ++captura, source: fonte };
   if (fonte === 'app') await executarTarefa(payload, recibosApp);
   else await tarefaHeadless(payload);
+  const item = (await listarRevisoesVoz('u-1')).find((r) => r.requestId === payload.requestId);
+  if (item) revisoes.push([item.fonte, item.titulo, item.transcricao]);
   assert.ok(gravadosVoz.length - antes <= 1, 'no máximo uma escrita por fala');
   const escrita = gravadosVoz[antes];
   if (!escrita) return null;
@@ -242,7 +254,7 @@ async function nasTres(frase) {
     ['moldura 145 reais', null, 'Qual categoria?'],
     ['moldura 145 reais, categoria outrosx', null, 'Qual categoria?'],
     ['roupa 145 reais', null, 'Qual categoria?'],
-    ['145 reais categoria Outros', null, 'Repita a fala completa'],
+    ['145 reais categoria Outros', null, 'Qual a descrição?'],
     ['mercado 145 reais, categoria Outros', ['Mercado', 145, 'Alimentação'], null],
     ['uber 145 reais, categoria Outros', ['Uber', 145, 'Lazer'], null],
     ['gravura 145 reais', ['Gravura', 145, 'Outros'], null],

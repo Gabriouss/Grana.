@@ -4,10 +4,11 @@ import type { CreditCard } from './types';
 import type { DesfechoOperacaoVoz } from './voice-operations';
 import { dataDaFala, referenciaDaFala, resumoDaDataDoLancamento, type ReferenciaDaFala } from './data-da-fala';
 import type { ControleRetomadaVoz } from './voz-retomada';
+import type { DestinoRevisaoVoz, RascunhoRevisaoVoz } from './avisos-banco/caixa-voz';
 
 /** Por que a fala voltou para a fila. A faixa do topo diz isto, e não um
     "aguardando conexão" genérico (26/09/2026). */
-export type MotivoFalaGuardada = 'sem_rede' | 'demorou' | 'sessao' | 'sem_notificacao' | 'revisao';
+export type MotivoFalaGuardada = 'sem_rede' | 'demorou' | 'sessao' | 'sem_notificacao' | 'revisao' | 'caixa';
 
 class VozPendenteOffline extends Error {
   readonly nome = 'VozPendenteOffline';
@@ -16,14 +17,8 @@ class VozPendenteOffline extends Error {
   }
 }
 
-/** Fala GUARDADA que o reconhecimento não entendeu. Apagá-la, como se faz com
-    a fala nova (a pessoa está ali e repete), perdeu a fala do autor em
-    26/09/2026: ela tinha sido gravada horas antes e não havia outra cópia. */
-class FalaParaRevisar extends Error {
-  constructor(readonly transcricao: string) {
-    super('fala guardada não entendida');
-  }
-}
+class CaixaVozIndisponivel extends Error {}
+class AudioGuardadoNaoEntendido extends Error {}
 
 /** Só formatos técnicos do JavaScript: message pode conter a fala, SQL,
     URL ou dados devolvidos pelo servidor. Nunca registrar o erro inteiro. */
@@ -45,7 +40,7 @@ function mensagemTecnicaDaFalha(erro: unknown): string {
 }
 
 /** Como terminou uma execução: `guardada` quando a fala continua na fila. */
-export type DesfechoTarefa = { guardada: false; repetir?: true } | { guardada: true; motivo: MotivoFalaGuardada };
+export type DesfechoTarefa = { guardada: false; repetir?: true; revisaoNoSino?: DestinoRevisaoVoz } | { guardada: true; motivo: MotivoFalaGuardada };
 
 /**
  * Prazo TOTAL de uma execução (07/10/2026). O Android mata a tarefa headless
@@ -78,8 +73,10 @@ export const PRAZO_FIM_DA_TAREFA_MS = 112_000;
     a tarefa não lança sem ter como entregar o recibo, e a fala fica guardada. */
 function podeAvisar(notificacoes: Pick<ReciboVoz, 'podeNotificar'>): Promise<boolean> {
   let corte: ReturnType<typeof setTimeout> | undefined;
-  const consulta = notificacoes.podeNotificar();
-  consulta.catch(() => {});
+  const consulta = notificacoes.podeNotificar().catch(() => {
+    console.warn('[voz] não consegui verificar a permissão de notificação');
+    return false;
+  });
   const estouro = new Promise<boolean>((resolver) => {
     corte = setTimeout(() => {
       console.error('[voz] a permissão de notificação não respondeu no prazo; a fala fica guardada');
@@ -116,7 +113,6 @@ function recibosDuranteExecucao(base: ReciboVoz, execucao: ExecucaoDaFala): Reci
   const conferir = () => { if (!execucao.gravouDepois) conferirExecucao(execucao); };
   return {
     podeNotificar: () => { conferir(); return base.podeNotificar(); },
-    notificarRevisao: (...args) => { conferir(); return base.notificarRevisao(...args); },
     notificarSucesso: (...args) => { conferir(); return base.notificarSucesso(...args); },
     notificarFalha: (...args) => { conferir(); return base.notificarFalha(...args); },
     notificarSalvoLocal: () => { conferir(); return base.notificarSalvoLocal(); },
@@ -135,7 +131,7 @@ function recibosDuranteExecucao(base: ReciboVoz, execucao: ExecucaoDaFala): Reci
  * Falhar aqui não impede o lançamento: a tarefa segue como antes, só sem a
  * rede de segurança, e fica o log.
  */
-async function reservarFala(caminho: string, requestId: string, source: Payload['source'], captura: object, dono: string): Promise<boolean> {
+async function reservarFala(caminho: string, requestId: string, source: Payload['source'], captura: object, dono: string, controle: ControleRetomadaVoz): Promise<boolean> {
   try {
     const [{ reservarFalaEmAndamento }, { idDoUsuarioLocal }] = await Promise.all([
       import('./widget-voz-pendentes'),
@@ -143,7 +139,7 @@ async function reservarFala(caminho: string, requestId: string, source: Payload[
     ]);
     const userId = await idDoUsuarioLocal(PRAZO_DONO_MS);
     if (userId !== dono) return false;
-    return await reservarFalaEmAndamento({ caminho, requestId, userId, source, ...captura });
+    return await reservarFalaEmAndamento({ caminho, requestId, userId, source, ...captura }, controle);
   } catch (erro) {
     console.error('[voz] a fala não foi reservada na fila; segue sem a rede de segurança', requestId, erro);
     return false;
@@ -190,23 +186,10 @@ type Payload = {
 };
 
 type ReciboVoz = Pick<typeof import('./widget-voz-notificacoes'), 'podeNotificar' | 'notificarSucesso' | 'notificarFalha' | 'notificarSalvoLocal' | 'notificarPendenteOffline'> & {
-  /** `ref`: a data da captura, que a revisão usa para ler a data dita. */
-  notificarRevisao: (titulo: string, transcricao: string, ref?: ReferenciaDaFala) => Promise<void>;
+  notificarRevisao?: (titulo: string, transcricao: string, ref?: ReferenciaDaFala) => Promise<void>;
 };
-
-/** Toda revisão desta fala leva a referência dela, sem cada chamada lembrar. */
-function comReferencia(base: ReciboVoz, ref: ReferenciaDaFala): ReciboVoz {
-  return { ...base, notificarRevisao: (titulo, transcricao) => base.notificarRevisao(titulo, transcricao, ref) };
-}
-
-async function pedirNovaFalaCompleta(notificacoes: ReciboVoz, requestId: string, transcricao: string): Promise<void> {
-  try {
-    await notificacoes.notificarRevisao('Repita a fala completa', transcricao);
-  } catch (erro) {
-    console.error('[voz] recibo de repeticao da fala incompleta falhou; audio preservado', requestId, erro);
-    throw new FalaParaRevisar(transcricao);
-  }
-}
+type PedirRevisao = (titulo: string) => Promise<false>;
+type ContextoDaFala = { transcricao?: string; rascunho: RascunhoRevisaoVoz };
 
 /** O erro da gravação visto pelo núcleo (`desfechoDoErroVoz`, a mesma
     decisão da revisão). Roda dentro do `catch` da tarefa: se a checagem
@@ -247,6 +230,15 @@ async function reciboSemLancamentoNovo(desfecho: DesfechoOperacaoVoz, notificaco
   return true;
 }
 
+const capturasEmCurso = new Map<string, Promise<DesfechoTarefa>>();
+
+type AndamentoDaFala = {
+  indexada: boolean;
+  expirou: boolean;
+  reciboEntregue?: boolean;
+  revisaoNoSino?: DestinoRevisaoVoz;
+};
+
 /** Núcleo único de execução. A origem só identifica auditoria e apresentação. */
 export async function executarTarefa(payload: Payload, recibo?: ReciboVoz, controle?: ControleRetomadaVoz): Promise<DesfechoTarefa> {
   controle?.conferir();
@@ -258,10 +250,12 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz, contr
       if (payload.requestId && payload.userId) nativo.definirEstadoDaRetomada(payload.requestId, payload.userId, estado);
     } else nativo.definirEstado(estado);
   };
+  const { geracaoDaCaixa } = await import('./avisos-banco/caixa-voz');
+  const geracaoDaCaptura = payload.userId ? geracaoDaCaixa(payload.userId) : undefined;
   const { idDoUsuarioLocal } = await import('./sessao-offline');
   const userId = await idDoUsuarioLocal(PRAZO_DONO_MS);
   controle?.conferir();
-  if (!userId || (payload.userId && payload.userId !== userId)) {
+  if (!userId || (payload.userId && (payload.userId !== userId || geracaoDaCaptura !== geracaoDaCaixa(payload.userId)))) {
     console.warn('[voz] captura não pertence à conta atual; nenhum envio foi feito');
     definirEstado('atencao');
     if (!userId) {
@@ -275,34 +269,55 @@ export async function executarTarefa(payload: Payload, recibo?: ReciboVoz, contr
       ? { guardada: true, motivo: 'sessao' } : { guardada: false };
   }
   payload = { ...payload, userId };
+  const geracao = geracaoDaCaptura ?? geracaoDaCaixa(userId);
+  const chave = JSON.stringify([userId, payload.requestId, geracao]);
+  const emCurso = payload.requestId && capturasEmCurso.get(chave);
+  if (emCurso) return emCurso;
   /* O que já tem índice de retomada (fila ou pasta de recuperação). O teto
      só afirma "guardada" com isso: sem índice, nada retomaria a fala, e a
      promessa seria falsa (resíduo da leitura final do Lynx, 08/10/2026). */
-  const andamento = { indexada: false };
-  const trabalho = executarAteODesfecho(payload, recibo, definirEstado, andamento, controle);
+  const andamento: AndamentoDaFala = { indexada: false, expirou: false };
+  const trabalho = executarAteODesfecho(payload, recibo, definirEstado, andamento, geracao, controle)
+    .finally(() => { capturasEmCurso.delete(chave); });
   // O trabalho que passou do teto não pode virar rejeição sem dono.
   trabalho.catch(() => {});
   let corte: ReturnType<typeof setTimeout> | undefined;
   const teto = new Promise<DesfechoTarefa>((resolver) => {
     corte = setTimeout(() => {
+      andamento.expirou = true;
       console.error('[voz] a tarefa não chegou ao desfecho no teto de ponta a ponta', payload?.requestId);
       try {
         definirEstado('atencao');
       } catch (erroEstado) {
         console.error('[voz] o widget não pôde ser posto em atenção', erroEstado);
       }
-      const daFila = !!payload?.caminho?.includes('/voz-pendente/');
-      resolver(andamento.indexada || daFila ? { guardada: true, motivo: 'demorou' } : { guardada: false });
+      const daFila = !!payload.caminho?.includes('/voz-pendente/');
+      const guardada = andamento.indexada || daFila;
+      if (andamento.revisaoNoSino) {
+        resolver({ guardada: false, revisaoNoSino: andamento.revisaoNoSino });
+        return;
+      }
+      if (payload.source === 'app' && recibo && !daFila && !andamento.reciboEntregue) {
+        void (async () => {
+          if ((await idDoUsuarioLocal(PRAZO_DONO_MS)) === userId && geracaoDaCaixa(userId) === geracao) {
+            await recibo.notificarFalha(guardada ? 'prazo_voz_guardada' : 'prazo_voz_sem_indice');
+          }
+        })().catch(() => console.warn('[voz] o recibo do prazo não foi entregue'));
+      }
+      resolver(guardada ? { guardada: true, motivo: 'demorou' } : { guardada: false });
     }, Math.max(1, Math.min(PRAZO_FIM_DA_TAREFA_MS, (controle?.fim ?? Infinity) - Date.now())));
   });
-  return Promise.race([trabalho, teto]).finally(() => clearTimeout(corte));
+  const limitada = Promise.race([trabalho, teto]).finally(() => clearTimeout(corte));
+  if (payload.requestId) capturasEmCurso.set(chave, limitada);
+  return limitada;
 }
 
 async function executarAteODesfecho(
   payload: Payload,
   recibo: ReciboVoz | undefined,
   definirEstado: (estado: 'ocioso' | 'atencao' | 'pendente' | 'repetir') => unknown,
-  andamento: { indexada: boolean },
+  andamento: AndamentoDaFala,
+  geracao: number,
   controle?: ControleRetomadaVoz,
 ): Promise<DesfechoTarefa> {
   const caminho = payload?.caminho;
@@ -311,27 +326,32 @@ async function executarAteODesfecho(
      30/09/2026): toda revisão pedida por esta execução leva a referência,
      para a tela contar "ontem" a partir do dia em que a fala foi dita. */
   const referencia = referenciaDaFala(payload, hojeISO());
-  const base = comReferencia(recibo ?? daFala(await import('./widget-voz-notificacoes'), requestId), referencia);
+  let podeEntregarRecibo = false;
+  const base = recibo ?? daFala(await import('./widget-voz-notificacoes'), requestId);
+  const caixa = await import('./avisos-banco/caixa-voz');
+  const dono = payload.userId!;
+  const escopo = caixa.escopoDaRevisaoVoz(dono, geracao, controle);
   controle?.conferir();
   let repetir = false;
   let aguardandoEnvio = false;
-  const conferirRecibo = async () => {
-    controle?.conferir();
-    const { idDoUsuarioLocal } = await import('./sessao-offline');
-    if ((await idDoUsuarioLocal(PRAZO_DONO_MS)) !== payload.userId) throw new Error('O recibo pertence à conta anterior.');
-    controle?.conferir();
-  };
+  const conferirRecibo = escopo.conferirDono;
+  async function entregarRecibo(entregar: () => Promise<void>) {
+    await conferirRecibo();
+    if (andamento.expirou) return;
+    await entregar();
+    andamento.reciboEntregue = true;
+  }
   const notificacoes: ReciboVoz = {
     ...base,
-    notificarRevisao: async (...args) => { await conferirRecibo(); repetir = true; await base.notificarRevisao(...args); },
-    notificarFalha: async (codigo) => {
-      await conferirRecibo();
+    notificarFalha: (codigo) => entregarRecibo(async () => {
       if (codigo === 'nao_entendi' || codigo === 'audio_ausente') repetir = true;
-      await base.notificarFalha(codigo);
-    },
-    notificarSalvoLocal: async () => { await conferirRecibo(); aguardandoEnvio = true; await base.notificarSalvoLocal(); },
-    notificarSucesso: async (dados) => { await conferirRecibo(); await base.notificarSucesso(dados); },
-    notificarPendenteOffline: async () => { await conferirRecibo(); await base.notificarPendenteOffline(); },
+      if (podeEntregarRecibo) await base.notificarFalha(codigo);
+    }),
+    notificarSalvoLocal: () => entregarRecibo(async () => { aguardandoEnvio = true; await base.notificarSalvoLocal(); }),
+    notificarSucesso: (dados) => entregarRecibo(() => base.notificarSucesso(dados)),
+    notificarPendenteOffline: () => entregarRecibo(async () => {
+      if (podeEntregarRecibo) await base.notificarPendenteOffline();
+    }),
   };
   /* A mesma captura, se a fala precisar ir (ou voltar) para a fila. */
   const captura = {
@@ -352,49 +372,84 @@ async function executarAteODesfecho(
   let finalizar!: () => void;
   const execucao: ExecucaoDaFala = { encerrada: false, gravouDepois: false, controle,
     finalizada: new Promise<void>((resolve) => { finalizar = resolve; }) };
-  const contexto: { transcricao?: string } = {};
+  const contexto: ContextoDaFala = { rascunho: {} };
   let desfecho: DesfechoTarefa = { guardada: false };
   let desfechoDoConflito: DesfechoOperacaoVoz | null = null;
-  const abandonada = () => !!controle && (controle.signal.aborted || Date.now() >= controle.fim);
+  let entregouRevisao = false;
+  let avisoDaRevisaoFalhou = false;
+  const abandonada = () => andamento.expirou || caixa.geracaoDaCaixa(dono) !== geracao ||
+    (!!controle && (controle.signal.aborted || Date.now() >= controle.fim));
+  const controleDaConta: ControleRetomadaVoz = {
+    userId: dono, signal: controle?.signal ?? new AbortController().signal, fim: controle?.fim ?? Infinity,
+    conferir() {
+      if (andamento.expirou) throw new VozPendenteOffline('A tarefa já expirou.', 'demorou');
+      escopo.conferir();
+    },
+  };
+  const escopoDaPublicacao = caixa.escopoDaRevisaoVoz(dono, geracao, {
+    ...controleDaConta,
+    conferir() { controleDaConta.conferir(); conferirExecucao(execucao); },
+  });
+  const revisar: PedirRevisao = async (titulo) => {
+    if (!requestId || !contexto.transcricao) throw new Error('A revisão não tem uma fala identificada.');
+    const alvo = { dono, requestId };
+    let nova: boolean;
+    try {
+      nova = await caixa.publicarRevisaoVoz({
+        ...alvo, origem: 'voz', fonte: payload.source ?? 'widget',
+        quando: payload.capturadoEm ?? payload.criadoEm ?? inicio,
+        titulo, transcricao: contexto.transcricao, referencia, rascunho: { ...contexto.rascunho },
+      }, escopoDaPublicacao);
+      const estado = nova ? 'pendente' : await caixa.estadoDaRevisaoVoz(alvo, escopoDaPublicacao);
+      desfecho = estado === 'pendente' || estado === 'confirmando'
+        ? { guardada: false, revisaoNoSino: alvo } : { guardada: false };
+      if (!desfecho.guardada) andamento.revisaoNoSino = desfecho.revisaoNoSino;
+      entregouRevisao = true;
+    } catch {
+      throw new CaixaVozIndisponivel('Não consegui guardar a fala no sino.');
+    }
+    if (nova && payload.source !== 'app' && !recibo && podeEntregarRecibo) {
+      try {
+        const { notificarConferenciaVoz } = await import('./widget-voz-notificacoes');
+        await notificarConferenciaVoz(titulo, contexto.transcricao, alvo, escopoDaPublicacao.conferirDono);
+      } catch {
+        avisoDaRevisaoFalhou = true;
+        console.warn('[voz:sino] a revisão foi guardada e o aviso do Android falhou');
+      }
+    }
+    return false;
+  };
 
   try {
     if (!caminho) return desfecho;
     if (!requestId) throw new Error('request_id_ausente');
     /* Antes de tudo: a fala nova fica reservada na fila. Fala que já veio
        da fila não precisa, ela já está lá. */
-    if (!caminho.includes('/voz-pendente/')) reservada = await reservarFala(caminho, requestId, payload.source, captura, payload.userId!);
+    if (!caminho.includes('/voz-pendente/')) reservada = await reservarFala(caminho, requestId, payload.source, captura, dono, controleDaConta);
     if (reservada) andamento.indexada = true;
 
-    /* Antes de gastar transcrição, e muito antes de gravar qualquer coisa:
-       sem permissão de notificação o widget não tem como entregar o recibo
-       nem o "Desfazer". Nesse caso ele não lança — acende o estado de
-       atenção, e um toque abre o app pra resolver a permissão. */
-    if (!(await podeAvisar(notificacoes))) {
-      estadoFinal = 'atencao';
-      // A permissão pode ter mudado depois da gravação. Preservar com dono;
-      // nunca atribuir uma fala sem sessão à próxima conta do aparelho.
-      manterArquivo = caminho.includes('/voz-pendente/');
-      if (!manterArquivo) {
-        const { idDoUsuarioLocal } = await import('./sessao-offline');
-        const userId = (await idDoUsuarioLocal(PRAZO_DONO_MS)) === payload.userId ? payload.userId : null;
-        if (userId) {
-          const { adicionarVozPendente } = await import('./widget-voz-pendentes');
-          await adicionarVozPendente({ caminho, requestId, userId, source: payload.source, ...captura }, controle);
-          andamento.indexada = true;
-          manterArquivo = true;
+    podeEntregarRecibo = await podeAvisar(notificacoes);
+    try {
+      const alvo = { dono, requestId };
+      const estado = await caixa.estadoDaRevisaoVoz(alvo, escopoDaPublicacao);
+      if (estado) {
+        if (estado === 'pendente' || estado === 'confirmando') {
+          andamento.revisaoNoSino = alvo;
+          desfecho = { guardada: false, revisaoNoSino: alvo };
         }
+        return desfecho;
       }
-      if (manterArquivo) desfecho = { guardada: true, motivo: 'sem_notificacao' };
-      return desfecho;
+    } catch {
+      throw new CaixaVozIndisponivel('Não consegui ler a caixa de voz.');
     }
-
     const salvou = await comPrazoTotal(
-      processar(caminho, requestId, contexto, payload, recibosDuranteExecucao(notificacoes, execucao), referencia, execucao),
+      processar(caminho, requestId, contexto, payload, recibosDuranteExecucao(notificacoes, execucao),
+        referencia, execucao, revisar, podeEntregarRecibo, escopo, controleDaConta),
       PRAZO_TOTAL_TAREFA_MS - (Date.now() - inicio),
       () => { execucao.encerrada = true; },
     );
     if (salvou) await sincronizarResumoDepoisDaVoz(controle);
-    else estadoFinal = 'atencao';
+    else if (!entregouRevisao || avisoDaRevisaoFalhou || (!recibo && !podeEntregarRecibo)) estadoFinal = 'atencao';
   } catch (erro) {
     if (abandonada()) {
       manterArquivo = true;
@@ -403,34 +458,26 @@ async function executarAteODesfecho(
     }
     console.warn('[voz:widget] tarefa interrompida', (erro as { code?: string })?.code ?? 'falha', mensagemTecnicaDaFalha(erro));
     estadoFinal = 'atencao';
-    if (erro instanceof FalaParaRevisar && requestId) {
-      /* Sem lançar e sem apagar: a fala fica na fila, marcada, e o recibo
-         (na tela, guardado até ser visto) oferece revisar, tentar de novo ou
-         descartar. Mesma saída para fala do app e do widget (regra 13). */
+    if (erro instanceof AudioGuardadoNaoEntendido && requestId) {
       manterArquivo = true;
       desfecho = { guardada: true, motivo: 'revisao' };
       try {
-        const [{ marcarVozEmRevisao }, { guardarReciboDaFila }, { idDoUsuarioLocal }, { reciboDaFalaGuardada }] = await Promise.all([
-          import('./widget-voz-pendentes'),
-          import('./voz-recibos-da-fila'),
-          import('./sessao-offline'),
-          import('./voz-recibos'),
+        const [{ marcarVozEmRevisao }, { guardarReciboDaFila }, { reciboDaFalaGuardada }] = await Promise.all([
+          import('./widget-voz-pendentes'), import('./voz-recibos-da-fila'), import('./voz-recibos'),
         ]);
-        await marcarVozEmRevisao(requestId, erro.transcricao || undefined, controle);
-        const dono = (await idDoUsuarioLocal(PRAZO_DONO_MS)) === payload.userId ? payload.userId : null;
-        if (dono) {
-          await guardarReciboDaFila({ id: requestId, dono, tipo: 'audio', ...reciboDaFalaGuardada(erro.transcricao) });
-        }
-      } catch (erroRevisao) {
-        // A fala continua na fila mesmo assim; a próxima retomada tenta de novo.
-        console.error('[voz] fala guardada não entrou em revisão', requestId, erroRevisao);
-        if (controle) throw erroRevisao;
+        await conferirRecibo();
+        await marcarVozEmRevisao(requestId, undefined, controleDaConta);
+        await conferirRecibo();
+        await guardarReciboDaFila({ id: requestId, dono, tipo: 'audio', ...reciboDaFalaGuardada('') });
+      } catch {
+        console.warn('[voz] não consegui marcar a fala guardada sem transcrição útil');
       }
-    } else if (erro instanceof VozPendenteOffline || isLikelyNetworkError(erro)) {
+    } else if (erro instanceof CaixaVozIndisponivel || erro instanceof VozPendenteOffline || isLikelyNetworkError(erro)) {
       /* A gravação já aconteceu. Não apagá-la é a diferença entre "sem rede"
          ser uma espera transparente e perder a fala junto com a notificação. */
       if (caminho && requestId) {
-        const motivo: MotivoFalaGuardada = erro instanceof VozPendenteOffline ? erro.motivo : 'sem_rede';
+        const motivo: MotivoFalaGuardada = erro instanceof VozPendenteOffline ? erro.motivo
+          : erro instanceof CaixaVozIndisponivel ? 'caixa' : 'sem_rede';
         let userId: string | null = null;
         /* Este bloco roda DENTRO do `catch`: até 07/10/2026 nada aqui tinha
            guarda própria, e uma falha ao gravar a fila escapava do `catch`,
@@ -448,7 +495,7 @@ async function executarAteODesfecho(
              dono descartava a gravação em vez de guardá-la. */
           userId = (await idDoUsuarioLocal(PRAZO_DONO_MS)) === payload.userId ? payload.userId! : null;
           if (userId) {
-            await adicionarVozPendente({ caminho, requestId, userId, source: payload.source, transcricao: contexto.transcricao ?? payload.transcricao, ...captura }, controle);
+            await adicionarVozPendente({ caminho, requestId, userId, source: payload.source, transcricao: contexto.transcricao ?? payload.transcricao, ...captura }, controleDaConta);
             andamento.indexada = true;
             manterArquivo = true;
             desfecho = { guardada: true, motivo };
@@ -464,7 +511,7 @@ async function executarAteODesfecho(
             try {
               const { guardarVozOrfa } = await import('./widget-voz-pendentes');
               await guardarVozOrfa({ caminho, requestId, userId, source: payload.source,
-                transcricao: contexto.transcricao ?? payload.transcricao, ...captura }, controle);
+                transcricao: contexto.transcricao ?? payload.transcricao, ...captura }, controleDaConta);
               copiaDuravel = true;
               andamento.indexada = true;
               manterArquivo = true;
@@ -479,7 +526,11 @@ async function executarAteODesfecho(
           }
         }
         try {
-          if (manterArquivo) {
+          if (erro instanceof CaixaVozIndisponivel) {
+            await notificacoes.notificarFalha(manterArquivo ? 'caixa_voz_indisponivel' : 'caixa_voz_sem_copia');
+          } else if (motivo === 'sem_notificacao') {
+            // O widget mostra atenção e a captura fica disponível na fila.
+          } else if (manterArquivo) {
             /* Só na PRIMEIRA vez que a fala fica guardada. A retomada roda a
                cada 30 s com o app aberto e, sem rede, cada passada publicava
                outro "Áudio guardado" (B5, 27/09/2026). A faixa do topo já diz
@@ -503,7 +554,7 @@ async function executarAteODesfecho(
       estadoFinal = 'ocioso';
       try {
         const { concluirVozRevisada } = await import('./widget-voz-pendentes');
-        await concluirVozRevisada(requestId, controle);
+        await concluirVozRevisada(requestId, controleDaConta);
       } catch (erroLimpeza) {
         console.error('[voz] fala já usada não saiu da fila', requestId, erroLimpeza);
       }
@@ -516,17 +567,15 @@ async function executarAteODesfecho(
           /* Crédito sem cartão recusado pelo servidor: a revisão pergunta o
              cartão, que é o que falta. Mesma saída para app e widget. */
           const { ehRecusaCartaoObrigatorio } = await import('./voice-operations');
-          await notificacoes.notificarRevisao(
-            ehRecusaCartaoObrigatorio(erro) ? 'Qual cartão?' : 'Não consegui salvar',
-            contexto.transcricao
-          );
+          await revisar(ehRecusaCartaoObrigatorio(erro) ? 'Qual cartão?' : 'Não consegui salvar');
+          if (entregouRevisao && !avisoDaRevisaoFalhou && (recibo || podeEntregarRecibo)) estadoFinal = 'ocioso';
         } else {
           await notificacoes.notificarFalha('erro_interno');
         }
       } catch (erroRecibo) {
         // O estado de atenção continua sendo o recibo mínimo se a notificação
         // também falhar: o próximo toque abre o app em vez de parecer perdido.
-        console.error('[voz] recibo da falha não foi entregue', erroRecibo);
+        console.error('[voz] revisão ou recibo da falha não foi entregue');
         /* Fala que veio da fila e cujo recibo não foi entregue: sair da fila
            seria perdê-la sem ninguém saber. Fica, e a próxima retomada tenta. */
         if (reservada || caminho?.includes('/voz-pendente/')) {
@@ -539,7 +588,7 @@ async function executarAteODesfecho(
               ]);
               const userId = (await idDoUsuarioLocal(PRAZO_DONO_MS)) === payload.userId ? payload.userId : null;
               if (userId) await adicionarVozPendente({ caminho, requestId, userId, source: payload.source,
-                transcricao: contexto.transcricao ?? payload.transcricao, ...captura }, controle);
+                transcricao: contexto.transcricao ?? payload.transcricao, ...captura }, controleDaConta);
             } catch (erroFila) {
               console.error('[voz] recibo falhou; a reserva da fala continua para recuperação', requestId, erroFila);
             }
@@ -553,7 +602,7 @@ async function executarAteODesfecho(
             const userId = (await idDoUsuarioLocal(PRAZO_DONO_MS)) === payload.userId ? payload.userId : null;
             if (userId) {
               await guardarVozOrfa({ caminho, requestId, userId, source: payload.source,
-                transcricao: contexto.transcricao ?? payload.transcricao, ...captura }, controle);
+                transcricao: contexto.transcricao ?? payload.transcricao, ...captura }, controleDaConta);
               copiaDuravel = true;
               andamento.indexada = true;
               manterArquivo = true;
@@ -564,6 +613,13 @@ async function executarAteODesfecho(
                guardado e nada é anunciado como guardado; o estado de atenção
                do widget é o recibo que resta (achado R3). */
             console.error('[voz] reserva, recibo e recuperação falharam; a fala não ficou guardada', requestId, erroOrfa);
+          }
+        }
+        if (erroRecibo instanceof CaixaVozIndisponivel) {
+          try {
+            await notificacoes.notificarFalha(manterArquivo ? 'caixa_voz_indisponivel' : 'caixa_voz_sem_copia');
+          } catch {
+            console.warn('[voz:sino] aviso de falha da caixa não foi entregue');
           }
         }
       }
@@ -582,14 +638,15 @@ async function executarAteODesfecho(
     try {
       if (!abandonada() && requestId && !manterArquivo) {
         const { removerVozPendente, liberarFalaEmAndamento } = await import('./widget-voz-pendentes');
-        if (reservada) await liberarFalaEmAndamento(requestId);
-        else await removerVozPendente(requestId, controle);
+        await escopo.conferirDono();
+        if (reservada) await liberarFalaEmAndamento(requestId, controleDaConta);
+        else await removerVozPendente(requestId, controleDaConta);
       }
     } catch (erroLimpeza) {
       console.error('[voz] a fala concluída não saiu da fila; a próxima retomada resolve pelo mesmo requestId', requestId, erroLimpeza);
       if (controle) { execucao.encerrada = true; finalizar(); throw erroLimpeza; }
     }
-    if (repetir || (desfecho.guardada && desfecho.motivo === 'revisao')) estadoFinal = 'repetir';
+    if (repetir) estadoFinal = 'repetir';
     else if (aguardandoEnvio || (desfecho.guardada && (desfecho.motivo === 'sem_rede' || desfecho.motivo === 'demorou' || desfecho.motivo === 'sessao'))) estadoFinal = 'pendente';
     if (!abandonada()) definirEstado(estadoFinal);
     if (repetir && !desfecho.guardada) desfecho = { guardada: false, repetir: true };
@@ -607,7 +664,6 @@ async function executarAteODesfecho(
 function daFala(modulo: typeof import('./widget-voz-notificacoes'), requestId: string | undefined): ReciboVoz {
   return {
     podeNotificar: () => modulo.podeNotificar(),
-    notificarRevisao: (titulo, transcricao, ref) => modulo.notificarRevisao(titulo, transcricao, requestId, ref),
     notificarSucesso: (dados) => modulo.notificarSucesso(dados, requestId),
     notificarFalha: (codigo) => modulo.notificarFalha(codigo, requestId),
     notificarSalvoLocal: () => modulo.notificarSalvoLocal(requestId),
@@ -626,7 +682,11 @@ async function apagarArquivo(caminho: string) {
   }
 }
 
-async function processar(caminho: string, requestId: string, contexto: { transcricao?: string }, payload: Payload, notificacoes: ReciboVoz, referencia: ReferenciaDaFala, execucao: ExecucaoDaFala): Promise<boolean> {
+async function processar(
+  caminho: string, requestId: string, contexto: ContextoDaFala, payload: Payload, notificacoes: ReciboVoz,
+  referencia: ReferenciaDaFala, execucao: ExecucaoDaFala, revisar: PedirRevisao, podeEntregarRecibo: boolean,
+  escopo: ReturnType<typeof import('./avisos-banco/caixa-voz').escopoDaRevisaoVoz>, controleDaConta: ControleRetomadaVoz,
+): Promise<boolean> {
   const [{ transcreverAudio }, heuristics, data, operacoes] = await Promise.all([
     import('./voz'),
     import('./heuristics'),
@@ -634,17 +694,18 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     import('./voice-operations'),
   ]);
   conferirExecucao(execucao);
-  const { idDoUsuarioLocal } = await import('./sessao-offline');
-  if ((await idDoUsuarioLocal(PRAZO_DONO_MS)) !== payload.userId) throw new VozPendenteOffline('A conta da fala mudou antes da transcrição.', 'sessao');
+  await escopo.conferirDono();
   const voiceOperations: typeof operacoes = {
     ...operacoes,
     registrarOperacaoVoz: async (...args) => {
-      conferirExecucao(execucao); // vale também para crédito/boleto/parcelado: antes de QUALQUER escrita.
-      const { idDoUsuarioLocal } = await import('./sessao-offline');
-      if ((await idDoUsuarioLocal(PRAZO_DONO_MS)) !== payload.userId) throw new VozPendenteOffline('A conta da fala mudou antes do envio.', 'sessao');
-      const resultado = await operacoes.registrarOperacaoVoz(args[0], args[1], args[2], args[3], args[4], payload.userId, execucao.controle);
+      conferirExecucao(execucao);
+      if (!podeEntregarRecibo) throw new VozPendenteOffline('O recibo do lançamento está indisponível.', 'sem_notificacao');
+      await escopo.conferirDono();
+      controleDaConta.conferir();
+      conferirExecucao(execucao);
+      const resultado = await operacoes.registrarOperacaoVoz(args[0], args[1], args[2], args[3], args[4], payload.userId, controleDaConta);
+      await escopo.conferirDono();
       execucao.controle?.conferir();
-      if ((await idDoUsuarioLocal(PRAZO_DONO_MS)) !== payload.userId) throw new VozPendenteOffline('A conta mudou durante a gravação; o resultado será conferido pelo dono.', 'sessao');
       if (execucao.encerrada) {
         /* A gravação já tinha saído quando o prazo estourou e respondeu
            depois. Nada é reenviado: espera a tarefa terminar de guardar a
@@ -665,19 +726,16 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   };
 
   const uri = caminho.startsWith('file://') ? caminho : `file://${caminho}`;
-  /* Fala que veio da fila de áudios guardados (`widget-voz-pendentes`): a
-     pessoa não está ali para repetir, então "não entendi" não pode apagá-la. */
-  const daFila = caminho.includes('/voz-pendente/');
   /* O prazo de rede é o mesmo nas duas entradas e mora em lib/voz.ts
      (`PRAZO_TRANSCRICAO_MS`). Ninguém o escolhe aqui: nem pela origem da fala
      (achado F2, regra 13), nem por quem chama (decisão do autor, 25/09/2026). */
-  const transcricao = payload.transcricao
-    ? { ok: true as const, transcript: payload.transcricao }
+  const transcricao: import('./voz').ResultadoVoz = payload.transcricao
+    ? { ok: true, transcript: payload.transcricao }
     : await transcreverAudio(uri, {
         mimeType: 'audio/m4a',
         nomeArquivo: 'widget.m4a',
         userId: payload.userId,
-        controle: execucao.controle,
+        controle: controleDaConta,
       });
   conferirExecucao(execucao);
   if (!transcricao.ok) {
@@ -696,41 +754,26 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
         throw new VozPendenteOffline('A sessão será renovada quando houver conexão.', 'sessao');
       }
     }
-    if (transcricao.codigo === 'nao_entendi' && daFila) throw new FalaParaRevisar('');
+    if (transcricao.codigo === 'nao_entendi' && caminho.includes('/voz-pendente/')) throw new AudioGuardadoNaoEntendido();
     await notificacoes.notificarFalha(transcricao.codigo);
     return false;
   }
 
-  let texto = transcricao.transcript;
   const confiabilidade = await import('./voz-confiabilidade');
-  if (!confiabilidade.transcricaoPareceLancamentoVoz(texto)) {
-    /* Frase sem relação com dinheiro é o que o provedor devolve para ruído ou
-       silêncio: o recibo não a mostra como "Ouvi:", porque a pessoa leria algo
-       que nunca disse. Texto com cara de lançamento incompleto ("mercado")
-       continua aparecendo, para completar à mão. */
-    if (daFila) throw new FalaParaRevisar(confiabilidade.transcricaoForaDeContexto(texto) ? '' : texto);
-    await notificacoes.notificarFalha('nao_entendi');
+  const original = transcricao.transcript.trim();
+  if (!confiabilidade.transcricaoServeParaRevisaoVoz(original)) {
+    const semFala = !/[\p{L}\p{N}]/u.test(original);
+    if (!semFala && caminho.includes('/voz-pendente/')) throw new AudioGuardadoNaoEntendido();
+    await notificacoes.notificarFalha(semFala ? 'audio_ausente' : 'nao_entendi');
     return false;
   }
-  contexto.transcricao = texto;
-  // A forma curta "cartão C6" tem a mesma intenção de "no cartão C6".
-  // A heurística existente já preserva débito e recebimentos explicitados.
-  texto = texto.replace(/\bcart[aã]o\b/giu, 'no cartão');
-  /* A data do gasto dita na fala (data na voz, 30/09/2026), ANTES de
-     carteira, valor, categoria e descrição: todo o resto lê o texto sem ela,
-     para "farmácia dia 12 40 reais" não virar R$ 12. Conta a pagar pula: lá
-     a data dita é o vencimento. Data duvidosa vai para a revisão, com a
-     referência, e nada é gravado. */
-  let dataDoGasto = referencia.referencia;
-  if (!heuristics.ehIntencaoBoleto(texto)) {
-    const lida = dataDaFala(texto, referencia);
-    if (lida.revisao) {
-      await notificacoes.notificarRevisao(lida.revisao.titulo, transcricao.transcript);
-      return false;
-    }
-    texto = lida.textoSemData;
-    dataDoGasto = lida.data;
-  }
+  contexto.transcricao = original;
+  // A forma curta "cartão C6" preserva a intenção da heurística existente.
+  let texto = original.replace(/\bcart[aã]o\b/giu, 'no cartão');
+  const boleto = heuristics.ehIntencaoBoleto(texto);
+  const lida = boleto ? null : dataDaFala(texto, referencia);
+  const dataDoGasto = lida?.data ?? referencia.referencia;
+  if (lida) texto = lida.textoSemData;
   const { fetchWallets } = await import('./wallets');
   let prazoReferencias: ReturnType<typeof setTimeout> | undefined;
   const [extras, carteiras, cartoesDisponiveis, apelidos] = await Promise.race([
@@ -742,70 +785,63 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
   conferirExecucao(execucao);
 
   const carteiraMencionada = heuristics.matchWalletByText(texto, carteiras);
-  /* "Conta de luz" é conta a pagar, não carteira (achado B2): a mesma regra
-     do Granabô, em `heuristics.citaCarteira`. */
-  const mencionaCarteira = heuristics.citaCarteira(texto);
-  if (mencionaCarteira && !carteiraMencionada) {
-    await notificacoes.notificarRevisao('Qual carteira?', texto);
-    return false;
-  }
   const carteira = carteiraMencionada ?? carteiras.find((w) => w.is_default) ?? carteiras[0];
-  if (!carteira) {
-    await notificacoes.notificarRevisao('Nenhuma carteira cadastrada', texto);
-    return false;
-  }
-  const textoFinanceiro = carteiraMencionada ? heuristics.limparReferenciaCarteira(texto, carteira.name) : texto;
+  const mencionaCarteira = heuristics.citaCarteira(texto);
+  const textoFinanceiro = carteiraMencionada ? heuristics.limparReferenciaCarteira(texto, carteiraMencionada.name) : texto;
   texto = textoFinanceiro;
-  if (confiabilidade.precisaRevisarValorVoz(texto)) {
-    await notificacoes.notificarRevisao('Confirme o valor que ouvi', transcricao.transcript);
-    return false;
-  }
+  const credito = !boleto && heuristics.ehIntencaoCredito(texto);
+  const entradaNoCredito = credito && heuristics.entradaComIntencaoDeCredito(texto, cartoesDisponiveis);
   const valor = confiabilidade.valorDaFalaVoz(texto);
-  if (!Number.isFinite(valor) || valor <= 0) {
-    await notificacoes.notificarRevisao('Não encontrei o valor', transcricao.transcript);
-    return false;
-  }
-  const textoDaCategoria = heuristics.textoDaCategoria(texto, cartoesDisponiveis, carteira.id);
-  /* Entrada com intenção de crédito ia para `lancarNoCredito`, que grava
-     `type: 'out'`: uma fala de dinheiro ENTRANDO virava compra no cartão.
-     Entrada no cartão não existe no Grana. (autor, 26/09/2026): vai para a
-     revisão padrão, sem gravar. Boleto antes, como no resto da tarefa. A
-     mesma função decide no Granabô e no destino da fala na tela
-     (`lib/destino-da-fala.ts`), com a lista inteira de cartões. */
-  if (!heuristics.ehIntencaoBoleto(texto) && heuristics.entradaComIntencaoDeCredito(texto, cartoesDisponiveis)) {
-    await notificacoes.notificarRevisao('Não consegui salvar', transcricao.transcript);
-    return false;
-  }
-
-  /* Em "Outros", a escolha precisa vir da fala ou de um apelido ensinado. */
+  const valorSeguro = !confiabilidade.precisaRevisarValorVoz(texto);
+  const formaPagamento = heuristics.parseFormaPagamento(texto);
+  const parcelas = heuristics.parseParcelas(texto);
+  const parcelaInvalida = /\bparcel(?:as?|ado|ada|ei|ar)\b|\b\d+\s*(?:x|vezes)\b/i.test(texto) && parcelas === null;
+  const vencimento = boleto ? heuristics.parseDiaVencimento(texto) : null;
+  const cartoesDaCarteira = cartoesDisponiveis.filter((cartao) => !carteira || !cartao.wallet_id || cartao.wallet_id === carteira.id);
+  const cartaoMencionado = credito
+    ? heuristics.matchCardByText(texto, cartoesDaCarteira) ?? heuristics.matchCardByText(texto, cartoesDisponiveis)
+    : null;
+  const textoDaCategoria = heuristics.textoDaCategoria(texto, cartoesDisponiveis, carteira?.id);
   const { categoria, doApelido } = heuristics.decidirCategoria(textoDaCategoria, apelidos, extras);
-  if (!categoria || (categoria.name === 'Outros' && !doApelido && !heuristics.mencionaCategoriaOutros(textoDaCategoria))) {
-    await notificacoes.notificarRevisao('Qual categoria?', transcricao.transcript);
-    return false;
-  }
-  if (/\bparcel(?:as?|ado|ada|ei|ar)\b|\b\d+\s*(?:x|vezes)\b/i.test(texto) && heuristics.parseParcelas(texto) === null) {
-    await notificacoes.notificarRevisao('Confirme o parcelamento', transcricao.transcript);
-    return false;
-  }
+  const categoriaReconhecida = categoria &&
+    (categoria.name !== 'Outros' || doApelido || heuristics.mencionaCategoriaOutros(textoDaCategoria));
   const tipo = heuristics.guessTypeFromText(textoFinanceiro);
-  /* A palavra que só repete a categoria sai do nome ("Meli+ assinatura" em
-     Assinaturas vira "Meli+"), a mesma regra do Granabô. */
-  const semCategoria = (nome: string) => (nome ? heuristics.semNomeDaCategoria(nome, categoria.name) : nome);
+  const tipoMencionado = heuristics.tipoMencionadoNaFala(textoFinanceiro);
   const textoParaDescricao = confiabilidade.textoVozSemDicaDeCategoria(textoFinanceiro);
-  const descricao = semCategoria(heuristics.descricaoDoLancamento(textoParaDescricao, tipo)) || 'Lançamento por voz';
+  const nomeDaFala = heuristics.descricaoDoLancamento(textoParaDescricao, tipo, cartaoMencionado ?? undefined);
+  const descricao = (nomeDaFala && categoriaReconhecida ? heuristics.semNomeDaCategoria(nomeDaFala, categoria.name) : nomeDaFala) || 'Lançamento por voz';
+  const nomeInformativo = confiabilidade.transcricaoTemNomeInformativo(textoFinanceiro, descricao, categoriaReconhecida ? categoria.name : 'Outros');
 
-  if (!confiabilidade.transcricaoTemNomeInformativo(textoFinanceiro, descricao, categoria.name)) {
-    await pedirNovaFalaCompleta(notificacoes, requestId, transcricao.transcript);
-    return false;
-  }
+  contexto.rascunho = {
+    modo: boleto ? 'boleto' : entradaNoCredito ? undefined : credito ? 'credito'
+      : carteiraMencionada || formaPagamento || tipoMencionado ? 'carteira' : undefined,
+    tipo: tipoMencionado ?? (boleto || (credito && !entradaNoCredito) ? 'out' : undefined),
+    descricao: nomeInformativo ? descricao : undefined,
+    valor: valorSeguro && Number.isFinite(valor) && valor > 0 ? valor : undefined,
+    categoria: categoriaReconhecida ? { nome: categoria.name, cor: categoria.color } : undefined,
+    carteiraId: carteiraMencionada?.id,
+    cartaoId: entradaNoCredito ? undefined : cartaoMencionado?.id,
+    data: lida?.dita && !lida.revisao ? lida.data : undefined,
+    vencimento: vencimento ?? undefined,
+    parcelas: credito && !entradaNoCredito && !parcelaInvalida ? parcelas ?? undefined : undefined,
+    forma: entradaNoCredito ? undefined : credito ? 'credit' : formaPagamento ?? undefined,
+  };
 
-  // Boleto antes de crédito: "boleto no cartão" é boleto. Mesma ordem do bot.
-  if (heuristics.ehIntencaoBoleto(texto)) {
-    const dueDate = heuristics.parseDiaVencimento(texto);
-    if (!dueDate) {
-      await notificacoes.notificarRevisao('Confirme o vencimento', transcricao.transcript);
-      return false;
-    }
+  if (lida?.revisao) return revisar(lida.revisao.titulo);
+  if (mencionaCarteira && !carteiraMencionada) return revisar('Qual carteira?');
+  if (!carteira) return revisar('Nenhuma carteira cadastrada');
+  if (!valorSeguro) return revisar(Number.isFinite(valor) && valor > 0 ? 'Confirme o valor que ouvi' : 'Não encontrei o valor');
+  if (!Number.isFinite(valor) || valor <= 0) return revisar('Não encontrei o valor');
+  if (transcricao.apenasRevisao || !confiabilidade.transcricaoPareceLancamentoVoz(original)) return revisar('Confira o lançamento');
+  if (entradaNoCredito) return revisar('Não consegui salvar');
+  if (!categoriaReconhecida) return revisar('Qual categoria?');
+  if (parcelaInvalida) return revisar('Confirme o parcelamento');
+  if (!nomeInformativo) return revisar('Qual a descrição?');
+
+  // Boleto antes de crédito: o vencimento pertence à conta a pagar.
+  if (boleto) {
+    const dueDate = vencimento;
+    if (!dueDate) return revisar('Confirme o vencimento');
     const resultado = await voiceOperations.registrarOperacaoVoz(requestId, payload.source ?? 'widget', {
       kind: 'bill',
       description: descricao,
@@ -815,7 +851,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
       due_date: dueDate,
       recurring: heuristics.parseRecorrencia(texto),
       wallet_id: carteira.id,
-    });
+    }, original);
     if (await reciboSemLancamentoNovo(voiceOperations.desfechoDaOperacaoVoz(resultado), notificacoes)) return true;
     try {
       await notificacoes.notificarSucesso({
@@ -836,18 +872,17 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
      repete por N meses. Com data diferente da fala, a pessoa confirma. */
   const serie = heuristics.parseRecorrencia(texto);
   if (serie && dataDoGasto !== referencia.referencia) {
-    await notificacoes.notificarRevisao('Confirme a data', transcricao.transcript);
-    return false;
+    delete contexto.rascunho.data;
+    return revisar('Confirme a data');
   }
 
-  if (heuristics.ehIntencaoCredito(texto)) {
+  if (credito) {
     return lancarNoCredito({
-      requestId, source: payload.source ?? 'widget', texto, valor, descricao, categoria, carteiraId: carteira.id, cartoesDisponiveis, heuristics, data, notificacoes, voiceOperations,
-      dataDoGasto, referencia: referencia.referencia, transcricao: transcricao.transcript,
+      requestId, source: payload.source ?? 'widget', texto, valor, descricao, categoria, carteiraId: carteira.id, cartoesDisponiveis, heuristics, notificacoes, voiceOperations,
+      dataDoGasto, referencia: referencia.referencia, transcricao: original, revisar, rascunho: contexto.rascunho,
     });
   }
 
-  const formaPagamento = heuristics.parseFormaPagamento(texto);
   const resultado = await voiceOperations.registrarOperacaoVoz(requestId, payload.source ?? 'widget', {
     kind: 'transaction',
     type: tipo,
@@ -859,7 +894,7 @@ async function processar(caminho: string, requestId: string, contexto: { transcr
     recurring: serie,
     ...(formaPagamento ? { payment_method: formaPagamento } : null),
     wallet_id: carteira.id,
-  });
+  }, original);
   if (await reciboSemLancamentoNovo(voiceOperations.desfechoDaOperacaoVoz(resultado), notificacoes)) return true;
 
   try {
@@ -890,35 +925,34 @@ async function lancarNoCredito(args: {
   carteiraId: string;
   cartoesDisponiveis: CreditCard[];
   heuristics: typeof import('./heuristics');
-  data: typeof import('./data');
   notificacoes: ReciboVoz;
   voiceOperations: typeof import('./voice-operations');
   /** A data resolvida da fala e a da captura (data na voz). */
   dataDoGasto: string;
   referencia: string;
   transcricao: string;
+  revisar: PedirRevisao;
+  rascunho: RascunhoRevisaoVoz;
 }): Promise<boolean> {
-  const { requestId, texto, valor, descricao, categoria, carteiraId, heuristics, data, notificacoes, voiceOperations, dataDoGasto, referencia } = args;
+  const { requestId, texto, valor, descricao, categoria, carteiraId, heuristics, notificacoes, voiceOperations, dataDoGasto, referencia, revisar, rascunho } = args;
 
   const cartoes = args.cartoesDisponiveis.filter(c => !c.wallet_id || c.wallet_id === carteiraId);
   /* Sem cartão cadastrado, crédito NÃO vira Pix nem débito caladinho: a
      forma de pagamento muda de quem cobra e quando, e adivinhar isso é
      inventar um fato financeiro. */
-  if (cartoes.length === 0) {
-    await notificacoes.notificarRevisao('Nenhum cartão cadastrado', texto);
-    return false;
+  if (rascunho.cartaoId && !cartoes.some((cartao) => cartao.id === rascunho.cartaoId)) {
+    return revisar('Cartão e carteira não combinam');
   }
+  if (cartoes.length === 0) return revisar('Nenhum cartão cadastrado');
 
   const cartaoIdentificado = heuristics.matchCardByText(texto, cartoes);
   const cartaoExplicito = /\b(?:cr[eé]dito|cart[aã]o)\s+(?:(?:no|na|do|da|de)\s+)?(?!(?:em|no|na|de|todo|recorrente)\b)[\p{L}\d]/iu.test(texto);
   if (!cartaoIdentificado && (cartoes.length > 1 || cartaoExplicito)) {
-    await notificacoes.notificarRevisao('Qual cartão?', texto);
-    return false;
+    return revisar('Qual cartão?');
   }
   const cartao = cartaoIdentificado ?? cartoes[0];
   if (cartao.wallet_id && cartao.wallet_id !== carteiraId) {
-    await notificacoes.notificarRevisao('Cartão e carteira não combinam', texto);
-    return false;
+    return revisar('Cartão e carteira não combinam');
   }
   const parcelas = heuristics.parseParcelas(texto);
   /* O nome sai de novo, agora que o cartão é conhecido: sem isso "crédito C6"
@@ -929,8 +963,8 @@ async function lancarNoCredito(args: {
   const nomeNoCartao = heuristics.descricaoDoLancamento(textoParaDescricao, 'out', cartao);
   const descricaoNoCartao = (nomeNoCartao && heuristics.semNomeDaCategoria(nomeNoCartao, categoria.name)) || descricao;
   if (!confiabilidade.transcricaoTemNomeInformativo(texto, descricaoNoCartao, categoria.name)) {
-    await pedirNovaFalaCompleta(notificacoes, requestId, args.transcricao);
-    return false;
+    delete rascunho.descricao;
+    return revisar('Qual a descrição?');
   }
 
   /* No crédito a data decide a fatura (data na voz, regras 3.5 e 3.6): uma
@@ -943,12 +977,12 @@ async function lancarNoCredito(args: {
   const fatura = mesFaturaDoLancamento(dataDoGasto, fechamento);
   const faturaDaFala = mesFaturaDoLancamento(referencia, fechamento);
   if (dataDoGasto !== referencia && (fatura.year !== faturaDaFala.year || fatura.month !== faturaDaFala.month)) {
-    await notificacoes.notificarRevisao('Confirme a data da compra', args.transcricao);
-    return false;
+    delete rascunho.data;
+    return revisar('Confirme a data da compra');
   }
   if (dataDoGasto !== referencia && parcelas && parcelas > 1) {
-    await notificacoes.notificarRevisao('Confirme a data', args.transcricao);
-    return false;
+    delete rascunho.data;
+    return revisar('Confirme a data');
   }
   const quando = resumoDaDataDoLancamento({ dataISO: dataDoGasto, hojeISO: hojeISO(), destino: 'credito', fatura });
 
@@ -965,7 +999,7 @@ async function lancarNoCredito(args: {
       card_id: cartao.id,
       installments: parcelas,
       wallet_id: carteiraId,
-    }, texto);
+    }, args.transcricao);
     if (await reciboSemLancamentoNovo(voiceOperations.desfechoDaOperacaoVoz(resultado), notificacoes)) return true;
     const { checarLimiteCartao } = await import('./creditLimitAlert');
     checarLimiteCartao(cartao.id).catch(() => {});
@@ -995,7 +1029,7 @@ async function lancarNoCredito(args: {
     card_id: cartao.id,
     recurring: heuristics.parseRecorrencia(texto),
     wallet_id: carteiraId,
-  }, texto);
+  }, args.transcricao);
   if (await reciboSemLancamentoNovo(voiceOperations.desfechoDaOperacaoVoz(resultado), notificacoes)) return true;
   const { checarLimiteCartao } = await import('./creditLimitAlert');
   checarLimiteCartao(cartao.id).catch(() => {});
@@ -1291,27 +1325,14 @@ async function processarRetomadaVoz(payload: PayloadRetomada, controle: Controle
     }
     controle.conferir();
     const notificacoes = daFala(await import('./widget-voz-notificacoes'), payload.requestId);
-    if (!(await podeAvisar(notificacoes))) {
-      // O app pode já ter entregue o recibo na tela e consumido a intenção.
-      // Nesse caso não há novo lançamento/recibo a autorizar no Worker.
-      const operacoes = await import('./voice-operations');
-      if (!(await operacoes.listarOperacoesVozLocais()).some((item) => item.requestId === payload.requestId)) {
-        const pendentes = await import('./widget-voz-pendentes');
-        await pendentes.adotarVozesOrfas(payload.userId, payload.requestId, controle);
-        const fala = await pendentes.buscarVozPendente(payload.requestId, payload.userId, controle);
-        controle.conferir();
-        if (!fala) {
-          const { reconciliarVozConcluida } = await import('./voz-retomada');
-          await reconciliarVozConcluida(payload.requestId, payload.userId);
-          return 'concluida';
-        }
-      }
+    const podeNotificar = await podeAvisar(notificacoes);
+    controle.conferir();
+    const operacoes = await import('./voice-operations');
+    if (!podeNotificar && (await operacoes.listarOperacoesVozLocais()).some((item) => item.requestId === payload.requestId)) {
       definirEstado('atencao');
       return 'aguardar_usuario';
     }
-    controle.conferir();
-    const operacoes = await import('./voice-operations');
-    const operacao = await operacoes.retomarOperacaoVoz(payload.requestId, payload.userId, async (dados, gravada) => {
+    const operacao = !podeNotificar ? 'ausente' : await operacoes.retomarOperacaoVoz(payload.requestId, payload.userId, async (dados, gravada) => {
       await confirmarOperacaoVozSincronizada(payload.requestId, payload.userId, dados, gravada, controle);
     }, controle, async (mensagem) => {
       controle.conferir();
@@ -1337,7 +1358,7 @@ async function processarRetomadaVoz(payload: PayloadRetomada, controle: Controle
         controle.conferir();
         const { reconciliarVozConcluida } = await import('./voz-retomada');
         await reconciliarVozConcluida(payload.requestId, payload.userId);
-      } else definirEstado(operacao === 'tentar_novamente' ? 'pendente' : 'repetir');
+      } else definirEstado(operacao === 'tentar_novamente' ? 'pendente' : 'atencao');
       return operacao;
     }
     const pendentes = await import('./widget-voz-pendentes');
@@ -1357,7 +1378,7 @@ async function processarRetomadaVoz(payload: PayloadRetomada, controle: Controle
     controle.conferir();
     let resultado: ResultadoRetomada = desfecho.guardada
       ? (desfecho.motivo === 'revisao' || desfecho.motivo === 'sem_notificacao' ? 'aguardar_usuario' : 'tentar_novamente')
-      : desfecho.repetir ? 'aguardar_usuario' : 'concluida';
+      : desfecho.repetir || desfecho.revisaoNoSino ? 'aguardar_usuario' : 'concluida';
     // Áudio consumido pode ter virado operação offline, ainda sem confirmação.
     if ((await operacoes.listarOperacoesVozLocais()).some((i) => i.requestId === payload.requestId)) resultado = 'tentar_novamente';
     controle.conferir();

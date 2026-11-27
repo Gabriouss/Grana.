@@ -6,6 +6,24 @@ import { ITENS_POR_RODADA, ehErroPermanente } from './fila-pendente';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ControleRetomadaVoz } from './voz-retomada';
 
+const enviosEmCurso = new Set<string>();
+
+export const chaveDaIntencaoVoz = (dono: string, requestId: string) => `grana:voz:operacao:${dono}:${requestId}`;
+
+type IntencaoVoz = {
+  requestId: string;
+  source: 'app' | 'widget';
+  payload: PayloadOperacaoVoz;
+  transcricao?: string;
+  tituloRevisao?: string;
+  criadoEm?: string;
+};
+
+/** Não existe intenção durável e nenhuma chamada financeira foi iniciada. */
+export class IntencaoVozNaoGuardada extends Error {
+  constructor() { super('Não consegui guardar a intenção de lançamento neste aparelho.'); }
+}
+
 type BaseFinanceira = {
   description: string;
   amount: number;
@@ -109,13 +127,6 @@ export function ehOperacaoJaRegistrada(erro: unknown): boolean {
 export function ehRecusaCartaoObrigatorio(erro: unknown): boolean {
   const e = erro as { code?: unknown; hint?: unknown } | null;
   return String(e?.code ?? '') === '23514' && e?.hint === 'cartao_obrigatorio';
-}
-
-/** Texto para a revisão quando a fila local não guardou a transcrição. */
-function textoParaRevisao(item: { transcricao?: string; payload: PayloadOperacaoVoz }): string {
-  if (item.transcricao) return item.transcricao;
-  const valor = String(item.payload.amount).replace('.', ',');
-  return `${item.payload.description} ${valor} reais no crédito`;
 }
 
 export async function listarOperacoesVozLocais(): Promise<{ requestId: string; payload: PayloadOperacaoVoz }[]> {
@@ -231,16 +242,36 @@ async function gravarOperacaoVoz(
   controle?.conferir();
   if (!userId) throw new Error('Entre na conta para salvar o lançamento.');
   if (donoEsperado && userId !== donoEsperado) throw new Error('A conta da fala mudou antes de guardar o lançamento.');
-  const chave = `grana:voz:operacao:${userId}:${requestId}`;
-  const existente = await AsyncStorage.getItem(chave);
-  controle?.conferir();
-  /* `criadoEm` é o dia em que a pessoa falou: a lista mostra a fala guardada
-     com ele (`lib/voz-pendente-na-lista.ts`), e a sequência conta por ele. */
-  const operacao = existente
-    ? JSON.parse(existente)
-    : { requestId, source, payload, criadoEm: new Date().toISOString(), ...(transcricao ? { transcricao } : null) };
-  // Persiste ANTES da rede. O payload original permanece igual em toda retomada.
-  await AsyncStorage.setItem(chave, JSON.stringify(operacao));
+  const chave = chaveDaIntencaoVoz(userId, requestId);
+  if (enviosEmCurso.has(chave)) throw new Error('O lançamento por voz já está sendo enviado.');
+  enviosEmCurso.add(chave);
+  try {
+    return await guardarEEnviar(chave, userId, requestId, source, payload, transcricao, controle);
+  } finally {
+    enviosEmCurso.delete(chave);
+  }
+}
+
+async function guardarEEnviar(
+  chave: string, userId: string, requestId: string, source: 'app' | 'widget',
+  payload: PayloadOperacaoVoz, transcricao?: string, controle?: ControleRetomadaVoz,
+): Promise<ResultadoOperacaoVoz> {
+  let existente: string | null | undefined;
+  let operacao: IntencaoVoz;
+  try {
+    existente = await AsyncStorage.getItem(chave);
+    controle?.conferir();
+    // A data da fala acompanha os lançamentos pendentes na lista.
+    operacao = existente
+      ? JSON.parse(existente)
+      : { requestId, source, payload, criadoEm: new Date().toISOString(), ...(transcricao ? { transcricao } : null) };
+    // Persiste antes da rede. O payload original permanece igual em toda retomada.
+    await AsyncStorage.setItem(chave, JSON.stringify(operacao));
+  } catch (erro) {
+    console.warn('[voz] falha ao preparar a intenção de lançamento');
+    if (!existente && (await AsyncStorage.getItem(chave)) === null) throw new IntencaoVozNaoGuardada();
+    throw erro;
+  }
   controle?.conferir();
   notificarDadosDosWidgetsAlterados();
   // O watchdog existe antes da rede: morte do processo não perde a retomada.
@@ -316,7 +347,7 @@ export async function retomarOperacaoVoz(requestId: string, userId: string, conf
   controle?.conferir();
   if ((await idDoUsuarioLocal(PRAZO_DONO_MS)) !== userId) return 'aguardar_usuario';
   controle?.conferir();
-  const chave = `grana:voz:operacao:${userId}:${requestId}`;
+  const chave = chaveDaIntencaoVoz(userId, requestId);
   if (!(await AsyncStorage.getItem(chave))) return 'ausente';
   controle?.conferir();
   const resumo = await executarSincronizacao({ requestId, userId, confirmar, controle });
@@ -368,79 +399,102 @@ async function executarSincronizacao(alvo?: { requestId: string; userId: string;
       .slice(0, ITENS_POR_RODADA);
     conferir();
     for (const chave of chaves) {
-      const raw = await etapa(AsyncStorage.getItem(chave), 'leitura');
-      conferir();
-      if (!raw) continue;
-      let item: { requestId: string; source: 'app' | 'widget'; payload: PayloadOperacaoVoz; transcricao?: string };
+      if (enviosEmCurso.has(chave)) continue;
+      enviosEmCurso.add(chave);
       try {
-        item = JSON.parse(raw);
-      } catch (erro) {
-        // Item ilegível no aparelho: não impede os demais de serem tentados.
-        console.error('[voz] item da fila ilegível', erro);
-        falhas++;
-        mensagem = explicarFalhaDeEnvio(erro);
-        continue;
-      }
-      /* Guarda de troca de conta no meio da fila: se o dono mudou, para. Lê
-         pelo aparelho para não confundir "trocou de conta" com "o token
-         venceu e não há rede" — o segundo caso deve seguir tentando. */
-      if ((await etapa(idDoUsuarioLocal(), 'dono do item')) !== userId) break;
-      conferir();
-      try {
-        const resultado = await enviarOperacaoVoz(item.requestId, item.source, item.payload, userId, alvo?.controle);
+        const raw = await etapa(AsyncStorage.getItem(chave), 'leitura');
         conferir();
-        if ((await idDoUsuarioLocal()) !== userId) break;
-        conferir();
-        if (alvo) await alvo.confirmar(item.payload, resultado);
-        else {
-          const { confirmarOperacaoVozSincronizada } = await import('./widget-voz-task');
-          await confirmarOperacaoVozSincronizada(item.requestId, userId, item.payload, resultado, undefined, true);
-        }
-        conferir();
-      } catch (erro) {
-        conferir();
-        console.error('[voz] sincronização não concluiu o envio ou recibo', item.requestId, erro);
-        falhas++;
-        mensagem = explicarFalhaDeEnvio(erro);
-        if (alvo && /^(PGRST202|PGRST205|42883|42P01|42501|PGRST30)/.test(String((erro as { code?: unknown })?.code ?? ''))) {
-          problemaServico = true;
-          break; // Intenção preservada; o Worker publica diagnóstico, sem repetir o gasto.
-        }
-        if (!ehRecusaCartaoObrigatorio(erro) && !ehErroPermanente(erro)) {
-          /* Temporário (rede, prazo, servidor): para aqui. Até 24/09/2026 a
-             sincronização seguia pela fila inteira, e sem rede cada item virava
-             um pedido; se o primeiro não saiu, os outros também não saem. */
-          await programarOperacao(item.requestId, userId);
-          break;
-        }
-        /* Recusa do banco: tentar de novo não resolve. A fala vira revisão, e
-           só sai da fila depois que a notificação de revisão foi publicada: se
-           ela falhar, o item fica e a próxima sincronização tenta de novo.
-           Crédito sem cartão pergunta o cartão; o resto pede para revisar. */
+        if (!raw) continue;
+        let item: IntencaoVoz;
         try {
-          const { notificarRevisao } = await import('./widget-voz-notificacoes');
-          conferir();
-          if (ehRecusaCartaoObrigatorio(erro)) await notificarRevisao('Qual cartão?', textoParaRevisao(item), item.requestId);
-          else await notificarRevisao('Não consegui salvar', item.transcricao || `${item.payload.description} ${String(item.payload.amount).replace('.', ',')}`, item.requestId);
-        } catch (erroRecibo) {
-          console.error('[voz] recibo de revisão não foi publicado; a fala fica na fila', erroRecibo);
+          item = JSON.parse(raw);
+        } catch (erro) {
+          // Item ilegível no aparelho: não impede os demais de serem tentados.
+          console.error('[voz] item da fila ilegível', erro);
+          falhas++;
+          mensagem = explicarFalhaDeEnvio(erro);
           continue;
         }
+        /* Guarda de troca de conta no meio da fila: se o dono mudou, para. Lê
+           pelo aparelho para não confundir "trocou de conta" com "o token
+           venceu e não há rede" — o segundo caso deve seguir tentando. */
+        if ((await etapa(idDoUsuarioLocal(), 'dono do item')) !== userId) break;
+        conferir();
+        const caixa = await import('./avisos-banco/caixa-voz');
+        const destino = { dono: userId, requestId: item.requestId };
+        const escopo = caixa.escopoDaRevisaoVoz(userId, caixa.geracaoDaCaixa(userId), alvo?.controle);
+        const guardaDoEnvio: ControleRetomadaVoz = {
+          userId, signal: alvo?.controle?.signal ?? new AbortController().signal,
+          fim: alvo?.controle?.fim ?? Infinity, conferir: escopo.conferir,
+        };
+        const aceitaEnvio = await etapa(caixa.aceitaReenvioDeOperacao(destino, escopo), 'estado da revisão');
+        if (!aceitaEnvio) {
+          await AsyncStorage.removeItem(chave);
+          notificarDadosDosWidgetsAlterados();
+          continue;
+        }
+        // A confirmação pode ter limpado uma intenção antiga enquanto a caixa era lida.
+        if ((await etapa(AsyncStorage.getItem(chave), 'intenção vigente')) !== raw) continue;
+        if (item.tituloRevisao) {
+          await encaminharRecusaParaOSino(chave, item, item.tituloRevisao, destino, caixa, escopo);
+          continue;
+        }
+        try {
+          let resultado: ResultadoOperacaoVoz;
+          try {
+            resultado = await enviarOperacaoVoz(item.requestId, item.source, item.payload, userId, guardaDoEnvio);
+          } catch (erro) {
+            if (!ehOperacaoJaRegistrada(erro)) throw erro;
+            resultado = { ...RESULTADO_DO_CONFLITO, kind: item.payload.kind, operationId: item.requestId, ids: [] };
+          }
+          await escopo.conferirDono();
+          await caixa.concluirRevisaoDeOperacao(destino, resultado, escopo);
+          if (alvo) await alvo.confirmar(item.payload, resultado);
+          else {
+            const { confirmarOperacaoVozSincronizada } = await import('./widget-voz-task');
+            await confirmarOperacaoVozSincronizada(item.requestId, userId, item.payload, resultado, undefined, true);
+          }
+          conferir();
+        } catch (erro) {
+          conferir();
+          console.error('[voz] sincronização não concluiu o envio ou recibo', item.requestId, erro);
+          falhas++;
+          mensagem = explicarFalhaDeEnvio(erro);
+          if (alvo && /^(PGRST202|PGRST205|42883|42P01|42501|PGRST30)/.test(String((erro as { code?: unknown })?.code ?? ''))) {
+            problemaServico = true;
+            break; // Intenção preservada; o Worker publica diagnóstico, sem repetir o gasto.
+          }
+          if (!ehRecusaCartaoObrigatorio(erro) && !ehErroPermanente(erro)) {
+            /* Temporário (rede, prazo, servidor): para aqui. Até 24/09/2026 a
+               sincronização seguia pela fila inteira, e sem rede cada item virava
+               um pedido; se o primeiro não saiu, os outros também não saem. */
+            await programarOperacao(item.requestId, userId);
+            break;
+          }
+          const titulo = ehRecusaCartaoObrigatorio(erro) ? 'Qual cartão?' : 'Não consegui salvar';
+          // Uma recusa definitiva vira tarefa de publicar, mesmo após reinício.
+          try {
+            await AsyncStorage.setItem(chave, JSON.stringify({ ...item, tituloRevisao: titulo }));
+          } catch {
+            console.warn('[voz:sino] falha ao marcar a recusa na fila; tentando guardar na caixa');
+          }
+          await encaminharRecusaParaOSino(chave, item, titulo, destino, caixa, escopo);
+          continue;
+        }
+        conferir();
         await AsyncStorage.removeItem(chave);
         notificarDadosDosWidgetsAlterados();
-        continue;
-      }
-      conferir();
-      await AsyncStorage.removeItem(chave);
-      notificarDadosDosWidgetsAlterados();
-      sincronizadas++;
-      if (!alvo) {
-        try {
-          const { reconciliarVozConcluida } = await import('./voz-retomada');
-          if ((await idDoUsuarioLocal()) === userId) await reconciliarVozConcluida(item.requestId, userId);
-        } catch (erro) {
-          console.error('[voz] operação sincronizada; widget não foi reconciliado, Worker tentará novamente', item.requestId, erro);
+        sincronizadas++;
+        if (!alvo) {
+          try {
+            const { reconciliarVozConcluida } = await import('./voz-retomada');
+            if ((await idDoUsuarioLocal()) === userId) await reconciliarVozConcluida(item.requestId, userId);
+          } catch (erro) {
+            console.error('[voz] operação sincronizada; widget não foi reconciliado, Worker tentará novamente', item.requestId, erro);
+          }
         }
+      } finally {
+        enviosEmCurso.delete(chave);
       }
     }
   } catch (erro) {
@@ -450,6 +504,54 @@ async function executarSincronizacao(alvo?: { requestId: string; userId: string;
     mensagem = explicarFalhaDeEnvio(erro);
   }
   return { sincronizadas, falhas, mensagem, ...(problemaServico ? { problemaServico } : null) };
+}
+
+async function encaminharRecusaParaOSino(
+  chave: string,
+  item: IntencaoVoz,
+  titulo: string,
+  destino: import('./avisos-banco/caixa-voz').DestinoRevisaoVoz,
+  caixa: typeof import('./avisos-banco/caixa-voz'),
+  escopo: ReturnType<typeof caixa.escopoDaRevisaoVoz>,
+): Promise<void> {
+  const { payload } = item;
+  const credito = payload.kind === 'installment' || (payload.kind === 'transaction' && payload.payment_method === 'credit');
+  const transcricao = item.transcricao ?? '';
+  let nova: boolean;
+  try {
+    nova = await caixa.publicarRevisaoDeOperacao({
+      ...destino, origem: 'voz', fonte: item.source, quando: Date.now(), titulo, transcricao,
+      rascunho: {
+        modo: payload.kind === 'bill' ? 'boleto' : credito ? 'credito' : 'carteira',
+        tipo: payload.kind === 'bill' ? 'out' : payload.type,
+        descricao: payload.description, valor: payload.amount,
+        categoria: { nome: payload.category, cor: payload.color },
+        carteiraId: payload.wallet_id,
+        cartaoId: titulo !== 'Qual cartão?' && 'card_id' in payload ? payload.card_id ?? undefined : undefined,
+        data: 'occurred_on' in payload ? payload.occurred_on : undefined,
+        vencimento: 'due_date' in payload ? payload.due_date : undefined,
+        parcelas: payload.kind === 'installment' ? payload.installments : undefined,
+        forma: 'payment_method' in payload ? payload.payment_method ?? undefined : undefined,
+      },
+    }, escopo);
+  } catch {
+    console.error('[voz:sino] não consegui guardar a revisão da operação; a intenção continua na fila');
+    return;
+  }
+  if (nova && item.source === 'widget') {
+    try {
+      const avisos = await import('./widget-voz-notificacoes');
+      if (await avisos.podeNotificar()) {
+        await escopo.conferirDono();
+        await avisos.notificarConferenciaVoz(titulo, transcricao, destino, escopo.conferirDono);
+      }
+    } catch {
+      console.warn('[voz:sino] a revisão da operação foi guardada e o aviso do Android falhou');
+    }
+  }
+  escopo.conferir();
+  await AsyncStorage.removeItem(chave);
+  notificarDadosDosWidgetsAlterados();
 }
 
 /** Quanto a gravação espera o cliente dizer quem é o dono antes de ler o aparelho. */

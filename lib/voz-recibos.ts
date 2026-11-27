@@ -73,6 +73,24 @@ export const RECIBOS_VOZ = {
     texto: 'Não deu para processar agora. A fala será retomada quando houver conexão.',
   } as ReciboVoz,
 
+  noSino: (titulo: string, transcricao: string): ReciboVoz => {
+    const ouvido = transcricao.trim().replace(/[\s.!?…,;:]+$/u, '');
+    return { titulo, texto: [ouvido ? 'Ouvi: "' + ouvido + '".' : '', 'Confira este lançamento no sino do Grana.'].filter(Boolean).join(' ') };
+  },
+  caixaIndisponivel: {
+    titulo: 'Não consegui enviar a fala ao sino',
+    texto: 'Abra o Grana para conferir a fila de voz.',
+  } as ReciboVoz,
+  caixaIndisponivelSemCopia: {
+    titulo: 'Não consegui enviar a fala ao sino',
+    texto: 'A gravação não ficou guardada. Toque no microfone para gravar novamente.',
+  } as ReciboVoz,
+  prazoDaTarefa: (guardada: boolean): ReciboVoz => ({
+    titulo: 'O processamento da fala demorou demais',
+    texto: guardada
+      ? 'A gravação ficou guardada. Abra a fila de voz no Grana.'
+      : 'Confira seus lançamentos antes de gravar novamente.',
+  }),
   repetir: (titulo: string, transcricao: string): ReciboVoz => {
     const ouvido = transcricao.trim().replace(/[\s.!?…,;:]+$/u, '');
     return { titulo, texto: `${ouvido ? `Ouvi: "${ouvido}". ` : ''}Nada foi lançado. Toque no microfone e fale o lançamento completo.` };

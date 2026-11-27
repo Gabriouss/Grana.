@@ -59,7 +59,7 @@ const erros = [];
 const proibido = (nome) => async () => assert.fail('o módulo de notificação não pode ser usado sem permissão: ' + nome);
 const notificacaoDoSistema = {
   podeNotificar: async () => false,
-  notificarRevisao: proibido('notificarRevisao'),
+  notificarConferenciaVoz: proibido('notificarConferenciaVoz'),
   notificarSucesso: proibido('notificarSucesso'),
   notificarFalha: proibido('notificarFalha'),
   notificarSalvoLocal: proibido('notificarSalvoLocal'),
@@ -68,6 +68,7 @@ const notificacaoDoSistema = {
 
 const cache = new Map();
 function carregar(arquivo) {
+  arquivo = arquivo.split(path.sep).join('/');
   if (cache.has(arquivo)) return cache.get(arquivo);
   const exports = {};
   cache.set(arquivo, exports);
@@ -107,11 +108,16 @@ function carregar(arquivo) {
   }).outputText;
   vm.runInNewContext(js, {
     exports,
-    console: { ...console, log() {}, warn: (...a) => process.env.DEBUG && console.warn(...a), error: (...a) => { erros.push(a); if (process.env.DEBUG) console.error(...a); } },
-    Promise, JSON, Object, Array, String, Number, Error, RegExp, Set, Map, Math, Date, setTimeout, clearTimeout,
+    console: { ...console, log() {}, warn: (...a) => { erros.push(a); if (process.env.DEBUG) console.warn(...a); }, error: (...a) => { erros.push(a); if (process.env.DEBUG) console.error(...a); } },
+    Promise, JSON, Object, Array, String, Number, Error, RegExp, Set, Map, Math, Date, AbortController, setTimeout, clearTimeout,
     require(id) {
       if (id in dubles) return dubles[id];
-      if (id.startsWith('./')) return carregar(path.join(path.dirname(arquivo), id.slice(2) + '.ts'));
+      if (id.startsWith('.')) {
+        const alvo = path.join(path.dirname(arquivo), id + '.ts');
+        const diretoDeLib = './' + path.relative('lib', alvo).slice(0, -3).split(path.sep).join('/');
+        if (diretoDeLib in dubles) return dubles[diretoDeLib];
+        return carregar(alvo);
+      }
       throw new Error(`import não simulado em ${arquivo}: ${id}`);
     },
   }, { filename: arquivo });
@@ -121,6 +127,7 @@ function carregar(arquivo) {
 const tarefa = carregar('lib/widget-voz-task.ts');
 const fila = carregar('lib/widget-voz-pendentes.ts');
 const recibos = carregar('lib/voz-recibos-da-fila.ts');
+const caixa = carregar('lib/avisos-banco/caixa-voz.ts');
 
 async function guardarFala(requestId, source, texto) {
   const origem = `file:///cache/${requestId}.m4a`;
@@ -183,24 +190,25 @@ const naFila = async () => (await fila.listarVozesPendentes()).map((i) => i.requ
   await guardarFala('req-1899', 'widget', { ok: true, transcript: 'Mercado R$ 1899' });
   await tarefa.tentarVozesPendentes();
   assert.equal(escritas.length, antes, '"R$ 1899" não é gravado');
-  const revisao = (await recibos.listarRecibosDaFila('u-1')).find((r) => r.id === 'req-1899');
-  assert.equal(revisao?.tipo, 'revisao');
+  const revisao = (await caixa.listarRevisoesVoz('u-1')).find((r) => r.requestId === 'req-1899');
+  assert.equal(revisao?.origem, 'voz');
+  assert.equal(revisao.rascunho.valor, undefined, 'valor ambíguo fica em branco');
   assert.equal(revisao.titulo, 'Confirme o valor que ouvi');
   assert.equal(revisao.transcricao, 'Mercado R$ 1899', 'a transcrição vai junto, para a revisão abrir preenchida');
-  assert.deepEqual(await naFila(), [], 'a fala sai da fila só depois de o recibo estar guardado');
-  ok('fala que precisa de revisão não grava e fica no recibo, com a transcrição');
+  assert.deepEqual(await naFila(), [], 'a fala sai da fila depois de entrar no sino');
+  ok('fala que precisa de revisão fica no sino, com a transcrição e sem gravação financeira');
 
   /* ── 6. Recibo que não pôde ser guardado: a fala NÃO se perde ────────── */
-  falharGravacao.add('grana:voz:recibos-da-fila-v1');
+  falharGravacao.add('grana_avisos_voz:u-1');
   const errosAntes = erros.length;
   await guardarFala('req-disco', 'app', { ok: true, transcript: 'Mercado R$ 1899' });
   const semDisco = await tarefa.tentarVozesPendentes();
   assert.deepEqual(await naFila(), ['req-disco'], 'sem recibo entregue, a fala continua na fila');
   assert.equal(semDisco.restantes, 1);
-  assert.ok(erros.slice(errosAntes).some((a) => /recibo da falha não foi entregue/.test(String(a[0]))), 'e deixa log');
+  assert.ok(erros.slice(errosAntes).some((a) => /tarefa interrompida/.test(String(a[0]))), 'e deixa log');
   falharGravacao.clear();
   await tarefa.tentarVozesPendentes();
-  assert.deepEqual(await naFila(), [], 'e na próxima retomada o recibo é entregue e a fala sai');
+  assert.deepEqual(await naFila(), [], 'na próxima retomada o item entra no sino e a fala sai');
   ok('recibo que falha mantém a fala na fila, com log, até ser entregue');
 
   /* ── 7. Duas chamadas ao mesmo tempo: uma passada só ─────────────────── */

@@ -70,17 +70,16 @@ const igual = (a, b, nome) => { assert.deepEqual(a, b, nome); aprovadas++; conso
 const LIXO = 'Acompanhe o processo de produção de um produto de qualidade e de qualidade';
 const REDE = () => new TypeError('Network request failed');
 
-function montar() {
+function montar(disco = new Map()) {
   const e = {
     local: null, localChamadas: 0, servidor: null, envios: 0, rpc: [], rpcResposta: null, rpcErro: null,
     recibos: [], arquivos: [], falhas: [], revisoes: [], sucessos: [], apagados: 0, dadoNovo: 0, estados: [],
-    recibosRemovidos: [], reconciliadas: [],
+    recibosRemovidos: [], reconciliadas: [], acks: [],
   };
-  const disco = new Map();
   const asyncStorage = {
-    getItem: async (k) => (disco.has(k) ? disco.get(k) : null),
-    setItem: async (k, v) => { disco.set(k, String(v)); },
-    removeItem: async (k) => { disco.delete(k); },
+    getItem: async (k) => { await e.antesDeLer?.(k); return disco.get(k) ?? null; },
+    setItem: async (k, v) => { await e.antesDeEscrever?.(k, v); disco.set(k, String(v)); },
+    removeItem: async (k) => { await e.antesDeApagar?.(k); disco.delete(k); },
     getAllKeys: async () => [...disco.keys()],
     multiGet: async (ks) => ks.map((k) => [k, disco.has(k) ? disco.get(k) : null]),
     multiSet: async (kv) => { for (const [k, v] of kv) disco.set(k, String(v)); },
@@ -89,15 +88,19 @@ function montar() {
   const cartoes = [{ id: 'c6', name: 'C6 Bank', bank: 'C6', wallet_id: 'w' }, { id: 'nu', name: 'Nubank', bank: 'Nubank', wallet_id: 'w' }];
   const cache = new Map();
   const sub = {
+    '@/modules/grana-avisos': { lerDiarioAvisos: async () => ({ itens: [], ilegiveis: 0 }) },
     './voz-local': { transcreverNoAparelho: async () => { e.localChamadas++; return e.local; } },
     'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask() {} } },
     'expo-file-system': { File: class { get exists() { return true; } get size() { return 4; } async bytes() { return new Uint8Array(4); } } },
     'expo/fetch': { fetch: async () => { e.envios++; const r = e.servidor; if (r instanceof Error) throw r; return r; } },
     './sessao-offline': { tokenDeAcessoLocal: async () => 't', sessaoEstaTravada: () => false, idDoUsuarioLocal: async () => 'u1', lerSessaoDoDisco: async () => ({ access_token: 't' }) },
-    '@/modules/grana-voice-widget': { definirEstado(s) { e.estados.push(s); }, agendarRetomadaVoz: async () => true, cancelarRetomadaVoz: async () => {}, reconciliarVozConcluida: async (id, dono) => { e.reconciliadas.push([id, dono]); } },
+    '@/modules/grana-voice-widget': { definirEstado(s) { e.estados.push(s); },
+      definirEstadoDaRetomada(_id, _dono, estado) { e.estados.push(estado); },
+      concluirRetomadaVoz: async (id, resultado) => { e.acks.push([id, resultado]); },
+      agendarRetomadaVoz: async () => true, cancelarRetomadaVoz: async () => {}, reconciliarVozConcluida: async (id, dono) => { e.reconciliadas.push([id, dono]); } },
     './widget-voz-notificacoes': {
       podeNotificar: async () => true,
-      notificarRevisao: async (titulo, transcricao) => { e.revisoes.push({ titulo, transcricao }); },
+      notificarConferenciaVoz: async (titulo, transcricao, alvo) => { e.revisoes.push({ titulo, transcricao, alvo }); },
       notificarFalha: async (codigo) => { e.falhas.push(codigo); },
       notificarPendenteOffline: async () => { e.recibos.push('offline'); },
       notificarSucesso: async (...a) => { e.sucessos.push(a); },
@@ -131,7 +134,7 @@ function montar() {
     /* Disco do aparelho (borda): so registra o que a fila de AUDIO real pede. */
     'expo-file-system/legacy': {
       documentDirectory: 'file:///docs/',
-      makeDirectoryAsync: async (d) => { e.arquivos.push(['pasta', d]); },
+      makeDirectoryAsync: async (d) => { await e.antesDaPasta?.(d); e.arquivos.push(['pasta', d]); },
       copyAsync: async ({ from, to }) => { e.arquivos.push(['copia', from, to]); },
       deleteAsync: async (c) => { e.apagados++; e.arquivos.push(['apaga', c]); },
       getInfoAsync: async () => ({ exists: false }),
@@ -150,11 +153,20 @@ function montar() {
       exports, console: { ...console, warn() {}, error() {} }, JSON, Date: RelogioDoTeste, String, Object, Array, Error, TypeError, Promise, RegExp, Number, Math, Set, Map, Intl, Uint8Array,
       FormData: class { append() {} }, AbortController, clearTimeout,
       /* O aviso de dado novo agrupa por 250 ms; so o cache-de-tela ganha o prazo encurtado (os prazos de 15 s da voz ficam reais). */
-      setTimeout: arquivo === 'lib/cache-de-tela.ts' ? (f, ms) => setTimeout(f, ms >= 1000 ? 20 : 0) : setTimeout, __DEV__: false,
+      setTimeout: (f, ms) => {
+        if (arquivo === 'lib/cache-de-tela.ts') return setTimeout(f, ms >= 1000 ? 20 : 0);
+        if (arquivo === 'lib/widget-voz-task.ts' && e.tetoCurto && ms === 112_000) return setTimeout(f, 25);
+        return setTimeout(f, ms);
+      }, __DEV__: false,
       process: { env: { EXPO_PUBLIC_SUPABASE_URL: 'https://example.invalid' } },
       require: (id) => {
         if (id in sub) return sub[id];
-        if (id.startsWith('./') && fs.existsSync(path.join(root, 'lib', id.slice(2) + '.ts'))) return real('lib/' + id.slice(2) + '.ts');
+        if (id.startsWith('.')) {
+          const relativo = path.posix.join(path.posix.dirname(arquivo), id);
+          const diretoDeLib = './' + path.posix.relative('lib', relativo);
+          if (diretoDeLib in sub) return sub[diretoDeLib];
+          if (fs.existsSync(path.join(root, relativo + '.ts'))) return real(relativo + '.ts');
+        }
         const puros = require('./modulos-puros-reais.cjs');
         if (id in puros) return puros[id];
         throw new Error('import nao simulado em ' + arquivo + ': ' + id);
@@ -167,7 +179,7 @@ function montar() {
   cacheDeTela.assinarDadoNovo(() => { e.dadoNovo++; });
   const ops = real('lib/voice-operations.ts');
   return {
-    e, disco, tarefa, ops, cache: cacheDeTela,
+    e, disco, tarefa, ops, real, asyncStorage, cache: cacheDeTela,
     ok: (t) => Response.json({ status: 'ready', transcript: t }),
     falha: (c, s) => Response.json({ status: 'error', code: c }, { status: s }),
   };
@@ -179,11 +191,11 @@ function instantaneo(m) {
   const rpc = m.e.rpc.map((c) => ({ nome: c.nome, args: { ...c.args, p_source: undefined } }));
   return JSON.parse(JSON.stringify({
     local: m.e.localChamadas, envios: m.e.envios, rpc,
-    arquivos: m.e.arquivos, falhas: m.e.falhas, revisoes: m.e.revisoes, sucessos: m.e.sucessos, recibos: m.e.recibos,
+    arquivos: m.e.arquivos, falhas: m.e.falhas,  sucessos: m.e.sucessos, recibos: m.e.recibos,
     apagados: m.e.apagados, dadoNovo: m.e.dadoNovo,
     disco: [...m.disco.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => [
       k,
-      v.replace(/"criadoEm":"[^"]*"/g, '"criadoEm":"-"').replace(/"(adicionadoEm|criadoEm)":\d+/g, '"$1":0').replace(/"source":"(app|widget)"/g, '"source":"-"'),
+      v.replace(/"criadoEm":"[^"]*"/g, '"criadoEm":"-"').replace(/"(adicionadoEm|criadoEm|quando)":\d+/g, '"$1":0').replace(/"(source|fonte)":"(app|widget)"/g, '"$1":"-"'),
     ]),
   }));
 }
@@ -215,7 +227,9 @@ const CENARIOS = {
   numeroComBarra: () => ({ local: 'padaria 03/09 R$ 21,64 no pix', servidor: new Error('nao deveria enviar') }),
 };
 
-(async () => {
+module.exports = { montar };
+
+if (require.main === module) (async () => {
   console.log('07fb951: mesma fala, mesmo instantaneo (RPC, destino, recibos, fila, revisao, disco) nas duas entradas');
   for (const [nome, c] of Object.entries(CENARIOS)) {
     for (const daFila of [false, true]) {
@@ -265,7 +279,7 @@ const CENARIOS = {
     /* "Claudio" nao diz categoria: o nucleo pergunta, igual nas duas entradas,
        e nada vai a RPC. O valor e o cartao nao sao o motivo. */
     m = await rodar(origem, CENARIOS.claudioComCifrao);
-    ok(m.e.rpc.length === 0 && m.e.revisoes.map((r) => r.titulo).join() === 'Qual categoria?',
+    ok(m.e.rpc.length === 0 && (await m.real('lib/avisos-banco/caixa-voz.ts').listarRevisoesVoz('u1')).map((r) => r.titulo).join() === 'Qual categoria?',
       `${origem}: "Claudio, R$ 26,58, credito C6" pergunta a categoria e nao grava`);
   }
 

@@ -39,6 +39,7 @@ function montar(origem) {
   const e = { local: null, localConsome: false, desvio: 0, prazosLocais: [], localChamadas: 0, servidor: null, envios: 0, token: 't', fila: [], salvos: [], recibos: [], falhas: [], revisoes: [], apagados: 0, estados: [], removidas: [], falhaRevisao: false, erros: [] };
   const cartoes = [{ id: 'c6', name: 'C6 Bank', bank: 'C6', wallet_id: 'w' }, { id: 'nu', name: 'Nubank', bank: 'Nubank', wallet_id: 'w' }];
   const cache = new Map();
+  const disco = new Map();
   const substitutos = {
     './voz-local': { transcreverNoAparelho: async (_uri, prazoMs) => { e.localChamadas++; e.prazosLocais.push(prazoMs); if (e.localConsome) e.desvio += prazoMs; return e.local; } },
     'react-native': { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask() {} } },
@@ -53,10 +54,9 @@ function montar(origem) {
     '@/modules/grana-voice-widget': { definirEstado: (estado) => e.estados.push(estado) },
     './widget-voz-notificacoes': {
       podeNotificar: async () => true,
-      notificarRevisao: async (titulo, transcricao) => {
+      notificarConferenciaVoz: async (titulo, transcricao) => {
         if (e.falhaRevisao) throw new Error('notificacao indisponivel');
-        const recibo = real('lib/voz-recibos.ts').RECIBOS_VOZ.repetir(titulo, transcricao);
-        e.revisoes.push({ ...recibo, transcricao });
+        e.recibos.push(real('lib/voz-recibos.ts').RECIBOS_VOZ.noSino(titulo, transcricao));
       },
       notificarFalha: async (codigo) => { e.falhas.push(codigo); },
       notificarPendenteOffline: async () => { e.recibos.push('offline'); },
@@ -74,7 +74,10 @@ function montar(origem) {
     './wallets': { fetchWallets: async () => [{ id: 'w', name: 'Pessoal', is_default: true }] },
     './creditLimitAlert': { checarLimiteCartao: async () => {} },
     './supabase': { supabase: { auth: { getUser: async () => ({ data: { user: null } }), getSession: async () => ({ data: { session: null } }) } } },
-    './widgets-home-sync': {}, '@react-native-async-storage/async-storage': {},
+    './widgets-home-sync': {}, '@react-native-async-storage/async-storage': {
+      getItem: async (key) => disco.get(key) ?? null,
+      setItem: async (key, valor) => { disco.set(key, valor); },
+    },
     'expo-file-system/legacy': { deleteAsync: async () => { e.apagados++; } },
   };
   const fontes = { 'lib/voz.ts': process.env.VOZ_FONTE, 'lib/widget-voz-task.ts': process.env.TAREFA_FONTE, 'lib/voz-confiabilidade.ts': process.env.CONF_FONTE };
@@ -86,12 +89,17 @@ function montar(origem) {
     vm.runInNewContext(ts.transpileModule(fs.readFileSync(fonte, 'utf8'), {
       compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
     }).outputText, {
-      exports, console: { ...console, warn() {}, error: (...args) => e.erros.push(args) }, JSON, Date: class extends Date { static now() { return Date.now() + e.desvio; } }, String, Object, Array, Error, TypeError, Promise, RegExp, Number, Math, Set, Map, Intl, Uint8Array,
+      exports, console: { ...console, warn: (...args) => e.erros.push(args), error: (...args) => e.erros.push(args) }, JSON, Date: class extends Date { static now() { return Date.now() + e.desvio; } }, String, Object, Array, Error, TypeError, Promise, RegExp, Number, Math, Set, Map, Intl, Uint8Array,
       FormData: class { append() {} }, AbortController, setTimeout, clearTimeout, __DEV__: false,
       process: { env: { EXPO_PUBLIC_SUPABASE_URL: 'https://example.invalid' } },
       require: (id) => {
         if (id in substitutos) return substitutos[id];
-        if (id.startsWith('./') && fs.existsSync(path.join(root, 'lib', id.slice(2) + '.ts'))) return real('lib/' + id.slice(2) + '.ts');
+        if (id.startsWith('.')) {
+          const relativo = path.posix.join(path.posix.dirname(arquivo), id);
+          const diretoDeLib = './' + path.posix.relative('lib', relativo);
+          if (diretoDeLib in substitutos) return substitutos[diretoDeLib];
+          if (fs.existsSync(path.join(root, relativo + '.ts'))) return real(relativo + '.ts');
+        }
         const puros = require('./modulos-puros-reais.cjs');
         if (id in puros) return puros[id];
         throw new Error('import nao simulado em ' + arquivo + ': ' + id);
@@ -102,7 +110,7 @@ function montar(origem) {
   const tarefa = real('lib/widget-voz-task.ts');
   const servidorDiz = (transcript) => Response.json({ status: 'ready', transcript });
   const servidorFalha = (code, status) => Response.json({ status: 'error', code }, { status });
-  return { e, tarefa, confiabilidade: real('lib/voz-confiabilidade.ts'), servidorDiz, servidorFalha, origem };
+  return { e, tarefa, caixa: real('lib/avisos-banco/caixa-voz.ts'), confiabilidade: real('lib/voz-confiabilidade.ts'), servidorDiz, servidorFalha, origem };
 }
 
 /* Uma execução, na entrada pedida. Botão do app e widget chamam o MESMO
@@ -112,6 +120,7 @@ async function rodar(origem, cenario, { daFila = false, requestId = 'r-' + orige
   const m = montar(origem);
   Object.assign(m.e, cenario(m));
   m.desfecho = await m.tarefa.executarTarefa({ caminho: daFila ? '/voz-pendente/a.m4a' : '/a.m4a', requestId, source: origem });
+  m.e.revisoes = await m.caixa.listarRevisoesVoz('u1');
   return m;
 }
 /* Só o que a pessoa vê ou o que fica guardado; as entradas simuladas (local, servidor) ficam de fora. */
@@ -119,10 +128,10 @@ const vazou = (m) => JSON.stringify({ f: m.e.fila, r: m.e.recibos, v: m.e.reviso
 const resumo = (m) => JSON.stringify({
   local: m.e.localChamadas, envios: m.e.envios,
   salvos: m.e.salvos.map((s) => ({ kind: s.kind, type: s.type, description: s.description, amount: s.amount, category: s.category, payment_method: s.payment_method, card_id: s.card_id })),
-  falhas: m.e.falhas, revisoes: m.e.revisoes, fila: m.e.fila.map((i) => i.revisao ? { revisao: true, t: i.transcricao } : { pendente: true }),
-  recibos: m.e.recibos.map((r) => (typeof r === 'string' ? r : { titulo: r.titulo, texto: r.texto, transcricao: r.transcricao ?? null })),
+  falhas: m.e.falhas, revisoes: m.e.revisoes.map(({ titulo, transcricao, rascunho }) => ({ titulo, transcricao, rascunho })), fila: m.e.fila.map((i) => i.revisao ? { revisao: true, t: i.transcricao } : { pendente: true }),
+  recibos: m.e.recibos.filter((r) => !String(r.texto).includes('no sino')).map((r) => (typeof r === 'string' ? r : { titulo: r.titulo, texto: r.texto, transcricao: r.transcricao ?? null })),
   removidas: m.e.removidas.length,
-  desfecho: m.desfecho,
+  desfecho: { ...m.desfecho, ...(m.desfecho.revisaoNoSino ? { revisaoNoSino: true } : null) },
 });
 
 (async () => {
@@ -164,8 +173,8 @@ const resumo = (m) => JSON.stringify({
 
     /* 7. Texto incompleto mas financeiro ("mercado") continua aparecendo, para completar à mão. */
     m = await rodar(origem, (x) => ({ local: null, servidor: x.servidorDiz('mercado') }), { daFila: true });
-    const r7 = m.e.recibos.find((r) => typeof r === 'object');
-    ok(r7 && /Ouvi: "mercado"/.test(r7.texto), `${origem}: "mercado" sem valor continua sendo mostrado como ouvido`);
+    const r7 = m.e.revisoes[0];
+    ok(r7 && r7.transcricao === 'mercado' && r7.rascunho.valor === undefined && m.e.salvos.length === 0, `${origem}: "mercado" sem valor continua sendo mostrado como ouvido`);
 
     /* 8. Servidor recusa de vez (nao_entendi) com lixo do aparelho: não mostra o lixo. */
     m = await rodar(origem, (x) => ({ local: LIXO, servidor: x.servidorFalha('nao_entendi', 422) }), { daFila: true });
@@ -179,7 +188,7 @@ const resumo = (m) => JSON.stringify({
        mesmo prazo total. */
     m = await rodar(origem, (x) => ({ local: null, localConsome: true, servidor: x.servidorDiz('...') }));
     ok(m.e.envios === 1, `${origem}: reconhecedor do aparelho que esgota o próprio prazo não impede o servidor (1 envio)`);
-    ok(m.e.falhas.join() === 'nao_entendi' && !m.e.recibos.includes('offline') && m.e.fila.length === 0, `${origem}: silêncio com rede vira "não entendi", não "Áudio guardado"`);
+    ok(m.e.falhas.join() === 'audio_ausente' && !m.e.recibos.includes('offline') && m.e.fila.length === 0, `${origem}: silêncio com rede vira "não entendi", não "Áudio guardado"`);
     ok(m.e.prazosLocais[0] <= 15_000 - 8_000, `${origem}: o aparelho recebe no máximo o prazo menos a reserva do servidor (${m.e.prazosLocais[0]} ms)`);
   }
 
@@ -193,12 +202,15 @@ const resumo = (m) => JSON.stringify({
     const merenda = m.e.salvos[0];
     ok(merenda.amount === 53.54 && merenda.category === 'Alimentação' && merenda.card_id === 'c6' && merenda.payment_method === 'credit', `${origem}: mantém R$ 53,54, Alimentacao e cartao C6 no credito`);
 
-    // If the server also heard only metadata, ask for a new recording without saving.
+    // Metadados parciais vão para o sino, onde a pessoa informa a descrição.
     for (const daFila of [false, true]) {
       m = await rodar(origem, (x) => ({ local: PARCIAL, servidor: x.servidorDiz(PARCIAL) }), { daFila });
       ok(m.e.envios === 1 && m.e.salvos.length === 0, `${origem}${daFila ? ' fila' : ''}: parcial local e do servidor nao chamam RPC`);
-      ok(m.e.revisoes.length === 1 && m.e.revisoes[0].titulo === 'Repita a fala completa' && /Toque no microfone e fale o lan[cç]amento completo/.test(m.e.revisoes[0].texto), `${origem}${daFila ? ' fila' : ''}: recibo pede nova fala no microfone sem abrir app`);
-      ok(m.desfecho.repetir === true && m.e.apagados === 1, `${origem}${daFila ? ' fila' : ''}: desfecho pede repeticao e remove o audio incompleto`);
+      const item = m.e.revisoes[0];
+      ok(m.e.revisoes.length === 1 && item.titulo === 'Qual a descrição?' && item.transcricao === PARCIAL && item.rascunho.descricao === undefined && item.rascunho.valor === 53.54,
+        origem + ': preserva valor e transcrição no sino com descrição em branco');
+      ok(m.desfecho.revisaoNoSino?.requestId === 'r-' + origem && !m.desfecho.repetir && m.e.apagados === 1,
+        origem + ': revisão persistida antes de consumir o áudio');
       if (daFila) {
         ok(m.e.removidas.includes('r-' + origem), `${origem}: a fala parcial sai da fila e nao sera reprocessada`);
         const novaFala = await rodar(origem, () => ({ local: COMPLETA, servidor: new Error('nao deveria enviar') }), { requestId: 'nova-' + origem });
@@ -223,8 +235,8 @@ const resumo = (m) => JSON.stringify({
     ok(m.e.envios === 0 && m.e.salvos.length === 1 && /maestri/i.test(m.e.salvos[0].description), `${origem}: Credito Maestri continua sendo nome valido`);
   }
   const reciboFalhou = await rodar('widget', (x) => ({ local: PARCIAL, servidor: x.servidorDiz(PARCIAL), falhaRevisao: true }));
-  ok(reciboFalhou.e.salvos.length === 0 && reciboFalhou.e.fila.some((i) => i.revisao), 'falha ao avisar preserva a captura como revisao, sem RPC');
-  ok(reciboFalhou.e.erros.some(([mensagem]) => String(mensagem).includes('recibo de repeticao da fala incompleta falhou')) && reciboFalhou.e.estados.includes('repetir'), 'falha do recibo tem log proprio e estado nativo repetir');
+  ok(reciboFalhou.e.salvos.length === 0 && reciboFalhou.e.revisoes.length === 1, 'falha ao avisar preserva a captura como revisao, sem RPC');
+  ok(reciboFalhou.e.erros.some(([mensagem]) => String(mensagem).includes('revisão foi guardada e o aviso do Android falhou')) && reciboFalhou.e.estados.includes('atencao'), 'falha do recibo tem log e widget em atenção');
 
   console.log('Paridade app x widget');
   const cenarios = {

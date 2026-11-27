@@ -3,6 +3,7 @@ import { lerDiarioAvisos } from '@/modules/grana-avisos';
 import { aplicarAvisos, CAIXA_VAZIA, marcarVencimentoVisto, FINAL_VARIAVEL, type EstadoDaCaixa, type FormasAprendidas, type ItemAConferir, type ReciboDeEstorno } from './decidir';
 import type { FormaDoAviso } from './interpretar';
 import { ehBancoDoCatalogo } from './catalogo';
+import { apagarCaixaVoz, naVez, revogarCaixaVoz } from './caixa-fila';
 
 /**
  * A lista "A conferir", por dono, só neste aparelho. Não chama rede e não guarda
@@ -12,15 +13,6 @@ import { ehBancoDoCatalogo } from './catalogo';
 const chaveDoDono = (dono: string) => `grana_avisos_caixa:${dono}`;
 const chaveDasMarcas = (dono: string) => `grana_avisos_gravados:${dono}`;
 const chaveDasFormas = (dono: string) => `grana_avisos_formas:${dono}`;
-
-/* Uma mudança de cada vez: toque em Descartar durante a leitura do diário não
-   pode ser desfeito pela gravação de quem começou antes. */
-let fila: Promise<unknown> = Promise.resolve();
-function naVez<T>(tarefa: () => Promise<T>): Promise<T> {
-  const resultado = fila.then(tarefa, tarefa);
-  fila = resultado.catch(() => undefined);
-  return resultado;
-}
 
 /* Caixa ilegível lança: tratar como vazia gravaria por cima e faria todo aviso
    do diário voltar como item novo. */
@@ -176,9 +168,15 @@ export function aprenderFormaDoCartao(dono: string, digitos: string, forma: Form
 }
 
 export function limparCaixa(dono: string): Promise<void> {
+  revogarCaixaVoz(dono);
   return naVez(async () => {
-    await AsyncStorage.removeItem(chaveDoDono(dono));
-    await AsyncStorage.removeItem(chaveDasMarcas(dono));
-    await AsyncStorage.removeItem(chaveDasFormas(dono));
+    const resultados = await Promise.allSettled([
+      apagarCaixaVoz(dono),
+      AsyncStorage.removeItem(chaveDoDono(dono)),
+      AsyncStorage.removeItem(chaveDasMarcas(dono)),
+      AsyncStorage.removeItem(chaveDasFormas(dono)),
+    ]);
+    const falha = resultados.find((resultado) => resultado.status === 'rejected');
+    if (falha) throw falha.reason;
   });
 }

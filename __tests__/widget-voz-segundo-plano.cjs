@@ -59,6 +59,7 @@ function zerarControles() {
     sessaoNoDisco: true,
     falharNotificacao: new Set(),
     pendurarNotificacao: new Set(), // recibos que nunca respondem
+    falharCaixa: false,
     falharEscritaDaFilaApos: Infinity, // nº de escritas da fila que dão certo antes de falhar
     registrar: null, // (requestId, source, payload) => resultado; null = committed
     cartoes: [],
@@ -70,6 +71,7 @@ let escritasDaFila = 0;
 const AsyncStorage = {
   getItem: async (k) => (armazem.has(k) ? armazem.get(k) : null),
   setItem: async (k, v) => {
+    if (k.startsWith('grana_avisos_voz:') && ctl.falharCaixa) throw new Error('caixa indisponível');
     if (k === CHAVE_FILA && ++escritasDaFila > ctl.falharEscritaDaFilaApos) throw new Error('disco cheio (simulado)');
     armazem.set(k, v);
   },
@@ -113,7 +115,7 @@ function novoProcesso({ operacoesReais = false, sessaoReal = false, supabase: su
     './offline-cache': { isLikelyNetworkError: (e) => /network request failed|failed to fetch/i.test(String(e?.message ?? e)) },
     './widget-voz-notificacoes': {
       podeNotificar: async () => ctl.podeNotificar,
-      notificarRevisao: notificar('notificarRevisao'),
+      notificarConferenciaVoz: notificar('notificarConferenciaVoz'),
       notificarSucesso: notificar('notificarSucesso'),
       notificarFalha: notificar('notificarFalha'),
       notificarSalvoLocal: notificar('notificarSalvoLocal'),
@@ -173,7 +175,12 @@ function novoProcesso({ operacoesReais = false, sessaoReal = false, supabase: su
       clearTimeout,
       require(id) {
         if (id in dubles) return dubles[id];
-        if (id.startsWith('./')) return carregar(path.join(path.dirname(arquivo), id.slice(2) + '.ts'));
+        if (id.startsWith('.')) {
+          const alvo = path.join(path.dirname(arquivo), id + '.ts');
+          const diretoDeLib = './' + path.relative('lib', alvo).slice(0, -3).split(path.sep).join('/');
+          if (diretoDeLib in dubles) return dubles[diretoDeLib];
+          return carregar(alvo);
+        }
         throw new Error(`import não simulado em ${arquivo}: ${id}`);
       },
     }, { filename: arquivo });
@@ -182,12 +189,13 @@ function novoProcesso({ operacoesReais = false, sessaoReal = false, supabase: su
   p.carregar = carregar;
   p.tarefa = carregar('lib/widget-voz-task.ts');
   p.fila = carregar('lib/widget-voz-pendentes.ts');
+  p.revisoes = () => carregar('lib/avisos-banco/caixa-voz.ts').listarRevisoesVoz(ctl.usuario);
   /* Os módulos que a tarefa importa no meio do caminho são carregados JÁ.
      Transpilar leva dezenas de milissegundos de relógio real, que o
      `setTimeout` encurtado não encolhe: sem isto, com 100 s virando 100 ms,
      a ordem entre o prazo total e o teto de ponta a ponta dependeria da
      velocidade do disco de quem roda o teste. */
-  for (const modulo of ['heuristics', 'voz-confiabilidade', 'voz-recibos', 'voz-recibos-da-fila']) carregar(`lib/${modulo}.ts`);
+  for (const modulo of ['heuristics', 'voz-confiabilidade', 'voz-recibos', 'voz-recibos-da-fila', 'avisos-banco/caixa-voz']) carregar(`lib/${modulo}.ts`);
   p.recibosDe = (nome) => p.recibos.filter((r) => r.nome === nome);
   return p;
 }
@@ -340,9 +348,10 @@ function falaNova(id, source, extras = {}) {
     p = novoProcesso();
     ctl.registrar = async () => { throw Object.assign(new Error('violates check'), { code: '23514' }); };
     await p.tarefa.executarTarefa(falaNova('rp-' + source, source));
-    assert.deepEqual(p.recibosDe('notificarRevisao').map((r) => r.args[0]), ['Não consegui salvar']);
-    assert.match(p.recibosDe('notificarRevisao')[0].args[1], /Mercado/);
-    if (source === 'widget') assert.equal(p.estados.at(-1), 'repetir');
+    const [recusada] = await p.revisoes();
+    assert.equal(recusada.titulo, 'Não consegui salvar');
+    assert.match(recusada.transcricao, /Mercado/);
+    if (source === 'widget') assert.equal(p.estados.at(-1), 'ocioso');
     ok(`[${source}] recusa do servidor: revisão com o que foi ouvido`);
 
     // 4e. Confirmação necessária: revisão, com a data da captura, sem gravar.
@@ -351,14 +360,13 @@ function falaNova(id, source, extras = {}) {
     ctl.cartoes = [{ id: 'c1', name: 'Nubank', bank: 'Nubank', closing_day: 5 }, { id: 'c2', name: 'C6', bank: 'C6 Bank', closing_day: 10 }];
     ctl.transcrever = async () => ({ ok: true, transcript: 'Uber 30 reais no crédito.' });
     d = await p.tarefa.executarTarefa(falaNova('cf-' + source, source));
-    assert.deepEqual({ ...d }, { guardada: false, repetir: true });
+    assert.deepEqual(JSON.parse(JSON.stringify(d)), { guardada: false, revisaoNoSino: { dono: 'u-1', requestId: 'cf-' + source } });
     assert.equal(p.escritas.length, 0, 'nada gravado por conta própria');
-    const revisao = p.recibosDe('notificarRevisao');
-    assert.equal(revisao.length, 1);
-    assert.equal(revisao[0].args[0], 'Qual cartão?');
-    assert.equal(revisao[0].args[2], 'cf-' + source, 'o recibo é o desta fala');
-    assert.equal(revisao[0].args[3]?.referencia, '2026-10-06', 'a revisão leva a data em que a fala foi dita');
-    if (source === 'widget') assert.equal(p.estados.at(-1), 'repetir');
+    const [revisao] = await p.revisoes();
+    assert.equal(revisao.titulo, 'Qual cartão?');
+    assert.equal(revisao.requestId, 'cf-' + source, 'a revisão é desta fala');
+    assert.equal(revisao.referencia?.referencia, '2026-10-06', 'a revisão leva a data em que a fala foi dita');
+    if (source === 'widget') assert.equal(p.estados.at(-1), 'ocioso');
     ok(`[${source}] confirmação: pergunta "Qual cartão?", com a data da fala, sem gravar`);
   }
   {
@@ -368,7 +376,7 @@ function falaNova(id, source, extras = {}) {
     ctl.podeNotificar = false;
     const d = await p.tarefa.executarTarefa(falaNova('sn', 'widget'));
     assert.deepEqual({ ...d }, { guardada: true, motivo: 'sem_notificacao' });
-    assert.equal(p.chamadasTranscricao.length, 0, 'não gasta transcrição');
+    assert.equal(p.chamadasTranscricao.length, 1, 'distingue revisão de gravação automática');
     assert.equal(p.escritas.length, 0);
     assert.deepEqual((await p.fila.listarVozesPendentes()).map((i) => i.requestId), ['sn']);
     assert.equal(p.estados.at(-1), 'atencao');
@@ -524,21 +532,21 @@ function falaNova(id, source, extras = {}) {
     let p = novoProcesso();
     ctl.cartoes = [{ id: 'c1', name: 'Nubank', bank: 'Nubank', closing_day: 5 }, { id: 'c2', name: 'C6', bank: 'C6 Bank', closing_day: 10 }];
     ctl.transcrever = async () => ({ ok: true, transcript: 'Uber 30 reais no crédito.' });
-    ctl.falharNotificacao = new Set(['notificarRevisao']);
+    ctl.falharNotificacao = new Set(['notificarConferenciaVoz']);
     let d = await p.tarefa.executarTarefa(falaNova('rf-' + source, source));
-    assert.deepEqual({ ...d }, { guardada: true, motivo: 'sem_notificacao' }, 'sem recibo entregue, a fala fica guardada');
+    assert.equal(d.revisaoNoSino?.requestId, 'rf-' + source);
     assert.equal(p.escritas.length, 0, 'nada gravado por conta própria');
-    assert.deepEqual((await p.fila.listarVozesPendentes()).map((i) => [i.requestId, i.transcricao]), [['rf-' + source, 'Uber 30 reais no crédito.']], 'na fila, visível, com o que foi ouvido');
-    assert.deepEqual(audios(), [`file:///files/voz-pendente/rf-${source}.m4a`], 'o áudio continua no aparelho');
-    if (source === 'widget') assert.equal(p.estados.at(-1), 'repetir');
-    // A notificação volta a funcionar: a retomada entrega a MESMA pergunta, sem transcrever de novo e sem gravar.
+    const [revisao] = await p.revisoes();
+    assert.equal(revisao.transcricao, 'Uber 30 reais no crédito.');
+    assert.equal(revisao.titulo, 'Qual cartão?');
+    assert.deepEqual(audios(), [], 'o item persistido permite liberar o áudio');
+    if (source === 'widget') assert.equal(p.estados.at(-1), 'atencao');
     ctl.falharNotificacao = new Set();
     const transcricoesAntes = p.chamadasTranscricao.length;
     await p.tarefa.tentarVozesPendentes();
-    assert.equal(p.chamadasTranscricao.length, transcricoesAntes, 'a retomada usa a transcrição guardada');
-    assert.deepEqual(p.recibosDe('notificarRevisao').map((r) => r.args[0]), ['Qual cartão?'], 'a revisão chega quando o recibo volta a funcionar');
+    assert.equal(p.chamadasTranscricao.length, transcricoesAntes, 'a retomada não reinterpreta a revisão');
     assert.equal(p.escritas.length, 0);
-    ok(`[${source}] revisão cujo recibo falha: fala guardada com o texto, revisão entregue depois, nada gravado`);
+    ok('falha da notificação preserva a revisão no sino');
 
     // 11b. "Não entendi" cujo recibo falha: a fala não some calada.
     limparAparelho();
@@ -671,7 +679,7 @@ function falaNova(id, source, extras = {}) {
       const revisoes = [];
       const b = montarBotao({ tarefaReal: p.tarefa.executarTarefa,
         aoCapturar: (payload) => disco.set(payload.caminho, 'AUDIO-BOTAO'),
-        aoRevisar: (ouvido, ref) => revisoes.push({ ouvido, ref }),
+        aoRevisaoNoSino: (alvo) => revisoes.push(alvo),
       });
       await b.tocar(); await b.tocar();
       assert.equal(b.reg.tarefas.length, 1, 'o botão real entregou uma fala ao núcleo real');
@@ -684,10 +692,18 @@ function falaNova(id, source, extras = {}) {
       }));
       if (texto.includes('Refri 82')) {
         assert.equal(p.escritas.length, 0, 'confiabilidade real recusa valor ambíguo nas duas entradas');
-        assert.equal(revisoes.length, 1); assert.equal(revisoes[0].ouvido, texto);
-        assert.equal(alertasApp[0].titulo, 'Confirme o valor que ouvi');
-        assert.equal(p.recibosDe('notificarRevisao')[0].args[0], alertasApp[0].titulo);
-        assert.equal(p.recibosDe('notificarRevisao')[0].args[3].referencia, revisoes[0].ref.referencia);
+        const itens = await p.revisoes();
+        assert.equal(itens.length, 2);
+        assert.equal(revisoes.length, 1);
+        assert.equal(revisoes[0].requestId, capturaReal.requestId);
+        const app = itens.find(item => item.fonte === 'app');
+        const widget = itens.find(item => item.fonte === 'widget');
+        assert.equal(app.transcricao, texto);
+        assert.equal(widget.transcricao, texto);
+        assert.equal(widget.titulo, 'Confirme o valor que ouvi');
+        assert.equal(widget.titulo, app.titulo);
+        assert.equal(widget.referencia.referencia, app.referencia.referencia);
+        assert.equal(p.recibosDe('notificarConferenciaVoz')[0].args[0], app.titulo);
       } else {
         assert.equal(p.escritas.length, 2); assert.equal(p.escritas[0].source, 'app');
         assert.equal(p.escritas[1].source, 'widget');
@@ -706,15 +722,15 @@ function falaNova(id, source, extras = {}) {
     ctl.falharEscritaDaFilaApos = 0;
     ctl.cartoes = [{ id: 'c1', name: 'Nubank', bank: 'Nubank', closing_day: 5 }, { id: 'c2', name: 'C6', bank: 'C6 Bank', closing_day: 10 }];
     ctl.transcrever = async () => ({ ok: true, transcript: 'Uber 30 reais no crédito.' });
-    ctl.falharNotificacao = new Set(['notificarRevisao']);
+    ctl.falharCaixa = true;
     const d = await p.tarefa.executarTarefa(falaNova('dupla-' + source, source));
-    assert.deepEqual({ ...d }, { guardada: true, motivo: 'sem_notificacao' });
+    assert.deepEqual({ ...d }, { guardada: true, motivo: 'caixa' });
     assert.equal(p.escritas.length, 0);
     assert.deepEqual(audios(), [`file:///files/voz-orfa/dupla-${source}.json`, `file:///files/voz-orfa/dupla-${source}.m4a`]);
-    ctl.falharEscritaDaFilaApos = Infinity; ctl.falharNotificacao = new Set();
+    ctl.falharEscritaDaFilaApos = Infinity; ctl.falharCaixa = false;
     await p.tarefa.tentarVozesPendentes();
-    assert.equal(p.escritas.length, 0); assert.equal(p.recibosDe('notificarRevisao').length, 1);
-    assert.equal(p.recibosDe('notificarRevisao')[0].args[0], 'Qual cartão?');
+    assert.equal(p.escritas.length, 0);
+    assert.equal((await p.revisoes())[0]?.titulo, 'Qual cartão?');
     ok(`[${source}] reserva e recibo falham juntos: fallback conserva dono, data e transcrição`);
   }
 
@@ -764,7 +780,7 @@ function falaNova(id, source, extras = {}) {
     ctl.podeNotificar = new Promise(() => {});
     let d = await comLimite(p.tarefa.executarTarefa(falaNova('perm', 'widget')), 3000, 'tarefa presa na permissão de notificação');
     assert.deepEqual({ ...d }, { guardada: true, motivo: 'sem_notificacao' }, 'sem saber se pode avisar, não lança: guarda');
-    assert.equal(p.chamadasTranscricao.length, 0);
+    assert.equal(p.chamadasTranscricao.length, 1);
     assert.equal(p.escritas.length, 0);
     assert.deepEqual((await p.fila.listarVozesPendentes()).map((i) => i.requestId), ['perm']);
     assert.equal(p.estados.at(-1), 'atencao');
@@ -808,12 +824,13 @@ function falaNova(id, source, extras = {}) {
         ctl.falharEscritaDaFilaApos = 0;
         ctl.cartoes = [{ id: 'c1', name: 'Nubank', bank: 'Nubank', closing_day: 5 }, { id: 'c2', name: 'C6', bank: 'C6 Bank', closing_day: 10 }];
         ctl.transcrever = async () => ({ ok: true, transcript: 'Uber 30 reais no crédito.' });
-        ctl.falharNotificacao = new Set(['notificarRevisao']);
+        ctl.falharCaixa = true;
+        ctl.falharNotificacao = new Set(['notificarFalha']);
         d = await p.tarefa.executarTarefa(falaNova('nada2-' + source, source));
-        assert.deepEqual({ ...d }, { guardada: false, repetir: true });
+        assert.deepEqual({ ...d }, { guardada: false });
         assert.equal(p.escritas.length, 0);
         assert.deepEqual(audios(), []);
-        if (source === 'widget') assert.equal(p.estados.at(-1), 'repetir', 'o estado de repetir é o recibo que resta');
+        if (source === 'widget') assert.equal(p.estados.at(-1), 'atencao', 'o estado de atenção é o recibo que resta');
         ok(`[${source}] revisão, recibo, fila e recuperação falham: nada anunciado como guardado`);
       }
     } finally { fsDuble.writeAsStringAsync = escritaReal; }

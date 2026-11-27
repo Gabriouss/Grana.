@@ -1,6 +1,7 @@
 import { getNotifications } from './notifications';
 import { RECIBOS_VOZ } from './voz-recibos';
 import { mensagemDeErroVoz, type CodigoErroVoz } from './voz';
+import type { DestinoRevisaoVoz } from './avisos-banco/caixa-voz';
 import type { ReferenciaDaFala } from './data-da-fala';
 
 /**
@@ -55,6 +56,7 @@ export type DadosNotifVoz =
   /** `referencia`/`aproximada`: a data da captura da fala, para a revisão
       contar "ontem" a partir do dia em que ela foi dita (30/09/2026). */
   | { origem: 'voz'; resultado: 'revisar'; transcricao: string; referencia?: string; aproximada?: boolean }
+  | ({ origem: 'voz'; resultado: 'conferir' } & DestinoRevisaoVoz)
   | { origem: 'voz'; resultado: 'pendente'; transcricao: string };
 
 async function prepararCanal() {
@@ -114,7 +116,10 @@ export async function tirarDaBandeja(identificador: string): Promise<void> {
   }
 }
 
-async function publicar(titulo: string, corpo: string, dados: DadosNotifVoz, categoria?: string, requestId?: string) {
+async function publicar(
+  titulo: string, corpo: string, dados: DadosNotifVoz, categoria?: string, requestId?: string,
+  conferir?: () => Promise<void>,
+) {
   const Notifications = getNotifications();
   /* `podeNotificar()` já é o gate de verdade antes do widget tentar lançar;
      esta checagem aqui é só a segunda camada, pro caso de `publicar` ser
@@ -123,6 +128,7 @@ async function publicar(titulo: string, corpo: string, dados: DadosNotifVoz, cat
   await prepararCanal();
   if (categoria) await prepararCategoria();
   const identifier = idNaBandeja(requestId);
+  await conferir?.();
   await Notifications.scheduleNotificationAsync({
     ...(identifier ? { identifier } : null),
     content: {
@@ -158,19 +164,13 @@ export async function notificarSucesso(args: {
   );
 }
 
-/**
- * Nada foi salvo: pede uma nova fala completa no widget. A notificação não
- * encaminha à revisão do app; a decisão financeira continua no núcleo comum.
- */
-export async function notificarRevisao(titulo: string, transcricao: string, requestId?: string, ref?: ReferenciaDaFala) {
-  const recibo = RECIBOS_VOZ.repetir(titulo, transcricao);
-  await publicar(
-    recibo.titulo,
-    recibo.texto,
-    { origem: 'voz', resultado: 'pendente', transcricao: '' },
-    undefined,
-    requestId
-  );
+export async function notificarConferenciaVoz(
+  titulo: string, transcricao: string, alvo: DestinoRevisaoVoz, conferir?: () => Promise<void>,
+) {
+  const recibo = RECIBOS_VOZ.noSino(titulo, transcricao);
+  await publicar(recibo.titulo, recibo.texto, {
+    origem: 'voz', resultado: 'conferir', dono: alvo.dono, requestId: alvo.requestId,
+  }, undefined, alvo.requestId, conferir);
 }
 
 /** Falhou antes de haver o que revisar (rede, sessão, áudio inaudível). */
