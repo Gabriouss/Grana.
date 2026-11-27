@@ -42,9 +42,14 @@ const captura = carregar('lib/voz-captura.ts');
 const recibos = carregar('lib/voz-recibos.ts');
 
 /** Preparo controlado: cada chamada devolve uma promessa que o teste resolve ou rejeita. */
-function montar({ preparoImediato = false } = {}) {
+function montar({ preparoImediato = false, reter, reterApagar = false } = {}) {
   const reg = { prepares: 0, records: 0, stops: 0, apagados: [], tarefas: 0, alertas: [], avisos: [] };
   const preparos = [];
+  const retidos = [];
+  const aguardar = (etapa, resultado) => {
+    if (reter !== etapa || retidos.length) return Promise.resolve(resultado);
+    return new Promise((resolver) => retidos.push(() => resolver(resultado)));
+  };
   let foco = true;
   let estadoApp = 'active';
   const ouvintesApp = [];
@@ -80,7 +85,7 @@ function montar({ preparoImediato = false } = {}) {
       return new Promise((resolve, reject) => preparos.push({ resolve, reject }));
     },
     record() { reg.records++; },
-    stop: async () => { reg.stops++; },
+    stop: async () => { reg.stops++; await aguardar('stop'); },
     getStatus: () => ({ metering: -160 }),
   };
   const deps = {
@@ -97,9 +102,9 @@ function montar({ preparoImediato = false } = {}) {
     '@expo/vector-icons/Ionicons': 'Ionicons',
     'expo-audio': {
       AudioQuality: { MEDIUM: 0 }, IOSOutputFormat: { MPEG4AAC: 0 },
-      getRecordingPermissionsAsync: async () => ({ status: 'granted' }),
-      requestRecordingPermissionsAsync: async () => ({ granted: true }),
-      setAudioModeAsync: async () => {},
+      getRecordingPermissionsAsync: () => aguardar('consulta', { status: 'granted' }),
+      requestRecordingPermissionsAsync: () => aguardar('permissão', { granted: true }),
+      setAudioModeAsync: () => aguardar('modo'),
       useAudioRecorder: () => gravador,
     },
     '@/lib/theme': { theme: {}, radius: {}, spacing: {}, fonts: {}, type: {} },
@@ -113,7 +118,10 @@ function montar({ preparoImediato = false } = {}) {
     'expo-crypto': { randomUUID: () => 'req-1' },
     '@/lib/widget-voz-task': { executarTarefa: async () => { reg.tarefas++; } },
     'expo-file-system': { File: class { get exists() { return true; } get size() { return 50_000; } } },
-    'expo-file-system/legacy': { deleteAsync: async (uri) => { reg.apagados.push(uri); } },
+    'expo-file-system/legacy': { deleteAsync: async (uri) => {
+      reg.apagados.push(uri);
+      if (reterApagar) await new Promise(() => {});
+    } },
   };
   const { default: VoiceEntryButton } = carregar(arquivoBotao, deps, {
     setTimeout: (fn, ms) => { const id = proximoId++; timers.push({ id, fn, ms, vivo: true }); return id; },
@@ -152,6 +160,7 @@ function montar({ preparoImediato = false } = {}) {
     async desmontar() { montado = false; for (const e of efeitos) if (typeof e?.limpar === 'function') e.limpar(); await esperar(); },
     async focar(v) { foco = v; render(); await esperar(); },
     async irPara(estado) { estadoApp = estado; for (const fn of [...ouvintesApp]) fn(estado); await esperar(); },
+    async resolverEtapa() { assert.equal(retidos.length, 1); retidos[0](); await esperar(); },
     async resolverPreparo(i = 0) { preparos[i].resolve(); await esperar(); },
     async rejeitarPreparo(i = 0) { preparos[i].reject(new Error('prepare falhou')); await esperar(); },
     async vencer(ms) {
@@ -256,6 +265,49 @@ process.exitCode = 1;
     assert.equal(b.reg.records, 0);
     await b.tocar();
     assert.equal(b.reg.prepares, 2, 'rejeição não deixa o botão preso');
+  });
+
+  for (const etapa of ['consulta', 'permissão', 'modo']) {
+    await caso(etapa + ' retida: dá recibo e toques voltam a preparar; a resposta tardia é descartada', async () => {
+      const b = montar({ reter: etapa, preparoImediato: true });
+      await b.tocar();
+      assert.equal(b.reg.prepares, 0);
+      await b.vencer(20_000);
+      assert.deepEqual(b.reg.alertas, ['Não consegui abrir o microfone']);
+      await b.tocar();
+      assert.equal(b.reg.prepares, 1);
+      assert.equal(b.reg.records, 1);
+      await b.resolverEtapa();
+      assert.equal(b.reg.records, 1);
+      assert.equal(b.reg.tarefas, 0);
+    });
+  }
+
+  await caso('stop de captura expira, impede novo preparo e descarta a gravação tardia', async () => {
+    const b = montar({ reter: 'stop', preparoImediato: true });
+    await b.tocar();
+    await b.tocar();
+    await b.vencer(5_000);
+    assert.deepEqual(b.reg.alertas, ['Não consegui encerrar a gravação']);
+    await b.tocar();
+    assert.equal(b.reg.prepares, 1);
+    assert.equal(b.reg.alertas[1], 'Microfone ainda ocupado');
+    await b.resolverEtapa();
+    assert.equal(b.reg.tarefas, 0);
+    assert.deepEqual(b.reg.apagados, ['file:///cache/voz.m4a']);
+    await b.tocar();
+    assert.equal(b.reg.prepares, 2);
+  });
+
+  await caso('limpeza do arquivo abandonado pode demorar sem prender o gravador já fechado', async () => {
+    const b = montar({ reterApagar: true });
+    await b.tocar();
+    await b.vencer(20_000);
+    await b.resolverPreparo();
+    assert.equal(b.reg.stops, 1);
+    assert.equal(b.reg.tarefas, 0);
+    await b.tocar();
+    assert.equal(b.reg.prepares, 2);
   });
 
   if (falhas.length) {

@@ -36,9 +36,28 @@ import * as FileSystemLegado from 'expo-file-system/legacy';
 /* `stop()` é local (sem rede): 5s é folga generosa, não um orçamento de
    transcrição. */
 const PRAZO_PARAR_GRAVACAO_MS = 5_000;
-/* `prepareToRecordAsync()` também é local. Sem prazo, um preparo que nunca
-   volta deixava o botão mudo para sempre (item 29). Não mexe nos 20s de fala. */
-const PRAZO_PREPARAR_GRAVACAO_MS = 20_000;
+// Um único prazo para permissão, sessão de áudio e preparo.
+const PRAZO_ABRIR_MICROFONE_MS = 20_000;
+
+class PrazoDoMicrofoneEsgotado extends Error {}
+
+async function noPrazoDoMicrofone<T>(trabalho: Promise<T>, fim: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      trabalho,
+      new Promise<never>((_, rejeitar) => {
+        timer = setTimeout(() => rejeitar(new PrazoDoMicrofoneEsgotado()), Math.max(0, fim - Date.now()));
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function avisarPrazoDaAbertura() {
+  Alert.alert('Não consegui abrir o microfone', 'A abertura demorou demais e foi cancelada. Tente de novo em instantes.');
+}
 
 const GRAVACAO_VOZ: RecordingOptions = {
   extension: '.m4a',
@@ -155,14 +174,13 @@ export default function VoiceEntryButton({
   /* Item 29: abrir o microfone espera permissão, sessão de áudio e preparo.
      Sair da tela, mandar o app para o fundo ou desmontar no meio disso
      abandona a abertura (`intencao` muda), e a resposta tardia não grava nem
-     envia. `preparoPendente` segura nova abertura enquanto o gravador ainda
-     está com um preparo antigo em andamento. */
+     envia. Nova abertura espera o preparo ou o fechamento nativo anterior. */
   const focada = useIsFocused();
   const emFoco = useRef(focada);
   emFoco.current = focada;
   const montado = useRef(true);
   const intencao = useRef(0);
-  const preparoPendente = useRef(false);
+  const gravadorPendente = useRef(false);
 
   useEffect(() => {
     if (!focada) intencao.current++;
@@ -206,17 +224,18 @@ export default function VoiceEntryButton({
          parado). O `.catch` solto no `pararGravacao` original evita que uma
          resolução tardia dele suba como rejeição sem dono. */
       const pararGravacao = gravador.stop();
-      pararGravacao.catch(() => {});
       let parouDireito = true;
       try {
-        await Promise.race([
-          pararGravacao,
-          new Promise<never>((_, rejeitar) => {
-            setTimeout(() => rejeitar(new Error('parar_gravacao_travou')), PRAZO_PARAR_GRAVACAO_MS);
-          }),
-        ]);
-      } catch (e: any) {
-        if (e?.message === 'parar_gravacao_travou') throw e;
+        await noPrazoDoMicrofone(pararGravacao, Date.now() + PRAZO_PARAR_GRAVACAO_MS);
+      } catch (erro) {
+        if (erro instanceof PrazoDoMicrofoneEsgotado) {
+          gravadorPendente.current = true;
+          void pararGravacao
+            .then(() => { if (gravador.uri) void descartarAudio(gravador.uri); })
+            .catch((falha) => console.warn('[voz] encerramento tardio da gravação falhou', falha))
+            .finally(() => { gravadorPendente.current = false; });
+          throw erro;
+        }
         /* `stop()` lança quando a gravação foi curta demais para o encoder
            fechar um arquivo: toque duplo sem querer. Igual ao widget, é "não
            falou nada", e ganha o recibo curto `naoOuvi` logo abaixo. */
@@ -224,7 +243,7 @@ export default function VoiceEntryButton({
       }
       const uri = gravador.uri;
       if (microfoneSilenciado.current || capturaSilenciada()) {
-        if (uri) await descartarAudio(uri);
+        if (uri) void descartarAudio(uri);
         Alert.alert(RECIBOS_VOZ.capturaInterrompida.titulo, RECIBOS_VOZ.capturaInterrompida.texto);
         return;
       }
@@ -242,7 +261,7 @@ export default function VoiceEntryButton({
          (achado V3 do Watchtower); agora os dois dão o mesmo recibo curto. */
       const tamanho = tamanhoDoAudio(uri);
       if (!parouDireito || (tamanho !== null && !gravacaoValida(tamanho))) {
-        await descartarAudio(uri);
+        void descartarAudio(uri);
         Alert.alert(RECIBOS_VOZ.naoOuvi.titulo, RECIBOS_VOZ.naoOuvi.texto);
         return;
       }
@@ -280,7 +299,7 @@ export default function VoiceEntryButton({
       });
     } catch (e: any) {
       if (__DEV__) console.warn('[voz:diag] botao lancou', e?.name, String(e?.message ?? e));
-      if (e?.message === 'parar_gravacao_travou') {
+      if (e instanceof PrazoDoMicrofoneEsgotado) {
         Alert.alert('Não consegui encerrar a gravação', 'Toque no microfone para tentar de novo.');
       } else {
         const msg = mensagemDeErroVoz('erro_interno');
@@ -300,41 +319,50 @@ export default function VoiceEntryButton({
       await encerrarEEnviar();
       return;
     }
-    if (ocupado.current) return;
+    if (ocupado.current || avisarSeGravadorPendente()) return;
+    const minha = ++intencao.current;
+    if (!podeSeguir(minha)) return;
+    const fim = Date.now() + PRAZO_ABRIR_MICROFONE_MS;
     ocupado.current = true;
 
     try {
-      const atual = await getRecordingPermissionsAsync();
+      const atual = await noPrazoDoMicrofone(getRecordingPermissionsAsync(), fim);
+      if (!podeSeguir(minha)) return;
       if (atual.status === 'undetermined') {
-        ocupado.current = false;
         Alert.alert(
           'Use o microfone para lançar',
           'O Grana. grava apenas esta fala para transcrever o lançamento. O áudio é apagado depois do processamento.',
           [
             { text: 'Agora não', style: 'cancel' },
-            { text: 'Continuar', onPress: () => void iniciarGravacao() },
+            { text: 'Continuar', onPress: () => { if (podeSeguir(minha)) void iniciarGravacao(); } },
           ]
         );
         return;
       }
-    } catch {
-      /* Se o aparelho não informar o estado atual, o pedido do sistema abaixo
-         continua sendo a fonte de verdade. */
+    } catch (erro) {
+      if (erro instanceof PrazoDoMicrofoneEsgotado) {
+        if (podeSeguir(minha)) avisarPrazoDaAbertura();
+        return;
+      }
+      // Se a consulta falhar, o pedido do sistema ainda confirma a permissão.
+    } finally {
+      ocupado.current = false;
     }
-    ocupado.current = false;
-    await iniciarGravacao();
+    if (podeSeguir(minha)) await iniciarGravacao(fim);
   }
 
   function podeSeguir(minha: number) {
     return montado.current && emFoco.current && intencao.current === minha && AppState.currentState !== 'background';
   }
 
-  async function iniciarGravacao() {
-    if (ocupado.current) return;
-    if (preparoPendente.current) {
-      Alert.alert('Microfone ainda ocupado', 'A abertura anterior ainda não terminou. Tente de novo em instantes; se continuar, feche e reabra o aplicativo.');
-      return;
-    }
+  function avisarSeGravadorPendente() {
+    if (!gravadorPendente.current) return false;
+    Alert.alert('Microfone ainda ocupado', 'O microfone ainda está ocupado pela tentativa anterior. Tente de novo em instantes ou reabra o aplicativo.');
+    return true;
+  }
+
+  async function iniciarGravacao(fim = Date.now() + PRAZO_ABRIR_MICROFONE_MS) {
+    if (ocupado.current || avisarSeGravadorPendente()) return;
     const minha = ++intencao.current;
     if (!podeSeguir(minha)) return;
     ocupado.current = true;
@@ -344,7 +372,7 @@ export default function VoiceEntryButton({
     };
 
     try {
-      const permissao = await requestRecordingPermissionsAsync();
+      const permissao = await noPrazoDoMicrofone(requestRecordingPermissionsAsync(), fim);
       if (!podeSeguir(minha)) return abandonar();
       if (!permissao.granted) {
         ocupado.current = false;
@@ -356,32 +384,31 @@ export default function VoiceEntryButton({
       }
       /* Sem isto o iOS grava em volume baixíssimo (a sessão de áudio fica em
          modo de reprodução) e o Whisper recebe quase silêncio. */
-      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await noPrazoDoMicrofone(setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true }), fim);
       if (!podeSeguir(minha)) return abandonar();
       microfoneSilenciado.current = false;
       iniciarMonitoramentoCaptura();
       const preparo = gravador.prepareToRecordAsync();
-      preparoPendente.current = true;
-      let prazo: ReturnType<typeof setTimeout> | undefined;
-      const venceu = await Promise.race([
-        preparo.then(() => false),
-        new Promise<boolean>((resolver) => { prazo = setTimeout(() => resolver(true), PRAZO_PREPARAR_GRAVACAO_MS); }),
-      ]).finally(() => clearTimeout(prazo));
+      gravadorPendente.current = true;
+      const venceu = await noPrazoDoMicrofone(preparo, fim).then(() => false, (erro) => {
+        if (erro instanceof PrazoDoMicrofoneEsgotado) return true;
+        throw erro;
+      });
       if (venceu || !podeSeguir(minha)) {
+        if (venceu && podeSeguir(minha)) avisarPrazoDaAbertura();
         intencao.current++;
         abandonar();
         // Quando o preparo abandonado voltar, fecha e apaga sem gravar; só então libera nova abertura.
         void preparo
           .then(async () => {
             await gravador.stop();
-            if (gravador.uri) await descartarAudio(gravador.uri);
+            if (gravador.uri) void descartarAudio(gravador.uri);
           })
           .catch((e) => console.warn('[voz] abertura abandonada não fechou o gravador', e))
-          .finally(() => { preparoPendente.current = false; });
-        if (venceu && montado.current) Alert.alert('Não consegui abrir o microfone', 'A abertura demorou demais e foi cancelada. Tente de novo em instantes.');
+          .finally(() => { gravadorPendente.current = false; });
         return;
       }
-      preparoPendente.current = false;
+      gravadorPendente.current = false;
       const agora = Date.now();
       captura.current = { capturadoEm: agora, dataCaptura: dataLocal(agora) };
       gravador.record();
@@ -406,7 +433,7 @@ export default function VoiceEntryButton({
       }, INTERVALO_AMOSTRA_MS);
     } catch (e) {
       // Preparo que rejeita já voltou: o gravador não ficou preso.
-      preparoPendente.current = false;
+      gravadorPendente.current = false;
       pararMonitoramentoCaptura();
       ocupado.current = false;
       if (!podeSeguir(minha)) {
@@ -414,6 +441,10 @@ export default function VoiceEntryButton({
         return;
       }
       setGravando(false);
+      if (e instanceof PrazoDoMicrofoneEsgotado) {
+        avisarPrazoDaAbertura();
+        return;
+      }
       Alert.alert(
         'Microfone indisponível',
         'Não foi possível iniciar a gravação. Verifique se outro aplicativo está usando o microfone.'
