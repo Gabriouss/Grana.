@@ -42,8 +42,8 @@ const captura = carregar('lib/voz-captura.ts');
 const recibos = carregar('lib/voz-recibos.ts');
 
 /** Preparo controlado: cada chamada devolve uma promessa que o teste resolve ou rejeita. */
-function montar({ preparoImediato = false, reter, reterApagar = false } = {}) {
-  const reg = { prepares: 0, records: 0, stops: 0, apagados: [], tarefas: 0, alertas: [], avisos: [] };
+function montar({ preparoImediato = false, reter, reterApagar = false, falharAoPararMonitor = false } = {}) {
+  const reg = { prepares: 0, records: 0, stops: 0, apagados: [], tarefas: 0, alertas: [], avisos: [], erros: [] };
   const preparos = [];
   const retidos = [];
   const aguardar = (etapa, resultado) => {
@@ -111,7 +111,10 @@ function montar({ preparoImediato = false, reter, reterApagar = false } = {}) {
     '@/lib/haptics': { hapticSuccess: () => {} },
     '@/lib/voz': { MAX_SEGUNDOS_GRAVACAO: 20, mensagemDeErroVoz: (c) => ({ titulo: 'erro:' + c, texto: '' }) },
     '@/lib/voz-captura': captura,
-    '@/modules/grana-voice-widget': { iniciarMonitoramentoCaptura() {}, capturaSilenciada: () => false, pararMonitoramentoCaptura() {} },
+    '@/modules/grana-voice-widget': {
+      iniciarMonitoramentoCaptura() {}, capturaSilenciada: () => false,
+      pararMonitoramentoCaptura() { if (falharAoPararMonitor) throw Error('falha do monitor'); },
+    },
     '@/lib/voz-recibos': recibos,
     './AppPressable': { __esModule: true, default: AppPressable },
     './AppDialog': { __esModule: true, default: function AppDialog() {} },
@@ -156,7 +159,15 @@ function montar({ preparoImediato = false, reter, reterApagar = false } = {}) {
   return {
     reg,
     /** Toca sem esperar o handler: ele pode estar preso no preparo. */
-    async tocar() { assert.ok(montado, 'tocar depois de desmontar'); void render().onPress(); await esperar(); },
+    async tocar() {
+      assert.ok(montado, 'tocar depois de desmontar');
+      void render().onPress().catch((erro) => reg.erros.push(erro.message));
+      await esperar();
+    },
+    emRepouso() {
+      const botao = render();
+      return !botao.accessibilityState.busy && botao.accessibilityLabel === 'Lançar por voz';
+    },
     async desmontar() { montado = false; for (const e of efeitos) if (typeof e?.limpar === 'function') e.limpar(); await esperar(); },
     async focar(v) { foco = v; render(); await esperar(); },
     async irPara(estado) { estadoApp = estado; for (const fn of [...ouvintesApp]) fn(estado); await esperar(); },
@@ -274,6 +285,7 @@ process.exitCode = 1;
       assert.equal(b.reg.prepares, 0);
       await b.vencer(20_000);
       assert.deepEqual(b.reg.alertas, ['Não consegui abrir o microfone']);
+      assert.equal(b.emRepouso(), true);
       await b.tocar();
       assert.equal(b.reg.prepares, 1);
       assert.equal(b.reg.records, 1);
@@ -289,6 +301,7 @@ process.exitCode = 1;
     await b.tocar();
     await b.vencer(5_000);
     assert.deepEqual(b.reg.alertas, ['Não consegui encerrar a gravação']);
+    assert.equal(b.emRepouso(), true);
     await b.tocar();
     assert.equal(b.reg.prepares, 1);
     assert.equal(b.reg.alertas[1], 'Microfone ainda ocupado');
@@ -306,6 +319,75 @@ process.exitCode = 1;
     await b.resolverPreparo();
     assert.equal(b.reg.stops, 1);
     assert.equal(b.reg.tarefas, 0);
+    await b.tocar();
+    assert.equal(b.reg.prepares, 2);
+  });
+
+  await caso('permissão e preparo compartilham o mesmo prazo de 20 s', async () => {
+    const b = montar({ reter: 'permissão' });
+    await b.tocar();
+    await b.vencer(12_000);
+    await b.resolverEtapa();
+    assert.equal(b.reg.prepares, 1);
+    await b.vencer(8_000);
+    assert.deepEqual(b.reg.alertas, ['Não consegui abrir o microfone']);
+    assert.equal(b.emRepouso(), true);
+    await b.resolverPreparo();
+    assert.equal(b.reg.records, 0);
+    assert.equal(b.reg.tarefas, 0);
+  });
+
+  await caso('preparo tardio preserva exclusividade durante o stop de limpeza retido', async () => {
+    const b = montar({ reter: 'stop' });
+    await b.tocar();
+    await b.vencer(20_000);
+    await b.resolverPreparo();
+    assert.equal(b.reg.stops, 1);
+    await b.tocar();
+    assert.equal(b.reg.prepares, 1);
+    assert.equal(b.reg.alertas.at(-1), 'Microfone ainda ocupado');
+    assert.equal(b.emRepouso(), true);
+    assert.equal(b.reg.records, 0);
+    await b.resolverEtapa();
+    assert.deepEqual(b.reg.apagados, ['file:///cache/voz.m4a']);
+    assert.equal(b.reg.tarefas, 0);
+    await b.tocar();
+    assert.equal(b.reg.prepares, 2);
+    await b.resolverPreparo(1);
+    assert.equal(b.reg.records, 1);
+  });
+
+  await caso('falha ao parar o monitor após timeout de stop devolve o botão e preserva o gravador', async () => {
+    const b = montar({ reter: 'stop', preparoImediato: true, falharAoPararMonitor: true });
+    await b.tocar();
+    await b.tocar();
+    await b.vencer(5_000);
+    assert.deepEqual(b.reg.alertas, ['Não consegui encerrar a gravação']);
+    assert.equal(b.emRepouso(), true);
+    assert.deepEqual(b.reg.erros, []);
+    await b.tocar();
+    assert.equal(b.reg.alertas.at(-1), 'Microfone ainda ocupado');
+    assert.equal(b.reg.prepares, 1);
+    await b.resolverEtapa();
+    assert.equal(b.reg.tarefas, 0);
+    assert.deepEqual(b.reg.apagados, ['file:///cache/voz.m4a']);
+    await b.tocar();
+    assert.equal(b.reg.records, 2);
+  });
+
+  await caso('falha ao parar o monitor durante abandono ainda agenda descarte e devolve o botão', async () => {
+    const b = montar({ falharAoPararMonitor: true });
+    await b.tocar();
+    await b.vencer(20_000);
+    assert.deepEqual(b.reg.alertas, ['Não consegui abrir o microfone']);
+    assert.deepEqual(b.reg.erros, []);
+    await b.tocar();
+    assert.equal(b.reg.prepares, 1);
+    assert.equal(b.reg.alertas.at(-1), 'Microfone ainda ocupado');
+    await b.resolverPreparo();
+    assert.equal(b.reg.records, 0);
+    assert.equal(b.reg.tarefas, 0);
+    assert.deepEqual(b.reg.apagados, ['file:///cache/voz.m4a']);
     await b.tocar();
     assert.equal(b.reg.prepares, 2);
   });

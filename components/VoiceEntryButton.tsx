@@ -60,6 +60,14 @@ function avisarPrazoDaAbertura() {
   Alert.alert('Não consegui abrir o microfone', 'A abertura demorou demais e foi cancelada. Tente de novo em instantes.');
 }
 
+function encerrarMonitoramento() {
+  try {
+    pararMonitoramentoCaptura();
+  } catch (erro) {
+    console.warn('[voz] não consegui desligar o monitor da gravação', erro);
+  }
+}
+
 const GRAVACAO_VOZ: RecordingOptions = {
   extension: '.m4a',
   sampleRate: 44100,
@@ -201,7 +209,7 @@ export default function VoiceEntryButton({
       evento.remove();
       if (cortePorTempo.current) clearTimeout(cortePorTempo.current);
       if (amostrador.current) clearInterval(amostrador.current);
-      pararMonitoramentoCaptura();
+      encerrarMonitoramento();
     };
   }, []);
 
@@ -312,7 +320,7 @@ export default function VoiceEntryButton({
         Alert.alert(msg.titulo, msg.texto);
       }
     } finally {
-      pararMonitoramentoCaptura();
+      encerrarMonitoramento();
       encerrando.current = false;
       setEnviando(false);
       ocupado.current = false;
@@ -373,7 +381,7 @@ export default function VoiceEntryButton({
     if (!podeSeguir(minha)) return;
     ocupado.current = true;
     const abandonar = () => {
-      pararMonitoramentoCaptura();
+      encerrarMonitoramento();
       ocupado.current = false;
     };
 
@@ -440,7 +448,7 @@ export default function VoiceEntryButton({
     } catch (e) {
       // Preparo que rejeita já voltou: o gravador não ficou preso.
       gravadorPendente.current = false;
-      pararMonitoramentoCaptura();
+      encerrarMonitoramento();
       ocupado.current = false;
       if (!podeSeguir(minha)) {
         console.warn('[voz] abertura abandonada falhou', e);
